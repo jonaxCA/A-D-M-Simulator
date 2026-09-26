@@ -1188,6 +1188,35 @@ a { color: inherit; text-decoration: none; }
 .estado-resumen .estado-cifra-valor { font-size: 20px; font-weight: 700; }
 .estado-resumen .estado-cifra-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
 
+/* ---------------------------------------------------------------------
+   Simulaciones (Bloque F)
+   --------------------------------------------------------------------- */
+.form-ejecutar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.input-semilla {
+  width: 190px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+.input-semilla:focus { outline: 2px solid var(--accent-blue); outline-offset: 1px; }
+.chk-forzar-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--critico-text);
+  white-space: nowrap;
+}
+.corrida-meta .stat-value { font-weight: 600; }
+.page-actions form { margin: 0; }
+
 @media (max-width: 700px) {
   .estado-resumen { flex-direction: column; align-items: flex-start; }
   .estado-resumen .estado-cifras { gap: 18px; }

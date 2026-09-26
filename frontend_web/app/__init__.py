@@ -1,5 +1,7 @@
 from flask import Flask
 
+from backend_web import simulaciones
+
 from ..config import Config
 
 
@@ -9,5 +11,13 @@ def create_app():
 
     from .routes import bp
     app.register_blueprint(bp)
+
+    # Identificadores visibles del Bloque F (SIM-00042 / ESC-003): se filtran
+    # aqui para poder usarlos en CUALQUIER plantilla con `run.id | id_sim` o
+    # `scenario_id | id_esc`, sin repetir el formato f-string en cada .html.
+    app.jinja_env.filters["id_sim"] = simulaciones.id_simulacion
+    app.jinja_env.filters["id_esc"] = simulaciones.id_escenario
+    app.jinja_env.filters["estado_sim"] = simulaciones.estado_visible
+    app.jinja_env.filters["badge_sim"] = simulaciones.clase_badge_estado
 
     return app

@@ -2038,3 +2038,350 @@ def actualiza_poblacion_municipio(region_id, population, motivo, admin_user_id,
         ), None
     except psycopg2.errors.CheckViolation:
         return False, "Los datos no cumplen las restricciones de la base.", None
+
+
+# ---------------------------------------------------------------------------
+# Simulaciones (Bloque F) -- ejecucion, estados y resultados
+# ---------------------------------------------------------------------------
+# Bloque D (crear/editar/aprobar escenarios) no es parte de este avance: todo
+# lo de aqui es de SOLO LECTURA sobre scenarios/scenario_versions. Lo unico
+# que se escribe en este bloque son simulation_batches, simulation_runs y
+# simulation_results -- la corrida, no el escenario.
+#
+# La traduccion de una version a la entrada del motor (poblacion por edad,
+# parametros de la enfermedad, intervenciones) vive en backend_web.simulaciones,
+# no aqui: este modulo solo sabe hablar SQL.
+
+def get_version_simulacion(version_id):
+    """Una version de escenario con el escenario, la enfermedad y la region a
+    la que pertenece -- lo que necesita tanto la traduccion hacia el motor
+    como la pantalla de detalle de una corrida."""
+    return query(
+        """
+        SELECT sv.id, sv.scenario_id, sv.version_number, sv.status,
+               sv.population_size, sv.horizon_days, sv.initial_infected,
+               sv.created_at, sv.created_by, sv.reviewed_by, sv.reviewed_at,
+               sv.notes,
+               s.name AS scenario_name, s.disease_id, s.region_id,
+               d.name AS disease_name, d.code AS disease_code,
+               reg.name AS region_name, reg.code AS region_code
+        FROM scenario_versions sv
+        JOIN scenarios s   ON s.id   = sv.scenario_id
+        JOIN diseases d    ON d.id   = s.disease_id
+        JOIN regions reg   ON reg.id = s.region_id
+        WHERE sv.id = %s
+        """,
+        (version_id,),
+        one=True,
+    )
+
+
+def get_estructura_edad_region(region_id):
+    """Poblacion de la region por los cinco grupos de edad del motor
+    (region_age_groups, migracion 021). Excluye 'edad_no_especificada'
+    (lower_bound NULL): es una categoria administrativa, no un grupo de edad,
+    y la traduccion del escenario (backend_web.simulaciones) la excluye a
+    proposito -- ver el comentario de GRUPOS_EDAD_MOTOR ahi.
+
+    Devuelve {} si la region no tiene la tabla poblada (por ejemplo una AGEB,
+    que 021 no cubre); la traduccion lo convierte en un error claro.
+    """
+    rows = query(
+        """
+        SELECT age_group, population
+        FROM region_age_groups
+        WHERE region_id = %s AND lower_bound IS NOT NULL
+        """,
+        (region_id,),
+    )
+    return {r["age_group"]: r["population"] for r in rows}
+
+
+def get_intervenciones_version(version_id):
+    """Calendario de intervenciones de una version, en el formato que espera
+    motor/parametros.py (tipo, dia_inicio, dia_fin, cobertura, cumplimiento,
+    params)."""
+    rows = query(
+        """
+        SELECT it.code AS tipo, si.start_day AS dia_inicio, si.end_day AS dia_fin,
+               si.coverage AS cobertura, si.compliance AS cumplimiento, si.params
+        FROM scenario_interventions si
+        JOIN intervention_types it ON it.id = si.intervention_type_id
+        WHERE si.scenario_version_id = %s
+        ORDER BY si.order_index, si.start_day
+        """,
+        (version_id,),
+    )
+    return [
+        {
+            "tipo": r["tipo"],
+            "dia_inicio": r["dia_inicio"],
+            "dia_fin": r["dia_fin"],
+            "cobertura": float(r["cobertura"]) if r["cobertura"] is not None else None,
+            "cumplimiento": float(r["cumplimiento"]) if r["cumplimiento"] is not None else None,
+            "params": r["params"] or {},
+        }
+        for r in rows
+    ]
+
+
+def listar_versiones_escenario():
+    """Todas las versiones de escenario, para la pantalla de simulaciones.
+
+    Bloque D (creacion/edicion/aprobacion) no se construye en este avance, asi
+    que esta lista es de solo lectura: muestra lo que ya haya en la base
+    (por ejemplo el escenario de demostracion de datos/postgres/semillas), sin
+    ofrecer editarlo. Las aprobadas van primero -- son las unicas que se
+    pueden correr.
+    """
+    return query(
+        """
+        SELECT sv.id, sv.scenario_id, sv.version_number, sv.status,
+               sv.population_size, sv.horizon_days, sv.initial_infected,
+               sv.created_at, sv.reviewed_at, sv.review_comment,
+               s.name AS scenario_name,
+               d.name AS disease_name,
+               reg.name AS region_name,
+               autor.username AS creado_por,
+               revisor.username AS revisado_por
+        FROM scenario_versions sv
+        JOIN scenarios s   ON s.id   = sv.scenario_id
+        JOIN diseases d    ON d.id   = s.disease_id
+        JOIN regions reg   ON reg.id = s.region_id
+        JOIN users autor   ON autor.id = sv.created_by
+        LEFT JOIN users revisor ON revisor.id = sv.reviewed_by
+        ORDER BY (sv.status = 'aprobado') DESC, sv.created_at DESC
+        """
+    )
+
+
+def crear_corrida(version_id, seed, user_id, engine_version):
+    """Encola una corrida: un lote de una sola replica (motor python-ref, una
+    corrida a la vez -- ver 014_simulacion_resultados.sql) y su run.
+
+    Valida que la version este aprobada ANTES del INSERT, para poder devolver
+    un mensaje claro. El trigger fn_version_aprobada (014) es la ULTIMA linea
+    de defensa: si por cualquier otra via (un script, psql a mano) se
+    intentara encolar sobre una version no aprobada, la base lo rechaza igual.
+
+    Devuelve (run_id, batch_id, error).
+    """
+    version = query(
+        "SELECT status FROM scenario_versions WHERE id = %s", (version_id,), one=True
+    )
+    if not version:
+        return None, None, "La versión de escenario no existe."
+    if version["status"] != "aprobado":
+        return None, None, (
+            f"Esta versión no está aprobada (estado: {version['status']}); "
+            "solo se pueden ejecutar simulaciones sobre versiones aprobadas."
+        )
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO simulation_batches
+                        (scenario_version_id, requested_by, replicas, engine, status)
+                    VALUES (%s, %s, 1, 'python-ref', 'encolado')
+                    RETURNING id
+                    """,
+                    (version_id, user_id),
+                )
+                batch_id = cur.fetchone()[0]
+                cur.execute(
+                    """
+                    INSERT INTO simulation_runs
+                        (batch_id, scenario_version_id, seed, replica_index, status,
+                         engine_version, requested_by)
+                    VALUES (%s, %s, %s, 0, 'encolado', %s, %s)
+                    RETURNING id
+                    """,
+                    (batch_id, version_id, seed, engine_version, user_id),
+                )
+                run_id = cur.fetchone()[0]
+            conn.commit()
+        return run_id, batch_id, None
+    except psycopg2.Error as exc:
+        return None, None, f"No se pudo encolar la corrida: {exc}"
+
+
+def get_run(run_id):
+    """Detalle completo de una corrida: version, escenario, enfermedad, region
+    y quien la pidio. Lo usan tanto la pantalla de detalle como el runner en
+    segundo plano (backend_web.simulaciones.ejecutar_run)."""
+    return query(
+        """
+        SELECT r.id, r.batch_id, r.scenario_version_id, r.seed, r.status,
+               r.progress, r.engine_version, r.queued_at, r.started_at,
+               r.finished_at, r.error_message, r.requested_by,
+               sv.version_number, sv.scenario_id, sv.status AS version_status,
+               sv.population_size, sv.horizon_days, sv.initial_infected,
+               s.name AS scenario_name, s.disease_id, s.region_id,
+               d.name AS disease_name,
+               reg.name AS region_name,
+               u.username AS requested_by_username, u.full_name AS requested_by_nombre
+        FROM simulation_runs r
+        JOIN scenario_versions sv ON sv.id = r.scenario_version_id
+        JOIN scenarios s   ON s.id   = sv.scenario_id
+        JOIN diseases d    ON d.id   = s.disease_id
+        JOIN regions reg   ON reg.id = s.region_id
+        JOIN users u        ON u.id   = r.requested_by
+        WHERE r.id = %s
+        """,
+        (run_id,),
+        one=True,
+    )
+
+
+def get_runs_recientes(limit=20):
+    """Ultimas corridas de cualquier escenario, para la lista de la pantalla
+    de simulaciones (item 12 del checklist: 'lista de corridas recientes')."""
+    return query(
+        """
+        SELECT r.id, r.status, r.seed, r.queued_at, r.started_at, r.finished_at,
+               r.error_message, sv.scenario_id, sv.version_number,
+               s.name AS scenario_name, u.username AS requested_by_username
+        FROM simulation_runs r
+        JOIN scenario_versions sv ON sv.id = r.scenario_version_id
+        JOIN scenarios s ON s.id = sv.scenario_id
+        JOIN users u     ON u.id = r.requested_by
+        ORDER BY r.queued_at DESC
+        LIMIT %s
+        """,
+        (limit,),
+    )
+
+
+def get_resultado_run(run_id):
+    """Resultado guardado por motor.simular(): indicadores resumen, serie
+    diaria y trazabilidad de parametros. None si la corrida no ha terminado
+    (o termino en error, que no guarda resultado)."""
+    return query(
+        """
+        SELECT run_id, engine_version, scenario_checksum, resumen, serie,
+               trazabilidad, created_at
+        FROM simulation_results
+        WHERE run_id = %s
+        """,
+        (run_id,),
+        one=True,
+    )
+
+
+def marcar_run_ejecutando(run_id):
+    """PENDIENTE -> EJECUTANDO. El WHERE status = 'encolado' evita pisar una
+    corrida que ya haya terminado (o que otro hilo ya haya arrancado).
+
+    Devuelve True solo si esta llamada de verdad hizo la transicion (rowcount
+    == 1); False si no habia ninguna fila 'encolado' con ese id (ya se habia
+    marcado por otro hilo, o el id no existe). El llamador (ejecutar_run) NO
+    debe auditar 'ejecutando' ni seguir con la corrida cuando esto da False.
+    """
+    rowcount = execute(
+        """
+        UPDATE simulation_runs SET status = 'ejecutando', started_at = now()
+        WHERE id = %s AND status = 'encolado'
+        """,
+        (run_id,),
+    )
+    return rowcount == 1
+
+
+def guardar_resultado_run(run_id, resultado):
+    """Guarda la salida de motor.simular() y cierra la corrida como
+    completada, en una sola transaccion: si el INSERT de simulation_results
+    fallara (por ejemplo por el CHECK de scenario_checksum), la corrida NO
+    debe quedar marcada 'completado' sin su resultado.
+
+    El json.dumps() se hace ANTES de abrir la conexion: si `resultado` trae
+    algo no serializable, falla ahi (sin conexion ni transaccion abierta) en
+    vez de a mitad de una transaccion. Y si el INSERT/UPDATE fallan, se hace
+    rollback explicito antes de relanzar la excepcion -- dejar la conexion
+    cerrarse sola con una transaccion a medias no es lo mismo que garantizar
+    que no quedo nada escrito.
+    """
+    resumen_json = json.dumps(resultado["resumen"], ensure_ascii=False, default=str)
+    serie_json = json.dumps(resultado["serie"], ensure_ascii=False, default=str)
+    trazabilidad_json = json.dumps(
+        resultado.get("trazabilidad_parametros", []), ensure_ascii=False, default=str
+    )
+
+    with get_conn() as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO simulation_results
+                        (run_id, engine_version, scenario_checksum, resumen, serie, trazabilidad)
+                    VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb)
+                    """,
+                    (
+                        run_id,
+                        resultado["engine_version"],
+                        resultado["huella_escenario"],
+                        resumen_json,
+                        serie_json,
+                        trazabilidad_json,
+                    ),
+                )
+                cur.execute(
+                    """
+                    UPDATE simulation_runs
+                    SET status = 'completado', progress = 100, finished_at = now()
+                    WHERE id = %s
+                    """,
+                    (run_id,),
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def marcar_run_fallido(run_id, mensaje):
+    """encolado/ejecutando -> fallido, con el mensaje que explica por que.
+
+    El WHERE status NOT IN (...) restringe la transicion a estados NO
+    terminales: una corrida que ya quedo 'completado', 'fallido' o
+    'cancelado' no debe reescribirse (por ejemplo si dos hilos del mismo run
+    corrieran por error, o si el hilo llega tarde despues de que algo mas ya
+    cerro la corrida). Devuelve True solo si de verdad hizo la transicion
+    (rowcount == 1); el llamador no debe auditar 'fallido' si esto da False.
+    """
+    rowcount = execute(
+        """
+        UPDATE simulation_runs
+        SET status = 'fallido', error_message = %s, finished_at = now()
+        WHERE id = %s AND status NOT IN ('completado', 'fallido', 'cancelado')
+        """,
+        (mensaje, run_id),
+    )
+    return rowcount == 1
+
+
+def buscar_run_equivalente(run_id, scenario_version_id, seed, checksum):
+    """Otra corrida COMPLETADA con la misma version, la misma semilla y la
+    misma huella de escenario (scenario_checksum de motor.huella_escenario()).
+
+    Es la demostracion de reproducibilidad del item 10 del checklist: misma
+    entrada + misma semilla + mismo motor => mismo resultado. Devuelve la fila
+    (con su `resumen` para poder comparar indicador por indicador) o None si
+    esta es la primera corrida con esa combinacion.
+    """
+    if not checksum:
+        return None
+    return query(
+        """
+        SELECT r.id, res.resumen
+        FROM simulation_runs r
+        JOIN simulation_results res ON res.run_id = r.id
+        WHERE r.scenario_version_id = %s AND r.seed = %s AND r.id <> %s
+          AND res.scenario_checksum = %s AND r.status = 'completado'
+        ORDER BY r.finished_at ASC
+        LIMIT 1
+        """,
+        (scenario_version_id, seed, run_id, checksum),
+        one=True,
+    )
