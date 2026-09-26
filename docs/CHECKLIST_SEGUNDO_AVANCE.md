@@ -99,42 +99,56 @@ MongoDB, Redis ni CUDA todavía.
 ## D. Escenarios, versiones y aprobación
 
 ### Crear escenario (pantalla central)
-- [ ] Formulario: nombre, descripción, enfermedad, región
-- [ ] Población tomada de la región (editable dentro de los límites del CHECK)
-- [ ] Infectados iniciales
-- [ ] Duración en días (horizonte)
-- [ ] Guardar crea el escenario + **versión 1**
+- [x] Formulario: nombre, descripción, enfermedad, región (`/escenarios/nuevo`, solo `ANALISTA`, `EPIDEMIOLOGO` y `ADMINISTRADOR`)
+- [x] Población tomada de la región, editable dentro de los límites del CHECK. **Con una excepción:** si el escenario se abre por grupos de edad, la población deja de ser editable, porque el reparto por grupos es censal y escalarlo para cuadrarlo con un total escrito a mano lo volvería una invención
+- [x] Infectados iniciales
+- [x] Duración en días (horizonte)
+- [x] Guardar crea el escenario + **versión 1** (`borrador`, `is_current`) en una sola transacción, con su entrada en la bitácora
+- [x] Escenario abierto por grupo de edad: toma el reparto del Censo 2020 de `region_age_groups`, y lo guarda en la versión como fotografía, no como puntero a la región
+- [x] El tope de población subió de 5 a 20 millones (migración `023`). Con el anterior, **Nuevo León completo era imposible de guardar** — 5,784,442 habitantes — y es el primer escenario que alguien va a pedir
+- [x] Listado de escenarios con su versión vigente, estado, población y autor, con búsqueda
 
 ### Intervenciones
-- [ ] Agregar intervención a una versión: tipo, día inicio, día fin, cobertura, cumplimiento
-- [ ] Soportar como mínimo: `CIERRE_ESCUELAS`, `REDUCCION_AFORO`, `VACUNACION` (con grupo 60+)
-- [ ] Quitar / reordenar intervenciones mientras la versión es borrador
-- [ ] Vista de calendario o línea de tiempo de intervenciones
+- [x] Agregar intervención a una versión: tipo, día inicio, día fin, cobertura y cumplimiento, en el detalle del escenario (`/escenarios/<id>`)
+- [x] Soporta **los seis** tipos del catálogo, no solo los tres del mínimo: el formulario de parámetros se genera desde `intervention_types.param_schema`, que es JSON Schema. Agregar un séptimo tipo es una fila en el catálogo, no código nuevo
+- [x] `VACUNACION` con grupo 60+ funciona, y el motor **exige** que el escenario esté abierto por grupos de edad para una prioridad por edad: sin grupos la rechaza en vez de aplicarla a ciegas
+- [x] Quitar y reordenar mientras la versión es borrador. Quitar cierra el hueco del `order_index`, para que «mover una posición» siga siendo predecible
+- [x] Línea de tiempo de intervenciones sobre el horizonte de la versión, en porcentajes: sin JavaScript y sin depender de cuántos días sean
+- [x] Editar pide tres cosas a la vez: el rol, que la versión siga en **borrador**, y ser dueño del escenario o `ADMINISTRADOR`. Cambiar una versión ya enviada dejaría al revisor aprobando algo que ya no existe
+- [x] Los **avisos** del motor se muestran, no solo los errores: ahí es donde dice, por ejemplo, que una prioridad de vacunación no la modela un compartimental y se degrada a aleatoria. Sin mostrarlos, el usuario cree que pidió algo que no está pasando
 
 ### Validación
-- [ ] Validar escenario antes de enviar: días dentro del horizonte, cobertura 0–1, parámetros completos, sin intervenciones duplicadas
-- [ ] Mostrar errores de validación claros en la UI
+- [x] El alta se contrasta contra el motor antes de guardar: días dentro del horizonte y parámetros de enfermedad completos. Los límites del formulario se **importan** de `motor.parametros` en vez de copiarse, para que la pantalla no pueda aceptar algo que la corrida rechaza
+- [x] Cobertura y cumplimiento 0–1, y los parámetros de cada tipo validados contra su propio `param_schema` (mínimos, máximos, enumeraciones y obligatorios)
+- [x] Sin intervenciones duplicadas: se rechaza el **traslape** de dos del mismo tipo, que es más amplio que el índice único de la base (`uq_scenario_interventions_unica`, que solo atrapa el mismo tipo empezando el mismo día). Dos cierres de escuelas encimados contarían su efecto dos veces
+- [x] Mostrar errores de validación claros en la UI: los del formulario y los del motor se muestran por separado, porque hablan de cosas distintas (un campo vacío contra un parámetro epidemiológico faltante)
 
 ### Versionamiento (obligatorio)
-- [ ] Modificar **nunca sobrescribe**: crea la versión siguiente
-- [ ] Cada versión guarda autor, fecha, comentario y parámetros
-- [ ] Solo una versión vigente por escenario (`is_current`)
-- [ ] Historial de versiones visible (Escenario 14 → v1, v2, v3)
-- [ ] Ver el detalle de una versión anterior
-- [ ] Duplicar escenario (crea uno nuevo desde una versión)
+- [x] Modificar **nunca sobrescribe**: `/escenarios/<id>/versiones/nueva` crea la siguiente y la anterior queda intacta. Las intervenciones se **copian** a la nueva; si hubiera que recapturarlas, nadie versionaría nada
+- [x] Cada versión guarda autor, fecha, comentario y parámetros. El **comentario es obligatorio**: un historial sin el motivo de cada cambio no explica cómo llegó el escenario a donde está
+- [x] La versión nueva nace en `borrador` aunque la anterior estuviera aprobada, y apagar la vigente anterior va en la misma transacción que prender la nueva — `uq_scenario_versions_vigente` no admite dos
+- [x] Solo una versión vigente por escenario, comprobado con una prueba que crea cuatro
+- [x] Historial de versiones en el detalle: número, estado, población, horizonte, infectados, cuántas intervenciones, autor, fecha y comentario
+- [x] Ver una versión anterior (`?version=N`), de **solo lectura** y con aviso de que no es la vigente
+- [x] Duplicar desde cualquier versión: crea un escenario nuevo con sus intervenciones, del que duplica, en `borrador` y con versión 1. No hereda el estado de aprobación, porque nadie ha revisado la copia, y no toca el original
+- [x] La versión **congela los parámetros de la enfermedad** al salir de borrador (`scenario_versions.disease_params`, migración `024`). Mientras es borrador usa los vivos del catálogo, que es coherente con que todo lo demás de un borrador se pueda cambiar; en el envío a revisión se congelan. La regla es una línea: **editable ⇔ parámetros vivos, congelada ⇔ su fotografía**. Así todo lo revisable y todo lo simulable queda explicándose a sí mismo, y corregir el catálogo ya no cambia el significado de lo aprobado
+- [x] Adoptar un parámetro corregido es crear la versión siguiente: nace borrador y vuelve a tomar los vivos. La anterior conserva la suya. Las versiones que salieron de borrador **antes** de la `024` tienen `disease_params` en NULL. No se rellenan con los parámetros de hoy porque eso afirmaría algo no verificable; la pantalla lo advierte. Afecta solo al escenario de demostración
 
 ### Flujo de aprobación
 - [x] Migración `013`: estados de versión `borrador → en_revision → aprobado | rechazado`
 - [x] Migración `013`: columnas `submitted_at`, `reviewed_by`, `reviewed_at`, `review_comment`, con CHECK de coherencia (rechazar exige motivo)
-- [ ] `ANALISTA` crea y envía a revisión (pantallas)
-- [ ] `EPIDEMIOLOGO` aprueba o rechaza (pantallas)
+- [x] `ANALISTA` crea y envía a revisión: `POST /escenarios/<id>/enviar`, solo para quien creó el escenario (o `ADMINISTRADOR`). Al enviarla la versión deja de ser editable
+- [x] Antes de aceptar el envío se vuelve a contrastar con el motor: mandar a revisar algo que no se puede simular le hace perder el tiempo a quien revisa
+- [x] `EPIDEMIOLOGO` aprueba o rechaza desde el detalle. Rechazar **exige motivo** — lo pide el CHECK de la base y es lo único que tiene quien va a corregir
+- [x] Una versión rechazada no se corrige: se crea la siguiente, que nace en borrador con las intervenciones copiadas. La rechazada queda con su motivo y su revisor
 - [x] **Nadie aprueba su propia versión**: `ck_scenario_versions_no_autoaprobacion` lo impide en la base
-- [ ] En el backend, exigir además el rol `EPIDEMIOLOGO` al aprobar
+- [x] En el backend se exige el rol `EPIDEMIOLOGO` para dictaminar, y **solo ese**: el `ADMINISTRADOR` ve la bandeja pero no aprueba, porque quien opera el sistema no es quien valida la epidemiología. El intento de un analista queda en la bitácora como `PERMISSION_DENIED`
+- [x] **Nadie revisa su propia versión.** La base lo impide (`ck_scenario_versions_no_autoaprobacion`) y la aplicación lo dice antes, con un mensaje útil en vez de un error de restricción
 - [x] Una versión nueva de un escenario aprobado vuelve a `borrador` (es el default de la columna)
 - [x] **Solo se simula una versión aprobada**: el trigger `fn_version_aprobada` (014) rechaza corridas sobre cualquier otro estado
-- [ ] Bandeja "Pendientes de revisión" para el epidemiólogo
-- [ ] Auditoría de envío, aprobación y rechazo
-- [ ] Que el bloque D muestre la política de edad desconocida al armar el escenario, en vez de que el valor por omisión lo ponga el código que llame al motor
+- [x] Bandeja «Pendientes de revisión» (`/revisiones`), la que lleva más tiempo esperando primero. Marca las versiones que el propio revisor escribió, para que no las intente dictaminar
+- [x] Auditoría de envío, aprobación y rechazo: cada cambio de estado deja el antes y el después en `audit_log`, dentro de la misma transacción que el cambio. Verificado que las tres entidades nuevas (`scenarios`, `scenario_versions`, `scenario_interventions`) se consultan desde la pantalla de Auditoría
+- [x] La política de edad desconocida se elige en el formulario y se guarda en la versión (`age_unknown_policy`). El CHECK la exige cuando hay gente sin edad y la prohíbe cuando no; no hay valor por omisión
 
 ---
 
@@ -151,9 +165,9 @@ MongoDB, Redis ni CUDA todavía.
 - [x] Indicadores resumen (adelanto de F): acumulados, activos, pico, día del pico, hospitalizaciones, fallecimientos, tasa de ataque
 - [x] Sustituir la población por grupo de edad del ejemplo por datos del Censo 2020: `python -m motor` ya reparte con la estructura real del estado
 - [x] COVID-19 ancestral e influenza estacional: los seis parámetros con fuente publicada o con la marca explícita de supuesto (migraciones `017` y `020`). Las dos quedaron **simulables**
-- [x] Dengue, malaria y zika: los seis parámetros quedaron capturados en migración `023_parametros_enfermedades_restantes.sql` (con fusión `||`, sin pisar lo que ya existiera). El equipo decidió simularlas **asumiéndolo**, no esperar a un modelo con vector: en las tres, `r0` queda marcado explícitamente como **supuesto** con la conversión de vector a persona-a-persona documentada en `fuente`, para que la pantalla lo muestre y nadie confunda ese R0 con un dato validado. Con fuente publicada y sin conversión: `dias_hospitalizacion` de las tres (Khalil et al. 2014 para dengue, Ocen et al. 2023 para malaria) y el resto de dengue/zika llevan letalidad y tasa de hospitalización **derivadas por el equipo** (el CDC publica por caso notificado/confirmado, no por infección) — también supuesto, con la conversión explicada caso por caso. Letalidad de malaria es un punto elegido del rango de la OMS (supuesto). Ver el header de `023` y `backend_web/tests/test_parametros_enfermedades.py` para el detalle completo
-- [x] Añadir a `SIMPLIFICACIONES` del motor que el modelo asume **transmisión directa persona a persona**: nueva entrada en `procesamiento/motor/modelo.py:SIMPLIFICACIONES` (y su docstring) que dice que dengue, zika y malaria se aproximan con el mismo SEIR sin compartimentos de mosquito, estacionalidad ni dinámica del vector, remite el R0 y demás parámetros equivalentes a la marca de supuesto de la migración `023`, y aclara que el resultado se lee como orden de magnitud, no como pronóstico. Cubierto por `procesamiento/tests/test_motor.py:Simplificaciones`. La lista sigue sin salir en la pantalla de detalle (solo va en la salida cruda de `simular()`), así que ese aviso no es visible todavía para quien usa la app
-- [x] Patógeno X: migración `023` le captura los seis parámetros como supuesto del equipo por diseño (no hay literatura de un patógeno hipotético que buscar). Definido como escenario de gravedad intermedia-alta: más transmisible y letal que la influenza estacional del catálogo, menos letal que el SARS-CoV-2 ancestral
+- [x] Dengue, malaria y zika: los seis parámetros quedaron capturados en migración `025_parametros_enfermedades_restantes.sql` (con fusión `||`, sin pisar lo que ya existiera). El equipo decidió simularlas **asumiéndolo**, no esperar a un modelo con vector: en las tres, `r0` queda marcado explícitamente como **supuesto** con la conversión de vector a persona-a-persona documentada en `fuente`, para que la pantalla lo muestre y nadie confunda ese R0 con un dato validado. Con fuente publicada y sin conversión: `dias_hospitalizacion` de las tres (Khalil et al. 2014 para dengue, Ocen et al. 2023 para malaria) y el resto de dengue/zika llevan letalidad y tasa de hospitalización **derivadas por el equipo** (el CDC publica por caso notificado/confirmado, no por infección) — también supuesto, con la conversión explicada caso por caso. Letalidad de malaria es un punto elegido del rango de la OMS (supuesto). Ver el header de `025` y `backend_web/tests/test_parametros_enfermedades.py` para el detalle completo
+- [x] Añadir a `SIMPLIFICACIONES` del motor que el modelo asume **transmisión directa persona a persona**: nueva entrada en `procesamiento/motor/modelo.py:SIMPLIFICACIONES` (y su docstring) que dice que dengue, zika y malaria se aproximan con el mismo SEIR sin compartimentos de mosquito, estacionalidad ni dinámica del vector, remite el R0 y demás parámetros equivalentes a la marca de supuesto de la migración `025`, y aclara que el resultado se lee como orden de magnitud, no como pronóstico. Cubierto por `procesamiento/tests/test_motor.py:Simplificaciones`. La lista sigue sin salir en la pantalla de detalle (solo va en la salida cruda de `simular()`), así que ese aviso no es visible todavía para quien usa la app
+- [x] Patógeno X: migración `025` le captura los seis parámetros como supuesto del equipo por diseño (no hay literatura de un patógeno hipotético que buscar). Definido como escenario de gravedad intermedia-alta: más transmisible y letal que la influenza estacional del catálogo, menos letal que el SARS-CoV-2 ancestral
 
 ---
 
@@ -204,9 +218,11 @@ MongoDB, Redis ni CUDA todavía.
 ## H. Integración, UX y auditoría
 
 - [ ] Reemplazar el stub de Simulaciones (quitar `simulaciones` de `STUB_ITEMS`)
-- [ ] Agregar Escenarios, Simulaciones y Comparación al menú lateral
+- [ ] Agregar Simulaciones y Comparación al menú lateral. **Escenarios** y **Revisiones** ya están (Revisiones solo para `EPIDEMIOLOGO` y `ADMINISTRADOR`)
 - [ ] **Aviso permanente** en pantallas de simulación, resultados y comparación: *"Los resultados representan escenarios simulados basados en parámetros y supuestos. No constituyen una predicción epidemiológica ni una recomendación sanitaria."*
 - [ ] Permisos por rol revisados en cada ruta nueva (no solo ocultar el menú)
+- [x] Prueba de humo de **todas** las rutas (`frontend_web/tests/test_rutas_humo.py`): recorre el mapa de Flask y pide cada GET, más el POST de captura de casos. Existe porque una función nueva en `queries.py` se llamó igual que otra con distinta firma, `/reportes/nuevo` empezó a responder 500 y ninguna suite lo notó — cubrían regiones, enfermedades y escenarios, pero nadie pedía esa ruta
+- [x] Prueba de integridad de módulos (`backend_web/tests/test_integridad.py`): ningún archivo puede definir dos veces el mismo nombre de nivel superior. Python se queda con el último y el archivo compila igual, así que el error solo aparece al usar la pantalla afectada
 - [ ] Auditoría consultable de todo el flujo: escenario, versiones, aprobación, corridas
 - [x] Datos de demostración: `alex.cavazos` (ANALISTA) y `diana.flores` (EPIDEMIOLOGO); el escenario de la demo ya viene creado por uno y aprobado por la otra
 - [ ] Mensajes de éxito / error consistentes en todos los formularios

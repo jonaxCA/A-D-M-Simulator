@@ -34,7 +34,7 @@ Simplificaciones declaradas (van en la salida como 'simplificaciones'):
 - El modelo es de contagio directo persona a persona: dengue, zika y malaria
   (transmitidas por vector) se aproximan con el mismo SEIR, sin compartimentos
   de mosquito, estacionalidad ni dinamica del vector; su R0 y demas parametros
-  van marcados como supuesto (ver migracion 023).
+  van marcados como supuesto (ver migracion 025).
 """
 
 import hashlib
@@ -65,7 +65,7 @@ SIMPLIFICACIONES = [
     "El modelo es de contagio directo persona a persona: dengue, zika y malaria "
     "(transmitidas por vector) se aproximan con el mismo SEIR, sin compartimentos "
     "de mosquito, sin estacionalidad ni dinamica del vector; su R0 y demas "
-    "parametros equivalentes van marcados como supuesto (ver migracion 023) y "
+    "parametros equivalentes van marcados como supuesto (ver migracion 025) y "
     "los resultados deben leerse como orden de magnitud, no como pronostico.",
 ]
 

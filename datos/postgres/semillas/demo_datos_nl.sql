@@ -21,7 +21,7 @@ TRUNCATE case_attachments, cases, scenario_interventions, simulation_runs,
 --
 -- r0 / dias_hospitalizacion / tasa_hospitalizacion / letalidad, con fuente o
 -- supuesto explicito: mismo valor y mismo texto que la migracion
--- 023_parametros_enfermedades_restantes.sql. Van tambien en esta semilla
+-- 025_parametros_enfermedades_restantes.sql. Van tambien en esta semilla
 -- porque dump_completo.sql (que trae esa migracion) corre ANTES que esta
 -- semilla (ver docs/INSTALACION.md, Paso 2): en una instalacion nueva esas
 -- tres filas todavia no existen cuando corre la migracion, asi que su UPDATE

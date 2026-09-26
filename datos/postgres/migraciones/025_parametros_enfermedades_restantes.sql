@@ -1,5 +1,5 @@
 -- =============================================================================
--- 023_parametros_enfermedades_restantes.sql
+-- 025_parametros_enfermedades_restantes.sql
 -- Dominio: catalogos.
 --
 -- Cierra el ultimo pendiente de la checklist de enfermedades: captura R0, tasa
@@ -219,7 +219,7 @@ WHERE  code = 'PATOGENO_X'
   AND  NOT (default_params ? 'r0');
 
 INSERT INTO schema_migrations (version, description)
-VALUES ('023', 'Catalogos: parametros de dengue, zika, malaria y patogeno X con su fuente o supuesto explicito')
+VALUES ('025', 'Catalogos: parametros de dengue, zika, malaria y patogeno X con su fuente o supuesto explicito')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;

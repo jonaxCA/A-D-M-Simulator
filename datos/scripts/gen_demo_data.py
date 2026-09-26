@@ -96,7 +96,7 @@ def main():
     out.append("-- ---------------------------------------------------------------------------")
     # r0 / dias_hospitalizacion / tasa_hospitalizacion / letalidad con fuente o
     # supuesto explicito: mismos valores y texto que la migracion
-    # 023_parametros_enfermedades_restantes.sql. Van tambien aqui porque el dump
+    # 025_parametros_enfermedades_restantes.sql. Van tambien aqui porque el dump
     # (que trae esa migracion) corre ANTES que esta semilla -- ver el header de
     # esa migracion. Sin esto, una instalacion nueva crea estas tres
     # enfermedades sin poder simularse hasta que alguien vuelva a correr el

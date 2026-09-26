@@ -1,6 +1,6 @@
 """
 Prueba PURA (sin PostgreSQL) de que las 6 enfermedades del catalogo quedan
-simulables despues de las migraciones 017 y 023.
+simulables despues de las migraciones 017 y 025.
 
 No corre SQL contra ninguna base: parsea el JSON que cada migracion inserta
 con el operador `||` directamente del archivo .sql (con una expresion
@@ -46,14 +46,14 @@ def _bloques_jsonb(archivo):
     return bloques
 
 
-# Lo que ya tenia cada enfermedad ANTES de la migracion 023, tal como lo
+# Lo que ya tenia cada enfermedad ANTES de la migracion 025, tal como lo
 # dejaron 010_datos_iniciales.sql (PATOGENO_X, vacio) y el
 # demo_datos_nl.sql anterior a este cambio (dengue/zika/malaria, en el
 # formato "dist" que el motor lee pero que no cuenta como fuente -- ver
 # backend_web/queries.py:_desarma_param). Sirve para probar el caso real
-# que 023 tiene que resolver: una base que ya tenia la fila creada por una
+# que 025 tiene que resolver: una base que ya tenia la fila creada por una
 # instalacion anterior.
-BASES_ANTERIORES_A_023 = {
+BASES_ANTERIORES_A_025 = {
     "PATOGENO_X": {},
     "DENGUE_DEMO": {
         "incubacion_dias": {"dist": "lognormal", "media": 5.5, "desv": 1.5},
@@ -81,15 +81,15 @@ BASES_ANTERIORES_A_017 = {
 }
 
 
-class Migracion023Tests(unittest.TestCase):
-    """Lo que agrega 023_parametros_enfermedades_restantes.sql."""
+class Migracion025Tests(unittest.TestCase):
+    """Lo que agrega 025_parametros_enfermedades_restantes.sql."""
 
     @classmethod
     def setUpClass(cls):
-        cls.bloques = _bloques_jsonb("023_parametros_enfermedades_restantes.sql")
+        cls.bloques = _bloques_jsonb("025_parametros_enfermedades_restantes.sql")
 
     def test_trae_las_cuatro_enfermedades_pendientes(self):
-        self.assertEqual(set(self.bloques), set(BASES_ANTERIORES_A_023))
+        self.assertEqual(set(self.bloques), set(BASES_ANTERIORES_A_025))
 
     def test_cada_bloque_solo_agrega_claves_que_el_motor_reconoce(self):
         for codigo, bloque in self.bloques.items():
@@ -136,7 +136,7 @@ class Migracion023Tests(unittest.TestCase):
         """El caso real: una base que instalo dengue/zika/malaria/patogeno x
         antes de que existiera esta migracion. `||` fusiona (las claves del
         bloque nuevo ganan) y el resultado tiene que quedar simulable."""
-        for codigo, base in BASES_ANTERIORES_A_023.items():
+        for codigo, base in BASES_ANTERIORES_A_025.items():
             fusionado = {**base, **self.bloques[codigo]}
             estado = estado_parametros(fusionado)
             self.assertEqual(estado["faltan"], [], f"{codigo}: {estado['faltan']}")
@@ -146,7 +146,7 @@ class Migracion023Tests(unittest.TestCase):
         """Replica en Python la guarda SQL `NOT (default_params ? 'r0')`:
         si la enfermedad ya tiene r0 (lo capturo alguien desde la pantalla),
         el bloque de la migracion no debe aplicarse."""
-        capturado = dict(BASES_ANTERIORES_A_023["DENGUE_DEMO"])
+        capturado = dict(BASES_ANTERIORES_A_025["DENGUE_DEMO"])
         capturado["r0"] = {"valor": 9.99, "fuente": "Capturado a mano desde /enfermedades", "supuesto": False}
 
         # Misma condicion que el WHERE de la migracion.
@@ -160,7 +160,7 @@ class Migracion023Tests(unittest.TestCase):
 
 
 class SeisEnfermedadesSimulablesTests(unittest.TestCase):
-    """Con 017 + 023, las 6 enfermedades del catalogo quedan simulables --
+    """Con 017 + 025, las 6 enfermedades del catalogo quedan simulables --
     el objetivo final del pendiente de la checklist (Bloque E)."""
 
     CODIGOS_ESPERADOS = {
@@ -171,15 +171,15 @@ class SeisEnfermedadesSimulablesTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.bloques_017 = _bloques_jsonb("017_parametros_enfermedades.sql")
-        cls.bloques_023 = _bloques_jsonb("023_parametros_enfermedades_restantes.sql")
+        cls.bloques_025 = _bloques_jsonb("025_parametros_enfermedades_restantes.sql")
 
-    def test_017_mas_023_cubren_las_seis_enfermedades_del_catalogo(self):
-        codigos = set(self.bloques_017) | set(self.bloques_023)
+    def test_017_mas_025_cubren_las_seis_enfermedades_del_catalogo(self):
+        codigos = set(self.bloques_017) | set(self.bloques_025)
         self.assertEqual(codigos, self.CODIGOS_ESPERADOS)
 
     def test_las_seis_quedan_simulables(self):
-        bases = {**BASES_ANTERIORES_A_017, **BASES_ANTERIORES_A_023}
-        bloques = {**self.bloques_017, **self.bloques_023}
+        bases = {**BASES_ANTERIORES_A_017, **BASES_ANTERIORES_A_025}
+        bloques = {**self.bloques_017, **self.bloques_025}
         for codigo in self.CODIGOS_ESPERADOS:
             fusionado = {**bases[codigo], **bloques[codigo]}
             estado = estado_parametros(fusionado)
@@ -190,10 +190,10 @@ class SeisEnfermedadesSimulablesTests(unittest.TestCase):
     def test_dengue_zika_malaria_quedan_marcadas_como_transmision_por_vector_supuesta(self):
         # No es solo que simulen: r0 en las tres tiene que seguir marcado
         # como supuesto (el motor es de persona a persona, ver el header de
-        # 023_parametros_enfermedades_restantes.sql), para que la pantalla lo
+        # 025_parametros_enfermedades_restantes.sql), para que la pantalla lo
         # muestre y nadie confunda el R0 de vector con un dato validado.
         for codigo in ("DENGUE_DEMO", "ZIKA_DEMO", "MALARIA_DEMO"):
-            self.assertTrue(self.bloques_023[codigo]["r0"]["supuesto"], codigo)
+            self.assertTrue(self.bloques_025[codigo]["r0"]["supuesto"], codigo)
 
 
 if __name__ == "__main__":
