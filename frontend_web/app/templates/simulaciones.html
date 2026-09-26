@@ -15,7 +15,7 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card">
+<div class="card sim-card">
   <div class="card-header">
     <div>
       <h3>Versiones de escenario</h3>
@@ -26,7 +26,7 @@
   </div>
 
   <div class="tabla-scroll">
-    <table class="situacion-table catalogo-table">
+    <table class="situacion-table catalogo-table sim-versiones-table">
       <thead>
         <tr>
           <th>Escenario</th>
@@ -42,8 +42,8 @@
       <tbody>
         {% for v in versiones %}
         <tr>
-          <td><code class="codigo-chip">{{ v.scenario_id | id_esc }}</code> {{ v.scenario_name }}</td>
-          <td>{{ v.disease_name }}</td>
+          <td class="sim-celda-wrap"><code class="codigo-chip">{{ v.scenario_id | id_esc }}</code> {{ v.scenario_name }}</td>
+          <td class="sim-celda-wrap">{{ v.disease_name }}</td>
           <td>{{ v.region_name }}</td>
           <td>v{{ v.version_number }}</td>
           <td>{{ "{:,}".format(v.population_size) }}</td>
@@ -85,7 +85,7 @@
   </div>
 </div>
 
-<div class="card">
+<div class="card sim-card">
   <div class="card-header">
     <div>
       <h3>Corridas recientes</h3>
@@ -116,7 +116,7 @@
           <td>{{ r.queued_at.strftime('%d/%m/%Y %H:%M') }}</td>
           <td><span class="badge {{ r.status | badge_sim }}">{{ r.status | estado_sim }}</span></td>
           <td class="col-acciones">
-            <a class="btn-detalle" href="{{ url_for('main.simulacion_detalle', run_id=r.id) }}" title="Ver detalle">→</a>
+            <a class="btn sim-btn-detalle" href="{{ url_for('main.simulacion_detalle', run_id=r.id) }}" title="Ver detalle">→</a>
           </td>
         </tr>
         {% else %}

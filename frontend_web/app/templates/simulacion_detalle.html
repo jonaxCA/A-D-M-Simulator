@@ -27,9 +27,9 @@
   {% endfor %}
 {% endwith %}
 
-<div class="card">
+<div class="card sim-card">
   <div class="card-header"><div><h3>Datos de la corrida</h3></div></div>
-  <div class="stat-grid corrida-meta">
+  <div class="stat-grid corrida-meta sim-datos-grid">
     <div><span class="field-hint">Semilla</span><div class="stat-value" style="font-size:18px">{{ run.seed }}</div></div>
     <div><span class="field-hint">Motor</span><div class="stat-value" style="font-size:18px">{{ run.engine_version or '—' }}</div></div>
     <div><span class="field-hint">Solicitó</span><div class="stat-value" style="font-size:18px">{{ run.requested_by_nombre or run.requested_by_username }}</div></div>
@@ -40,11 +40,13 @@
   </div>
 </div>
 
-<div id="zona-en-curso" {% if run.status in ('completado', 'fallido', 'cancelado') %}style="display:none"{% endif %}>
+<div id="zona-en-curso" class="sim-card" {% if run.status in ('completado', 'fallido', 'cancelado') %}style="display:none"{% endif %}>
   <div class="card">
     <div class="card-header"><div><h3>Progreso</h3></div></div>
-    <p id="mensaje-progreso">La corrida está <strong>{{ run.status | estado_sim }}</strong>. Esta página se actualiza sola
-      cada segundo; no hace falta recargarla a mano.</p>
+    <div class="sim-card-body">
+      <p id="mensaje-progreso" style="margin:0">La corrida está <strong>{{ run.status | estado_sim }}</strong>. Esta página se actualiza sola
+        cada segundo; no hace falta recargarla a mano.</p>
+    </div>
   </div>
 </div>
 
@@ -56,14 +58,14 @@
 </div>
 
 {% if resultado %}
-<div class="card">
+<div class="card sim-card">
   <div class="card-header">
     <div>
       <h3>Indicadores</h3>
       <p class="subtitle">Calculados por el motor {{ resultado.engine_version }} a partir de la serie diaria completa.</p>
     </div>
   </div>
-  <div class="stat-grid">
+  <div class="stat-grid sim-indicadores-grid">
     <div class="card stat-card">
       <div class="stat-label"><span>CASOS ACUMULADOS</span></div>
       <div class="stat-value">{{ "{:,}".format(resultado.resumen.casos_acumulados) }}</div>
@@ -92,7 +94,7 @@
   </div>
 </div>
 
-<div class="card">
+<div class="card sim-card">
   <div class="card-header">
     <div>
       <h3>Curvas S, E, I, R, H, D</h3>
@@ -102,8 +104,9 @@
   <div class="chart-wrap"><div id="curvas-chart" style="height:360px;"></div></div>
 </div>
 
-<div class="card">
+<div class="card sim-card">
   <div class="card-header"><div><h3>Reproducibilidad</h3></div></div>
+  <div class="sim-card-body">
   {% if equivalente %}
     {% if equivalente.coincide %}
     <div class="alert alert-ok">✔ Coincide con {{ equivalente.id | id_sim }}: misma versión, misma semilla
@@ -117,6 +120,7 @@
     <p class="field-hint">Todavía no hay otra corrida completada con esta misma versión y semilla. Usa
       "Re-ejecutar con la misma semilla" para demostrar que el resultado se repite.</p>
   {% endif %}
+  </div>
 </div>
 {% endif %}
 
