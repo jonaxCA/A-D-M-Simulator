@@ -910,6 +910,16 @@ def get_usuarios_lista(busqueda=None, rol_id=None, estado=None):
 # se deriva de la accion (LOGIN_FAILED/PERMISSION_DENIED = Fallido, resto =
 # Correcto). "Usuarios activos" del resumen es una aproximacion: usuarios con
 # un LOGIN registrado en las ultimas 24 horas (no hay tabla de sesiones).
+#
+# Caso especial: RUN (ciclo de vida de una simulacion). ejecutar_run() audita
+# las 4 etapas -- solicitada/ejecutando/completada/fallida -- pero las 4
+# quedan con la MISMA action='RUN' en audit_log (ver backend_web/simulaciones.py
+# y backend_web/audit.py); lo que las distingue es data_after['estado']
+# ('encolado'/'ejecutando'/'completado'/'fallido'/'cancelado'). Si la bitacora
+# solo mira `action`, las 4 etapas se ven identicas ("Ejecucion"/"Correcto"
+# las 4, incluida la fallida) y parecen "no aparecer" -- ese fue el bug
+# reportado en UAT. _descripcion_run()/_estado_run() abren data_after para
+# que cada etapa tenga su propio texto y su propio badge.
 
 ACCIONES_FALLIDAS = ("LOGIN_FAILED", "PERMISSION_DENIED")
 
@@ -922,11 +932,73 @@ DESCRIPCION_POR_ACCION = {
     "UPDATE": "Modificacion de registro",
     "DELETE": "Baja de registro",
     "PUBLISH": "Publicacion",
-    "RUN": "Ejecucion",
+    "RUN": "Ejecucion de simulacion",
     "CANCEL": "Cancelacion",
     "SYNC": "Sincronizacion",
     "PERMISSION_DENIED": "Acceso denegado por permisos",
 }
+
+# Etiqueta de la etapa (para la columna Descripcion) y clase visual de estado
+# (para la columna Estado) por cada valor que puede tomar data_after['estado']
+# en un evento RUN. El texto reusa el vocabulario del propio UAT ("solicitada,
+# ejecutando, completada y fallida"); el estado reusa las MISMAS 3 clases de
+# badge que ya existen en styles.css (correcto/pendiente/fallido/inactivo) --
+# no se agrega ninguna clase nueva.
+RUN_ETAPA = {
+    "encolado": ("Simulacion solicitada", "Pendiente"),
+    "ejecutando": ("Simulacion en ejecucion (inicio)", "Pendiente"),
+    "completado": ("Simulacion completada", "Correcto"),
+    "fallido": ("Simulacion fallida", "Fallido"),
+    "cancelado": ("Simulacion cancelada", "Inactivo"),
+    "abortado_antes_de_ejecutar": (
+        "Simulacion no iniciada (ya tomada por otro proceso)", "Inactivo",
+    ),
+}
+
+
+def _resumen_indicadores_run(data_after):
+    """Resumen corto de resultado.resumen para la Descripcion de una etapa
+    'completado' (item del UAT: la completada debe verse "con indicadores")."""
+    indicadores = (data_after or {}).get("indicadores") or {}
+    partes = []
+    if "tasa_ataque" in indicadores:
+        try:
+            partes.append(f"tasa de ataque {float(indicadores['tasa_ataque']) * 100:.1f}%")
+        except (TypeError, ValueError):
+            pass
+    if "casos_acumulados" in indicadores:
+        partes.append(f"{indicadores['casos_acumulados']} casos acumulados")
+    if "fallecimientos" in indicadores:
+        partes.append(f"{indicadores['fallecimientos']} fallecimientos")
+    return ", ".join(partes)
+
+
+def _describe_evento_auditoria(action, entity_id, data_after):
+    """(descripcion, estado_visible) para una fila de audit_log. Aisla el
+    caso especial de RUN (ver nota arriba) del resto de acciones, que siguen
+    la regla original: LOGIN_FAILED/PERMISSION_DENIED = Fallido, todo lo
+    demas = Correcto."""
+    if action == "RUN":
+        etapa = (data_after or {}).get("estado")
+        base, estado = RUN_ETAPA.get(etapa, (DESCRIPCION_POR_ACCION["RUN"], "Correcto"))
+        try:
+            from .simulaciones import id_simulacion
+            identificador = f" {id_simulacion(entity_id)}" if entity_id else ""
+        except (ImportError, ValueError, TypeError):
+            identificador = ""
+        if etapa == "completado":
+            resumen = _resumen_indicadores_run(data_after)
+            descripcion = f"{base}{identificador}" + (f": {resumen}" if resumen else "")
+        elif etapa == "fallido":
+            error = (data_after or {}).get("error") or "sin detalle"
+            descripcion = f"{base}{identificador}: {error}"
+        else:
+            descripcion = f"{base}{identificador}"
+        return descripcion, estado
+
+    descripcion = DESCRIPCION_POR_ACCION.get(action, action)
+    estado = "Fallido" if action in ACCIONES_FALLIDAS else "Correcto"
+    return descripcion, estado
 
 
 def get_auditoria_resumen():
@@ -947,6 +1019,12 @@ def get_auditoria_resumen():
 
 
 def get_auditoria_lista(busqueda=None, usuario_id=None, modulo=None, accion=None, limit=100):
+    """`accion` acepta dos formas: la accion cruda de audit_log (p.ej. 'LOGIN')
+    o, solo para simulaciones, la forma compuesta 'RUN::<etapa>' (p.ej.
+    'RUN::fallido') que produce get_acciones_auditoria() -- necesaria porque
+    las 4 etapas de una corrida comparten la misma action='RUN' y solo se
+    distinguen por data_after['estado']; sin la forma compuesta, el filtro de
+    Accion no podria aislar solo las 'fallidas' o solo las 'completadas'."""
     condiciones = []
     params = []
     if busqueda:
@@ -960,15 +1038,20 @@ def get_auditoria_lista(busqueda=None, usuario_id=None, modulo=None, accion=None
         condiciones.append("a.entity_type = %s")
         params.append(modulo)
     if accion:
-        condiciones.append("a.action = %s")
-        params.append(accion)
+        if accion.startswith("RUN::"):
+            etapa = accion.split("::", 1)[1]
+            condiciones.append("a.action = 'RUN' AND a.data_after->>'estado' = %s")
+            params.append(etapa)
+        else:
+            condiciones.append("a.action = %s")
+            params.append(accion)
 
     where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
     params.append(limit)
     rows = query(
         f"""
         SELECT a.id, a.occurred_at, a.action, a.entity_type, a.entity_id,
-               a.ip_address, u.full_name AS usuario
+               a.ip_address, a.data_after, u.full_name AS usuario
         FROM audit_log a
         LEFT JOIN users u ON u.id = a.user_id
         {where}
@@ -979,15 +1062,16 @@ def get_auditoria_lista(busqueda=None, usuario_id=None, modulo=None, accion=None
     )
     out = []
     for r in rows:
+        descripcion, estado = _describe_evento_auditoria(r["action"], r["entity_id"], r["data_after"])
         out.append({
             "id": r["id"],
             "fecha": r["occurred_at"].strftime("%Y-%m-%d %H:%M:%S"),
             "usuario": r["usuario"] or "Anonimo",
             "modulo": r["entity_type"],
             "accion": r["action"],
-            "descripcion": DESCRIPCION_POR_ACCION.get(r["action"], r["action"]),
+            "descripcion": descripcion,
             "ip": str(r["ip_address"]) if r["ip_address"] else "-",
-            "estado": "Fallido" if r["action"] in ACCIONES_FALLIDAS else "Correcto",
+            "estado": estado,
         })
     return out
 
@@ -998,8 +1082,26 @@ def get_modulos_auditoria():
 
 
 def get_acciones_auditoria():
-    rows = query("SELECT DISTINCT action FROM audit_log ORDER BY action")
-    return [r["action"] for r in rows]
+    """Opciones para el filtro Accion. RUN se desglosa en sus etapas reales
+    (RUN::encolado, RUN::ejecutando, ...) usando data_after['estado'] -- ver
+    nota junto a RUN_ETAPA -- para que el filtro pueda aislar, por ejemplo,
+    solo las simulaciones fallidas."""
+    rows = query("SELECT DISTINCT action FROM audit_log WHERE action <> 'RUN' ORDER BY action")
+    opciones = [{"valor": r["action"], "etiqueta": DESCRIPCION_POR_ACCION.get(r["action"], r["action"])}
+                for r in rows]
+
+    etapas = query(
+        "SELECT DISTINCT data_after->>'estado' AS etapa FROM audit_log "
+        "WHERE action = 'RUN' AND data_after->>'estado' IS NOT NULL ORDER BY 1"
+    )
+    orden_etapas = list(RUN_ETAPA.keys())
+    filas_etapas = [r["etapa"] for r in etapas]
+    filas_etapas.sort(key=lambda e: orden_etapas.index(e) if e in orden_etapas else len(orden_etapas))
+    for etapa in filas_etapas:
+        etiqueta, _estado = RUN_ETAPA.get(etapa, (f"Ejecucion de simulacion ({etapa})", "Correcto"))
+        opciones.append({"valor": f"RUN::{etapa}", "etiqueta": etiqueta})
+
+    return opciones
 
 
 def get_usuarios_para_filtro():
