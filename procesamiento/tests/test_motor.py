@@ -63,6 +63,15 @@ class Reproducibilidad(unittest.TestCase):
                 simular(escenario(), mala)
 
 
+class Simplificaciones(unittest.TestCase):
+    def test_declara_el_supuesto_de_contagio_directo_para_vector(self):
+        r = simular(escenario(), 1)
+        self.assertTrue(any(
+            "contagio directo persona a persona" in s and "dengue, zika y malaria" in s
+            for s in r["simplificaciones"]
+        ))
+
+
 class Conservacion(unittest.TestCase):
     def test_poblacion_constante_todos_los_dias(self):
         r = simular(escenario(intervenciones=[
