@@ -3431,6 +3431,35 @@ def get_runs_recientes(limit=20):
     )
 
 
+def get_runs_completados_para_comparar(limit=50):
+    """Corridas completadas disponibles para la pantalla de Comparacion."""
+    return query(
+        """
+        SELECT r.id, r.seed, r.finished_at,
+               sv.scenario_id, sv.version_number,
+               s.name AS scenario_name,
+               d.name AS disease_name,
+               reg.name AS region_name,
+               res.casos_acumulados,
+               res.hospitalizaciones,
+               res.fallecimientos,
+               res.pico_casos_activos,
+               res.dia_pico,
+               res.tasa_ataque
+        FROM simulation_runs r
+        JOIN simulation_results res ON res.run_id = r.id
+        JOIN scenario_versions sv ON sv.id = r.scenario_version_id
+        JOIN scenarios s ON s.id = sv.scenario_id
+        JOIN diseases d ON d.id = s.disease_id
+        JOIN regions reg ON reg.id = s.region_id
+        WHERE r.status = 'completado'
+        ORDER BY r.finished_at DESC
+        LIMIT %s
+        """,
+        (limit,),
+    )
+
+
 def get_resultado_run(run_id):
     """Resultado guardado por motor.simular(): indicadores resumen, serie
     diaria y trazabilidad de parametros. None si la corrida no ha terminado

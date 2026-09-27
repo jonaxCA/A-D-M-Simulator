@@ -1,5 +1,7 @@
 import os
 import unittest
+from datetime import datetime
+from unittest.mock import patch
 
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
 
@@ -15,6 +17,14 @@ class ComparacionRutaTests(unittest.TestCase):
         cls.app = create_app()
         cls.app.testing = True
 
+    def _token_analista(self):
+        return create_token({
+            "id": 999,
+            "username": "prueba",
+            "full_name": "Usuario Prueba",
+            "roles": ["ANALISTA"],
+        })
+
     def test_comparacion_ya_no_es_stub(self):
         self.assertNotIn("comparacion", STUB_ITEMS)
 
@@ -24,21 +34,49 @@ class ComparacionRutaTests(unittest.TestCase):
             self.assertEqual(resp.status_code, 302)
             self.assertIn("/login", resp.headers["Location"])
 
-    def test_comparacion_renderiza_para_usuario_autenticado(self):
-        token = create_token({
-            "id": 999,
-            "username": "prueba",
-            "full_name": "Usuario Prueba",
-            "roles": ["ANALISTA"],
-        })
+    @patch("frontend_web.app.routes.queries.get_runs_completados_para_comparar")
+    def test_comparacion_muestra_corridas_completadas(self, mock_runs):
+        mock_runs.return_value = [{
+            "id": 42,
+            "scenario_id": 3,
+            "scenario_name": "Escenario de prueba",
+            "disease_name": "Influenza",
+            "region_name": "Monterrey",
+            "version_number": 2,
+            "finished_at": datetime(2026, 9, 26, 20, 30),
+            "seed": 123,
+            "casos_acumulados": 100,
+            "hospitalizaciones": 10,
+            "fallecimientos": 2,
+            "pico_casos_activos": 25,
+            "dia_pico": 12,
+            "tasa_ataque": 0.10,
+        }]
 
         with self.app.test_client() as client:
-            client.set_cookie(COOKIE_NAME, token)
+            client.set_cookie(COOKIE_NAME, self._token_analista())
+            resp = client.get("/comparacion")
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(b'SIM-00042', resp.data)
+            self.assertIn(b'name="run_id"', resp.data)
+            self.assertIn(b'value="42"', resp.data)
+            self.assertIn(
+                "Escenario de prueba".encode("utf-8"),
+                resp.data,
+            )
+
+    @patch("frontend_web.app.routes.queries.get_runs_completados_para_comparar")
+    def test_comparacion_vacia_muestra_mensaje(self, mock_runs):
+        mock_runs.return_value = []
+
+        with self.app.test_client() as client:
+            client.set_cookie(COOKIE_NAME, self._token_analista())
             resp = client.get("/comparacion")
 
             self.assertEqual(resp.status_code, 200)
             self.assertIn(
-                "Comparación de escenarios".encode("utf-8"),
+                "No hay corridas completadas disponibles".encode("utf-8"),
                 resp.data,
             )
 
