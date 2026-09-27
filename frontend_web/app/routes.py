@@ -1367,11 +1367,19 @@ def auditoria():
 def comparacion():
     seleccionados = request.args.getlist("run_id")
     corridas = queries.get_corridas_para_comparar(seleccionados)
+    comparacion_pareto = None
+    errores_pareto = []
+    if len(seleccionados) >= 2:
+        comparacion_pareto, errores_pareto = (
+            simulaciones.construir_comparacion_costo_impacto(seleccionados)
+        )
     return render_template(
         "comparacion.html",
         runs=queries.get_runs_completados_para_comparar(),
         corridas=corridas,
         seleccionados=seleccionados,
+        comparacion_pareto=comparacion_pareto,
+        errores_pareto=errores_pareto,
         active_nav="comparacion",
     )
 
