@@ -1365,9 +1365,13 @@ def auditoria():
 @bp.route("/comparacion")
 @login_required
 def comparacion():
+    seleccionados = request.args.getlist("run_id")
+    corridas = queries.get_corridas_para_comparar(seleccionados)
     return render_template(
         "comparacion.html",
         runs=queries.get_runs_completados_para_comparar(),
+        corridas=corridas,
+        seleccionados=seleccionados,
         active_nav="comparacion",
     )
 
