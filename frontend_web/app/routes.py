@@ -1367,6 +1367,7 @@ def auditoria():
 def comparacion():
     return render_template(
         "comparacion.html",
+        runs=queries.get_runs_completados_para_comparar(),
         active_nav="comparacion",
     )
 
