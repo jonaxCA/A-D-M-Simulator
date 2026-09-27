@@ -201,7 +201,7 @@ MongoDB, Redis ni CUDA todavía.
 ### Comparación
 - [x] Reemplazar el stub de Comparación (quitar `comparacion` de `STUB_ITEMS`)
 - [x] Seleccionar varias corridas completadas con casillas
-- [ ] Superponer curvas de casos, hospitalizaciones y fallecimientos
+- [x] Superponer curvas de casos, hospitalizaciones y fallecimientos
 - [ ] Tabla comparativa: fallecimientos, pico, día del pico, tasa de ataque
 
 ### Trade-off
