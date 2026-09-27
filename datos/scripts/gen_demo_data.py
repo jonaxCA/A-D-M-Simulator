@@ -198,8 +198,8 @@ ON CONFLICT DO NOTHING;
 """)
 
     out.append("-- ---------------------------------------------------------------------------")
-    out.append("-- Un escenario publicado + 3 lotes de simulacion en distintos estados, para que")
-    out.append("-- la tarjeta 'SIMULACIONES' cuente corridas reales (encolado/ejecutando).")
+    out.append("-- Un escenario publicado con su version aprobada. Sin corridas: las crea quien")
+    out.append("-- ejecute la simulacion desde la pantalla.")
     out.append("-- ---------------------------------------------------------------------------")
     out.append("""INSERT INTO scenarios (name, description, disease_id, region_id, owner_id, status, is_public)
 SELECT 'Ola Influenza ZMM - otono 2026',
@@ -210,8 +210,8 @@ WHERE d.code = 'INFLUENZA_ESTACIONAL' AND r.code = '19' AND u.username = 'alex.c
 
 -- La version la construye el analista y la aprueba la epidemiologa: dos
 -- personas distintas, como exige ck_scenario_versions_no_autoaprobacion (013).
--- Tiene que quedar aprobada porque abajo cuelgan corridas de simulacion, y
--- fn_version_aprobada (014) rechaza simular cualquier otra cosa.
+-- Queda aprobada para poder simularla desde la pantalla: fn_version_aprobada
+-- (014) rechaza simular cualquier otra cosa.
 INSERT INTO scenario_versions (scenario_id, version_number, is_current, population_size,
                                horizon_days, initial_infected, notes, created_by,
                                status, submitted_at, reviewed_by, reviewed_at, review_comment)
@@ -222,74 +222,6 @@ FROM scenarios s, users autor, users revisor
 WHERE s.name = 'Ola Influenza ZMM - otono 2026'
   AND autor.username = 'alex.cavazos'
   AND revisor.username = 'diana.flores';
-""")
-
-    batch_rows = [
-        (40, "numba", "ejecutando", 35, False),
-        (30, "numba", "encolado", 4, False),
-        (30, "numba", "completado", 240, True),
-    ]
-    for replicas, engine, status, minutes_ago, done in batch_rows:
-        summary = "'run_summaries:demo-001'" if done else "NULL"
-        finished = f"now() - interval '{max(minutes_ago - 20, 1)} minutes'" if done else "NULL"
-        out.append(f"""INSERT INTO simulation_batches (scenario_version_id, requested_by, replicas, engine, status, summary_doc_id, created_at, finished_at)
-SELECT sv.id, u.id, {replicas}, '{engine}', '{status}', {summary},
-       now() - interval '{minutes_ago} minutes', {finished}
-FROM scenario_versions sv
-JOIN scenarios s ON s.id = sv.scenario_id AND s.name = 'Ola Influenza ZMM - otono 2026'
-JOIN users u ON u.username = 'alex.cavazos';""")
-
-    out.append("")
-    out.append("-- Corridas individuales por lote, respetando las reglas de la 007:")
-    out.append("-- encolado => started_at NULL; terminal => finished_at NOT NULL; etc.")
-    out.append("""DO $$
-DECLARE
-    v_batch_ejecutando BIGINT;
-    v_batch_encolado   BIGINT;
-    v_batch_completado BIGINT;
-    v_version_id       BIGINT;
-    v_user_id          BIGINT;
-    i INT;
-BEGIN
-    SELECT sv.id INTO v_version_id
-    FROM scenario_versions sv
-    JOIN scenarios s ON s.id = sv.scenario_id AND s.name = 'Ola Influenza ZMM - otono 2026';
-
-    SELECT id INTO v_user_id FROM users WHERE username = 'alex.cavazos';
-
-    SELECT id INTO v_batch_ejecutando FROM simulation_batches WHERE status = 'ejecutando' LIMIT 1;
-    SELECT id INTO v_batch_encolado   FROM simulation_batches WHERE status = 'encolado'   LIMIT 1;
-    SELECT id INTO v_batch_completado FROM simulation_batches WHERE status = 'completado' LIMIT 1;
-
-    FOR i IN 0..39 LOOP
-        IF i < 25 THEN
-            INSERT INTO simulation_runs
-                (batch_id, scenario_version_id, requested_by, seed, replica_index, status, progress, started_at, queued_at)
-            VALUES (v_batch_ejecutando, v_version_id, v_user_id, 10000 + i, i, 'ejecutando',
-                    (random() * 80)::smallint, now() - interval '20 minutes', now() - interval '35 minutes');
-        ELSE
-            INSERT INTO simulation_runs
-                (batch_id, scenario_version_id, requested_by, seed, replica_index, status, progress, queued_at)
-            VALUES (v_batch_ejecutando, v_version_id, v_user_id, 10000 + i, i, 'encolado', 0, now() - interval '35 minutes');
-        END IF;
-    END LOOP;
-
-    FOR i IN 0..29 LOOP
-        INSERT INTO simulation_runs
-            (batch_id, scenario_version_id, requested_by, seed, replica_index, status, progress, queued_at)
-        VALUES (v_batch_encolado, v_version_id, v_user_id, 20000 + i, i, 'encolado', 0, now() - interval '4 minutes');
-    END LOOP;
-
-    FOR i IN 0..29 LOOP
-        INSERT INTO simulation_runs
-            (batch_id, scenario_version_id, requested_by, seed, replica_index, status, progress,
-             queued_at, started_at, finished_at, result_doc_id)
-        VALUES (v_batch_completado, v_version_id, v_user_id, 30000 + i, i, 'completado', 100,
-                now() - interval '240 minutes', now() - interval '230 minutes',
-                now() - interval '210 minutes', 'run_results:demo-' || i);
-    END LOOP;
-END;
-$$;
 """)
 
     out.append("-- ---------------------------------------------------------------------------")
