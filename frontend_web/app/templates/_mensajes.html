@@ -1,0 +1,8 @@
+{# Mensajes de exito / error / aviso de flash(). Se incluye en cada pantalla
+   para que todas los pinten igual: 'error' en rojo, 'warn' en amarillo y
+   cualquier otro en verde. #}
+{% with mensajes = get_flashed_messages(with_categories=true) %}
+  {% for categoria, mensaje in mensajes %}
+  <div class="alert alert-{{ categoria if categoria in ('error', 'warn') else 'ok' }}">{{ mensaje }}</div>
+  {% endfor %}
+{% endwith %}

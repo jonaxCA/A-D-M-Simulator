@@ -3,12 +3,15 @@ La parte de credenciales (usuarios, bcrypt, firma del JWT) vive en backend_web.a
 """
 from functools import wraps
 
-from flask import request, redirect, url_for, g
+from flask import request, redirect, url_for, g, flash
 
 from backend_web.auth import decode_token
 
 COOKIE_NAME = "access_token"
 
+# Mismo texto en todos los candados, para que el rechazo se vea igual en
+# cualquier pantalla.
+MENSAJE_SIN_PERMISO = "No tienes permiso para entrar a esa sección."
 
 def get_current_user():
     token = request.cookies.get(COOKIE_NAME)
@@ -61,6 +64,7 @@ def roles_required(*codigos, entity_type="diseases"):
                 from backend_web.audit import log_audit
                 log_audit(user["sub"], "PERMISSION_DENIED", entity_type,
                           entity_id=request.path)
+                flash(MENSAJE_SIN_PERMISO, "error")
                 return redirect(url_for("main.dashboard", denegado=1))
             return view(*args, **kwargs)
         return wrapped
@@ -92,6 +96,7 @@ def admin_required(view=None, *, entity_type="users"):
                 from backend_web.audit import log_audit
                 log_audit(user["sub"], "PERMISSION_DENIED", entity_type,
                           entity_id=request.path)
+                flash(MENSAJE_SIN_PERMISO, "error")
                 return redirect(url_for("main.dashboard", denegado=1))
             return v(*args, **kwargs)
         return wrapped
