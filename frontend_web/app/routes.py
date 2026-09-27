@@ -1366,6 +1366,9 @@ def auditoria():
 @bp.route("/stub/<name>")
 @login_required
 def stub(name):
+    #Solo para pantallas pendientes; las demas van al dashboard
+    if name not in STUB_ITEMS:
+        return redirect(url_for("main.dashboard"))
     titulo = STUB_ITEMS.get(name, name.capitalize())
     return render_template("stub.html", titulo=titulo, active_nav=name)
 
