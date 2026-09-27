@@ -9,6 +9,11 @@
       Selecciona dos o más corridas completadas para comparar sus resultados.
     </p>
   </div>
+  {% if puede_editar_catalogo %}
+  <a class="btn" href="{{ url_for('main.comparacion_costos') }}">
+    Editar costos
+  </a>
+  {% endif %}
 </div>
 
 <div class="card">
