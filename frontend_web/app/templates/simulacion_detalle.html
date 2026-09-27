@@ -21,11 +21,7 @@
   </div>
 </div>
 
-{% with mensajes = get_flashed_messages(with_categories=true) %}
-  {% for categoria, mensaje in mensajes %}
-  <div class="alert alert-{{ categoria if categoria in ('error', 'warn') else 'ok' }}">{{ mensaje }}</div>
-  {% endfor %}
-{% endwith %}
+{% include "_mensajes.html" %}
 
 <div class="alert alert-warn">{{ aviso_simulacion }}</div>
 

@@ -11,11 +11,7 @@
   </div>
 </div>
 
-{% with mensajes = get_flashed_messages(with_categories=true) %}
-  {% for categoria, mensaje in mensajes %}
-  <div class="alert alert-{{ 'error' if categoria == 'error' else 'ok' }}">{{ mensaje }}</div>
-  {% endfor %}
-{% endwith %}
+{% include "_mensajes.html" %}
 
 <div class="stat-grid">
   <div class="card stat-card">
