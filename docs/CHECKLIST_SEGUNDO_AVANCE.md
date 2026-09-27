@@ -199,10 +199,10 @@ MongoDB, Redis ni CUDA todavía.
 ## G. Comparación y frontera de Pareto
 
 ### Comparación
-- [ ] Reemplazar el stub de Comparación (quitar `comparacion` de `STUB_ITEMS`)
-- [ ] Seleccionar varias corridas completadas con casillas
-- [ ] Superponer curvas de casos, hospitalizaciones y fallecimientos
-- [ ] Tabla comparativa: fallecimientos, pico, día del pico, tasa de ataque
+- [x] Reemplazar el stub de Comparación (quitar `comparacion` de `STUB_ITEMS`)
+- [x] Seleccionar varias corridas completadas con casillas
+- [x] Superponer curvas de casos, hospitalizaciones y fallecimientos
+- [x] Tabla comparativa: fallecimientos, pico, día del pico, tasa de ataque
 
 ### Trade-off
 - [x] Costo unitario por tipo de intervención, con fuente o **marcado como supuesto** (sin valores por defecto)
