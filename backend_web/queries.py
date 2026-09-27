@@ -3480,7 +3480,11 @@ def get_corridas_para_comparar(run_ids):
                sv.scenario_id,
                sv.version_number,
                s.name AS scenario_name,
-               res.serie
+               res.serie,
+               res.fallecimientos,
+               res.pico_casos_activos,
+               res.dia_pico,
+               res.tasa_ataque
         FROM simulation_runs r
         JOIN simulation_results res ON res.run_id = r.id
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
