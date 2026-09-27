@@ -6,7 +6,7 @@
   <div>
     <h1>Comparación de escenarios</h1>
     <p class="subtitle">
-      Consulta y compara los resultados de simulaciones completadas.
+      Selecciona dos o más corridas completadas para comparar sus resultados.
     </p>
   </div>
 </div>
@@ -14,11 +14,61 @@
 <div class="card">
   <div class="card-header">
     <div>
-      <h3>Resultados comparativos</h3>
+      <h3>Corridas completadas</h3>
       <p class="subtitle">
-        Selecciona corridas completadas para analizar sus resultados en conjunto.
+        Solo aparecen simulaciones que terminaron correctamente y tienen resultados guardados.
       </p>
     </div>
   </div>
+
+  <form method="get" action="{{ url_for('main.comparacion') }}">
+    <div class="tabla-scroll">
+      <table class="situacion-table catalogo-table">
+        <thead>
+          <tr>
+            <th>Seleccionar</th>
+            <th>Corrida</th>
+            <th>Escenario</th>
+            <th>Enfermedad</th>
+            <th>Región</th>
+            <th>Versión</th>
+            <th>Finalizada</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in runs %}
+          <tr>
+            <td>
+              <input
+                type="checkbox"
+                name="run_id"
+                value="{{ r.id }}"
+                aria-label="Seleccionar {{ r.id | id_sim }}"
+              >
+            </td>
+            <td><code class="codigo-chip">{{ r.id | id_sim }}</code></td>
+            <td><code class="codigo-chip">{{ r.scenario_id | id_esc }}</code> {{ r.scenario_name }}</td>
+            <td>{{ r.disease_name }}</td>
+            <td>{{ r.region_name }}</td>
+            <td>v{{ r.version_number }}</td>
+            <td>{{ r.finished_at.strftime('%d/%m/%Y %H:%M') if r.finished_at else '—' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="tabla-vacia">
+              No hay corridas completadas disponibles para comparar.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tabla-footer">
+      <button type="submit" class="btn btn-primary">
+        Comparar seleccionadas
+      </button>
+    </div>
+  </form>
 </div>
 {% endblock %}
