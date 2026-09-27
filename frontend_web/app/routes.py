@@ -37,7 +37,6 @@ from .permisos import (login_required, admin_required, roles_required, tiene_rol
 bp = Blueprint("main", __name__)
 
 STUB_ITEMS = {
-    "comparacion": "Comparación",
 }
 
 # Semilla aleatoria por defecto cuando el formulario de "Ejecutar simulacion"
@@ -1362,6 +1361,14 @@ def auditoria():
         active_nav="auditoria",
     )
 
+
+@bp.route("/comparacion")
+@login_required
+def comparacion():
+    return render_template(
+        "comparacion.html",
+        active_nav="comparacion",
+    )
 
 @bp.route("/stub/<name>")
 @login_required
