@@ -83,6 +83,36 @@
     </div>
   </div>
 
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead>
+        <tr>
+          <th>Corrida</th>
+          <th>Escenario</th>
+          <th>Fallecimientos</th>
+          <th>Pico de casos activos</th>
+          <th>Día del pico</th>
+          <th>Tasa de ataque</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in corridas %}
+        <tr>
+          <td><code class="codigo-chip">{{ c.id | id_sim }}</code></td>
+          <td>
+            <code class="codigo-chip">{{ c.scenario_id | id_esc }}</code>
+            {{ c.scenario_name }} v{{ c.version_number }}
+          </td>
+          <td>{{ c.fallecimientos }}</td>
+          <td>{{ c.pico_casos_activos }}</td>
+          <td>{{ c.dia_pico }}</td>
+          <td>{{ "%.2f"|format((c.tasa_ataque or 0) * 100) }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
   <div id="comparacion-casos" style="height: 340px;"></div>
   <div id="comparacion-hospitalizaciones" style="height: 340px;"></div>
   <div id="comparacion-fallecimientos" style="height: 340px;"></div>
