@@ -71,4 +71,60 @@
     </div>
   </form>
 </div>
+
+{% if corridas %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3>Curvas comparativas</h3>
+      <p class="subtitle">
+        Las líneas corresponden a las corridas seleccionadas.
+      </p>
+    </div>
+  </div>
+
+  <div id="comparacion-casos" style="height: 340px;"></div>
+  <div id="comparacion-hospitalizaciones" style="height: 340px;"></div>
+  <div id="comparacion-fallecimientos" style="height: 340px;"></div>
+</div>
+
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script>
+(function () {
+  const corridas = {{ corridas | tojson }};
+
+  function nombreCorrida(c) {
+    return 'SIM-' + String(c.id).padStart(5, '0') +
+      ' · ' + c.scenario_name + ' v' + c.version_number;
+  }
+
+  function seriesPara(campo) {
+    return corridas.map(function (c) {
+      return {
+        name: nombreCorrida(c),
+        data: (c.serie || []).map(function (fila) {
+          return [fila.dia, fila[campo] || 0];
+        })
+      };
+    });
+  }
+
+  function crearGrafica(id, titulo, campo) {
+    Highcharts.chart(id, {
+      chart: { type: 'line', backgroundColor: 'transparent' },
+      title: { text: titulo },
+      credits: { enabled: false },
+      xAxis: { title: { text: 'Día' } },
+      yAxis: { title: { text: 'Personas' } },
+      tooltip: { shared: true },
+      series: seriesPara(campo)
+    });
+  }
+
+  crearGrafica('comparacion-casos', 'Casos activos', 'I');
+  crearGrafica('comparacion-hospitalizaciones', 'Hospitalizaciones', 'H');
+  crearGrafica('comparacion-fallecimientos', 'Fallecimientos', 'D');
+})();
+</script>
+{% endif %}
 {% endblock %}
