@@ -10,12 +10,11 @@ Recorrido funcional actual:
 Alcance de esta version:
     - Pantallas funcionales: dashboard publico, login, dashboard autenticado,
       mapa, monitoreo, catalogo de enfermedades, captura de casos, regiones,
-      usuarios, auditoria y simulaciones (Bloque F del segundo avance: correr
-      versiones de escenario ya aprobadas, en segundo plano, con resultados e
-      indicadores). Comparacion sigue como stub "Proximamente"; la frontera de
-      Pareto ya existe en motor/pareto.py, pendiente de conectarse (Bloque G).
-      Bloque D (crear/editar/aprobar escenarios) tampoco es parte de este
-      avance: la pantalla de simulaciones solo LISTA versiones existentes.
+      usuarios, auditoria, escenarios (Bloque D: crear, versionar, enviar a
+      revision y aprobar) y simulaciones (Bloque F: correr versiones ya
+      aprobadas, en segundo plano, con resultados e indicadores). Comparacion
+      sigue como stub "Proximamente"; la frontera de Pareto ya existe en
+      motor/pareto.py, pendiente de conectarse (Bloque G).
     - Todo corre en un solo proceso Flask contra PostgreSQL directamente
       (sin la capa de microservicios -- eso es alcance del segundo parcial).
     - Mapa acotado a Nuevo Leon.
@@ -53,6 +52,10 @@ SEED_MAX = 2**31 - 1
 # en audit_log si alguien llega por URL directa sin el rol.
 ROLES_EJECUTAN_SIMULACION = ("ANALISTA", "ADMINISTRADOR")
 
+# Roles con 'simulations.read' en la misma matriz. CAPTURISTA no lo tiene: no
+# ve escenarios, corridas ni resultados.
+ROLES_LEEN_SIMULACION = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
+
 # El catalogo es chico por naturaleza; el export no pagina, baja todo lo que
 # pase el filtro de la pantalla.
 EXPORT_MAX_FILAS = 1000
@@ -77,6 +80,9 @@ def inject_globals():
         # nadie mas: el ADMINISTRADOR ve la bandeja, pero no dictamina.
         "puede_revisar": tiene_rol(user, "EPIDEMIOLOGO"),
         "ve_bandeja": tiene_rol(user, "EPIDEMIOLOGO", "ADMINISTRADOR"),
+        # Solo pinta u oculta la opcion del menu; el candado real esta en
+        # roles_required, en cada ruta de simulaciones.
+        "ve_simulaciones": tiene_rol(user, *ROLES_LEEN_SIMULACION),
     }
 
 
@@ -955,12 +961,10 @@ def export_monitoreo_csv():
 # ---------------------------------------------------------------------------
 # 6.5 Simulaciones (Bloque F) -- ejecucion, estados y resultados
 # ---------------------------------------------------------------------------
-# Bloque D (crear/editar/aprobar escenarios) no se construye en este avance:
-# esta pantalla SOLO lista versiones de escenario que ya existen (la del
-# escenario de demostracion, datos/postgres/semillas/demo_datos_nl.sql, o las
-# que alguien haya insertado a mano) y permite correr las que ya estan
-# aprobadas. La traduccion version -> entrada del motor y la corrida en hilo
-# viven en backend_web.simulaciones; aqui solo hay HTTP.
+# Esta pantalla solo lista las versiones de escenario (se crean y aprueban en
+# la de escenarios, bloque D) y permite correr las aprobadas. La traduccion
+# version -> entrada del motor y la corrida en hilo viven en
+# backend_web.simulaciones; aqui solo hay HTTP.
 def _seed_desde_form(valor):
     """Semilla opcional del formulario: vacio => aleatoria; con valor => debe
     ser un entero >= 0 (ck_simulation_runs_seed). Devuelve (seed, error)."""
@@ -1005,13 +1009,14 @@ def _lanza_corrida(version_id, seed, forzar_error):
 
 
 @bp.route("/simulaciones")
-@login_required
+@roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
 def simulaciones_lista():
     return render_template(
         "simulaciones.html",
         versiones=queries.listar_versiones_escenario(),
         runs=queries.get_runs_recientes(20),
         puede_ejecutar=tiene_rol(g.user, *ROLES_EJECUTAN_SIMULACION),
+        aviso_simulacion=simulaciones.AVISO_SIMULACION,
         active_nav="simulaciones",
     )
 
@@ -1049,7 +1054,7 @@ def simulacion_ejecutar(version_id):
 
 
 @bp.route("/simulaciones/corridas/<int:run_id>")
-@login_required
+@roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
 def simulacion_detalle(run_id):
     run = queries.get_run(run_id)
     if not run:
@@ -1075,15 +1080,18 @@ def simulacion_detalle(run_id):
         resultado=resultado,
         equivalente=equivalente,
         puede_ejecutar=tiene_rol(g.user, *ROLES_EJECUTAN_SIMULACION),
+        aviso_simulacion=simulaciones.AVISO_SIMULACION,
+        simplificaciones=simulaciones.SIMPLIFICACIONES,
+        engine_version_actual=simulaciones.ENGINE_VERSION,
         active_nav="simulaciones",
     )
 
 
 @bp.route("/simulaciones/corridas/<int:run_id>/estado")
-@login_required
+@roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
 def simulacion_estado(run_id):
     """Endpoint de polling: la pantalla de detalle lo consulta cada segundo
-    mientras la corrida esta PENDIENTE o EJECUTANDO, y recarga la pagina
+    mientras la corrida esta encolada o ejecutandose, y recarga la pagina
     completa (para pintar indicadores y graficas) en cuanto cambia a un
     estado terminal."""
     run = queries.get_run(run_id)

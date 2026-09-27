@@ -27,6 +27,8 @@
   {% endfor %}
 {% endwith %}
 
+<div class="alert alert-warn">{{ aviso_simulacion }}</div>
+
 <div class="card sim-card">
   <div class="card-header"><div><h3>Datos de la corrida</h3></div></div>
   <div class="stat-grid corrida-meta sim-datos-grid">
@@ -52,7 +54,7 @@
 
 <div id="zona-error" {% if run.status != 'fallido' %}style="display:none"{% endif %}>
   <div class="alert alert-error">
-    <strong>La corrida terminó en ERROR.</strong>
+    <strong>La corrida falló.</strong>
     <p id="mensaje-error" style="margin:6px 0 0 0">{{ run.error_message or '' }}</p>
   </div>
 </div>
@@ -120,6 +122,47 @@
     <p class="field-hint">Todavía no hay otra corrida completada con esta misma versión y semilla. Usa
       "Re-ejecutar con la misma semilla" para demostrar que el resultado se repite.</p>
   {% endif %}
+  </div>
+</div>
+
+<div class="card sim-card">
+  <div class="card-header">
+    <div>
+      <h3>Parámetros usados</h3>
+      <p class="subtitle">Tal como los reportó el motor, con su fuente o su marca de supuesto.</p>
+    </div>
+  </div>
+  <div class="sim-card-body detalle-params">
+    <ul class="detalle-lista">
+      {% for t in resultado.trazabilidad %}
+      <li>
+        <span>{{ t.parametro }}</span>
+        <span>
+          {% if t.valor is mapping %}{% for k, v in t.valor.items() %}{{ k }}: {{ v }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}{{ t.valor }}{% endif %}
+          {% if t.estado == 'supuesto' %}<span class="badge param-pill param-supuesto">supuesto</span>
+          {% elif t.estado == 'sin_fuente' %}<span class="badge param-pill param-sin-fuente">sin fuente</span>{% endif %}
+        </span>
+      </li>
+      {% if t.fuente %}
+      <li class="param-fuente-fila"><span></span><span class="param-fuente-texto">{{ t.fuente }}</span></li>
+      {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="card sim-card">
+  <div class="card-header">
+    <div>
+      <h3>Simplificaciones del modelo</h3>
+      <p class="subtitle">Las del motor {{ engine_version_actual }}.{% if resultado.engine_version != engine_version_actual %}
+        Esta corrida usó {{ resultado.engine_version }}, que pudo tener otras.{% endif %}</p>
+    </div>
+  </div>
+  <div class="sim-card-body">
+    <ul>
+      {% for s in simplificaciones %}<li>{{ s }}</li>{% endfor %}
+    </ul>
   </div>
 </div>
 {% endif %}
