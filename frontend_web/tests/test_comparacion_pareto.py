@@ -87,6 +87,10 @@ class ComparacionParetoTests(unittest.TestCase):
         self.assertIn(b"comparacion-pareto", resp.data)
         self.assertIn(b"Frontera de Pareto", resp.data)
         self.assertIn(b"Costo total vs fallecimientos", resp.data)
+        self.assertIn(
+            "La decisión final corresponde al usuario".encode("utf-8"),
+            resp.data,
+        )
 
     @patch("frontend_web.app.routes.simulaciones.construir_comparacion_costo_impacto")
     @patch("frontend_web.app.routes.queries.get_runs_completados_para_comparar")
