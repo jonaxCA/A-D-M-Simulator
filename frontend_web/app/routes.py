@@ -55,6 +55,7 @@ ROLES_EJECUTAN_SIMULACION = ("ANALISTA", "ADMINISTRADOR")
 # Roles con 'simulations.read' en la misma matriz. CAPTURISTA no lo tiene: no
 # ve escenarios, corridas ni resultados.
 ROLES_LEEN_SIMULACION = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
+ROLES_LEEN_ESCENARIO = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 
 # El catalogo es chico por naturaleza; el export no pagina, baja todo lo que
 # pase el filtro de la pantalla.
@@ -83,6 +84,8 @@ def inject_globals():
         # Solo pinta u oculta la opcion del menu; el candado real esta en
         # roles_required, en cada ruta de simulaciones.
         "ve_simulaciones": tiene_rol(user, *ROLES_LEEN_SIMULACION),
+        #IGUAL QUE LO ANTERIOR PERO ESCENARIOS
+        "ve_escenarios": tiene_rol(user, *ROLES_LEEN_ESCENARIO),
     }
 
 
@@ -577,7 +580,7 @@ ROLES_ESCENARIO = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 
 
 @bp.route("/escenarios")
-@login_required
+@roles_required(*ROLES_LEEN_ESCENARIO, entity_type="scenarios")
 def escenarios():
     busqueda = (request.args.get("q") or "").strip() or None
     return render_template(
@@ -656,7 +659,7 @@ def _detalle_o_404(scenario_id):
 
 
 @bp.route("/escenarios/<int:scenario_id>")
-@login_required
+@roles_required(*ROLES_LEEN_ESCENARIO, entity_type="scenarios")
 def escenario_detalle(scenario_id):
     """Detalle de una version. Sin `?version=` muestra la vigente; con uno,
     muestra esa, de solo lectura: un historial que no se puede abrir no sirve
