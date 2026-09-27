@@ -9,22 +9,26 @@ Recorrido funcional actual:
 
 Alcance de esta version:
     - Pantallas funcionales: dashboard publico, login, dashboard autenticado,
-      mapa, monitoreo, catalogo de enfermedades, captura de casos, usuarios y
-      auditoria. Simulaciones y Comparacion siguen como stub "Proximamente";
-      el motor de simulacion y la frontera de Pareto ya existen en el paquete
-      motor/, pendientes de conectarse a esas pantallas.
+      mapa, monitoreo, catalogo de enfermedades, captura de casos, regiones,
+      usuarios, auditoria, escenarios (Bloque D: crear, versionar, enviar a
+      revision y aprobar) y simulaciones (Bloque F: correr versiones ya
+      aprobadas, en segundo plano, con resultados e indicadores). Comparacion
+      sigue como stub "Proximamente"; la frontera de Pareto ya existe en
+      motor/pareto.py, pendiente de conectarse (Bloque G).
     - Todo corre en un solo proceso Flask contra PostgreSQL directamente
       (sin la capa de microservicios -- eso es alcance del segundo parcial).
     - Mapa acotado a Nuevo Leon.
 """
 import csv
 import io
+import random
+import threading
 from datetime import date, datetime, timezone
 
-from flask import (Blueprint, render_template, request, redirect, url_for,
-                   make_response, g, flash)
+from flask import (Blueprint, jsonify, render_template, request, redirect,
+                   url_for, make_response, g, flash)
 
-from backend_web import queries
+from backend_web import queries, simulaciones
 from backend_web.audit import log_audit
 from backend_web.auth import attempt_login, create_token, hash_password
 from .permisos import (login_required, admin_required, roles_required, tiene_rol,
@@ -33,9 +37,24 @@ from .permisos import (login_required, admin_required, roles_required, tiene_rol
 bp = Blueprint("main", __name__)
 
 STUB_ITEMS = {
-    "simulaciones": "Simulaciones",
     "comparacion": "Comparación",
 }
+
+# Semilla aleatoria por defecto cuando el formulario de "Ejecutar simulacion"
+# la deja en blanco. simulation_runs.seed es BIGINT >= 0 (ck_simulation_runs_seed);
+# 2**31-1 alcanza de sobra y coincide con lo que numpy acepta sin rodeos.
+SEED_MAX = 2**31 - 1
+
+# Roles que pueden encolar una corrida, segun la matriz de permisos de
+# 010_datos_iniciales.sql: 'simulations.run' se le otorga a ANALISTA y a
+# ADMINISTRADOR (que tiene todos los permisos); EPIDEMIOLOGO solo tiene
+# 'simulations.read'. roles_required es ademas quien deja el intento negado
+# en audit_log si alguien llega por URL directa sin el rol.
+ROLES_EJECUTAN_SIMULACION = ("ANALISTA", "ADMINISTRADOR")
+
+# Roles con 'simulations.read' en la misma matriz. CAPTURISTA no lo tiene: no
+# ve escenarios, corridas ni resultados.
+ROLES_LEEN_SIMULACION = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 
 # El catalogo es chico por naturaleza; el export no pagina, baja todo lo que
 # pase el filtro de la pantalla.
@@ -61,6 +80,9 @@ def inject_globals():
         # nadie mas: el ADMINISTRADOR ve la bandeja, pero no dictamina.
         "puede_revisar": tiene_rol(user, "EPIDEMIOLOGO"),
         "ve_bandeja": tiene_rol(user, "EPIDEMIOLOGO", "ADMINISTRADOR"),
+        # Solo pinta u oculta la opcion del menu; el candado real esta en
+        # roles_required, en cada ruta de simulaciones.
+        "ve_simulaciones": tiene_rol(user, *ROLES_LEEN_SIMULACION),
     }
 
 
@@ -934,6 +956,176 @@ def export_monitoreo_csv():
     resp.headers["Content-Type"] = "text/csv; charset=utf-8"
     resp.headers["Content-Disposition"] = "attachment; filename=monitoreo_zonas.csv"
     return resp
+
+
+# ---------------------------------------------------------------------------
+# 6.5 Simulaciones (Bloque F) -- ejecucion, estados y resultados
+# ---------------------------------------------------------------------------
+# Esta pantalla solo lista las versiones de escenario (se crean y aprueban en
+# la de escenarios, bloque D) y permite correr las aprobadas. La traduccion
+# version -> entrada del motor y la corrida en hilo viven en
+# backend_web.simulaciones; aqui solo hay HTTP.
+def _seed_desde_form(valor):
+    """Semilla opcional del formulario: vacio => aleatoria; con valor => debe
+    ser un entero >= 0 (ck_simulation_runs_seed). Devuelve (seed, error)."""
+    crudo = (valor or "").strip()
+    if not crudo:
+        return random.randint(0, SEED_MAX), None
+    try:
+        seed = int(crudo)
+    except ValueError:
+        return None, "La semilla debe ser un número entero."
+    if seed < 0:
+        return None, "La semilla debe ser un número entero mayor o igual a 0."
+    return seed, None
+
+
+def _lanza_corrida(version_id, seed, forzar_error):
+    """Encola la corrida y arranca el hilo que la ejecuta. Devuelve
+    (run_id, error): si error no es None, no se creo nada que lanzar."""
+    run_id, _batch_id, error = queries.crear_corrida(
+        version_id, seed, g.user["sub"], simulaciones.ENGINE_VERSION,
+    )
+    if error:
+        return None, error
+
+    log_audit(g.user["sub"], "RUN", "simulation_run", entity_id=str(run_id),
+              data_after={"estado": "encolado", "seed": seed,
+                         "scenario_version_id": version_id,
+                         "forzar_error": forzar_error})
+
+    # daemon=True: si el proceso de Flask se detiene, el hilo no lo detiene a
+    # su vez ni deja el proceso colgado esperandolo. La corrida en si queda en
+    # 'ejecutando' sin terminar -- aceptable para este avance monolitico, sin
+    # cola de trabajos que reencole lo interrumpido.
+    hilo = threading.Thread(
+        target=simulaciones.ejecutar_run,
+        args=(run_id,),
+        kwargs={"forzar_error": forzar_error},
+        daemon=True,
+    )
+    hilo.start()
+    return run_id, None
+
+
+@bp.route("/simulaciones")
+@roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
+def simulaciones_lista():
+    return render_template(
+        "simulaciones.html",
+        versiones=queries.listar_versiones_escenario(),
+        runs=queries.get_runs_recientes(20),
+        puede_ejecutar=tiene_rol(g.user, *ROLES_EJECUTAN_SIMULACION),
+        aviso_simulacion=simulaciones.AVISO_SIMULACION,
+        active_nav="simulaciones",
+    )
+
+
+@bp.route("/simulaciones/<int:version_id>/ejecutar", methods=["POST"])
+@roles_required(*ROLES_EJECUTAN_SIMULACION, entity_type="simulations")
+def simulacion_ejecutar(version_id):
+    """"Ejecutar simulacion": solo sobre versiones aprobadas. El boton ya esta
+    oculto en la plantilla para lo que no esta aprobado, pero eso no es
+    control de acceso -- por eso se vuelve a checar aqui, y crear_corrida()
+    lo vuelve a checar una tercera vez contra la base antes del INSERT, y el
+    trigger fn_version_aprobada (014) lo checa una cuarta si alguien se salta
+    todo lo anterior.
+    """
+    seed, error = _seed_desde_form(request.form.get("seed"))
+    if error:
+        flash(error, "error")
+        return redirect(url_for("main.simulaciones_lista"))
+
+    # La casilla "forzar error (prueba)" (item 7 del checklist) es la unica
+    # forma documentada de disparar el camino de ERROR a proposito, y solo
+    # tiene efecto si quien la marco es ADMINISTRADOR -- ignorarla en
+    # silencio para cualquier otro rol es mas seguro que solo ocultarla en la
+    # plantilla, porque un POST armado a mano no pasa por la plantilla.
+    forzar_error = (request.form.get("forzar_error") == "1"
+                    and tiene_rol(g.user, "ADMINISTRADOR"))
+
+    run_id, error = _lanza_corrida(version_id, seed, forzar_error)
+    if error:
+        flash(error, "error")
+        return redirect(url_for("main.simulaciones_lista"))
+
+    flash(f"Corrida {simulaciones.id_simulacion(run_id)} encolada con semilla {seed}.", "ok")
+    return redirect(url_for("main.simulacion_detalle", run_id=run_id))
+
+
+@bp.route("/simulaciones/corridas/<int:run_id>")
+@roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
+def simulacion_detalle(run_id):
+    run = queries.get_run(run_id)
+    if not run:
+        flash("Esa corrida ya no existe.", "error")
+        return redirect(url_for("main.simulaciones_lista"))
+
+    resultado = queries.get_resultado_run(run_id) if run["status"] == "completado" else None
+    equivalente = None
+    if resultado:
+        equivalente = queries.buscar_run_equivalente(
+            run_id, run["scenario_version_id"], run["seed"], resultado["scenario_checksum"],
+        )
+        if equivalente:
+            # scenario_checksum ya prueba que la ENTRADA fue identica; esto
+            # ademas compara la SALIDA, para que la pantalla nunca afirme una
+            # reproduccion que en realidad no coincidio (lo que delataria un
+            # bug de no-determinismo en el motor).
+            equivalente["coincide"] = (equivalente["resumen"] == resultado["resumen"])
+
+    return render_template(
+        "simulacion_detalle.html",
+        run=run,
+        resultado=resultado,
+        equivalente=equivalente,
+        puede_ejecutar=tiene_rol(g.user, *ROLES_EJECUTAN_SIMULACION),
+        aviso_simulacion=simulaciones.AVISO_SIMULACION,
+        simplificaciones=simulaciones.SIMPLIFICACIONES,
+        engine_version_actual=simulaciones.ENGINE_VERSION,
+        active_nav="simulaciones",
+    )
+
+
+@bp.route("/simulaciones/corridas/<int:run_id>/estado")
+@roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
+def simulacion_estado(run_id):
+    """Endpoint de polling: la pantalla de detalle lo consulta cada segundo
+    mientras la corrida esta encolada o ejecutandose, y recarga la pagina
+    completa (para pintar indicadores y graficas) en cuanto cambia a un
+    estado terminal."""
+    run = queries.get_run(run_id)
+    if not run:
+        return jsonify({"error": "no encontrada"}), 404
+    return jsonify({
+        "status": run["status"],
+        "estado_visible": simulaciones.estado_visible(run["status"]),
+        "progress": run["progress"],
+        "error_message": run["error_message"],
+        "terminal": run["status"] in ("completado", "fallido", "cancelado"),
+    })
+
+
+@bp.route("/simulaciones/corridas/<int:run_id>/reejecutar", methods=["POST"])
+@roles_required(*ROLES_EJECUTAN_SIMULACION, entity_type="simulations")
+def simulacion_reejecutar(run_id):
+    """"Re-ejecutar con la misma semilla" (item 10 del checklist): nueva
+    corrida sobre la MISMA version y la MISMA semilla. Si el escenario y el
+    engine_version no cambiaron, el resultado tiene que salir identico -- eso
+    es justo lo que la pantalla de detalle de la corrida nueva compara."""
+    anterior = queries.get_run(run_id)
+    if not anterior:
+        flash("Esa corrida ya no existe.", "error")
+        return redirect(url_for("main.simulaciones_lista"))
+
+    nuevo_id, error = _lanza_corrida(anterior["scenario_version_id"], anterior["seed"], False)
+    if error:
+        flash(error, "error")
+        return redirect(url_for("main.simulacion_detalle", run_id=run_id))
+
+    flash(f"Re-ejecutando con la misma semilla ({anterior['seed']}) como "
+          f"{simulaciones.id_simulacion(nuevo_id)}.", "ok")
+    return redirect(url_for("main.simulacion_detalle", run_id=nuevo_id))
 
 
 # ---------------------------------------------------------------------------

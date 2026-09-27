@@ -6,7 +6,7 @@
     python -m motor --json                   # salida completa en JSON
 
 La distribucion por edad SI es real: la del Censo 2020 de INEGI para Nuevo Leon
-(data/censo/nl_estructura_edad_2020.tsv). El tamanio de la poblacion, los
+(datos/censo/nl_estructura_edad_2020.tsv). El tamanio de la poblacion, los
 parametros de la enfermedad y los costos son SUPUESTOS ilustrativos para probar
 el motor: no son parametros validados de influenza ni costos reales.
 """
@@ -38,7 +38,7 @@ COSTOS_EJEMPLO = {
 
 # Estructura por edad de Nuevo Leon, Censo 2020 de INEGI: los 21 grupos
 # quinquenales del tabulado, agrupados en cinco tramos. Excluye "No
-# especificado" (18,132 personas). Ver data/censo/nl_estructura_edad_2020.tsv.
+# especificado" (18,132 personas). Ver datos/censo/nl_estructura_edad_2020.tsv.
 ESTRUCTURA_NL_2020 = {
     "0-19": 1_853_344, "20-39": 1_867_264, "40-59": 1_391_652,
     "60-79": 564_795, "80+": 89_255,
@@ -50,8 +50,8 @@ POBLACION_EJEMPLO = 500_000
 def poblacion_por_edad(total=POBLACION_EJEMPLO):
     """Reparte `total` habitantes con la estructura por edad real del estado.
 
-    No se usa el estado completo (5,766,310) porque el esquema limita un
-    escenario a 5,000,000 habitantes; lo que se conserva es la proporcion.
+    El ejemplo no usa el estado completo (5,766,310): solo conserva su
+    proporcion por edad.
     """
     base = sum(ESTRUCTURA_NL_2020.values())
     reparto = {g: round(n * total / base) for g, n in ESTRUCTURA_NL_2020.items()}

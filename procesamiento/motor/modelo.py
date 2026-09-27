@@ -31,6 +31,10 @@ Simplificaciones declaradas (van en la salida como 'simplificaciones'):
   vivos no hospitalizados, y solo las que llegan a susceptibles protegen.
 - Las intervenciones sobre capas multiplican los contactos de esa capa por
   (1 - reduccion * cobertura * cumplimiento).
+- El modelo es de contagio directo persona a persona: dengue, zika y malaria
+  (transmitidas por vector) se aproximan con el mismo SEIR, sin compartimentos
+  de mosquito, estacionalidad ni dinamica del vector; su R0 y demas parametros
+  van marcados como supuesto (ver migracion 025).
 """
 
 import hashlib
@@ -58,6 +62,11 @@ SIMPLIFICACIONES = [
     "La vacuna se aplica sin conocer el estado inmunologico de la persona.",
     "Las intervenciones sobre una capa reducen sus contactos en "
     "reduccion x cobertura x cumplimiento.",
+    "El modelo es de contagio directo persona a persona: dengue, zika y malaria "
+    "(transmitidas por vector) se aproximan con el mismo SEIR, sin compartimentos "
+    "de mosquito, sin estacionalidad ni dinamica del vector; su R0 y demas "
+    "parametros equivalentes van marcados como supuesto (ver migracion 025) y "
+    "los resultados deben leerse como orden de magnitud, no como pronostico.",
 ]
 
 

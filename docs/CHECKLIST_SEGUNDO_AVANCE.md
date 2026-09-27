@@ -165,9 +165,9 @@ MongoDB, Redis ni CUDA todavía.
 - [x] Indicadores resumen (adelanto de F): acumulados, activos, pico, día del pico, hospitalizaciones, fallecimientos, tasa de ataque
 - [x] Sustituir la población por grupo de edad del ejemplo por datos del Censo 2020: `python -m motor` ya reparte con la estructura real del estado
 - [x] COVID-19 ancestral e influenza estacional: los seis parámetros con fuente publicada o con la marca explícita de supuesto (migraciones `017` y `020`). Las dos quedaron **simulables**
-- [ ] Dengue, malaria y zika: faltan R0, tasa de hospitalización, días de hospitalización y letalidad; incubación y período infeccioso ya están pero **sin fuente**. **Ojo antes de capturar**: las tres se transmiten por vector y el motor es un SEIR de persona a persona con capas de contacto, así que un R0 bien citado igual produce una simulación segura y equivocada, y `CIERRE_ESCUELAS` o `REDUCCION_AFORO` no actúan como el modelo supone. Decidir primero: se simulan con este motor asumiéndolo, se marcan como no simulables, o esperan a un modelo con vector
-- [ ] Añadir a `SIMPLIFICACIONES` del motor que el modelo asume **transmisión directa persona a persona**; hoy la lista no lo dice
-- [ ] Patógeno X: es hipotético y no tiene literatura que buscar. Definir en equipo qué escenario representa (¿más transmisible que COVID? ¿más letal?); sus seis parámetros van como supuesto por diseño, no por falta de trabajo
+- [ ] Dengue, malaria y zika: los seis parámetros quedaron capturados en migración `025_parametros_enfermedades_restantes.sql` (con fusión `||`, sin pisar lo que ya existiera). El equipo decidió simularlas **asumiéndolo**, no esperar a un modelo con vector: en las tres, `r0` queda marcado explícitamente como **supuesto** con la conversión de vector a persona-a-persona documentada en `fuente`, para que la pantalla lo muestre y nadie confunda ese R0 con un dato validado. Con fuente publicada y sin conversión: `dias_hospitalizacion` de las tres (Khalil et al. 2014 para dengue, Ocen et al. 2023 para malaria) y el resto de dengue/zika llevan letalidad y tasa de hospitalización **derivadas por el equipo** (el CDC publica por caso notificado/confirmado, no por infección) — también supuesto, con la conversión explicada caso por caso. Letalidad de malaria es un punto elegido del rango de la OMS (supuesto). Ver el header de `025` y `backend_web/tests/test_parametros_enfermedades.py` para el detalle completo. **Pendiente:** `incubacion_dias` e `infeccioso_dias` de las tres siguen sin fuente ni supuesto, así que el sistema no las deja simular (regla 8); falta capturarlos
+- [x] Añadir a `SIMPLIFICACIONES` del motor que el modelo asume **transmisión directa persona a persona**: nueva entrada en `procesamiento/motor/modelo.py:SIMPLIFICACIONES` (y su docstring) que dice que dengue, zika y malaria se aproximan con el mismo SEIR sin compartimentos de mosquito, estacionalidad ni dinámica del vector, remite el R0 y demás parámetros equivalentes a la marca de supuesto de la migración `025`, y aclara que el resultado se lee como orden de magnitud, no como pronóstico. Cubierto por `procesamiento/tests/test_motor.py:Simplificaciones`. La lista se muestra en el detalle de cada corrida (`simulacion_detalle.html`)
+- [x] Patógeno X: migración `025` le captura los seis parámetros como supuesto del equipo por diseño (no hay literatura de un patógeno hipotético que buscar). Definido como escenario de gravedad intermedia-alta: más transmisible y letal que la influenza estacional del catálogo, menos letal que el SARS-CoV-2 ancestral
 
 ---
 
@@ -176,23 +176,23 @@ MongoDB, Redis ni CUDA todavía.
 ### Corridas
 - [x] Migración `014`: motor `python-ref` admitido y lotes desde 1 réplica (antes el mínimo eran 30)
 - [x] Migración `014`: `requested_by` en `simulation_runs`, con relleno desde el lote para bases existentes
-- [ ] Cada corrida guarda: run_id, scenario_id, versión, engine_version, seed, inicio, fin, usuario, parámetros, estado
-- [ ] Identificador visible tipo `SIM-00042` / `ESC-003`
-- [ ] Botón "Ejecutar simulación" solo en versiones aprobadas
+- [x] Cada corrida guarda: run_id, scenario_id, versión, engine_version, seed, inicio, fin, usuario, parámetros, estado — `simulation_runs` (id, scenario_version_id, engine_version, seed, started_at/finished_at, requested_by, status) más `simulation_results.trazabilidad` (snapshot exacto de valor/fuente/supuesto de cada parámetro que uso ESA corrida) y `scenario_checksum`. `backend_web/queries.py:get_run()` junta todo para la pantalla de detalle
+- [x] Identificador visible tipo `SIM-00042` / `ESC-003` — `backend_web/simulaciones.py:id_simulacion()` / `id_escenario()`, usados en `simulaciones.html` y `simulacion_detalle.html`
+- [x] Botón "Ejecutar simulación" solo en versiones aprobadas — oculto en la plantilla para lo que no está aprobado (`simulaciones.html`) y reforzado en el backend cuatro veces: `roles_required` en la ruta, `crear_corrida()` contra la base, el trigger `fn_version_aprobada` (014), y `construir_escenario_desde_version()` si algo se salta todo lo anterior
 
 ### Estados
-- [ ] `PENDIENTE → EJECUTANDO → COMPLETADA`
-- [ ] `PENDIENTE → EJECUTANDO → ERROR` (con mensaje de error guardado)
-- [ ] La ejecución corre en segundo plano (hilo) para que la transición sea visible
-- [ ] La página consulta el estado y se actualiza sola
-- [ ] Probar a propósito el camino de ERROR
+- [x] `PENDIENTE → EJECUTANDO → COMPLETADA` — `backend_web/simulaciones.py:ejecutar_run()`, probado en `test_ejecutar_run_completa_con_el_escenario_de_demo`
+- [x] `PENDIENTE → EJECUTANDO → ERROR` (con mensaje de error guardado) — casilla "forzar error (prueba)" visible solo para `ADMINISTRADOR`, o cualquier fallo real del motor/datos; probado en `test_ejecutar_run_forzado_queda_en_error_con_mensaje` y `test_forzar_error_solo_tiene_efecto_para_administrador`
+- [x] La ejecución corre en segundo plano (hilo) para que la transición sea visible — `threading.Thread(target=simulaciones.ejecutar_run, daemon=True)` en `frontend_web/app/routes.py:_lanza_corrida()`
+- [x] La página consulta el estado y se actualiza sola — `GET /simulaciones/corridas/<id>/estado` + `setInterval` cada 1s en `simulacion_detalle.html`, que recarga la página al llegar a un estado terminal
+- [x] Probar a propósito el camino de ERROR — casilla "forzar error (prueba)" (solo `ADMINISTRADOR`); dispara `MENSAJE_ERROR_FORZADO` sin depender de un escenario real incompleto
 
 ### Resultados (en PostgreSQL)
 - [x] Migración `014`: tabla `simulation_results` (resumen + serie diaria en JSONB, con columnas generadas para los indicadores y la huella del escenario)
-- [ ] Indicadores: casos acumulados, casos activos, pico de casos, día del pico, hospitalizaciones, fallecimientos, tasa de ataque
-- [ ] Curvas temporales S, E, I, R, H, D con Highcharts
-- [ ] Re-ejecutar con la misma semilla reproduce el mismo resultado (demostrable)
-- [ ] Auditoría de ejecución y resultado
+- [x] Indicadores: casos acumulados, casos activos, pico de casos, día del pico, hospitalizaciones, fallecimientos, tasa de ataque — tarjetas de `simulacion_detalle.html`, calculados por el motor y guardados en `simulation_results.resumen`
+- [x] Curvas temporales S, E, I, R, H, D con Highcharts — `simulacion_detalle.html`, a partir de `simulation_results.serie`
+- [x] Re-ejecutar con la misma semilla reproduce el mismo resultado (demostrable) — botón "Re-ejecutar con la misma semilla" (`simulacion_reejecutar`); la pantalla de detalle compara huella del escenario y resumen contra la corrida equivalente (tarjeta "Reproducibilidad"); probado en `test_misma_semilla_produce_run_equivalente` y `test_reejecutar_usa_la_misma_semilla_y_marca_reproducibilidad`
+- [x] Auditoría de ejecución y resultado — `log_audit()` en encolado, ejecutando, completado y fallido (`backend_web/simulaciones.py`, `frontend_web/app/routes.py`); corre incluso sin contexto HTTP porque la corrida vive en un hilo (`backend_web/audit.py`)
 
 ---
 

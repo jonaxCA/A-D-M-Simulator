@@ -1,0 +1,213 @@
+{% extends "base_app.html" %}
+{% block title %}{{ run.id | id_sim }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ run.id | id_sim }} <span class="badge {{ run.status | badge_sim }}" id="estado-badge">{{ run.status | estado_sim }}</span></h1>
+    <p class="subtitle">
+      <code class="codigo-chip">{{ run.scenario_id | id_esc }}</code>
+      {{ run.scenario_name }} · v{{ run.version_number }} · {{ run.disease_name }} · {{ run.region_name }}
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('main.simulaciones_lista') }}">← Simulaciones</a>
+    {% if puede_ejecutar and run.status in ('completado', 'fallido', 'cancelado') %}
+    <form method="post" action="{{ url_for('main.simulacion_reejecutar', run_id=run.id) }}">
+      <button type="submit" class="btn btn-primary" title="Encola una corrida nueva con la misma versión y la misma semilla, para demostrar reproducibilidad.">
+        ⟳ Re-ejecutar con la misma semilla ({{ run.seed }})
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% with mensajes = get_flashed_messages(with_categories=true) %}
+  {% for categoria, mensaje in mensajes %}
+  <div class="alert alert-{{ categoria if categoria in ('error', 'warn') else 'ok' }}">{{ mensaje }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="alert alert-warn">{{ aviso_simulacion }}</div>
+
+<div class="card sim-card">
+  <div class="card-header"><div><h3>Datos de la corrida</h3></div></div>
+  <div class="stat-grid corrida-meta sim-datos-grid">
+    <div><span class="field-hint">Semilla</span><div class="stat-value" style="font-size:18px">{{ run.seed }}</div></div>
+    <div><span class="field-hint">Motor</span><div class="stat-value" style="font-size:18px">{{ run.engine_version or '—' }}</div></div>
+    <div><span class="field-hint">Solicitó</span><div class="stat-value" style="font-size:18px">{{ run.requested_by_nombre or run.requested_by_username }}</div></div>
+    <div><span class="field-hint">Población / horizonte</span><div class="stat-value" style="font-size:18px">{{ "{:,}".format(run.population_size) }} · {{ run.horizon_days }} días</div></div>
+    <div><span class="field-hint">Encolada</span><div class="stat-value" style="font-size:14px">{{ run.queued_at.strftime('%d/%m/%Y %H:%M:%S') }}</div></div>
+    <div><span class="field-hint">Inicio</span><div class="stat-value" style="font-size:14px">{{ run.started_at.strftime('%d/%m/%Y %H:%M:%S') if run.started_at else '—' }}</div></div>
+    <div><span class="field-hint">Fin</span><div class="stat-value" style="font-size:14px">{{ run.finished_at.strftime('%d/%m/%Y %H:%M:%S') if run.finished_at else '—' }}</div></div>
+  </div>
+</div>
+
+<div id="zona-en-curso" class="sim-card" {% if run.status in ('completado', 'fallido', 'cancelado') %}style="display:none"{% endif %}>
+  <div class="card">
+    <div class="card-header"><div><h3>Progreso</h3></div></div>
+    <div class="sim-card-body">
+      <p id="mensaje-progreso" style="margin:0">La corrida está <strong>{{ run.status | estado_sim }}</strong>. Esta página se actualiza sola
+        cada segundo; no hace falta recargarla a mano.</p>
+    </div>
+  </div>
+</div>
+
+<div id="zona-error" {% if run.status != 'fallido' %}style="display:none"{% endif %}>
+  <div class="alert alert-error">
+    <strong>La corrida falló.</strong>
+    <p id="mensaje-error" style="margin:6px 0 0 0">{{ run.error_message or '' }}</p>
+  </div>
+</div>
+
+{% if resultado %}
+<div class="card sim-card">
+  <div class="card-header">
+    <div>
+      <h3>Indicadores</h3>
+      <p class="subtitle">Calculados por el motor {{ resultado.engine_version }} a partir de la serie diaria completa.</p>
+    </div>
+  </div>
+  <div class="stat-grid sim-indicadores-grid">
+    <div class="card stat-card">
+      <div class="stat-label"><span>CASOS ACUMULADOS</span></div>
+      <div class="stat-value">{{ "{:,}".format(resultado.resumen.casos_acumulados) }}</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-label"><span>CASOS ACTIVOS (FINAL)</span></div>
+      <div class="stat-value">{{ "{:,}".format(resultado.resumen.casos_activos_final) }}</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-label"><span>PICO DE CASOS ACTIVOS</span></div>
+      <div class="stat-value">{{ "{:,}".format(resultado.resumen.pico_casos_activos) }}</div>
+      <div class="stat-trend"><span>día {{ resultado.resumen.dia_pico }}</span></div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-label"><span>HOSPITALIZACIONES</span></div>
+      <div class="stat-value">{{ "{:,}".format(resultado.resumen.hospitalizaciones) }}</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-label"><span>FALLECIMIENTOS</span></div>
+      <div class="stat-value">{{ "{:,}".format(resultado.resumen.fallecimientos) }}</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-label"><span>TASA DE ATAQUE</span></div>
+      <div class="stat-value">{{ "%.2f"|format(resultado.resumen.tasa_ataque * 100) }}%</div>
+    </div>
+  </div>
+</div>
+
+<div class="card sim-card">
+  <div class="card-header">
+    <div>
+      <h3>Curvas S, E, I, R, H, D</h3>
+      <p class="subtitle">Susceptibles, Expuestos, Infecciosos, Recuperados, Hospitalizados y Fallecidos por día.</p>
+    </div>
+  </div>
+  <div class="chart-wrap"><div id="curvas-chart" style="height:360px;"></div></div>
+</div>
+
+<div class="card sim-card">
+  <div class="card-header"><div><h3>Reproducibilidad</h3></div></div>
+  <div class="sim-card-body">
+  {% if equivalente %}
+    {% if equivalente.coincide %}
+    <div class="alert alert-ok">✔ Coincide con {{ equivalente.id | id_sim }}: misma versión, misma semilla
+      (huella del escenario y resumen de resultados idénticos).</div>
+    {% else %}
+    <div class="alert alert-error">⚠ {{ equivalente.id | id_sim }} usó la misma versión y semilla (misma huella
+      de escenario) pero el resumen de resultados NO coincide. Esto señala un problema de no-determinismo en el
+      motor y debe reportarse.</div>
+    {% endif %}
+  {% else %}
+    <p class="field-hint">Todavía no hay otra corrida completada con esta misma versión y semilla. Usa
+      "Re-ejecutar con la misma semilla" para demostrar que el resultado se repite.</p>
+  {% endif %}
+  </div>
+</div>
+
+<div class="card sim-card">
+  <div class="card-header">
+    <div>
+      <h3>Parámetros usados</h3>
+      <p class="subtitle">Tal como los reportó el motor, con su fuente o su marca de supuesto.</p>
+    </div>
+  </div>
+  <div class="sim-card-body detalle-params">
+    <ul class="detalle-lista">
+      {% for t in resultado.trazabilidad %}
+      <li>
+        <span>{{ t.parametro }}</span>
+        <span>
+          {% if t.valor is mapping %}{% for k, v in t.valor.items() %}{{ k }}: {{ v }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}{{ t.valor }}{% endif %}
+          {% if t.estado == 'supuesto' %}<span class="badge param-pill param-supuesto">supuesto</span>
+          {% elif t.estado == 'sin_fuente' %}<span class="badge param-pill param-sin-fuente">sin fuente</span>{% endif %}
+        </span>
+      </li>
+      {% if t.fuente %}
+      <li class="param-fuente-fila"><span></span><span class="param-fuente-texto">{{ t.fuente }}</span></li>
+      {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="card sim-card">
+  <div class="card-header">
+    <div>
+      <h3>Simplificaciones del modelo</h3>
+      <p class="subtitle">Las del motor {{ engine_version_actual }}.{% if resultado.engine_version != engine_version_actual %}
+        Esta corrida usó {{ resultado.engine_version }}, que pudo tener otras.{% endif %}</p>
+    </div>
+  </div>
+  <div class="sim-card-body">
+    <ul>
+      {% for s in simplificaciones %}<li>{{ s }}</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script>
+(function () {
+  {% if resultado %}
+  var serie = {{ resultado.serie | tojson }};
+  var dias = serie.map(function (f) { return f.dia; });
+  function serieDe(campo) { return serie.map(function (f) { return f[campo]; }); }
+  Highcharts.chart('curvas-chart', {
+    chart: { type: 'line', backgroundColor: 'transparent' },
+    title: { text: null },
+    credits: { enabled: false },
+    xAxis: { title: { text: 'Día' }, categories: dias, tickInterval: Math.ceil(dias.length / 20) },
+    yAxis: { title: { text: 'Personas' }, gridLineDashStyle: 'Dash' },
+    tooltip: { shared: true },
+    series: [
+      { name: 'S — Susceptibles', data: serieDe('S'), color: '#8aa0b8' },
+      { name: 'E — Expuestos', data: serieDe('E'), color: '#f2b632' },
+      { name: 'I — Infecciosos', data: serieDe('I'), color: '#e05656' },
+      { name: 'R — Recuperados', data: serieDe('R'), color: '#3fa66a' },
+      { name: 'H — Hospitalizados', data: serieDe('H'), color: '#9b59d9' },
+      { name: 'D — Fallecidos', data: serieDe('D'), color: '#22252b' }
+    ]
+  });
+  {% endif %}
+
+  var estadoTerminal = {{ (run.status in ('completado', 'fallido', 'cancelado')) | tojson }};
+  if (estadoTerminal) { return; }
+
+  var urlEstado = {{ url_for('main.simulacion_estado', run_id=run.id) | tojson }};
+  var intervalo = setInterval(function () {
+    fetch(urlEstado).then(function (r) { return r.json(); }).then(function (datos) {
+      var badge = document.getElementById('estado-badge');
+      if (badge) { badge.textContent = datos.estado_visible; }
+      var msg = document.getElementById('mensaje-progreso');
+      if (msg) { msg.innerHTML = 'La corrida está <strong>' + datos.estado_visible + '</strong>. Esta página se actualiza sola.'; }
+      if (datos.terminal) {
+        clearInterval(intervalo);
+        window.location.reload();
+      }
+    }).catch(function () { /* red intermitente: se reintenta en el siguiente tick */ });
+  }, 1000);
+})();
+</script>
+{% endblock %}

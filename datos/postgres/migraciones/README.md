@@ -24,6 +24,7 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `022_poblacion_60plus_derivada.sql` | `regions.population_60plus` pasa a derivarse de `region_age_groups` con un trigger; deja de capturarse a mano |
 | `023_escenarios_poblacion_por_edad.sql` | `scenario_versions` guarda la población por grupo de edad y la política de edad desconocida; el tope de población sube de 5 a 20 millones para que quepa el estado completo |
 | `024_version_congela_parametros.sql` | `scenario_versions.disease_params`: la versión congela los parámetros de la enfermedad al salir de borrador, para que corregir el catálogo no cambie el significado de lo ya aprobado |
+| `025_parametros_enfermedades_restantes.sql` | Captura R0, tasa de hospitalización, días de hospitalización y letalidad -- con fuente o supuesto explícito -- de `DENGUE_DEMO`, `ZIKA_DEMO`, `MALARIA_DEMO` y `PATOGENO_X`, las cuatro enfermedades que `017` y `020` no tocaron |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.
