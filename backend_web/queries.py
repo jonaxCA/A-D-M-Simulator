@@ -2570,8 +2570,57 @@ def get_tipos_intervencion():
     """Tipos activos, con el esquema que describe sus parametros."""
     return [dict(r) for r in query(
         """SELECT id, code, name, description, target_layer, primitive, param_schema,
-                  unit_cost, cost_unit, cost_is_assumption
+                  unit_cost, cost_unit, cost_source, cost_is_assumption
            FROM intervention_types WHERE is_active ORDER BY name""")]
+
+
+def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption):
+    """Valida el importe antes de guardar el costo de una intervencion."""
+    errores = []
+    texto = (unit_cost_raw or "").strip()
+
+    if not texto:
+        errores.append("El importe es obligatorio.")
+        return None, errores
+
+    try:
+        costo = float(texto)
+    except ValueError:
+        errores.append("El importe debe ser numerico.")
+        return None, errores
+
+    if costo < 0:
+        errores.append("El importe no puede ser negativo.")
+
+    es_supuesto = bool(cost_is_assumption)
+
+    if not es_supuesto and not (cost_source or "").strip():
+        errores.append("Un costo que no es supuesto debe incluir una fuente.")
+
+    return {
+        "unit_cost": costo,
+        "cost_source": (cost_source or "").strip() or None,
+        "cost_is_assumption": es_supuesto,
+    }, errores
+
+
+def actualiza_costo_intervencion(intervention_type_id, datos):
+    """Actualiza solamente los campos economicos del tipo de intervencion."""
+    return execute(
+        """
+        UPDATE intervention_types
+        SET unit_cost = %s,
+            cost_source = %s,
+            cost_is_assumption = %s
+        WHERE id = %s AND is_active
+        """,
+        (
+            datos["unit_cost"],
+            datos["cost_source"],
+            datos["cost_is_assumption"],
+            intervention_type_id,
+        ),
+    )
 
 
 def get_escenario_detalle(scenario_id, version_number=None):

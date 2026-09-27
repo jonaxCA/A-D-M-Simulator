@@ -1,0 +1,115 @@
+{% extends "base_app.html" %}
+{% block title %}Costos de intervenciones{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Costos de intervenciones</h1>
+    <p class="subtitle">
+      Captura el costo unitario usado en la comparación económica.
+      Cada valor debe tener una fuente o quedar marcado explícitamente como supuesto.
+    </p>
+  </div>
+  <a class="btn" href="{{ url_for('main.comparacion') }}">← Volver a Comparación</a>
+</div>
+
+{% with mensajes = get_flashed_messages(with_categories=true) %}
+  {% for categoria, mensaje in mensajes %}
+  <div class="alert alert-{{ categoria if categoria in ('error', 'warn') else 'ok' }}">
+    {{ mensaje }}
+  </div>
+  {% endfor %}
+{% endwith %}
+
+{% for error in errores %}
+<div class="alert alert-error">{{ error }}</div>
+{% endfor %}
+
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3>Importes por tipo de intervención</h3>
+      <p class="subtitle">
+        La unidad ya está definida por el modelo; aquí solo se captura el importe y su procedencia.
+      </p>
+    </div>
+  </div>
+
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead>
+        <tr>
+          <th>Intervención</th>
+          <th>Unidad</th>
+          <th>Costo actual</th>
+          <th>Fuente</th>
+          <th>Supuesto</th>
+          <th>Editar</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tipo in tipos %}
+        <tr>
+          <td>
+            <strong>{{ tipo.name }}</strong>
+            <div class="field-hint">{{ tipo.code }}</div>
+          </td>
+          <td>{{ tipo.cost_unit or 'Sin unidad' }}</td>
+          <td>
+            {% if tipo.unit_cost is not none %}
+              {{ tipo.unit_cost }}
+            {% else %}
+              <span class="field-hint">Sin capturar</span>
+            {% endif %}
+          </td>
+          <td>{{ tipo.cost_source or '—' }}</td>
+          <td>{{ 'Sí' if tipo.cost_is_assumption else 'No' }}</td>
+          <td>
+            <form method="post" action="{{ url_for('main.comparacion_costos') }}">
+              <input type="hidden" name="intervention_type_id" value="{{ tipo.id }}">
+
+              <input
+                type="number"
+                name="unit_cost"
+                step="0.01"
+                min="0"
+                value="{{ tipo.unit_cost if tipo.unit_cost is not none else '' }}"
+                placeholder="0.00"
+                required
+              >
+
+              <input
+                type="text"
+                name="cost_source"
+                value="{{ tipo.cost_source or '' }}"
+                placeholder="Fuente o referencia"
+              >
+
+              <label>
+                <input
+                  type="checkbox"
+                  name="cost_is_assumption"
+                  value="1"
+                  {% if tipo.cost_is_assumption %}checked{% endif %}
+                >
+                Es supuesto
+              </label>
+
+              <button type="submit" class="btn btn-primary btn-mini">
+                Guardar
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="tabla-vacia">
+            No hay tipos de intervención activos.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
