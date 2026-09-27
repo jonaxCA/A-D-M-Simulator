@@ -124,7 +124,8 @@ class SimulacionesRutasTests(unittest.TestCase):
         token = create_token({"id": user_id, "username": CAPTURISTA_PRUEBA,
                               "full_name": "Capturista de prueba", "roles": ["CAPTURISTA"]})
         antes = query("""SELECT count(*) AS n FROM audit_log
-                         WHERE user_id = %s AND action = 'PERMISSION_DENIED'""",
+                         WHERE user_id = %s AND action = 'PERMISSION_DENIED'
+                           AND entity_type = 'simulations'""",
                       (user_id,), one=True)["n"]
         with self.app.test_client() as client:
             client.set_cookie(COOKIE_NAME, token)
