@@ -2570,8 +2570,57 @@ def get_tipos_intervencion():
     """Tipos activos, con el esquema que describe sus parametros."""
     return [dict(r) for r in query(
         """SELECT id, code, name, description, target_layer, primitive, param_schema,
-                  unit_cost, cost_unit, cost_is_assumption
+                  unit_cost, cost_unit, cost_source, cost_is_assumption
            FROM intervention_types WHERE is_active ORDER BY name""")]
+
+
+def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption):
+    """Valida el importe antes de guardar el costo de una intervencion."""
+    errores = []
+    texto = (unit_cost_raw or "").strip()
+
+    if not texto:
+        errores.append("El importe es obligatorio.")
+        return None, errores
+
+    try:
+        costo = float(texto)
+    except ValueError:
+        errores.append("El importe debe ser numerico.")
+        return None, errores
+
+    if costo < 0:
+        errores.append("El importe no puede ser negativo.")
+
+    es_supuesto = bool(cost_is_assumption)
+
+    if not es_supuesto and not (cost_source or "").strip():
+        errores.append("Un costo que no es supuesto debe incluir una fuente.")
+
+    return {
+        "unit_cost": costo,
+        "cost_source": (cost_source or "").strip() or None,
+        "cost_is_assumption": es_supuesto,
+    }, errores
+
+
+def actualiza_costo_intervencion(intervention_type_id, datos):
+    """Actualiza solamente los campos economicos del tipo de intervencion."""
+    return execute(
+        """
+        UPDATE intervention_types
+        SET unit_cost = %s,
+            cost_source = %s,
+            cost_is_assumption = %s
+        WHERE id = %s AND is_active
+        """,
+        (
+            datos["unit_cost"],
+            datos["cost_source"],
+            datos["cost_is_assumption"],
+            intervention_type_id,
+        ),
+    )
 
 
 def get_escenario_detalle(scenario_id, version_number=None):
@@ -3429,6 +3478,74 @@ def get_runs_recientes(limit=20):
         """,
         (limit,),
     )
+
+
+def get_runs_completados_para_comparar(limit=50):
+    """Corridas completadas disponibles para la pantalla de Comparacion."""
+    return query(
+        """
+        SELECT r.id, r.seed, r.finished_at,
+               sv.scenario_id, sv.version_number,
+               s.name AS scenario_name,
+               d.name AS disease_name,
+               reg.name AS region_name,
+               res.casos_acumulados,
+               res.hospitalizaciones,
+               res.fallecimientos,
+               res.pico_casos_activos,
+               res.dia_pico,
+               res.tasa_ataque
+        FROM simulation_runs r
+        JOIN simulation_results res ON res.run_id = r.id
+        JOIN scenario_versions sv ON sv.id = r.scenario_version_id
+        JOIN scenarios s ON s.id = sv.scenario_id
+        JOIN diseases d ON d.id = s.disease_id
+        JOIN regions reg ON reg.id = s.region_id
+        WHERE r.status = 'completado'
+        ORDER BY r.finished_at DESC
+        LIMIT %s
+        """,
+        (limit,),
+    )
+
+
+def get_corridas_para_comparar(run_ids):
+    """Devuelve corridas completadas seleccionadas con su serie diaria."""
+    ids = []
+    for valor in run_ids:
+        try:
+            run_id = int(valor)
+        except (TypeError, ValueError):
+            continue
+        if run_id not in ids:
+            ids.append(run_id)
+
+    if len(ids) < 2:
+        return []
+
+    rows = query(
+        """
+        SELECT r.id,
+               sv.scenario_id,
+               sv.version_number,
+               s.name AS scenario_name,
+               res.serie,
+               res.fallecimientos,
+               res.pico_casos_activos,
+               res.dia_pico,
+               res.tasa_ataque
+        FROM simulation_runs r
+        JOIN simulation_results res ON res.run_id = r.id
+        JOIN scenario_versions sv ON sv.id = r.scenario_version_id
+        JOIN scenarios s ON s.id = sv.scenario_id
+        WHERE r.status = 'completado'
+          AND r.id = ANY(%s)
+        """,
+        (ids,),
+    )
+
+    por_id = {fila["id"]: fila for fila in rows}
+    return [por_id[run_id] for run_id in ids if run_id in por_id]
 
 
 def get_resultado_run(run_id):

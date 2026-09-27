@@ -39,6 +39,7 @@ if _PROCESAMIENTO_DIR not in sys.path:
 from motor import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular  # noqa: E402,F401
 from motor.modelo import SIMPLIFICACIONES                      # noqa: E402,F401
 from motor.parametros import EscenarioInvalido                 # noqa: E402
+from motor.pareto import ComparacionInvalida, comparar as comparar_pareto  # noqa: E402
 
 from . import queries                                           # noqa: E402
 from .audit import log_audit                                    # noqa: E402
@@ -124,6 +125,79 @@ def construir_escenario_desde_version(version_id):
         ]
 
     return queries.escenario_de_version(detalle), version, []
+
+
+# ---------------------------------------------------------------------------
+# Comparacion costo vs impacto
+# ---------------------------------------------------------------------------
+def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
+    """Usa corridas completadas y el motor de Pareto para comparar costo e impacto."""
+    ids = []
+    for valor in run_ids:
+        try:
+            run_id = int(valor)
+        except (TypeError, ValueError):
+            continue
+        if run_id not in ids:
+            ids.append(run_id)
+
+    if len(ids) < 2:
+        return None, ["Selecciona al menos dos corridas completadas."]
+
+    costos = {}
+    for tipo in queries.get_tipos_intervencion():
+        if tipo["unit_cost"] is None:
+            continue
+        costos[tipo["code"]] = {
+            "valor": float(tipo["unit_cost"]),
+            "fuente": tipo["cost_source"],
+            "supuesto": bool(tipo["cost_is_assumption"]),
+        }
+
+    entradas = []
+    errores = []
+
+    for run_id in ids:
+        run = queries.get_run(run_id)
+        if not run or run["status"] != "completado":
+            errores.append(f"La corrida {id_simulacion(run_id)} no esta completada.")
+            continue
+
+        escenario, _version, errores_escenario = construir_escenario_desde_version(
+            run["scenario_version_id"]
+        )
+        if errores_escenario:
+            errores.extend(f"{id_simulacion(run_id)}: {e}" for e in errores_escenario)
+            continue
+
+        guardado = queries.get_resultado_run(run_id)
+        if not guardado:
+            errores.append(f"{id_simulacion(run_id)} no tiene resultados guardados.")
+            continue
+
+        resultado = {
+            "huella_escenario": guardado["scenario_checksum"],
+            "resumen": guardado["resumen"],
+            "semilla": run["seed"],
+            "engine_version": guardado["engine_version"],
+            "dias": run["horizon_days"],
+            "poblacion": run["population_size"],
+        }
+
+        entradas.append({
+            "id": run_id,
+            "nombre": f"{id_simulacion(run_id)} - {run['scenario_name']}",
+            "escenario": escenario,
+            "resultado": resultado,
+        })
+
+    if errores:
+        return None, errores
+
+    try:
+        return comparar_pareto(entradas, costos, metrica=metrica), []
+    except ComparacionInvalida as exc:
+        return None, exc.errores
 
 
 # ---------------------------------------------------------------------------

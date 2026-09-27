@@ -1,0 +1,273 @@
+{% extends "base_app.html" %}
+{% block title %}Comparación{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Comparación de escenarios</h1>
+    <p class="subtitle">
+      Selecciona dos o más corridas completadas para comparar sus resultados.
+    </p>
+  </div>
+  {% if puede_editar_catalogo %}
+  <a class="btn" href="{{ url_for('main.comparacion_costos') }}">
+    Editar costos
+  </a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3>Corridas completadas</h3>
+      <p class="subtitle">
+        Solo aparecen simulaciones que terminaron correctamente y tienen resultados guardados.
+      </p>
+    </div>
+  </div>
+
+  <form method="get" action="{{ url_for('main.comparacion') }}">
+    <div class="tabla-scroll">
+      <table class="situacion-table catalogo-table">
+        <thead>
+          <tr>
+            <th>Seleccionar</th>
+            <th>Corrida</th>
+            <th>Escenario</th>
+            <th>Enfermedad</th>
+            <th>Región</th>
+            <th>Versión</th>
+            <th>Finalizada</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in runs %}
+          <tr>
+            <td>
+              <input
+                type="checkbox"
+                name="run_id"
+                value="{{ r.id }}"
+                aria-label="Seleccionar {{ r.id | id_sim }}"
+              >
+            </td>
+            <td><code class="codigo-chip">{{ r.id | id_sim }}</code></td>
+            <td><code class="codigo-chip">{{ r.scenario_id | id_esc }}</code> {{ r.scenario_name }}</td>
+            <td>{{ r.disease_name }}</td>
+            <td>{{ r.region_name }}</td>
+            <td>v{{ r.version_number }}</td>
+            <td>{{ r.finished_at.strftime('%d/%m/%Y %H:%M') if r.finished_at else '—' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="tabla-vacia">
+              No hay corridas completadas disponibles para comparar.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tabla-footer">
+      <button type="submit" class="btn btn-primary">
+        Comparar seleccionadas
+      </button>
+    </div>
+  </form>
+</div>
+
+{% if corridas %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3>Curvas comparativas</h3>
+      <p class="subtitle">
+        Las líneas corresponden a las corridas seleccionadas.
+      </p>
+    </div>
+  </div>
+
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead>
+        <tr>
+          <th>Corrida</th>
+          <th>Escenario</th>
+          <th>Fallecimientos</th>
+          <th>Pico de casos activos</th>
+          <th>Día del pico</th>
+          <th>Tasa de ataque</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in corridas %}
+        <tr>
+          <td><code class="codigo-chip">{{ c.id | id_sim }}</code></td>
+          <td>
+            <code class="codigo-chip">{{ c.scenario_id | id_esc }}</code>
+            {{ c.scenario_name }} v{{ c.version_number }}
+          </td>
+          <td>{{ c.fallecimientos }}</td>
+          <td>{{ c.pico_casos_activos }}</td>
+          <td>{{ c.dia_pico }}</td>
+          <td>{{ "%.2f"|format((c.tasa_ataque or 0) * 100) }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div id="comparacion-casos" style="height: 340px;"></div>
+  <div id="comparacion-hospitalizaciones" style="height: 340px;"></div>
+  <div id="comparacion-fallecimientos" style="height: 340px;"></div>
+</div>
+
+{% if errores_pareto %}
+<div class="alert alert-error">
+  <strong>No se pudo calcular la comparación de costo e impacto.</strong>
+  <ul>
+    {% for error in errores_pareto %}
+    <li>{{ error }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% elif comparacion_pareto %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3>Impacto sanitario vs costo de intervención</h3>
+      <p class="subtitle">
+        Cada punto representa una corrida. La línea une los escenarios de la frontera de Pareto.
+      </p>
+    </div>
+  </div>
+
+  <div id="comparacion-pareto" style="height: 420px;"></div>
+
+  <div class="alert alert-warn">
+    <strong>La decisión final corresponde al usuario.</strong>
+    La frontera de Pareto y los indicadores de costo e impacto son herramientas
+    de apoyo para comparar escenarios. El sistema no selecciona automáticamente
+    una alternativa ni sustituye el criterio de la persona responsable.
+  </div>
+</div>
+{% endif %}
+
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script>
+(function () {
+  const corridas = {{ corridas | tojson }};
+
+  function nombreCorrida(c) {
+    return 'SIM-' + String(c.id).padStart(5, '0') +
+      ' · ' + c.scenario_name + ' v' + c.version_number;
+  }
+
+  function seriesPara(campo) {
+    return corridas.map(function (c) {
+      return {
+        name: nombreCorrida(c),
+        data: (c.serie || []).map(function (fila) {
+          return [fila.dia, fila[campo] || 0];
+        })
+      };
+    });
+  }
+
+  function crearGrafica(id, titulo, campo) {
+    Highcharts.chart(id, {
+      chart: { type: 'line', backgroundColor: 'transparent' },
+      title: { text: titulo },
+      credits: { enabled: false },
+      xAxis: { title: { text: 'Día' } },
+      yAxis: { title: { text: 'Personas' } },
+      tooltip: { shared: true },
+      series: seriesPara(campo)
+    });
+  }
+
+  crearGrafica('comparacion-casos', 'Casos activos', 'casos_activos');
+  crearGrafica('comparacion-hospitalizaciones', 'Hospitalizaciones', 'H');
+  crearGrafica('comparacion-fallecimientos', 'Fallecimientos', 'D');
+})();
+</script>
+
+{% if comparacion_pareto %}
+<script>
+(function () {
+  const pareto = {{ comparacion_pareto | tojson }};
+  const filas = pareto.filas || [];
+  const idsFrontera = new Set(
+    (pareto.frontera || []).map(function (id) { return String(id); })
+  );
+
+  const frontera = filas
+    .filter(function (fila) {
+      return idsFrontera.has(String(fila.id));
+    })
+    .sort(function (a, b) {
+      return a.costo - b.costo;
+    });
+
+  Highcharts.chart('comparacion-pareto', {
+    chart: {
+      type: 'scatter',
+      backgroundColor: 'transparent'
+    },
+    title: {
+      text: 'Costo total vs fallecimientos'
+    },
+    subtitle: {
+      text: 'Menor costo y menor impacto se ubican hacia la esquina inferior izquierda.'
+    },
+    credits: {
+      enabled: false
+    },
+    xAxis: {
+      title: {
+        text: 'Costo total de intervención'
+      }
+    },
+    yAxis: {
+      title: {
+        text: 'Fallecimientos'
+      }
+    },
+    tooltip: {
+      formatter: function () {
+        return '<b>' + this.point.name + '</b><br>' +
+          'Costo: ' + Highcharts.numberFormat(this.x, 2) + '<br>' +
+          'Fallecimientos: ' + Highcharts.numberFormat(this.y, 0);
+      }
+    },
+    series: [
+      {
+        type: 'scatter',
+        name: 'Corridas comparadas',
+        data: filas.map(function (fila) {
+          return {
+            x: fila.costo,
+            y: fila.impacto,
+            name: fila.nombre
+          };
+        })
+      },
+      {
+        type: 'line',
+        name: 'Frontera de Pareto',
+        data: frontera.map(function (fila) {
+          return {
+            x: fila.costo,
+            y: fila.impacto,
+            name: fila.nombre
+          };
+        })
+      }
+    ]
+  });
+})();
+</script>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -37,7 +37,6 @@ from .permisos import (login_required, admin_required, roles_required, tiene_rol
 bp = Blueprint("main", __name__)
 
 STUB_ITEMS = {
-    "comparacion": "Comparación",
 }
 
 # Semilla aleatoria por defecto cuando el formulario de "Ejecutar simulacion"
@@ -86,7 +85,10 @@ def inject_globals():
         "ve_simulaciones": tiene_rol(user, *ROLES_LEEN_SIMULACION),
         #IGUAL QUE LO ANTERIOR PERO ESCENARIOS
         "ve_escenarios": tiene_rol(user, *ROLES_LEEN_ESCENARIO),
+        # Aviso obligatorio en simulacion, resultados y comparacion.
+        "aviso_simulacion": simulaciones.AVISO_SIMULACION,
     }
+
 
 
 # ---------------------------------------------------------------------------
@@ -1366,9 +1368,91 @@ def auditoria():
     )
 
 
+@bp.route("/comparacion")
+@login_required
+def comparacion():
+    seleccionados = request.args.getlist("run_id")
+    corridas = queries.get_corridas_para_comparar(seleccionados)
+    comparacion_pareto = None
+    errores_pareto = []
+    if len(seleccionados) >= 2:
+        comparacion_pareto, errores_pareto = (
+            simulaciones.construir_comparacion_costo_impacto(seleccionados)
+        )
+    return render_template(
+        "comparacion.html",
+        runs=queries.get_runs_completados_para_comparar(),
+        corridas=corridas,
+        seleccionados=seleccionados,
+        comparacion_pareto=comparacion_pareto,
+        errores_pareto=errores_pareto,
+        active_nav="comparacion",
+    )
+
+@bp.route("/comparacion/costos", methods=["GET", "POST"])
+@roles_required("EPIDEMIOLOGO", "ADMINISTRADOR", entity_type="intervention_types")
+def comparacion_costos():
+    tipos = queries.get_tipos_intervencion()
+
+    if request.method == "GET":
+        return render_template(
+            "comparacion_costos.html",
+            tipos=tipos,
+            errores=[],
+            active_nav="comparacion",
+        )
+
+    intervention_type_id = request.form.get("intervention_type_id", type=int)
+    actual = next(
+        (tipo for tipo in tipos if tipo["id"] == intervention_type_id),
+        None,
+    )
+
+    if not actual:
+        flash("El tipo de intervencion no existe.", "error")
+        return redirect(url_for("main.comparacion_costos"))
+
+    datos, errores = queries.valida_costo_intervencion(
+        request.form.get("unit_cost"),
+        request.form.get("cost_source"),
+        request.form.get("cost_is_assumption") == "1",
+    )
+
+    if errores:
+        return render_template(
+            "comparacion_costos.html",
+            tipos=tipos,
+            errores=errores,
+            active_nav="comparacion",
+        ), 400
+
+    antes = {
+        "unit_cost": actual["unit_cost"],
+        "cost_source": actual["cost_source"],
+        "cost_is_assumption": actual["cost_is_assumption"],
+    }
+
+    queries.actualiza_costo_intervencion(intervention_type_id, datos)
+
+    log_audit(
+        g.user["sub"],
+        "UPDATE",
+        "intervention_types",
+        entity_id=str(intervention_type_id),
+        data_before=antes,
+        data_after=datos,
+    )
+
+    flash("Costo de la intervencion actualizado.", "ok")
+    return redirect(url_for("main.comparacion_costos"))
+
+
 @bp.route("/stub/<name>")
 @login_required
 def stub(name):
+    #Solo para pantallas pendientes; las demas van al dashboard
+    if name not in STUB_ITEMS:
+        return redirect(url_for("main.dashboard"))
     titulo = STUB_ITEMS.get(name, name.capitalize())
     return render_template("stub.html", titulo=titulo, active_nav=name)
 

@@ -32,6 +32,7 @@
         {% endif %}
         {% if ve_simulaciones %}
         <li><a href="{{ url_for('main.simulaciones_lista') }}" class="{{ 'active' if active_nav == 'simulaciones' else '' }}"><span class="nav-icon">⟳</span> Simulaciones</a></li>
+        <li><a href="{{ url_for('main.comparacion') }}" class="{{ 'active' if active_nav == 'comparacion' else '' }}"><span class="nav-icon">⇄</span> Comparación</a></li>
         {% endif %}
         <li class="nav-divider"></li>
 	{% if es_admin %}
