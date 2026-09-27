@@ -83,7 +83,10 @@ def inject_globals():
         # Solo pinta u oculta la opcion del menu; el candado real esta en
         # roles_required, en cada ruta de simulaciones.
         "ve_simulaciones": tiene_rol(user, *ROLES_LEEN_SIMULACION),
+        # Aviso obligatorio en simulacion, resultados y comparacion.
+        "aviso_simulacion": simulaciones.AVISO_SIMULACION,
     }
+
 
 
 # ---------------------------------------------------------------------------
