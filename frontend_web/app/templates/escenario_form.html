@@ -37,7 +37,7 @@
         <option value="">Elige una enfermedad…</option>
         {% for e in enfermedades %}
         <option value="{{ e.id }}" {% if valores.disease_id == e.id|string %}selected{% endif %}>
-          {{ e.name }}{% if not e.simulable %} — no simulable, faltan {{ e.faltan }} parámetros{% elif e.supuestos %} (con {{ e.supuestos }} supuestos){% endif %}
+          {{ e.name }}{% if not e.simulable %} — no simulable{% if e.faltan %}, faltan {{ e.faltan }} parámetros{% endif %}{% if e.sin_fuente %}, {{ e.sin_fuente }} sin fuente{% endif %}{% elif e.supuestos %} (con {{ e.supuestos }} supuestos){% endif %}
         </option>
         {% endfor %}
       </select>

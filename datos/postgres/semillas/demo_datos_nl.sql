@@ -18,23 +18,61 @@ TRUNCATE case_attachments, cases, scenario_interventions, simulation_runs,
 -- ---------------------------------------------------------------------------
 -- Enfermedades adicionales, solo para variedad visual en 'Resumen de Situacion'.
 -- Parametros de literatura general, NO calibrados -- mismo criterio que 010.
+--
+-- r0 / dias_hospitalizacion / tasa_hospitalizacion / letalidad, con fuente o
+-- supuesto explicito: mismo valor y mismo texto que la migracion
+-- 025_parametros_enfermedades_restantes.sql. Van tambien en esta semilla
+-- porque dump_completo.sql (que trae esa migracion) corre ANTES que esta
+-- semilla (ver docs/INSTALACION.md, Paso 2): en una instalacion nueva esas
+-- tres filas todavia no existen cuando corre la migracion, asi que su UPDATE
+-- no tiene nada que actualizar. Sin este duplicado, una instalacion nueva
+-- terminaria con dengue, zika y malaria sin poder simularse hasta que alguien
+-- volviera a correr el dump. Se genera con datos/scripts/gen_demo_data.py: si
+-- se regenera este archivo, editar los valores alla, no aqui.
 -- ---------------------------------------------------------------------------
 INSERT INTO diseases (code, name, description, default_params) VALUES
     ('DENGUE_DEMO', 'Dengue',
      'Arbovirus transmitido por Aedes aegypti. Parametros de referencia, no calibrados.',
      '{"incubacion_dias": {"dist": "lognormal", "media": 5.5, "desv": 1.5},
        "infeccioso_dias": {"dist": "lognormal", "media": 5.0, "desv": 1.0},
-       "prob_asintomatico": 0.60, "transmisibilidad_base": 0.015}'::jsonb),
+       "prob_asintomatico": 0.60, "transmisibilidad_base": 0.015,
+       "dias_hospitalizacion": {"valor": 3.46, "supuesto": false,
+           "fuente": "Khalil MAM et al. 2014, BMC Res Notes 7:473. Estancia hospitalaria media de 532 pacientes con dengue confirmado, Hospital Aga Khan, Pakistan: 3.46 (DE 3.45) dias, mediana 3 (RIC 2-4). doi:10.1186/1756-0500-7-473"},
+       "letalidad": {"valor": 0.000175, "supuesto": true,
+           "fuente": "DERIVADO POR EL EQUIPO: Haider et al. 2025, Int J Infect Dis, p.107940, reporta 9508 muertes de dengue en 2024 sobre los casos notificados globalmente: letalidad de 0.07% por caso notificado (no por infeccion). El CDC (cdc.gov/dengue/hcp/clinical-signs/) indica que 1 de cada 4 infecciones de dengue es sintomatica. El equipo convierte a letalidad por infeccion: 0.0007 x 0.25 = 0.000175. Ninguna de las dos fuentes publica esta conversion. doi:10.1016/j.ijid.2025.107940"},
+       "r0": {"valor": 3.44, "supuesto": true,
+           "fuente": "SUPUESTO DEL EQUIPO: Liu et al. 2020, Environ Res 182:109114, revision sistematica de 65 estudios de R0 de dengue, zika y chikungunya. El R0 promedio en zona climatica tropical fue 3.44 (temperada 2.03, subtropical 10.29); el articulo no separa el promedio por enfermedad dentro de cada zona, asi que este valor es un proxy, no una estimacion de dengue en particular. Ademas el dengue se transmite por vector (Aedes aegypti) y este motor es un SEIR de persona a persona: usar aqui un R0 de vector es una simplificacion del equipo. doi:10.1016/j.envres.2020.109114"},
+       "tasa_hospitalizacion": {"valor": 0.0965, "supuesto": true,
+           "fuente": "DERIVADO POR EL EQUIPO: Rodriguez DM et al. 2024, MMWR 73(49):1112-1117, reporta 38.6% de hospitalizacion entre 39094 casos de dengue notificados en Puerto Rico, 2010-2024 (por caso notificado, no por infeccion). El CDC (cdc.gov/dengue/hcp/clinical-signs/) indica que 1 de cada 4 infecciones de dengue es sintomatica. El equipo convierte a tasa por infeccion: 0.386 x 0.25 = 0.0965. Ninguna de las dos fuentes publica esta conversion. doi:10.15585/mmwr.mm7349a1"}
+      }'::jsonb),
     ('ZIKA_DEMO', 'Zika',
      'Arbovirus transmitido por Aedes. Parametros de referencia, no calibrados.',
      '{"incubacion_dias": {"dist": "lognormal", "media": 6.0, "desv": 2.0},
        "infeccioso_dias": {"dist": "lognormal", "media": 5.0, "desv": 1.5},
-       "prob_asintomatico": 0.80, "transmisibilidad_base": 0.010}'::jsonb),
+       "prob_asintomatico": 0.80, "transmisibilidad_base": 0.010,
+       "dias_hospitalizacion": {"valor": 8.0, "supuesto": true,
+           "fuente": "SUPUESTO DEL EQUIPO sobre Halani S et al. 2021, PLoS Negl Trop Dis 15(7):e0009516: en casos confirmados de zika con sindrome de Guillain-Barre la estancia hospitalaria mediana fue de 8 a 31 dias. Ese sindrome es solo una fraccion de las hospitalizaciones por zika (el mismo articulo reporta 11% de hospitalizacion general, ver tasa_hospitalizacion), asi que el equipo usa el extremo bajo del rango (8 dias) como mas representativo del conjunto, no el promedio del rango de Guillain-Barre. doi:10.1371/journal.pntd.0009516"},
+       "letalidad": {"valor": 0.0005, "supuesto": true,
+           "fuente": "DERIVADO POR EL EQUIPO: Halani S et al. 2021, PLoS Negl Trop Dis 15(7):e0009516, reporta letalidad de 0.1% entre los casos confirmados de zika de su revision (mayoria sintomatica), no por infeccion. Mitchell PK et al. 2019, Am J Epidemiol 188(1):206-213, estima que 50% de las infecciones de zika en Puerto Rico fueron sintomaticas (27% en Yap, 44% en Polinesia Francesa). El equipo convierte con el dato de Puerto Rico: 0.001 x 0.50 = 0.0005. Ninguna de las dos fuentes publica esta conversion. doi:10.1371/journal.pntd.0009516 y doi:10.1093/aje/kwy189"},
+       "r0": {"valor": 2.5, "supuesto": true,
+           "fuente": "SUPUESTO DEL EQUIPO: McCain K et al. 2026, Nature Health 1(3):355-367, revision sistematica y metaanalisis de epidemiologia de zika. De 77 estimaciones de R0 extraidas, la mayoria (63/77) cayo entre 1.5 y 4 (rango completo 1.12-7.4); el equipo elige un punto dentro de ese rango mayoritario. Ademas el zika se transmite por vector (Aedes) y este motor es un SEIR de persona a persona: usar aqui un R0 de vector es una simplificacion del equipo. doi:10.1038/s44360-025-00051-4"},
+       "tasa_hospitalizacion": {"valor": 0.055, "supuesto": true,
+           "fuente": "DERIVADO POR EL EQUIPO: Halani S et al. 2021, PLoS Negl Trop Dis 15(7):e0009516, reporta 347 de 3167 casos confirmados de zika hospitalizados (11%; los propios autores advierten que la cifra puede estar inflada por incluir series de casos ya hospitalizados). Es una tasa por caso confirmado (mayoria sintomatica), no por infeccion. Mitchell PK et al. 2019, Am J Epidemiol 188(1):206-213, estima 50% de infecciones sintomaticas en Puerto Rico. El equipo convierte: 0.11 x 0.50 = 0.055. Ninguna de las dos fuentes publica esta conversion. doi:10.1371/journal.pntd.0009516 y doi:10.1093/aje/kwy189"}
+      }'::jsonb),
     ('MALARIA_DEMO', 'Malaria',
      'Transmitida por Anopheles. Parametros de referencia, no calibrados.',
      '{"incubacion_dias": {"dist": "lognormal", "media": 12.0, "desv": 3.0},
        "infeccioso_dias": {"dist": "lognormal", "media": 14.0, "desv": 4.0},
-       "prob_asintomatico": 0.20, "transmisibilidad_base": 0.008}'::jsonb)
+       "prob_asintomatico": 0.20, "transmisibilidad_base": 0.008,
+       "dias_hospitalizacion": {"valor": 2.0, "supuesto": false,
+           "fuente": "Ocen E et al. 2023, Malar J 22:325. Mediana de estancia hospitalaria de 2 dias (RIC 2-4) en pacientes con malaria grave, hospital de distrito de Apac, Uganda. doi:10.1186/s12936-023-04761-6"},
+       "letalidad": {"valor": 0.004, "supuesto": true,
+           "fuente": "SUPUESTO DEL EQUIPO en un punto del rango de la OMS: la pagina de metadatos del indicador de mortalidad por malaria del Global Health Observatory (who.int/data/gho/indicator-metadata-registry/imr-details/16) indica que se aplica \"a case fatality rate of between 0.01% and 0.40%\" a los casos estimados de P. falciparum fuera de Africa y en paises africanos de baja transmision, la categoria en la que caeria Nuevo Leon. El equipo elige el extremo alto del rango (0.40%) por tratarse de poblacion sin inmunidad previa."},
+       "r0": {"valor": 1.5, "supuesto": true,
+           "fuente": "SUPUESTO DEL EQUIPO: Smith DL et al. 2007, PLoS Biology 5(3):e42, reporta 121 estimaciones de R0 de P. falciparum en poblaciones africanas que van, en sus palabras, \"from around one to more than 3,000\" (hasta casi 11,000 con ajustes adicionales). Nuevo Leon no es zona endemica y no tiene la densidad ni competencia vectorial de Anopheles de un escenario africano holoendemico: el equipo elige un valor cercano al extremo bajo del rango publicado (1.5) como el mas conservador y plausible para una transmision marginal o importada. No corresponde a ninguna medicion especifica. doi:10.1371/journal.pbio.0050042"},
+       "tasa_hospitalizacion": {"valor": 0.6712, "supuesto": true,
+           "fuente": "DERIVADO POR EL EQUIPO: Mace KE et al. 2022, MMWR Surveill Summ 71(8):1-29 (vigilancia de malaria en Estados Unidos, 2018) reporta por separado que de 1572 pacientes con malaria no complicada, 988 (62.8%) fueron hospitalizados, y que de 251 casos de malaria grave, 250 (99.6%) tuvieron estado de hospitalizacion conocido y de esos 235 (94.0%) lo fueron. El articulo no publica una cifra combinada. El equipo calcula un PROMEDIO PONDERADO POR CASO (no un promedio de los dos porcentajes, que mezclaria denominadores muy distintos sin sentido): suma los hospitalizados y los casos con estado conocido de ambas subpoblaciones -- (988+235)/(1572+250) = 1223/1822 = 0.67124, redondeado 0.6712 -- verificado contra el texto original del articulo (cdc.gov/mmwr/volumes/71/ss/ss7108a1.htm). Es una tasa por caso DIAGNOSTICADO de la vigilancia de EEUU (malaria importada por viajeros, casi siempre sintomatica): a diferencia de dengue/zika aqui no se convierte por infeccion, porque no hay evidencia en la fuente de una fraccion grande de infecciones subclinicas sin diagnosticar que corregir. El calculo combinado es del equipo, no del articulo, y no esta calibrado para Nuevo Leon."}
+      }'::jsonb)
 ON CONFLICT (code) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
@@ -82,8 +120,8 @@ WHERE u.username = 'admin' AND r.code = 'ADMINISTRADOR'
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
--- Un escenario publicado + 3 lotes de simulacion en distintos estados, para que
--- la tarjeta 'SIMULACIONES' cuente corridas reales (encolado/ejecutando).
+-- Un escenario publicado con su version aprobada. Sin corridas: las crea quien
+-- ejecute la simulacion desde la pantalla.
 -- ---------------------------------------------------------------------------
 INSERT INTO scenarios (name, description, disease_id, region_id, owner_id, status, is_public)
 SELECT 'Ola Influenza ZMM - otono 2026',
@@ -94,8 +132,8 @@ WHERE d.code = 'INFLUENZA_ESTACIONAL' AND r.code = '19' AND u.username = 'alex.c
 
 -- La version la construye el analista y la aprueba la epidemiologa: dos
 -- personas distintas, como exige ck_scenario_versions_no_autoaprobacion (013).
--- Tiene que quedar aprobada porque abajo cuelgan corridas de simulacion, y
--- fn_version_aprobada (014) rechaza simular cualquier otra cosa.
+-- Queda aprobada para poder simularla desde la pantalla: fn_version_aprobada
+-- (014) rechaza simular cualquier otra cosa.
 INSERT INTO scenario_versions (scenario_id, version_number, is_current, population_size,
                                horizon_days, initial_infected, notes, created_by,
                                status, submitted_at, reviewed_by, reviewed_at, review_comment)
@@ -106,76 +144,6 @@ FROM scenarios s, users autor, users revisor
 WHERE s.name = 'Ola Influenza ZMM - otono 2026'
   AND autor.username = 'alex.cavazos'
   AND revisor.username = 'diana.flores';
-
-INSERT INTO simulation_batches (scenario_version_id, requested_by, replicas, engine, status, summary_doc_id, created_at, finished_at)
-SELECT sv.id, u.id, 40, 'numba', 'ejecutando', NULL,
-       now() - interval '35 minutes', NULL
-FROM scenario_versions sv
-JOIN scenarios s ON s.id = sv.scenario_id AND s.name = 'Ola Influenza ZMM - otono 2026'
-JOIN users u ON u.username = 'alex.cavazos';
-INSERT INTO simulation_batches (scenario_version_id, requested_by, replicas, engine, status, summary_doc_id, created_at, finished_at)
-SELECT sv.id, u.id, 30, 'numba', 'encolado', NULL,
-       now() - interval '4 minutes', NULL
-FROM scenario_versions sv
-JOIN scenarios s ON s.id = sv.scenario_id AND s.name = 'Ola Influenza ZMM - otono 2026'
-JOIN users u ON u.username = 'alex.cavazos';
-INSERT INTO simulation_batches (scenario_version_id, requested_by, replicas, engine, status, summary_doc_id, created_at, finished_at)
-SELECT sv.id, u.id, 30, 'numba', 'completado', 'run_summaries:demo-001',
-       now() - interval '240 minutes', now() - interval '220 minutes'
-FROM scenario_versions sv
-JOIN scenarios s ON s.id = sv.scenario_id AND s.name = 'Ola Influenza ZMM - otono 2026'
-JOIN users u ON u.username = 'alex.cavazos';
-
--- Corridas individuales por lote, respetando las reglas de la 007:
--- encolado => started_at NULL; terminal => finished_at NOT NULL; etc.
-DO $$
-DECLARE
-    v_batch_ejecutando BIGINT;
-    v_batch_encolado   BIGINT;
-    v_batch_completado BIGINT;
-    v_version_id       BIGINT;
-    v_user_id          BIGINT;
-    i INT;
-BEGIN
-    SELECT sv.id INTO v_version_id
-    FROM scenario_versions sv
-    JOIN scenarios s ON s.id = sv.scenario_id AND s.name = 'Ola Influenza ZMM - otono 2026';
-
-    SELECT id INTO v_user_id FROM users WHERE username = 'alex.cavazos';
-
-    SELECT id INTO v_batch_ejecutando FROM simulation_batches WHERE status = 'ejecutando' LIMIT 1;
-    SELECT id INTO v_batch_encolado   FROM simulation_batches WHERE status = 'encolado'   LIMIT 1;
-    SELECT id INTO v_batch_completado FROM simulation_batches WHERE status = 'completado' LIMIT 1;
-
-    FOR i IN 0..39 LOOP
-        IF i < 25 THEN
-            INSERT INTO simulation_runs
-                (batch_id, scenario_version_id, requested_by, seed, replica_index, status, progress, started_at, queued_at)
-            VALUES (v_batch_ejecutando, v_version_id, v_user_id, 10000 + i, i, 'ejecutando',
-                    (random() * 80)::smallint, now() - interval '20 minutes', now() - interval '35 minutes');
-        ELSE
-            INSERT INTO simulation_runs
-                (batch_id, scenario_version_id, requested_by, seed, replica_index, status, progress, queued_at)
-            VALUES (v_batch_ejecutando, v_version_id, v_user_id, 10000 + i, i, 'encolado', 0, now() - interval '35 minutes');
-        END IF;
-    END LOOP;
-
-    FOR i IN 0..29 LOOP
-        INSERT INTO simulation_runs
-            (batch_id, scenario_version_id, requested_by, seed, replica_index, status, progress, queued_at)
-        VALUES (v_batch_encolado, v_version_id, v_user_id, 20000 + i, i, 'encolado', 0, now() - interval '4 minutes');
-    END LOOP;
-
-    FOR i IN 0..29 LOOP
-        INSERT INTO simulation_runs
-            (batch_id, scenario_version_id, requested_by, seed, replica_index, status, progress,
-             queued_at, started_at, finished_at, result_doc_id)
-        VALUES (v_batch_completado, v_version_id, v_user_id, 30000 + i, i, 'completado', 100,
-                now() - interval '240 minutes', now() - interval '230 minutes',
-                now() - interval '210 minutes', 'run_results:demo-' || i);
-    END LOOP;
-END;
-$$;
 
 -- ---------------------------------------------------------------------------
 -- Casos sinteticos, Nuevo Leon, ultimos 45 dias. Un renglon de VALUES por caso.

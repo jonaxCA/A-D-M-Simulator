@@ -34,7 +34,13 @@ def query(sql, params=None, one=False):
 
 
 def execute(sql, params=None):
+    """Ejecuta sql y hace commit. Devuelve cur.rowcount, util para que el
+    llamador sepa si el UPDATE/DELETE de verdad afecto alguna fila (p.ej.
+    marcar_run_ejecutando/marcar_run_fallido en queries.py, que dependen de
+    esto para no auditar una transicion de estado que no ocurrio)."""
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, params or ())
+            rowcount = cur.rowcount
         conn.commit()
+        return rowcount

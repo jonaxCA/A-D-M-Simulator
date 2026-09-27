@@ -18,6 +18,13 @@ from frontend_web.app import create_app
 
 NOMBRE = "ZZZ escenario de prueba de rutas"
 
+# Codigo de una enfermedad fixture, deliberadamente incompleta (sin r0), para
+# probar el aviso "no simulable" del formulario. Antes de la migracion 025 el
+# catalogo real siempre tenia alguna enfermedad incompleta que servia para
+# esto; 025 cierra el ultimo pendiente y deja las 6 del catalogo simulables,
+# asi que la prueba ya no puede apoyarse en datos reales y crea la suya.
+CODIGO_INCOMPLETA = "ZZZ_INCOMPLETA_PRUEBA"
+
 
 class EscenariosRutasTests(unittest.TestCase):
     @classmethod
@@ -27,6 +34,15 @@ class EscenariosRutasTests(unittest.TestCase):
 
     def setUp(self):
         self.mty = query("SELECT id, population FROM regions WHERE code = '19039'", one=True)
+        self._borra()
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO diseases (code, name, default_params)
+                       VALUES (%s, 'ZZZ Enfermedad incompleta de prueba', '{}'::jsonb)""",
+                    (CODIGO_INCOMPLETA,),
+                )
+            conn.commit()
         fila = query("""SELECT id FROM diseases WHERE is_active
                         ORDER BY name""")
         self.enfermedad = next(
@@ -34,7 +50,6 @@ class EscenariosRutasTests(unittest.TestCase):
              if queries.estado_parametros(
                  query("SELECT default_params FROM diseases WHERE id = %s",
                        (d["id"],), one=True)["default_params"])["simulable"]), None)
-        self._borra()
 
     def tearDown(self):
         self._borra()
@@ -50,6 +65,7 @@ class EscenariosRutasTests(unittest.TestCase):
                         # justamente el punto de una bitacora.
                         cur.execute("DELETE FROM scenario_versions WHERE scenario_id = %s", (sid,))
                         cur.execute("DELETE FROM scenarios WHERE id = %s", (sid,))
+                    cur.execute("DELETE FROM diseases WHERE code = %s", (CODIGO_INCOMPLETA,))
                 conn.commit()
         except Exception as exc:                       # limpieza best-effort
             print(f"[tearDown] no se pudo limpiar: {exc}")

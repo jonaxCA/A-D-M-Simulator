@@ -57,7 +57,7 @@
     <select id="accion" name="accion">
       <option value="">Todas</option>
       {% for a in acciones %}
-      <option value="{{ a }}" {{ 'selected' if filtro_accion == a else '' }}>{{ a }}</option>
+      <option value="{{ a.valor }}" {{ 'selected' if filtro_accion == a.valor else '' }}>{{ a.etiqueta }}</option>
       {% endfor %}
     </select>
   </div>

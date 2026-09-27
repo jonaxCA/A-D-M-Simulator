@@ -28,6 +28,9 @@
         {% if ve_bandeja %}
         <li><a href="{{ url_for('main.revisiones') }}" class="{{ 'active' if active_nav == 'revisiones' else '' }}"><span class="nav-icon">✓</span> Revisiones</a></li>
         {% endif %}
+        {% if ve_simulaciones %}
+        <li><a href="{{ url_for('main.simulaciones_lista') }}" class="{{ 'active' if active_nav == 'simulaciones' else '' }}"><span class="nav-icon">⟳</span> Simulaciones</a></li>
+        {% endif %}
         <li class="nav-divider"></li>
 	{% if es_admin %}
 	<li><a href="{{ url_for('main.usuarios') }}" class="{{ 'active' if active_nav == 'usuarios' else '' }}"><span class="nav-icon">👤</span> Usuarios</a></li>

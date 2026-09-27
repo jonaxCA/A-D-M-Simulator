@@ -42,12 +42,14 @@ class RutasHumoTests(unittest.TestCase):
     def _sustituciones(self):
         """Un id real para cada parametro de ruta que exista en el mapa."""
         escenario = query("SELECT id FROM scenarios ORDER BY id LIMIT 1", one=True)
+        corrida = query("SELECT id FROM simulation_runs ORDER BY id LIMIT 1", one=True)
         return {
             "disease_id": query("SELECT id FROM diseases LIMIT 1", one=True)["id"],
             "region_id": query("SELECT id FROM regions WHERE level = 'municipio' LIMIT 1",
                                one=True)["id"],
             "user_id": query("SELECT id FROM users LIMIT 1", one=True)["id"],
             "scenario_id": escenario["id"] if escenario else 1,
+            "run_id": corrida["id"] if corrida else 1,
             "name": "demo",
         }
 

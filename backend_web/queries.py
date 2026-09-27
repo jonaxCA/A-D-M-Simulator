@@ -564,8 +564,21 @@ def estado_parametros(default_params):
         "faltan": faltan,
         "supuestos": supuestos,
         "sin_fuente": sin_fuente,
-        "simulable": not faltan,
+        # Un valor sin fuente ni marca de supuesto tampoco alcanza: el sistema
+        # se niega a simular con una cifra de la que nadie responde.
+        "simulable": not faltan and not sin_fuente,
     }
+
+
+def motivo_no_simulable(faltan, sin_fuente):
+    """Por que una enfermedad no se puede simular, dado cuantos parametros le
+    faltan y cuantos no tienen fuente ni marca de supuesto."""
+    partes = []
+    if faltan:
+        partes.append(f"le faltan {faltan} parámetro(s)")
+    if sin_fuente:
+        partes.append(f"{sin_fuente} parámetro(s) no tienen fuente ni marca de supuesto")
+    return " y ".join(partes)
 
 
 def parametros_desde_form(form, actuales=None):
@@ -910,6 +923,16 @@ def get_usuarios_lista(busqueda=None, rol_id=None, estado=None):
 # se deriva de la accion (LOGIN_FAILED/PERMISSION_DENIED = Fallido, resto =
 # Correcto). "Usuarios activos" del resumen es una aproximacion: usuarios con
 # un LOGIN registrado en las ultimas 24 horas (no hay tabla de sesiones).
+#
+# Caso especial: RUN (ciclo de vida de una simulacion). ejecutar_run() audita
+# las 4 etapas -- solicitada/ejecutando/completada/fallida -- pero las 4
+# quedan con la MISMA action='RUN' en audit_log (ver backend_web/simulaciones.py
+# y backend_web/audit.py); lo que las distingue es data_after['estado']
+# ('encolado'/'ejecutando'/'completado'/'fallido'/'cancelado'). Si la bitacora
+# solo mira `action`, las 4 etapas se ven identicas ("Ejecucion"/"Correcto"
+# las 4, incluida la fallida) y parecen "no aparecer" -- ese fue el bug
+# reportado en UAT. _descripcion_run()/_estado_run() abren data_after para
+# que cada etapa tenga su propio texto y su propio badge.
 
 ACCIONES_FALLIDAS = ("LOGIN_FAILED", "PERMISSION_DENIED")
 
@@ -922,11 +945,73 @@ DESCRIPCION_POR_ACCION = {
     "UPDATE": "Modificacion de registro",
     "DELETE": "Baja de registro",
     "PUBLISH": "Publicacion",
-    "RUN": "Ejecucion",
+    "RUN": "Ejecucion de simulacion",
     "CANCEL": "Cancelacion",
     "SYNC": "Sincronizacion",
     "PERMISSION_DENIED": "Acceso denegado por permisos",
 }
+
+# Etiqueta de la etapa (para la columna Descripcion) y clase visual de estado
+# (para la columna Estado) por cada valor que puede tomar data_after['estado']
+# en un evento RUN. El texto reusa el vocabulario del propio UAT ("solicitada,
+# ejecutando, completada y fallida"); el estado reusa las MISMAS 3 clases de
+# badge que ya existen en styles.css (correcto/pendiente/fallido/inactivo) --
+# no se agrega ninguna clase nueva.
+RUN_ETAPA = {
+    "encolado": ("Simulacion solicitada", "Pendiente"),
+    "ejecutando": ("Simulacion en ejecucion (inicio)", "Pendiente"),
+    "completado": ("Simulacion completada", "Correcto"),
+    "fallido": ("Simulacion fallida", "Fallido"),
+    "cancelado": ("Simulacion cancelada", "Inactivo"),
+    "abortado_antes_de_ejecutar": (
+        "Simulacion no iniciada (ya tomada por otro proceso)", "Inactivo",
+    ),
+}
+
+
+def _resumen_indicadores_run(data_after):
+    """Resumen corto de resultado.resumen para la Descripcion de una etapa
+    'completado' (item del UAT: la completada debe verse "con indicadores")."""
+    indicadores = (data_after or {}).get("indicadores") or {}
+    partes = []
+    if "tasa_ataque" in indicadores:
+        try:
+            partes.append(f"tasa de ataque {float(indicadores['tasa_ataque']) * 100:.1f}%")
+        except (TypeError, ValueError):
+            pass
+    if "casos_acumulados" in indicadores:
+        partes.append(f"{indicadores['casos_acumulados']} casos acumulados")
+    if "fallecimientos" in indicadores:
+        partes.append(f"{indicadores['fallecimientos']} fallecimientos")
+    return ", ".join(partes)
+
+
+def _describe_evento_auditoria(action, entity_id, data_after):
+    """(descripcion, estado_visible) para una fila de audit_log. Aisla el
+    caso especial de RUN (ver nota arriba) del resto de acciones, que siguen
+    la regla original: LOGIN_FAILED/PERMISSION_DENIED = Fallido, todo lo
+    demas = Correcto."""
+    if action == "RUN":
+        etapa = (data_after or {}).get("estado")
+        base, estado = RUN_ETAPA.get(etapa, (DESCRIPCION_POR_ACCION["RUN"], "Correcto"))
+        try:
+            from .simulaciones import id_simulacion
+            identificador = f" {id_simulacion(entity_id)}" if entity_id else ""
+        except (ImportError, ValueError, TypeError):
+            identificador = ""
+        if etapa == "completado":
+            resumen = _resumen_indicadores_run(data_after)
+            descripcion = f"{base}{identificador}" + (f": {resumen}" if resumen else "")
+        elif etapa == "fallido":
+            error = (data_after or {}).get("error") or "sin detalle"
+            descripcion = f"{base}{identificador}: {error}"
+        else:
+            descripcion = f"{base}{identificador}"
+        return descripcion, estado
+
+    descripcion = DESCRIPCION_POR_ACCION.get(action, action)
+    estado = "Fallido" if action in ACCIONES_FALLIDAS else "Correcto"
+    return descripcion, estado
 
 
 def get_auditoria_resumen():
@@ -947,6 +1032,12 @@ def get_auditoria_resumen():
 
 
 def get_auditoria_lista(busqueda=None, usuario_id=None, modulo=None, accion=None, limit=100):
+    """`accion` acepta dos formas: la accion cruda de audit_log (p.ej. 'LOGIN')
+    o, solo para simulaciones, la forma compuesta 'RUN::<etapa>' (p.ej.
+    'RUN::fallido') que produce get_acciones_auditoria() -- necesaria porque
+    las 4 etapas de una corrida comparten la misma action='RUN' y solo se
+    distinguen por data_after['estado']; sin la forma compuesta, el filtro de
+    Accion no podria aislar solo las 'fallidas' o solo las 'completadas'."""
     condiciones = []
     params = []
     if busqueda:
@@ -960,15 +1051,20 @@ def get_auditoria_lista(busqueda=None, usuario_id=None, modulo=None, accion=None
         condiciones.append("a.entity_type = %s")
         params.append(modulo)
     if accion:
-        condiciones.append("a.action = %s")
-        params.append(accion)
+        if accion.startswith("RUN::"):
+            etapa = accion.split("::", 1)[1]
+            condiciones.append("a.action = 'RUN' AND a.data_after->>'estado' = %s")
+            params.append(etapa)
+        else:
+            condiciones.append("a.action = %s")
+            params.append(accion)
 
     where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
     params.append(limit)
     rows = query(
         f"""
         SELECT a.id, a.occurred_at, a.action, a.entity_type, a.entity_id,
-               a.ip_address, u.full_name AS usuario
+               a.ip_address, a.data_after, u.full_name AS usuario
         FROM audit_log a
         LEFT JOIN users u ON u.id = a.user_id
         {where}
@@ -979,15 +1075,16 @@ def get_auditoria_lista(busqueda=None, usuario_id=None, modulo=None, accion=None
     )
     out = []
     for r in rows:
+        descripcion, estado = _describe_evento_auditoria(r["action"], r["entity_id"], r["data_after"])
         out.append({
             "id": r["id"],
             "fecha": r["occurred_at"].strftime("%Y-%m-%d %H:%M:%S"),
             "usuario": r["usuario"] or "Anonimo",
             "modulo": r["entity_type"],
             "accion": r["action"],
-            "descripcion": DESCRIPCION_POR_ACCION.get(r["action"], r["action"]),
+            "descripcion": descripcion,
             "ip": str(r["ip_address"]) if r["ip_address"] else "-",
-            "estado": "Fallido" if r["action"] in ACCIONES_FALLIDAS else "Correcto",
+            "estado": estado,
         })
     return out
 
@@ -998,8 +1095,26 @@ def get_modulos_auditoria():
 
 
 def get_acciones_auditoria():
-    rows = query("SELECT DISTINCT action FROM audit_log ORDER BY action")
-    return [r["action"] for r in rows]
+    """Opciones para el filtro Accion. RUN se desglosa en sus etapas reales
+    (RUN::encolado, RUN::ejecutando, ...) usando data_after['estado'] -- ver
+    nota junto a RUN_ETAPA -- para que el filtro pueda aislar, por ejemplo,
+    solo las simulaciones fallidas."""
+    rows = query("SELECT DISTINCT action FROM audit_log WHERE action <> 'RUN' ORDER BY action")
+    opciones = [{"valor": r["action"], "etiqueta": DESCRIPCION_POR_ACCION.get(r["action"], r["action"])}
+                for r in rows]
+
+    etapas = query(
+        "SELECT DISTINCT data_after->>'estado' AS etapa FROM audit_log "
+        "WHERE action = 'RUN' AND data_after->>'estado' IS NOT NULL ORDER BY 1"
+    )
+    orden_etapas = list(RUN_ETAPA.keys())
+    filas_etapas = [r["etapa"] for r in etapas]
+    filas_etapas.sort(key=lambda e: orden_etapas.index(e) if e in orden_etapas else len(orden_etapas))
+    for etapa in filas_etapas:
+        etiqueta, _estado = RUN_ETAPA.get(etapa, (f"Ejecucion de simulacion ({etapa})", "Correcto"))
+        opciones.append({"valor": f"RUN::{etapa}", "etiqueta": etiqueta})
+
+    return opciones
 
 
 def get_usuarios_para_filtro():
@@ -2039,7 +2154,6 @@ def actualiza_poblacion_municipio(region_id, population, motivo, admin_user_id,
     except psycopg2.errors.CheckViolation:
         return False, "Los datos no cumplen las restricciones de la base.", None
 
-
 # ---------------------------------------------------------------------------
 # Escenarios (Bloque D) -- alta, consulta y validacion contra el motor
 # ---------------------------------------------------------------------------
@@ -2116,6 +2230,7 @@ def get_enfermedades_para_escenario():
         salida.append({"id": d["id"], "code": d["code"], "name": d["name"],
                        "simulable": estado["simulable"],
                        "faltan": len(estado["faltan"]),
+                       "sin_fuente": len(estado["sin_fuente"]),
                        "supuestos": len(estado["supuestos"])})
     return salida
 
@@ -2229,8 +2344,9 @@ def valida_escenario(form, regiones, enfermedades):
         errores.append("Esa enfermedad no está activa en el catálogo.")
     elif enfermedad and not enfermedad["simulable"]:
         errores.append(
-            f"«{enfermedad['name']}» no se puede simular todavía: le faltan "
-            f"{enfermedad['faltan']} parámetro(s). Captúralos en Enfermedades.")
+            f"«{enfermedad['name']}» no se puede simular todavía: "
+            f"{motivo_no_simulable(enfermedad['faltan'], enfermedad['sin_fuente'])}. "
+            "Complétalos en Enfermedades.")
 
     dias, poblacion, grupos, sin_edad, politica, iniciales = _valida_parametros_version(
         form, region, errores)
@@ -2349,6 +2465,27 @@ def escenario_para_motor(datos, enfermedad_params, intervenciones=None):
         escenario["poblacion_edad_desconocida"] = datos["population_age_unknown"]
         escenario["politica_edad_desconocida"] = datos["age_unknown_policy"]
     return escenario
+
+
+def escenario_de_version(detalle):
+    """Entrada del motor para la version de `detalle` (get_escenario_detalle).
+
+    La usan la revision (revisa_version) y la corrida
+    (backend_web.simulaciones): lo que el epidemiologo aprueba y lo que se
+    simula salen de la misma traduccion, con la misma poblacion por edad y los
+    mismos parametros congelados.
+    """
+    version = detalle["version"]
+    datos = {
+        "population_by_age": version["population_by_age"],
+        "population_size": version["population_size"],
+        "population_age_unknown": version["population_age_unknown"],
+        "age_unknown_policy": version["age_unknown_policy"],
+        "initial_infected": version["initial_infected"],
+        "horizon_days": version["horizon_days"],
+    }
+    return escenario_para_motor(datos, detalle["parametros_enfermedad"],
+                                intervenciones_para_motor(detalle["intervenciones"]))
 
 
 def crea_escenario(datos, owner_id):
@@ -2553,22 +2690,11 @@ def revisa_version(detalle):
     from procesamiento.motor import EscenarioInvalido
     from procesamiento.motor.parametros import resolver
 
-    version, escenario = detalle["version"], detalle["escenario"]
-    if not version:
+    if not detalle["version"]:
         return ["El escenario no tiene una versión vigente."], []
 
-    datos = {
-        "population_by_age": version["population_by_age"],
-        "population_size": version["population_size"],
-        "population_age_unknown": version["population_age_unknown"],
-        "age_unknown_policy": version["age_unknown_policy"],
-        "initial_infected": version["initial_infected"],
-        "horizon_days": version["horizon_days"],
-    }
-    esc = escenario_para_motor(datos, detalle["parametros_enfermedad"],
-                              intervenciones_para_motor(detalle["intervenciones"]))
     try:
-        return [], resolver(esc)["avisos"]
+        return [], resolver(escenario_de_version(detalle))["avisos"]
     except EscenarioInvalido as exc:
         # La excepcion trae .errores (una lista); args[0] es el mismo mensaje ya
         # unido con "; ", y tratarlo como lista lo parte en letras.
@@ -3141,3 +3267,298 @@ def resuelve_revision(scenario_id, decision, comentario, revisor_id):
     except psycopg2.errors.CheckViolation as exc:
         # El no-autoaprobacion y el motivo obligatorio del rechazo viven aqui.
         return False, f"La base rechazó la revisión: {exc}", None
+
+
+# ---------------------------------------------------------------------------
+# Simulaciones (Bloque F) -- ejecucion, estados y resultados
+# ---------------------------------------------------------------------------
+# Todo lo de aqui es de SOLO LECTURA sobre scenarios/scenario_versions (los
+# escribe el bloque D, mas arriba). Lo unico que se escribe en este bloque son
+# simulation_batches, simulation_runs y simulation_results -- la corrida, no
+# el escenario.
+#
+# La entrada del motor sale de escenario_de_version(), la misma traduccion que
+# usa la revision; backend_web.simulaciones solo la invoca.
+
+def get_version_simulacion(version_id):
+    """Una version de escenario con el escenario, la enfermedad y la region a
+    la que pertenece -- lo que necesita tanto la traduccion hacia el motor
+    como la pantalla de detalle de una corrida."""
+    return query(
+        """
+        SELECT sv.id, sv.scenario_id, sv.version_number, sv.status,
+               sv.population_size, sv.horizon_days, sv.initial_infected,
+               sv.created_at, sv.created_by, sv.reviewed_by, sv.reviewed_at,
+               sv.notes,
+               s.name AS scenario_name, s.disease_id, s.region_id,
+               d.name AS disease_name, d.code AS disease_code,
+               reg.name AS region_name, reg.code AS region_code
+        FROM scenario_versions sv
+        JOIN scenarios s   ON s.id   = sv.scenario_id
+        JOIN diseases d    ON d.id   = s.disease_id
+        JOIN regions reg   ON reg.id = s.region_id
+        WHERE sv.id = %s
+        """,
+        (version_id,),
+        one=True,
+    )
+
+
+def listar_versiones_escenario():
+    """Todas las versiones de escenario, para la pantalla de simulaciones.
+
+    Es de solo lectura: crear, editar y aprobar versiones es de la pantalla de
+    escenarios (bloque D). Las aprobadas van primero -- son las unicas que se
+    pueden correr.
+    """
+    return query(
+        """
+        SELECT sv.id, sv.scenario_id, sv.version_number, sv.status,
+               sv.population_size, sv.horizon_days, sv.initial_infected,
+               sv.created_at, sv.reviewed_at, sv.review_comment,
+               s.name AS scenario_name,
+               d.name AS disease_name,
+               reg.name AS region_name,
+               autor.username AS creado_por,
+               revisor.username AS revisado_por
+        FROM scenario_versions sv
+        JOIN scenarios s   ON s.id   = sv.scenario_id
+        JOIN diseases d    ON d.id   = s.disease_id
+        JOIN regions reg   ON reg.id = s.region_id
+        JOIN users autor   ON autor.id = sv.created_by
+        LEFT JOIN users revisor ON revisor.id = sv.reviewed_by
+        ORDER BY (sv.status = 'aprobado') DESC, sv.created_at DESC
+        """
+    )
+
+
+def crear_corrida(version_id, seed, user_id, engine_version):
+    """Encola una corrida: un lote de una sola replica (motor python-ref, una
+    corrida a la vez -- ver 014_simulacion_resultados.sql) y su run.
+
+    Valida que la version este aprobada ANTES del INSERT, para poder devolver
+    un mensaje claro. El trigger fn_version_aprobada (014) es la ULTIMA linea
+    de defensa: si por cualquier otra via (un script, psql a mano) se
+    intentara encolar sobre una version no aprobada, la base lo rechaza igual.
+
+    Devuelve (run_id, batch_id, error).
+    """
+    version = query(
+        "SELECT status FROM scenario_versions WHERE id = %s", (version_id,), one=True
+    )
+    if not version:
+        return None, None, "La versión de escenario no existe."
+    if version["status"] != "aprobado":
+        return None, None, (
+            f"Esta versión no está aprobada (estado: {version['status']}); "
+            "solo se pueden ejecutar simulaciones sobre versiones aprobadas."
+        )
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO simulation_batches
+                        (scenario_version_id, requested_by, replicas, engine, status)
+                    VALUES (%s, %s, 1, 'python-ref', 'encolado')
+                    RETURNING id
+                    """,
+                    (version_id, user_id),
+                )
+                batch_id = cur.fetchone()[0]
+                cur.execute(
+                    """
+                    INSERT INTO simulation_runs
+                        (batch_id, scenario_version_id, seed, replica_index, status,
+                         engine_version, requested_by)
+                    VALUES (%s, %s, %s, 0, 'encolado', %s, %s)
+                    RETURNING id
+                    """,
+                    (batch_id, version_id, seed, engine_version, user_id),
+                )
+                run_id = cur.fetchone()[0]
+            conn.commit()
+        return run_id, batch_id, None
+    except psycopg2.Error as exc:
+        return None, None, f"No se pudo encolar la corrida: {exc}"
+
+
+def get_run(run_id):
+    """Detalle completo de una corrida: version, escenario, enfermedad, region
+    y quien la pidio. Lo usan tanto la pantalla de detalle como el runner en
+    segundo plano (backend_web.simulaciones.ejecutar_run)."""
+    return query(
+        """
+        SELECT r.id, r.batch_id, r.scenario_version_id, r.seed, r.status,
+               r.progress, r.engine_version, r.queued_at, r.started_at,
+               r.finished_at, r.error_message, r.requested_by,
+               sv.version_number, sv.scenario_id, sv.status AS version_status,
+               sv.population_size, sv.horizon_days, sv.initial_infected,
+               s.name AS scenario_name, s.disease_id, s.region_id,
+               d.name AS disease_name,
+               reg.name AS region_name,
+               u.username AS requested_by_username, u.full_name AS requested_by_nombre
+        FROM simulation_runs r
+        JOIN scenario_versions sv ON sv.id = r.scenario_version_id
+        JOIN scenarios s   ON s.id   = sv.scenario_id
+        JOIN diseases d    ON d.id   = s.disease_id
+        JOIN regions reg   ON reg.id = s.region_id
+        JOIN users u        ON u.id   = r.requested_by
+        WHERE r.id = %s
+        """,
+        (run_id,),
+        one=True,
+    )
+
+
+def get_runs_recientes(limit=20):
+    """Ultimas corridas de cualquier escenario, para la lista de la pantalla
+    de simulaciones (item 12 del checklist: 'lista de corridas recientes')."""
+    return query(
+        """
+        SELECT r.id, r.status, r.seed, r.queued_at, r.started_at, r.finished_at,
+               r.error_message, sv.scenario_id, sv.version_number,
+               s.name AS scenario_name, u.username AS requested_by_username
+        FROM simulation_runs r
+        JOIN scenario_versions sv ON sv.id = r.scenario_version_id
+        JOIN scenarios s ON s.id = sv.scenario_id
+        JOIN users u     ON u.id = r.requested_by
+        ORDER BY r.queued_at DESC
+        LIMIT %s
+        """,
+        (limit,),
+    )
+
+
+def get_resultado_run(run_id):
+    """Resultado guardado por motor.simular(): indicadores resumen, serie
+    diaria y trazabilidad de parametros. None si la corrida no ha terminado
+    (o termino en error, que no guarda resultado)."""
+    return query(
+        """
+        SELECT run_id, engine_version, scenario_checksum, resumen, serie,
+               trazabilidad, created_at
+        FROM simulation_results
+        WHERE run_id = %s
+        """,
+        (run_id,),
+        one=True,
+    )
+
+
+def marcar_run_ejecutando(run_id):
+    """encolado -> ejecutando. El WHERE status = 'encolado' evita pisar una
+    corrida que ya haya terminado (o que otro hilo ya haya arrancado).
+
+    Devuelve True solo si esta llamada de verdad hizo la transicion (rowcount
+    == 1); False si no habia ninguna fila 'encolado' con ese id (ya se habia
+    marcado por otro hilo, o el id no existe). El llamador (ejecutar_run) NO
+    debe auditar 'ejecutando' ni seguir con la corrida cuando esto da False.
+    """
+    rowcount = execute(
+        """
+        UPDATE simulation_runs SET status = 'ejecutando', started_at = now()
+        WHERE id = %s AND status = 'encolado'
+        """,
+        (run_id,),
+    )
+    return rowcount == 1
+
+
+def guardar_resultado_run(run_id, resultado):
+    """Guarda la salida de motor.simular() y cierra la corrida como
+    completada, en una sola transaccion: si el INSERT de simulation_results
+    fallara (por ejemplo por el CHECK de scenario_checksum), la corrida NO
+    debe quedar marcada 'completado' sin su resultado.
+
+    El json.dumps() se hace ANTES de abrir la conexion: si `resultado` trae
+    algo no serializable, falla ahi (sin conexion ni transaccion abierta) en
+    vez de a mitad de una transaccion. Y si el INSERT/UPDATE fallan, se hace
+    rollback explicito antes de relanzar la excepcion -- dejar la conexion
+    cerrarse sola con una transaccion a medias no es lo mismo que garantizar
+    que no quedo nada escrito.
+    """
+    resumen_json = json.dumps(resultado["resumen"], ensure_ascii=False, default=str)
+    serie_json = json.dumps(resultado["serie"], ensure_ascii=False, default=str)
+    trazabilidad_json = json.dumps(
+        resultado.get("trazabilidad_parametros", []), ensure_ascii=False, default=str
+    )
+
+    with get_conn() as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO simulation_results
+                        (run_id, engine_version, scenario_checksum, resumen, serie, trazabilidad)
+                    VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb)
+                    """,
+                    (
+                        run_id,
+                        resultado["engine_version"],
+                        resultado["huella_escenario"],
+                        resumen_json,
+                        serie_json,
+                        trazabilidad_json,
+                    ),
+                )
+                cur.execute(
+                    """
+                    UPDATE simulation_runs
+                    SET status = 'completado', progress = 100, finished_at = now()
+                    WHERE id = %s
+                    """,
+                    (run_id,),
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def marcar_run_fallido(run_id, mensaje):
+    """encolado/ejecutando -> fallido, con el mensaje que explica por que.
+
+    El WHERE status NOT IN (...) restringe la transicion a estados NO
+    terminales: una corrida que ya quedo 'completado', 'fallido' o
+    'cancelado' no debe reescribirse (por ejemplo si dos hilos del mismo run
+    corrieran por error, o si el hilo llega tarde despues de que algo mas ya
+    cerro la corrida). Devuelve True solo si de verdad hizo la transicion
+    (rowcount == 1); el llamador no debe auditar 'fallido' si esto da False.
+    """
+    rowcount = execute(
+        """
+        UPDATE simulation_runs
+        SET status = 'fallido', error_message = %s, finished_at = now()
+        WHERE id = %s AND status NOT IN ('completado', 'fallido', 'cancelado')
+        """,
+        (mensaje, run_id),
+    )
+    return rowcount == 1
+
+
+def buscar_run_equivalente(run_id, scenario_version_id, seed, checksum):
+    """Otra corrida COMPLETADA con la misma version, la misma semilla y la
+    misma huella de escenario (scenario_checksum de motor.huella_escenario()).
+
+    Es la demostracion de reproducibilidad del item 10 del checklist: misma
+    entrada + misma semilla + mismo motor => mismo resultado. Devuelve la fila
+    (con su `resumen` para poder comparar indicador por indicador) o None si
+    esta es la primera corrida con esa combinacion.
+    """
+    if not checksum:
+        return None
+    return query(
+        """
+        SELECT r.id, res.resumen
+        FROM simulation_runs r
+        JOIN simulation_results res ON res.run_id = r.id
+        WHERE r.scenario_version_id = %s AND r.seed = %s AND r.id <> %s
+          AND res.scenario_checksum = %s AND r.status = 'completado'
+        ORDER BY r.finished_at ASC
+        LIMIT 1
+        """,
+        (scenario_version_id, seed, run_id, checksum),
+        one=True,
+    )

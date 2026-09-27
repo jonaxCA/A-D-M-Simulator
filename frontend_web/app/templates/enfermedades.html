@@ -108,8 +108,14 @@
             {% if e.parametros.simulable %}
             <span class="badge param-pill param-con-fuente" title="Tiene los seis parámetros">Simulable</span>
             {% else %}
+            {% if e.parametros.faltan %}
             <span class="badge param-pill param-falta-pill"
                   title="Faltan: {{ e.parametros.faltan | join(', ') }}">Faltan {{ e.parametros.faltan | length }}</span>
+            {% endif %}
+            {% if e.parametros.sin_fuente %}
+            <span class="badge param-pill param-sin-fuente"
+                  title="Sin fuente ni supuesto: {{ e.parametros.sin_fuente | join(', ') }}">{{ e.parametros.sin_fuente | length }} sin fuente</span>
+            {% endif %}
             {% endif %}
             {% if e.parametros.supuestos %}
             <span class="badge param-pill param-supuesto"
@@ -174,8 +180,8 @@
                   {% endfor %}
                 </ul>
                 {% if not e.parametros.simulable %}
-                <p class="detalle-texto">Faltan parámetros: esta enfermedad todavía no se
-                  puede simular.</p>
+                <p class="detalle-texto">Faltan parámetros o su fuente: esta enfermedad todavía
+                  no se puede simular.</p>
                 {% endif %}
                 {% if e.parametros.informativos %}
                 <div class="detalle-titulo">Otros parámetros del esquema</div>

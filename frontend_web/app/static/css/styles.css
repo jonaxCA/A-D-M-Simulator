@@ -1207,7 +1207,62 @@ a { color: inherit; text-decoration: none; }
 .estado-resumen .estado-cifra-valor { font-size: 20px; font-weight: 700; }
 .estado-resumen .estado-cifra-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
 
+/* ---------------------------------------------------------------------
+   Simulaciones (Bloque F)
+   --------------------------------------------------------------------- */
+.form-ejecutar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 220px;
+  margin-left: auto;
+}
+.input-semilla {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 12.5px;
+  white-space: normal;
+}
+.input-semilla:focus { outline: 2px solid var(--accent-blue); outline-offset: 1px; }
+.chk-forzar-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--critico-text);
+  white-space: normal;
+}
+.form-ejecutar .btn { white-space: nowrap; width: 100%; }
+.corrida-meta .stat-value { font-weight: 600; }
+.page-actions form { margin: 0; }
+
 @media (max-width: 700px) {
   .estado-resumen { flex-direction: column; align-items: flex-start; }
   .estado-resumen .estado-cifras { gap: 18px; }
 }
+
+/* ------------------------------------------- simulaciones: espaciado propio
+   Estas reglas son exclusivas de /simulaciones y /simulaciones/corridas/<id>
+   (prefijo sim-), para no afectar el resto de tarjetas de la app. */
+.sim-card { margin-bottom: 20px; }
+
+.sim-card-body { padding: 0 18px 18px 18px; }
+.sim-card-body .alert:last-child,
+.sim-card-body p:last-child { margin-bottom: 0; }
+
+.sim-datos-grid,
+.sim-indicadores-grid { padding: 0 18px; }
+
+.sim-btn-detalle:hover { background: var(--app-bg); }
+
+/* Tabla "Versiones de escenario": columnas más angostas y con wrap para que
+   la columna de acción (semilla + checkbox + botón) quepa sin desbordarse
+   de la tarjeta en viewports de 1280-1440px. tabla-scroll (overflow-x:auto)
+   sigue como respaldo si aun asi no cupiera (p. ej. nombres muy largos). */
+.sim-versiones-table th,
+.sim-versiones-table td { padding-left: 10px; padding-right: 10px; }
+.sim-versiones-table .sim-celda-wrap { white-space: normal; max-width: 190px; }

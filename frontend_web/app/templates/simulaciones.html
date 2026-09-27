@@ -1,0 +1,133 @@
+{% extends "base_app.html" %}
+{% block title %}Simulaciones{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Simulaciones</h1>
+    <p class="subtitle">Corre versiones de escenario ya aprobadas y consulta sus resultados. La
+      creación, edición y aprobación de escenarios vive en otra pantalla; aquí solo se listan.</p>
+  </div>
+</div>
+
+{% with mensajes = get_flashed_messages(with_categories=true) %}
+  {% for categoria, mensaje in mensajes %}
+  <div class="alert alert-{{ categoria if categoria in ('error', 'warn') else 'ok' }}">{{ mensaje }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="alert alert-warn">{{ aviso_simulacion }}</div>
+
+<div class="card sim-card">
+  <div class="card-header">
+    <div>
+      <h3>Versiones de escenario</h3>
+      <p class="subtitle">Solo una versión <strong>aprobada</strong> se puede simular (lo aplica también
+        un trigger en la base de datos). Las versiones sin aprobar se muestran para dar contexto de
+        en qué estado están.</p>
+    </div>
+  </div>
+
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table sim-versiones-table">
+      <thead>
+        <tr>
+          <th>Escenario</th>
+          <th>Enfermedad</th>
+          <th>Región</th>
+          <th>Versión</th>
+          <th>Población</th>
+          <th>Días</th>
+          <th>Estado</th>
+          <th class="col-acciones">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in versiones %}
+        <tr>
+          <td class="sim-celda-wrap"><code class="codigo-chip">{{ v.scenario_id | id_esc }}</code> {{ v.scenario_name }}</td>
+          <td class="sim-celda-wrap">{{ v.disease_name }}</td>
+          <td>{{ v.region_name }}</td>
+          <td>v{{ v.version_number }}</td>
+          <td>{{ "{:,}".format(v.population_size) }}</td>
+          <td>{{ v.horizon_days }}</td>
+          <td>
+            <span class="badge {{ 'badge-correcto' if v.status == 'aprobado' else ('badge-fallido' if v.status == 'rechazado' else 'badge-pendiente') }}">
+              {{ v.status.replace('_', ' ').upper() }}
+            </span>
+            {% if v.status == 'aprobado' and v.revisado_por %}
+            <div class="field-hint">Aprobó {{ v.revisado_por }}</div>
+            {% endif %}
+          </td>
+          <td class="col-acciones">
+            {% if v.status == 'aprobado' and puede_ejecutar %}
+            <form method="post" action="{{ url_for('main.simulacion_ejecutar', version_id=v.id) }}" class="form-ejecutar">
+              <input type="number" name="seed" min="0" placeholder="semilla (aleatoria si se deja vacío)"
+                     class="input-semilla" title="Semilla de la corrida. Vacío = aleatoria.">
+              {% if es_admin %}
+              <label class="chk-forzar-error" title="Camino de ERROR documentado para pruebas: la corrida falla a propósito, con el mensaje guardado en la base.">
+                <input type="checkbox" name="forzar_error" value="1"> forzar error (prueba)
+              </label>
+              {% endif %}
+              <button type="submit" class="btn btn-primary btn-mini">▶ Ejecutar simulación</button>
+            </form>
+            {% elif v.status == 'aprobado' %}
+            <span class="field-hint">Tu rol no puede ejecutar corridas.</span>
+            {% else %}
+            <span class="field-hint">Solo versiones aprobadas.</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="tabla-vacia">No hay versiones de escenario capturadas todavía.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card sim-card">
+  <div class="card-header">
+    <div>
+      <h3>Corridas recientes</h3>
+      <p class="subtitle">Últimas 20 simulaciones encoladas, de cualquier escenario.</p>
+    </div>
+  </div>
+
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead>
+        <tr>
+          <th>Corrida</th>
+          <th>Escenario</th>
+          <th>Semilla</th>
+          <th>Solicitó</th>
+          <th>Encolada</th>
+          <th>Estado</th>
+          <th class="col-acciones">Detalle</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in runs %}
+        <tr>
+          <td><code class="codigo-chip">{{ r.id | id_sim }}</code></td>
+          <td><code class="codigo-chip">{{ r.scenario_id | id_esc }}</code> {{ r.scenario_name }} v{{ r.version_number }}</td>
+          <td>{{ r.seed }}</td>
+          <td>{{ r.requested_by_username }}</td>
+          <td>{{ r.queued_at.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td><span class="badge {{ r.status | badge_sim }}">{{ r.status | estado_sim }}</span></td>
+          <td class="col-acciones">
+            <a class="btn sim-btn-detalle" href="{{ url_for('main.simulacion_detalle', run_id=r.id) }}" title="Ver detalle">→</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="tabla-vacia">No se ha corrido ninguna simulación todavía.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
