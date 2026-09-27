@@ -3460,6 +3460,41 @@ def get_runs_completados_para_comparar(limit=50):
     )
 
 
+def get_corridas_para_comparar(run_ids):
+    """Devuelve corridas completadas seleccionadas con su serie diaria."""
+    ids = []
+    for valor in run_ids:
+        try:
+            run_id = int(valor)
+        except (TypeError, ValueError):
+            continue
+        if run_id not in ids:
+            ids.append(run_id)
+
+    if len(ids) < 2:
+        return []
+
+    rows = query(
+        """
+        SELECT r.id,
+               sv.scenario_id,
+               sv.version_number,
+               s.name AS scenario_name,
+               res.serie
+        FROM simulation_runs r
+        JOIN simulation_results res ON res.run_id = r.id
+        JOIN scenario_versions sv ON sv.id = r.scenario_version_id
+        JOIN scenarios s ON s.id = sv.scenario_id
+        WHERE r.status = 'completado'
+          AND r.id = ANY(%s)
+        """,
+        (ids,),
+    )
+
+    por_id = {fila["id"]: fila for fila in rows}
+    return [por_id[run_id] for run_id in ids if run_id in por_id]
+
+
 def get_resultado_run(run_id):
     """Resultado guardado por motor.simular(): indicadores resumen, serie
     diaria y trazabilidad de parametros. None si la corrida no ha terminado
