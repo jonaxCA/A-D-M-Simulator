@@ -968,6 +968,16 @@ RUN_ETAPA = {
     ),
 }
 
+# Envio, aprobacion y rechazo de una version quedan como UPDATE en audit_log;
+# lo que los distingue es data_after['status']. Sin esto los tres se ven
+# iguales ("Modificacion de registro"), igual que pasaba con RUN.
+VERSION_ETAPA = {
+    "en_revision": "Version enviada a revision",
+    "aprobado": "Version aprobada",
+    "rechazado": "Version rechazada",
+}
+
+
 
 def _resumen_indicadores_run(data_after):
     """Resumen corto de resultado.resumen para la Descripcion de una etapa
@@ -986,7 +996,7 @@ def _resumen_indicadores_run(data_after):
     return ", ".join(partes)
 
 
-def _describe_evento_auditoria(action, entity_id, data_after):
+def _describe_evento_auditoria(action, entity_id, data_after, entity_type=None):
     """(descripcion, estado_visible) para una fila de audit_log. Aisla el
     caso especial de RUN (ver nota arriba) del resto de acciones, que siguen
     la regla original: LOGIN_FAILED/PERMISSION_DENIED = Fallido, todo lo
@@ -1008,6 +1018,13 @@ def _describe_evento_auditoria(action, entity_id, data_after):
         else:
             descripcion = f"{base}{identificador}"
         return descripcion, estado
+    if action == "UPDATE" and entity_type == "scenario_versions":
+        etapa = (data_after or {}).get("status")
+        if etapa in VERSION_ETAPA:
+            numero = (data_after or {}).get("version_number")
+            sufijo = f" (v{numero})" if numero else ""
+            return f"{VERSION_ETAPA[etapa]}{sufijo}", "Correcto"
+
 
     descripcion = DESCRIPCION_POR_ACCION.get(action, action)
     estado = "Fallido" if action in ACCIONES_FALLIDAS else "Correcto"
@@ -1075,7 +1092,7 @@ def get_auditoria_lista(busqueda=None, usuario_id=None, modulo=None, accion=None
     )
     out = []
     for r in rows:
-        descripcion, estado = _describe_evento_auditoria(r["action"], r["entity_id"], r["data_after"])
+        descripcion, estado = _describe_evento_auditoria(r["action"], r["entity_id"], r["data_after"], r["entity_type"])
         out.append({
             "id": r["id"],
             "fecha": r["occurred_at"].strftime("%Y-%m-%d %H:%M:%S"),

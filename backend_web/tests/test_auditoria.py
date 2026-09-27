@@ -97,6 +97,23 @@ class DescribeEventoAuditoriaTests(unittest.TestCase):
         self.assertEqual(estado, "Fallido")
         descripcion, estado = queries._describe_evento_auditoria("LOGIN", "9", None)
         self.assertEqual(estado, "Correcto")
+        
+    def test_envio_aprobacion_y_rechazo_de_version_se_distinguen(self):
+        descripciones = set()
+        for etapa in ("en_revision", "aprobado", "rechazado"):
+            descripcion, estado = queries._describe_evento_auditoria(
+                "UPDATE", "7", {"status": etapa, "version_number": 2},
+                "scenario_versions")
+            self.assertEqual(estado, "Correcto", etapa)
+            self.assertIn("(v2)", descripcion)
+            descripciones.add(descripcion)
+        self.assertEqual(len(descripciones), 3, descripciones)
+
+    def test_update_de_otro_modulo_no_cambia(self):
+        descripcion, _estado = queries._describe_evento_auditoria(
+            "UPDATE", "7", {"status": "aprobado"}, "users")
+        self.assertEqual(descripcion, "Modificacion de registro")
+
 
 
 # ---------------------------------------------------------------------------
