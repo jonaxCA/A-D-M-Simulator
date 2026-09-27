@@ -1375,6 +1375,64 @@ def comparacion():
         active_nav="comparacion",
     )
 
+@bp.route("/comparacion/costos", methods=["GET", "POST"])
+@roles_required("EPIDEMIOLOGO", "ADMINISTRADOR", entity_type="intervention_types")
+def comparacion_costos():
+    tipos = queries.get_tipos_intervencion()
+
+    if request.method == "GET":
+        return render_template(
+            "comparacion_costos.html",
+            tipos=tipos,
+            errores=[],
+            active_nav="comparacion",
+        )
+
+    intervention_type_id = request.form.get("intervention_type_id", type=int)
+    actual = next(
+        (tipo for tipo in tipos if tipo["id"] == intervention_type_id),
+        None,
+    )
+
+    if not actual:
+        flash("El tipo de intervencion no existe.", "error")
+        return redirect(url_for("main.comparacion_costos"))
+
+    datos, errores = queries.valida_costo_intervencion(
+        request.form.get("unit_cost"),
+        request.form.get("cost_source"),
+        request.form.get("cost_is_assumption") == "1",
+    )
+
+    if errores:
+        return render_template(
+            "comparacion_costos.html",
+            tipos=tipos,
+            errores=errores,
+            active_nav="comparacion",
+        ), 400
+
+    antes = {
+        "unit_cost": actual["unit_cost"],
+        "cost_source": actual["cost_source"],
+        "cost_is_assumption": actual["cost_is_assumption"],
+    }
+
+    queries.actualiza_costo_intervencion(intervention_type_id, datos)
+
+    log_audit(
+        g.user["sub"],
+        "UPDATE",
+        "intervention_types",
+        entity_id=str(intervention_type_id),
+        data_before=antes,
+        data_after=datos,
+    )
+
+    flash("Costo de la intervencion actualizado.", "ok")
+    return redirect(url_for("main.comparacion_costos"))
+
+
 @bp.route("/stub/<name>")
 @login_required
 def stub(name):
