@@ -564,8 +564,21 @@ def estado_parametros(default_params):
         "faltan": faltan,
         "supuestos": supuestos,
         "sin_fuente": sin_fuente,
-        "simulable": not faltan,
+        # Un valor sin fuente ni marca de supuesto tampoco alcanza: el sistema
+        # se niega a simular con una cifra de la que nadie responde.
+        "simulable": not faltan and not sin_fuente,
     }
+
+
+def motivo_no_simulable(faltan, sin_fuente):
+    """Por que una enfermedad no se puede simular, dado cuantos parametros le
+    faltan y cuantos no tienen fuente ni marca de supuesto."""
+    partes = []
+    if faltan:
+        partes.append(f"le faltan {faltan} parámetro(s)")
+    if sin_fuente:
+        partes.append(f"{sin_fuente} parámetro(s) no tienen fuente ni marca de supuesto")
+    return " y ".join(partes)
 
 
 def parametros_desde_form(form, actuales=None):
@@ -2217,6 +2230,7 @@ def get_enfermedades_para_escenario():
         salida.append({"id": d["id"], "code": d["code"], "name": d["name"],
                        "simulable": estado["simulable"],
                        "faltan": len(estado["faltan"]),
+                       "sin_fuente": len(estado["sin_fuente"]),
                        "supuestos": len(estado["supuestos"])})
     return salida
 
@@ -2330,8 +2344,9 @@ def valida_escenario(form, regiones, enfermedades):
         errores.append("Esa enfermedad no está activa en el catálogo.")
     elif enfermedad and not enfermedad["simulable"]:
         errores.append(
-            f"«{enfermedad['name']}» no se puede simular todavía: le faltan "
-            f"{enfermedad['faltan']} parámetro(s). Captúralos en Enfermedades.")
+            f"«{enfermedad['name']}» no se puede simular todavía: "
+            f"{motivo_no_simulable(enfermedad['faltan'], enfermedad['sin_fuente'])}. "
+            "Complétalos en Enfermedades.")
 
     dias, poblacion, grupos, sin_edad, politica, iniciales = _valida_parametros_version(
         form, region, errores)
@@ -2450,6 +2465,27 @@ def escenario_para_motor(datos, enfermedad_params, intervenciones=None):
         escenario["poblacion_edad_desconocida"] = datos["population_age_unknown"]
         escenario["politica_edad_desconocida"] = datos["age_unknown_policy"]
     return escenario
+
+
+def escenario_de_version(detalle):
+    """Entrada del motor para la version de `detalle` (get_escenario_detalle).
+
+    La usan la revision (revisa_version) y la corrida
+    (backend_web.simulaciones): lo que el epidemiologo aprueba y lo que se
+    simula salen de la misma traduccion, con la misma poblacion por edad y los
+    mismos parametros congelados.
+    """
+    version = detalle["version"]
+    datos = {
+        "population_by_age": version["population_by_age"],
+        "population_size": version["population_size"],
+        "population_age_unknown": version["population_age_unknown"],
+        "age_unknown_policy": version["age_unknown_policy"],
+        "initial_infected": version["initial_infected"],
+        "horizon_days": version["horizon_days"],
+    }
+    return escenario_para_motor(datos, detalle["parametros_enfermedad"],
+                                intervenciones_para_motor(detalle["intervenciones"]))
 
 
 def crea_escenario(datos, owner_id):
@@ -2654,22 +2690,11 @@ def revisa_version(detalle):
     from procesamiento.motor import EscenarioInvalido
     from procesamiento.motor.parametros import resolver
 
-    version, escenario = detalle["version"], detalle["escenario"]
-    if not version:
+    if not detalle["version"]:
         return ["El escenario no tiene una versión vigente."], []
 
-    datos = {
-        "population_by_age": version["population_by_age"],
-        "population_size": version["population_size"],
-        "population_age_unknown": version["population_age_unknown"],
-        "age_unknown_policy": version["age_unknown_policy"],
-        "initial_infected": version["initial_infected"],
-        "horizon_days": version["horizon_days"],
-    }
-    esc = escenario_para_motor(datos, detalle["parametros_enfermedad"],
-                              intervenciones_para_motor(detalle["intervenciones"]))
     try:
-        return [], resolver(esc)["avisos"]
+        return [], resolver(escenario_de_version(detalle))["avisos"]
     except EscenarioInvalido as exc:
         # La excepcion trae .errores (una lista); args[0] es el mismo mensaje ya
         # unido con "; ", y tratarlo como lista lo parte en letras.
@@ -3247,14 +3272,13 @@ def resuelve_revision(scenario_id, decision, comentario, revisor_id):
 # ---------------------------------------------------------------------------
 # Simulaciones (Bloque F) -- ejecucion, estados y resultados
 # ---------------------------------------------------------------------------
-# Bloque D (crear/editar/aprobar escenarios) no es parte de este avance: todo
-# lo de aqui es de SOLO LECTURA sobre scenarios/scenario_versions. Lo unico
-# que se escribe en este bloque son simulation_batches, simulation_runs y
-# simulation_results -- la corrida, no el escenario.
+# Todo lo de aqui es de SOLO LECTURA sobre scenarios/scenario_versions (los
+# escribe el bloque D, mas arriba). Lo unico que se escribe en este bloque son
+# simulation_batches, simulation_runs y simulation_results -- la corrida, no
+# el escenario.
 #
-# La traduccion de una version a la entrada del motor (poblacion por edad,
-# parametros de la enfermedad, intervenciones) vive en backend_web.simulaciones,
-# no aqui: este modulo solo sabe hablar SQL.
+# La entrada del motor sale de escenario_de_version(), la misma traduccion que
+# usa la revision; backend_web.simulaciones solo la invoca.
 
 def get_version_simulacion(version_id):
     """Una version de escenario con el escenario, la enfermedad y la region a
@@ -3280,62 +3304,11 @@ def get_version_simulacion(version_id):
     )
 
 
-def get_estructura_edad_region(region_id):
-    """Poblacion de la region por los cinco grupos de edad del motor
-    (region_age_groups, migracion 021). Excluye 'edad_no_especificada'
-    (lower_bound NULL): es una categoria administrativa, no un grupo de edad,
-    y la traduccion del escenario (backend_web.simulaciones) la excluye a
-    proposito -- ver el comentario de GRUPOS_EDAD_MOTOR ahi.
-
-    Devuelve {} si la region no tiene la tabla poblada (por ejemplo una AGEB,
-    que 021 no cubre); la traduccion lo convierte en un error claro.
-    """
-    rows = query(
-        """
-        SELECT age_group, population
-        FROM region_age_groups
-        WHERE region_id = %s AND lower_bound IS NOT NULL
-        """,
-        (region_id,),
-    )
-    return {r["age_group"]: r["population"] for r in rows}
-
-
-def get_intervenciones_version(version_id):
-    """Calendario de intervenciones de una version, en el formato que espera
-    motor/parametros.py (tipo, dia_inicio, dia_fin, cobertura, cumplimiento,
-    params)."""
-    rows = query(
-        """
-        SELECT it.code AS tipo, si.start_day AS dia_inicio, si.end_day AS dia_fin,
-               si.coverage AS cobertura, si.compliance AS cumplimiento, si.params
-        FROM scenario_interventions si
-        JOIN intervention_types it ON it.id = si.intervention_type_id
-        WHERE si.scenario_version_id = %s
-        ORDER BY si.order_index, si.start_day
-        """,
-        (version_id,),
-    )
-    return [
-        {
-            "tipo": r["tipo"],
-            "dia_inicio": r["dia_inicio"],
-            "dia_fin": r["dia_fin"],
-            "cobertura": float(r["cobertura"]) if r["cobertura"] is not None else None,
-            "cumplimiento": float(r["cumplimiento"]) if r["cumplimiento"] is not None else None,
-            "params": r["params"] or {},
-        }
-        for r in rows
-    ]
-
-
 def listar_versiones_escenario():
     """Todas las versiones de escenario, para la pantalla de simulaciones.
 
-    Bloque D (creacion/edicion/aprobacion) no se construye en este avance, asi
-    que esta lista es de solo lectura: muestra lo que ya haya en la base
-    (por ejemplo el escenario de demostracion de datos/postgres/semillas), sin
-    ofrecer editarlo. Las aprobadas van primero -- son las unicas que se
+    Es de solo lectura: crear, editar y aprobar versiones es de la pantalla de
+    escenarios (bloque D). Las aprobadas van primero -- son las unicas que se
     pueden correr.
     """
     return query(
@@ -3475,7 +3448,7 @@ def get_resultado_run(run_id):
 
 
 def marcar_run_ejecutando(run_id):
-    """PENDIENTE -> EJECUTANDO. El WHERE status = 'encolado' evita pisar una
+    """encolado -> ejecutando. El WHERE status = 'encolado' evita pisar una
     corrida que ya haya terminado (o que otro hilo ya haya arrancado).
 
     Devuelve True solo si esta llamada de verdad hizo la transicion (rowcount

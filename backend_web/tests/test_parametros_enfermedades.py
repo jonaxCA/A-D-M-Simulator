@@ -1,6 +1,7 @@
 """
-Prueba PURA (sin PostgreSQL) de que las 6 enfermedades del catalogo quedan
-simulables despues de las migraciones 017 y 025.
+Prueba PURA (sin PostgreSQL) de lo que dejan las migraciones 017 y 025 en las
+6 enfermedades del catalogo: ninguna le falta un parametro, pero dengue, zika y
+malaria no se pueden simular porque dos de sus parametros no tienen fuente.
 
 No corre SQL contra ninguna base: parsea el JSON que cada migracion inserta
 con el operador `||` directamente del archivo .sql (con una expresion
@@ -132,15 +133,14 @@ class Migracion025Tests(unittest.TestCase):
                 if clave in bloque:
                     self.assertTrue(0 <= bloque[clave]["valor"] <= 1, f"{codigo}.{clave}")
 
-    def test_fusion_sobre_una_base_existente_deja_simulable(self):
+    def test_fusion_sobre_una_base_existente_no_deja_faltantes(self):
         """El caso real: una base que instalo dengue/zika/malaria/patogeno x
         antes de que existiera esta migracion. `||` fusiona (las claves del
-        bloque nuevo ganan) y el resultado tiene que quedar simulable."""
+        bloque nuevo ganan) y al resultado no le falta ningun parametro."""
         for codigo, base in BASES_ANTERIORES_A_025.items():
             fusionado = {**base, **self.bloques[codigo]}
             estado = estado_parametros(fusionado)
             self.assertEqual(estado["faltan"], [], f"{codigo}: {estado['faltan']}")
-            self.assertTrue(estado["simulable"], codigo)
 
     def test_no_se_pisa_un_r0_ya_capturado_desde_la_pantalla(self):
         """Replica en Python la guarda SQL `NOT (default_params ? 'r0')`:
@@ -160,8 +160,11 @@ class Migracion025Tests(unittest.TestCase):
 
 
 class SeisEnfermedadesSimulablesTests(unittest.TestCase):
-    """Con 017 + 025, las 6 enfermedades del catalogo quedan simulables --
-    el objetivo final del pendiente de la checklist (Bloque E)."""
+    """Con 017 + 025, las 6 enfermedades del catalogo tienen sus seis
+    parametros. Tres se pueden simular; dengue, zika y malaria todavia no: la
+    025 no les da fuente a `incubacion_dias` ni a `infeccioso_dias` (regla 8)."""
+
+    SIMULABLES = {"INFLUENZA_ESTACIONAL", "SARS_COV_2_ANCESTRAL", "PATOGENO_X"}
 
     CODIGOS_ESPERADOS = {
         "INFLUENZA_ESTACIONAL", "SARS_COV_2_ANCESTRAL",
@@ -177,7 +180,7 @@ class SeisEnfermedadesSimulablesTests(unittest.TestCase):
         codigos = set(self.bloques_017) | set(self.bloques_025)
         self.assertEqual(codigos, self.CODIGOS_ESPERADOS)
 
-    def test_las_seis_quedan_simulables(self):
+    def test_solo_se_simula_lo_que_tiene_fuente_o_supuesto(self):
         bases = {**BASES_ANTERIORES_A_017, **BASES_ANTERIORES_A_025}
         bloques = {**self.bloques_017, **self.bloques_025}
         for codigo in self.CODIGOS_ESPERADOS:
@@ -185,10 +188,15 @@ class SeisEnfermedadesSimulablesTests(unittest.TestCase):
             estado = estado_parametros(fusionado)
             with self.subTest(enfermedad=codigo):
                 self.assertEqual(estado["faltan"], [])
-                self.assertTrue(estado["simulable"])
+                if codigo in self.SIMULABLES:
+                    self.assertEqual(estado["sin_fuente"], [])
+                    self.assertTrue(estado["simulable"])
+                else:
+                    self.assertEqual(estado["sin_fuente"], ["incubacion_dias", "infeccioso_dias"])
+                    self.assertFalse(estado["simulable"])
 
     def test_dengue_zika_malaria_quedan_marcadas_como_transmision_por_vector_supuesta(self):
-        # No es solo que simulen: r0 en las tres tiene que seguir marcado
+        # Cuando lleguen a simularse, r0 en las tres tiene que seguir marcado
         # como supuesto (el motor es de persona a persona, ver el header de
         # 025_parametros_enfermedades_restantes.sql), para que la pantalla lo
         # muestre y nadie confunda el R0 de vector con un dato validado.

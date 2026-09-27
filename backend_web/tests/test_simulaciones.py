@@ -3,9 +3,9 @@ Pruebas del Bloque F (ejecucion, estados y resultados de simulaciones).
 
 Dos grupos, en el mismo archivo:
 
-  - `TraduccionYFormatoTests`: funciones PURAS (sin SQL, sin Flask) de
-    backend_web.simulaciones -- identificadores visibles, mapeo de estados y
-    la traduccion de una version de escenario a la entrada del motor. No
+  - `TraduccionYFormatoTests`: funciones PURAS (sin SQL, sin Flask) --
+    identificadores visibles, estados y la traduccion de una version de
+    escenario a la entrada del motor (queries.escenario_de_version). No
     requieren PostgreSQL: corren en cualquier maquina.
 
   - `SimulacionesIntegracionTests`: contra PostgreSQL real, sin mocks (mismo
@@ -21,6 +21,8 @@ Ejecutar:
     JWT_SECRET_KEY=test-secret \
         python -m unittest backend_web.tests.test_simulaciones -v
 """
+import copy
+import json
 import os
 import unittest
 
@@ -45,12 +47,13 @@ class TraduccionYFormatoTests(unittest.TestCase):
         self.assertEqual(simulaciones.id_escenario(3), "ESC-003")
         self.assertEqual(simulaciones.id_escenario(1234), "ESC-1234")
 
-    def test_estado_visible_mapea_los_cinco_estados_de_la_base(self):
-        self.assertEqual(simulaciones.estado_visible("encolado"), "PENDIENTE")
+    def test_estado_visible_muestra_el_estado_de_la_base(self):
+        # Regla 7 de AGENTS.md: nada de PENDIENTE/COMPLETADA/ERROR.
+        self.assertEqual(simulaciones.estado_visible("encolado"), "ENCOLADO")
         self.assertEqual(simulaciones.estado_visible("ejecutando"), "EJECUTANDO")
-        self.assertEqual(simulaciones.estado_visible("completado"), "COMPLETADA")
-        self.assertEqual(simulaciones.estado_visible("fallido"), "ERROR")
-        self.assertEqual(simulaciones.estado_visible("cancelado"), "CANCELADA")
+        self.assertEqual(simulaciones.estado_visible("completado"), "COMPLETADO")
+        self.assertEqual(simulaciones.estado_visible("fallido"), "FALLIDO")
+        self.assertEqual(simulaciones.estado_visible("cancelado"), "CANCELADO")
 
     def test_estado_visible_desconocido_no_truena(self):
         self.assertEqual(simulaciones.estado_visible("algo_nuevo"), "ALGO_NUEVO")
@@ -59,7 +62,7 @@ class TraduccionYFormatoTests(unittest.TestCase):
         for estado in ("encolado", "ejecutando", "completado", "fallido", "cancelado"):
             self.assertTrue(simulaciones.clase_badge_estado(estado).startswith("badge-"))
 
-    # -- construir_escenario: la traduccion pura -----------------------------
+    # -- escenario_de_version: la traduccion pura ----------------------------
     ENFERMEDAD_COMPLETA = {
         "r0": {"valor": 1.3, "fuente": "lit.", "supuesto": False},
         "incubacion_dias": {"valor": 2.0, "fuente": "lit.", "supuesto": False},
@@ -68,76 +71,46 @@ class TraduccionYFormatoTests(unittest.TestCase):
         "tasa_hospitalizacion": {"valor": 0.01, "fuente": "lit.", "supuesto": False},
         "letalidad": {"valor": 0.001, "fuente": "lit.", "supuesto": False},
     }
-    ESTRUCTURA_EDAD = {"0-19": 40, "20-39": 40, "40-59": 15, "60-79": 4, "80+": 1}
+    POR_EDAD = {"0-19": 400, "20-39": 400, "40-59": 150, "60-79": 40, "80+": 10}
 
-    def test_construir_escenario_reparte_poblacion_exacto(self):
-        escenario, errores = simulaciones.construir_escenario(
-            population_size=1000,
-            horizon_days=90,
-            initial_infected=5,
-            estructura_edad=self.ESTRUCTURA_EDAD,
-            default_params=self.ENFERMEDAD_COMPLETA,
-        )
-        self.assertEqual(errores, [])
-        self.assertIsNotNone(escenario)
-        # La suma tiene que cuadrar EXACTO con population_size, sin importar
-        # el redondeo de cada grupo (el residuo se le suma al grupo mayor).
-        self.assertEqual(sum(escenario["poblacion"].values()), 1000)
-        self.assertEqual(escenario["poblacion"]["0-19"], 400)  # 40% de 1000
-        self.assertEqual(escenario["dias"], 90)
-        self.assertEqual(escenario["infectados_iniciales"], 5)
-        self.assertEqual(escenario["intervenciones"], [])
+    def _detalle(self, **version):
+        """Lo minimo de queries.get_escenario_detalle() que usa la traduccion."""
+        base = {"population_by_age": None, "population_size": 5000,
+                "population_age_unknown": 0, "age_unknown_policy": None,
+                "initial_infected": 10, "horizon_days": 30}
+        base.update(version)
+        return {"version": base, "parametros_enfermedad": self.ENFERMEDAD_COMPLETA,
+                "intervenciones": []}
+
+    def test_escenario_de_version_usa_la_poblacion_por_edad_de_la_version(self):
+        detalle = self._detalle(population_by_age=self.POR_EDAD, population_size=1007,
+                                population_age_unknown=7, age_unknown_policy="excluir")
+        escenario = queries.escenario_de_version(detalle)
+        self.assertEqual(escenario["poblacion"], self.POR_EDAD)
+        self.assertEqual(escenario["poblacion_edad_desconocida"], 7)
+        self.assertEqual(escenario["politica_edad_desconocida"], "excluir")
         self.assertEqual(escenario["enfermedad"], self.ENFERMEDAD_COMPLETA)
 
-    def test_construir_escenario_conserva_intervenciones(self):
-        intervenciones = [{"tipo": "CIERRE_ESCUELAS", "dia_inicio": 7, "dia_fin": 45,
-                           "cobertura": 1.0, "cumplimiento": 0.9, "params": {"reduccion": 1.0}}]
-        escenario, errores = simulaciones.construir_escenario(
-            population_size=1000, horizon_days=90, initial_infected=5,
-            estructura_edad=self.ESTRUCTURA_EDAD, default_params=self.ENFERMEDAD_COMPLETA,
-            intervenciones=intervenciones,
-        )
-        self.assertEqual(errores, [])
-        self.assertEqual(escenario["intervenciones"], intervenciones)
+    def test_escenario_de_version_sin_estratificar_pasa_el_total(self):
+        escenario = queries.escenario_de_version(self._detalle())
+        self.assertEqual(escenario["poblacion"], 5000)
+        self.assertNotIn("politica_edad_desconocida", escenario)
 
-    def test_construir_escenario_sin_parametros_de_enfermedad_da_error_claro(self):
-        escenario, errores = simulaciones.construir_escenario(
-            population_size=1000, horizon_days=90, initial_infected=5,
-            estructura_edad=self.ESTRUCTURA_EDAD, default_params={},
-        )
-        self.assertIsNone(escenario)
-        self.assertEqual(len(errores), 1)
-        self.assertIn("parametros de simulacion", errores[0])
+    def test_escenario_de_version_traduce_las_intervenciones(self):
+        detalle = self._detalle()
+        detalle["intervenciones"] = [{
+            "code": "CIERRE_ESCUELAS", "start_day": 7, "end_day": 20,
+            "coverage": 1, "compliance": 0.9, "params": {"reduccion": 1.0}}]
+        escenario = queries.escenario_de_version(detalle)
+        self.assertEqual(escenario["intervenciones"], [{
+            "tipo": "CIERRE_ESCUELAS", "dia_inicio": 7, "dia_fin": 20,
+            "cobertura": 1.0, "cumplimiento": 0.9, "params": {"reduccion": 1.0}}])
 
-    def test_construir_escenario_sin_estructura_de_edad_da_error_claro(self):
-        escenario, errores = simulaciones.construir_escenario(
-            population_size=1000, horizon_days=90, initial_infected=5,
-            estructura_edad={}, default_params=self.ENFERMEDAD_COMPLETA,
-        )
-        self.assertIsNone(escenario)
-        self.assertEqual(len(errores), 1)
-        self.assertIn("poblacion por grupo de edad", errores[0])
-
-    def test_construir_escenario_da_los_dos_errores_juntos(self):
-        # Ninguno de los dos: la funcion no se detiene en el primero, junta
-        # todos los errores -- igual que motor.parametros.EscenarioInvalido.
-        escenario, errores = simulaciones.construir_escenario(
-            population_size=1000, horizon_days=90, initial_infected=5,
-            estructura_edad={}, default_params=None,
-        )
-        self.assertIsNone(escenario)
-        self.assertEqual(len(errores), 2)
-
-    def test_construir_escenario_produce_una_entrada_que_el_motor_acepta(self):
-        """Prueba de contrato: lo que construye simulaciones.construir_escenario
-        tiene que ser justo lo que motor.simular() espera. No repite las
-        validaciones internas del motor -- solo confirma que la corrida no
-        truena y que el resultado tiene la forma esperada."""
-        escenario, errores = simulaciones.construir_escenario(
-            population_size=5000, horizon_days=30, initial_infected=10,
-            estructura_edad=self.ESTRUCTURA_EDAD, default_params=self.ENFERMEDAD_COMPLETA,
-        )
-        self.assertEqual(errores, [])
+    def test_la_entrada_la_acepta_el_motor(self):
+        """Prueba de contrato: lo que arma escenario_de_version es justo lo que
+        motor.simular() espera."""
+        escenario = queries.escenario_de_version(self._detalle(population_by_age=self.POR_EDAD,
+                                                               population_size=1000))
         resultado = simulaciones.simular(escenario, semilla=123)
         self.assertEqual(resultado["engine_version"], simulaciones.ENGINE_VERSION)
         self.assertIn("casos_acumulados", resultado["resumen"])
@@ -146,10 +119,7 @@ class TraduccionYFormatoTests(unittest.TestCase):
     def test_misma_semilla_mismo_resultado(self):
         """Reproducibilidad a nivel motor: la base de lo que la pantalla de
         detalle demuestra con dos corridas reales."""
-        escenario, _ = simulaciones.construir_escenario(
-            population_size=5000, horizon_days=30, initial_infected=10,
-            estructura_edad=self.ESTRUCTURA_EDAD, default_params=self.ENFERMEDAD_COMPLETA,
-        )
+        escenario = queries.escenario_de_version(self._detalle())
         r1 = simulaciones.simular(escenario, semilla=7)
         r2 = simulaciones.simular(escenario, semilla=7)
         self.assertEqual(r1["resumen"], r2["resumen"])
@@ -217,8 +187,85 @@ class SimulacionesIntegracionTests(unittest.TestCase):
         )
         self.assertEqual(errores, [], errores)
         self.assertIsNotNone(escenario)
-        self.assertEqual(sum(escenario["poblacion"].values()), version["population_size"])
+        # La version de demostracion no se estratifica: se simula el total.
+        self.assertEqual(escenario["poblacion"], version["population_size"])
         self.assertEqual(escenario["dias"], version["horizon_days"])
+
+    def _version_aprobada(self, disease_params):
+        """Version aprobada del escenario de demostracion con poblacion por
+        edad, gente sin edad excluida y parametros congelados. Devuelve su id;
+        el llamador la borra."""
+        por_edad = {"0-19": 3000, "20-39": 3000, "40-59": 2000, "60-79": 1500, "80+": 500}
+        fila = query("SELECT scenario_id FROM scenario_versions WHERE id = %s",
+                     (self.version_id,), one=True)
+        revisor = query("SELECT id FROM users WHERE username = 'diana.flores'", one=True)["id"]
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO scenario_versions
+                        (scenario_id, version_number, is_current, population_size,
+                         horizon_days, initial_infected, created_by, status,
+                         submitted_at, reviewed_by, reviewed_at,
+                         population_by_age, population_age_unknown, age_unknown_policy,
+                         disease_params)
+                    VALUES (%s, 998, FALSE, 10007, 30, 10, %s, 'aprobado',
+                            now(), %s, now(), %s::jsonb, 7, 'excluir', %s::jsonb)
+                    RETURNING id
+                    """,
+                    (fila["scenario_id"], self.user_id, revisor,
+                     json.dumps(por_edad), json.dumps(disease_params)),
+                )
+                version_id = cur.fetchone()[0]
+            conn.commit()
+        return version_id, por_edad
+
+    def _borra_version(self, version_id):
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM scenario_versions WHERE id = %s", (version_id,))
+            conn.commit()
+
+    def _parametros_del_catalogo(self):
+        return copy.deepcopy(query(
+            """SELECT d.default_params FROM scenario_versions sv
+               JOIN scenarios s ON s.id = sv.scenario_id
+               JOIN diseases d ON d.id = s.disease_id
+               WHERE sv.id = %s""", (self.version_id,), one=True)["default_params"])
+
+    def test_la_corrida_simula_lo_que_se_aprobo(self):
+        """Hallazgo 1 de docs/revision_bloques_E_F.md: la corrida tiene que usar
+        la poblacion por edad y los parametros congelados de la version, no las
+        bandas actuales de la region ni los parametros vivos del catalogo."""
+        congelados = self._parametros_del_catalogo()
+        congelados["r0"] = {"valor": 1.11, "fuente": "congelado en la prueba", "supuesto": False}
+        version_id, por_edad = self._version_aprobada(congelados)
+        try:
+            escenario, _version, errores = simulaciones.construir_escenario_desde_version(version_id)
+            self.assertEqual(errores, [], errores)
+            self.assertEqual(escenario["poblacion"], por_edad)
+            self.assertEqual(escenario["politica_edad_desconocida"], "excluir")
+            self.assertEqual(escenario["enfermedad"]["r0"]["valor"], 1.11)
+
+            detalle = queries.get_escenario_detalle(_version["scenario_id"], 998)
+            self.assertEqual(escenario, queries.escenario_de_version(detalle),
+                             "la corrida y la revision deben armar la misma entrada")
+        finally:
+            self._borra_version(version_id)
+
+    def test_no_simula_parametros_sin_fuente(self):
+        """Regla 8: un parametro sin fuente ni marca de supuesto impide simular,
+        aunque la version ya este aprobada."""
+        congelados = self._parametros_del_catalogo()
+        congelados["incubacion_dias"] = {"media": 2.0}   # formato de la 010, sin fuente
+        version_id, _ = self._version_aprobada(congelados)
+        try:
+            escenario, _version, errores = simulaciones.construir_escenario_desde_version(version_id)
+            self.assertIsNone(escenario)
+            self.assertEqual(len(errores), 1)
+            self.assertIn("no tienen fuente ni marca de supuesto", errores[0])
+        finally:
+            self._borra_version(version_id)
 
     def test_construir_escenario_desde_version_inexistente(self):
         escenario, version, errores = simulaciones.construir_escenario_desde_version(999999999)

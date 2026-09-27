@@ -4,15 +4,14 @@ Bloque F -- Ejecucion, estados y resultados de simulaciones.
 Tres responsabilidades que viven aqui a proposito, separadas de queries.py
 (que solo habla SQL) y de routes.py (que solo habla HTTP):
 
-  1. Traducir una version de escenario aprobada (scenarios + scenario_versions
-     + diseases.default_params + regions/region_age_groups +
-     scenario_interventions) al diccionario que espera motor.simular(). Esta
-     traduccion NO puede vivir en procesamiento/motor/: ese paquete es
-     deliberadamente independiente de Flask y de la base de datos (ver su
-     docstring), y por eso el puente esta de este lado.
-  2. Formato de los identificadores visibles ESC-003 / SIM-00042 y el mapeo de
-     estados de la base (encolado/ejecutando/completado/fallido) a los rotulos
-     que pide el checklist (PENDIENTE/EJECUTANDO/COMPLETADA/ERROR).
+  1. Obtener la entrada del motor de una version de escenario aprobada. La
+     traduccion es queries.escenario_de_version(), la misma que usa la
+     revision del bloque D: lo que se aprueba es lo que se simula. Aqui solo
+     se revisa que la version este aprobada y que su enfermedad sea simulable.
+     Esto NO puede vivir en procesamiento/motor/: ese paquete es
+     deliberadamente independiente de Flask y de la base de datos.
+  2. Formato de los identificadores visibles ESC-003 / SIM-00042 y de los
+     estados, que se muestran tal como estan en la base (regla 7 de AGENTS.md).
   3. La corrida en segundo plano: lo que un hilo ejecuta despues de que la
      ruta ya respondio con el redirect al detalle.
 
@@ -37,26 +36,17 @@ _PROCESAMIENTO_DIR = os.path.normpath(
 if _PROCESAMIENTO_DIR not in sys.path:
     sys.path.insert(0, _PROCESAMIENTO_DIR)
 
-from motor import ENGINE_VERSION, ErrorMotor, simular          # noqa: E402
+from motor import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular  # noqa: E402,F401
+from motor.modelo import SIMPLIFICACIONES                      # noqa: E402,F401
 from motor.parametros import EscenarioInvalido                 # noqa: E402
 
 from . import queries                                           # noqa: E402
 from .audit import log_audit                                    # noqa: E402
 
-# Los cinco grupos de edad que usa el motor (motor/parametros.py) y que trae
-# region_age_groups (migracion 021). 'edad_no_especificada' se excluye a
-# proposito: aqui no se simula la poblacion real de la region, se REPARTE
-# population_size (el tamano de la version del escenario) con la MISMA
-# proporcion por edad que tiene la region -- igual que hace
-# motor/__main__.py::poblacion_por_edad con la estructura de NL. Sumar la
-# categoria administrativa metería una imputacion sin que el escenario la
-# haya pedido.
-GRUPOS_EDAD_MOTOR = ("0-19", "20-39", "40-59", "60-79", "80+")
-
 MENSAJE_ERROR_FORZADO = (
     "Error forzado de prueba: se solicito explicitamente desde la pantalla de "
     "simulaciones (opcion visible solo para ADMINISTRADOR). Demuestra el "
-    "camino PENDIENTE -> EJECUTANDO -> ERROR sin depender de que un escenario "
+    "camino encolado -> ejecutando -> fallido sin depender de que un escenario "
     "real este incompleto."
 )
 
@@ -76,16 +66,8 @@ def id_escenario(scenario_id):
 
 
 # ---------------------------------------------------------------------------
-# Estados: de la base (007/014) a lo que pide el checklist
+# Estados de la base (007/014)
 # ---------------------------------------------------------------------------
-ESTADOS_VISIBLES = {
-    "encolado": "PENDIENTE",
-    "ejecutando": "EJECUTANDO",
-    "completado": "COMPLETADA",
-    "fallido": "ERROR",
-    "cancelado": "CANCELADA",
-}
-
 # Para el badge de la pantalla: reusa las clases CSS que ya existen
 # (dashboard/enfermedades), en vez de inventar una paleta nueva.
 CLASE_BADGE_ESTADO = {
@@ -98,7 +80,8 @@ CLASE_BADGE_ESTADO = {
 
 
 def estado_visible(status_db):
-    return ESTADOS_VISIBLES.get(status_db, (status_db or "").upper())
+    """El estado de la base en mayusculas, como la columna de versiones."""
+    return (status_db or "").upper()
 
 
 def clase_badge_estado(status_db):
@@ -108,72 +91,8 @@ def clase_badge_estado(status_db):
 # ---------------------------------------------------------------------------
 # Traduccion: version de escenario -> entrada del motor
 # ---------------------------------------------------------------------------
-def _reparte_por_edad(estructura, total):
-    """Reparte `total` (entero) entre los grupos de `estructura` en la misma
-    proporcion que tienen sus poblaciones reales. Mismo criterio que
-    motor/__main__.py::poblacion_por_edad: el residuo del redondeo se le suma
-    al grupo mas grande, para que la suma cuadre exacto con `total`.
-
-    Es una funcion pura (nada de DB, nada de Flask) para poder probarla sin
-    levantar Postgres.
-    """
-    base = sum(estructura.values())
-    if base <= 0:
-        raise ValueError(
-            "La region no tiene poblacion por grupo de edad capturada; no se "
-            "puede repartir el tamano de la version del escenario."
-        )
-    reparto = {g: round(n * total / base) for g, n in estructura.items()}
-    mayor = max(reparto, key=reparto.get)
-    reparto[mayor] += total - sum(reparto.values())
-    return reparto
-
-
-def construir_escenario(*, population_size, horizon_days, initial_infected,
-                        estructura_edad, default_params, intervenciones=None):
-    """Construye el diccionario que espera motor.simular(), a partir de datos
-    YA resueltos por el llamador (nada de SQL aqui). Devuelve (escenario,
-    errores): si `errores` no esta vacio, `escenario` es None.
-
-    No repite las validaciones de motor/parametros.py (r0 > 0, letalidad entre
-    0 y 1, etc.) -- esas las hace motor.simular() al llamar a resolver(), y su
-    EscenarioInvalido ya trae mensajes claros por parametro. Aqui solo se
-    valida lo que es responsabilidad de ESTA traduccion: que haya con que
-    construir la poblacion por edad y los parametros de la enfermedad.
-    """
-    errores = []
-    if not isinstance(default_params, dict) or not default_params:
-        errores.append(
-            "La enfermedad de este escenario no tiene parametros de "
-            "simulacion capturados en el catalogo."
-        )
-    if not isinstance(estructura_edad, dict) or not estructura_edad:
-        errores.append(
-            "La region de este escenario no tiene poblacion por grupo de "
-            "edad capturada (region_age_groups); no se puede construir la "
-            "poblacion de la simulacion."
-        )
-    if errores:
-        return None, errores
-
-    try:
-        poblacion = _reparte_por_edad(estructura_edad, int(population_size))
-    except ValueError as exc:
-        return None, [str(exc)]
-
-    escenario = {
-        "poblacion": poblacion,
-        "infectados_iniciales": int(initial_infected),
-        "dias": int(horizon_days),
-        "enfermedad": default_params,
-        "intervenciones": intervenciones or [],
-    }
-    return escenario, []
-
-
 def construir_escenario_desde_version(version_id):
-    """Version con acceso a datos: resuelve una scenario_version por su id y
-    delega la construccion pura a construir_escenario().
+    """Entrada del motor para una scenario_version aprobada.
 
     Devuelve (escenario, version, errores). `version` viaja siempre que la fila
     exista, incluso si hay errores despues -- routes.py y el runner en
@@ -191,22 +110,20 @@ def construir_escenario_desde_version(version_id):
             f"version aprobada."
         ]
 
-    enfermedad = queries.get_enfermedad(version["disease_id"])
-    if not enfermedad:
-        return None, version, ["La enfermedad de este escenario ya no existe en el catálogo."]
+    detalle = queries.get_escenario_detalle(version["scenario_id"], version["version_number"])
+    if not detalle:
+        return None, version, ["La version de escenario no existe."]
 
-    estructura = queries.get_estructura_edad_region(version["region_id"])
-    intervenciones = queries.get_intervenciones_version(version_id)
+    # Los parametros que valen para la version: los congelados al enviarla a
+    # revision (024), o los vivos si salio de borrador antes de esa migracion.
+    estado = queries.estado_parametros(detalle["parametros_enfermedad"])
+    if not estado["simulable"]:
+        return None, version, [
+            f"La enfermedad de este escenario no se puede simular: "
+            f"{queries.motivo_no_simulable(len(estado['faltan']), len(estado['sin_fuente']))}."
+        ]
 
-    escenario, errores = construir_escenario(
-        population_size=version["population_size"],
-        horizon_days=version["horizon_days"],
-        initial_infected=version["initial_infected"],
-        estructura_edad=estructura,
-        default_params=enfermedad["default_params"],
-        intervenciones=intervenciones,
-    )
-    return escenario, version, errores
+    return queries.escenario_de_version(detalle), version, []
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +138,7 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
     lo lanzo -- routes.py ya respondio con el redirect antes de que esto
     termine.
 
-    `demora_seg` deja visible la transicion PENDIENTE -> EJECUTANDO en la
+    `demora_seg` deja visible la transicion encolado -> ejecutando en la
     pantalla de detalle (que hace polling cada segundo); en pruebas se pasa 0.
     """
     run = queries.get_run(run_id)
@@ -232,7 +149,7 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
         if not queries.marcar_run_ejecutando(run_id):
             # rowcount == 0: la fila ya no estaba en 'encolado' (otro hilo ya
             # la arranco, o alguien la cancelo entre que se encolo y que este
-            # hilo empezo). No hay transicion PENDIENTE -> EJECUTANDO que
+            # hilo empezo). No hay transicion encolado -> ejecutando que
             # auditar, y seguir de todos modos correria el motor sobre una
             # corrida que este hilo ya no es duenio de avanzar.
             log_audit(
