@@ -123,6 +123,30 @@
   <div id="comparacion-fallecimientos" style="height: 340px;"></div>
 </div>
 
+{% if errores_pareto %}
+<div class="alert alert-error">
+  <strong>No se pudo calcular la comparación de costo e impacto.</strong>
+  <ul>
+    {% for error in errores_pareto %}
+    <li>{{ error }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% elif comparacion_pareto %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3>Impacto sanitario vs costo de intervención</h3>
+      <p class="subtitle">
+        Cada punto representa una corrida. La línea une los escenarios de la frontera de Pareto.
+      </p>
+    </div>
+  </div>
+
+  <div id="comparacion-pareto" style="height: 420px;"></div>
+</div>
+{% endif %}
+
 <script src="https://code.highcharts.com/highcharts.js"></script>
 <script>
 (function () {
@@ -161,5 +185,82 @@
   crearGrafica('comparacion-fallecimientos', 'Fallecimientos', 'D');
 })();
 </script>
+
+{% if comparacion_pareto %}
+<script>
+(function () {
+  const pareto = {{ comparacion_pareto | tojson }};
+  const filas = pareto.filas || [];
+  const idsFrontera = new Set(
+    (pareto.frontera || []).map(function (id) { return String(id); })
+  );
+
+  const frontera = filas
+    .filter(function (fila) {
+      return idsFrontera.has(String(fila.id));
+    })
+    .sort(function (a, b) {
+      return a.costo - b.costo;
+    });
+
+  Highcharts.chart('comparacion-pareto', {
+    chart: {
+      type: 'scatter',
+      backgroundColor: 'transparent'
+    },
+    title: {
+      text: 'Costo total vs fallecimientos'
+    },
+    subtitle: {
+      text: 'Menor costo y menor impacto se ubican hacia la esquina inferior izquierda.'
+    },
+    credits: {
+      enabled: false
+    },
+    xAxis: {
+      title: {
+        text: 'Costo total de intervención'
+      }
+    },
+    yAxis: {
+      title: {
+        text: 'Fallecimientos'
+      }
+    },
+    tooltip: {
+      formatter: function () {
+        return '<b>' + this.point.name + '</b><br>' +
+          'Costo: ' + Highcharts.numberFormat(this.x, 2) + '<br>' +
+          'Fallecimientos: ' + Highcharts.numberFormat(this.y, 0);
+      }
+    },
+    series: [
+      {
+        type: 'scatter',
+        name: 'Corridas comparadas',
+        data: filas.map(function (fila) {
+          return {
+            x: fila.costo,
+            y: fila.impacto,
+            name: fila.nombre
+          };
+        })
+      },
+      {
+        type: 'line',
+        name: 'Frontera de Pareto',
+        data: frontera.map(function (fila) {
+          return {
+            x: fila.costo,
+            y: fila.impacto,
+            name: fila.nombre
+          };
+        })
+      }
+    ]
+  });
+})();
+</script>
+{% endif %}
 {% endif %}
 {% endblock %}
