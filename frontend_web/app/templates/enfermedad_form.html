@@ -54,6 +54,17 @@
     </div>
 
     <h3 class="form-seccion">Parámetros de simulación</h3>
+    {% if not puede_editar_catalogo %}
+    {# El alta esta abierta a cualquier rol, pero fijar R0 o la letalidad es de
+       EPIDEMIOLOGO y ADMINISTRADOR (routes.enfermedad_nueva los descarta si
+       llegan de otro rol). Aqui solo se explica por que no hay campos. #}
+    <div class="form-nota">
+      <p>Los parámetros de simulación los captura un <strong>epidemiólogo</strong> o un
+        <strong>administrador</strong> después del alta. Hasta entonces la enfermedad aparece
+        en el catálogo como <strong>no simulable</strong>, pero ya puede usarse en el monitoreo
+        y en la captura de casos.</p>
+    </div>
+    {% else %}
     <div class="form-nota">
       <p><strong>Cada valor se guarda con su fuente.</strong> Si no tienes una referencia,
         marca la casilla <em>Supuesto</em>: el sistema lo registra como tal y lo muestra
@@ -120,6 +131,7 @@
       </ul>
     </div>
     {% endif %}
+    {% endif %}{# puede_editar_catalogo #}
 
     {% if not edicion %}
     <div class="form-nota">

@@ -3924,16 +3924,57 @@ def marcar_run_fallido(run_id, mensaje):
     corrieran por error, o si el hilo llega tarde despues de que algo mas ya
     cerro la corrida). Devuelve True solo si de verdad hizo la transicion
     (rowcount == 1); el llamador no debe auditar 'fallido' si esto da False.
+
+    Desde 'encolado' hay que poner tambien started_at: ck_simulation_runs_inicio
+    (007) exige que solo 'encolado' lo tenga en NULL. Sin el COALESCE, cerrar
+    una corrida que nunca arranco violaba esa restriccion y la dejaba encolada
+    para siempre. Se usa la misma hora del cierre: duro cero.
     """
     rowcount = execute(
         """
         UPDATE simulation_runs
-        SET status = 'fallido', error_message = %s, finished_at = now()
+        SET status = 'fallido', error_message = %s, finished_at = now(),
+            started_at = COALESCE(started_at, now())
         WHERE id = %s AND status NOT IN ('completado', 'fallido', 'cancelado')
         """,
         (mensaje, run_id),
     )
     return rowcount == 1
+
+
+def marca_corridas_interrumpidas(mensaje, run_ids=None):
+    """encolado/ejecutando -> fallido para las corridas cuyo hilo ya no existe.
+
+    Solo tiene sentido al arrancar el servidor (backend_web.simulaciones.
+    recupera_corridas_interrumpidas): las corridas viven en hilos del proceso,
+    asi que cualquier corrida no terminada que encuentre un proceso recien
+    iniciado era de uno que ya murio. `run_ids` acota el barrido; lo usan las
+    pruebas para no tocar corridas ajenas a ellas.
+
+    Devuelve las filas cerradas (id, requested_by, seed) para auditarlas.
+    Las que seguian encoladas reciben started_at = finished_at, por la misma
+    razon que en marcar_run_fallido.
+    """
+    filtro, params = "", [mensaje]
+    if run_ids is not None:
+        filtro = "AND id = ANY(%s)"
+        params.append(list(run_ids))
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                UPDATE simulation_runs
+                SET status = 'fallido', error_message = %s, finished_at = now(),
+                    started_at = COALESCE(started_at, now())
+                WHERE status IN ('encolado', 'ejecutando') {filtro}
+                RETURNING id, requested_by, seed
+                """,
+                tuple(params),
+            )
+            filas = [{"id": i, "requested_by": u, "seed": s}
+                     for i, u, s in cur.fetchall()]
+        conn.commit()
+    return filas
 
 
 def buscar_run_equivalente(run_id, scenario_version_id, seed, checksum):

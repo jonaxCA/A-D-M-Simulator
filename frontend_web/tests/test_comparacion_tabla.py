@@ -15,6 +15,16 @@ class ComparacionTablaTests(unittest.TestCase):
         cls.app = create_app()
         cls.app.testing = True
 
+    def setUp(self):
+        # El token es de un usuario inventado (id 999) y las consultas estan
+        # simuladas, asi que la revalidacion contra `users` tambien: devuelve
+        # el usuario del token tal cual, con `sub` como entero, igual que
+        # backend_web.auth.usuario_vigente con una cuenta activa.
+        simulado = patch("frontend_web.app.permisos.usuario_vigente",
+                         side_effect=lambda u: {**u, "sub": int(u["sub"])})
+        simulado.start()
+        self.addCleanup(simulado.stop)
+
     def _token(self):
         return create_token({
             "id": 999,

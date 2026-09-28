@@ -1,6 +1,7 @@
 from flask import Flask
 
 from backend_web import simulaciones
+from backend_web.auth import secreto_jwt
 
 from ..config import Config
 
@@ -8,6 +9,9 @@ from ..config import Config
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    # Falla aqui, al arrancar, con un mensaje que dice que falta: no en la
+    # primera peticion que necesite firmar algo.
+    app.config["SECRET_KEY"] = secreto_jwt()
 
     from .routes import bp
     app.register_blueprint(bp)
