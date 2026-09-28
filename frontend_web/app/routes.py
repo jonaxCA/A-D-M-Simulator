@@ -1369,7 +1369,7 @@ def auditoria():
 
 
 @bp.route("/comparacion")
-@login_required
+@roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
 def comparacion():
     seleccionados = request.args.getlist("run_id")
     corridas = queries.get_corridas_para_comparar(seleccionados)
