@@ -28,10 +28,29 @@ def _verifica_configuracion():
             "cambia CAMBIAR_CONTRASENA por la contrasena real de epidemia_app.")
 
 
+def _conecta():
+    """psycopg2.connect, con el error de conexion legible.
+
+    PostgreSQL en Windows instalado en espanol (lc_messages =
+    'Spanish_Mexico.1252') manda sus errores de conexion en cp1252, antes de
+    que se acuerde la codificacion de la sesion. psycopg2 los lee como UTF-8 y
+    en vez del error revienta con `UnicodeDecodeError: ... byte 0xf3`, que no
+    dice nada. El mensaje real viene completo en los bytes (p. ej. "la
+    autentificacion password fallo para el usuario ..."): se recupera y se
+    lanza como el OperationalError que debio ser.
+    """
+    try:
+        return psycopg2.connect(DATABASE_URL)
+    except UnicodeDecodeError as exc:
+        crudo = exc.object if isinstance(exc.object, (bytes, bytearray)) else b""
+        mensaje = bytes(crudo).decode("cp1252", "replace").strip() or str(exc)
+        raise psycopg2.OperationalError(mensaje) from exc
+
+
 @contextmanager
 def get_conn():
     _verifica_configuracion()
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = _conecta()
     try:
         yield conn
     finally:

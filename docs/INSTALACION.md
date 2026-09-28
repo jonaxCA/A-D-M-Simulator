@@ -350,7 +350,7 @@ psql -h localhost -U postgres -d simulador_epidemico -Atc "SELECT 'casos='||coun
 | `password authentication failed for user "postgres"` | Contraseña incorrecta. En Linux puedes reasignarla: `sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'nueva';"` |
 | `Peer authentication failed` (solo Linux) | Estás conectando por socket. Usa siempre `-h localhost`, que fuerza conexión TCP con contraseña. |
 | `FATAL: database "simulador_epidemico" does not exist` | Te faltó el Paso 1, o escribiste otro nombre en el `.env`. |
-| `psycopg2.OperationalError` al arrancar la app | El `DATABASE_URL` del `.env` no coincide con tu base/usuario/contraseña reales. Revisa el Paso 4.2. |
+| `psycopg2.OperationalError` al arrancar la app (p. ej. *la autentificación password falló para el usuario «epidemia_app»*) | El `DATABASE_URL` del `.env` no coincide con tu base/usuario/contraseña reales. Revisa el Paso 4.2. Antes, con PostgreSQL de Windows en español, este error salía disfrazado de `UnicodeDecodeError: ... byte 0xf3`; si todavía lo ves, es el mismo problema. |
 | `permission denied for table ...` | Te faltó el Paso 3 (los `GRANT`), o lo corriste **antes** del Paso 2, cuando las tablas todavía no existían. Vuelve a correrlo. |
 | Todo se ve en **cero** y no puedes entrar | Falta `demo_datos_nl.sql` (Paso 2). Sin él no existe `diana.flores` ni hay casos. |
 | Las **gráficas no aparecen** (el resto sí) | Highcharts se carga desde su CDN: necesitas internet. |

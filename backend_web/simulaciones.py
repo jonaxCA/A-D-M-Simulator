@@ -252,7 +252,15 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
             raise ValueError("; ".join(errores))
 
         resultado = simular(escenario, run["seed"])
-        queries.guardar_resultado_run(run_id, resultado)
+        if not queries.guardar_resultado_run(run_id, resultado):
+            # Alguien cerro la corrida mientras el motor trabajaba (otro
+            # proceso que arranco y la dio por interrumpida). Su estado
+            # actual manda: no se guarda un resultado que lo contradiga ni se
+            # audita un 'completado' que no ocurrio.
+            logging.getLogger(__name__).warning(
+                "La corrida %s termino en el motor, pero ya no estaba en "
+                "'ejecutando'; el resultado se descarto.", run_id)
+            return
         log_audit(run["requested_by"], "RUN", "simulation_run", entity_id=str(run_id),
                   data_after={
                       "estado": "completado", "seed": run["seed"],
