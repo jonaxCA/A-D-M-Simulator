@@ -199,10 +199,10 @@ MongoDB, Redis ni CUDA todavía.
 ## G. Comparación y frontera de Pareto
 
 ### Comparación
-- [x] Reemplazar el stub de Comparación (quitar `comparacion` de `STUB_ITEMS`)
-- [x] Seleccionar varias corridas completadas con casillas
-- [x] Superponer curvas de casos, hospitalizaciones y fallecimientos
-- [x] Tabla comparativa: fallecimientos, pico, día del pico, tasa de ataque
+- [ ] Reemplazar el stub de Comparación (quitar `comparacion` de `STUB_ITEMS`)
+- [ ] Seleccionar varias corridas completadas con casillas
+- [ ] Superponer curvas de casos, hospitalizaciones y fallecimientos
+- [ ] Tabla comparativa: fallecimientos, pico, día del pico, tasa de ataque
 
 ### Trade-off
 - [x] Costo unitario por tipo de intervención, con fuente o **marcado como supuesto** (sin valores por defecto)
@@ -220,14 +220,12 @@ MongoDB, Redis ni CUDA todavía.
 - [x] Reemplazar el stub de Simulaciones (quitar `simulaciones` de `STUB_ITEMS`)
 - [x] Agregar Simulaciones y Comparación al menú lateral. **Escenarios** y **Revisiones** ya están (Revisiones solo para `EPIDEMIOLOGO` y `ADMINISTRADOR`)
 - [x] **Aviso permanente** en pantallas de simulación, resultados y comparación: *"Los resultados representan escenarios simulados basados en parámetros y supuestos. No constituyen una predicción epidemiológica ni una recomendación sanitaria."*
-- [ ] Agregar aviso a comparación
-- [ ] Agergar Permisos por rol revisados en cada ruta nueva en COMPARACIÓN
 - [x] Permisos por rol revisados en cada ruta nueva (no solo ocultar el menú)
 - [x] Prueba de humo de **todas** las rutas (`frontend_web/tests/test_rutas_humo.py`): recorre el mapa de Flask y pide cada GET, más el POST de captura de casos. Existe porque una función nueva en `queries.py` se llamó igual que otra con distinta firma, `/reportes/nuevo` empezó a responder 500 y ninguna suite lo notó — cubrían regiones, enfermedades y escenarios, pero nadie pedía esa ruta
 - [x] Prueba de integridad de módulos (`backend_web/tests/test_integridad.py`): ningún archivo puede definir dos veces el mismo nombre de nivel superior. Python se queda con el último y el archivo compila igual, así que el error solo aparece al usar la pantalla afectada
 - [x] Auditoría consultable de todo el flujo: escenario, versiones, aprobación, corridas
 - [x] Datos de demostración: `alex.cavazos` (ANALISTA) y `diana.flores` (EPIDEMIOLOGO); el escenario de la demo ya viene creado por uno y aprobado por la otra
-- [ ] Mensajes de éxito / error consistentes en todos los formularios
+- [x] Mensajes de éxito / error consistentes en todos los formularios
 
 ---
 
