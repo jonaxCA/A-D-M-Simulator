@@ -8,6 +8,12 @@ Responsables de programación de este Sprint:
 
 -- Carlos Rodrigo Gómez González 
 
+-- Mauricio Gallardo Barbosa
+
+-- Enrique Ortiz Davila
+
+-- Luz Colugna Elizondo
+
 Primera versión funcional del monolito del **Simulador de respuesta a epidemias**,
 correspondiente al Primer Avance.
 
@@ -210,8 +216,19 @@ nombre de base si usaste otros en el Paso 1):
 
 ```
 DATABASE_URL=postgresql://epidemia_app:epidemia_app_pw@localhost:5432/simulador_epidemico
-JWT_SECRET_KEY=pon-aqui-cualquier-cadena-larga-y-aleatoria
+JWT_SECRET_KEY=<la cadena que te dé el comando de abajo>
 ```
+
+Genera el secreto con:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Las dos variables son **obligatorias**. Si falta alguna, o si se quedó con el valor
+de ejemplo de `.env.example`, la app se niega a arrancar y dice cuál es. Antes
+había valores por omisión en el código: sin `.env`, la app firmaba los tokens con
+un secreto público y se conectaba como el superusuario `postgres` sin avisar.
 
 **No necesitas exportar nada a mano**: `db.py` lee el `.env` automáticamente con
 `python-dotenv` al arrancar.
@@ -231,6 +248,22 @@ Verás algo como `Running on http://127.0.0.1:5000`. Abre en tu navegador:
 **<http://localhost:5000/>**
 
 Para detenerla: `Ctrl + C`.
+
+Por omisión arranca **solo en tu máquina y sin depurador**. Para desarrollar,
+agrega al `.env` (o define en la terminal) lo que necesites:
+
+| Variable | Efecto |
+| --- | --- |
+| `FLASK_DEBUG=1` | Depurador y recarga automática al guardar un `.py` |
+| `EPIDEMIA_HOST=0.0.0.0` | Visible para tu red local (p. ej. para abrirla desde un celular) |
+| `EPIDEMIA_PORT=5001` | Otro puerto |
+
+`FLASK_DEBUG=1` y `EPIDEMIA_HOST=0.0.0.0` juntos se rechazan: el depurador de
+Werkzeug ejecuta código Python desde el navegador y no debe quedar abierto a la red.
+
+Al arrancar, la app cierra como **FALLIDO** las corridas que un reinicio anterior
+dejó en *encolado* o *ejecutando* (su hilo murió con el proceso). El mensaje de
+cada una lo explica, y se pueden re-ejecutar con la misma semilla.
 
 ### Credenciales
 
@@ -322,7 +355,9 @@ psql -h localhost -U postgres -d simulador_epidemico -Atc "SELECT 'casos='||coun
 | Todo se ve en **cero** y no puedes entrar | Falta `demo_datos_nl.sql` (Paso 2). Sin él no existe `diana.flores` ni hay casos. |
 | Las **gráficas no aparecen** (el resto sí) | Highcharts se carga desde su CDN: necesitas internet. |
 | `syntax error at or near "NULLS"` al cargar el esquema | Tu PostgreSQL es menor a 15. Actualiza. |
-| El puerto 5000 está ocupado | Cambia el puerto en la última línea de `frontend_web/run.py`, o libera el 5000. En macOS suele ocuparlo *AirPlay Receiver*. |
+| El puerto 5000 está ocupado | Pon `EPIDEMIA_PORT=5001` en el `.env`, o libera el 5000. En macOS suele ocuparlo *AirPlay Receiver*. |
+| `RuntimeError: Falta JWT_SECRET_KEY` o `Falta DATABASE_URL` | El `.env` no existe, no está en la raíz del repositorio o se quedó con los valores de ejemplo. Revisa el Paso 4.2. |
+| `Demasiados intentos fallidos` al entrar | Cinco contraseñas equivocadas seguidas bloquean la cuenta 15 minutos. Espera; no hay que tocar la base. |
 
 ### Volver a empezar de cero
 
@@ -506,10 +541,13 @@ archivo/                     solo local, ignorado por git: pipeline y fuentes ge
 
 La versión v0.1 corre en entorno local y **no está endurecida para producción**:
 
-- `JWT_SECRET_KEY` tiene un valor por defecto de desarrollo.
 - La contraseña de `epidemia_app` está en texto plano en este README.
-- El servidor corre con `app.run(debug=True)`, que es el servidor de desarrollo de
-  Flask y expone un depurador interactivo.
-- `app.run(host="0.0.0.0")` deja la app visible para toda tu red local.
+- Es el servidor de desarrollo de Flask. Ya no arranca con el depurador ni abierto
+  a la red por omisión (ver Paso 5), pero sigue sin ser un servidor de producción.
+- El JWT se firma con HS256 y un secreto compartido. Se revalida contra la base en
+  cada petición (una cuenta desactivada o un rol retirado dejan de valer al
+  instante), pero no hay renovación ni lista de revocación: eso es de
+  `auth-service` en la capa de microservicios.
+- El bloqueo por intentos es por cuenta, no por dirección IP.
 
 Nada de esto debería llegar tal cual a Google Compute Engine en el tercer parcial.
