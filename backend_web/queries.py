@@ -1827,8 +1827,8 @@ def _fuente_campo(reason, adjusted_at, adjusted_by_name, fuente_censal):
     Si hay un ajuste manual vigente, se ve distinto a la fuente censal -- nunca
     se le atribuye a INEGI un valor que un administrador corrigio.
 
-    Solo aplica a `population`: el 60 y mas se deriva de region_age_groups
-    (migracion 022) y su fuente es siempre censal."""
+    Solo aplica a `population` o a una correccion registrada de las bandas de
+    edad que producen el 60+ derivado."""
     if reason is None:
         return {"tipo": "censal", "label": fuente_censal, "detalle": None}
     detalle = f"Corregido por {adjusted_by_name or 'un administrador'} el {_fecha_corta(adjusted_at)}: {reason}"
@@ -1845,6 +1845,14 @@ def get_estado_nl():
     )
     if not row:
         return None
+    correccion_edad = _ultima_correccion_grupos_edad([row["id"]]).get(str(row["id"]))
+    fuente_60 = (
+        _fuente_campo(correccion_edad["reason"], correccion_edad["occurred_at"],
+                      correccion_edad["full_name"], "Grupos 60-79 y 80+ del Censo 2020")
+        if correccion_edad else
+        {"tipo": "derivado", "label": "Grupos 60-79 y 80+ del Censo 2020",
+         "detalle": "Se deriva de las bandas de edad del estado; no se captura aparte."}
+    )
     return {
         "id": row["id"],
         "code": row["code"],
@@ -1852,10 +1860,7 @@ def get_estado_nl():
         "poblacion": row["population"],
         "poblacion_60": row["population_60plus"],
         "fuente_poblacion": {"tipo": "agregado", "label": "Suma de los 51 municipios", "detalle": None},
-        "fuente_poblacion_60": {"tipo": "derivado",
-                                "label": "Grupos 60-79 y 80+ del Censo 2020",
-                                "detalle": "Se deriva de la poblacion por grupo de edad "
-                                           "del estado; no se captura ni se edita aparte."},
+        "fuente_poblacion_60": fuente_60,
     }
 
 
@@ -1890,10 +1895,8 @@ def get_regiones_catalogo(busqueda=None, orden="nombre", direccion="asc"):
 
     # Una base existente puede no haber recibido aun 019. La consulta publica
     # sigue disponible con fuentes censales, sin referenciar una tabla ausente.
-    # Solo `population` puede tener ajuste manual. `population_60plus` se deriva
-    # de region_age_groups (migracion 022) y por eso no se consulta aqui: si
-    # apareciera un ajuste historico de ese campo, atribuirselo al valor actual
-    # seria mentir, porque el valor actual ya no sale de ahi.
+    # `population_60plus` es derivado; una correccion de sus bandas se identifica
+    # por el snapshot persistente que deja en audit_log.
     ajustes = {}
     tabla = query(
         "SELECT to_regclass('public.region_population_adjustments') AS nombre",
@@ -1910,10 +1913,20 @@ def get_regiones_catalogo(busqueda=None, orden="nombre", direccion="asc"):
             ([r["id"] for r in rows],),
         )
         ajustes = {(a["region_id"], a["field"]): a for a in ajustes_rows}
+    correcciones_edad = _ultima_correccion_grupos_edad([r["id"] for r in rows])
 
     municipios = []
     for r in rows:
         ajuste_pob = ajustes.get((r["id"], "population"), {})
+        ajuste_edad = correcciones_edad.get(str(r["id"]))
+        fuente_60 = (
+            _fuente_campo(ajuste_edad["reason"], ajuste_edad["occurred_at"],
+                          ajuste_edad["full_name"],
+                          "Grupos 60-79 y 80+ del Censo 2020")
+            if ajuste_edad else
+            {"tipo": "derivado", "label": "Grupos 60-79 y 80+ del Censo 2020",
+             "detalle": "Se calcula a partir de las bandas de edad; no se captura aparte."}
+        )
         municipios.append({
             "id": r["id"],
             "code": r["code"],
@@ -1924,9 +1937,7 @@ def get_regiones_catalogo(busqueda=None, orden="nombre", direccion="asc"):
                 ajuste_pob.get("reason"), ajuste_pob.get("adjusted_at"),
                 ajuste_pob.get("full_name"),
                 "INEGI, Censo 2020"),
-            "fuente_poblacion_60": {"tipo": "derivado",
-                                    "label": "Grupos 60-79 y 80+ del Censo 2020",
-                                    "detalle": "Se calcula a partir de la poblacion por grupo de edad; no se captura ni se edita aparte."},
+            "fuente_poblacion_60": fuente_60,
         })
 
     return {
@@ -1954,6 +1965,259 @@ def get_region_municipio(region_id):
         (region_id, NL_ESTADO_CODE),
         one=True,
     )
+
+
+GRUPOS_EDAD_MUNICIPIO = ("0-19", "20-39", "40-59", "60-79", "80+")
+
+
+def get_grupos_edad_municipio(region_id):
+    """Bandas censales y edad no especificada de un municipio de Nuevo Leon.
+    None si el municipio todavia no tiene el desglose cargado."""
+    if not _hay_grupos_de_edad():
+        return None
+    rows = query(
+        """
+        SELECT g.age_group, g.lower_bound, g.population
+        FROM region_age_groups g
+        JOIN regions r ON r.id = g.region_id
+        WHERE r.id = %s
+          AND r.level = 'municipio'
+          AND r.parent_region_id = (SELECT id FROM regions WHERE code = %s)
+        ORDER BY g.lower_bound NULLS LAST
+        """,
+        (region_id, NL_ESTADO_CODE),
+    )
+    if not rows:
+        return None
+    return {
+        "grupos": {r["age_group"]: r["population"] for r in rows
+                   if r["lower_bound"] is not None},
+        "edad_no_especificada": next(
+            (r["population"] for r in rows if r["lower_bound"] is None), 0),
+    }
+
+
+def valida_grupos_edad_municipio(grupos_raw, actuales=None):
+    """Valida los cinco grupos que consume el motor; el conteo con edad no
+    especificada no se edita ni se imputa."""
+    errores = []
+    grupos = {}
+    for grupo in GRUPOS_EDAD_MUNICIPIO:
+        valor = grupos_raw.get(grupo)
+        try:
+            numero = int(str(valor).strip())
+        except (TypeError, ValueError):
+            errores.append(f"La banda {grupo} debe ser un número entero.")
+            continue
+        if numero < 0:
+            errores.append(f"La banda {grupo} no puede ser negativa.")
+        elif numero > 2147483647:
+            errores.append(f"La banda {grupo} supera el máximo permitido.")
+        else:
+            grupos[grupo] = numero
+    if actuales is not None and not errores:
+        if sum(grupos.values()) != sum(actuales[g] for g in GRUPOS_EDAD_MUNICIPIO):
+            errores.append(
+                "La suma de las cinco bandas debe conservar la población "
+                "con edad declarada del municipio.")
+    return grupos, errores
+
+
+def _snap_grupos_edad(grupos, edad_no_especificada):
+    return {
+        "population_by_age": {g: grupos[g] for g in GRUPOS_EDAD_MUNICIPIO},
+        "edad_no_especificada": edad_no_especificada,
+    }
+
+
+def _ultima_correccion_grupos_edad(region_ids):
+    """Obtiene el origen persistente de la ultima correccion desde audit_log."""
+    if not region_ids:
+        return {}
+    rows = query(
+        """
+        SELECT DISTINCT ON (a.entity_id)
+               a.entity_id, a.data_after ->> 'age_correction_reason' AS reason,
+               a.occurred_at, u.full_name
+        FROM audit_log a
+        LEFT JOIN users u ON u.id = a.user_id
+        WHERE a.entity_type = 'regions'
+          AND a.entity_id = ANY(%s)
+          AND a.data_after ? 'population_by_age'
+                      AND (a.data_after -> 'age_groups_modified') ?| ARRAY['60-79', '80+']
+        ORDER BY a.entity_id, a.occurred_at DESC, a.id DESC
+        """,
+        ([str(region_id) for region_id in region_ids],),
+    )
+    return {r["entity_id"]: r for r in rows}
+
+
+def actualiza_grupos_edad_municipio(region_id, grupos, esperados,
+                                    motivo, admin_user_id):
+    """Corrige las bandas de un municipio y su agregado estatal en una sola
+    transaccion. Rechaza formularios obsoletos y conserva la suma de población
+    con edad declarada: esta pantalla corrige clasificacion, no inventa ni
+    elimina personas. El trigger 022 deriva el 60+ de 60-79 y 80+."""
+    from flask import request
+
+    from .audit import _serializa
+
+    ip = request.remote_addr
+    ua = (request.headers.get("User-Agent") or "")[:255]
+    if not motivo or not motivo.strip():
+        return False, "Indica la fuente o el motivo de la corrección.", None
+    if len(motivo.strip()) > 500:
+        return False, "La fuente o motivo no puede pasar de 500 caracteres.", None
+    if set(grupos) != set(GRUPOS_EDAD_MUNICIPIO):
+        return False, "Debes enviar las cinco bandas de edad.", None
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT r.id, r.name, r.level, r.parent_region_id
+                       FROM regions r
+                       JOIN regions e ON e.id = r.parent_region_id
+                       WHERE r.id = %s AND e.code = %s
+                       FOR UPDATE OF r""",
+                    (region_id, NL_ESTADO_CODE),
+                )
+                region = cur.fetchone()
+                if not region or region[2] != "municipio":
+                    return False, "Ese municipio ya no existe en el catálogo.", None
+                municipio_id, nombre, _, estado_id = region
+
+                cur.execute(
+                    """SELECT g.age_group, g.lower_bound, g.population
+                       FROM region_age_groups g
+                       WHERE g.region_id = %s
+                       FOR UPDATE""",
+                    (region_id,),
+                )
+                rows = cur.fetchall()
+                actuales = {r[0]: r[2] for r in rows if r[1] is not None}
+                edad_no_especificada = next(
+                    (r[2] for r in rows if r[1] is None), None)
+                if (set(actuales) != set(GRUPOS_EDAD_MUNICIPIO)
+                        or edad_no_especificada is None):
+                    return False, (
+                        "Este municipio no tiene todas sus bandas de edad cargadas. "
+                        "Vuelve a ejecutar la semilla nl_municipios_completos.sql."
+                    ), None
+
+                if any(esperados.get(g) != actuales[g]
+                       for g in GRUPOS_EDAD_MUNICIPIO):
+                    return False, (
+                        "Otra persona corrigió las bandas mientras editabas. "
+                        "Recarga la página e intenta de nuevo."
+                    ), None
+                if esperados.get("edad_no_especificada") != edad_no_especificada:
+                    return False, (
+                        "Los datos del municipio cambiaron mientras editabas. "
+                        "Recarga la página e intenta de nuevo."
+                    ), None
+                if sum(grupos.values()) != sum(actuales.values()):
+                    return False, (
+                        "La suma de las cinco bandas debe conservar la población "
+                        "con edad declarada del municipio."
+                    ), None
+                if all(grupos[g] == actuales[g] for g in GRUPOS_EDAD_MUNICIPIO):
+                    return False, "No hay cambios en las bandas de edad.", None
+
+                antes = _snap_grupos_edad(actuales, edad_no_especificada)
+                grupos_modificados = [g for g in GRUPOS_EDAD_MUNICIPIO
+                                      if grupos[g] != actuales[g]]
+                for grupo in GRUPOS_EDAD_MUNICIPIO:
+                    if grupos[grupo] != actuales[grupo]:
+                        cur.execute(
+                            """UPDATE region_age_groups SET population = %s
+                               WHERE region_id = %s AND age_group = %s""",
+                            (grupos[grupo], region_id, grupo),
+                        )
+
+                cur.execute(
+                    """SELECT age_group, sum(g.population)
+                       FROM region_age_groups g
+                       JOIN regions m ON m.id = g.region_id
+                       WHERE m.parent_region_id = %s AND m.level = 'municipio'
+                       GROUP BY age_group""",
+                    (estado_id,),
+                )
+                totales_estado = dict(cur.fetchall())
+                cur.execute(
+                    """SELECT age_group, population
+                       FROM region_age_groups WHERE region_id = %s FOR UPDATE""",
+                    (estado_id,),
+                )
+                estado_antes = {r[0]: r[1] for r in cur.fetchall()}
+                for grupo, total in totales_estado.items():
+                    if estado_antes.get(grupo) != total:
+                        cur.execute(
+                            """UPDATE region_age_groups SET population = %s
+                               WHERE region_id = %s AND age_group = %s""",
+                            (total, estado_id, grupo),
+                        )
+
+                cur.execute(
+                    """SELECT age_group, population
+                       FROM region_age_groups WHERE region_id = %s""",
+                    (region_id,),
+                )
+                despues = {r[0]: r[1] for r in cur.fetchall()}
+                cur.execute(
+                    "SELECT population_60plus FROM regions WHERE id = %s",
+                    (region_id,),
+                )
+                p60_despues = cur.fetchone()[0]
+                cur.execute(
+                    """INSERT INTO audit_log
+                           (user_id, action, entity_type, entity_id, ip_address,
+                            user_agent, data_before, data_after)
+                       VALUES (%s, 'UPDATE', 'regions', %s, %s::inet, %s,
+                               %s::jsonb, %s::jsonb)""",
+                    (
+                        admin_user_id, str(municipio_id), ip, ua,
+                        _serializa(antes),
+                        _serializa({
+                            **_snap_grupos_edad(despues, edad_no_especificada),
+                            "population_60plus": p60_despues,
+                            "age_groups_modified": grupos_modificados,
+                            "age_correction_reason": motivo.strip(),
+                        }),
+                    ),
+                )
+
+                estado_cambio = any(estado_antes.get(g) != totales_estado.get(g)
+                                    for g in totales_estado)
+                if estado_cambio:
+                    cur.execute(
+                        """INSERT INTO audit_log
+                               (user_id, action, entity_type, entity_id, ip_address,
+                                user_agent, data_before, data_after)
+                           VALUES (%s, 'UPDATE', 'regions', %s, %s::inet, %s,
+                                   %s::jsonb, %s::jsonb)""",
+                        (
+                            admin_user_id, str(estado_id), ip, ua,
+                            _serializa({"population_by_age": estado_antes}),
+                            _serializa({
+                                "population_by_age": totales_estado,
+                                "age_groups_modified": [
+                                    g for g in totales_estado
+                                    if estado_antes.get(g) != totales_estado[g]],
+                                "age_correction_reason": (
+                                    f"Agregado estatal tras corregir {nombre}: "
+                                    f"{motivo.strip()}"),
+                            }),
+                        ),
+                    )
+            conn.commit()
+        return True, None, {
+            "municipio": nombre,
+            "population_60plus": p60_despues,
+            "estado_actualizado": estado_cambio,
+        }
+    except psycopg2.errors.CheckViolation:
+        return False, "Las bandas no cumplen las restricciones de la base.", None
 
 
 def valida_poblacion_municipio(population_raw, motivo, poblacion_60_actual=None):

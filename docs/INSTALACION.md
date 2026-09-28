@@ -102,15 +102,24 @@ está en el `PATH`.
 | Archivo | Qué carga |
 |---|---|
 | `datos/postgres/dump_completo.sql` | El esquema completo: las migraciones numeradas concatenadas |
-| `datos/postgres/semillas/nl_municipios_completos.sql` | Completa los 51 municipios de Nuevo León, con su población y su población de 60 años o más del Censo 2020 |
+| `datos/postgres/semillas/nl_municipios_completos.sql` | Completa los 51 municipios y sus bandas censales de edad (0–19, 20–39, 40–59, 60–79, 80+ y edad no especificada) |
 | `datos/postgres/semillas/demo_datos_nl.sql` | Datos de demostración (sintéticos): 3,824 casos, escenario, simulaciones y la usuaria de login |
 
 **El orden importa.** Los dos últimos archivos dependen del esquema y del catálogo
 de regiones que carga `dump_completo.sql`.
 
 > **¿Ya tenías la base de una versión anterior?** Vuelve a correr
-> `datos/postgres/dump_completo.sql`. Es idempotente: lo que ya existe no se duplica
-> y se aplican las migraciones que falten.
+> `datos/postgres/dump_completo.sql` y
+> `datos/postgres/semillas/nl_municipios_completos.sql`. Ambos son idempotentes:
+> la semilla completa las bandas censales que falten en los 41 municipios
+> agregados después de la migración 021, y no pisa bandas que ya existan o hayan
+> sido corregidas manualmente.
+
+> **Corrección de bandas por municipio.** En Regiones, `ADMINISTRADOR` puede
+> abrir **Corregir bandas de edad**. La suma de las cinco bandas debe conservar
+> la población con edad declarada; “edad no especificada” permanece separada y
+> no se imputa. La población de 60 años o más se recalcula desde 60–79 + 80+ y
+> queda auditada con motivo, usuario, fecha e IP.
 
 > **Migraciones que van fuera del dump.** Una migración que depende de una semilla
 > no puede vivir dentro de `dump_completo.sql`, porque el dump corre antes que las

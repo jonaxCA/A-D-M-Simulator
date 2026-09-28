@@ -572,6 +572,91 @@ def region_editar(region_id):
     return redirect(url_for("main.regiones"))
 
 
+@bp.route("/regiones/<int:region_id>/edades", methods=["GET", "POST"])
+@admin_required(entity_type="regions")
+def region_edades_editar(region_id):
+    """Corrige bandas de edad en un municipio; el 60+ se deriva de 60-79 y 80+."""
+    municipio = queries.get_region_municipio(region_id)
+    if not municipio:
+        flash("Ese municipio ya no existe en el catálogo.", "error")
+        return redirect(url_for("main.regiones"))
+
+    desglose = queries.get_grupos_edad_municipio(region_id)
+    campos = [
+        {"grupo": grupo, "campo": campo, "esperado": esperado}
+        for grupo, campo, esperado in (
+            ("0-19", "grupo_0_19", "esperado_0_19"),
+            ("20-39", "grupo_20_39", "esperado_20_39"),
+            ("40-59", "grupo_40_59", "esperado_40_59"),
+            ("60-79", "grupo_60_79", "esperado_60_79"),
+            ("80+", "grupo_80_mas", "esperado_80_mas"),
+        )
+    ]
+    for campo in campos:
+        campo["etiqueta"] = (
+            "80 años o más" if campo["grupo"] == "80+"
+            else f"{campo['grupo']} años")
+    if not desglose or any(c["grupo"] not in desglose["grupos"] for c in campos):
+        flash(
+            "Este municipio no tiene todas sus bandas de edad cargadas. "
+            "Vuelve a ejecutar datos/postgres/semillas/nl_municipios_completos.sql.",
+            "error",
+        )
+        return redirect(url_for("main.regiones"))
+
+    if request.method == "GET":
+        valores = {c["campo"]: desglose["grupos"][c["grupo"]] for c in campos}
+        valores["motivo"] = ""
+        return render_template(
+            "region_edades_form.html", municipio=municipio, campos=campos,
+            desglose=desglose, valores=valores, errores=[], active_nav="regiones",
+        )
+
+    valores = {c["campo"]: request.form.get(c["campo"]) for c in campos}
+    valores["motivo"] = request.form.get("motivo") or ""
+    grupos_raw = {c["grupo"]: valores[c["campo"]] for c in campos}
+    grupos, errores = queries.valida_grupos_edad_municipio(
+        grupos_raw, desglose["grupos"])
+    motivo = valores["motivo"].strip()
+    if not motivo:
+        errores.append("Indica la fuente o el motivo de la corrección.")
+    elif len(motivo) > 500:
+        errores.append("La fuente o motivo no puede pasar de 500 caracteres.")
+
+    esperados = {}
+    for c in campos:
+        esperados[c["grupo"]], valido = _esperado(c["esperado"])
+        if not valido:
+            errores.append("No se pudo verificar el estado del formulario. Recarga la página.")
+    esperados["edad_no_especificada"], valido_sin_edad = _esperado(
+        "esperado_edad_no_especificada")
+    if not valido_sin_edad:
+        errores.append("No se pudo verificar la edad no especificada. Recarga la página.")
+
+    if errores:
+        return render_template(
+            "region_edades_form.html", municipio=municipio, campos=campos,
+            desglose=desglose, valores=valores, errores=errores,
+            active_nav="regiones",
+        ), 400
+
+    ok, error, resultado = queries.actualiza_grupos_edad_municipio(
+        region_id, grupos, esperados, motivo, g.user["sub"])
+    if not ok:
+        return render_template(
+            "region_edades_form.html", municipio=municipio, campos=campos,
+            desglose=desglose, valores=valores, errores=[error],
+            active_nav="regiones",
+        ), 400
+
+    mensaje = f"Bandas de edad de «{resultado['municipio']}» actualizadas. "
+    mensaje += f"El 60+ derivado ahora es {resultado['population_60plus']:,}."
+    if resultado["estado_actualizado"]:
+        mensaje += " También se recalcularon las bandas agregadas de Nuevo León."
+    flash(mensaje, "ok")
+    return redirect(url_for("main.regiones"))
+
+
 # ---------------------------------------------------------------------------
 # Escenarios (Bloque D) -- alta y consulta
 # ---------------------------------------------------------------------------

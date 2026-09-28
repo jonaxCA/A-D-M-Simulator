@@ -1,0 +1,67 @@
+{% extends "base_app.html" %}
+{% block title %}Corregir bandas de edad · {{ municipio.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Corregir bandas de edad</h1>
+    <p class="subtitle">
+      <strong>{{ municipio.name }}</strong> · clave INEGI
+      <code class="codigo-chip">{{ municipio.code }}</code>.
+      Ajusta la clasificación municipal, no el total de habitantes.
+    </p>
+  </div>
+</div>
+
+{% if errores %}
+<div class="alert alert-error">
+  <ul>{% for e in errores %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="card form-card">
+  <form method="post">
+    {% for campo in campos %}
+    <input type="hidden" name="{{ campo.esperado }}"
+           value="{{ desglose.grupos[campo.grupo] }}">
+    {% endfor %}
+    <input type="hidden" name="esperado_edad_no_especificada"
+           value="{{ desglose.edad_no_especificada }}">
+
+    <p class="field-hint">
+      Las cinco bandas deben conservar la suma de personas con edad declarada.
+      El total 60+ se recalcula automáticamente como 60–79 + 80+.
+    </p>
+
+    {% for campo in campos %}
+    <div class="field">
+      <label for="{{ campo.campo }}">
+        {{ campo.etiqueta }}
+        <span class="req">*</span>
+      </label>
+      <input type="number" id="{{ campo.campo }}" name="{{ campo.campo }}"
+             min="0" max="2147483647" step="1" required
+             value="{{ valores[campo.campo] if valores[campo.campo] is not none else '' }}">
+      <p class="field-hint">Valor actual: {{ "{:,}".format(desglose.grupos[campo.grupo]) }} personas.</p>
+    </div>
+    {% endfor %}
+
+    <div class="field">
+      <label>Edad no especificada</label>
+      <p class="valor-derivado">{{ "{:,}".format(desglose.edad_no_especificada) }}</p>
+      <p class="field-hint">Se conserva aparte; el censo no permite asignarla a una banda de edad.</p>
+    </div>
+
+    <div class="field">
+      <label for="motivo">Fuente o motivo de la corrección <span class="req">*</span></label>
+      <textarea id="motivo" name="motivo" required maxlength="500"
+                placeholder="Indica la fuente corregida o el motivo del cambio">{{ valores.motivo }}</textarea>
+      <p class="field-hint">Queda guardado con los valores anteriores y nuevos, tu usuario, fecha e IP en Auditoría.</p>
+    </div>
+
+    <div class="page-actions">
+      <a class="btn" href="{{ url_for('main.regiones') }}">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Guardar bandas</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

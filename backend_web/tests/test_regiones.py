@@ -157,6 +157,31 @@ class ValidacionPoblacionTests(unittest.TestCase):
         self.assertTrue(any("fuente o el motivo" in e for e in errores))
 
 
+class ValidacionGruposEdadTests(unittest.TestCase):
+    actuales = {"0-19": 50, "20-39": 20, "40-59": 15, "60-79": 10, "80+": 5}
+
+    def test_acepta_reclasificacion_que_conserva_total(self):
+        nuevos = {"0-19": "49", "20-39": "21", "40-59": "15",
+                  "60-79": "10", "80+": "5"}
+        grupos, errores = queries.valida_grupos_edad_municipio(nuevos, self.actuales)
+        self.assertEqual(errores, [])
+        self.assertEqual(sum(grupos.values()), sum(self.actuales.values()))
+
+    def test_rechaza_negativos_y_no_enteros(self):
+        negativos = {**self.actuales, "60-79": -1}
+        _, errores_negativo = queries.valida_grupos_edad_municipio(negativos)
+        self.assertTrue(any("no puede ser negativa" in e for e in errores_negativo))
+
+        decimales = {**self.actuales, "80+": "5.5"}
+        _, errores_decimal = queries.valida_grupos_edad_municipio(decimales)
+        self.assertTrue(any("número entero" in e for e in errores_decimal))
+
+    def test_rechaza_cambio_del_total_declarado(self):
+        nuevos = {**self.actuales, "80+": 6}
+        _, errores = queries.valida_grupos_edad_municipio(nuevos, self.actuales)
+        self.assertTrue(any("conservar la población" in e for e in errores))
+
+
 class ActualizaPoblacionMunicipioTests(unittest.TestCase):
     def setUp(self):
         import backend_web.queries as q
