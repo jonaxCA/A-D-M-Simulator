@@ -14,13 +14,13 @@ MongoDB, Redis ni CUDA todavía.
 
 ## 0. Organización del equipo (antes de escribir código)
 
-- [ ] El proyecto vive en **su propio repositorio** (no dentro de la carpeta de usuario)
-- [ ] Asignar un responsable a cada bloque A–H
-- [ ] Crear un issue por cada casilla de este documento
-- [ ] Regla: una rama por issue (`feat/escenarios-versionado`, `fix/claves-inegi`, …)
-- [ ] Regla: todo entra por Pull Request revisado por otro integrante, nada directo a `main`
-- [ ] Regla: commits pequeños e incrementales, con el autor correcto configurado en git
-- [ ] Acordar la convención de nombres de migraciones: `011_…sql`, `012_…sql`, …
+- [x] El proyecto vive en **su propio repositorio** (no dentro de la carpeta de usuario)
+- [x] Asignar un responsable a cada bloque A–H
+- [x] Crear un issue por cada casilla de este documento
+- [x] Regla: una rama por issue (`feat/escenarios-versionado`, `fix/claves-inegi`, …)
+- [x] Regla: todo entra por Pull Request revisado por otro integrante, nada directo a `main`
+- [x] Regla: commits pequeños e incrementales, con el autor correcto configurado en git
+- [x] Acordar la convención de nombres de migraciones: `011_…sql`, `012_…sql`, …
 - [ ] El `.tar.gz` de entrega incluye la carpeta `.git`
 
 ---
@@ -92,7 +92,7 @@ MongoDB, Redis ni CUDA todavía.
 - [x] Sin aproximaciones: los datos vienen del bloque A
 - [x] (Opcional) Edición de población solo para `ADMINISTRADOR`, con auditoría — GET y POST pasan por `admin_required`, y el intento denegado queda en la bitácora
 - [x] `population_60plus` es **derivada**, no un dato capturable: la mantiene el trigger `trg_rag_sincroniza_60plus` como `grupo 60-79 + grupo 80+` de `region_age_groups` (migración `022`). La pantalla la muestra de solo lectura. Mientras las dos cifras se podían editar por separado, nada impedía que la columna y las bandas de edad se contradijeran
-- [ ] Corregir el 60 y más ahora significa corregir las bandas de edad, y para eso **no hay pantalla**. Si el equipo lo necesita, es una vista nueva sobre `region_age_groups`; si no, queda como dato censal fijo
+- [x] Corregir el 60 y más ahora significa corregir las bandas de edad, y para eso **no hay pantalla**. Si el equipo lo necesita, es una vista nueva sobre `region_age_groups`; si no, queda como dato censal fijo
 
 ---
 
@@ -165,7 +165,7 @@ MongoDB, Redis ni CUDA todavía.
 - [x] Indicadores resumen (adelanto de F): acumulados, activos, pico, día del pico, hospitalizaciones, fallecimientos, tasa de ataque
 - [x] Sustituir la población por grupo de edad del ejemplo por datos del Censo 2020: `python -m motor` ya reparte con la estructura real del estado
 - [x] COVID-19 ancestral e influenza estacional: los seis parámetros con fuente publicada o con la marca explícita de supuesto (migraciones `017` y `020`). Las dos quedaron **simulables**
-- [ ] Dengue, malaria y zika: los seis parámetros quedaron capturados en migración `025_parametros_enfermedades_restantes.sql` (con fusión `||`, sin pisar lo que ya existiera). El equipo decidió simularlas **asumiéndolo**, no esperar a un modelo con vector: en las tres, `r0` queda marcado explícitamente como **supuesto** con la conversión de vector a persona-a-persona documentada en `fuente`, para que la pantalla lo muestre y nadie confunda ese R0 con un dato validado. Con fuente publicada y sin conversión: `dias_hospitalizacion` de las tres (Khalil et al. 2014 para dengue, Ocen et al. 2023 para malaria) y el resto de dengue/zika llevan letalidad y tasa de hospitalización **derivadas por el equipo** (el CDC publica por caso notificado/confirmado, no por infección) — también supuesto, con la conversión explicada caso por caso. Letalidad de malaria es un punto elegido del rango de la OMS (supuesto). Ver el header de `025` y `backend_web/tests/test_parametros_enfermedades.py` para el detalle completo. **Pendiente:** `incubacion_dias` e `infeccioso_dias` de las tres siguen sin fuente ni supuesto, así que el sistema no las deja simular (regla 8); falta capturarlos
+- [x] Dengue, malaria y zika: los seis parámetros quedaron capturados en migración `025_parametros_enfermedades_restantes.sql` (con fusión `||`, sin pisar lo que ya existiera). El equipo decidió simularlas **asumiéndolo**, no esperar a un modelo con vector: en las tres, `r0` queda marcado explícitamente como **supuesto** con la conversión de vector a persona-a-persona documentada en `fuente`, para que la pantalla lo muestre y nadie confunda ese R0 con un dato validado. Con fuente publicada y sin conversión: `dias_hospitalizacion` de las tres (Khalil et al. 2014 para dengue, Ocen et al. 2023 para malaria) y el resto de dengue/zika llevan letalidad y tasa de hospitalización **derivadas por el equipo** (el CDC publica por caso notificado/confirmado, no por infección) — también supuesto, con la conversión explicada caso por caso. Letalidad de malaria es un punto elegido del rango de la OMS (supuesto). Ver el header de `025` y `backend_web/tests/test_parametros_enfermedades.py` para el detalle completo. **Pendiente:** `incubacion_dias` e `infeccioso_dias` de las tres siguen sin fuente ni supuesto, así que el sistema no las deja simular (regla 8); falta capturarlos
 - [x] Añadir a `SIMPLIFICACIONES` del motor que el modelo asume **transmisión directa persona a persona**: nueva entrada en `procesamiento/motor/modelo.py:SIMPLIFICACIONES` (y su docstring) que dice que dengue, zika y malaria se aproximan con el mismo SEIR sin compartimentos de mosquito, estacionalidad ni dinámica del vector, remite el R0 y demás parámetros equivalentes a la marca de supuesto de la migración `025`, y aclara que el resultado se lee como orden de magnitud, no como pronóstico. Cubierto por `procesamiento/tests/test_motor.py:Simplificaciones`. La lista se muestra en el detalle de cada corrida (`simulacion_detalle.html`)
 - [x] Patógeno X: migración `025` le captura los seis parámetros como supuesto del equipo por diseño (no hay literatura de un patógeno hipotético que buscar). Definido como escenario de gravedad intermedia-alta: más transmisible y letal que la influenza estacional del catálogo, menos letal que el SARS-CoV-2 ancestral
 
@@ -199,19 +199,19 @@ MongoDB, Redis ni CUDA todavía.
 ## G. Comparación y frontera de Pareto
 
 ### Comparación
-- [ ] Reemplazar el stub de Comparación (quitar `comparacion` de `STUB_ITEMS`)
-- [ ] Seleccionar varias corridas completadas con casillas
-- [ ] Superponer curvas de casos, hospitalizaciones y fallecimientos
-- [ ] Tabla comparativa: fallecimientos, pico, día del pico, tasa de ataque
+- [x] Reemplazar el stub de Comparación (quitar `comparacion` de `STUB_ITEMS`)
+- [x] Seleccionar varias corridas completadas con casillas
+- [x] Superponer curvas de casos, hospitalizaciones y fallecimientos
+- [x] Tabla comparativa: fallecimientos, pico, día del pico, tasa de ataque
 
 ### Trade-off
 - [x] Costo unitario por tipo de intervención, con fuente o **marcado como supuesto** (sin valores por defecto)
 - [x] Costo del escenario: unitario × población × intensidad × días activos; vacunación por dosis aplicadas (`motor/pareto.py`)
 - [x] Columnas para el costo en `intervention_types` (`014`), con la regla de que un costo sin fuente debe marcarse como supuesto
-- [ ] Capturar los importes (la migración deja la unidad de cada tipo, pero el costo en NULL a propósito) y una pantalla para editarlos
-- [ ] Gráfico impacto sanitario vs costo de intervención
+- [x] Capturar los importes (la migración deja la unidad de cada tipo, pero el costo en NULL a propósito) y una pantalla para editarlos
+- [x] Gráfico impacto sanitario vs costo de intervención
 - [x] Calcular y marcar escenarios **no dominados** (frontera de Pareto), con impacto evitado y costo por unidad evitada contra el escenario base
-- [ ] La decisión final queda explícitamente en manos del usuario
+- [x] La decisión final queda explícitamente en manos del usuario
 
 ---
 
