@@ -3,8 +3,12 @@
 Responsables de programación de este Sprint:
 
 -- Rolando Rivas Dávalos
-
+-- Carlos Rodrigo Gómez González
 -- Jonathan Correa Ascencio
+-- Mauricio Gallardo Barbosa
+-- Luz Colunga
+-- Victor Hugo Gutierrez Cavazos
+-- Enrique Ortiz Davila
 
 Primera versión funcional del **Simulador de respuesta a epidemias** (Primer Avance):
 dashboard público, login con JWT, mapa por municipio de Nuevo León, monitoreo,
