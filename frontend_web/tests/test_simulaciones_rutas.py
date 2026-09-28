@@ -93,13 +93,17 @@ class SimulacionesRutasTests(unittest.TestCase):
         self.fail(f"La corrida {run_id} no termino a tiempo para la prueba.")
 
     def _capturista(self):
-        """Id del usuario CAPTURISTA de prueba; lo crea si no existe."""
+        """Id del usuario CAPTURISTA de prueba; lo crea si no existe.
+
+        Activo y con una contrasena al azar que no se guarda: la revalidacion
+        de permisos.get_current_user rechaza cuentas inactivas aunque el token
+        sea valido."""
         with get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """INSERT INTO users (username, email, password_hash, full_name, is_active)
-                       VALUES (%s, %s, %s, 'Capturista de prueba', FALSE)
-                       ON CONFLICT (username) DO NOTHING""",
+                       VALUES (%s, %s, %s, 'Capturista de prueba', TRUE)
+                       ON CONFLICT (username) DO UPDATE SET is_active = TRUE""",
                     (CAPTURISTA_PRUEBA, f"{CAPTURISTA_PRUEBA}@example.com",
                      hash_password(secrets.token_urlsafe(24))))
                 cur.execute(
