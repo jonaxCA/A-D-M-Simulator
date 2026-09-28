@@ -108,6 +108,31 @@ class RegionesRutasTests(unittest.TestCase):
             self.assertEqual(resp.status_code, 302)
             self.assertIn("/login", resp.headers["Location"])
 
+    def test_usuario_sin_admin_no_puede_abrir_editor_de_bandas(self):
+        with self.app.test_client() as client:
+            self._login(client, "diana.flores", "Epidemia2026!")
+            resp = client.get(
+                f"/regiones/{self.region_id}/edades", follow_redirects=False)
+            self.assertEqual(resp.status_code, 302)
+            self.assertIn("/dashboard", resp.headers["Location"])
+
+            evento = query(
+                """SELECT action FROM audit_log
+                   WHERE entity_type = 'regions' AND action = 'PERMISSION_DENIED'
+                   ORDER BY occurred_at DESC LIMIT 1""",
+                one=True,
+            )
+            self.assertIsNotNone(evento)
+
+    def test_admin_ve_formulario_de_bandas_y_edad_no_especificada(self):
+        with self.app.test_client() as client:
+            self._login(client, "admin", "Admin2026!")
+            resp = client.get(f"/regiones/{self.region_id}/edades")
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(b'name="grupo_60_79"', resp.data)
+            self.assertIn(b'name="grupo_80_mas"', resp.data)
+            self.assertIn("Edad no especificada".encode(), resp.data)
+
     def test_admin_puede_editar_y_ver_fuente_actualizada(self):
         with self.app.test_client() as client:
             self._login(client, "admin", "Admin2026!")

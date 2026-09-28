@@ -94,7 +94,8 @@
           </td>
           {% if es_admin %}
           <td class="col-acciones">
-            <a class="btn-detalle" href="{{ url_for('main.region_editar', region_id=m.id) }}" title="Corregir población">✎</a>
+            <a class="btn-detalle" href="{{ url_for('main.region_editar', region_id=m.id) }}" title="Corregir población total" aria-label="Corregir población total">✎</a>
+            <a class="btn-detalle" href="{{ url_for('main.region_edades_editar', region_id=m.id) }}" title="Corregir bandas de edad" aria-label="Corregir bandas de edad">▥</a>
           </td>
           {% endif %}
         </tr>

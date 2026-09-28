@@ -7,6 +7,8 @@ Entradas:
     censos 1990-2020). Ver el encabezado del archivo para la fuente exacta.
   - datos/censo/nl_poblacion_60mas_2020.tsv  personas de 60 anios y mas por
     municipio (INEGI, ITER 2020).
+    - datos/censo/nl_estructura_edad_municipios_2020.tsv las cinco bandas
+        del motor y la edad no especificada, validadas contra los dos archivos.
   - datos/censo/nl_estructura_edad_2020.tsv  estructura por edad del estado;
     solo se usa para validar la suma de 60 y mas.
   - datos/geo/nl_centroides.json       centroides calculados sobre la geometria
@@ -25,6 +27,13 @@ semilla. Los 41 municipios que agrega este archivo nacen despues, asi que esas
 migraciones nunca los alcanzan: si la cifra no viene aqui, quedan con poblacion
 aproximada y sin ningun dato de 60 y mas (issue #49). Traerla desde el INSERT
 cierra el hueco sin agregar un paso mas a la instalacion.
+
+POR QUE LA SEMILLA TRAE TAMBIEN LAS BANDAS DE EDAD
+La migracion 021 corre dentro del dump, antes de que esta semilla inserte los
+41 municipios. Por eso las bandas censales de esas filas no se insertan en
+021. La semilla las carga desde el TSV verificado con ON CONFLICT DO NOTHING:
+instalaciones nuevas reciben los datos y las existentes pueden volver a correr
+la semilla sin pisar una clasificacion ya corregida a mano.
 
 Cada corrida valida, y falla en vez de generar un SQL con cifras mal:
   - la suma de los 51 municipios cuadra con el total estatal en TODOS los anios
@@ -51,6 +60,7 @@ GEO_DIR = os.path.join(DATOS_DIR, "geo")
 CENSO = os.path.join(DATOS_DIR, "censo", "nl_poblacion_municipios_1990_2020.tsv")
 CENSO_60 = os.path.join(DATOS_DIR, "censo", "nl_poblacion_60mas_2020.tsv")
 ESTRUCTURA_EDAD = os.path.join(DATOS_DIR, "censo", "nl_estructura_edad_2020.tsv")
+GRUPOS_EDAD = os.path.join(DATOS_DIR, "censo", "nl_estructura_edad_municipios_2020.tsv")
 
 # Edad, en anios cumplidos, a partir de la cual cuenta como poblacion mayor.
 EDAD_MAYOR = 60
@@ -181,12 +191,49 @@ def lee_60mas(poblacion):
     return p60
 
 
+def lee_grupos_edad(poblacion, poblacion_60):
+    """Carga las bandas municipales del ITER y valida que correspondan a los
+    totales y al grupo 60+ que ya verificaron los otros extractos censales."""
+    filas = _filas_tsv(GRUPOS_EDAD)
+    encabezado = filas[0]
+    grupos = {}
+    for fila in filas[1:]:
+        clave = fila[0].strip().zfill(3)
+        valores = dict(zip(encabezado, fila))
+        bandas = {
+            "0-19": int(valores["0_19"]),
+            "20-39": int(valores["20_39"]),
+            "40-59": int(valores["40_59"]),
+            "60-79": int(valores["60_79"]),
+            "80+": int(valores["80ymas"]),
+            "edad_no_especificada": int(valores["edad_no_especificada"]),
+        }
+        total = int(valores["poblacion_total"])
+        if total != poblacion.get(clave):
+            raise SystemExit(f"{clave}: el ITER por edades da {total:,} y el tabulado "
+                             f"municipal da {poblacion.get(clave):,}")
+        if sum(bandas.values()) != total:
+            raise SystemExit(f"{clave}: las bandas y la edad no especificada no suman "
+                             f"la poblacion total")
+        if bandas["60-79"] + bandas["80+"] != poblacion_60.get(clave):
+            raise SystemExit(f"{clave}: 60-79 + 80+ no coincide con el total 60+ del ITER")
+        grupos[clave] = bandas
+
+    if set(grupos) != set(poblacion):
+        raise SystemExit("el extracto por grupos de edad no contiene exactamente los "
+                         "51 municipios del tabulado de poblacion")
+    if sum(g["60-79"] + g["80+"] for g in grupos.values()) != total_60mas_estatal():
+        raise SystemExit("las bandas municipales no suman el total estatal censal de 60+")
+    return grupos
+
+
 def main():
     sys.stdout.reconfigure(newline="\n")   # LF tambien en Windows
     centroides = json.load(open(os.path.join(GEO_DIR, "nl_centroides.json"), encoding="utf-8"))
     catalogo = json.load(open(os.path.join(GEO_DIR, "nl_catalogo_oficial.json"), encoding="utf-8"))
     poblacion = lee_censo(catalogo)
     poblacion_60 = lee_60mas(poblacion)
+    grupos_edad = lee_grupos_edad(poblacion, poblacion_60)
 
     lines = []
     lines.append("-- =============================================================================")
@@ -196,12 +243,14 @@ def main():
     lines.append("-- Generado por datos/scripts/build_regiones_sql.py: no editar a mano.")
     lines.append(f"-- Poblacion: Censo de Poblacion y Vivienda {ANIO}, INEGI.")
     lines.append(f"-- Poblacion de {EDAD_MAYOR} y mas: ITER {ANIO}, INEGI.")
+    lines.append("-- Bandas de edad y edad no especificada: ITER 2020, INEGI.")
     lines.append("-- Fuentes: datos/censo/nl_poblacion_municipios_1990_2020.tsv y")
     lines.append("--          datos/censo/nl_poblacion_60mas_2020.tsv")
     lines.append("--")
     lines.append("-- Las cifras van en el INSERT y no en una migracion posterior porque")
     lines.append("-- dump_completo.sql (donde viven 015 y 016) se carga ANTES que este")
     lines.append("-- archivo, y esas migraciones solo alcanzan filas que ya existen.")
+    lines.append("-- Las bandas se incluyen por el mismo motivo: 021 corre antes que esta semilla.")
     lines.append("-- =============================================================================")
     lines.append("")
     lines.append("BEGIN;")
@@ -228,6 +277,23 @@ def main():
     lines.append(") AS v(code, name, pob, pob60, lat, lon)")
     lines.append("CROSS JOIN (SELECT id FROM regions WHERE code = '19') e")
     lines.append("ON CONFLICT (code) DO NOTHING;")
+    lines.append("")
+    lines.append("INSERT INTO region_age_groups (region_id, age_group, lower_bound, population)")
+    lines.append("SELECT r.id, v.age_group, v.lower_bound, v.population")
+    lines.append("FROM (VALUES")
+    age_rows = []
+    for cod, bandas in sorted(grupos_edad.items()):
+        code = f"19{cod}"
+        for age_group, lower_bound in (("0-19", 0), ("20-39", 20), ("40-59", 40),
+                                       ("60-79", 60), ("80+", 80),
+                                       ("edad_no_especificada", None)):
+            bound_sql = "NULL" if lower_bound is None else str(lower_bound)
+            age_rows.append(
+                f"    ('{code}', '{age_group}', {bound_sql}, {bandas[age_group]})")
+    lines.append(",\n".join(age_rows))
+    lines.append(") AS v(code, age_group, lower_bound, population)")
+    lines.append("JOIN regions r ON r.code = v.code")
+    lines.append("ON CONFLICT (region_id, age_group) DO NOTHING;")
     lines.append("")
     lines.append("COMMIT;")
 
