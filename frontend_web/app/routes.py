@@ -24,6 +24,7 @@ import io
 import random
 import threading
 from datetime import date, datetime, timezone
+from urllib.parse import urlsplit
 
 from flask import (Blueprint, jsonify, render_template, request, redirect,
                    url_for, make_response, g, flash)
@@ -56,6 +57,11 @@ ROLES_EJECUTAN_SIMULACION = ("ANALISTA", "ADMINISTRADOR")
 ROLES_LEEN_SIMULACION = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 ROLES_LEEN_ESCENARIO = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 
+# Quien fija los parametros epidemiologicos del catalogo (R0, letalidad...),
+# tanto al editar una enfermedad como al darla de alta. Una sola tupla para el
+# candado de las rutas y para lo que pinta la plantilla.
+ROLES_FIJAN_PARAMETROS = ("EPIDEMIOLOGO", "ADMINISTRADOR")
+
 # El catalogo es chico por naturaleza; el export no pagina, baja todo lo que
 # pase el filtro de la pantalla.
 EXPORT_MAX_FILAS = 1000
@@ -71,7 +77,7 @@ def inject_globals():
         # Quien puede fijar los parametros epidemiologicos del catalogo. Es
         # solo para mostrar u ocultar botones: el control real esta en
         # roles_required, en cada ruta.
-        "puede_editar_catalogo": tiene_rol(user, "EPIDEMIOLOGO", "ADMINISTRADOR"),
+        "puede_editar_catalogo": tiene_rol(user, *ROLES_FIJAN_PARAMETROS),
         # Quien puede dar de alta escenarios. Mismo criterio: esto solo pinta o
         # esconde el boton, el candado real esta en roles_required.
         "puede_crear_escenarios": tiene_rol(user, "ANALISTA", "EPIDEMIOLOGO",
@@ -113,6 +119,27 @@ def dashboard_publico():
 # ---------------------------------------------------------------------------
 # 2. Login
 # ---------------------------------------------------------------------------
+def destino_seguro(destino):
+    """`destino` si es una ruta de ESTE sitio; None si no.
+
+    `?next=` llega en la URL, asi que cualquiera puede armar un enlace
+    `/login?next=https://sitio-falso` y usar nuestro login para mandar a la
+    gente, ya autenticada, a otro dominio. Solo se acepta una ruta absoluta
+    local. `//host` y `/\\host` se rechazan aparte: los navegadores los leen
+    como "mismo esquema, otro dominio".
+    """
+    if not destino or not destino.startswith("/"):
+        return None
+    if destino.startswith(("//", "/\\")) or "\\" in destino:
+        return None
+    if any(ord(c) < 32 or ord(c) == 127 for c in destino):
+        return None
+    partes = urlsplit(destino)
+    if partes.scheme or partes.netloc:
+        return None
+    return destino
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
@@ -129,7 +156,7 @@ def login():
 
     log_audit(user["id"], "LOGIN", "users", entity_id=str(user["id"]))
     token = create_token(user)
-    next_url = request.args.get("next") or url_for("main.dashboard")
+    next_url = destino_seguro(request.args.get("next")) or url_for("main.dashboard")
     resp = make_response(redirect(next_url))
     resp.set_cookie(
         COOKIE_NAME, token, httponly=True, samesite="Lax", max_age=60 * 60 * 8
@@ -308,18 +335,28 @@ def enfermedad_nueva():
     primero es el CRUD de usuarios) y el unico que toca una tabla del dominio
     epidemiologico. Los casos, escenarios y simulaciones siguen siendo de solo
     lectura.
+
+    Lo que SI esta restringido son los parametros de simulacion: fijar R0 o la
+    letalidad es de EPIDEMIOLOGO y ADMINISTRADOR, igual que en la edicion. Para
+    cualquier otro rol la enfermedad nace sin parametros (no simulable) y el
+    formulario ni siquiera los muestra; un POST armado a mano que los traiga
+    se procesa como si no vinieran.
     """
     if request.method == "GET":
         return render_template("enfermedad_form.html", enfermedad=None,
                                parametros=queries.estado_parametros({}),
                                errores=[], active_nav="enfermedades")
 
+    fija_parametros = tiene_rol(g.user, *ROLES_FIJAN_PARAMETROS)
     datos = {
         "code": queries.normaliza_codigo(request.form.get("code")),
         "name": (request.form.get("name") or "").strip(),
         "description": (request.form.get("description") or "").strip(),
     }
-    params, errores = queries.parametros_desde_form(request.form)
+    if fija_parametros:
+        params, errores = queries.parametros_desde_form(request.form)
+    else:
+        params, errores = {}, []
     errores = queries.valida_enfermedad(datos["code"], datos["name"]) + errores
 
     if errores:
@@ -351,7 +388,7 @@ def _snapshot_enfermedad(e):
 
 
 @bp.route("/enfermedades/<int:disease_id>/editar", methods=["GET", "POST"])
-@roles_required("EPIDEMIOLOGO", "ADMINISTRADOR")
+@roles_required(*ROLES_FIJAN_PARAMETROS)
 def enfermedad_editar(disease_id):
     """Edicion del catalogo, incluidos los parametros que consume el motor.
 
@@ -404,7 +441,7 @@ def enfermedad_editar(disease_id):
 
 
 @bp.route("/enfermedades/<int:disease_id>/estado", methods=["POST"])
-@roles_required("EPIDEMIOLOGO", "ADMINISTRADOR")
+@roles_required(*ROLES_FIJAN_PARAMETROS)
 def enfermedad_estado(disease_id):
     """Baja y alta logica del catalogo. Nunca borra: los casos capturados
     apuntan a la enfermedad con ON DELETE RESTRICT."""
@@ -875,6 +912,9 @@ def intervencion_agregar(scenario_id):
     errores_motor, avisos_motor = queries.revisa_version(detalle)
     return render_template(
         "escenario_detalle.html", **detalle, tipos=tipos,
+        # Sin esto el historial se pintaba como "(0)" justo cuando el usuario
+        # se equivocaba al capturar: la plantilla es la misma que la del GET.
+        versiones=queries.get_versiones(scenario_id),
         errores_motor=errores_motor, avisos_motor=avisos_motor,
         puede_editar=True, motivo_bloqueo=None,
         errores=errores, valores=request.form, active_nav="escenarios"), 400

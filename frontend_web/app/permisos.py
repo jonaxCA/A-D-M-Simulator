@@ -5,7 +5,7 @@ from functools import wraps
 
 from flask import request, redirect, url_for, g, flash
 
-from backend_web.auth import decode_token
+from backend_web.auth import decode_token, usuario_vigente
 
 COOKIE_NAME = "access_token"
 
@@ -13,11 +13,28 @@ COOKIE_NAME = "access_token"
 # cualquier pantalla.
 MENSAJE_SIN_PERMISO = "No tienes permiso para entrar a esa sección."
 
+_SIN_CALCULAR = object()
+
+
 def get_current_user():
+    """El usuario de la peticion, revalidado contra la base.
+
+    Una firma valida solo prueba que el token lo emitimos nosotros, no que la
+    cuenta siga activa ni que conserve sus roles: eso lo contesta
+    usuario_vigente(). Se calcula una vez por peticion y se guarda en `g`,
+    porque la llaman el decorador y el context_processor de cada plantilla.
+    """
+    en_cache = g.get("_usuario_actual", _SIN_CALCULAR)
+    if en_cache is not _SIN_CALCULAR:
+        return en_cache
+    usuario = None
     token = request.cookies.get(COOKIE_NAME)
-    if not token:
-        return None
-    return decode_token(token)
+    if token:
+        payload = decode_token(token)
+        if payload:
+            usuario = usuario_vigente(payload)
+    g._usuario_actual = usuario
+    return usuario
 
 
 def login_required(view):

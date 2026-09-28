@@ -10,14 +10,27 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://postgres:postgres_pw@localhost:5432/simulador_epidemico",
-)
+# Sin valor por omision. Antes habia uno que entraba como el superusuario
+# `postgres` con una contrasena fija: si faltaba el .env, la app se conectaba
+# con otra cuenta y otros permisos sin avisar, y el error que salia (si salia)
+# no decia que el problema era la configuracion.
+DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip()
+
+
+def _verifica_configuracion():
+    if not DATABASE_URL:
+        raise RuntimeError(
+            "Falta DATABASE_URL en el archivo .env. Copia .env.example como .env "
+            "y pon la cadena de conexion de tu base (docs/INSTALACION.md, paso 4.2).")
+    if "CAMBIAR_CONTRASENA" in DATABASE_URL:
+        raise RuntimeError(
+            "DATABASE_URL todavia tiene el valor de ejemplo de .env.example: "
+            "cambia CAMBIAR_CONTRASENA por la contrasena real de epidemia_app.")
 
 
 @contextmanager
 def get_conn():
+    _verifica_configuracion()
     conn = psycopg2.connect(DATABASE_URL)
     try:
         yield conn

@@ -25,24 +25,20 @@ import os
 import sys
 import time
 
-# motor/ es un paquete independiente (sin __init__.py en procesamiento/, tal
-# como lo consumen sus propias pruebas con `from motor import ...` corriendo
-# dentro de esa carpeta). Se agrega procesamiento/ al sys.path una sola vez en
-# vez de instalarlo, para no acoplar el arranque de la app a un paso de
-# empaquetado que este avance no tiene.
-_PROCESAMIENTO_DIR = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "procesamiento")
-)
-if _PROCESAMIENTO_DIR not in sys.path:
-    sys.path.insert(0, _PROCESAMIENTO_DIR)
+# El motor se importa como `procesamiento.motor`, igual que en queries.py.
+# Antes este modulo metia procesamiento/ en sys.path e importaba `motor`: Python
+# cargaba el paquete DOS veces, bajo dos nombres, con dos clases
+# EscenarioInvalido distintas. Un `except EscenarioInvalido` de un lado no
+# atrapaba lo que lanzaba el otro. backend_web/tests/test_integridad.py vigila
+# que no vuelva a pasar. (Las pruebas del motor siguen usando `from motor
+# import ...` porque corren desde dentro de procesamiento/, en otro proceso.)
+from procesamiento.motor import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular  # noqa: F401
+from procesamiento.motor.modelo import SIMPLIFICACIONES                      # noqa: F401
+from procesamiento.motor.parametros import EscenarioInvalido
+from procesamiento.motor.pareto import ComparacionInvalida, comparar as comparar_pareto
 
-from motor import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular  # noqa: E402,F401
-from motor.modelo import SIMPLIFICACIONES                      # noqa: E402,F401
-from motor.parametros import EscenarioInvalido                 # noqa: E402
-from motor.pareto import ComparacionInvalida, comparar as comparar_pareto  # noqa: E402
-
-from . import queries                                           # noqa: E402
-from .audit import log_audit                                    # noqa: E402
+from . import queries
+from .audit import log_audit
 
 MENSAJE_ERROR_FORZADO = (
     "Error forzado de prueba: se solicito explicitamente desde la pantalla de "
@@ -310,3 +306,47 @@ def _marca_fallido_y_audita(run, mensaje):
             "La corrida %s se marco 'fallido' en DB pero no se pudo registrar "
             "la auditoria (mensaje: %s)", run["id"], mensaje,
         )
+
+
+# ---------------------------------------------------------------------------
+# Corridas que se quedaron sin hilo
+# ---------------------------------------------------------------------------
+MENSAJE_INTERRUMPIDA = (
+    "Interrumpida: el servidor se reinicio antes de que la corrida terminara, "
+    "y con el se perdio el hilo que la ejecutaba. No es un error del motor ni "
+    "del escenario: re-ejecutala con la misma semilla y dara el mismo resultado."
+)
+
+
+def recupera_corridas_interrumpidas():
+    """Cierra como 'fallido' las corridas que un proceso anterior dejo a medias.
+
+    _marca_fallido_y_audita protege contra cualquier error DENTRO del hilo,
+    pero no contra que el proceso entero muera: el hilo es daemon y se va con
+    el. Con `FLASK_DEBUG=1` eso pasa cada vez que se guarda un .py (el
+    recargador reinicia el servidor), y la corrida se quedaba en 'ejecutando'
+    para siempre, con la pantalla de detalle consultando su estado cada
+    segundo.
+
+    Se llama desde frontend_web/run.py al arrancar, NO desde create_app():
+    las pruebas crean la app muchas veces y no deben cerrar corridas ajenas.
+    Supone un solo proceso sirviendo, que es como corre este avance. Con
+    varios procesos (gunicorn -w 4), uno que arranca cerraria corridas vivas
+    de los otros; ese caso lo resuelve la cola con worker del documento de
+    arquitectura, no este barrido.
+
+    Devuelve cuantas corridas cerro.
+    """
+    filas = queries.marca_corridas_interrumpidas(MENSAJE_INTERRUMPIDA)
+    for fila in filas:
+        try:
+            log_audit(fila["requested_by"], "RUN", "simulation_run",
+                      entity_id=str(fila["id"]),
+                      data_after={"estado": "fallido", "seed": fila["seed"],
+                                  "error": MENSAJE_INTERRUMPIDA[:500],
+                                  "motivo": "reinicio del servidor"})
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "La corrida %s se cerro como interrumpida pero no se pudo auditar",
+                fila["id"])
+    return len(filas)
