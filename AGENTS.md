@@ -44,7 +44,7 @@ un modelo económico sofisticado. No crees código en `microservicios/`, `infra/
 
 ## Comandos
 
-- Sitio: `python -m frontend_web.run`. El paso 5 de `docs/INSTALACION.md` dice `python app.py`: está mal.
+- Sitio: `python -m frontend_web.run`.
 - `docker compose up`, que menciona `CONTRIBUTING.md`, todavía no existe.
 - Verificar que el dump coincide con las migraciones: `python datos/scripts/verifica_migraciones.py`.
 
@@ -56,8 +56,7 @@ un modelo económico sofisticado. No crees código en `microservicios/`, `infra/
 - Unidad de costo: personas-día, pesos o ambos por separado.
 - Si una versión guarda una copia de los parámetros de la enfermedad al enviarse a revisión.
 - Qué parte del trabajo con escenarios queda en la web y qué en la app de escritorio.
-- Política para corregir datos en migraciones aplicadas. Por eso `verifica_migraciones.py`
-  hoy falla en `010`: es una diferencia conocida, no la corrijas.
+- Política para corregir datos en migraciones aplicadas.
 
 Cuando se decidan, quedarán en `docs/decisiones.md`.
 

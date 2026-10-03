@@ -20,8 +20,5 @@
   de solo inserción.
 - No edites a mano `censo/` ni `geo/`. Si un dato oficial está mal, corrígelo desde la fuente
   que cita el archivo.
-- `population_size` va de 1,000 a 5,000,000; Nuevo León completo (5,784,442 habitantes) no cabe.
-
-## Temporal (borrar al agregar `.gitattributes`)
-
-- La 013, la 014 y el dump usan finales de línea CRLF; no los cambies.
+- `population_size` va de 1,000 a 20,000,000 (migración 023); Nuevo León completo
+  (5,784,442 habitantes) cabe.

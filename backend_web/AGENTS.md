@@ -27,7 +27,3 @@
   `CREATE`, `UPDATE`, `DELETE`, `PUBLISH`, `RUN`, `CANCEL`, `EXPORT`, `SYNC` y
   `PERMISSION_DENIED`. No existen `APPROVE`, `REJECT` ni `SUBMIT`: para aprobar o rechazar
   versiones, pregunta cuál usar.
-
-## Temporal (borrar al agregar `.gitattributes`)
-
-- `queries.py` y `auth.py` usan finales de línea CRLF; no los cambies.

@@ -5,9 +5,3 @@
 - Para una ruta con formulario, sigue `reporte_nuevo` en `app/routes.py`.
 - Los candados actuales mandan al dashboard a quien rechazan. Si un rol no puede ver el
   dashboard, usa `abort(403)` para no crear un ciclo de redirecciones.
-
-## Temporal
-
-- `/stub/<n>` es el marcador de Simulaciones y Comparación, y truena (la función espera `name`).
-  Reemplázalo por las pantallas reales; no lo uses de modelo.
-- `routes.py` y `permisos.py` usan finales de línea CRLF; no los cambies.
