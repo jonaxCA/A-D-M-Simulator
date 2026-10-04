@@ -184,7 +184,6 @@ class ValidacionGruposEdadTests(unittest.TestCase):
 
 class ActualizaPoblacionMunicipioTests(unittest.TestCase):
     def setUp(self):
-        import backend_web.queries as q
         self._orig_request = None
         self._patch_flask_request()
         self.admin_id = _admin_id()
@@ -211,7 +210,6 @@ class ActualizaPoblacionMunicipioTests(unittest.TestCase):
         _restaura_estado()
 
     def _patch_flask_request(self):
-        import backend_web.queries as qmod
         import flask
 
         self._flask_request_orig = flask.request

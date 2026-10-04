@@ -3501,7 +3501,6 @@ def envia_a_revision(scenario_id, user_id):
     # salida de borrador, asi que es el punto donde la version deja de poder
     # cambiar y tiene que quedar explicandose a si misma. Se toman los vivos en
     # este instante, que son los que el revisor va a estar mirando.
-    from .audit import _serializa
     congelar = _hay_parametros_congelados()
     try:
         with get_conn() as conn:

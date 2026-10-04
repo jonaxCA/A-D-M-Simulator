@@ -21,8 +21,6 @@ peticion (ver el guard en audit.py) -- indispensable porque este modulo corre
 dentro de un hilo, no dentro de una peticion HTTP.
 """
 import logging
-import os
-import sys
 import time
 
 # El motor se importa como `procesamiento.motor`, igual que en queries.py.
