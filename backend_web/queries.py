@@ -3845,6 +3845,43 @@ def get_resultado_run(run_id):
     )
 
 
+def _sincroniza_lote(cur, run_ids):
+    """Lleva el lote al estado de su corrida, dentro de la transaccion del
+    llamador. Hoy cada lote tiene una sola replica (crear_corrida), asi que el
+    lote refleja tal cual a su corrida; finished_at solo en estados terminales
+    (ck_simulation_batches_terminal). Las corridas sueltas (batch_id NULL) no
+    tocan nada."""
+    if not run_ids:
+        return
+    cur.execute(
+        """
+        UPDATE simulation_batches b
+        SET status = r.status,
+            finished_at = CASE WHEN r.status IN ('completado', 'fallido', 'cancelado')
+                               THEN r.finished_at END
+        FROM simulation_runs r
+        WHERE r.id = ANY(%s) AND b.id = r.batch_id
+        """,
+        (list(run_ids),),
+    )
+
+
+def _transiciona_run(sql, params):
+    """UPDATE de simulation_runs + sincronizacion del lote en UNA transaccion.
+    El sql debe terminar en RETURNING id. Devuelve los ids que cambiaron."""
+    with get_conn() as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                ids = [fila[0] for fila in cur.fetchall()]
+                _sincroniza_lote(cur, ids)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return ids
+
+
 def marcar_run_ejecutando(run_id):
     """encolado -> ejecutando. El WHERE status = 'encolado' evita pisar una
     corrida que ya haya terminado (o que otro hilo ya haya arrancado).
@@ -3854,14 +3891,14 @@ def marcar_run_ejecutando(run_id):
     marcado por otro hilo, o el id no existe). El llamador (ejecutar_run) NO
     debe auditar 'ejecutando' ni seguir con la corrida cuando esto da False.
     """
-    rowcount = execute(
+    return len(_transiciona_run(
         """
         UPDATE simulation_runs SET status = 'ejecutando', started_at = now()
         WHERE id = %s AND status = 'encolado'
+        RETURNING id
         """,
         (run_id,),
-    )
-    return rowcount == 1
+    )) == 1
 
 
 def guardar_resultado_run(run_id, resultado):
@@ -3886,6 +3923,19 @@ def guardar_resultado_run(run_id, resultado):
     with get_conn() as conn:
         try:
             with conn.cursor() as cur:
+                # Primero se cierra la corrida, y solo si seguia 'ejecutando':
+                # si otro proceso ya la cerro, no se revive ni se guarda nada.
+                cur.execute(
+                    """
+                    UPDATE simulation_runs
+                    SET status = 'completado', progress = 100, finished_at = now()
+                    WHERE id = %s AND status = 'ejecutando'
+                    """,
+                    (run_id,),
+                )
+                if cur.rowcount != 1:
+                    conn.rollback()
+                    return False
                 cur.execute(
                     """
                     INSERT INTO simulation_results
@@ -3901,18 +3951,12 @@ def guardar_resultado_run(run_id, resultado):
                         trazabilidad_json,
                     ),
                 )
-                cur.execute(
-                    """
-                    UPDATE simulation_runs
-                    SET status = 'completado', progress = 100, finished_at = now()
-                    WHERE id = %s
-                    """,
-                    (run_id,),
-                )
+                _sincroniza_lote(cur, [run_id])
             conn.commit()
         except Exception:
             conn.rollback()
             raise
+    return True
 
 
 def marcar_run_fallido(run_id, mensaje):
@@ -3930,16 +3974,16 @@ def marcar_run_fallido(run_id, mensaje):
     una corrida que nunca arranco violaba esa restriccion y la dejaba encolada
     para siempre. Se usa la misma hora del cierre: duro cero.
     """
-    rowcount = execute(
+    return len(_transiciona_run(
         """
         UPDATE simulation_runs
         SET status = 'fallido', error_message = %s, finished_at = now(),
             started_at = COALESCE(started_at, now())
         WHERE id = %s AND status NOT IN ('completado', 'fallido', 'cancelado')
+        RETURNING id
         """,
         (mensaje, run_id),
-    )
-    return rowcount == 1
+    )) == 1
 
 
 def marca_corridas_interrumpidas(mensaje, run_ids=None):
@@ -3973,6 +4017,7 @@ def marca_corridas_interrumpidas(mensaje, run_ids=None):
             )
             filas = [{"id": i, "requested_by": u, "seed": s}
                      for i, u, s in cur.fetchall()]
+            _sincroniza_lote(cur, [f["id"] for f in filas])
         conn.commit()
     return filas
 
