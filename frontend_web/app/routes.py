@@ -12,9 +12,8 @@ Alcance de esta version:
       mapa, monitoreo, catalogo de enfermedades, captura de casos, regiones,
       usuarios, auditoria, escenarios (Bloque D: crear, versionar, enviar a
       revision y aprobar) y simulaciones (Bloque F: correr versiones ya
-      aprobadas, en segundo plano, con resultados e indicadores). Comparacion
-      sigue como stub "Proximamente"; la frontera de Pareto ya existe en
-      motor/pareto.py, pendiente de conectarse (Bloque G).
+      aprobadas, en segundo plano, con resultados e indicadores) y comparacion
+      de corridas con costos y frontera de Pareto (Bloque G).
     - Todo corre en un solo proceso Flask contra PostgreSQL directamente
       (sin la capa de microservicios -- eso es alcance del segundo parcial).
     - Mapa acotado a Nuevo Leon.
@@ -36,9 +35,6 @@ from .permisos import (login_required, admin_required, roles_required, tiene_rol
                        get_current_user, COOKIE_NAME)
 
 bp = Blueprint("main", __name__)
-
-STUB_ITEMS = {
-}
 
 # Semilla aleatoria por defecto cuando el formulario de "Ejecutar simulacion"
 # la deja en blanco. simulation_runs.seed es BIGINT >= 0 (ck_simulation_runs_seed);
@@ -483,7 +479,7 @@ def export_enfermedades_csv():
 
 
 # ---------------------------------------------------------------------------
-# Extras chicos pero reales: exportar CSV, y stubs para el resto del sidebar
+# Extras chicos pero reales: exportar CSV, y el resto del sidebar
 # ---------------------------------------------------------------------------
 @bp.route("/export/resumen.csv")
 @login_required
@@ -1570,16 +1566,6 @@ def comparacion_costos():
 
     flash("Costo de la intervencion actualizado.", "ok")
     return redirect(url_for("main.comparacion_costos"))
-
-
-@bp.route("/stub/<name>")
-@login_required
-def stub(name):
-    #Solo para pantallas pendientes; las demas van al dashboard
-    if name not in STUB_ITEMS:
-        return redirect(url_for("main.dashboard"))
-    titulo = STUB_ITEMS.get(name, name.capitalize())
-    return render_template("stub.html", titulo=titulo, active_nav=name)
 
 
 @bp.app_errorhandler(403)

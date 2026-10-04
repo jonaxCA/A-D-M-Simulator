@@ -8,7 +8,6 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
 from backend_web.auth import create_token
 from frontend_web.app import create_app
 from frontend_web.app.permisos import COOKIE_NAME
-from frontend_web.app.routes import STUB_ITEMS
 
 
 class ComparacionRutaTests(unittest.TestCase):
@@ -34,9 +33,6 @@ class ComparacionRutaTests(unittest.TestCase):
             "full_name": "Usuario Prueba",
             "roles": ["ANALISTA"],
         })
-
-    def test_comparacion_ya_no_es_stub(self):
-        self.assertNotIn("comparacion", STUB_ITEMS)
 
     def test_comparacion_requiere_login(self):
         with self.app.test_client() as client:
