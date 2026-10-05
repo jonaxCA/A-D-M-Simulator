@@ -7,21 +7,13 @@ Ejecutar:
     JWT_SECRET_KEY=test-secret \
         python -m unittest frontend_web.tests.test_regiones_rutas -v
 """
-import os
 import unittest
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from frontend_web.tests.base import AppTestCase
 from backend_web.db import get_conn, query
-from frontend_web.app import create_app
 
 
-class RegionesRutasTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-
+class RegionesRutasTests(AppTestCase):
     def setUp(self):
         municipio = query(
             "SELECT id, population, population_60plus FROM regions WHERE code = '19003'",
@@ -52,11 +44,6 @@ class RegionesRutasTests(unittest.TestCase):
                     (estado_id, estado_id),
                 )
             conn.commit()
-
-    def _login(self, client, usuario, password):
-        resp = client.post("/login", data={"usuario": usuario, "password": password},
-                            follow_redirects=False)
-        self.assertEqual(resp.status_code, 302, f"login de {usuario} fallo: {resp.data}")
 
     def test_usuario_autenticado_sin_admin_puede_consultar(self):
         with self.app.test_client() as client:

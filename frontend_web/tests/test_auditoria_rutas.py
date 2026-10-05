@@ -20,73 +20,12 @@ Ejecutar:
     JWT_SECRET_KEY=test-secret \
         python -m unittest frontend_web.tests.test_auditoria_rutas -v
 """
-import os
-import time
 import unittest
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
-from backend_web.db import get_conn, query
-from frontend_web.app import create_app
+from frontend_web.tests.base import RutasConCorridas
 
 
-def _tiene_base():
-    try:
-        query("SELECT 1", one=True)
-        return True
-    except Exception:
-        return False
-
-
-@unittest.skipUnless(_tiene_base(), "Requiere PostgreSQL en DATABASE_URL.")
-class AuditoriaRutasTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-        fila = query(
-            """
-            SELECT sv.id FROM scenario_versions sv
-            JOIN scenarios s ON s.id = sv.scenario_id
-            WHERE s.name = 'Ola Influenza ZMM - otono 2026' AND sv.status = 'aprobado'
-            """,
-            one=True,
-        )
-        if not fila:
-            raise unittest.SkipTest("Falta el escenario de demostracion aprobado.")
-        cls.version_id = fila["id"]
-
-    def setUp(self):
-        self._batches_creados = []
-
-    def tearDown(self):
-        for batch_id in self._batches_creados:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("DELETE FROM simulation_batches WHERE id = %s", (batch_id,))
-                conn.commit()
-
-    def _login(self, client, usuario, password):
-        resp = client.post("/login", data={"usuario": usuario, "password": password},
-                            follow_redirects=False)
-        self.assertEqual(resp.status_code, 302, f"login de {usuario} fallo: {resp.data}")
-
-    def _run_id_del_redirect(self, resp):
-        loc = resp.headers["Location"]
-        return int(loc.rstrip("/").split("/")[-1])
-
-    def _batch_del_run(self, run_id):
-        fila = query("SELECT batch_id FROM simulation_runs WHERE id = %s", (run_id,), one=True)
-        return fila["batch_id"]
-
-    def _espera_terminal(self, client, run_id, intentos=40):
-        for _ in range(intentos):
-            datos = client.get(f"/simulaciones/corridas/{run_id}/estado").get_json()
-            if datos["terminal"]:
-                return datos
-            time.sleep(0.25)
-        self.fail(f"La corrida {run_id} no termino a tiempo para la prueba.")
-
+class AuditoriaRutasTests(RutasConCorridas):
     def test_bitacora_muestra_las_4_etapas_de_una_corrida_real(self):
         with self.app.test_client() as client:
             self._login(client, "alex.cavazos", "Epidemia2026!")

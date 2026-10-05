@@ -16,22 +16,12 @@ Las pruebas contra la base acotan el barrido a sus propias corridas
 Ejecutar:
     python -m unittest backend_web.tests.test_corridas_interrumpidas -v
 """
-import os
 import unittest
 from unittest.mock import patch
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from backend_web.tests.base import ConCorridasDePrueba
 from backend_web import queries, simulaciones
-from backend_web.db import get_conn, query
-
-
-def _tiene_base():
-    try:
-        query("SELECT 1", one=True)
-        return True
-    except Exception:
-        return False
+from backend_web.db import query
 
 
 def _lote_de(run_id):
@@ -75,42 +65,9 @@ class RecuperaCorridasTests(unittest.TestCase):
         self.assertEqual(audita.call_count, 2)
 
 
-@unittest.skipUnless(_tiene_base(), "Requiere PostgreSQL en DATABASE_URL.")
-class _CorridasDePrueba(unittest.TestCase):
+class _CorridasDePrueba(ConCorridasDePrueba):
     """Corridas propias sobre la version aprobada de la demo; se borran al
     terminar (el lote arrastra a sus corridas y resultados en cascada)."""
-
-    @classmethod
-    def setUpClass(cls):
-        version = query(
-            """SELECT sv.id FROM scenario_versions sv
-               JOIN scenarios s ON s.id = sv.scenario_id
-               WHERE s.name = 'Ola Influenza ZMM - otono 2026' AND sv.status = 'aprobado'""",
-            one=True)
-        if not version:
-            raise unittest.SkipTest("Falta el escenario de demostracion aprobado "
-                                    "(datos/postgres/semillas/demo_datos_nl.sql).")
-        cls.version_id = version["id"]
-        cls.user_id = query("SELECT id FROM users WHERE username = 'alex.cavazos'",
-                            one=True)["id"]
-
-    def setUp(self):
-        self._lotes = []
-
-    def tearDown(self):
-        # simulation_batches -> simulation_runs en cascada.
-        for lote in self._lotes:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("DELETE FROM simulation_batches WHERE id = %s", (lote,))
-                conn.commit()
-
-    def _encola(self, seed):
-        run_id, lote, error = queries.crear_corrida(
-            self.version_id, seed, self.user_id, simulaciones.ENGINE_VERSION)
-        self.assertIsNone(error, error)
-        self._lotes.append(lote)
-        return run_id
 
     def _estado(self, run_id):
         return query("SELECT status, error_message, finished_at FROM simulation_runs "
@@ -171,7 +128,7 @@ class MarcaCorridasInterrumpidasTests(_CorridasDePrueba):
         nuevo, lote, error = queries.crear_corrida(
             self.version_id, 105, self.user_id, simulaciones.ENGINE_VERSION)
         self.assertIsNone(error, error)
-        self._lotes.append(lote)
+        self._batches_creados.append(lote)
         self.assertEqual(self._estado(nuevo)["status"], "encolado")
 
 

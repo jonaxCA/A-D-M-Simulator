@@ -10,11 +10,9 @@ Ejecutar:
     python -m unittest backend_web.tests.test_escenarios -v
 """
 import json
-import os
 import unittest
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from backend_web.tests.base import usuario_con_rol
 from backend_web import queries
 from backend_web.db import get_conn, query
 
@@ -33,15 +31,6 @@ def _restaura(sql, params=()):
             conn.commit()
     except Exception as exc:                       # limpieza best-effort
         print(f"[test] no se pudo escribir: {exc}")
-
-
-def _usuario(rol):
-    fila = query(
-        """SELECT u.id FROM users u
-           JOIN user_roles ur ON ur.user_id = u.id
-           JOIN roles r ON r.id = ur.role_id
-           WHERE r.code = %s LIMIT 1""", (rol,), one=True)
-    return fila["id"] if fila else None
 
 
 class _FakeRequest:
@@ -171,7 +160,7 @@ class CreaEscenarioTests(_ConCatalogo):
         super().setUp()
         if not queries._hay_columnas_de_edad_en_version():
             self.skipTest("falta la migracion 023_escenarios_poblacion_por_edad.sql")
-        self.autor = _usuario("ANALISTA") or _usuario("ADMINISTRADOR")
+        self.autor = usuario_con_rol("ANALISTA") or usuario_con_rol("ADMINISTRADOR")
         self.assertIsNotNone(self.autor, "seed de datos de demo no cargada")
         import flask
         self._flask_request_orig = flask.request
@@ -275,7 +264,7 @@ class _ConEscenarioBorrador(_ConCatalogo):
         super().setUp()
         if not queries._hay_columnas_de_edad_en_version():
             self.skipTest("falta la migracion 023_escenarios_poblacion_por_edad.sql")
-        self.autor = _usuario("ANALISTA") or _usuario("ADMINISTRADOR")
+        self.autor = usuario_con_rol("ANALISTA") or usuario_con_rol("ADMINISTRADOR")
         self.assertIsNotNone(self.autor, "seed de datos de demo no cargada")
         import flask
         self._flask_request_orig = flask.request
@@ -519,7 +508,7 @@ class VersionadoTests(_ConEscenarioBorrador):
                 cur.execute("""UPDATE scenario_versions SET status = 'aprobado',
                                submitted_at = now(), reviewed_by = %s, reviewed_at = now()
                                WHERE scenario_id = %s AND is_current""",
-                            (_usuario("EPIDEMIOLOGO"), self.sid))
+                            (usuario_con_rol("EPIDEMIOLOGO"), self.sid))
             conn.commit()
         numero, errores = self._nueva()
         self.assertEqual(numero, 2, errores)
@@ -564,7 +553,7 @@ class VersionadoTests(_ConEscenarioBorrador):
         ok, errores = self._agrega(code="CIERRE_ESCUELAS", start_day="10",
                                    p_CIERRE_ESCUELAS_reduccion="1")
         self.assertTrue(ok, errores)
-        otro = _usuario("EPIDEMIOLOGO")
+        otro = usuario_con_rol("EPIDEMIOLOGO")
         ok, error, nuevo_id = queries.duplica_escenario(
             self.sid, 1, "ZZZ copia del escenario", otro)
         self.assertTrue(ok, error)
@@ -607,7 +596,7 @@ class AprobacionTests(_ConEscenarioBorrador):
 
     def setUp(self):
         super().setUp()
-        self.revisor = _usuario("EPIDEMIOLOGO")
+        self.revisor = usuario_con_rol("EPIDEMIOLOGO")
         self.assertIsNotNone(self.revisor, "seed de datos de demo no cargada")
         self.assertNotEqual(self.revisor, self.autor,
                             "el fixture necesita autor y revisor distintos")
@@ -765,7 +754,7 @@ class ParametrosCongeladosTests(_ConEscenarioBorrador):
         super().setUp()
         if not queries._hay_parametros_congelados():
             self.skipTest("falta la migracion 024_version_congela_parametros.sql")
-        self.revisor = _usuario("EPIDEMIOLOGO")
+        self.revisor = usuario_con_rol("EPIDEMIOLOGO")
         self.params_originales = query(
             "SELECT default_params FROM diseases WHERE id = %s",
             (self.simulable["id"],), one=True)["default_params"]

@@ -1,39 +1,12 @@
-import os
 import unittest
 from datetime import datetime
 from unittest.mock import patch
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
-from backend_web.auth import create_token
-from frontend_web.app import create_app
+from frontend_web.tests.base import ConUsuarioSimulado
 from frontend_web.app.permisos import COOKIE_NAME
 
 
-class ComparacionRutaTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-
-    def setUp(self):
-        # El token es de un usuario inventado (id 999) y las consultas estan
-        # simuladas, asi que la revalidacion contra `users` tambien: devuelve
-        # el usuario del token tal cual, con `sub` como entero, igual que
-        # backend_web.auth.usuario_vigente con una cuenta activa.
-        simulado = patch("frontend_web.app.permisos.usuario_vigente",
-                         side_effect=lambda u: {**u, "sub": int(u["sub"])})
-        simulado.start()
-        self.addCleanup(simulado.stop)
-
-    def _token_analista(self):
-        return create_token({
-            "id": 999,
-            "username": "prueba",
-            "full_name": "Usuario Prueba",
-            "roles": ["ANALISTA"],
-        })
-
+class ComparacionRutaTests(ConUsuarioSimulado):
     def test_comparacion_requiere_login(self):
         with self.app.test_client() as client:
             resp = client.get("/comparacion", follow_redirects=False)
@@ -60,7 +33,7 @@ class ComparacionRutaTests(unittest.TestCase):
         }]
 
         with self.app.test_client() as client:
-            client.set_cookie(COOKIE_NAME, self._token_analista())
+            client.set_cookie(COOKIE_NAME, self._token())
             resp = client.get("/comparacion")
 
             self.assertEqual(resp.status_code, 200)
@@ -77,7 +50,7 @@ class ComparacionRutaTests(unittest.TestCase):
         mock_runs.return_value = []
 
         with self.app.test_client() as client:
-            client.set_cookie(COOKIE_NAME, self._token_analista())
+            client.set_cookie(COOKIE_NAME, self._token())
             resp = client.get("/comparacion")
 
             self.assertEqual(resp.status_code, 200)

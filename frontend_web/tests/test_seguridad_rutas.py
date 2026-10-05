@@ -19,41 +19,15 @@ import secrets
 import unittest
 from unittest.mock import patch
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from frontend_web.tests.base import AppTestCase
 from backend_web import queries
 from backend_web.auth import create_token, decode_token, hash_password
-from backend_web.db import get_conn, query
+from backend_web.db import query
+from backend_web.tests.base import escribe, requiere_base, token_de
 from frontend_web.app import create_app
 from frontend_web.app.permisos import COOKIE_NAME
 from frontend_web.app.routes import destino_seguro
 from frontend_web.run import opciones_arranque
-
-
-def _tiene_base():
-    try:
-        query("SELECT 1", one=True)
-        return True
-    except Exception:
-        return False
-
-
-def _escribe(sql, params=()):
-    with get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, params)
-        conn.commit()
-
-
-def _token_de(username):
-    """Token firmado para un usuario real de la base, con sus roles de hoy."""
-    u = query("SELECT id, username, full_name FROM users WHERE username = %s",
-              (username,), one=True)
-    roles = [r["code"] for r in query(
-        """SELECT r.code FROM roles r JOIN user_roles ur ON ur.role_id = r.id
-           WHERE ur.user_id = %s""", (u["id"],))]
-    return create_token({"id": u["id"], "username": u["username"],
-                         "full_name": u["full_name"], "roles": roles})
 
 
 # ---------------------------------------------------------------------------
@@ -73,13 +47,8 @@ class DestinoSeguroTests(unittest.TestCase):
             self.assertIsNone(destino_seguro(malo), repr(malo))
 
 
-class LoginRedireccionTests(unittest.TestCase):
+class LoginRedireccionTests(AppTestCase):
     """El POST de login con un `next` hostil termina en el dashboard."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
 
     def setUp(self):
         # Sin credenciales reales ni filas de bitacora: lo que se prueba es a
@@ -150,20 +119,15 @@ class ArranqueTests(unittest.TestCase):
 USUARIO_REVOCACION = "prueba.revocacion"
 
 
-@unittest.skipUnless(_tiene_base(), "Requiere PostgreSQL en DATABASE_URL.")
-class RevocacionTests(unittest.TestCase):
+@requiere_base
+class RevocacionTests(AppTestCase):
     """Cuenta de prueba propia: activa con EPIDEMIOLOGO durante la prueba e
     inactiva al terminar. No se borra porque los intentos denegados la dejan
     en audit_log, que es de solo insercion. Su contrasena es aleatoria y no se
     guarda en ningun lado."""
 
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-
     def setUp(self):
-        _escribe(
+        escribe(
             """INSERT INTO users (username, email, password_hash, full_name, is_active)
                VALUES (%s, %s, %s, 'Revocacion de prueba', TRUE)
                ON CONFLICT (username) DO UPDATE SET is_active = TRUE""",
@@ -172,15 +136,15 @@ class RevocacionTests(unittest.TestCase):
         self.user_id = query("SELECT id FROM users WHERE username = %s",
                              (USUARIO_REVOCACION,), one=True)["id"]
         self._pon_rol("EPIDEMIOLOGO")
-        self.token = _token_de(USUARIO_REVOCACION)
+        self.token = token_de(USUARIO_REVOCACION)
 
     def tearDown(self):
-        _escribe("UPDATE users SET is_active = FALSE WHERE id = %s", (self.user_id,))
+        escribe("UPDATE users SET is_active = FALSE WHERE id = %s", (self.user_id,))
         self._pon_rol("EPIDEMIOLOGO")
 
     def _pon_rol(self, codigo):
-        _escribe("DELETE FROM user_roles WHERE user_id = %s", (self.user_id,))
-        _escribe("""INSERT INTO user_roles (user_id, role_id)
+        escribe("DELETE FROM user_roles WHERE user_id = %s", (self.user_id,))
+        escribe("""INSERT INTO user_roles (user_id, role_id)
                     SELECT %s, id FROM roles WHERE code = %s""", (self.user_id, codigo))
 
     def _get(self, ruta):
@@ -192,7 +156,7 @@ class RevocacionTests(unittest.TestCase):
         self.assertEqual(self._get("/revisiones").status_code, 200)
 
     def test_cuenta_desactivada_ya_no_entra_con_su_token(self):
-        _escribe("UPDATE users SET is_active = FALSE WHERE id = %s", (self.user_id,))
+        escribe("UPDATE users SET is_active = FALSE WHERE id = %s", (self.user_id,))
         resp = self._get("/revisiones")
         self.assertEqual(resp.status_code, 302)
         self.assertIn("/login", resp.headers["Location"])
@@ -230,13 +194,8 @@ CODIGO_ANALISTA = "ZZZ_ALTA_ANALISTA"
 CODIGO_EPIDEMIOLOGO = "ZZZ_ALTA_EPIDEMIOLOGO"
 
 
-@unittest.skipUnless(_tiene_base(), "Requiere PostgreSQL en DATABASE_URL.")
-class AltaEnfermedadTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-
+@requiere_base
+class AltaEnfermedadTests(AppTestCase):
     def setUp(self):
         self._borra()
 
@@ -244,12 +203,12 @@ class AltaEnfermedadTests(unittest.TestCase):
         self._borra()
 
     def _borra(self):
-        _escribe("DELETE FROM diseases WHERE code IN (%s, %s)",
+        escribe("DELETE FROM diseases WHERE code IN (%s, %s)",
                  (CODIGO_ANALISTA, CODIGO_EPIDEMIOLOGO))
 
     def _alta(self, usuario, codigo):
         with self.app.test_client() as client:
-            client.set_cookie(COOKIE_NAME, _token_de(usuario))
+            client.set_cookie(COOKIE_NAME, token_de(usuario))
             resp = client.post("/enfermedades/nueva", data={
                 "code": codigo, "name": f"Prueba {codigo}",
                 "p_r0_valor": "2.5", "p_r0_fuente": "Fuente de prueba"})
@@ -268,9 +227,9 @@ class AltaEnfermedadTests(unittest.TestCase):
 
     def test_el_formulario_solo_muestra_parametros_a_quien_los_fija(self):
         with self.app.test_client() as client:
-            client.set_cookie(COOKIE_NAME, _token_de("alex.cavazos"))
+            client.set_cookie(COOKIE_NAME, token_de("alex.cavazos"))
             analista = client.get("/enfermedades/nueva").data.decode("utf-8")
-            client.set_cookie(COOKIE_NAME, _token_de("diana.flores"))
+            client.set_cookie(COOKIE_NAME, token_de("diana.flores"))
             epidemiologo = client.get("/enfermedades/nueva").data.decode("utf-8")
         self.assertNotIn('name="p_r0_valor"', analista)
         self.assertIn("epidemiólogo", analista)
@@ -283,13 +242,8 @@ class AltaEnfermedadTests(unittest.TestCase):
 NOMBRE_HISTORIAL = "ZZZ historial tras error de captura"
 
 
-@unittest.skipUnless(_tiene_base(), "Requiere PostgreSQL en DATABASE_URL.")
-class HistorialTrasErrorTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-
+@requiere_base
+class HistorialTrasErrorTests(AppTestCase):
     def setUp(self):
         self._borra()
         regiones = queries.get_regiones_para_escenario()
@@ -298,7 +252,7 @@ class HistorialTrasErrorTests(unittest.TestCase):
         enfermedad = next((e for e in enfermedades if e["simulable"]), None)
         if not mty or not enfermedad:
             self.skipTest("la base no tiene Monterrey o una enfermedad simulable")
-        self.token = _token_de("alex.cavazos")
+        self.token = token_de("alex.cavazos")
         with self.app.test_client() as client:
             client.set_cookie(COOKIE_NAME, self.token)
             resp = client.post("/escenarios/nuevo", data={
@@ -313,9 +267,9 @@ class HistorialTrasErrorTests(unittest.TestCase):
         self._borra()
 
     def _borra(self):
-        _escribe("""DELETE FROM scenario_versions WHERE scenario_id IN
+        escribe("""DELETE FROM scenario_versions WHERE scenario_id IN
                     (SELECT id FROM scenarios WHERE name = %s)""", (NOMBRE_HISTORIAL,))
-        _escribe("DELETE FROM scenarios WHERE name = %s", (NOMBRE_HISTORIAL,))
+        escribe("DELETE FROM scenarios WHERE name = %s", (NOMBRE_HISTORIAL,))
 
     def test_el_historial_sigue_ahi_cuando_la_intervencion_es_invalida(self):
         with self.app.test_client() as client:

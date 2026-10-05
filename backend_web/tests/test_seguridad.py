@@ -18,18 +18,9 @@ from unittest.mock import patch
 
 import psycopg2
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from backend_web.tests.base import escribe, requiere_base
 from backend_web import auth, db
 from backend_web.db import get_conn, query
-
-
-def _tiene_base():
-    try:
-        query("SELECT 1", one=True)
-        return True
-    except Exception:
-        return False
 
 
 class SecretoTests(unittest.TestCase):
@@ -91,7 +82,7 @@ class ConexionTests(unittest.TestCase):
         self.assertIn("«epidemia_app»", mensaje)
         self.assertIs(ctx.exception.__cause__, falla)
 
-    @unittest.skipUnless(_tiene_base(), "Requiere PostgreSQL en DATABASE_URL.")
+    @requiere_base
     def test_contrasena_equivocada_da_operational_error_de_verdad(self):
         """Contra el PostgreSQL real, sea cual sea su idioma: antes, en uno de
         Windows en espanol, salia UnicodeDecodeError."""
@@ -108,7 +99,7 @@ class ConexionTests(unittest.TestCase):
 USUARIO_BLOQUEO = "prueba.bloqueo"
 
 
-@unittest.skipUnless(_tiene_base(), "Requiere PostgreSQL en DATABASE_URL.")
+@requiere_base
 class BloqueoPorIntentosTests(unittest.TestCase):
     """Cuenta propia, creada y borrada en cada prueba. attempt_login no escribe
     en audit_log (eso lo hace la ruta), asi que se puede borrar sin dejar
@@ -117,7 +108,7 @@ class BloqueoPorIntentosTests(unittest.TestCase):
     def setUp(self):
         self._borra()
         self.password = secrets.token_urlsafe(16)
-        self._escribe(
+        escribe(
             """INSERT INTO users (username, email, password_hash, full_name, is_active)
                VALUES (%s, %s, %s, 'Bloqueo de prueba', TRUE)""",
             (USUARIO_BLOQUEO, f"{USUARIO_BLOQUEO}@example.com",
@@ -126,14 +117,8 @@ class BloqueoPorIntentosTests(unittest.TestCase):
     def tearDown(self):
         self._borra()
 
-    def _escribe(self, sql, params=()):
-        with get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, params)
-            conn.commit()
-
     def _borra(self):
-        self._escribe("DELETE FROM users WHERE username = %s", (USUARIO_BLOQUEO,))
+        escribe("DELETE FROM users WHERE username = %s", (USUARIO_BLOQUEO,))
 
     def _intentos(self):
         return query("SELECT failed_attempts FROM users WHERE username = %s",

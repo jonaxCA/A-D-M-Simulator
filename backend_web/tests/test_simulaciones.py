@@ -23,11 +23,9 @@ Ejecutar:
 """
 import copy
 import json
-import os
 import unittest
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from backend_web.tests.base import ConCorridasDePrueba
 from backend_web import queries, simulaciones
 from backend_web.db import get_conn, query
 
@@ -129,58 +127,7 @@ class TraduccionYFormatoTests(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # Integracion contra PostgreSQL real
 # ---------------------------------------------------------------------------
-def _tiene_base():
-    try:
-        query("SELECT 1", one=True)
-        return True
-    except Exception:
-        return False
-
-
-@unittest.skipUnless(_tiene_base(), "Requiere PostgreSQL en DATABASE_URL (ver docstring del modulo).")
-class SimulacionesIntegracionTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.version_aprobada = query(
-            """
-            SELECT sv.id FROM scenario_versions sv
-            JOIN scenarios s ON s.id = sv.scenario_id
-            WHERE s.name = 'Ola Influenza ZMM - otono 2026' AND sv.status = 'aprobado'
-            """,
-            one=True,
-        )
-        if not cls.version_aprobada:
-            raise unittest.SkipTest(
-                "No se encontro el escenario de demostracion aprobado; "
-                "carga datos/postgres/semillas/demo_datos_nl.sql."
-            )
-        cls.version_id = cls.version_aprobada["id"]
-        cls.user_id = query(
-            "SELECT id FROM users WHERE username = 'alex.cavazos'", one=True
-        )["id"]
-
-    def setUp(self):
-        self._batches_creados = []
-
-    def tearDown(self):
-        # Cascada: simulation_batches -> simulation_runs -> simulation_results.
-        # audit_log es de solo insercion (trigger fn_solo_insercion) y no se
-        # limpia -- son eventos reales de que este test uso la app, igual que
-        # cualquier corrida real.
-        for batch_id in self._batches_creados:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("DELETE FROM simulation_batches WHERE id = %s", (batch_id,))
-                conn.commit()
-
-    def _encola(self, seed):
-        run_id, batch_id, error = queries.crear_corrida(
-            self.version_id, seed, self.user_id, simulaciones.ENGINE_VERSION,
-        )
-        self.assertIsNone(error, error)
-        self._batches_creados.append(batch_id)
-        return run_id
-
+class SimulacionesIntegracionTests(ConCorridasDePrueba):
     def test_construir_escenario_desde_version_del_demo_no_da_errores(self):
         escenario, version, errores = simulaciones.construir_escenario_desde_version(
             self.version_id

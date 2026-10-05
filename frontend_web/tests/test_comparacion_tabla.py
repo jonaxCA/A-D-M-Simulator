@@ -1,38 +1,11 @@
-import os
 import unittest
 from unittest.mock import patch
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
-from backend_web.auth import create_token
-from frontend_web.app import create_app
+from frontend_web.tests.base import ConUsuarioSimulado
 from frontend_web.app.permisos import COOKIE_NAME
 
 
-class ComparacionTablaTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-
-    def setUp(self):
-        # El token es de un usuario inventado (id 999) y las consultas estan
-        # simuladas, asi que la revalidacion contra `users` tambien: devuelve
-        # el usuario del token tal cual, con `sub` como entero, igual que
-        # backend_web.auth.usuario_vigente con una cuenta activa.
-        simulado = patch("frontend_web.app.permisos.usuario_vigente",
-                         side_effect=lambda u: {**u, "sub": int(u["sub"])})
-        simulado.start()
-        self.addCleanup(simulado.stop)
-
-    def _token(self):
-        return create_token({
-            "id": 999,
-            "username": "prueba",
-            "full_name": "Usuario Prueba",
-            "roles": ["ANALISTA"],
-        })
-
+class ComparacionTablaTests(ConUsuarioSimulado):
     @patch("frontend_web.app.routes.simulaciones.construir_comparacion_costo_impacto")
     @patch("frontend_web.app.routes.queries.get_runs_completados_para_comparar")
     @patch("frontend_web.app.routes.queries.get_corridas_para_comparar")

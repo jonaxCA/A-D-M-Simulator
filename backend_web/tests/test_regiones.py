@@ -10,24 +10,11 @@ Ejecutar:
     DATABASE_URL=postgresql://postgres:postgres_pw@localhost:55432/simulador_epidemico \
         python -m unittest backend_web.tests.test_regiones -v
 """
-import os
 import unittest
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from backend_web.tests.base import usuario_con_rol
 from backend_web import queries
 from backend_web.db import get_conn, query
-
-
-def _admin_id():
-    row = query(
-        """SELECT u.id FROM users u
-           JOIN user_roles ur ON ur.user_id = u.id
-           JOIN roles r ON r.id = ur.role_id
-           WHERE r.code = 'ADMINISTRADOR' LIMIT 1""",
-        one=True,
-    )
-    return row["id"] if row else None
 
 
 def _restaura(sql, params=()):
@@ -186,7 +173,7 @@ class ActualizaPoblacionMunicipioTests(unittest.TestCase):
     def setUp(self):
         self._orig_request = None
         self._patch_flask_request()
-        self.admin_id = _admin_id()
+        self.admin_id = usuario_con_rol("ADMINISTRADOR")
         self.assertIsNotNone(self.admin_id, "seed de datos de demo no cargada (falta admin)")
         municipio = query(
             "SELECT id, population, population_60plus FROM regions WHERE code = '19011'",
@@ -318,7 +305,7 @@ class PoblacionSinDatoTests(unittest.TestCase):
         self._flask_request_orig = flask.request
         flask.request = _FakeRequest()  # type: ignore[assignment]
 
-        self.admin_id = _admin_id()
+        self.admin_id = usuario_con_rol("ADMINISTRADOR")
         self.assertIsNotNone(self.admin_id, "seed de datos de demo no cargada (falta admin)")
         self.objetivo = query(
             "SELECT id, population, population_60plus FROM regions WHERE code = '19011'",

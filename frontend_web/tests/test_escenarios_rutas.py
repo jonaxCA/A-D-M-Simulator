@@ -7,14 +7,12 @@ El POST de alta se salta solo, con aviso, si falta la migracion 023.
 Ejecutar:
     python -m unittest frontend_web.tests.test_escenarios_rutas -v
 """
-import os
 import unittest
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from frontend_web.tests.base import AppTestCase
 from backend_web import queries
 from backend_web.db import get_conn, query
-from frontend_web.app import create_app
+
 
 NOMBRE = "ZZZ escenario de prueba de rutas"
 
@@ -26,12 +24,7 @@ NOMBRE = "ZZZ escenario de prueba de rutas"
 CODIGO_INCOMPLETA = "ZZZ_INCOMPLETA_PRUEBA"
 
 
-class EscenariosRutasTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-
+class EscenariosRutasTests(AppTestCase):
     def setUp(self):
         self.mty = query("SELECT id, population FROM regions WHERE code = '19039'", one=True)
         self._borra()
@@ -69,11 +62,6 @@ class EscenariosRutasTests(unittest.TestCase):
                 conn.commit()
         except Exception as exc:                       # limpieza best-effort
             print(f"[tearDown] no se pudo limpiar: {exc}")
-
-    def _login(self, client, usuario, password):
-        resp = client.post("/login", data={"usuario": usuario, "password": password},
-                           follow_redirects=False)
-        self.assertEqual(resp.status_code, 302, f"login de {usuario} fallo: {resp.data}")
 
     def test_anonimo_no_ve_escenarios(self):
         with self.app.test_client() as client:
@@ -136,17 +124,12 @@ class EscenariosRutasTests(unittest.TestCase):
             self.assertIn(NOMBRE, client.get("/escenarios").data.decode("utf-8", "replace"))
 
 
-class IntervencionesRutasTests(unittest.TestCase):
+class IntervencionesRutasTests(AppTestCase):
     """El editor vive en el detalle del escenario. Tres cosas tienen que
     cumplirse para editar: el rol, que la version siga en borrador y ser dueno
     del escenario (o ADMINISTRADOR)."""
 
     NOMBRE = "ZZZ escenario de rutas con intervenciones"
-
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
 
     def setUp(self):
         if not queries._hay_columnas_de_edad_en_version():
@@ -181,11 +164,6 @@ class IntervencionesRutasTests(unittest.TestCase):
                 conn.commit()
         except Exception as exc:                       # limpieza best-effort
             print(f"[tearDown] no se pudo limpiar: {exc}")
-
-    def _login(self, client, usuario, password):
-        resp = client.post("/login", data={"usuario": usuario, "password": password},
-                           follow_redirects=False)
-        self.assertEqual(resp.status_code, 302, f"login de {usuario} fallo")
 
     def _n(self):
         return len(queries.get_escenario_detalle(self.sid)["intervenciones"])
