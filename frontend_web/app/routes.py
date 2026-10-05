@@ -787,6 +787,12 @@ def escenario_nuevo():
 # la vez: el rol, que la version siga en borrador, y ser dueno del escenario (o
 # ADMINISTRADOR). Lo primero lo hace el decorador; los otros dos se revisan
 # aqui, porque dependen de la fila y no del usuario.
+def _es_dueno_o_admin(escenario):
+    """Quien creo el escenario, o un ADMINISTRADOR. Es la regla para editar
+    intervenciones, crear versiones y enviar a revision."""
+    return escenario["owner_id"] == g.user["sub"] or tiene_rol(g.user, "ADMINISTRADOR")
+
+
 def _puede_editar(detalle):
     """(puede, motivo). El motivo se muestra al usuario tal cual."""
     if not detalle["version"]:
@@ -794,8 +800,7 @@ def _puede_editar(detalle):
     if detalle["version"]["status"] != "borrador":
         return False, ("Esta versión ya no es un borrador: para cambiar sus "
                        "intervenciones hay que crear una versión nueva.")
-    if (detalle["escenario"]["owner_id"] != g.user["sub"]
-            and not tiene_rol(g.user, "ADMINISTRADOR")):
+    if not _es_dueno_o_admin(detalle["escenario"]):
         return False, "Solo quien creó el escenario puede editar sus intervenciones."
     return True, None
 
@@ -852,8 +857,7 @@ def version_nueva(scenario_id):
     if not detalle["version"]:
         flash("Ese escenario no tiene una versión de la que partir.", "error")
         return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
-    if (detalle["escenario"]["owner_id"] != g.user["sub"]
-            and not tiene_rol(g.user, "ADMINISTRADOR")):
+    if not _es_dueno_o_admin(detalle["escenario"]):
         flash("Solo quien creó el escenario puede versionarlo.", "error")
         return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
 
@@ -995,8 +999,7 @@ def version_enviar(scenario_id):
     detalle = _detalle_o_404(scenario_id)
     if detalle is None:
         return redirect(url_for("main.escenarios"))
-    if (detalle["escenario"]["owner_id"] != g.user["sub"]
-            and not tiene_rol(g.user, "ADMINISTRADOR")):
+    if not _es_dueno_o_admin(detalle["escenario"]):
         flash("Solo quien creó el escenario puede enviarlo a revisión.", "error")
     else:
         ok, error = queries.envia_a_revision(scenario_id, contexto=contexto_de_peticion())

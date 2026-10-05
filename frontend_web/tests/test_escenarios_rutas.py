@@ -447,6 +447,22 @@ class AprobacionRutasTests(IntervencionesRutasTests):
                        follow_redirects=True)
         self.assertEqual(self._estado(), "en_revision")
 
+    def test_quien_no_es_dueno_no_envia_a_revision(self):
+        """diana.flores tiene el rol para trabajar escenarios, pero este es de
+        alex.cavazos."""
+        with self.app.test_client() as client:
+            self._login(client, "diana.flores", "Epidemia2026!")
+            resp = self._envia(client)
+        self.assertIn("Solo quien creó el escenario puede enviarlo a revisión",
+                      resp.data.decode("utf-8", "replace"))
+        self.assertEqual(self._estado(), "borrador")
+
+    def test_el_administrador_si_envia_lo_ajeno(self):
+        with self.app.test_client() as admin:
+            self._login(admin, "admin", "Admin2026!")
+            self._envia(admin)
+        self.assertEqual(self._estado(), "en_revision")
+
 
 if __name__ == "__main__":
     unittest.main()
