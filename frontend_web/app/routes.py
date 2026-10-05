@@ -32,7 +32,7 @@ from backend_web import queries, simulaciones
 from backend_web.audit import log_audit
 from backend_web.auth import attempt_login, create_token, hash_password
 from .permisos import (login_required, admin_required, roles_required, tiene_rol,
-                       get_current_user, COOKIE_NAME)
+                       get_current_user, contexto_de_peticion, COOKIE_NAME)
 
 bp = Blueprint("main", __name__)
 
@@ -147,10 +147,10 @@ def login():
     password = request.form.get("password") or ""
     user, error = attempt_login(usuario, password)
     if error:
-        log_audit(None, "LOGIN_FAILED", "users", entity_id=usuario)
+        log_audit(contexto_de_peticion(None), "LOGIN_FAILED", "users", entity_id=usuario)
         return render_template("login.html", error=error, usuario=usuario), 401
 
-    log_audit(user["id"], "LOGIN", "users", entity_id=str(user["id"]))
+    log_audit(contexto_de_peticion(user["id"]), "LOGIN", "users", entity_id=str(user["id"]))
     token = create_token(user)
     next_url = destino_seguro(request.args.get("next")) or url_for("main.dashboard")
     resp = make_response(redirect(next_url))
@@ -164,7 +164,7 @@ def login():
 def logout():
     user = get_current_user()
     if user:
-        log_audit(user["sub"], "LOGOUT", "users", entity_id=str(user["sub"]))
+        log_audit(contexto_de_peticion(user["sub"]), "LOGOUT", "users", entity_id=str(user["sub"]))
     resp = make_response(redirect(url_for("main.dashboard_publico")))
     resp.delete_cookie(COOKIE_NAME)
     return resp
@@ -270,7 +270,7 @@ def reporte_nuevo():
                                active_nav="dashboard"), 400
 
     caso = queries.get_caso(nuevo_id)
-    log_audit(g.user["sub"], "CREATE", "cases", entity_id=str(nuevo_id),
+    log_audit(contexto_de_peticion(), "CREATE", "cases", entity_id=str(nuevo_id),
               data_after=dict(caso))
     flash(f"Reporte #{nuevo_id} capturado: {caso['enfermedad']} en "
           f"{caso['municipio']}, {caso['report_date']}. Queda pendiente de validación.", "ok")
@@ -367,7 +367,7 @@ def enfermedad_nueva():
                                parametros=queries.estado_parametros(params),
                                errores=[error], active_nav="enfermedades"), 400
 
-    log_audit(g.user["sub"], "CREATE", "diseases", entity_id=str(nuevo_id),
+    log_audit(contexto_de_peticion(), "CREATE", "diseases", entity_id=str(nuevo_id),
               data_after=_snapshot_enfermedad(queries.get_enfermedad(nuevo_id)))
     flash(f"Enfermedad «{datos['name']}» registrada con el código {datos['code']}.", "ok")
     return redirect(url_for("main.enfermedades"))
@@ -429,7 +429,7 @@ def enfermedad_editar(disease_id):
                                parametros=queries.estado_parametros(params),
                                errores=[error], active_nav="enfermedades"), 400
 
-    log_audit(g.user["sub"], "UPDATE", "diseases", entity_id=str(disease_id),
+    log_audit(contexto_de_peticion(), "UPDATE", "diseases", entity_id=str(disease_id),
               data_before=antes,
               data_after=_snapshot_enfermedad(queries.get_enfermedad(disease_id)))
     flash(f"«{datos['name']}» actualizada.", "ok")
@@ -448,7 +448,7 @@ def enfermedad_estado(disease_id):
 
     activa = request.form.get("activa") == "1"
     queries.set_enfermedad_activa(disease_id, activa)
-    log_audit(g.user["sub"], "UPDATE", "diseases", entity_id=str(disease_id),
+    log_audit(contexto_de_peticion(), "UPDATE", "diseases", entity_id=str(disease_id),
               data_before=_snapshot_enfermedad(actual),
               data_after=_snapshot_enfermedad(queries.get_enfermedad(disease_id)))
     flash(f"«{actual['name']}» quedó {'activa' if activa else 'inactiva'} en el catálogo.", "ok")
@@ -494,7 +494,7 @@ def _csv(nombre_archivo, encabezados, filas):
 @bp.route("/export/enfermedades.csv")
 @login_required
 def export_enfermedades_csv():
-    log_audit(g.user["sub"], "EXPORT", "reports", entity_id="catalogo_enfermedades")
+    log_audit(contexto_de_peticion(), "EXPORT", "reports", entity_id="catalogo_enfermedades")
     filtros = _filtros_enfermedades(request.args)
     listado = queries.get_enfermedades(pagina=1, por_pagina=EXPORT_MAX_FILAS, **filtros)
     return _csv(
@@ -517,7 +517,7 @@ def export_enfermedades_csv():
 @bp.route("/export/resumen.csv")
 @login_required
 def export_resumen_csv():
-    log_audit(g.user["sub"], "EXPORT", "reports", entity_id="resumen_situacion")
+    log_audit(contexto_de_peticion(), "EXPORT", "reports", entity_id="resumen_situacion")
     situacion = queries.get_resumen_situacion(limit=20)
     return _csv(
         "resumen_situacion.csv",
@@ -610,7 +610,8 @@ def region_editar(region_id):
                                valores=valores, active_nav="regiones"), 400
 
     ok, error, resultado = queries.actualiza_poblacion_municipio(
-        region_id, poblacion, motivo, g.user["sub"], esperado_population,
+        region_id, poblacion, motivo, esperado_population,
+        contexto=contexto_de_peticion(),
     )
     if not ok:
         return render_template("region_form.html", municipio=municipio, errores=[error],
@@ -703,7 +704,7 @@ def region_edades_editar(region_id):
         ), 400
 
     ok, error, resultado = queries.actualiza_grupos_edad_municipio(
-        region_id, grupos, esperados, motivo, g.user["sub"])
+        region_id, grupos, esperados, motivo, contexto=contexto_de_peticion())
     if not ok:
         return render_template(
             "region_edades_form.html", municipio=municipio, campos=campos,
@@ -769,7 +770,7 @@ def escenario_nuevo():
     valores["estratificar"] = bool(request.form.get("estratificar"))
 
     if not errores:
-        ok, error, scenario_id = queries.crea_escenario(datos, g.user["sub"])
+        ok, error, scenario_id = queries.crea_escenario(datos, contexto=contexto_de_peticion())
         if ok:
             flash(f"Escenario «{datos['name']}» creado con su versión 1 en borrador.", "ok")
             return redirect(url_for("main.escenarios"))
@@ -878,7 +879,7 @@ def version_nueva(scenario_id):
     datos, errores = queries.valida_version(
         request.form, region, detalle["escenario"]["default_params"])
     if not errores:
-        ok, error, numero = queries.crea_version(scenario_id, datos, g.user["sub"])
+        ok, error, numero = queries.crea_version(scenario_id, datos, contexto=contexto_de_peticion())
         if ok:
             flash(f"Versión {numero} creada en borrador, con las intervenciones de la "
                   f"versión {version['version_number']} copiadas.", "ok")
@@ -903,7 +904,7 @@ def escenario_duplicar(scenario_id):
     """
     numero = request.form.get("version", type=int)
     ok, error, nuevo_id = queries.duplica_escenario(
-        scenario_id, numero, request.form.get("name"), g.user["sub"])
+        scenario_id, numero, request.form.get("name"), contexto=contexto_de_peticion())
     if ok:
         flash("Escenario duplicado. Esta copia es tuya y empieza en borrador.", "ok")
         return redirect(url_for("main.escenario_detalle", scenario_id=nuevo_id))
@@ -927,7 +928,7 @@ def intervencion_agregar(scenario_id):
         request.form, tipos, detalle["version"], detalle["intervenciones"])
     if not errores:
         ok, error = queries.agrega_intervencion(
-            detalle["version"]["id"], datos, g.user["sub"])
+            detalle["version"]["id"], datos, contexto=contexto_de_peticion())
         if ok:
             flash(f"Intervención «{datos['code']}» agregada a la versión "
                   f"{detalle['version']['version_number']}.", "ok")
@@ -957,7 +958,7 @@ def intervencion_quitar(scenario_id, intervencion_id):
         flash(motivo, "error")
     else:
         ok, error = queries.quita_intervencion(
-            detalle["version"]["id"], intervencion_id, g.user["sub"])
+            detalle["version"]["id"], intervencion_id, contexto=contexto_de_peticion())
         flash("Intervención quitada." if ok else error, "ok" if ok else "error")
     return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
 
@@ -975,7 +976,7 @@ def intervencion_mover(scenario_id, intervencion_id):
     else:
         ok, error = queries.mueve_intervencion(
             detalle["version"]["id"], intervencion_id,
-            request.form.get("direccion"), g.user["sub"])
+            request.form.get("direccion"), contexto=contexto_de_peticion())
         if not ok and error:
             flash(error, "error")
     return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
@@ -998,7 +999,7 @@ def version_enviar(scenario_id):
             and not tiene_rol(g.user, "ADMINISTRADOR")):
         flash("Solo quien creó el escenario puede enviarlo a revisión.", "error")
     else:
-        ok, error = queries.envia_a_revision(scenario_id, g.user["sub"])
+        ok, error = queries.envia_a_revision(scenario_id, contexto=contexto_de_peticion())
         flash("Versión enviada a revisión." if ok else error, "ok" if ok else "error")
     return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
 
@@ -1008,7 +1009,7 @@ def version_enviar(scenario_id):
 def version_revisar(scenario_id):
     ok, error, estado = queries.resuelve_revision(
         scenario_id, request.form.get("decision"),
-        request.form.get("comentario"), g.user["sub"])
+        request.form.get("comentario"), contexto=contexto_de_peticion())
     if ok:
         # "Versión aprobado" chirría: el estado de la base es masculino y la
         # versión es femenina, así que el mensaje usa su propia palabra.
@@ -1094,7 +1095,7 @@ def monitoreo():
 @login_required
 def export_monitoreo_csv():
     f = _filtros_monitoreo(request.args)
-    log_audit(g.user["sub"], "EXPORT", "reports", entity_id="monitoreo_zonas")
+    log_audit(contexto_de_peticion(), "EXPORT", "reports", entity_id="monitoreo_zonas")
     zonas = queries.get_monitoreo_zonas(
         disease_id=f["disease_id"], region_id=f["region_id"], dias=f["dias"],
         busqueda=f["busqueda"] or None, orden=f["indicador"],
@@ -1140,7 +1141,7 @@ def _lanza_corrida(version_id, seed, forzar_error):
     if error:
         return None, error
 
-    log_audit(g.user["sub"], "RUN", "simulation_run", entity_id=str(run_id),
+    log_audit(contexto_de_peticion(), "RUN", "simulation_run", entity_id=str(run_id),
               data_after={"estado": "encolado", "seed": seed,
                          "scenario_version_id": version_id,
                          "forzar_error": forzar_error})
@@ -1359,7 +1360,7 @@ def usuario_nuevo():
         return render_template("usuario_form.html", roles=roles, usuario=datos,
                                errores=[error], active_nav="usuarios"), 400
 
-    log_audit(g.user["sub"], "CREATE", "users", entity_id=str(nuevo_id),
+    log_audit(contexto_de_peticion(), "CREATE", "users", entity_id=str(nuevo_id),
               data_after=_snapshot(queries.get_usuario(nuevo_id)))
     flash(f"Usuario '{datos['username'].lower()}' creado.", "ok")
     return redirect(url_for("main.usuarios"))
@@ -1417,7 +1418,7 @@ def usuario_editar(user_id):
         return render_template("usuario_form.html", roles=roles, usuario=vista,
                                errores=[error], active_nav="usuarios"), 400
 
-    log_audit(g.user["sub"], "UPDATE", "users", entity_id=str(user_id),
+    log_audit(contexto_de_peticion(), "UPDATE", "users", entity_id=str(user_id),
               data_before=antes,
               data_after=_snapshot(queries.get_usuario(user_id)))
     flash(f"Usuario '{actual['username']}' actualizado.", "ok")
@@ -1440,7 +1441,7 @@ def usuario_estado(user_id):
         return redirect(url_for("main.usuarios"))
 
     queries.desactivar_usuario(user_id, activo=activar)
-    log_audit(g.user["sub"], "UPDATE", "users", entity_id=str(user_id),
+    log_audit(contexto_de_peticion(), "UPDATE", "users", entity_id=str(user_id),
               data_before=_snapshot(actual),
               data_after=_snapshot(queries.get_usuario(user_id)))
     flash(("Usuario reactivado." if activar else "Usuario desactivado (baja logica)."), "ok")
@@ -1473,7 +1474,7 @@ def usuario_eliminar(user_id):
         flash(error, "error")
         return redirect(url_for("main.usuarios"))
 
-    log_audit(g.user["sub"], "DELETE", "users", entity_id=str(user_id),
+    log_audit(contexto_de_peticion(), "DELETE", "users", entity_id=str(user_id),
               data_before=antes)
     flash(f"Usuario '{actual['username']}' eliminado.", "ok")
     return redirect(url_for("main.usuarios"))
@@ -1581,7 +1582,7 @@ def comparacion_costos():
     queries.actualiza_costo_intervencion(intervention_type_id, datos)
 
     log_audit(
-        g.user["sub"],
+        contexto_de_peticion(),
         "UPDATE",
         "intervention_types",
         entity_id=str(intervention_type_id),

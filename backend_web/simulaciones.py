@@ -15,10 +15,9 @@ Tres responsabilidades que viven aqui a proposito, separadas de queries.py
   3. La corrida en segundo plano: lo que un hilo ejecuta despues de que la
      ruta ya respondio con el redirect al detalle.
 
-Nada de lo de aqui importa Flask. `ejecutar_run` sí registra auditoria y por
-eso importa backend_web.audit.log_audit, que ya sabe operar sin contexto de
-peticion (ver el guard en audit.py) -- indispensable porque este modulo corre
-dentro de un hilo, no dentro de una peticion HTTP.
+Nada de lo de aqui importa Flask. `ejecutar_run` corre en un hilo, sin
+peticion HTTP detras, asi que audita con Contexto.sin_peticion(): el usuario
+que pidio la corrida, sin IP.
 """
 import logging
 import time
@@ -37,6 +36,7 @@ from procesamiento.motor.pareto import ComparacionInvalida, comparar as comparar
 
 from . import queries
 from .audit import log_audit
+from .contexto import Contexto
 
 MENSAJE_ERROR_FORZADO = (
     "Error forzado de prueba: se solicito explicitamente desde la pantalla de "
@@ -212,6 +212,7 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
     run = queries.get_run(run_id)
     if not run:
         return
+    contexto = Contexto.sin_peticion(run["requested_by"])
 
     try:
         if not queries.marcar_run_ejecutando(run_id):
@@ -221,7 +222,7 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
             # auditar, y seguir de todos modos correria el motor sobre una
             # corrida que este hilo ya no es duenio de avanzar.
             log_audit(
-                run["requested_by"], "RUN", "simulation_run", entity_id=str(run_id),
+                contexto, "RUN", "simulation_run", entity_id=str(run_id),
                 data_after={
                     "estado": "abortado_antes_de_ejecutar",
                     "seed": run["seed"],
@@ -230,7 +231,7 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
                 },
             )
             return
-        log_audit(run["requested_by"], "RUN", "simulation_run", entity_id=str(run_id),
+        log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
                   data_after={"estado": "ejecutando", "seed": run["seed"],
                               "engine_version": run["engine_version"]})
 
@@ -259,7 +260,7 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
                 "La corrida %s termino en el motor, pero ya no estaba en "
                 "'ejecutando'; el resultado se descarto.", run_id)
             return
-        log_audit(run["requested_by"], "RUN", "simulation_run", entity_id=str(run_id),
+        log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
                   data_after={
                       "estado": "completado", "seed": run["seed"],
                       "engine_version": resultado["engine_version"],
@@ -305,7 +306,8 @@ def _marca_fallido_y_audita(run, mensaje):
         return
 
     try:
-        log_audit(run["requested_by"], "RUN", "simulation_run", entity_id=str(run["id"]),
+        log_audit(Contexto.sin_peticion(run["requested_by"]), "RUN", "simulation_run",
+                  entity_id=str(run["id"]),
                   data_after={"estado": "fallido", "seed": run["seed"], "error": mensaje[:500]})
     except Exception:
         logging.getLogger(__name__).exception(
@@ -346,7 +348,7 @@ def recupera_corridas_interrumpidas():
     filas = queries.marca_corridas_interrumpidas(MENSAJE_INTERRUMPIDA)
     for fila in filas:
         try:
-            log_audit(fila["requested_by"], "RUN", "simulation_run",
+            log_audit(Contexto.sin_peticion(fila["requested_by"]), "RUN", "simulation_run",
                       entity_id=str(fila["id"]),
                       data_after={"estado": "fallido", "seed": fila["seed"],
                                   "error": MENSAJE_INTERRUMPIDA[:500],

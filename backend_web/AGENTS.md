@@ -21,8 +21,10 @@
 
 ## Auditoría
 
-- `log_audit()` usa `flask.request`, así que no funciona en un hilo de fondo. Registra antes de
-  lanzar el hilo, o captura la IP y el navegador antes.
+- `backend_web` no importa Flask (lo vigila `test_integridad`). Quién hace la operación y desde
+  dónde llega en un `Contexto` (`backend_web/contexto.py`): las rutas lo arman con
+  `contexto_de_peticion()` y lo que corre sin petición, como el hilo de una corrida, usa
+  `Contexto.sin_peticion(user_id)`. Toda función nueva que audite lo recibe como `contexto=`.
 - El CHECK de `audit_log` (migración 003) solo acepta `LOGIN`, `LOGOUT`, `LOGIN_FAILED`,
   `CREATE`, `UPDATE`, `DELETE`, `PUBLISH`, `RUN`, `CANCEL`, `EXPORT`, `SYNC` y
   `PERMISSION_DENIED`. No existen `APPROVE`, `REJECT` ni `SUBMIT`: para aprobar o rechazar

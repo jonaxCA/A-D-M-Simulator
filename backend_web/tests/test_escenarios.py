@@ -12,7 +12,7 @@ Ejecutar:
 import json
 import unittest
 
-from backend_web.tests.base import usuario_con_rol
+from backend_web.tests.base import contexto_de_prueba, usuario_con_rol
 from backend_web import queries
 from backend_web.db import get_conn, query
 
@@ -31,12 +31,6 @@ def _restaura(sql, params=()):
             conn.commit()
     except Exception as exc:                       # limpieza best-effort
         print(f"[test] no se pudo escribir: {exc}")
-
-
-class _FakeRequest:
-    """Sustituye a flask.request dentro de queries.py sin levantar la app."""
-    remote_addr = "127.0.0.1"
-    headers = {"User-Agent": "pytest"}
 
 
 class _ConCatalogo(unittest.TestCase):
@@ -162,14 +156,9 @@ class CreaEscenarioTests(_ConCatalogo):
             self.skipTest("falta la migracion 023_escenarios_poblacion_por_edad.sql")
         self.autor = usuario_con_rol("ANALISTA") or usuario_con_rol("ADMINISTRADOR")
         self.assertIsNotNone(self.autor, "seed de datos de demo no cargada")
-        import flask
-        self._flask_request_orig = flask.request
-        flask.request = _FakeRequest()  # type: ignore[assignment]
         self._borra()
 
     def tearDown(self):
-        import flask
-        flask.request = self._flask_request_orig  # type: ignore[assignment]
         self._borra()
 
     def _borra(self):
@@ -194,7 +183,7 @@ class CreaEscenarioTests(_ConCatalogo):
             self.regiones, self.enfermedades)
         self.assertEqual(errores, [])
 
-        ok, error, sid = queries.crea_escenario(datos, self.autor)
+        ok, error, sid = queries.crea_escenario(datos, contexto=contexto_de_prueba(self.autor))
         self.assertTrue(ok, error)
 
         v = query("""SELECT version_number, is_current, status, population_size,
@@ -227,7 +216,7 @@ class CreaEscenarioTests(_ConCatalogo):
                             age_unknown_policy="prorratear"),
             self.regiones, self.enfermedades)
         self.assertEqual(errores, [])
-        ok, error, sid = queries.crea_escenario(datos, self.autor)
+        ok, error, sid = queries.crea_escenario(datos, contexto=contexto_de_prueba(self.autor))
         self.assertTrue(ok, error)
 
         v = query("""SELECT population_by_age, population_age_unknown, age_unknown_policy,
@@ -243,9 +232,9 @@ class CreaEscenarioTests(_ConCatalogo):
     def test_no_admite_dos_escenarios_con_el_mismo_nombre_del_mismo_autor(self):
         datos, _ = queries.valida_escenario(
             self.formulario(name=self.NOMBRE), self.regiones, self.enfermedades)
-        ok, _, _ = queries.crea_escenario(datos, self.autor)
+        ok, _, _ = queries.crea_escenario(datos, contexto=contexto_de_prueba(self.autor))
         self.assertTrue(ok)
-        ok2, error2, sid2 = queries.crea_escenario(datos, self.autor)
+        ok2, error2, sid2 = queries.crea_escenario(datos, contexto=contexto_de_prueba(self.autor))
         self.assertFalse(ok2)
         self.assertIn("ese nombre", error2)
         self.assertIsNone(sid2)
@@ -266,9 +255,6 @@ class _ConEscenarioBorrador(_ConCatalogo):
             self.skipTest("falta la migracion 023_escenarios_poblacion_por_edad.sql")
         self.autor = usuario_con_rol("ANALISTA") or usuario_con_rol("ADMINISTRADOR")
         self.assertIsNotNone(self.autor, "seed de datos de demo no cargada")
-        import flask
-        self._flask_request_orig = flask.request
-        flask.request = _FakeRequest()  # type: ignore[assignment]
 
         if not self.mty["grupos"]:
             self.skipTest("falta la migracion 021: no hay grupos de edad")
@@ -282,14 +268,12 @@ class _ConEscenarioBorrador(_ConCatalogo):
                             estratificar="on", age_unknown_policy="excluir"),
             self.regiones, self.enfermedades)
         self.assertEqual(errores, [])
-        ok, error, self.sid = queries.crea_escenario(datos, self.autor)
+        ok, error, self.sid = queries.crea_escenario(datos, contexto=contexto_de_prueba(self.autor))
         self.assertTrue(ok, error)
         self.tipos = queries.get_tipos_intervencion()
         self.version = queries.get_escenario_detalle(self.sid)["version"]
 
     def tearDown(self):
-        import flask
-        flask.request = self._flask_request_orig  # type: ignore[assignment]
         self._borra()
 
     def _borra(self):
@@ -312,7 +296,7 @@ class _ConEscenarioBorrador(_ConCatalogo):
             form, self.tipos, detalle["version"], detalle["intervenciones"])
         if errores:
             return None, errores
-        ok, error = queries.agrega_intervencion(self.version["id"], datos, self.autor)
+        ok, error = queries.agrega_intervencion(self.version["id"], datos, contexto=contexto_de_prueba(self.autor))
         return (ok, [] if ok else [error])
 
     def _codigos(self):
@@ -404,7 +388,7 @@ class IntervencionesTests(_ConEscenarioBorrador):
             ok, errores = self._agrega(code=code, start_day=str(dia), **{param: "1"})
             self.assertTrue(ok, errores)
         ids = [i["id"] for i in queries.get_escenario_detalle(self.sid)["intervenciones"]]
-        ok, _ = queries.mueve_intervencion(self.version["id"], ids[1], "subir", self.autor)
+        ok, _ = queries.mueve_intervencion(self.version["id"], ids[1], "subir", contexto=contexto_de_prueba(self.autor))
         self.assertTrue(ok)
         self.assertEqual(self._codigos(), ["REDUCCION_AFORO", "CIERRE_ESCUELAS"])
 
@@ -413,7 +397,7 @@ class IntervencionesTests(_ConEscenarioBorrador):
                              p_CIERRE_ESCUELAS_reduccion="1")
         self.assertTrue(ok)
         iid = queries.get_escenario_detalle(self.sid)["intervenciones"][0]["id"]
-        ok, error = queries.mueve_intervencion(self.version["id"], iid, "subir", self.autor)
+        ok, error = queries.mueve_intervencion(self.version["id"], iid, "subir", contexto=contexto_de_prueba(self.autor))
         self.assertFalse(ok)
         self.assertIsNone(error, "estar en el extremo no es un error que mostrar")
         self.assertEqual(self._codigos(), ["CIERRE_ESCUELAS"])
@@ -425,7 +409,7 @@ class IntervencionesTests(_ConEscenarioBorrador):
             ok, errores = self._agrega(code=code, start_day=str(dia), **{param: "0.5"})
             self.assertTrue(ok, errores)
         medio = queries.get_escenario_detalle(self.sid)["intervenciones"][1]
-        ok, error = queries.quita_intervencion(self.version["id"], medio["id"], self.autor)
+        ok, error = queries.quita_intervencion(self.version["id"], medio["id"], contexto=contexto_de_prueba(self.autor))
         self.assertTrue(ok, error)
         restantes = queries.get_escenario_detalle(self.sid)["intervenciones"]
         self.assertEqual([i["order_index"] for i in restantes], [0, 1],
@@ -436,7 +420,7 @@ class IntervencionesTests(_ConEscenarioBorrador):
                              p_CIERRE_ESCUELAS_reduccion="1")
         self.assertTrue(ok)
         iid = queries.get_escenario_detalle(self.sid)["intervenciones"][0]["id"]
-        ok, error = queries.quita_intervencion(self.version["id"] + 9999, iid, self.autor)
+        ok, error = queries.quita_intervencion(self.version["id"] + 9999, iid, contexto=contexto_de_prueba(self.autor))
         self.assertFalse(ok)
         self.assertIn("ya no está", error)
         self.assertEqual(len(self._codigos()), 1)
@@ -478,7 +462,7 @@ class VersionadoTests(_ConEscenarioBorrador):
                   (self.simulable["id"],), one=True)["default_params"])
         if errores:
             return None, errores
-        ok, error, numero = queries.crea_version(self.sid, datos, self.autor)
+        ok, error, numero = queries.crea_version(self.sid, datos, contexto=contexto_de_prueba(self.autor))
         return (numero if ok else None), ([] if ok else [error])
 
     def test_exige_el_comentario(self):
@@ -555,7 +539,7 @@ class VersionadoTests(_ConEscenarioBorrador):
         self.assertTrue(ok, errores)
         otro = usuario_con_rol("EPIDEMIOLOGO")
         ok, error, nuevo_id = queries.duplica_escenario(
-            self.sid, 1, "ZZZ copia del escenario", otro)
+            self.sid, 1, "ZZZ copia del escenario", contexto=contexto_de_prueba(otro))
         self.assertTrue(ok, error)
 
         detalle = queries.get_escenario_detalle(nuevo_id)
@@ -569,17 +553,17 @@ class VersionadoTests(_ConEscenarioBorrador):
         self.assertEqual(len(queries.get_versiones(self.sid)), 1)
 
     def test_duplicar_exige_nombre_y_lo_quiere_unico(self):
-        ok, error, _ = queries.duplica_escenario(self.sid, 1, "   ", self.autor)
+        ok, error, _ = queries.duplica_escenario(self.sid, 1, "   ", contexto=contexto_de_prueba(self.autor))
         self.assertFalse(ok)
         self.assertIn("nombre", error)
 
-        ok, error, _ = queries.duplica_escenario(self.sid, 1, self.NOMBRE, self.autor)
+        ok, error, _ = queries.duplica_escenario(self.sid, 1, self.NOMBRE, contexto=contexto_de_prueba(self.autor))
         self.assertFalse(ok, "el autor ya tiene un escenario con ese nombre")
         self.assertIn("ese nombre", error)
 
     def test_duplicar_una_version_que_no_existe(self):
         ok, error, _ = queries.duplica_escenario(self.sid, 99, "ZZZ copia imposible",
-                                                 self.autor)
+                                                 contexto=contexto_de_prueba(self.autor))
         self.assertFalse(ok)
         self.assertIn("ya no existe", error)
 
@@ -605,7 +589,7 @@ class AprobacionTests(_ConEscenarioBorrador):
         return queries.get_escenario_detalle(self.sid)["version"]["status"]
 
     def _envia(self):
-        return queries.envia_a_revision(self.sid, self.autor)
+        return queries.envia_a_revision(self.sid, contexto=contexto_de_prueba(self.autor))
 
     # ---- envio -------------------------------------------------------------
 
@@ -640,7 +624,7 @@ class AprobacionTests(_ConEscenarioBorrador):
 
     def test_rechazar_exige_motivo(self):
         self.assertTrue(self._envia()[0])
-        ok, error, _ = queries.resuelve_revision(self.sid, "rechazar", "  ", self.revisor)
+        ok, error, _ = queries.resuelve_revision(self.sid, "rechazar", "  ", contexto=contexto_de_prueba(self.revisor))
         self.assertFalse(ok)
         self.assertIn("explicar por qué", error)
         self.assertEqual(self._estado(), "en_revision")
@@ -648,7 +632,7 @@ class AprobacionTests(_ConEscenarioBorrador):
     def test_rechazar_con_motivo_guarda_revisor_fecha_y_comentario(self):
         self.assertTrue(self._envia()[0])
         ok, error, estado = queries.resuelve_revision(
-            self.sid, "rechazar", "Faltan medidas en la capa trabajo.", self.revisor)
+            self.sid, "rechazar", "Faltan medidas en la capa trabajo.", contexto=contexto_de_prueba(self.revisor))
         self.assertTrue(ok, error)
         self.assertEqual(estado, "rechazado")
         version = queries.get_escenario_detalle(self.sid)["version"]
@@ -658,7 +642,7 @@ class AprobacionTests(_ConEscenarioBorrador):
 
     def test_aprobar_no_exige_motivo(self):
         self.assertTrue(self._envia()[0])
-        ok, error, estado = queries.resuelve_revision(self.sid, "aprobar", "", self.revisor)
+        ok, error, estado = queries.resuelve_revision(self.sid, "aprobar", "", contexto=contexto_de_prueba(self.revisor))
         self.assertTrue(ok, error)
         self.assertEqual(estado, "aprobado")
         self.assertIsNone(
@@ -668,19 +652,19 @@ class AprobacionTests(_ConEscenarioBorrador):
         """Lo impide ck_scenario_versions_no_autoaprobacion; aqui se comprueba
         que la aplicacion lo diga antes, con un mensaje util."""
         self.assertTrue(self._envia()[0])
-        ok, error, _ = queries.resuelve_revision(self.sid, "aprobar", "", self.autor)
+        ok, error, _ = queries.resuelve_revision(self.sid, "aprobar", "", contexto=contexto_de_prueba(self.autor))
         self.assertFalse(ok)
         self.assertIn("que tú creaste", error)
         self.assertEqual(self._estado(), "en_revision")
 
     def test_no_se_dictamina_un_borrador(self):
-        ok, error, _ = queries.resuelve_revision(self.sid, "aprobar", "", self.revisor)
+        ok, error, _ = queries.resuelve_revision(self.sid, "aprobar", "", contexto=contexto_de_prueba(self.revisor))
         self.assertFalse(ok)
         self.assertIn("no en revisión", error)
 
     def test_decision_invalida(self):
         self.assertTrue(self._envia()[0])
-        ok, error, _ = queries.resuelve_revision(self.sid, "archivar", "", self.revisor)
+        ok, error, _ = queries.resuelve_revision(self.sid, "archivar", "", contexto=contexto_de_prueba(self.revisor))
         self.assertFalse(ok)
         self.assertIn("aprobar o rechazar", error)
 
@@ -698,7 +682,7 @@ class AprobacionTests(_ConEscenarioBorrador):
 
     def test_la_bandeja_se_vacia_al_dictaminar(self):
         self.assertTrue(self._envia()[0])
-        queries.resuelve_revision(self.sid, "aprobar", "", self.revisor)
+        queries.resuelve_revision(self.sid, "aprobar", "", contexto=contexto_de_prueba(self.revisor))
         self.assertEqual([p for p in queries.get_pendientes_revision()
                           if p["scenario_id"] == self.sid], [])
 
@@ -706,7 +690,7 @@ class AprobacionTests(_ConEscenarioBorrador):
         """Una version rechazada no se corrige: se crea la siguiente. Es la misma
         regla de «modificar nunca sobrescribe»."""
         self.assertTrue(self._envia()[0])
-        queries.resuelve_revision(self.sid, "rechazar", "Corregir el aforo.", self.revisor)
+        queries.resuelve_revision(self.sid, "rechazar", "Corregir el aforo.", contexto=contexto_de_prueba(self.revisor))
 
         datos, errores = queries.valida_version(
             {"estratificar": "on", "age_unknown_policy": "excluir",
@@ -716,7 +700,7 @@ class AprobacionTests(_ConEscenarioBorrador):
             query("SELECT default_params FROM diseases WHERE id = %s",
                   (self.simulable["id"],), one=True)["default_params"])
         self.assertEqual(errores, [])
-        ok, error, numero = queries.crea_version(self.sid, datos, self.autor)
+        ok, error, numero = queries.crea_version(self.sid, datos, contexto=contexto_de_prueba(self.autor))
         self.assertTrue(ok, error)
         self.assertEqual(numero, 2)
         self.assertEqual(self._estado(), "borrador")
@@ -728,7 +712,7 @@ class AprobacionTests(_ConEscenarioBorrador):
     def test_el_envio_y_el_dictamen_quedan_en_la_bitacora(self):
         self.assertTrue(self._envia()[0])
         version_id = queries.get_escenario_detalle(self.sid)["version"]["id"]
-        queries.resuelve_revision(self.sid, "aprobar", "Va.", self.revisor)
+        queries.resuelve_revision(self.sid, "aprobar", "Va.", contexto=contexto_de_prueba(self.revisor))
 
         eventos = query(
             """SELECT data_before, data_after FROM audit_log
@@ -791,7 +775,7 @@ class ParametrosCongeladosTests(_ConEscenarioBorrador):
         self.assertNotEqual(r0_antes, 9.5)
 
     def test_enviar_congela_los_parametros_del_momento(self):
-        ok, error = queries.envia_a_revision(self.sid, self.autor)
+        ok, error = queries.envia_a_revision(self.sid, contexto=contexto_de_prueba(self.autor))
         self.assertTrue(ok, error)
         detalle = queries.get_escenario_detalle(self.sid)
         self.assertTrue(detalle["parametros_congelados"])
@@ -806,8 +790,8 @@ class ParametrosCongeladosTests(_ConEscenarioBorrador):
                          "la versión enviada quedó con la fotografía")
 
     def test_una_version_aprobada_sigue_congelada(self):
-        self.assertTrue(queries.envia_a_revision(self.sid, self.autor)[0])
-        ok, error, _ = queries.resuelve_revision(self.sid, "aprobar", "", self.revisor)
+        self.assertTrue(queries.envia_a_revision(self.sid, contexto=contexto_de_prueba(self.autor))[0])
+        ok, error, _ = queries.resuelve_revision(self.sid, "aprobar", "", contexto=contexto_de_prueba(self.revisor))
         self.assertTrue(ok, error)
         congelado = _desempaqueta(
             queries.get_escenario_detalle(self.sid)["parametros_enfermedad"]["r0"])
@@ -819,8 +803,8 @@ class ParametrosCongeladosTests(_ConEscenarioBorrador):
     def test_la_version_nueva_vuelve_a_los_parametros_vivos(self):
         """La siguiente versión nace borrador, así que toma la corrección del
         catálogo: es justamente la forma de adoptar un parámetro arreglado."""
-        self.assertTrue(queries.envia_a_revision(self.sid, self.autor)[0])
-        queries.resuelve_revision(self.sid, "rechazar", "Corregir R0.", self.revisor)
+        self.assertTrue(queries.envia_a_revision(self.sid, contexto=contexto_de_prueba(self.autor))[0])
+        queries.resuelve_revision(self.sid, "rechazar", "Corregir R0.", contexto=contexto_de_prueba(self.revisor))
         self._cambia_r0(9.5)
 
         datos, errores = queries.valida_version(
@@ -831,7 +815,7 @@ class ParametrosCongeladosTests(_ConEscenarioBorrador):
             query("SELECT default_params FROM diseases WHERE id = %s",
                   (self.simulable["id"],), one=True)["default_params"])
         self.assertEqual(errores, [])
-        ok, error, numero = queries.crea_version(self.sid, datos, self.autor)
+        ok, error, numero = queries.crea_version(self.sid, datos, contexto=contexto_de_prueba(self.autor))
         self.assertTrue(ok, error)
         self.assertEqual(numero, 2)
 
@@ -844,7 +828,7 @@ class ParametrosCongeladosTests(_ConEscenarioBorrador):
         self.assertNotEqual(_desempaqueta(vieja["parametros_enfermedad"]["r0"]), 9.5)
 
     def test_el_motor_recibe_los_parametros_congelados(self):
-        self.assertTrue(queries.envia_a_revision(self.sid, self.autor)[0])
+        self.assertTrue(queries.envia_a_revision(self.sid, contexto=contexto_de_prueba(self.autor))[0])
         self._cambia_r0(0.05)      # con este R0 la epidemia no arranca
         detalle = queries.get_escenario_detalle(self.sid)
         errores, _ = queries.revisa_version(detalle)

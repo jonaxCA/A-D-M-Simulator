@@ -21,6 +21,7 @@ from unittest.mock import patch
 
 from backend_web.tests.base import ConCorridasDePrueba
 from backend_web import queries, simulaciones
+from backend_web.contexto import Contexto
 from backend_web.db import query
 
 
@@ -44,7 +45,9 @@ class RecuperaCorridasTests(unittest.TestCase):
         self.assertEqual(audita.call_count, 2)
         for llamada, fila in zip(audita.call_args_list, cerradas):
             args, kwargs = llamada
-            self.assertEqual(args[:3], (5, "RUN", "simulation_run"))
+            # El hilo de arranque no tiene peticion: audita al usuario de la
+            # corrida, sin IP.
+            self.assertEqual(args[:3], (Contexto.sin_peticion(5), "RUN", "simulation_run"))
             self.assertEqual(kwargs["entity_id"], str(fila["id"]))
             self.assertEqual(kwargs["data_after"]["estado"], "fallido")
 

@@ -12,7 +12,7 @@ Ejecutar:
 """
 import unittest
 
-from backend_web.tests.base import usuario_con_rol
+from backend_web.tests.base import contexto_de_prueba, usuario_con_rol
 from backend_web import queries
 from backend_web.db import get_conn, query
 
@@ -53,13 +53,6 @@ def _restaura_estado():
               WHERE parent_region_id = (SELECT id FROM regions WHERE code = '19')) sub
         WHERE e.code = '19'
         """)
-
-
-class _FakeRequest:
-    """Sustituye a flask.request dentro de queries.py sin levantar la app:
-    actualiza_poblacion_municipio solo necesita remote_addr y headers."""
-    remote_addr = "127.0.0.1"
-    headers = {"User-Agent": "pytest"}
 
 
 class RegionesCatalogoTests(unittest.TestCase):
@@ -171,8 +164,6 @@ class ValidacionGruposEdadTests(unittest.TestCase):
 
 class ActualizaPoblacionMunicipioTests(unittest.TestCase):
     def setUp(self):
-        self._orig_request = None
-        self._patch_flask_request()
         self.admin_id = usuario_con_rol("ADMINISTRADOR")
         self.assertIsNotNone(self.admin_id, "seed de datos de demo no cargada (falta admin)")
         municipio = query(
@@ -186,8 +177,6 @@ class ActualizaPoblacionMunicipioTests(unittest.TestCase):
     def tearDown(self):
         # Deja el municipio y el estado como estaban antes de la prueba. Cada
         # sentencia va aparte: ver _restaura.
-        import flask
-        flask.request = self._flask_request_orig  # type: ignore[assignment]
         _restaura(
             "UPDATE regions SET population = %s, population_60plus = %s WHERE id = %s",
             (self.pob_original, self.pob60_original, self.region_id))
@@ -196,17 +185,11 @@ class ActualizaPoblacionMunicipioTests(unittest.TestCase):
             (self.region_id,))
         _restaura_estado()
 
-    def _patch_flask_request(self):
-        import flask
-
-        self._flask_request_orig = flask.request
-        flask.request = _FakeRequest()  # type: ignore[assignment]
-
     def test_correccion_exitosa_registra_ajuste_y_auditoria(self):
         nueva_pob = self.pob_original + 500
         ok, error, resultado = queries.actualiza_poblacion_municipio(
             self.region_id, nueva_pob, "Conteo intercensal 2025",
-            self.admin_id, self.pob_original,
+            self.pob_original, contexto=contexto_de_prueba(self.admin_id),
         )
         self.assertTrue(ok, error)
         self.assertTrue(resultado["estado_actualizado"])
@@ -251,7 +234,7 @@ class ActualizaPoblacionMunicipioTests(unittest.TestCase):
         # "Otra pestaña" corrige primero.
         ok1, _, _ = queries.actualiza_poblacion_municipio(
             self.region_id, self.pob_original + 100, "Primer ajuste",
-            self.admin_id, self.pob_original,
+            self.pob_original, contexto=contexto_de_prueba(self.admin_id),
         )
         self.assertTrue(ok1)
 
@@ -259,7 +242,7 @@ class ActualizaPoblacionMunicipioTests(unittest.TestCase):
         # intenta guardar tambien: debe rechazarse sin tocar la base.
         ok2, error2, _ = queries.actualiza_poblacion_municipio(
             self.region_id, self.pob_original + 999,
-            "Segundo ajuste (deberia rechazarse)", self.admin_id, self.pob_original,
+            "Segundo ajuste (deberia rechazarse)", self.pob_original, contexto=contexto_de_prueba(self.admin_id),
         )
         self.assertFalse(ok2)
         self.assertIn("Otra persona corrigió", error2)
@@ -272,8 +255,8 @@ class ActualizaPoblacionMunicipioTests(unittest.TestCase):
         """Reproduce el escenario de 018/019: un ajuste manual vigente debe
         sobrevivir a que se vuelva a correr la correccion censal masiva."""
         ok, _, _ = queries.actualiza_poblacion_municipio(
-            self.region_id, 999999, "Ajuste de prueba", self.admin_id,
-            self.pob_original,
+            self.region_id, 999999, "Ajuste de prueba", self.pob_original,
+            contexto=contexto_de_prueba(self.admin_id),
         )
         self.assertTrue(ok)
 
@@ -301,10 +284,6 @@ class PoblacionSinDatoTests(unittest.TestCase):
     que ninguno de los dos casos rompa la edicion ni corrompa el total estatal."""
 
     def setUp(self):
-        import flask
-        self._flask_request_orig = flask.request
-        flask.request = _FakeRequest()  # type: ignore[assignment]
-
         self.admin_id = usuario_con_rol("ADMINISTRADOR")
         self.assertIsNotNone(self.admin_id, "seed de datos de demo no cargada (falta admin)")
         self.objetivo = query(
@@ -316,8 +295,6 @@ class PoblacionSinDatoTests(unittest.TestCase):
         self.estado_id = query("SELECT id FROM regions WHERE code = '19'", one=True)["id"]
 
     def tearDown(self):
-        import flask
-        flask.request = self._flask_request_orig  # type: ignore[assignment]
         for fila in (self.objetivo, self.vecino):
             _restaura(
                 "UPDATE regions SET population = %s, population_60plus = %s WHERE id = %s",
@@ -332,7 +309,7 @@ class PoblacionSinDatoTests(unittest.TestCase):
         Ahora el 60 y mas sale de region_age_groups y la pantalla no lo ofrece."""
         ok, error, _ = queries.actualiza_poblacion_municipio(
             self.objetivo["id"], self.objetivo["population"] + 1_000,
-            "Conteo intercensal 2025", self.admin_id, self.objetivo["population"])
+            "Conteo intercensal 2025", self.objetivo["population"], contexto=contexto_de_prueba(self.admin_id))
         self.assertTrue(ok, error)
 
         fila = query("SELECT population, population_60plus FROM regions WHERE id = %s",
@@ -356,7 +333,7 @@ class PoblacionSinDatoTests(unittest.TestCase):
 
         ok, error, resultado = queries.actualiza_poblacion_municipio(
             self.objetivo["id"], self.objetivo["population"] + 100,
-            "Conteo intercensal 2025", self.admin_id, self.objetivo["population"])
+            "Conteo intercensal 2025", self.objetivo["population"], contexto=contexto_de_prueba(self.admin_id))
         self.assertTrue(ok, error)
         self.assertGreaterEqual(resultado["municipios_sin_poblacion"], 1)
 

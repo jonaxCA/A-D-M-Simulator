@@ -16,6 +16,7 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
 
 from backend_web import queries, simulaciones  # noqa: E402
 from backend_web.auth import create_token  # noqa: E402
+from backend_web.contexto import Contexto  # noqa: E402
 from backend_web.db import get_conn, query  # noqa: E402
 
 # Escenario de la semilla de demostracion (datos/postgres/semillas/
@@ -46,6 +47,12 @@ def escribe(sql, params=()):
         with conn.cursor() as cur:
             cur.execute(sql, params)
         conn.commit()
+
+
+def contexto_de_prueba(user_id):
+    """El Contexto con que las pruebas llaman a la capa de datos: el mismo que
+    armaria una peticion local del cliente de pruebas."""
+    return Contexto(user_id, "127.0.0.1", "pytest")
 
 
 def id_de_usuario(username):

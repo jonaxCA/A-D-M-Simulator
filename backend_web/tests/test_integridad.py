@@ -77,6 +77,29 @@ class SinNombresTapadosTests(unittest.TestCase):
         self.assertEqual(faltan, [], f"módulos que ya no existen: {faltan}")
 
 
+class CapaDeDatosSinFlaskTests(unittest.TestCase):
+    """backend_web no importa Flask, ni siquiera dentro de una funcion.
+
+    La capa de datos recibe quien y desde donde en un Contexto
+    (backend_web/contexto.py). Leerlo de flask.request la ataba a una peticion
+    web: no se podia llamar desde un hilo, un script o un microservicio, y las
+    pruebas tenian que sustituir flask.request a mano.
+    """
+
+    def test_ningun_modulo_de_backend_web_importa_flask(self):
+        culpables = []
+        for ruta in sorted((RAIZ / "backend_web").rglob("*.py")):
+            if "tests" in ruta.parts or "__pycache__" in ruta.parts:
+                continue
+            rel = ruta.relative_to(RAIZ).as_posix()
+            for n in ast.walk(ast.parse(ruta.read_text(encoding="utf-8"), rel)):
+                modulos = ([a.name for a in n.names] if isinstance(n, ast.Import)
+                           else [n.module or ""] if isinstance(n, ast.ImportFrom) else [])
+                if any(m == "flask" or m.startswith("flask.") for m in modulos):
+                    culpables.append(f"{rel}:{n.lineno}")
+        self.assertEqual(culpables, [])
+
+
 class MotorUnaSolaVezTests(unittest.TestCase):
     """queries.py y simulaciones.py tienen que ver EL MISMO motor.
 

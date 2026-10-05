@@ -9,31 +9,23 @@ vacia hasta que alguien de verdad usa el sistema, y eso es lo correcto.
 """
 import json
 
-from flask import has_request_context, request
-
 from .db import execute
 
 
-def log_audit(user_id, action, entity_type, entity_id=None,
+def log_audit(contexto, action, entity_type, entity_id=None,
               data_before=None, data_after=None):
-    """Registra un evento en audit_log.
+    """Registra un evento en audit_log, en una transaccion propia.
+
+    `contexto` (backend_web.contexto.Contexto) dice quien y desde donde: de el
+    salen user_id, ip_address y user_agent. Las corridas en segundo plano no
+    tienen peticion HTTP detras y usan Contexto.sin_peticion(), con la IP en
+    NULL.
 
     data_before / data_after son dicts opcionales. 003_sistema.sql tiene un
     CHECK (ck_audit_log_datos) que EXIGE al menos uno de los dos cuando la
     accion es CREATE, UPDATE o DELETE -- por eso el CRUD de usuarios siempre
     los manda. Nunca se guarda password_hash aqui (ver _limpia).
-
-    ip_address y user_agent salen de `flask.request`, que solo existe dentro
-    de una peticion HTTP. Las simulaciones (Bloque F) corren en un hilo de
-    fondo -- ahi no hay peticion ni contexto de Flask -- y de todos modos
-    tienen que quedar auditadas (encolada/ejecutando/completada/fallida), asi
-    que sin request se registra igual, con ip/user_agent en NULL.
     """
-    if has_request_context():
-        ip = request.remote_addr
-        ua = (request.headers.get("User-Agent") or "")[:255]
-    else:
-        ip, ua = None, "hilo de simulacion (sin peticion HTTP)"
     execute(
         """
         INSERT INTO audit_log (user_id, action, entity_type, entity_id,
@@ -41,7 +33,8 @@ def log_audit(user_id, action, entity_type, entity_id=None,
         VALUES (%s, %s, %s, %s, %s::inet, %s, %s::jsonb, %s::jsonb)
         """,
         (
-            user_id, action, entity_type, entity_id, ip, ua,
+            contexto.user_id, action, entity_type, entity_id,
+            contexto.ip, contexto.user_agent,
             _serializa(data_before), _serializa(data_after),
         ),
     )

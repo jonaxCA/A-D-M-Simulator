@@ -120,10 +120,12 @@ class AuditoriaIntegracionTests(ConCorridasDePrueba):
     def test_corrida_completa_deja_las_3_etapas_visibles_y_distintas(self):
         run_id = self._encola(seed=910001)
         from backend_web.audit import log_audit
-        log_audit(self.user_id, "RUN", "simulation_run", entity_id=str(run_id),
-                   data_after={"estado": "encolado", "seed": 910001,
-                               "scenario_version_id": self.version_id,
-                               "forzar_error": False})
+        from backend_web.contexto import Contexto
+        log_audit(Contexto.sin_peticion(self.user_id), "RUN", "simulation_run",
+                  entity_id=str(run_id),
+                  data_after={"estado": "encolado", "seed": 910001,
+                              "scenario_version_id": self.version_id,
+                              "forzar_error": False})
         simulaciones.ejecutar_run(run_id, demora_seg=0)
 
         eventos = queries.get_auditoria_lista(modulo="simulation_run", limit=500)

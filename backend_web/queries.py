@@ -2053,17 +2053,14 @@ def _ultima_correccion_grupos_edad(region_ids):
 
 
 def actualiza_grupos_edad_municipio(region_id, grupos, esperados,
-                                    motivo, admin_user_id):
+                                    motivo, *, contexto):
     """Corrige las bandas de un municipio y su agregado estatal en una sola
     transaccion. Rechaza formularios obsoletos y conserva la suma de población
     con edad declarada: esta pantalla corrige clasificacion, no inventa ni
     elimina personas. El trigger 022 deriva el 60+ de 60-79 y 80+."""
-    from flask import request
-
     from .audit import _serializa
 
-    ip = request.remote_addr
-    ua = (request.headers.get("User-Agent") or "")[:255]
+    admin_user_id, ip, ua = contexto.user_id, contexto.ip, contexto.user_agent
     if not motivo or not motivo.strip():
         return False, "Indica la fuente o el motivo de la corrección.", None
     if len(motivo.strip()) > 500:
@@ -2263,8 +2260,8 @@ def valida_poblacion_municipio(population_raw, motivo, poblacion_60_actual=None)
     return poblacion, errores
 
 
-def actualiza_poblacion_municipio(region_id, population, motivo, admin_user_id,
-                                  esperado_population):
+def actualiza_poblacion_municipio(region_id, population, motivo, esperado_population,
+                                  *, contexto):
     """Corrige la poblacion total de un municipio. Solo la debe llamar una ruta
     ya protegida con admin_required -- aqui no se vuelve a checar el rol.
 
@@ -2285,12 +2282,9 @@ def actualiza_poblacion_municipio(region_id, population, motivo, admin_user_id,
     Devuelve (ok, error, resultado). `resultado` trae el antes/despues del
     municipio y, si aplico, del estado -- para el mensaje de confirmacion.
     """
-    from flask import request
-
     from .audit import _serializa
 
-    ip = request.remote_addr
-    ua = (request.headers.get("User-Agent") or "")[:255]
+    admin_user_id, ip, ua = contexto.user_id, contexto.ip, contexto.user_agent
 
     try:
         with get_conn() as conn:
@@ -2769,7 +2763,7 @@ def escenario_de_version(detalle):
                                 intervenciones_para_motor(detalle["intervenciones"]))
 
 
-def crea_escenario(datos, owner_id):
+def crea_escenario(datos, *, contexto):
     """Da de alta el escenario y su version 1 en una sola transaccion.
 
     Un escenario sin version no significa nada -- no se puede simular ni
@@ -2778,12 +2772,9 @@ def crea_escenario(datos, owner_id):
 
     Devuelve (ok, error, scenario_id).
     """
-    from flask import request
-
     from .audit import _serializa
 
-    ip = request.remote_addr
-    ua = (request.headers.get("User-Agent") or "")[:255]
+    owner_id, ip, ua = contexto.user_id, contexto.ip, contexto.user_agent
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -2836,16 +2827,6 @@ def crea_escenario(datos, owner_id):
 # El formulario de parametros se genera desde `intervention_types.param_schema`,
 # que es JSON Schema. No hay un formulario por tipo escrito a mano: agregar un
 # septimo tipo de intervencion es una fila en el catalogo, no codigo nuevo.
-
-def _ip():
-    from flask import request
-    return request.remote_addr
-
-
-def _ua():
-    from flask import request
-    return (request.headers.get("User-Agent") or "")[:255]
-
 
 def get_tipos_intervencion():
     """Tipos activos, con el esquema que describe sus parametros."""
@@ -3164,7 +3145,7 @@ def valida_intervencion(form, tipos, version, existentes):
     return datos, errores
 
 
-def _auditar(cur, user_id, accion, entity_type, entity_id, antes=None, despues=None):
+def _auditar(cur, contexto, accion, entity_type, entity_id, antes=None, despues=None):
     """Inserta en audit_log dentro de la transaccion que la llama.
 
     Se usa `cur` y no `log_audit` a proposito: la bitacora tiene que confirmarse
@@ -3175,12 +3156,13 @@ def _auditar(cur, user_id, accion, entity_type, entity_id, antes=None, despues=N
         """INSERT INTO audit_log (user_id, action, entity_type, entity_id,
                                   ip_address, user_agent, data_before, data_after)
            VALUES (%s, %s, %s, %s, %s::inet, %s, %s::jsonb, %s::jsonb)""",
-        (user_id, accion, entity_type, str(entity_id), _ip(), _ua(),
+        (contexto.user_id, accion, entity_type, str(entity_id),
+         contexto.ip, contexto.user_agent,
          _serializa(antes) if antes else None,
          _serializa(despues) if despues else None))
 
 
-def agrega_intervencion(version_id, datos, user_id):
+def agrega_intervencion(version_id, datos, *, contexto):
     """Agrega la intervencion al final del orden de la version."""
     from .audit import _serializa
     try:
@@ -3201,7 +3183,7 @@ def agrega_intervencion(version_id, datos, user_id):
                      datos["end_day"], datos["coverage"], datos["compliance"],
                      _serializa(datos["params"] or {}), orden))
                 iid = cur.fetchone()[0]
-                _auditar(cur, user_id, "CREATE", "scenario_interventions", iid,
+                _auditar(cur, contexto, "CREATE", "scenario_interventions", iid,
                          despues={**datos, "scenario_version_id": version_id,
                                   "order_index": orden})
             conn.commit()
@@ -3213,7 +3195,7 @@ def agrega_intervencion(version_id, datos, user_id):
         return False, f"Los datos no cumplen las restricciones de la base: {exc}"
 
 
-def quita_intervencion(version_id, intervention_id, user_id):
+def quita_intervencion(version_id, intervention_id, *, contexto):
     """Quita una intervencion y cierra el hueco que deja en el orden."""
     try:
         with get_conn() as conn:
@@ -3240,7 +3222,7 @@ def quita_intervencion(version_id, intervention_id, user_id):
                     """UPDATE scenario_interventions SET order_index = order_index - 1
                        WHERE scenario_version_id = %s AND order_index > %s""",
                     (version_id, antes["order_index"]))
-                _auditar(cur, user_id, "DELETE", "scenario_interventions",
+                _auditar(cur, contexto, "DELETE", "scenario_interventions",
                          intervention_id, antes=antes)
             conn.commit()
         return True, None
@@ -3248,7 +3230,7 @@ def quita_intervencion(version_id, intervention_id, user_id):
         return False, f"No se pudo quitar: {exc}"
 
 
-def mueve_intervencion(version_id, intervention_id, direccion, user_id):
+def mueve_intervencion(version_id, intervention_id, direccion, *, contexto):
     """Sube o baja una intervencion una posicion, intercambiandola con su vecina."""
     if direccion not in ("subir", "bajar"):
         return False, "Dirección de movimiento inválida."
@@ -3274,7 +3256,7 @@ def mueve_intervencion(version_id, intervention_id, direccion, user_id):
                 for nuevo, iid in enumerate(posiciones):
                     cur.execute("UPDATE scenario_interventions SET order_index = %s "
                                 "WHERE id = %s", (nuevo, iid))
-                _auditar(cur, user_id, "UPDATE", "scenario_interventions",
+                _auditar(cur, contexto, "UPDATE", "scenario_interventions",
                          intervention_id, antes={"order_index": i},
                          despues={"order_index": j})
             conn.commit()
@@ -3302,7 +3284,7 @@ _SQL_COPIA_INTERVENCIONES = """
 """
 
 
-def crea_version(scenario_id, datos, user_id):
+def crea_version(scenario_id, datos, *, contexto):
     """Crea la version siguiente a partir de la vigente.
 
     Las intervenciones se copian: si no, cada cambio de un numero obligaria a
@@ -3312,6 +3294,7 @@ def crea_version(scenario_id, datos, user_id):
 
     Devuelve (ok, error, version_number).
     """
+    user_id = contexto.user_id
     from .audit import _serializa
     try:
         with get_conn() as conn:
@@ -3353,7 +3336,7 @@ def crea_version(scenario_id, datos, user_id):
                                               ip_address, user_agent, data_before, data_after)
                        VALUES (%s, 'CREATE', 'scenario_versions', %s, %s::inet, %s,
                                %s::jsonb, %s::jsonb)""",
-                    (user_id, str(nueva_id), _ip(), _ua(),
+                    (user_id, str(nueva_id), contexto.ip, contexto.user_agent,
                      _serializa({"version_vigente_anterior": ultimo}),
                      _serializa({**datos, "scenario_id": scenario_id,
                                  "version_number": siguiente,
@@ -3367,7 +3350,7 @@ def crea_version(scenario_id, datos, user_id):
                        "página y vuelve a intentarlo."), None
 
 
-def duplica_escenario(scenario_id, version_number, nombre, user_id):
+def duplica_escenario(scenario_id, version_number, nombre, *, contexto):
     """Crea un escenario nuevo a partir de una version de otro.
 
     Se copian enfermedad, region, parametros de la version e intervenciones. El
@@ -3376,6 +3359,7 @@ def duplica_escenario(scenario_id, version_number, nombre, user_id):
 
     Devuelve (ok, error, scenario_id_nuevo).
     """
+    user_id = contexto.user_id
     from .audit import _serializa
 
     nombre = (nombre or "").strip()
@@ -3429,7 +3413,7 @@ def duplica_escenario(scenario_id, version_number, nombre, user_id):
                     """INSERT INTO audit_log (user_id, action, entity_type, entity_id,
                                               ip_address, user_agent, data_after)
                        VALUES (%s, 'CREATE', 'scenarios', %s, %s::inet, %s, %s::jsonb)""",
-                    (user_id, str(nuevo_id), _ip(), _ua(),
+                    (user_id, str(nuevo_id), contexto.ip, contexto.user_agent,
                      _serializa({"name": nombre, "duplicado_de": scenario_id,
                                  "version_origen": version_number,
                                  "intervenciones_copiadas": copiadas})))
@@ -3477,7 +3461,7 @@ def get_pendientes_revision():
            ORDER BY v.submitted_at, s.name""")]
 
 
-def envia_a_revision(scenario_id, user_id):
+def envia_a_revision(scenario_id, *, contexto):
     """Manda la version vigente de borrador a en_revision.
 
     Antes de enviar se vuelve a contrastar con el motor: mandar a revisar algo
@@ -3526,7 +3510,7 @@ def envia_a_revision(scenario_id, user_id):
                 if not fila:
                     return False, ("Alguien cambió el estado de esta versión mientras "
                                    "la enviabas. Recarga la página.")
-                _auditar(cur, user_id, "UPDATE", "scenario_versions", version["id"],
+                _auditar(cur, contexto, "UPDATE", "scenario_versions", version["id"],
                          antes={"status": "borrador"},
                          despues={"status": "en_revision", "version_number": fila[0],
                                   "parametros_congelados": congelar})
@@ -3536,7 +3520,7 @@ def envia_a_revision(scenario_id, user_id):
         return False, f"La base rechazó el envío: {exc}"
 
 
-def resuelve_revision(scenario_id, decision, comentario, revisor_id):
+def resuelve_revision(scenario_id, decision, comentario, *, contexto):
     """Aprueba o rechaza la version que esta en revision.
 
     `decision` es 'aprobar' o 'rechazar'. Rechazar exige motivo -- lo pide el
@@ -3549,6 +3533,7 @@ def resuelve_revision(scenario_id, decision, comentario, revisor_id):
 
     Devuelve (ok, error, estado_nuevo).
     """
+    revisor_id = contexto.user_id
     estado = DECISIONES_REVISION.get(decision)
     if estado is None:
         return False, "Decisión inválida: solo se puede aprobar o rechazar.", None
@@ -3587,7 +3572,7 @@ def resuelve_revision(scenario_id, decision, comentario, revisor_id):
                 if not fila:
                     return False, ("Alguien resolvió esta revisión mientras la tuya "
                                    "estaba abierta. Recarga la página."), None
-                _auditar(cur, revisor_id, "UPDATE", "scenario_versions", version["id"],
+                _auditar(cur, contexto, "UPDATE", "scenario_versions", version["id"],
                          antes={"status": "en_revision"},
                          despues={"status": estado, "version_number": fila[0],
                                   "review_comment": comentario or None})
