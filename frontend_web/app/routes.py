@@ -455,27 +455,60 @@ def enfermedad_estado(disease_id):
     return redirect(request.referrer or url_for("main.enfermedades"))
 
 
+# Una hoja de calculo lee como formula la celda que empieza con alguno de estos
+# caracteres. Los nombres de enfermedad los escribe cualquier usuario
+# autenticado, asi que un nombre como =HYPERLINK(...) se ejecutaria en la
+# computadora de quien abra el export.
+_INICIO_DE_FORMULA = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _celda_csv(valor):
+    """El valor tal cual, salvo el texto que una hoja de calculo leeria como
+    formula: a ese se le antepone un apostrofo, como recomienda OWASP. Los
+    numeros no se tocan: un -12.5 de monitoreo es un numero, no una formula."""
+    if isinstance(valor, str) and valor.startswith(_INICIO_DE_FORMULA):
+        return "'" + valor
+    return valor
+
+
+def _csv(nombre_archivo, encabezados, filas):
+    """Respuesta de descarga con un CSV. Todas las exportaciones pasan por aqui
+    para que el formato del archivo se decida en un solo lugar.
+
+    Empieza con el BOM de UTF-8: sin el, Excel en Windows abre el archivo con
+    la codificacion local y muestra "CÃ³digo" en vez de "Código". Quien lo lea
+    con un programa tiene que usar `utf-8-sig`, que acepta el archivo con o
+    sin BOM.
+    """
+    buf = io.StringIO()
+    buf.write("\ufeff")
+    writer = csv.writer(buf)
+    writer.writerow(encabezados)
+    writer.writerows([_celda_csv(v) for v in fila] for fila in filas)
+    resp = make_response(buf.getvalue())
+    resp.headers["Content-Type"] = "text/csv; charset=utf-8"
+    resp.headers["Content-Disposition"] = f"attachment; filename={nombre_archivo}"
+    return resp
+
+
 @bp.route("/export/enfermedades.csv")
 @login_required
 def export_enfermedades_csv():
+    log_audit(g.user["sub"], "EXPORT", "reports", entity_id="catalogo_enfermedades")
     filtros = _filtros_enfermedades(request.args)
     listado = queries.get_enfermedades(pagina=1, por_pagina=EXPORT_MAX_FILAS, **filtros)
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(["Código", "Enfermedad", "Estado", "Actividad", "Alta en catálogo",
-                     "Casos NL (total)", "Casos NL (30 días)",
-                     "Simulable", "Parámetros faltantes", "Parámetros supuestos"])
-    for e in listado["enfermedades"]:
-        p = e["parametros"]
-        writer.writerow([e["code"], e["nombre"], e["estado_label"],
-                         e["actividad"]["label"], e["alta_label"],
-                         e["casos_total"], e["casos_30d"],
-                         "Sí" if p["simulable"] else "No",
-                         len(p["faltan"]), len(p["supuestos"])])
-    resp = make_response(buf.getvalue())
-    resp.headers["Content-Type"] = "text/csv; charset=utf-8"
-    resp.headers["Content-Disposition"] = "attachment; filename=catalogo_enfermedades.csv"
-    return resp
+    return _csv(
+        "catalogo_enfermedades.csv",
+        ["Código", "Enfermedad", "Estado", "Actividad", "Alta en catálogo",
+         "Casos NL (total)", "Casos NL (30 días)",
+         "Simulable", "Parámetros faltantes", "Parámetros supuestos"],
+        ([e["code"], e["nombre"], e["estado_label"],
+          e["actividad"]["label"], e["alta_label"],
+          e["casos_total"], e["casos_30d"],
+          "Sí" if e["parametros"]["simulable"] else "No",
+          len(e["parametros"]["faltan"]), len(e["parametros"]["supuestos"])]
+         for e in listado["enfermedades"]),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -486,15 +519,11 @@ def export_enfermedades_csv():
 def export_resumen_csv():
     log_audit(g.user["sub"], "EXPORT", "reports", entity_id="resumen_situacion")
     situacion = queries.get_resumen_situacion(limit=20)
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(["Enfermedad", "Estado", "Casos (7 dias)"])
-    for row in situacion:
-        writer.writerow([row["enfermedad"], row["estado"], row["incidencia"]])
-    resp = make_response(buf.getvalue())
-    resp.headers["Content-Type"] = "text/csv; charset=utf-8"
-    resp.headers["Content-Disposition"] = "attachment; filename=resumen_situacion.csv"
-    return resp
+    return _csv(
+        "resumen_situacion.csv",
+        ["Enfermedad", "Estado", "Casos (7 dias)"],
+        ([row["enfermedad"], row["estado"], row["incidencia"]] for row in situacion),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1071,17 +1100,13 @@ def export_monitoreo_csv():
         busqueda=f["busqueda"] or None, orden=f["indicador"],
         pagina=1, por_pagina=EXPORT_MAX_FILAS,
     )
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(["Zona", f"Casos ({f['dias']} días)", "Incidencia / 100k",
-                     "Variación 7d (%)", "Graves", "Estado"])
-    for z in zonas["zonas"]:
-        writer.writerow([z["zona"], z["casos"], z["incidencia"], z["variacion"],
-                         z["graves"], z["estado"]])
-    resp = make_response(buf.getvalue())
-    resp.headers["Content-Type"] = "text/csv; charset=utf-8"
-    resp.headers["Content-Disposition"] = "attachment; filename=monitoreo_zonas.csv"
-    return resp
+    return _csv(
+        "monitoreo_zonas.csv",
+        ["Zona", f"Casos ({f['dias']} días)", "Incidencia / 100k",
+         "Variación 7d (%)", "Graves", "Estado"],
+        ([z["zona"], z["casos"], z["incidencia"], z["variacion"], z["graves"], z["estado"]]
+         for z in zonas["zonas"]),
+    )
 
 
 # ---------------------------------------------------------------------------
