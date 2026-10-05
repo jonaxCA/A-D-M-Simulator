@@ -342,5 +342,110 @@ class PoblacionSinDatoTests(unittest.TestCase):
         self.assertEqual(estado_despues, estado_antes)
 
 
+class ActualizaGruposEdadTests(unittest.TestCase):
+    """Correccion de las bandas de edad de un municipio (la pantalla de
+    /regiones/<id>/edades). Agualeguas: chico y ninguna otra prueba lo toca.
+    Cada prueba deja las bandas del municipio y del estado como estaban."""
+
+    CODIGO = "19002"
+
+    def setUp(self):
+        self.admin = contexto_de_prueba(usuario_con_rol("ADMINISTRADOR"))
+        self.region_id = query("SELECT id FROM regions WHERE code = %s",
+                               (self.CODIGO,), one=True)["id"]
+        self.estado_id = query("SELECT id FROM regions WHERE code = '19'", one=True)["id"]
+        self.originales = {rid: self._bandas(rid) for rid in (self.region_id, self.estado_id)}
+        desglose = queries.get_grupos_edad_municipio(self.region_id)
+        self.actuales = dict(desglose["grupos"])
+        self.esperados = {**self.actuales,
+                          "edad_no_especificada": desglose["edad_no_especificada"]}
+        self.ultima_bitacora = query("SELECT coalesce(max(id), 0) AS m FROM audit_log",
+                                     one=True)["m"]
+
+    def tearDown(self):
+        for rid, bandas in self.originales.items():
+            for grupo, poblacion in bandas.items():
+                _restaura("UPDATE region_age_groups SET population = %s "
+                          "WHERE region_id = %s AND age_group = %s",
+                          (poblacion, rid, grupo))
+
+    def _bandas(self, region_id):
+        return {r["age_group"]: r["population"] for r in query(
+            "SELECT age_group, population FROM region_age_groups WHERE region_id = %s",
+            (region_id,))}
+
+    def _bitacora_nueva(self):
+        return query("""SELECT entity_id, data_before, data_after FROM audit_log
+                        WHERE id > %s AND action = 'UPDATE' AND entity_type = 'regions'
+                        ORDER BY id""", (self.ultima_bitacora,))
+
+    def _mueve(self, desde, hacia, personas):
+        grupos = {**self.actuales, desde: self.actuales[desde] - personas,
+                  hacia: self.actuales[hacia] + personas}
+        return queries.actualiza_grupos_edad_municipio(
+            self.region_id, grupos, self.esperados, "Prueba de bandas",
+            contexto=self.admin)
+
+    def test_mover_personas_entre_bandas_corrige_municipio_y_estado_y_audita_ambos(self):
+        ok, error, resultado = self._mueve("0-19", "20-39", 10)
+        self.assertTrue(ok, error)
+        self.assertTrue(resultado["estado_actualizado"])
+        municipio = self._bandas(self.region_id)
+        self.assertEqual(municipio["0-19"], self.actuales["0-19"] - 10)
+        self.assertEqual(municipio["20-39"], self.actuales["20-39"] + 10)
+        estado = self._bandas(self.estado_id)
+        self.assertEqual(estado["0-19"], self.originales[self.estado_id]["0-19"] - 10)
+
+        filas = self._bitacora_nueva()
+        self.assertEqual([f["entity_id"] for f in filas],
+                         [str(self.region_id), str(self.estado_id)])
+        self.assertEqual(filas[0]["data_after"]["age_groups_modified"], ["0-19", "20-39"])
+        self.assertEqual(filas[0]["data_after"]["age_correction_reason"], "Prueba de bandas")
+        # El agregado estatal sale de un GROUP BY: el orden no esta garantizado.
+        self.assertEqual(sorted(filas[1]["data_after"]["age_groups_modified"]),
+                         ["0-19", "20-39"])
+
+    def test_pasar_gente_a_60_79_sube_el_60_mas_derivado(self):
+        antes = query("SELECT population_60plus FROM regions WHERE id = %s",
+                      (self.region_id,), one=True)["population_60plus"]
+        ok, error, resultado = self._mueve("40-59", "60-79", 5)
+        self.assertTrue(ok, error)
+        self.assertEqual(resultado["population_60plus"], antes + 5)
+
+    def test_una_banda_negativa_no_deja_nada_a_medias(self):
+        """La base rechaza la banda negativa; las demas bandas y la bitacora
+        tampoco pueden quedar escritas."""
+        grupos = {**self.actuales, "0-19": -5,
+                  "20-39": self.actuales["20-39"] + self.actuales["0-19"] + 5}
+        ok, error, _ = queries.actualiza_grupos_edad_municipio(
+            self.region_id, grupos, self.esperados, "Prueba de bandas", contexto=self.admin)
+        self.assertFalse(ok)
+        self.assertIn("restricciones", error)
+        self.assertEqual(self._bandas(self.region_id), self.originales[self.region_id])
+        self.assertEqual(self._bitacora_nueva(), [])
+
+    def test_formulario_obsoleto_se_rechaza(self):
+        self.esperados["20-39"] += 1
+        ok, error, _ = self._mueve("0-19", "20-39", 10)
+        self.assertFalse(ok)
+        self.assertIn("Otra persona", error)
+        self.assertEqual(self._bandas(self.region_id), self.originales[self.region_id])
+
+    def test_no_se_puede_cambiar_el_total_con_edad_declarada(self):
+        grupos = {**self.actuales, "80+": self.actuales["80+"] + 1}
+        ok, error, _ = queries.actualiza_grupos_edad_municipio(
+            self.region_id, grupos, self.esperados, "Prueba de bandas", contexto=self.admin)
+        self.assertFalse(ok)
+        self.assertIn("conservar la población", error)
+
+    def test_sin_cambios_no_escribe_nada(self):
+        ok, error, _ = queries.actualiza_grupos_edad_municipio(
+            self.region_id, dict(self.actuales), self.esperados, "Prueba de bandas",
+            contexto=self.admin)
+        self.assertFalse(ok)
+        self.assertIn("No hay cambios", error)
+        self.assertEqual(self._bitacora_nueva(), [])
+
+
 if __name__ == "__main__":
     unittest.main()

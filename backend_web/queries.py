@@ -23,6 +23,7 @@ from datetime import date, timedelta
 
 import psycopg2
 
+from .audit import log_audit
 from .db import execute, get_conn, query
 
 NL_ESTADO_CODE = "19"
@@ -2058,9 +2059,6 @@ def actualiza_grupos_edad_municipio(region_id, grupos, esperados,
     transaccion. Rechaza formularios obsoletos y conserva la suma de población
     con edad declarada: esta pantalla corrige clasificacion, no inventa ni
     elimina personas. El trigger 022 deriva el 60+ de 60-79 y 80+."""
-    from .audit import _serializa
-
-    admin_user_id, ip, ua = contexto.user_id, contexto.ip, contexto.user_agent
     if not motivo or not motivo.strip():
         return False, "Indica la fuente o el motivo de la corrección.", None
     if len(motivo.strip()) > 500:
@@ -2166,46 +2164,34 @@ def actualiza_grupos_edad_municipio(region_id, grupos, esperados,
                     (region_id,),
                 )
                 p60_despues = cur.fetchone()[0]
-                cur.execute(
-                    """INSERT INTO audit_log
-                           (user_id, action, entity_type, entity_id, ip_address,
-                            user_agent, data_before, data_after)
-                       VALUES (%s, 'UPDATE', 'regions', %s, %s::inet, %s,
-                               %s::jsonb, %s::jsonb)""",
-                    (
-                        admin_user_id, str(municipio_id), ip, ua,
-                        _serializa(antes),
-                        _serializa({
-                            **_snap_grupos_edad(despues, edad_no_especificada),
-                            "population_60plus": p60_despues,
-                            "age_groups_modified": grupos_modificados,
-                            "age_correction_reason": motivo.strip(),
-                        }),
-                    ),
+                log_audit(
+                    contexto, "UPDATE", "regions", municipio_id,
+                    data_before=antes,
+                    data_after={
+                        **_snap_grupos_edad(despues, edad_no_especificada),
+                        "population_60plus": p60_despues,
+                        "age_groups_modified": grupos_modificados,
+                        "age_correction_reason": motivo.strip(),
+                    },
+                    cur=cur,
                 )
 
                 estado_cambio = any(estado_antes.get(g) != totales_estado.get(g)
                                     for g in totales_estado)
                 if estado_cambio:
-                    cur.execute(
-                        """INSERT INTO audit_log
-                               (user_id, action, entity_type, entity_id, ip_address,
-                                user_agent, data_before, data_after)
-                           VALUES (%s, 'UPDATE', 'regions', %s, %s::inet, %s,
-                                   %s::jsonb, %s::jsonb)""",
-                        (
-                            admin_user_id, str(estado_id), ip, ua,
-                            _serializa({"population_by_age": estado_antes}),
-                            _serializa({
-                                "population_by_age": totales_estado,
-                                "age_groups_modified": [
-                                    g for g in totales_estado
-                                    if estado_antes.get(g) != totales_estado[g]],
-                                "age_correction_reason": (
-                                    f"Agregado estatal tras corregir {nombre}: "
-                                    f"{motivo.strip()}"),
-                            }),
-                        ),
+                    log_audit(
+                        contexto, "UPDATE", "regions", estado_id,
+                        data_before={"population_by_age": estado_antes},
+                        data_after={
+                            "population_by_age": totales_estado,
+                            "age_groups_modified": [
+                                g for g in totales_estado
+                                if estado_antes.get(g) != totales_estado[g]],
+                            "age_correction_reason": (
+                                f"Agregado estatal tras corregir {nombre}: "
+                                f"{motivo.strip()}"),
+                        },
+                        cur=cur,
                     )
             conn.commit()
         return True, None, {
@@ -2282,9 +2268,7 @@ def actualiza_poblacion_municipio(region_id, population, motivo, esperado_popula
     Devuelve (ok, error, resultado). `resultado` trae el antes/despues del
     municipio y, si aplico, del estado -- para el mensaje de confirmacion.
     """
-    from .audit import _serializa
-
-    admin_user_id, ip, ua = contexto.user_id, contexto.ip, contexto.user_agent
+    admin_user_id = contexto.user_id
 
     try:
         with get_conn() as conn:
@@ -2340,21 +2324,15 @@ def actualiza_poblacion_municipio(region_id, population, motivo, esperado_popula
                          valor_antes, valor_nuevo, motivo.strip(), admin_user_id),
                     )
 
-                cur.execute(
-                    """
-                    INSERT INTO audit_log (user_id, action, entity_type, entity_id,
-                                           ip_address, user_agent, data_before, data_after)
-                    VALUES (%s, 'UPDATE', 'regions', %s, %s::inet, %s, %s::jsonb, %s::jsonb)
-                    """,
-                    (
-                        admin_user_id, str(region_id), ip, ua,
-                        _serializa(antes_municipio),
-                        _serializa({
-                            "id": region_id, "name": nombre,
-                            "population": population, "population_60plus": pob60_actual,
-                            "fuente_motivo": motivo.strip(),
-                        }),
-                    ),
+                log_audit(
+                    contexto, "UPDATE", "regions", region_id,
+                    data_before=antes_municipio,
+                    data_after={
+                        "id": region_id, "name": nombre,
+                        "population": population, "population_60plus": pob60_actual,
+                        "fuente_motivo": motivo.strip(),
+                    },
+                    cur=cur,
                 )
 
                 cur.execute(
@@ -2393,25 +2371,19 @@ def actualiza_poblacion_municipio(region_id, population, motivo, esperado_popula
                          or estado_antes_row[2] != estado_despues_row[1])
                 )
                 if estado_cambio:
-                    cur.execute(
-                        """
-                        INSERT INTO audit_log (user_id, action, entity_type, entity_id,
-                                               ip_address, user_agent, data_before, data_after)
-                        VALUES (%s, 'UPDATE', 'regions', %s, %s::inet, %s, %s::jsonb, %s::jsonb)
-                        """,
-                        (
-                            admin_user_id, str(padre_id), ip, ua,
-                            _serializa({
-                                "population": estado_antes_row[1],
-                                "population_60plus": estado_antes_row[2],
-                                "nota": "agregado de los 51 municipios de Nuevo León",
-                            }),
-                            _serializa({
-                                "population": estado_despues_row[0],
-                                "population_60plus": estado_despues_row[1],
-                                "nota": f"recalculado tras corregir {nombre}",
-                            }),
-                        ),
+                    log_audit(
+                        contexto, "UPDATE", "regions", padre_id,
+                        data_before={
+                            "population": estado_antes_row[1],
+                            "population_60plus": estado_antes_row[2],
+                            "nota": "agregado de los 51 municipios de Nuevo León",
+                        },
+                        data_after={
+                            "population": estado_despues_row[0],
+                            "population_60plus": estado_despues_row[1],
+                            "nota": f"recalculado tras corregir {nombre}",
+                        },
+                        cur=cur,
                     )
             conn.commit()
         return True, None, {
@@ -2774,7 +2746,7 @@ def crea_escenario(datos, *, contexto):
     """
     from .audit import _serializa
 
-    owner_id, ip, ua = contexto.user_id, contexto.ip, contexto.user_agent
+    owner_id = contexto.user_id
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -2801,13 +2773,10 @@ def crea_escenario(datos, *, contexto):
                      datos["population_age_unknown"], datos["age_unknown_policy"]))
                 version_id = cur.fetchone()[0]
 
-                cur.execute(
-                    """INSERT INTO audit_log (user_id, action, entity_type, entity_id,
-                                              ip_address, user_agent, data_after)
-                       VALUES (%s, 'CREATE', 'scenarios', %s, %s::inet, %s, %s::jsonb)""",
-                    (owner_id, str(scenario_id), ip, ua,
-                     _serializa({**datos, "scenario_id": scenario_id,
-                                 "version_id": version_id, "version_number": 1})))
+                log_audit(contexto, "CREATE", "scenarios", scenario_id,
+                          data_after={**datos, "scenario_id": scenario_id,
+                                      "version_id": version_id, "version_number": 1},
+                          cur=cur)
             conn.commit()
         return True, None, scenario_id
     except psycopg2.errors.UniqueViolation:
@@ -3145,23 +3114,6 @@ def valida_intervencion(form, tipos, version, existentes):
     return datos, errores
 
 
-def _auditar(cur, contexto, accion, entity_type, entity_id, antes=None, despues=None):
-    """Inserta en audit_log dentro de la transaccion que la llama.
-
-    Se usa `cur` y no `log_audit` a proposito: la bitacora tiene que confirmarse
-    junto con el cambio que describe, no en una conexion aparte.
-    """
-    from .audit import _serializa
-    cur.execute(
-        """INSERT INTO audit_log (user_id, action, entity_type, entity_id,
-                                  ip_address, user_agent, data_before, data_after)
-           VALUES (%s, %s, %s, %s, %s::inet, %s, %s::jsonb, %s::jsonb)""",
-        (contexto.user_id, accion, entity_type, str(entity_id),
-         contexto.ip, contexto.user_agent,
-         _serializa(antes) if antes else None,
-         _serializa(despues) if despues else None))
-
-
 def agrega_intervencion(version_id, datos, *, contexto):
     """Agrega la intervencion al final del orden de la version."""
     from .audit import _serializa
@@ -3183,9 +3135,10 @@ def agrega_intervencion(version_id, datos, *, contexto):
                      datos["end_day"], datos["coverage"], datos["compliance"],
                      _serializa(datos["params"] or {}), orden))
                 iid = cur.fetchone()[0]
-                _auditar(cur, contexto, "CREATE", "scenario_interventions", iid,
-                         despues={**datos, "scenario_version_id": version_id,
-                                  "order_index": orden})
+                log_audit(contexto, "CREATE", "scenario_interventions", iid,
+                          data_after={**datos, "scenario_version_id": version_id,
+                                      "order_index": orden},
+                          cur=cur)
             conn.commit()
         return True, None
     except psycopg2.errors.UniqueViolation:
@@ -3222,8 +3175,8 @@ def quita_intervencion(version_id, intervention_id, *, contexto):
                     """UPDATE scenario_interventions SET order_index = order_index - 1
                        WHERE scenario_version_id = %s AND order_index > %s""",
                     (version_id, antes["order_index"]))
-                _auditar(cur, contexto, "DELETE", "scenario_interventions",
-                         intervention_id, antes=antes)
+                log_audit(contexto, "DELETE", "scenario_interventions", intervention_id,
+                          data_before=antes, cur=cur)
             conn.commit()
         return True, None
     except psycopg2.errors.CheckViolation as exc:
@@ -3256,9 +3209,10 @@ def mueve_intervencion(version_id, intervention_id, direccion, *, contexto):
                 for nuevo, iid in enumerate(posiciones):
                     cur.execute("UPDATE scenario_interventions SET order_index = %s "
                                 "WHERE id = %s", (nuevo, iid))
-                _auditar(cur, contexto, "UPDATE", "scenario_interventions",
-                         intervention_id, antes={"order_index": i},
-                         despues={"order_index": j})
+                log_audit(contexto, "UPDATE", "scenario_interventions", intervention_id,
+                          data_before={"order_index": i},
+                          data_after={"order_index": j},
+                          cur=cur)
             conn.commit()
         return True, None
     except psycopg2.errors.CheckViolation as exc:
@@ -3331,16 +3285,12 @@ def crea_version(scenario_id, datos, *, contexto):
                 cur.execute(_SQL_COPIA_INTERVENCIONES, (nueva_id, origen_id))
                 copiadas = cur.rowcount
 
-                cur.execute(
-                    """INSERT INTO audit_log (user_id, action, entity_type, entity_id,
-                                              ip_address, user_agent, data_before, data_after)
-                       VALUES (%s, 'CREATE', 'scenario_versions', %s, %s::inet, %s,
-                               %s::jsonb, %s::jsonb)""",
-                    (user_id, str(nueva_id), contexto.ip, contexto.user_agent,
-                     _serializa({"version_vigente_anterior": ultimo}),
-                     _serializa({**datos, "scenario_id": scenario_id,
-                                 "version_number": siguiente,
-                                 "intervenciones_copiadas": copiadas})))
+                log_audit(contexto, "CREATE", "scenario_versions", nueva_id,
+                          data_before={"version_vigente_anterior": ultimo},
+                          data_after={**datos, "scenario_id": scenario_id,
+                                      "version_number": siguiente,
+                                      "intervenciones_copiadas": copiadas},
+                          cur=cur)
             conn.commit()
         return True, None, siguiente
     except psycopg2.errors.CheckViolation as exc:
@@ -3409,14 +3359,11 @@ def duplica_escenario(scenario_id, version_number, nombre, *, contexto):
                 cur.execute(_SQL_COPIA_INTERVENCIONES, (nueva_version_id, origen_id))
                 copiadas = cur.rowcount
 
-                cur.execute(
-                    """INSERT INTO audit_log (user_id, action, entity_type, entity_id,
-                                              ip_address, user_agent, data_after)
-                       VALUES (%s, 'CREATE', 'scenarios', %s, %s::inet, %s, %s::jsonb)""",
-                    (user_id, str(nuevo_id), contexto.ip, contexto.user_agent,
-                     _serializa({"name": nombre, "duplicado_de": scenario_id,
-                                 "version_origen": version_number,
-                                 "intervenciones_copiadas": copiadas})))
+                log_audit(contexto, "CREATE", "scenarios", nuevo_id,
+                          data_after={"name": nombre, "duplicado_de": scenario_id,
+                                      "version_origen": version_number,
+                                      "intervenciones_copiadas": copiadas},
+                          cur=cur)
             conn.commit()
         return True, None, nuevo_id
     except psycopg2.errors.UniqueViolation:
@@ -3510,10 +3457,11 @@ def envia_a_revision(scenario_id, *, contexto):
                 if not fila:
                     return False, ("Alguien cambió el estado de esta versión mientras "
                                    "la enviabas. Recarga la página.")
-                _auditar(cur, contexto, "UPDATE", "scenario_versions", version["id"],
-                         antes={"status": "borrador"},
-                         despues={"status": "en_revision", "version_number": fila[0],
-                                  "parametros_congelados": congelar})
+                log_audit(contexto, "UPDATE", "scenario_versions", version["id"],
+                          data_before={"status": "borrador"},
+                          data_after={"status": "en_revision", "version_number": fila[0],
+                                      "parametros_congelados": congelar},
+                          cur=cur)
             conn.commit()
         return True, None
     except psycopg2.errors.CheckViolation as exc:
@@ -3572,10 +3520,11 @@ def resuelve_revision(scenario_id, decision, comentario, *, contexto):
                 if not fila:
                     return False, ("Alguien resolvió esta revisión mientras la tuya "
                                    "estaba abierta. Recarga la página."), None
-                _auditar(cur, contexto, "UPDATE", "scenario_versions", version["id"],
-                         antes={"status": "en_revision"},
-                         despues={"status": estado, "version_number": fila[0],
-                                  "review_comment": comentario or None})
+                log_audit(contexto, "UPDATE", "scenario_versions", version["id"],
+                          data_before={"status": "en_revision"},
+                          data_after={"status": estado, "version_number": fila[0],
+                                      "review_comment": comentario or None},
+                          cur=cur)
             conn.commit()
         return True, None, estado
     except psycopg2.errors.CheckViolation as exc:
