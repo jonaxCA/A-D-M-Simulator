@@ -104,6 +104,11 @@ VALIDOS = {
         "Empieza despues del ultimo dia: aviso, no error.",
         _escenario(intervenciones=[_iv("CUBREBOCAS", inicio=90, fin=None,
                                        params={"eficacia": 0.2})])),
+    "vacuna_prioridad_no_textual": (
+        "La prioridad llega como objeto: aviso y se aplica como aleatoria, igual que "
+        "una prioridad desconocida (LIMP-16).",
+        _escenario(intervenciones=[_iv("VACUNACION", params={
+            "eficacia": 0.7, "dosis_diarias": 300, "prioridad": {"por": "edad"}})])),
 }
 
 
@@ -229,4 +234,19 @@ INVALIDOS = {
                    capas_contacto={"hogar": 2},
                    intervenciones=[_iv("CUBREBOCAS", inicio=-1), _iv("NADA"),
                                    _iv("VACUNACION", params={"eficacia": 2})])),
+    # Valores que llegan con otro tipo de JSON: antes reventaban con TypeError o
+    # AttributeError en vez de dar un error de validacion (LIMP-16).
+    "intervenciones_no_es_lista": ("intervenciones es un numero.",
+                                   _escenario(intervenciones=5)),
+    "intervenciones_es_texto": ("intervenciones es un texto: un solo error, no uno por letra.",
+                                _escenario(intervenciones="CUBREBOCAS")),
+    "intervencion_tipo_no_textual": ("El tipo llega como lista.",
+                                     _escenario(intervenciones=[{"tipo": ["CUBREBOCAS"],
+                                                                 "dia_inicio": 0}])),
+    "intervencion_params_no_objeto": ("params llega como lista.",
+                                      _escenario(intervenciones=[_iv("CUBREBOCAS",
+                                                                     params=[0.3])])),
+    "politica_no_textual": ("La politica de edad desconocida llega como objeto.",
+                            _escenario(poblacion=POR_EDAD, poblacion_edad_desconocida=100,
+                                       politica_edad_desconocida={"excluir": True})),
 }

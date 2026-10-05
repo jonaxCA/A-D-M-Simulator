@@ -222,7 +222,7 @@ def _resuelve_edad_desconocida(escenario, grupos, pob, por_edad, errores, avisos
         errores.append("'poblacion_edad_desconocida' solo tiene sentido con la poblacion "
                        "abierta por grupos de edad; sin grupos, sumala a 'poblacion'.")
         return pob
-    if politica not in POLITICAS_EDAD_DESCONOCIDA:
+    if not isinstance(politica, str) or politica not in POLITICAS_EDAD_DESCONOCIDA:
         errores.append(
             f"{sin_edad:,} personas sin edad declarada: elige "
             f"'politica_edad_desconocida' entre "
@@ -387,6 +387,9 @@ def _resuelve_capas(capas, errores, traza):
 def _resuelve_intervenciones(lista, grupos, por_edad, dias, capas, infeccioso, errores, avisos):
     """Las intervenciones validas, en su orden. Una invalida deja su error y
     no entra, pero no impide revisar las siguientes."""
+    if not isinstance(lista, list):
+        errores.append("'intervenciones' debe ser una lista.")
+        return []
     resueltas = []
     for i, iv in enumerate(lista, start=1):
         base = _resuelve_intervencion(i, iv, grupos, por_edad, dias, capas, infeccioso,
@@ -404,7 +407,9 @@ def _resuelve_intervencion(i, iv, grupos, por_edad, dias, capas, infeccioso, err
         errores.append(f"{pref}: debe ser un objeto.")
         return None
     tipo = iv.get("tipo")
-    if tipo not in TIPOS_VALIDOS:
+    # isinstance antes que `in`: buscar una lista o un objeto en un conjunto
+    # lanza TypeError en vez de dar False.
+    if not isinstance(tipo, str) or tipo not in TIPOS_VALIDOS:
         errores.append(f"{pref}: tipo '{tipo}' no soportado por el motor.")
         return None
     pref = f"{pref} ({tipo})"
@@ -417,6 +422,9 @@ def _resuelve_intervencion(i, iv, grupos, por_edad, dias, capas, infeccioso, err
         return None
 
     params = iv.get("params") or {}
+    if not isinstance(params, dict):
+        errores.append(f"{pref}: 'params' debe ser un objeto.")
+        return None
     if tipo in INTERVENCIONES_CAPA:
         efecto = _de_capa(tipo, params, factores, capas, pref, errores, avisos)
     elif tipo == "TESTEO_AISLAMIENTO":
@@ -509,7 +517,7 @@ def _de_vacunacion(params, factores, grupos, por_edad, pref, errores, avisos):
     if not (_es_numero(diarias) and float(diarias).is_integer() and diarias >= 1):
         errores.append(f"{pref}: 'dosis_diarias' es obligatorio y debe ser un entero >= 1.")
         return None
-    if prioridad not in PRIORIDADES_SOPORTADAS:
+    if not isinstance(prioridad, str) or prioridad not in PRIORIDADES_SOPORTADAS:
         avisos.append(f"{pref}: prioridad '{prioridad}' no la modela un motor "
                       "compartimental; se aplica como 'aleatorio'.")
         prioridad = "aleatorio"

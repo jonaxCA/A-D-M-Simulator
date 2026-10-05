@@ -632,9 +632,19 @@
    "Intervencion 1: debe ser un objeto."
   ]
  },
+ "intervencion_params_no_objeto": {
+  "errores": [
+   "Intervencion 1 (CUBREBOCAS): 'params' debe ser un objeto."
+  ]
+ },
  "intervencion_tipo_desconocido": {
   "errores": [
    "Intervencion 1: tipo 'TOQUE_DE_QUEDA' no soportado por el motor."
+  ]
+ },
+ "intervencion_tipo_no_textual": {
+  "errores": [
+   "Intervencion 1: tipo '['CUBREBOCAS']' no soportado por el motor."
   ]
  },
  "intervenciones_de_capa": {
@@ -784,6 +794,16 @@
    },
    "serie_sha256": "2153ac8c9c7eadee7c3099d66ebe3baa6939a1e9f0f565c1ffced6bceeb22199"
   }
+ },
+ "intervenciones_es_texto": {
+  "errores": [
+   "'intervenciones' debe ser una lista."
+  ]
+ },
+ "intervenciones_no_es_lista": {
+  "errores": [
+   "'intervenciones' debe ser una lista."
+  ]
  },
  "letalidad_por_edad_gana_si_hay_grupos": {
   "resuelto": {
@@ -963,6 +983,11 @@
  "poblacion_fuera_de_rango": {
   "errores": [
    "La poblacion total debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "politica_no_textual": {
+  "errores": [
+   "100 personas sin edad declarada: elige 'politica_edad_desconocida' entre 'excluir' o 'prorratear'."
   ]
  },
  "por_edad": {
@@ -1555,6 +1580,135 @@
   "errores": [
    "Intervencion 1 (VACUNACION): 'edad_minima' requiere poblacion por grupo de edad."
   ]
+ },
+ "vacuna_prioridad_no_textual": {
+  "resuelto": {
+   "N": 50000,
+   "avisos": [
+    "Intervencion 1 (VACUNACION): prioridad '{'por': 'edad'}' no la modela un motor compartimental; se aplica como 'aleatorio'.",
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.15,
+    "hogar": 0.35,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    null
+   ],
+   "grupos": [
+    "total"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [
+    {
+     "clase": "vacunacion",
+     "dia_fin": 40,
+     "dia_inicio": 5,
+     "dosis_diarias": 300,
+     "eficacia": 0.7,
+     "grupos_objetivo": [
+      0
+     ],
+     "prioridad": "aleatorio",
+     "tipo": "VACUNACION",
+     "tope": 1.0
+    }
+   ],
+   "letalidad": [
+    0.006
+   ],
+   "poblacion": [
+    50000
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.04
+   ],
+   "trazabilidad": [
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba B",
+     "parametro": "tasa_hospitalizacion",
+     "valor": 0.04
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba C",
+     "parametro": "letalidad",
+     "valor": 0.006
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.15,
+      "hogar": 0.35,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 1405,
+    "casos_acumulados": 2863,
+    "desglose_por_grupo": [
+     {
+      "casos": 2863,
+      "dosis_aplicadas": 10800,
+      "fallecimientos": 9,
+      "grupo": "total",
+      "poblacion": 50000,
+      "vacunados_protegidos": 6988
+     }
+    ],
+    "dia_pico": 60,
+    "dia_pico_hospitalizados": 56,
+    "dia_pico_nuevos_casos": 59,
+    "dosis_aplicadas": 10800,
+    "fallecimientos": 9,
+    "hospitalizaciones": 58,
+    "pico_casos_activos": 1405,
+    "pico_hospitalizados": 21,
+    "pico_nuevos_casos": 179,
+    "tasa_ataque": 0.05726,
+    "vacunados_protegidos": 6988
+   },
+   "serie_sha256": "0f8df3a7d9503af0f1feb4c162b92c76b574cd664e26381c220ea4fe6cf5400e"
+  }
  },
  "vacuna_sin_dosis": {
   "errores": [
