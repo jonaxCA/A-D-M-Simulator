@@ -1,0 +1,1867 @@
+{
+ "capa_inexistente": {
+  "errores": [
+   "Intervencion 1 (CIERRE_ESCUELAS): la capa 'escuela' no existe en 'capas_contacto'."
+  ]
+ },
+ "capa_sin_fuerza": {
+  "errores": [
+   "Intervencion 1 (REDUCCION_AFORO): 'reduccion' es obligatorio y debe estar entre 0 y 1."
+  ]
+ },
+ "capas_definidas_en_escenario": {
+  "resuelto": {
+   "N": 50000,
+   "avisos": [
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.1,
+    "hogar": 0.4,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    null
+   ],
+   "grupos": [
+    "total"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [
+    {
+     "capa": "escuela",
+     "clase": "capa",
+     "dia_fin": 40,
+     "dia_inicio": 5,
+     "efecto": 1.0,
+     "tipo": "CIERRE_ESCUELAS"
+    }
+   ],
+   "letalidad": [
+    0.006
+   ],
+   "poblacion": [
+    50000
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.04
+   ],
+   "trazabilidad": [
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba B",
+     "parametro": "tasa_hospitalizacion",
+     "valor": 0.04
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba C",
+     "parametro": "letalidad",
+     "valor": 0.006
+    },
+    {
+     "estado": "definido_en_escenario",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.1,
+      "hogar": 0.4,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 889,
+    "casos_acumulados": 1698,
+    "desglose_por_grupo": [
+     {
+      "casos": 1698,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 7,
+      "grupo": "total",
+      "poblacion": 50000,
+      "vacunados_protegidos": 0
+     }
+    ],
+    "dia_pico": 60,
+    "dia_pico_hospitalizados": 60,
+    "dia_pico_nuevos_casos": 60,
+    "dosis_aplicadas": 0,
+    "fallecimientos": 7,
+    "hospitalizaciones": 34,
+    "pico_casos_activos": 889,
+    "pico_hospitalizados": 13,
+    "pico_nuevos_casos": 121,
+    "tasa_ataque": 0.03396,
+    "vacunados_protegidos": 0
+   },
+   "serie_sha256": "5b1158b3986917ca7cf86e34f1e14175b32023aebc4cc67e614e09c85ffa0a28"
+  }
+ },
+ "capas_invalidas": {
+  "errores": [
+   "'capas_contacto' debe asignar pesos >= 0 que sumen 1."
+  ]
+ },
+ "dias_invalidos": {
+  "errores": [
+   "'dias' debe ser un entero entre 1 y 1095."
+  ]
+ },
+ "edad_desconocida_excluir": {
+  "resuelto": {
+   "N": 50000,
+   "avisos": [
+    "313 personas sin edad declarada quedan fuera de la simulacion; los resultados cubren a la poblacion con edad conocida.",
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.15,
+    "hogar": 0.35,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    0,
+    20,
+    60
+   ],
+   "grupos": [
+    "0-19",
+    "20-59",
+    "60+"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [],
+   "letalidad": [
+    0.006,
+    0.006,
+    0.006
+   ],
+   "poblacion": [
+    15000,
+    28000,
+    7000
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.04,
+    0.04,
+    0.04
+   ],
+   "trazabilidad": [
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "poblacion_edad_desconocida",
+     "valor": {
+      "personas": 313,
+      "politica": "excluir"
+     }
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba B",
+     "parametro": "tasa_hospitalizacion",
+     "valor": 0.04
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba C",
+     "parametro": "letalidad",
+     "valor": 0.006
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.15,
+      "hogar": 0.35,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 2654,
+    "casos_acumulados": 4732,
+    "desglose_por_grupo": [
+     {
+      "casos": 1445,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 0,
+      "grupo": "0-19",
+      "poblacion": 15000,
+      "vacunados_protegidos": 0
+     },
+     {
+      "casos": 2567,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 5,
+      "grupo": "20-59",
+      "poblacion": 28000,
+      "vacunados_protegidos": 0
+     },
+     {
+      "casos": 720,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 0,
+      "grupo": "60+",
+      "poblacion": 7000,
+      "vacunados_protegidos": 0
+     }
+    ],
+    "dia_pico": 60,
+    "dia_pico_hospitalizados": 60,
+    "dia_pico_nuevos_casos": 60,
+    "dosis_aplicadas": 0,
+    "fallecimientos": 5,
+    "hospitalizaciones": 81,
+    "pico_casos_activos": 2654,
+    "pico_hospitalizados": 36,
+    "pico_nuevos_casos": 375,
+    "tasa_ataque": 0.09464,
+    "vacunados_protegidos": 0
+   },
+   "serie_sha256": "8e311c24660880e7f8b29b81e009d48174b6da61520c7c447ce1117d9fcb1f84"
+  }
+ },
+ "edad_desconocida_no_entera": {
+  "errores": [
+   "'poblacion_edad_desconocida' debe ser un entero >= 0."
+  ]
+ },
+ "edad_desconocida_prorratear": {
+  "resuelto": {
+   "N": 50313,
+   "avisos": [
+    "313 personas sin edad declarada se repartieron entre los grupos en proporcion a su tamanio: es una imputacion, no dato censal.",
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.15,
+    "hogar": 0.35,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    0,
+    20,
+    60
+   ],
+   "grupos": [
+    "0-19",
+    "20-59",
+    "60+"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [],
+   "letalidad": [
+    0.006,
+    0.006,
+    0.006
+   ],
+   "poblacion": [
+    15093,
+    28177,
+    7043
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.04,
+    0.04,
+    0.04
+   ],
+   "trazabilidad": [
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "poblacion_edad_desconocida",
+     "valor": {
+      "personas": 313,
+      "politica": "prorratear",
+      "reparto": {
+       "0-19": 93,
+       "20-59": 177,
+       "60+": 43
+      }
+     }
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba B",
+     "parametro": "tasa_hospitalizacion",
+     "valor": 0.04
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba C",
+     "parametro": "letalidad",
+     "valor": 0.006
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.15,
+      "hogar": 0.35,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 2654,
+    "casos_acumulados": 4733,
+    "desglose_por_grupo": [
+     {
+      "casos": 1445,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 0,
+      "grupo": "0-19",
+      "poblacion": 15093,
+      "vacunados_protegidos": 0
+     },
+     {
+      "casos": 2568,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 5,
+      "grupo": "20-59",
+      "poblacion": 28177,
+      "vacunados_protegidos": 0
+     },
+     {
+      "casos": 720,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 0,
+      "grupo": "60+",
+      "poblacion": 7043,
+      "vacunados_protegidos": 0
+     }
+    ],
+    "dia_pico": 60,
+    "dia_pico_hospitalizados": 60,
+    "dia_pico_nuevos_casos": 60,
+    "dosis_aplicadas": 0,
+    "fallecimientos": 5,
+    "hospitalizaciones": 81,
+    "pico_casos_activos": 2654,
+    "pico_hospitalizados": 36,
+    "pico_nuevos_casos": 375,
+    "tasa_ataque": 0.094071,
+    "vacunados_protegidos": 0
+   },
+   "serie_sha256": "07433be078fabf2d3b32cacaadeceaaf33c727230e27bdc6824a8fb37b95876f"
+  }
+ },
+ "edad_desconocida_sin_grupos": {
+  "errores": [
+   "'poblacion_edad_desconocida' solo tiene sentido con la poblacion abierta por grupos de edad; sin grupos, sumala a 'poblacion'."
+  ]
+ },
+ "edad_desconocida_sin_politica": {
+  "errores": [
+   "100 personas sin edad declarada: elige 'politica_edad_desconocida' entre 'excluir' o 'prorratear'."
+  ]
+ },
+ "escalar_no_positivo": {
+  "errores": [
+   "'infeccioso_dias' debe ser un numero > 0."
+  ]
+ },
+ "grupo_mal_nombrado": {
+  "errores": [
+   "Grupo de edad 'ninos' no tiene formato 'min-max' o 'min+'."
+  ]
+ },
+ "grupo_no_entero": {
+  "errores": [
+   "Poblacion del grupo '0-19' debe ser un entero >= 0."
+  ]
+ },
+ "infectados_invalidos": {
+  "errores": [
+   "'infectados_iniciales' debe ser un entero >= 1."
+  ]
+ },
+ "infectados_mas_que_poblacion": {
+  "errores": [
+   "Los infectados iniciales no pueden superar la poblacion."
+  ]
+ },
+ "intervencion_despues_del_horizonte": {
+  "resuelto": {
+   "N": 50000,
+   "avisos": [
+    "Intervencion 1 (CUBREBOCAS): empieza el dia 90, despues del horizonte; no tiene efecto.",
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.15,
+    "hogar": 0.35,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    null
+   ],
+   "grupos": [
+    "total"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [
+    {
+     "capa": "todas",
+     "clase": "capa",
+     "dia_fin": null,
+     "dia_inicio": 90,
+     "efecto": 0.2,
+     "tipo": "CUBREBOCAS"
+    }
+   ],
+   "letalidad": [
+    0.006
+   ],
+   "poblacion": [
+    50000
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.04
+   ],
+   "trazabilidad": [
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba B",
+     "parametro": "tasa_hospitalizacion",
+     "valor": 0.04
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba C",
+     "parametro": "letalidad",
+     "valor": 0.006
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.15,
+      "hogar": 0.35,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 1504,
+    "casos_acumulados": 2746,
+    "desglose_por_grupo": [
+     {
+      "casos": 2746,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 6,
+      "grupo": "total",
+      "poblacion": 50000,
+      "vacunados_protegidos": 0
+     }
+    ],
+    "dia_pico": 60,
+    "dia_pico_hospitalizados": 60,
+    "dia_pico_nuevos_casos": 60,
+    "dosis_aplicadas": 0,
+    "fallecimientos": 6,
+    "hospitalizaciones": 55,
+    "pico_casos_activos": 1504,
+    "pico_hospitalizados": 19,
+    "pico_nuevos_casos": 210,
+    "tasa_ataque": 0.05492,
+    "vacunados_protegidos": 0
+   },
+   "serie_sha256": "f17416adf0d366f00f103b301b9f72f7f6464f5f3c342ff47e08792f500f72d8"
+  }
+ },
+ "intervencion_factores_invalidos": {
+  "errores": [
+   "Intervencion 1 (CIERRE_ESCUELAS): 'cobertura' debe estar entre 0 y 1.",
+   "Intervencion 1 (CIERRE_ESCUELAS): 'cumplimiento' debe estar entre 0 y 1."
+  ]
+ },
+ "intervencion_fin_antes_de_inicio": {
+  "errores": [
+   "Intervencion 1 (CUBREBOCAS): 'dia_fin' debe ser un entero >= dia_inicio."
+  ]
+ },
+ "intervencion_inicio_invalido": {
+  "errores": [
+   "Intervencion 1 (CUBREBOCAS): 'dia_inicio' debe ser un entero >= 0."
+  ]
+ },
+ "intervencion_no_objeto": {
+  "errores": [
+   "Intervencion 1: debe ser un objeto."
+  ]
+ },
+ "intervencion_tipo_desconocido": {
+  "errores": [
+   "Intervencion 1: tipo 'TOQUE_DE_QUEDA' no soportado por el motor."
+  ]
+ },
+ "intervenciones_de_capa": {
+  "resuelto": {
+   "N": 50000,
+   "avisos": [
+    "Intervencion 4 (CIERRE_TRABAJO): 'sectores' se ignora; el modelo compartimental no distingue sectores y aplica el cierre a toda la capa trabajo.",
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.15,
+    "hogar": 0.35,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    null
+   ],
+   "grupos": [
+    "total"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [
+    {
+     "capa": "escuela",
+     "clase": "capa",
+     "dia_fin": null,
+     "dia_inicio": 5,
+     "efecto": 1.0,
+     "tipo": "CIERRE_ESCUELAS"
+    },
+    {
+     "capa": "comunidad",
+     "clase": "capa",
+     "dia_fin": 40,
+     "dia_inicio": 5,
+     "efecto": 0.4,
+     "tipo": "REDUCCION_AFORO"
+    },
+    {
+     "capa": "todas",
+     "clase": "capa",
+     "dia_fin": 40,
+     "dia_inicio": 5,
+     "efecto": 0.18,
+     "tipo": "CUBREBOCAS"
+    },
+    {
+     "capa": "trabajo",
+     "clase": "capa",
+     "dia_fin": 40,
+     "dia_inicio": 5,
+     "efecto": 1.0,
+     "tipo": "CIERRE_TRABAJO"
+    }
+   ],
+   "letalidad": [
+    0.006
+   ],
+   "poblacion": [
+    50000
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.04
+   ],
+   "trazabilidad": [
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba B",
+     "parametro": "tasa_hospitalizacion",
+     "valor": 0.04
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba C",
+     "parametro": "letalidad",
+     "valor": 0.006
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.15,
+      "hogar": 0.35,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 20,
+    "casos_acumulados": 100,
+    "desglose_por_grupo": [
+     {
+      "casos": 100,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 1,
+      "grupo": "total",
+      "poblacion": 50000,
+      "vacunados_protegidos": 0
+     }
+    ],
+    "dia_pico": 22,
+    "dia_pico_hospitalizados": 33,
+    "dia_pico_nuevos_casos": 2,
+    "dosis_aplicadas": 0,
+    "fallecimientos": 1,
+    "hospitalizaciones": 4,
+    "pico_casos_activos": 21,
+    "pico_hospitalizados": 2,
+    "pico_nuevos_casos": 6,
+    "tasa_ataque": 0.002,
+    "vacunados_protegidos": 0
+   },
+   "serie_sha256": "2153ac8c9c7eadee7c3099d66ebe3baa6939a1e9f0f565c1ffced6bceeb22199"
+  }
+ },
+ "letalidad_por_edad_gana_si_hay_grupos": {
+  "resuelto": {
+   "N": 50000,
+   "avisos": [
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion, tasa_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.15,
+    "hogar": 0.35,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    0,
+    20,
+    60
+   ],
+   "grupos": [
+    "0-19",
+    "20-59",
+    "60+"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [],
+   "letalidad": [
+    0.0001,
+    0.002,
+    0.05
+   ],
+   "poblacion": [
+    15000,
+    28000,
+    7000
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.01,
+    0.03,
+    0.12
+   ],
+   "trazabilidad": [
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "tasa_hospitalizacion",
+     "valor": {
+      "0-19": 0.01,
+      "20-59": 0.03,
+      "60+": 0.12
+     }
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba D",
+     "parametro": "letalidad_por_edad",
+     "valor": {
+      "0-19": 0.0001,
+      "20-59": 0.002,
+      "60+": 0.05
+     }
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.15,
+      "hogar": 0.35,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 669,
+    "casos_acumulados": 1268,
+    "desglose_por_grupo": [
+     {
+      "casos": 361,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 0,
+      "grupo": "0-19",
+      "poblacion": 15000,
+      "vacunados_protegidos": 0
+     },
+     {
+      "casos": 735,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 0,
+      "grupo": "20-59",
+      "poblacion": 28000,
+      "vacunados_protegidos": 0
+     },
+     {
+      "casos": 172,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 5,
+      "grupo": "60+",
+      "poblacion": 7000,
+      "vacunados_protegidos": 0
+     }
+    ],
+    "dia_pico": 60,
+    "dia_pico_hospitalizados": 54,
+    "dia_pico_nuevos_casos": 60,
+    "dosis_aplicadas": 0,
+    "fallecimientos": 5,
+    "hospitalizaciones": 22,
+    "pico_casos_activos": 669,
+    "pico_hospitalizados": 8,
+    "pico_nuevos_casos": 113,
+    "tasa_ataque": 0.02536,
+    "vacunados_protegidos": 0
+   },
+   "serie_sha256": "4bcd666356b52df0c93a624eb42115eb2d8a9840d1c5436dc7e4c072cc3996b7"
+  }
+ },
+ "muchos_errores_a_la_vez": {
+  "errores": [
+   "Grupo de edad 'x' no tiene formato 'min-max' o 'min+'.",
+   "La poblacion total debe estar entre 1,000 y 20,000,000.",
+   "'dias' debe ser un entero entre 1 y 1095.",
+   "'infectados_iniciales' debe ser un entero >= 1.",
+   "Falta el parametro de enfermedad 'r0'.",
+   "'tasa_hospitalizacion' debe ser un numero o un diccionario por grupo.",
+   "'letalidad' debe estar entre 0 y 1.",
+   "'capas_contacto' debe asignar pesos >= 0 que sumen 1.",
+   "Intervencion 1 (CUBREBOCAS): 'dia_inicio' debe ser un entero >= 0.",
+   "Intervencion 2: tipo 'NADA' no soportado por el motor.",
+   "Intervencion 3 (VACUNACION): 'eficacia' es obligatoria y debe estar entre 0 y 1."
+  ]
+ },
+ "no_es_objeto": {
+  "errores": [
+   "El escenario debe ser un objeto."
+  ]
+ },
+ "parametros_faltantes": {
+  "errores": [
+   "Falta el parametro de enfermedad 'r0'.",
+   "Falta el parametro de enfermedad 'dias_hospitalizacion'.",
+   "Falta el parametro de enfermedad 'tasa_hospitalizacion'."
+  ]
+ },
+ "poblacion_fuera_de_rango": {
+  "errores": [
+   "La poblacion total debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "por_edad": {
+  "resuelto": {
+   "N": 50000,
+   "avisos": [
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.15,
+    "hogar": 0.35,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    0,
+    20,
+    60
+   ],
+   "grupos": [
+    "0-19",
+    "20-59",
+    "60+"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [],
+   "letalidad": [
+    0.006,
+    0.006,
+    0.006
+   ],
+   "poblacion": [
+    15000,
+    28000,
+    7000
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.04,
+    0.04,
+    0.04
+   ],
+   "trazabilidad": [
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba B",
+     "parametro": "tasa_hospitalizacion",
+     "valor": 0.04
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba C",
+     "parametro": "letalidad",
+     "valor": 0.006
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.15,
+      "hogar": 0.35,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 2654,
+    "casos_acumulados": 4732,
+    "desglose_por_grupo": [
+     {
+      "casos": 1445,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 0,
+      "grupo": "0-19",
+      "poblacion": 15000,
+      "vacunados_protegidos": 0
+     },
+     {
+      "casos": 2567,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 5,
+      "grupo": "20-59",
+      "poblacion": 28000,
+      "vacunados_protegidos": 0
+     },
+     {
+      "casos": 720,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 0,
+      "grupo": "60+",
+      "poblacion": 7000,
+      "vacunados_protegidos": 0
+     }
+    ],
+    "dia_pico": 60,
+    "dia_pico_hospitalizados": 60,
+    "dia_pico_nuevos_casos": 60,
+    "dosis_aplicadas": 0,
+    "fallecimientos": 5,
+    "hospitalizaciones": 81,
+    "pico_casos_activos": 2654,
+    "pico_hospitalizados": 36,
+    "pico_nuevos_casos": 375,
+    "tasa_ataque": 0.09464,
+    "vacunados_protegidos": 0
+   },
+   "serie_sha256": "8e311c24660880e7f8b29b81e009d48174b6da61520c7c447ce1117d9fcb1f84"
+  }
+ },
+ "prorratear_sin_poblacion": {
+  "errores": [
+   "No se puede prorratear la edad desconocida sin poblacion en los grupos.",
+   "La poblacion total debe estar entre 1,000 y 20,000,000.",
+   "Los infectados iniciales no pueden superar la poblacion."
+  ]
+ },
+ "sin_enfermedad": {
+  "errores": [
+   "Falta 'enfermedad' con sus parametros.",
+   "Falta el parametro de enfermedad 'r0'.",
+   "Falta el parametro de enfermedad 'incubacion_dias'.",
+   "Falta el parametro de enfermedad 'infeccioso_dias'.",
+   "Falta el parametro de enfermedad 'dias_hospitalizacion'.",
+   "Falta el parametro de enfermedad 'tasa_hospitalizacion'.",
+   "Falta el parametro de enfermedad 'letalidad'."
+  ]
+ },
+ "sin_poblacion": {
+  "errores": [
+   "Falta 'poblacion' (entero o diccionario por grupo de edad)."
+  ]
+ },
+ "tabla_fuera_de_rango": {
+  "errores": [
+   "Cada valor de 'letalidad' debe estar entre 0 y 1."
+  ]
+ },
+ "tabla_incompleta": {
+  "errores": [
+   "'letalidad' no define los grupos: 60+."
+  ]
+ },
+ "tabla_sin_grupos": {
+  "errores": [
+   "'letalidad' viene por grupo de edad pero la poblacion no."
+  ]
+ },
+ "tasa_de_otro_tipo": {
+  "errores": [
+   "'letalidad' debe ser un numero o un diccionario por grupo."
+  ]
+ },
+ "tasa_fuera_de_rango": {
+  "errores": [
+   "'letalidad' debe estar entre 0 y 1."
+  ]
+ },
+ "tasa_global_gana_sin_grupos": {
+  "resuelto": {
+   "N": 50000,
+   "avisos": [
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.15,
+    "hogar": 0.35,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    null
+   ],
+   "grupos": [
+    "total"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [],
+   "letalidad": [
+    0.006
+   ],
+   "poblacion": [
+    50000
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.04
+   ],
+   "trazabilidad": [
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba B",
+     "parametro": "tasa_hospitalizacion",
+     "valor": 0.04
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba C",
+     "parametro": "letalidad",
+     "valor": 0.006
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.15,
+      "hogar": 0.35,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 1504,
+    "casos_acumulados": 2746,
+    "desglose_por_grupo": [
+     {
+      "casos": 2746,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 6,
+      "grupo": "total",
+      "poblacion": 50000,
+      "vacunados_protegidos": 0
+     }
+    ],
+    "dia_pico": 60,
+    "dia_pico_hospitalizados": 60,
+    "dia_pico_nuevos_casos": 60,
+    "dosis_aplicadas": 0,
+    "fallecimientos": 6,
+    "hospitalizaciones": 55,
+    "pico_casos_activos": 1504,
+    "pico_hospitalizados": 19,
+    "pico_nuevos_casos": 210,
+    "tasa_ataque": 0.05492,
+    "vacunados_protegidos": 0
+   },
+   "serie_sha256": "f17416adf0d366f00f103b301b9f72f7f6464f5f3c342ff47e08792f500f72d8"
+  }
+ },
+ "testeo_aislamiento_invalido": {
+  "errores": [
+   "Intervencion 1 (TESTEO_AISLAMIENTO): 'dias_aislamiento' debe ser >= 1."
+  ]
+ },
+ "testeo_sin_deteccion": {
+  "errores": [
+   "Intervencion 1 (TESTEO_AISLAMIENTO): 'deteccion' es obligatoria y debe estar entre 0 y 1."
+  ]
+ },
+ "testeo_sin_periodo_infeccioso": {
+  "errores": [
+   "Falta el parametro de enfermedad 'infeccioso_dias'."
+  ]
+ },
+ "testeo_sin_retraso": {
+  "errores": [
+   "Intervencion 1 (TESTEO_AISLAMIENTO): 'retraso_dias' es obligatorio y debe ser >= 0."
+  ]
+ },
+ "testeo_y_aislamiento": {
+  "resuelto": {
+   "N": 50000,
+   "avisos": [
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.15,
+    "hogar": 0.35,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    null
+   ],
+   "grupos": [
+    "total"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [
+    {
+     "clase": "aislamiento",
+     "dia_fin": 40,
+     "dia_inicio": 5,
+     "efecto": 0.21666666666666667,
+     "tipo": "TESTEO_AISLAMIENTO"
+    },
+    {
+     "clase": "aislamiento",
+     "dia_fin": 40,
+     "dia_inicio": 5,
+     "efecto": 0.1625,
+     "tipo": "TESTEO_AISLAMIENTO"
+    }
+   ],
+   "letalidad": [
+    0.006
+   ],
+   "poblacion": [
+    50000
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.04
+   ],
+   "trazabilidad": [
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba B",
+     "parametro": "tasa_hospitalizacion",
+     "valor": 0.04
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba C",
+     "parametro": "letalidad",
+     "valor": 0.006
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.15,
+      "hogar": 0.35,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 194,
+    "casos_acumulados": 379,
+    "desglose_por_grupo": [
+     {
+      "casos": 379,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 2,
+      "grupo": "total",
+      "poblacion": 50000,
+      "vacunados_protegidos": 0
+     }
+    ],
+    "dia_pico": 60,
+    "dia_pico_hospitalizados": 32,
+    "dia_pico_nuevos_casos": 58,
+    "dosis_aplicadas": 0,
+    "fallecimientos": 2,
+    "hospitalizaciones": 6,
+    "pico_casos_activos": 194,
+    "pico_hospitalizados": 2,
+    "pico_nuevos_casos": 33,
+    "tasa_ataque": 0.00758,
+    "vacunados_protegidos": 0
+   },
+   "serie_sha256": "809b9d625d5664b52e79e2d1a736bae12aae7b7735d63b08e1dfcdca68a18bf7"
+  }
+ },
+ "total_minimo": {
+  "resuelto": {
+   "N": 50000,
+   "avisos": [
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.15,
+    "hogar": 0.35,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    null
+   ],
+   "grupos": [
+    "total"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [],
+   "letalidad": [
+    0.006
+   ],
+   "poblacion": [
+    50000
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.04
+   ],
+   "trazabilidad": [
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba B",
+     "parametro": "tasa_hospitalizacion",
+     "valor": 0.04
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba C",
+     "parametro": "letalidad",
+     "valor": 0.006
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.15,
+      "hogar": 0.35,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 1504,
+    "casos_acumulados": 2746,
+    "desglose_por_grupo": [
+     {
+      "casos": 2746,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 6,
+      "grupo": "total",
+      "poblacion": 50000,
+      "vacunados_protegidos": 0
+     }
+    ],
+    "dia_pico": 60,
+    "dia_pico_hospitalizados": 60,
+    "dia_pico_nuevos_casos": 60,
+    "dosis_aplicadas": 0,
+    "fallecimientos": 6,
+    "hospitalizaciones": 55,
+    "pico_casos_activos": 1504,
+    "pico_hospitalizados": 19,
+    "pico_nuevos_casos": 210,
+    "tasa_ataque": 0.05492,
+    "vacunados_protegidos": 0
+   },
+   "serie_sha256": "f17416adf0d366f00f103b301b9f72f7f6464f5f3c342ff47e08792f500f72d8"
+  }
+ },
+ "transmisibilidad_sin_r0": {
+  "errores": [
+   "Falta el parametro de enfermedad 'r0'.",
+   "'transmisibilidad_base' es una probabilidad por contacto del modelo de agentes y no se convierte a R0; captura 'r0' con su fuente."
+  ]
+ },
+ "vacuna_edad_desc_sin_grupos": {
+  "errores": [
+   "Intervencion 1 (VACUNACION): prioridad 'edad_desc' requiere poblacion por grupo de edad."
+  ]
+ },
+ "vacuna_edad_minima_fuera_de_rango": {
+  "errores": [
+   "Intervencion 1 (VACUNACION): 'edad_minima' debe estar entre 0 y 120."
+  ]
+ },
+ "vacuna_edad_minima_sin_grupo_que_empiece": {
+  "errores": [
+   "Intervencion 1 (VACUNACION): ningun grupo de edad empieza en 70 o mas."
+  ]
+ },
+ "vacuna_edad_minima_sin_grupos": {
+  "errores": [
+   "Intervencion 1 (VACUNACION): 'edad_minima' requiere poblacion por grupo de edad."
+  ]
+ },
+ "vacuna_sin_dosis": {
+  "errores": [
+   "Intervencion 1 (VACUNACION): 'dosis_diarias' es obligatorio y debe ser un entero >= 1."
+  ]
+ },
+ "vacuna_sin_eficacia": {
+  "errores": [
+   "Intervencion 1 (VACUNACION): 'eficacia' es obligatoria y debe estar entre 0 y 1."
+  ]
+ },
+ "vacunacion_por_edad": {
+  "resuelto": {
+   "N": 50000,
+   "avisos": [
+    "Intervencion 2 (VACUNACION): prioridad 'esenciales' no la modela un motor compartimental; se aplica como 'aleatorio'.",
+    "Intervencion 2 (VACUNACION): 30 no coincide con el inicio de un grupo; se vacunan solo los grupos que empiezan en esa edad o despues.",
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.15,
+    "hogar": 0.35,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    0,
+    20,
+    60
+   ],
+   "grupos": [
+    "0-19",
+    "20-59",
+    "60+"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [
+    {
+     "clase": "vacunacion",
+     "dia_fin": 40,
+     "dia_inicio": 5,
+     "dosis_diarias": 500,
+     "eficacia": 0.8,
+     "grupos_objetivo": [
+      1,
+      2
+     ],
+     "prioridad": "edad_desc",
+     "tipo": "VACUNACION",
+     "tope": 1.0
+    },
+    {
+     "clase": "vacunacion",
+     "dia_fin": 40,
+     "dia_inicio": 5,
+     "dosis_diarias": 200,
+     "eficacia": 0.6,
+     "grupos_objetivo": [
+      2
+     ],
+     "prioridad": "aleatorio",
+     "tipo": "VACUNACION",
+     "tope": 1.0
+    }
+   ],
+   "letalidad": [
+    0.006,
+    0.006,
+    0.006
+   ],
+   "poblacion": [
+    15000,
+    28000,
+    7000
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.04,
+    0.04,
+    0.04
+   ],
+   "trazabilidad": [
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba B",
+     "parametro": "tasa_hospitalizacion",
+     "valor": 0.04
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba C",
+     "parametro": "letalidad",
+     "valor": 0.006
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.15,
+      "hogar": 0.35,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 420,
+    "casos_acumulados": 973,
+    "desglose_por_grupo": [
+     {
+      "casos": 383,
+      "dosis_aplicadas": 0,
+      "fallecimientos": 1,
+      "grupo": "0-19",
+      "poblacion": 15000,
+      "vacunados_protegidos": 0
+     },
+     {
+      "casos": 489,
+      "dosis_aplicadas": 13000,
+      "fallecimientos": 1,
+      "grupo": "20-59",
+      "poblacion": 28000,
+      "vacunados_protegidos": 8686
+     },
+     {
+      "casos": 101,
+      "dosis_aplicadas": 7000,
+      "fallecimientos": 0,
+      "grupo": "60+",
+      "poblacion": 7000,
+      "vacunados_protegidos": 3712
+     }
+    ],
+    "dia_pico": 60,
+    "dia_pico_hospitalizados": 58,
+    "dia_pico_nuevos_casos": 57,
+    "dosis_aplicadas": 20000,
+    "fallecimientos": 2,
+    "hospitalizaciones": 15,
+    "pico_casos_activos": 420,
+    "pico_hospitalizados": 6,
+    "pico_nuevos_casos": 54,
+    "tasa_ataque": 0.01946,
+    "vacunados_protegidos": 12398
+   },
+   "serie_sha256": "ce2c7b0602a2511771eed591ba628370a9ba029c54d159479dfc651eba627cd9"
+  }
+ },
+ "vacunacion_sin_grupos": {
+  "resuelto": {
+   "N": 50000,
+   "avisos": [
+    "Parametros sin fuente ni marca de supuesto: infeccioso_dias, dias_hospitalizacion."
+   ],
+   "capas_contacto": {
+    "comunidad": 0.3,
+    "escuela": 0.15,
+    "hogar": 0.35,
+    "trabajo": 0.2
+   },
+   "dias": 60,
+   "dias_hospitalizacion": 7.5,
+   "edad_minima_grupo": [
+    null
+   ],
+   "grupos": [
+    "total"
+   ],
+   "incubacion_dias": 4.0,
+   "infeccioso_dias": 6.0,
+   "infectados_iniciales": 10,
+   "intervenciones": [
+    {
+     "clase": "vacunacion",
+     "dia_fin": 40,
+     "dia_inicio": 5,
+     "dosis_diarias": 300,
+     "eficacia": 0.7,
+     "grupos_objetivo": [
+      0
+     ],
+     "prioridad": "aleatorio",
+     "tipo": "VACUNACION",
+     "tope": 1.0
+    }
+   ],
+   "letalidad": [
+    0.006
+   ],
+   "poblacion": [
+    50000
+   ],
+   "r0": 2.1,
+   "tasa_hospitalizacion": [
+    0.04
+   ],
+   "trazabilidad": [
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba A",
+     "parametro": "r0",
+     "valor": 2.1
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "incubacion_dias",
+     "valor": 4.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "infeccioso_dias",
+     "valor": 6.0
+    },
+    {
+     "estado": "sin_fuente",
+     "fuente": null,
+     "parametro": "dias_hospitalizacion",
+     "valor": 7.5
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba B",
+     "parametro": "tasa_hospitalizacion",
+     "valor": 0.04
+    },
+    {
+     "estado": "con_fuente",
+     "fuente": "Fuente de prueba C",
+     "parametro": "letalidad",
+     "valor": 0.006
+    },
+    {
+     "estado": "supuesto",
+     "fuente": null,
+     "parametro": "capas_contacto",
+     "valor": {
+      "comunidad": 0.3,
+      "escuela": 0.15,
+      "hogar": 0.35,
+      "trabajo": 0.2
+     }
+    }
+   ]
+  },
+  "simulacion": {
+   "engine_version": "python-ref-0.1",
+   "resumen": {
+    "casos_activos_final": 1405,
+    "casos_acumulados": 2863,
+    "desglose_por_grupo": [
+     {
+      "casos": 2863,
+      "dosis_aplicadas": 10800,
+      "fallecimientos": 9,
+      "grupo": "total",
+      "poblacion": 50000,
+      "vacunados_protegidos": 6988
+     }
+    ],
+    "dia_pico": 60,
+    "dia_pico_hospitalizados": 56,
+    "dia_pico_nuevos_casos": 59,
+    "dosis_aplicadas": 10800,
+    "fallecimientos": 9,
+    "hospitalizaciones": 58,
+    "pico_casos_activos": 1405,
+    "pico_hospitalizados": 21,
+    "pico_nuevos_casos": 179,
+    "tasa_ataque": 0.05726,
+    "vacunados_protegidos": 6988
+   },
+   "serie_sha256": "0f8df3a7d9503af0f1feb4c162b92c76b574cd664e26381c220ea4fe6cf5400e"
+  }
+ }
+}
