@@ -260,7 +260,7 @@ class _ConEscenarioBorrador(_ConCatalogo):
             self.skipTest("falta la migracion 021: no hay grupos de edad")
 
         self._borra()
-        # Estratificado a proposito: la checklist pide vacunacion "con grupo
+        # Estratificado a proposito: se exige vacunacion "con grupo
         # 60+", y una prioridad por edad no tiene sentido -- el motor la rechaza
         # -- sobre una poblacion sin grupos.
         datos, errores = queries.valida_escenario(
@@ -308,7 +308,7 @@ class IntervencionesTests(_ConEscenarioBorrador):
 
     NOMBRE = "ZZZ escenario para intervenciones"
 
-    # ---- los tres tipos que la checklist exige como minimo -----------------
+    # ---- los tres tipos que se exigen como minimo --------------------------
 
     def test_los_tres_tipos_minimos(self):
         ok, errores = self._agrega(code="CIERRE_ESCUELAS", start_day="10", end_day="60",

@@ -529,7 +529,7 @@ datos/geo/inegi_mg2024/      capa municipal oficial (Marco Geoestadistico 2024, 
 datos/geo/                   catalogo INEGI y centroides de los 51 municipios
 datos/censo/                 poblacion municipal y estructura por edad (Censo 2020, INEGI)
 
-docs/                        plan de trabajo (CHECKLIST_SEGUNDO_AVANCE.md) y esta guia
+docs/                        esta guia, decisiones del equipo, arquitectura y contexto
 frontend_web/requerimientos.txt    dependencias de la app web
 procesamiento/requerimientos.txt   dependencias del motor
 .env.example                 plantilla de configuracion (el .env real no se sube)

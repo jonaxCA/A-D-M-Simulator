@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> **Estado: Vigente** · 2026-09-25
+> **Estado: Vigente** · 2026-10-06
 > Si algo aquí choca con lo que pide la persona en la sesión, pregunta antes de actuar.
 
 ## Contexto
@@ -12,8 +12,6 @@ pequeños, legibles y fáciles de revisar.
 ## Etapa actual
 
 - Monolito: una sola app Flask conectada directo a PostgreSQL.
-- Qué construir: `docs/CHECKLIST_SEGUNDO_AVANCE.md`. Su "Prueba de aceptación" define cuándo
-  algo está terminado.
 - El motor es un SEIR de prueba, sin agentes. Los documentos de arquitectura y de contexto
   describen el sistema final (ABM, microservicios); no es lo que se construye ahora.
 
@@ -65,23 +63,14 @@ Cuando se decidan, quedarán en `docs/decisiones.md`.
 1. Lo que pida la persona en la sesión.
 2. `docs/decisiones.md`.
 3. Este archivo.
-4. `docs/CHECKLIST_SEGUNDO_AVANCE.md`.
-5. `docs/arquitectura/arquitectura_v1.md`.
-6. `docs/contexto/simulador.md`.
+4. `docs/arquitectura/arquitectura_v1.md`.
+5. `docs/contexto/simulador.md`.
 
 Para el esquema de la base, las migraciones ganan sobre cualquier documento.
 
-## Temporal: partes viejas del checklist (borrar cuando se corrijan)
-
-- Rutas: `db/` es ahora `datos/postgres/`, `data/censo/` es `datos/censo/` y `motor/` es
-  `procesamiento/motor/`.
-- Estados PENDIENTE, COMPLETADA y ERROR: usa los de la regla 7.
-- La última casilla del bloque E dice que ninguna enfermedad se puede simular; desde la 017,
-  COVID-19 e influenza sí se pueden.
-
 ## Git y cierre
 
-- Sigue `CONTRIBUTING.md`. Si la tarea corresponde a una casilla del checklist, márcala en el mismo PR.
+- Sigue `CONTRIBUTING.md`.
 - Antes de dar una tarea por terminada:
   - Las pruebas del motor pasan.
   - Si tocaste `datos/`, `verifica_migraciones.py` no muestra diferencias nuevas.

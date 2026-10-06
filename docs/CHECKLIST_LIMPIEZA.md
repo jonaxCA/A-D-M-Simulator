@@ -16,7 +16,7 @@ Ya se completó esta fase.
    - El docstring de `_entero_en_rango` lo admite: se creó porque chocaba de nombre con `_entero` y hacía fallar `/reportes/nuevo`.
    - Propongo unificar todo en `frontend_web/app/formularios.py`, porque leer formularios es trabajo del frontend, no de la capa de datos.
 4. **Exportaciones CSV.** Las tres repiten el mismo bloque (StringIO, writer, cabeceras HTTP). Se reemplaza por un helper `_csv(nombre, encabezados, filas)`.
-5. **Boilerplate en pruebas.** El *boilerplate* es código de preparación que se copia igual en muchos lados. Siete archivos de `frontend_web/tests` repiten lo mismo: crear la app, simular `usuario_vigente` y armar un token. Propongo una clase base en `tests/base.py`. No se borra ninguna prueba; las 300 se quedan.
+5. **Boilerplate en pruebas.** El *boilerplate* es código de preparación que se copia igual en muchos lados. Siete archivos de `frontend_web/tests` repiten lo mismo: crear la app, simular `usuario_vigente` y armar un token. Propongo una clase base en `tests/base.py`. No se borra ninguna prueba; las 299 se quedan.
 
 ## Fase 3: reordenar (baja poco LOC, pero es lo que más ensucia)
 

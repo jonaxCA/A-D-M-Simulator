@@ -181,9 +181,9 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
                WHERE sv.id = %s""", (self.version_id,), one=True)["default_params"])
 
     def test_la_corrida_simula_lo_que_se_aprobo(self):
-        """Hallazgo 1 de docs/revision_bloques_E_F.md: la corrida tiene que usar
-        la poblacion por edad y los parametros congelados de la version, no las
-        bandas actuales de la region ni los parametros vivos del catalogo."""
+        """La corrida tiene que usar la poblacion por edad y los parametros
+        congelados de la version, no las bandas actuales de la region ni los
+        parametros vivos del catalogo."""
         congelados = self._parametros_del_catalogo()
         congelados["r0"] = {"valor": 1.11, "fuente": "congelado en la prueba", "supuesto": False}
         version_id, por_edad = self._version_aprobada(congelados)
