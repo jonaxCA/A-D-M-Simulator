@@ -498,8 +498,8 @@ def export_enfermedades_csv():
         ["Código", "Enfermedad", "Estado", "Actividad", "Alta en catálogo",
          "Casos NL (total)", "Casos NL (30 días)",
          "Simulable", "Parámetros faltantes", "Parámetros supuestos"],
-        ([e["code"], e["nombre"], e["estado_label"],
-          e["actividad"]["label"], presentacion.fecha_corta(e["alta"]),
+        ([e["code"], e["nombre"], presentacion.estado_catalogo(e["activa"]),
+          presentacion.actividad_etiqueta(e["actividad"]), presentacion.fecha_corta(e["alta"]),
           e["casos_total"], e["casos_30d"],
           "Sí" if e["parametros"]["simulable"] else "No",
           len(e["parametros"]["faltan"]), len(e["parametros"]["supuestos"])]

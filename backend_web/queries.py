@@ -272,7 +272,6 @@ def get_enfermedades(busqueda=None, estado=None, pagina=1, por_pagina=10):
         "nombre": r["name"],
         "descripcion": r["description"],
         "activa": r["is_active"],
-        "estado_label": "Activa" if r["is_active"] else "Inactiva",
         "actividad": _actividad(r["casos_total"], r["casos_30d"]),
         "alta": r["created_at"],
         "casos_total": r["casos_total"],
@@ -325,12 +324,12 @@ def normaliza_codigo(valor):
 def _actividad(casos_total, casos_30d):
     """Situacion epidemiologica derivada de `cases`, acotada a Nuevo Leon
     igual que el resto de la pantalla. Ver la nota de arriba: esto NO es
-    is_active."""
+    is_active. Devuelve una clave; el texto lo arma frontend_web."""
     if casos_30d:
-        return {"clave": "con_casos", "label": "Con casos activos"}
+        return "con_casos"
     if casos_total:
-        return {"clave": "historico", "label": "Solo histórico"}
-    return {"clave": "sin_casos", "label": "Sin casos"}
+        return "historico"
+    return "sin_casos"
 
 
 def valida_enfermedad(code, name):
@@ -457,32 +456,6 @@ def _desarma_param(bruto):
     return None, None, False
 
 
-def _inicio_de_grupo(par):
-    """Ordena "0-19", "20-39", ..., "80+" por la edad con que empiezan. Lo que
-    no empiece con un numero se va al final, en orden alfabetico."""
-    clave = str(par[0])
-    digitos = ""
-    for c in clave:
-        if not c.isdigit():
-            break
-        digitos += c
-    return (0, int(digitos), clave) if digitos else (1, 0, clave)
-
-
-def _numero_corto(valor):
-    """3.11e-05 se lee mejor como 0.00311%. Solo para mostrar."""
-    if isinstance(valor, (int, float)) and not isinstance(valor, bool):
-        return f"{valor * 100:.4g}%"
-    return str(valor)
-
-
-def _formatea_valor(spec, valor):
-    if valor is None:
-        return None
-    mostrado = valor * 100 if spec.get("porcentaje") else valor
-    return f"{mostrado:g} {spec['unidad']}".strip()
-
-
 def estado_parametros(default_params):
     """Todo lo que la pantalla necesita saber de los parametros de una
     enfermedad: valor, procedencia y si alcanza para simular."""
@@ -517,7 +490,6 @@ def estado_parametros(default_params):
             # El formulario trabaja en % para las tasas; la base guarda 0–1.
             "valor_form": ("" if valor is None
                            else f"{valor * 100:g}" if spec.get("porcentaje") else f"{valor:g}"),
-            "valor_label": _formatea_valor(spec, valor),
             "fuente": fuente or "",
             "supuesto": supuesto,
             "estado": estado,
@@ -525,8 +497,8 @@ def estado_parametros(default_params):
 
     # Un informativo puede venir pelado ({"0-19": 0.0001, ...}, como lo dejo
     # 010) o con trazabilidad ({"valor": {...}, "fuente": ..., "supuesto": ...},
-    # como lo deja 020). Sin desenvolverlo, la pantalla imprimia el diccionario
-    # entero -- fuente incluida -- en una sola linea ilegible.
+    # como lo deja 020). Se desenvuelve aqui para que `valor` sea siempre el
+    # dato, sin la fuente; el texto lo arma frontend_web.
     informativos = []
     for clave, etiqueta in PARAMETROS_INFORMATIVOS.items():
         bruto = params.get(clave)
@@ -537,15 +509,7 @@ def estado_parametros(default_params):
             valor = bruto                      # formato pelado: el valor es el dict
         if valor in (None, {}, ""):
             continue
-        if isinstance(valor, dict):
-            # Por edad, no por el orden en que JSONB devuelve las claves: sin
-            # esto "80+" sale primero y la tabla se lee al reves de como se
-            # piensa.
-            texto = ", ".join(f"{k}: {_numero_corto(v)}"
-                              for k, v in sorted(valor.items(), key=_inicio_de_grupo))
-        else:
-            texto = str(valor)
-        informativos.append({"etiqueta": etiqueta, "texto": texto,
+        informativos.append({"etiqueta": etiqueta, "valor": valor,
                              "fuente": fuente or "", "supuesto": supuesto})
 
     return {

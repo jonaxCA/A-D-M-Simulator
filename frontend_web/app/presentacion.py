@@ -17,6 +17,59 @@ def fecha_corta(valor):
     return f"{valor.day:02d} {_MESES[valor.month - 1]} {valor.year}"
 
 
+_ACTIVIDAD = {"con_casos": "Con casos activos", "historico": "Solo histórico",
+              "sin_casos": "Sin casos"}
+
+
+def actividad_etiqueta(clave):
+    """La situacion epidemiologica de una enfermedad (queries._actividad)."""
+    return _ACTIVIDAD[clave]
+
+
+def estado_catalogo(activa):
+    return "Activa" if activa else "Inactiva"
+
+
+def valor_parametro(parametro):
+    """Valor de un parametro de simulacion con su unidad, para leer: una
+    entrada de queries.estado_parametros()["detalle"]. Las tasas se guardan
+    0-1 y se muestran en %."""
+    valor = parametro["valor"]
+    if valor is None:
+        return None
+    mostrado = valor * 100 if parametro.get("porcentaje") else valor
+    return f"{mostrado:g} {parametro['unidad']}".strip()
+
+
+def _inicio_de_grupo(par):
+    """Ordena "0-19", "20-39", ..., "80+" por la edad con que empiezan. Lo que
+    no empiece con un numero se va al final, en orden alfabetico."""
+    clave = str(par[0])
+    digitos = ""
+    for c in clave:
+        if not c.isdigit():
+            break
+        digitos += c
+    return (0, int(digitos), clave) if digitos else (1, 0, clave)
+
+
+def _numero_corto(valor):
+    """3.11e-05 se lee mejor como 0.00311%."""
+    if isinstance(valor, (int, float)) and not isinstance(valor, bool):
+        return f"{valor * 100:.4g}%"
+    return str(valor)
+
+
+def texto_informativo(valor):
+    """Un parametro informativo en una linea. Una tabla por grupo de edad va
+    ordenada por edad, no por el orden en que JSONB devuelve las claves: sin
+    esto "80+" sale primero y la tabla se lee al reves de como se piensa."""
+    if isinstance(valor, dict):
+        return ", ".join(f"{k}: {_numero_corto(v)}"
+                         for k, v in sorted(valor.items(), key=_inicio_de_grupo))
+    return str(valor)
+
+
 def fuente_etiqueta(fuente):
     """El texto del distintivo de una fuente de poblacion
     (queries.get_regiones_catalogo y get_estado_nl). Una cifra que un

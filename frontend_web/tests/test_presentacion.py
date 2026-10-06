@@ -9,10 +9,13 @@ from datetime import date, datetime
 from unittest.mock import patch
 
 from frontend_web.tests.base import AppTestCase, ConUsuarioSimulado, requiere_base
+from backend_web import queries
 from backend_web.db import get_conn
 from frontend_web.app.permisos import COOKIE_NAME
-from frontend_web.app.presentacion import (fecha_corta, fuente_detalle, fuente_etiqueta,
-                                           monitoreo_insights)
+from frontend_web.app.presentacion import (actividad_etiqueta, estado_catalogo, fecha_corta,
+                                           fuente_detalle, fuente_etiqueta,
+                                           monitoreo_insights, texto_informativo,
+                                           valor_parametro)
 
 TOTALES = {"casos_pct": 15.2}
 
@@ -101,6 +104,75 @@ class FuenteDePoblacionTests(unittest.TestCase):
                          "Corregido por Ana Pérez el 06 Oct 2026: Conteo municipal 2025")
         self.assertIn("Corregido por un administrador el",
                       fuente_detalle({**manual, "por": None}))
+
+
+class EnfermedadesTextosTests(unittest.TestCase):
+    def test_actividad_y_estado(self):
+        self.assertEqual([actividad_etiqueta(c) for c in ("con_casos", "historico", "sin_casos")],
+                         ["Con casos activos", "Solo histórico", "Sin casos"])
+        self.assertEqual((estado_catalogo(True), estado_catalogo(False)), ("Activa", "Inactiva"))
+
+    def test_valor_de_un_parametro_con_su_unidad(self):
+        self.assertEqual(valor_parametro({"valor": 2.1, "unidad": "contagios por caso"}),
+                         "2.1 contagios por caso")
+        self.assertEqual(valor_parametro({"valor": 0.006, "unidad": "%", "porcentaje": True}),
+                         "0.6 %")
+        self.assertEqual(valor_parametro({"valor": 7, "unidad": ""}), "7")
+        self.assertIsNone(valor_parametro({"valor": None, "unidad": "días"}))
+
+    def test_informativo_por_edad_en_orden_de_edad(self):
+        tabla = {"80+": 0.00526, "desconocido": "n/d", "5-14": 0.0001, "60-79": 0.00338,
+                 "0-4": 3.11e-05}
+        self.assertEqual(texto_informativo(tabla),
+                         "0-4: 0.00311%, 5-14: 0.01%, 60-79: 0.338%, 80+: 0.526%, "
+                         "desconocido: n/d")
+        self.assertEqual(texto_informativo(0.35), "0.35")
+        self.assertEqual(texto_informativo("texto libre"), "texto libre")
+
+
+class EnfermedadesMuestraCadaFilaTests(ConUsuarioSimulado):
+    """Pantalla y CSV con datos simulados, para cubrir lo que la base de
+    demostracion no tiene: casos recientes y enfermedades inactivas."""
+
+    STATS = {"registradas": 2, "altas_30d": 0, "activas": 1, "activas_pct": 50,
+             "inactivas": 1, "detectadas_30d": 1}
+
+    def _fila(self, code, nombre, activa, actividad, params):
+        return {"id": len(code), "code": code, "nombre": nombre, "descripcion": "",
+                "activa": activa, "actividad": actividad, "alta": date(2026, 9, 22),
+                "casos_total": 5, "casos_30d": 1, "ultimo_caso": None,
+                "parametros": queries.estado_parametros(params)}
+
+    def _listado(self):
+        alfa = self._fila("ALFA", "Alfa", True, "con_casos", {
+            "r0": {"valor": 2.1, "fuente": "F", "supuesto": False},
+            "letalidad": {"valor": 0.006, "fuente": None, "supuesto": True},
+            "letalidad_por_edad": {"80+": 0.00526, "0-19": 3.11e-05}})
+        beta = self._fila("BETA", "Beta", False, "sin_casos", {})
+        return {"enfermedades": [alfa, beta], "total": 2, "pagina": 1, "por_pagina": 10,
+                "paginas": 1, "desde": 1, "hasta": 2}
+
+    @patch("frontend_web.app.routes.log_audit")
+    @patch("frontend_web.app.routes.queries.get_enfermedades")
+    @patch("frontend_web.app.routes.queries.get_enfermedades_stats")
+    def test_pantalla_y_csv(self, mock_stats, mock_listado, _mock_bitacora):
+        mock_stats.return_value = self.STATS
+        mock_listado.return_value = self._listado()
+        with self.app.test_client() as client:
+            client.set_cookie(COOKIE_NAME, self._token())
+            html = client.get("/enfermedades").get_data(as_text=True)
+            csv_texto = client.get("/export/enfermedades.csv").get_data(as_text=True)
+        alfa, beta = html.split(">Alfa<")[1].split(">Beta<")
+        self.assertIn('estado-dot"></span>Activa', alfa)
+        self.assertIn('actividad-con_casos">Con casos activos<', alfa)
+        self.assertIn("2.1 contagios por caso", alfa)
+        self.assertIn("0.6 %", alfa)
+        self.assertIn("<span>0-19: 0.00311%, 80+: 0.526%</span>", alfa)
+        self.assertIn('estado-dot"></span>Inactiva', beta)
+        self.assertIn('actividad-sin_casos">Sin casos<', beta)
+        filas = csv_texto.splitlines()
+        self.assertTrue(filas[1].startswith("ALFA,Alfa,Activa,Con casos activos,22 Sep 2026,"))
+        self.assertTrue(filas[2].startswith("BETA,Beta,Inactiva,Sin casos,22 Sep 2026,"))
 
 
 class FiltrosDePlantillaTests(AppTestCase):

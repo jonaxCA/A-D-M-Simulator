@@ -94,11 +94,11 @@
           <td class="celda-nombre">{{ e.nombre }}</td>
           <td>
             <span class="badge estado-pill {{ 'estado-activa' if e.activa else 'estado-inactiva' }}">
-              <span class="estado-dot"></span>{{ e.estado_label }}
+              <span class="estado-dot"></span>{{ e.activa | estado_catalogo }}
             </span>
           </td>
           <td>
-            <span class="badge actividad-pill actividad-{{ e.actividad.clave }}">{{ e.actividad.label }}</span>
+            <span class="badge actividad-pill actividad-{{ e.actividad }}">{{ e.actividad | actividad_etiqueta }}</span>
           </td>
           <td>
             {% if e.parametros.simulable %}
@@ -161,7 +161,7 @@
                       {% elif p.estado == 'por_grupo' %}
                         por grupo de edad
                       {% else %}
-                        {{ p.valor_label }}
+                        {{ p | valor_parametro }}
                         {% if p.estado == 'supuesto' %}
                         <span class="badge param-pill param-supuesto">supuesto</span>
                         {% elif p.estado == 'sin_fuente' %}
@@ -186,7 +186,7 @@
                   <li>
                     <span>{{ p.etiqueta }}{% if p.supuesto %}
                       <span class="badge param-pill param-supuesto">supuesto</span>{% endif %}</span>
-                    <span>{{ p.texto }}</span>
+                    <span>{{ p.valor | texto_informativo }}</span>
                   </li>
                   {% if p.fuente %}
                   <li class="param-fuente-fila"><span></span><span class="param-fuente-texto">{{ p.fuente }}</span></li>
