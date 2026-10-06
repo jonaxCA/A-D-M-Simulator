@@ -4,6 +4,7 @@ Textos para mostrar (frontend_web/app/presentacion.py).
 Ejecutar:
     python -m unittest frontend_web.tests.test_presentacion -v
 """
+import re
 import unittest
 from datetime import date, datetime
 from unittest.mock import patch
@@ -12,10 +13,10 @@ from frontend_web.tests.base import AppTestCase, ConUsuarioSimulado, requiere_ba
 from backend_web import queries
 from backend_web.db import get_conn
 from frontend_web.app.permisos import COOKIE_NAME
-from frontend_web.app.presentacion import (actividad_etiqueta, estado_catalogo, fecha_corta,
-                                           fuente_detalle, fuente_etiqueta,
-                                           monitoreo_insights, texto_informativo,
-                                           valor_parametro)
+from frontend_web.app.presentacion import (actividad_etiqueta, estado_catalogo, estado_version,
+                                           fecha_corta, fuente_detalle, fuente_etiqueta,
+                                           monitoreo_insights, tendencia_etiqueta,
+                                           texto_informativo, valor_parametro)
 
 TOTALES = {"casos_pct": 15.2}
 
@@ -175,6 +176,72 @@ class EnfermedadesMuestraCadaFilaTests(ConUsuarioSimulado):
         self.assertTrue(filas[2].startswith("BETA,Beta,Inactiva,Sin casos,22 Sep 2026,"))
 
 
+class TendenciaYVersionTests(unittest.TestCase):
+    def test_tendencia(self):
+        self.assertEqual([tendencia_etiqueta(c) for c in ("critico", "alerta", "estable")],
+                         ["Critico", "Alerta", "Estable"])
+
+    def test_estado_de_version(self):
+        self.assertEqual([estado_version(s) for s in
+                          ("borrador", "en_revision", "aprobado", "rechazado", None)],
+                         ["Borrador", "En revisión", "Aprobado", "Rechazado", "—"])
+
+
+class SemaforoDeTendenciaEnPantallaTests(ConUsuarioSimulado):
+    SITUACION = [{"enfermedad": "Alfa", "estado": "critico", "incidencia": 1200},
+                 {"enfermedad": "Beta", "estado": "alerta", "incidencia": 30},
+                 {"enfermedad": "Gama", "estado": "estable", "incidencia": 2}]
+
+    @patch("frontend_web.app.routes.queries.get_curva_epidemica", return_value=[])
+    @patch("frontend_web.app.routes.queries.get_resumen_situacion")
+    @patch("frontend_web.app.routes.queries.get_resumen_indicadores")
+    def test_el_panorama_publico(self, mock_indicadores, mock_situacion, _curva):
+        mock_indicadores.return_value = {"casos_activos": 0, "casos_pct": 0, "tasa_incidencia": 0,
+                                         "tasa_pct": 0, "zonas_en_riesgo": 0,
+                                         "simulaciones_activas": 0}
+        mock_situacion.return_value = self.SITUACION
+        with self.app.test_client() as client:
+            html = client.get("/").get_data(as_text=True)
+        for clave, texto in (("critico", "Critico"), ("alerta", "Alerta"), ("estable", "Estable")):
+            self.assertIn(f'<span class="badge badge-{clave}">{texto}</span>', html)
+
+    @patch("frontend_web.app.routes.log_audit")
+    @patch("frontend_web.app.routes.queries.get_monitoreo_zonas")
+    def test_el_csv_de_monitoreo(self, mock_zonas, _bitacora):
+        mock_zonas.return_value = {"zonas": [
+            {"zona": z, "casos": 1, "incidencia": 1.0, "variacion": 0.0, "graves": 0, "estado": e}
+            for z, e in (("Alfa", "critico"), ("Beta", "alerta"), ("Gama", "estable"))]}
+        with self.app.test_client() as client:
+            client.set_cookie(COOKIE_NAME, self._token())
+            filas = client.get("/export/monitoreo.csv").get_data(as_text=True).splitlines()
+        self.assertEqual([f.rsplit(",", 1)[1] for f in filas[1:]], ["Critico", "Alerta", "Estable"])
+
+    @patch("frontend_web.app.routes.log_audit")
+    @patch("frontend_web.app.routes.queries.get_resumen_situacion")
+    def test_el_csv_del_resumen(self, mock_situacion, _bitacora):
+        mock_situacion.return_value = self.SITUACION
+        with self.app.test_client() as client:
+            client.set_cookie(COOKIE_NAME, self._token())
+            filas = client.get("/export/resumen.csv").get_data(as_text=True).splitlines()
+        self.assertEqual(filas[1:], ["Alfa,Critico,1200", "Beta,Alerta,30", "Gama,Estable,2"])
+
+    @patch("frontend_web.app.routes.queries.get_escenarios")
+    def test_el_estado_de_cada_version_en_escenarios(self, mock_escenarios):
+        estados = ["borrador", "en_revision", "aprobado", "rechazado", None]
+        mock_escenarios.return_value = [
+            {"id": i, "name": f"Esc{i}", "description": None, "enfermedad": "X", "region": "Y",
+             "version_number": None if s is None else 1, "version_status": s,
+             "population_size": None, "por_edad": False, "autor": "Z", "horizon_days": 30,
+             "age_unknown_policy": None, "population_age_unknown": 0}
+            for i, s in enumerate(estados, 1)]
+        with self.app.test_client() as client:
+            client.set_cookie(COOKIE_NAME, self._token())
+            html = client.get("/escenarios").get_data(as_text=True)
+        filas = [html.split(f">Esc{i}<", 1)[1].split("</tr>")[0] for i in range(1, 6)]
+        for fila, texto in zip(filas, ["Borrador", "En revisión", "Aprobado", "Rechazado", "—"]):
+            self.assertIn(f'">{texto}</span>', fila)
+
+
 class FiltrosDePlantillaTests(AppTestCase):
     def test_las_plantillas_tienen_los_filtros_de_presentacion(self):
         plantilla = self.app.jinja_env.from_string(
@@ -280,6 +347,10 @@ class MonitoreoMuestraLosTextosTests(AppTestCase):
         self.assertTrue(all({"grupo", "casos"} <= set(e) for e in edades))
         self.assertIn("casos_pct", totales)
         self.assertEqual(dias, 7)
+        # Cada distintivo de tendencia: su clase CSS es su etiqueta en minusculas.
+        distintivos = re.findall(r'badge badge-(\w+)">(\w+)<', html)
+        self.assertTrue(distintivos)
+        self.assertEqual([c for c, _ in distintivos], [t.lower() for _, t in distintivos])
 
 
 if __name__ == "__main__":

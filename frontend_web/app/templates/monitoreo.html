@@ -148,7 +148,7 @@
             {{ '▲' if z.variacion >= 0 else '▼' }} {{ '+' if z.variacion >= 0 else '' }}{{ z.variacion }}%
           </td>
           <td>{{ z.graves }}</td>
-          <td><span class="badge badge-{{ z.estado|lower }}">{{ z.estado }}</span></td>
+          <td><span class="badge badge-{{ z.estado }}">{{ z.estado | tendencia_etiqueta }}</span></td>
         </tr>
         {% else %}
         <tr><td colspan="6" class="tabla-vacia">Ninguna zona coincide con los filtros aplicados.</td></tr>

@@ -11,9 +11,10 @@ modelo de datos (regions) soporta cualquier estado del pais.
 Regla de clasificacion de tendencia (semana actual vs la previa, mismas 7+7
 dias que usa el dashboard): es un umbral definido por el equipo, no viene
 del documento del proyecto
-    >= 50%  de aumento  -> "Critico"
-    >= 15%  de aumento  -> "Alerta"
-    resto (estable o a la baja) -> "Estable"
+    >= 50%  de aumento  -> "critico"
+    >= 15%  de aumento  -> "alerta"
+    resto (estable o a la baja) -> "estable"
+Se devuelve la clave; el texto lo arma frontend_web/app/presentacion.py.
 """
 import json
 import math
@@ -37,11 +38,12 @@ def _pct_change(actual, previa):
 
 
 def _clasifica_tendencia(pct):
+    """Clave del semaforo de tendencia; el texto lo arma frontend_web."""
     if pct >= 50:
-        return "Critico"
+        return "critico"
     if pct >= 15:
-        return "Alerta"
-    return "Estable"
+        return "alerta"
+    return "estable"
 
 
 def get_resumen_indicadores():
@@ -605,19 +607,20 @@ def set_enfermedad_activa(disease_id, activa):
 
 
 BUCKETS = [
-    (0, 15, "baja", "Baja"),
-    (15, 30, "moderada", "Moderada"),
-    (30, 45, "alta", "Alta"),
-    (45, 60, "muy_alta", "Muy alta"),
-    (60, float("inf"), "critica", "Critica"),
+    (0, 15, "baja"),
+    (15, 30, "moderada"),
+    (30, 45, "alta"),
+    (45, 60, "muy_alta"),
+    (60, float("inf"), "critica"),
 ]
 
 
 def _bucket(incidencia):
-    for lo, hi, key, label in BUCKETS:
+    """Nivel del semaforo del mapa para una incidencia por 100k."""
+    for lo, hi, nivel in BUCKETS:
         if lo <= incidencia < hi:
-            return key, label
-    return "critica", "Critica"
+            return nivel
+    return "critica"
 
 
 def get_mapa_municipios(disease_id=None, dias=30):
@@ -655,7 +658,6 @@ def get_mapa_municipios(disease_id=None, dias=30):
         casos_previo = r["casos_previo"] or 0
         incidencia = round(casos / r["population"] * 100000, 1) if r["population"] else 0.0
         variacion = _pct_change(casos, casos_previo)
-        bucket_key, bucket_label = _bucket(incidencia)
         out.append({
             "id": r["id"],
             "region_code": r["code"],
@@ -665,8 +667,7 @@ def get_mapa_municipios(disease_id=None, dias=30):
             "variacion": variacion,
             "lat": float(r["centroid_lat"]),
             "lon": float(r["centroid_lon"]),
-            "nivel": bucket_key,
-            "nivel_label": bucket_label,
+            "nivel": _bucket(incidencia),
         })
     return out
 
@@ -2309,13 +2310,6 @@ from procesamiento.motor.parametros import (                         # noqa: E40
     POLITICAS_EDAD_DESCONOCIDA,
 )
 
-ESTADOS_VERSION = {
-    "borrador": "Borrador",
-    "en_revision": "En revisión",
-    "aprobado": "Aprobado",
-    "rechazado": "Rechazado",
-}
-
 LIMITES_ESCENARIO = {
     "poblacion_min": POBLACION_MIN, "poblacion_max": POBLACION_MAX,
     "dias_min": DIAS_MIN, "dias_max": DIAS_MAX,
@@ -2427,7 +2421,6 @@ def get_escenarios(busqueda=None):
     salida = []
     for f in filas:
         fila = dict(f)
-        fila["version_label"] = ESTADOS_VERSION.get(f["version_status"], "—")
         fila["por_edad"] = bool(f["population_by_age"])
         salida.append(fila)
     return salida

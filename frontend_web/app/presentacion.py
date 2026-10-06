@@ -17,6 +17,28 @@ def fecha_corta(valor):
     return f"{valor.day:02d} {_MESES[valor.month - 1]} {valor.year}"
 
 
+_TENDENCIA = {"critico": "Critico", "alerta": "Alerta", "estable": "Estable"}
+
+_ESTADOS_VERSION = {
+    "borrador": "Borrador",
+    "en_revision": "En revisión",
+    "aprobado": "Aprobado",
+    "rechazado": "Rechazado",
+}
+
+
+def tendencia_etiqueta(clave):
+    """El semaforo de tendencia (queries._clasifica_tendencia). La clave es la
+    etiqueta en minusculas, que es tambien la clase CSS del distintivo."""
+    return _TENDENCIA[clave]
+
+
+def estado_version(status):
+    """El estado de una version de escenario tal como se lee; "—" si el
+    escenario no tiene version vigente."""
+    return _ESTADOS_VERSION.get(status, "—")
+
+
 _ACTIVIDAD = {"con_casos": "Con casos activos", "historico": "Solo histórico",
               "sin_casos": "Sin casos"}
 

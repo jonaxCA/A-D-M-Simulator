@@ -26,6 +26,8 @@ def create_app():
     app.jinja_env.filters["estado_sim"] = simulaciones.estado_visible
     app.jinja_env.filters["badge_sim"] = simulaciones.clase_badge_estado
     app.jinja_env.filters["fecha_corta"] = presentacion.fecha_corta
+    app.jinja_env.filters["tendencia_etiqueta"] = presentacion.tendencia_etiqueta
+    app.jinja_env.filters["estado_version"] = presentacion.estado_version
     app.jinja_env.filters["actividad_etiqueta"] = presentacion.actividad_etiqueta
     app.jinja_env.filters["estado_catalogo"] = presentacion.estado_catalogo
     app.jinja_env.filters["valor_parametro"] = presentacion.valor_parametro

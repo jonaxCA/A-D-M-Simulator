@@ -41,5 +41,20 @@ class SexoMonitoreoTests(unittest.TestCase):
         self.assertEqual(self._sexo([]), [])
 
 
+class SemaforosTests(unittest.TestCase):
+    """Los dos semaforos regresan una clave, no el texto que se muestra."""
+
+    def test_tendencia_y_sus_cortes(self):
+        casos = [(-100.0, "estable"), (14.9, "estable"), (15, "alerta"), (49.9, "alerta"),
+                 (50, "critico"), (300.0, "critico")]
+        self.assertEqual([queries._clasifica_tendencia(p) for p, _ in casos],
+                         [c for _, c in casos])
+
+    def test_nivel_del_mapa_y_sus_cortes(self):
+        casos = [(0, "baja"), (14.9, "baja"), (15, "moderada"), (30, "alta"), (45, "muy_alta"),
+                 (59.9, "muy_alta"), (60, "critica"), (1e9, "critica")]
+        self.assertEqual([queries._bucket(i) for i, _ in casos], [n for _, n in casos])
+
+
 if __name__ == "__main__":
     unittest.main()

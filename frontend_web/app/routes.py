@@ -518,7 +518,8 @@ def export_resumen_csv():
     return _csv(
         "resumen_situacion.csv",
         ["Enfermedad", "Estado", "Casos (7 dias)"],
-        ([row["enfermedad"], row["estado"], row["incidencia"]] for row in situacion),
+        ([row["enfermedad"], presentacion.tendencia_etiqueta(row["estado"]), row["incidencia"]]
+         for row in situacion),
     )
 
 
@@ -1078,7 +1079,8 @@ def export_monitoreo_csv():
         "monitoreo_zonas.csv",
         ["Zona", f"Casos ({f['dias']} días)", "Incidencia / 100k",
          "Variación 7d (%)", "Graves", "Estado"],
-        ([z["zona"], z["casos"], z["incidencia"], z["variacion"], z["graves"], z["estado"]]
+        ([z["zona"], z["casos"], z["incidencia"], z["variacion"], z["graves"],
+          presentacion.tendencia_etiqueta(z["estado"])]
          for z in zonas["zonas"]),
     )
 
