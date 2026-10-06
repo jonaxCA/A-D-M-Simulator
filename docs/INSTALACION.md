@@ -342,6 +342,30 @@ psql -h localhost -U postgres -d simulador_epidemico -Atc "SELECT 'casos='||coun
 
 ---
 
+## Base para las pruebas
+
+Las pruebas **no** corren contra `simulador_epidemico`, sino contra su propia base,
+`simulador_epidemico_pruebas`. `audit_log` es de solo inserción: lo que una prueba
+escribe ahí no se puede borrar, y algunas pantallas (Regiones, por ejemplo) leen de
+ahí si una cifra fue corregida a mano. Corriendo contra la base de la demostración,
+la suite le dejaría marcas visibles.
+
+Créala una vez, y otra vez cuando cambien el dump o las semillas. Es lo mismo que
+los pasos 2 y 3, sobre la base de pruebas, y pide la contraseña de `postgres`:
+
+```bash
+python datos/scripts/prepara_base_pruebas.py
+```
+
+- Usa el mismo usuario y contraseña de tu `DATABASE_URL`; solo cambia el nombre de
+  la base (le agrega `_pruebas`). No hay que escribir otra credencial.
+- Para usar otra base, define `DATABASE_URL_PRUEBAS` en el `.env`. Si apunta a la
+  misma base que `DATABASE_URL`, las pruebas se niegan a correr.
+- Mientras la base de pruebas no exista, las pruebas que la necesitan se saltan o
+  fallan con un mensaje que lo dice.
+
+---
+
 ## Problemas comunes
 
 | Síntoma | Causa y solución |
@@ -525,6 +549,7 @@ datos/scripts/build_grupos_edad.py       ITER -> censo/nl_estructura_edad_munici
 datos/scripts/build_letalidad_edad.py    literatura + censo -> migracion 020
 datos/scripts/gen_demo_data.py           generador de los datos de demostracion (semilla fija)
 datos/scripts/verifica_migraciones.py    comprueba migraciones sueltas contra el dump
+datos/scripts/prepara_base_pruebas.py    crea la base en la que corren las pruebas
 datos/geo/inegi_mg2024/      capa municipal oficial (Marco Geoestadistico 2024, ent. 19)
 datos/geo/                   catalogo INEGI y centroides de los 51 municipios
 datos/censo/                 poblacion municipal y estructura por edad (Censo 2020, INEGI)

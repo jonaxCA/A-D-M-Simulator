@@ -45,6 +45,8 @@ un modelo económico sofisticado. No crees código en `microservicios/`, `infra/
 - Sitio: `python -m frontend_web.run`.
 - `docker compose up`, que menciona `CONTRIBUTING.md`, todavía no existe.
 - Verificar que el dump coincide con las migraciones: `python datos/scripts/verifica_migraciones.py`.
+- Las pruebas corren contra `<base>_pruebas`, nunca contra la de la demostración. Se crea con
+  `python datos/scripts/prepara_base_pruebas.py` (ver `docs/INSTALACION.md`).
 
 ## Decisiones abiertas: pregunta antes de implementar
 

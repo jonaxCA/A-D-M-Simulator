@@ -23,7 +23,8 @@ from backend_web.db import get_conn, query  # noqa: E402
 # demo_datos_nl.sql) que ya viene aprobado: sobre su version se encolan las
 # corridas de prueba.
 ESCENARIO_DEMO = "Ola Influenza ZMM - otono 2026"
-SIN_BASE = "Requiere PostgreSQL en DATABASE_URL."
+SIN_BASE = ("Requiere la base de pruebas; se crea con "
+            "python datos/scripts/prepara_base_pruebas.py")
 
 
 @functools.lru_cache(maxsize=None)

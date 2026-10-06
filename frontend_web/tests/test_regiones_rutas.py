@@ -153,6 +153,12 @@ class RegionesRutasTests(AppTestCase):
 
             resp_listado = client.get("/regiones")
             self.assertIn("Corrección manual".encode(), resp_listado.data)
+            # En la fila de este municipio: otra fila con una correccion (de otra
+            # prueba, o de la demostracion) no debe bastar para pasar.
+            nombre = query("SELECT name FROM regions WHERE id = %s",
+                           (self.region_id,), one=True)["name"]
+            fila_html = resp_listado.get_data(as_text=True).split(f">{nombre}<", 1)[1].split("</tr>")[0]
+            self.assertIn("Población: Corrección manual", fila_html)
 
     def test_admin_datos_invalidos_no_cambian_nada_y_muestran_error(self):
         """Una poblacion total por debajo del 60 y mas del propio municipio es
