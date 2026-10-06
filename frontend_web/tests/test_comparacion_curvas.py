@@ -47,7 +47,7 @@ class ComparacionCurvasTests(ConUsuarioSimulado):
         self.assertIn(b"comparacion-fallecimientos", resp.data)
         self.assertIn(b"casos_activos", resp.data)
 
-        mock_corridas.assert_called_once_with(["41", "42"])
+        mock_corridas.assert_called_once_with([41, 42])
 
     @patch("frontend_web.app.routes.queries.get_runs_completados_para_comparar")
     @patch("frontend_web.app.routes.queries.get_corridas_para_comparar")

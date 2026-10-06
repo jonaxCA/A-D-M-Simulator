@@ -9,6 +9,10 @@
 - Parámetros siempre con `%s`. Nunca armes SQL con f-strings ni concatenando datos.
 - `db.py` abre una conexión por consulta: usa una sola consulta con `GROUP BY` en lugar de una
   por elemento.
+- Para convertir el texto de un formulario usa `conversion.py` (`entero`, `decimal`, `fecha`,
+  `numero_de_esquema`), con argumentos por nombre. Las reglas de dominio (una fecha futura, un
+  inicio después del fin) van en las `valida_*`, no ahí.
+- `backend_web` no importa de `frontend_web` (lo vigila `test_integridad`).
 
 ## Escenarios, simulaciones y comparación
 

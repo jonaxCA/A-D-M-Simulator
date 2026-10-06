@@ -125,17 +125,9 @@ def construir_escenario_desde_version(version_id):
 # Comparacion costo vs impacto
 # ---------------------------------------------------------------------------
 def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
-    """Usa corridas completadas y el motor de Pareto para comparar costo e impacto."""
-    ids = []
-    for valor in run_ids:
-        try:
-            run_id = int(valor)
-        except (TypeError, ValueError):
-            continue
-        if run_id not in ids:
-            ids.append(run_id)
-
-    if len(ids) < 2:
+    """Usa corridas completadas y el motor de Pareto para comparar costo e
+    impacto. `run_ids` es una lista de enteros sin repetir."""
+    if len(run_ids) < 2:
         return None, ["Selecciona al menos dos corridas completadas."]
 
     costos = {}
@@ -151,7 +143,7 @@ def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
     entradas = []
     errores = []
 
-    for run_id in ids:
+    for run_id in run_ids:
         run = queries.get_run(run_id)
         if not run or run["status"] != "completado":
             errores.append(f"La corrida {id_simulacion(run_id)} no esta completada.")

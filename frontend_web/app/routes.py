@@ -20,7 +20,6 @@ Alcance de esta version:
 """
 import csv
 import io
-import random
 import threading
 from datetime import date, datetime, timezone
 from urllib.parse import urlsplit
@@ -31,15 +30,11 @@ from flask import (Blueprint, jsonify, render_template, request, redirect,
 from backend_web import queries, simulaciones
 from backend_web.audit import log_audit
 from backend_web.auth import attempt_login, create_token, hash_password
+from . import formularios
 from .permisos import (login_required, admin_required, roles_required, tiene_rol,
                        get_current_user, contexto_de_peticion, COOKIE_NAME)
 
 bp = Blueprint("main", __name__)
-
-# Semilla aleatoria por defecto cuando el formulario de "Ejecutar simulacion"
-# la deja en blanco. simulation_runs.seed es BIGINT >= 0 (ck_simulation_runs_seed);
-# 2**31-1 alcanza de sobra y coincide con lo que numpy acepta sin rodeos.
-SEED_MAX = 2**31 - 1
 
 # Roles que pueden encolar una corrida, segun la matriz de permisos de
 # 010_datos_iniciales.sql: 'simulations.run' se le otorga a ANALISTA y a
@@ -549,32 +544,6 @@ def regiones():
     )
 
 
-def _esperado(nombre):
-    """Lee uno de los campos ocultos con el valor que el formulario traia al
-    abrirse, para el control de concurrencia.
-
-    Devuelve (valor, valido). Hay que distinguir tres casos, porque colapsarlos
-    en "None = invalido" dejaba sin editar a todo municipio con la columna en
-    NULL: el formulario se rechazaba siempre y el mensaje pedia recargar, lo
-    que no arreglaba nada.
-
-      - campo ausente o con basura -> (None, False): el POST no viene de
-        nuestro formulario, o llego incompleto.
-      - campo presente y vacio     -> (None, True): la columna estaba en NULL,
-        que es un estado legitimo.
-      - campo con un entero        -> (int, True).
-    """
-    if nombre not in request.form:
-        return None, False
-    crudo = request.form[nombre].strip()
-    if crudo == "":
-        return None, True
-    try:
-        return int(crudo), True
-    except ValueError:
-        return None, False
-
-
 @bp.route("/regiones/<int:region_id>/editar", methods=["GET", "POST"])
 @admin_required(entity_type="regions")
 def region_editar(region_id):
@@ -597,7 +566,7 @@ def region_editar(region_id):
 
     population_raw = request.form.get("population")
     motivo = request.form.get("motivo") or ""
-    esperado_population, ok_pob = _esperado("esperado_population")
+    esperado_population, ok_pob = formularios.esperado(request.form, "esperado_population")
     valores = {"population": population_raw, "motivo": motivo}
 
     poblacion, errores = queries.valida_poblacion_municipio(
@@ -688,11 +657,11 @@ def region_edades_editar(region_id):
 
     esperados = {}
     for c in campos:
-        esperados[c["grupo"]], valido = _esperado(c["esperado"])
+        esperados[c["grupo"]], valido = formularios.esperado(request.form, c["esperado"])
         if not valido:
             errores.append("No se pudo verificar el estado del formulario. Recarga la página.")
-    esperados["edad_no_especificada"], valido_sin_edad = _esperado(
-        "esperado_edad_no_especificada")
+    esperados["edad_no_especificada"], valido_sin_edad = formularios.esperado(
+        request.form, "esperado_edad_no_especificada")
     if not valido_sin_edad:
         errores.append("No se pudo verificar la edad no especificada. Recarga la página.")
 
@@ -1120,21 +1089,6 @@ def export_monitoreo_csv():
 # la de escenarios, bloque D) y permite correr las aprobadas. La traduccion
 # version -> entrada del motor y la corrida en hilo viven en
 # backend_web.simulaciones; aqui solo hay HTTP.
-def _seed_desde_form(valor):
-    """Semilla opcional del formulario: vacio => aleatoria; con valor => debe
-    ser un entero >= 0 (ck_simulation_runs_seed). Devuelve (seed, error)."""
-    crudo = (valor or "").strip()
-    if not crudo:
-        return random.randint(0, SEED_MAX), None
-    try:
-        seed = int(crudo)
-    except ValueError:
-        return None, "La semilla debe ser un número entero."
-    if seed < 0:
-        return None, "La semilla debe ser un número entero mayor o igual a 0."
-    return seed, None
-
-
 def _lanza_corrida(version_id, seed, forzar_error):
     """Encola la corrida y arranca el hilo que la ejecuta. Devuelve
     (run_id, error): si error no es None, no se creo nada que lanzar."""
@@ -1186,12 +1140,12 @@ def simulacion_ejecutar(version_id):
     trigger fn_version_aprobada (014) lo checa una cuarta si alguien se salta
     todo lo anterior.
     """
-    seed, error = _seed_desde_form(request.form.get("seed"))
+    seed, error = formularios.semilla(request.form.get("seed"))
     if error:
         flash(error, "error")
         return redirect(url_for("main.simulaciones_lista"))
 
-    # La casilla "forzar error (prueba)" (item 7 del checklist) es la unica
+    # La casilla "forzar error (prueba)" es la unica
     # forma documentada de disparar el camino de ERROR a proposito, y solo
     # tiene efecto si quien la marco es ADMINISTRADOR -- ignorarla en
     # silencio para cualquier otro rol es mas seguro que solo ocultarla en la
@@ -1264,7 +1218,7 @@ def simulacion_estado(run_id):
 @bp.route("/simulaciones/corridas/<int:run_id>/reejecutar", methods=["POST"])
 @roles_required(*ROLES_EJECUTAN_SIMULACION, entity_type="simulations")
 def simulacion_reejecutar(run_id):
-    """"Re-ejecutar con la misma semilla" (item 10 del checklist): nueva
+    """"Re-ejecutar con la misma semilla": nueva
     corrida sobre la MISMA version y la MISMA semilla. Si el escenario y el
     engine_version no cambiaron, el resultado tiene que salir identico -- eso
     es justo lo que la pantalla de detalle de la corrida nueva compara."""
@@ -1522,12 +1476,13 @@ def auditoria():
 @roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
 def comparacion():
     seleccionados = request.args.getlist("run_id")
-    corridas = queries.get_corridas_para_comparar(seleccionados)
+    run_ids = formularios.ids_de(seleccionados)
+    corridas = queries.get_corridas_para_comparar(run_ids)
     comparacion_pareto = None
     errores_pareto = []
     if len(seleccionados) >= 2:
         comparacion_pareto, errores_pareto = (
-            simulaciones.construir_comparacion_costo_impacto(seleccionados)
+            simulaciones.construir_comparacion_costo_impacto(run_ids)
         )
     return render_template(
         "comparacion.html",

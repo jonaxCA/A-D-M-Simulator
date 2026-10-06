@@ -77,6 +77,23 @@ class SinNombresTapadosTests(unittest.TestCase):
         self.assertEqual(faltan, [], f"módulos que ya no existen: {faltan}")
 
 
+def _imports_de_backend_web(paquete):
+    """'archivo:linea' de cada import de `paquete` (o de un submodulo suyo) en
+    backend_web, sin contar sus pruebas, incluidos los que estan dentro de una
+    funcion."""
+    culpables = []
+    for ruta in sorted((RAIZ / "backend_web").rglob("*.py")):
+        if "tests" in ruta.parts or "__pycache__" in ruta.parts:
+            continue
+        rel = ruta.relative_to(RAIZ).as_posix()
+        for n in ast.walk(ast.parse(ruta.read_text(encoding="utf-8"), rel)):
+            modulos = ([a.name for a in n.names] if isinstance(n, ast.Import)
+                       else [n.module or ""] if isinstance(n, ast.ImportFrom) else [])
+            if any(m == paquete or m.startswith(paquete + ".") for m in modulos):
+                culpables.append(f"{rel}:{n.lineno}")
+    return culpables
+
+
 class CapaDeDatosSinFlaskTests(unittest.TestCase):
     """backend_web no importa Flask, ni siquiera dentro de una funcion.
 
@@ -87,16 +104,15 @@ class CapaDeDatosSinFlaskTests(unittest.TestCase):
     """
 
     def test_ningun_modulo_de_backend_web_importa_flask(self):
-        culpables = []
-        for ruta in sorted((RAIZ / "backend_web").rglob("*.py")):
-            if "tests" in ruta.parts or "__pycache__" in ruta.parts:
-                continue
-            rel = ruta.relative_to(RAIZ).as_posix()
-            for n in ast.walk(ast.parse(ruta.read_text(encoding="utf-8"), rel)):
-                modulos = ([a.name for a in n.names] if isinstance(n, ast.Import)
-                           else [n.module or ""] if isinstance(n, ast.ImportFrom) else [])
-                if any(m == "flask" or m.startswith("flask.") for m in modulos):
-                    culpables.append(f"{rel}:{n.lineno}")
+        culpables = _imports_de_backend_web("flask")
+        self.assertEqual(culpables, [])
+
+    def test_ningun_modulo_de_backend_web_importa_de_frontend_web(self):
+        """La dependencia va de la web a los datos, nunca al reves: las valida_*
+        tienen que poder usarse desde una API o la app de escritorio sin cargar
+        la web. Por eso la conversion de texto vive en backend_web/conversion.py
+        y no en frontend_web/app/formularios.py."""
+        culpables = _imports_de_backend_web("frontend_web")
         self.assertEqual(culpables, [])
 
 

@@ -1,0 +1,6899 @@
+{
+ "caso.age['   ']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.age[' 42 ']": {
+  "datos": {
+   "age": 42,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.age['']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.age['+7']": {
+  "datos": {
+   "age": 7,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.age[',']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La edad debe ser un número entero."
+  ]
+ },
+ "caso.age['--1']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La edad debe ser un número entero."
+  ]
+ },
+ "caso.age['-1']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La edad debe estar entre 0 y 120."
+  ]
+ },
+ "caso.age['0']": {
+  "datos": {
+   "age": 0,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.age['1']": {
+  "datos": {
+   "age": 1,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.age['1,000']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La edad debe ser un número entero."
+  ]
+ },
+ "caso.age['1,000,000']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La edad debe ser un número entero."
+  ]
+ },
+ "caso.age['1.5']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La edad debe ser un número entero."
+  ]
+ },
+ "caso.age['120']": {
+  "datos": {
+   "age": 120,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.age['121']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La edad debe estar entre 0 y 120."
+  ]
+ },
+ "caso.age['1_000']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La edad debe estar entre 0 y 120."
+  ]
+ },
+ "caso.age['1e3']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La edad debe ser un número entero."
+  ]
+ },
+ "caso.age['2147483647']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La edad debe estar entre 0 y 120."
+  ]
+ },
+ "caso.age['2147483648']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La edad debe estar entre 0 y 120."
+  ]
+ },
+ "caso.age['abc']": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La edad debe ser un número entero."
+  ]
+ },
+ "caso.age['٣']": {
+  "datos": {
+   "age": 3,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.age['２']": {
+  "datos": {
+   "age": 2,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.age[None]": {
+  "datos": {
+   "age": null,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.base": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.catalogos_invalidos": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": null,
+   "test_result": null
+  },
+  "errores": [
+   "El sexo no es un valor del catálogo.",
+   "El resultado de prueba no es un valor del catálogo.",
+   "La severidad no es un valor del catálogo."
+  ]
+ },
+ "caso.disease_id['   ']": {
+  "datos": {
+   "age": 30,
+   "disease_id": null,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad es obligatorio."
+  ]
+ },
+ "caso.disease_id[' 42 ']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 42,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.disease_id['']": {
+  "datos": {
+   "age": 30,
+   "disease_id": null,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad es obligatorio."
+  ]
+ },
+ "caso.disease_id['+7']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 7,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.disease_id[',']": {
+  "datos": {
+   "age": 30,
+   "disease_id": null,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad debe ser un número entero."
+  ]
+ },
+ "caso.disease_id['--1']": {
+  "datos": {
+   "age": 30,
+   "disease_id": null,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad debe ser un número entero."
+  ]
+ },
+ "caso.disease_id['-1']": {
+  "datos": {
+   "age": 30,
+   "disease_id": null,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad debe estar entre 1 y 2147483648."
+  ]
+ },
+ "caso.disease_id['0']": {
+  "datos": {
+   "age": 30,
+   "disease_id": null,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad debe estar entre 1 y 2147483648."
+  ]
+ },
+ "caso.disease_id['1']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.disease_id['1,000']": {
+  "datos": {
+   "age": 30,
+   "disease_id": null,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad debe ser un número entero."
+  ]
+ },
+ "caso.disease_id['1,000,000']": {
+  "datos": {
+   "age": 30,
+   "disease_id": null,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad debe ser un número entero."
+  ]
+ },
+ "caso.disease_id['1.5']": {
+  "datos": {
+   "age": 30,
+   "disease_id": null,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad debe ser un número entero."
+  ]
+ },
+ "caso.disease_id['120']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 120,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.disease_id['121']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 121,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.disease_id['1_000']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1000,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.disease_id['1e3']": {
+  "datos": {
+   "age": 30,
+   "disease_id": null,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad debe ser un número entero."
+  ]
+ },
+ "caso.disease_id['2147483647']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 2147483647,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.disease_id['2147483648']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 2147483648,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.disease_id['abc']": {
+  "datos": {
+   "age": 30,
+   "disease_id": null,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad debe ser un número entero."
+  ]
+ },
+ "caso.disease_id['٣']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 3,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.disease_id['２']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 2,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.disease_id[None]": {
+  "datos": {
+   "age": 30,
+   "disease_id": null,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad es obligatorio."
+  ]
+ },
+ "caso.inicio_despues_del_reporte": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-02-01",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El inicio de síntomas no puede ser posterior a la fecha de reporte."
+  ]
+ },
+ "caso.latitude[' 25.6 ']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.latitude['']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": null,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.latitude['-180.5']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": null,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La latitud debe estar entre -90 y 90.",
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.latitude['-90']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": -90.0,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.latitude['0']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 0.0,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.latitude['1,5']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": null,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La latitud debe ser un número.",
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.latitude['1e1']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 10.0,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.latitude['90']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 90.0,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.latitude['90.0001']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": null,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La latitud debe estar entre -90 y 90.",
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.latitude['abc']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": null,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La latitud debe ser un número.",
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.latitude['inf']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": null,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La latitud debe estar entre -90 y 90.",
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.latitude['nan']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": null,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La latitud debe estar entre -90 y 90.",
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.latitude[None]": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": null,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.longitude[' 25.6 ']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": 25.6,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.longitude['']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": null,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.longitude['-180.5']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": null,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La longitud debe estar entre -180 y 180.",
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.longitude['-90']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -90.0,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.longitude['0']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": 0.0,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.longitude['1,5']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": null,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La longitud debe ser un número.",
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.longitude['1e1']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": 10.0,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.longitude['90']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": 90.0,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.longitude['90.0001']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": 90.0001,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.longitude['abc']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": null,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La longitud debe ser un número.",
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.longitude['inf']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": null,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La longitud debe estar entre -180 y 180.",
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.longitude['nan']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": null,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La longitud debe estar entre -180 y 180.",
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.longitude[None]": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": null,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La ubicación necesita latitud y longitud, o ninguna de las dos."
+  ]
+ },
+ "caso.onset_date[' ']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": null,
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.onset_date[' 2025-01-15 ']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-15",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.onset_date['']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": null,
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.onset_date['0001-01-01']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:0001-01-01",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.onset_date['15/01/2025']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": null,
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La fecha de inicio de síntomas no tiene un formato de fecha válido."
+  ]
+ },
+ "caso.onset_date['2025-01-15']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-15",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.onset_date['2025-02-30']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": null,
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La fecha de inicio de síntomas no tiene un formato de fecha válido."
+  ]
+ },
+ "caso.onset_date['2025-13-01']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": null,
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La fecha de inicio de síntomas no tiene un formato de fecha válido."
+  ]
+ },
+ "caso.onset_date['2999-01-01']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2999-01-01",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El inicio de síntomas no puede ser posterior a la fecha de reporte."
+  ]
+ },
+ "caso.onset_date['abc']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": null,
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La fecha de inicio de síntomas no tiene un formato de fecha válido."
+  ]
+ },
+ "caso.onset_date[None]": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": null,
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.region_id['   ']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": null,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El municipio es obligatorio."
+  ]
+ },
+ "caso.region_id[' 42 ']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 42,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.region_id['']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": null,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El municipio es obligatorio."
+  ]
+ },
+ "caso.region_id['+7']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 7,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.region_id[',']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": null,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El municipio debe ser un número entero."
+  ]
+ },
+ "caso.region_id['--1']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": null,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El municipio debe ser un número entero."
+  ]
+ },
+ "caso.region_id['-1']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": null,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El municipio debe estar entre 1 y 2147483648."
+  ]
+ },
+ "caso.region_id['0']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": null,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El municipio debe estar entre 1 y 2147483648."
+  ]
+ },
+ "caso.region_id['1']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.region_id['1,000']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": null,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El municipio debe ser un número entero."
+  ]
+ },
+ "caso.region_id['1,000,000']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": null,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El municipio debe ser un número entero."
+  ]
+ },
+ "caso.region_id['1.5']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": null,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El municipio debe ser un número entero."
+  ]
+ },
+ "caso.region_id['120']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 120,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.region_id['121']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 121,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.region_id['1_000']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1000,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.region_id['1e3']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": null,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El municipio debe ser un número entero."
+  ]
+ },
+ "caso.region_id['2147483647']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 2147483647,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.region_id['2147483648']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 2147483648,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.region_id['abc']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": null,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El municipio debe ser un número entero."
+  ]
+ },
+ "caso.region_id['٣']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 3,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.region_id['２']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 2,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.region_id[None]": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": null,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El municipio es obligatorio."
+  ]
+ },
+ "caso.report_date[' ']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": null,
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La fecha de reporte es obligatoria."
+  ]
+ },
+ "caso.report_date[' 2025-01-15 ']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.report_date['']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": null,
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La fecha de reporte es obligatoria."
+  ]
+ },
+ "caso.report_date['0001-01-01']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:0001-01-01",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "El inicio de síntomas no puede ser posterior a la fecha de reporte."
+  ]
+ },
+ "caso.report_date['15/01/2025']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": null,
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La fecha de reporte no tiene un formato de fecha válido."
+  ]
+ },
+ "caso.report_date['2025-01-15']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.report_date['2025-02-30']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": null,
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La fecha de reporte no tiene un formato de fecha válido."
+  ]
+ },
+ "caso.report_date['2025-13-01']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": null,
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La fecha de reporte no tiene un formato de fecha válido."
+  ]
+ },
+ "caso.report_date['2999-01-01']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2999-01-01",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La fecha de reporte no puede estar en el futuro."
+  ]
+ },
+ "caso.report_date['abc']": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": null,
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La fecha de reporte no tiene un formato de fecha válido."
+  ]
+ },
+ "caso.report_date[None]": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": 25.6,
+   "longitude": -100.3,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": null,
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": [
+   "La fecha de reporte es obligatoria."
+  ]
+ },
+ "caso.sin_ubicacion": {
+  "datos": {
+   "age": 30,
+   "disease_id": 1,
+   "latitude": null,
+   "longitude": null,
+   "onset_date": "date:2025-01-10",
+   "region_id": 1,
+   "report_date": "date:2025-01-15",
+   "severity": null,
+   "sex": "F",
+   "test_result": null
+  },
+  "errores": []
+ },
+ "caso.vacio": {
+  "datos": {
+   "age": null,
+   "disease_id": null,
+   "latitude": null,
+   "longitude": null,
+   "onset_date": null,
+   "region_id": null,
+   "report_date": null,
+   "severity": null,
+   "sex": null,
+   "test_result": null
+  },
+  "errores": [
+   "La enfermedad es obligatorio.",
+   "El municipio es obligatorio.",
+   "La fecha de reporte es obligatoria."
+  ]
+ },
+ "escenario.disease_id['   ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La enfermedad es obligatoria."
+  ]
+ },
+ "escenario.disease_id[' 42 ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 42,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa enfermedad no está activa en el catálogo."
+  ]
+ },
+ "escenario.disease_id['']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La enfermedad es obligatoria."
+  ]
+ },
+ "escenario.disease_id['+7']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 7,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa enfermedad no está activa en el catálogo."
+  ]
+ },
+ "escenario.disease_id[',']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La enfermedad debe ser un número entero."
+  ]
+ },
+ "escenario.disease_id['--1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La enfermedad debe ser un número entero."
+  ]
+ },
+ "escenario.disease_id['-1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La enfermedad debe estar entre 1 y 2,147,483,647."
+  ]
+ },
+ "escenario.disease_id['0']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La enfermedad debe estar entre 1 y 2,147,483,647."
+  ]
+ },
+ "escenario.disease_id['1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.disease_id['1,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1000,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa enfermedad no está activa en el catálogo."
+  ]
+ },
+ "escenario.disease_id['1,000,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1000000,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa enfermedad no está activa en el catálogo."
+  ]
+ },
+ "escenario.disease_id['1.5']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La enfermedad debe ser un número entero."
+  ]
+ },
+ "escenario.disease_id['120']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 120,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa enfermedad no está activa en el catálogo."
+  ]
+ },
+ "escenario.disease_id['121']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 121,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa enfermedad no está activa en el catálogo."
+  ]
+ },
+ "escenario.disease_id['1_000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1000,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa enfermedad no está activa en el catálogo."
+  ]
+ },
+ "escenario.disease_id['1e3']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La enfermedad debe ser un número entero."
+  ]
+ },
+ "escenario.disease_id['2147483647']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 2147483647,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa enfermedad no está activa en el catálogo."
+  ]
+ },
+ "escenario.disease_id['2147483648']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La enfermedad debe estar entre 1 y 2,147,483,647."
+  ]
+ },
+ "escenario.disease_id['abc']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La enfermedad debe ser un número entero."
+  ]
+ },
+ "escenario.disease_id['٣']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 3,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa enfermedad no está activa en el catálogo."
+  ]
+ },
+ "escenario.disease_id['２']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 2,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "«Incompleta» no se puede simular todavía: le faltan 2 parámetro(s) y 1 parámetro(s) no tienen fuente ni marca de supuesto. Complétalos en Enfermedades."
+  ]
+ },
+ "escenario.disease_id[None]": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La enfermedad es obligatoria."
+  ]
+ },
+ "escenario.enfermedad_no_simulable": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 2,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "«Incompleta» no se puede simular todavía: le faltan 2 parámetro(s) y 1 parámetro(s) no tienen fuente ni marca de supuesto. Complétalos en Enfermedades."
+  ]
+ },
+ "escenario.estratificado_con_politica": {
+  "datos": {
+   "age_unknown_policy": "excluir",
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 12,
+   "population_by_age": {
+    "0-19": 1500,
+    "20-59": 2800,
+    "60+": 700
+   },
+   "population_size": 5012,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.estratificado_sin_grupos": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 2
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa región no tiene población por grupo de edad cargada; no se puede estratificar."
+  ]
+ },
+ "escenario.estratificado_sin_politica": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 12,
+   "population_by_age": {
+    "0-19": 1500,
+    "20-59": 2800,
+    "60+": 700
+   },
+   "population_size": 5012,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "12 personas de esta región no declararon su edad: elige qué hacer con ellas."
+  ]
+ },
+ "escenario.horizon_days['   ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días es obligatoria."
+  ]
+ },
+ "escenario.horizon_days[' 42 ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 42,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.horizon_days['']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días es obligatoria."
+  ]
+ },
+ "escenario.horizon_days['+7']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 7,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.horizon_days[',']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días debe ser un número entero."
+  ]
+ },
+ "escenario.horizon_days['--1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días debe ser un número entero."
+  ]
+ },
+ "escenario.horizon_days['-1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días debe estar entre 1 y 1,095."
+  ]
+ },
+ "escenario.horizon_days['0']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días debe estar entre 1 y 1,095."
+  ]
+ },
+ "escenario.horizon_days['1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 1,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.horizon_days['1,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 1000,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.horizon_days['1,000,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días debe estar entre 1 y 1,095."
+  ]
+ },
+ "escenario.horizon_days['1.5']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días debe ser un número entero."
+  ]
+ },
+ "escenario.horizon_days['120']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 120,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.horizon_days['121']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 121,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.horizon_days['1_000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 1000,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.horizon_days['1e3']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días debe ser un número entero."
+  ]
+ },
+ "escenario.horizon_days['2147483647']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días debe estar entre 1 y 1,095."
+  ]
+ },
+ "escenario.horizon_days['2147483648']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días debe estar entre 1 y 1,095."
+  ]
+ },
+ "escenario.horizon_days['abc']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días debe ser un número entero."
+  ]
+ },
+ "escenario.horizon_days['٣']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 3,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.horizon_days['２']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 2,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.horizon_days[None]": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La duración en días es obligatoria."
+  ]
+ },
+ "escenario.iniciales_sobre_poblacion": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 36,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": {
+    "0-19": 10,
+    "20-59": 20,
+    "60+": 5
+   },
+   "population_size": 35,
+   "region_id": 3
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales no pueden superar la población."
+  ]
+ },
+ "escenario.initial_infected['   ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales es obligatoria."
+  ]
+ },
+ "escenario.initial_infected[' 42 ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 42,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.initial_infected['']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales es obligatoria."
+  ]
+ },
+ "escenario.initial_infected['+7']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 7,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.initial_infected[',']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales debe ser un número entero."
+  ]
+ },
+ "escenario.initial_infected['--1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales debe ser un número entero."
+  ]
+ },
+ "escenario.initial_infected['-1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales debe estar entre 1 y 20,000,000."
+  ]
+ },
+ "escenario.initial_infected['0']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales debe estar entre 1 y 20,000,000."
+  ]
+ },
+ "escenario.initial_infected['1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 1,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.initial_infected['1,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 1000,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.initial_infected['1,000,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 1000000,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales no pueden superar la población."
+  ]
+ },
+ "escenario.initial_infected['1.5']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales debe ser un número entero."
+  ]
+ },
+ "escenario.initial_infected['120']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 120,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.initial_infected['121']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 121,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.initial_infected['1_000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 1000,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.initial_infected['1e3']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales debe ser un número entero."
+  ]
+ },
+ "escenario.initial_infected['2147483647']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales debe estar entre 1 y 20,000,000."
+  ]
+ },
+ "escenario.initial_infected['2147483648']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales debe estar entre 1 y 20,000,000."
+  ]
+ },
+ "escenario.initial_infected['abc']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales debe ser un número entero."
+  ]
+ },
+ "escenario.initial_infected['٣']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 3,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.initial_infected['２']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 2,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.initial_infected[None]": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Los infectados iniciales es obligatoria."
+  ]
+ },
+ "escenario.nombre_largo": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre no puede pasar de 160 caracteres."
+  ]
+ },
+ "escenario.population_size['   ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población es obligatoria."
+  ]
+ },
+ "escenario.population_size[' 42 ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "escenario.population_size['']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población es obligatoria."
+  ]
+ },
+ "escenario.population_size['+7']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "escenario.population_size[',']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe ser un número entero."
+  ]
+ },
+ "escenario.population_size['--1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe ser un número entero."
+  ]
+ },
+ "escenario.population_size['-1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "escenario.population_size['0']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "escenario.population_size['1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "escenario.population_size['1,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 1000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.population_size['1,000,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 1000000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.population_size['1.5']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe ser un número entero."
+  ]
+ },
+ "escenario.population_size['120']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "escenario.population_size['121']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "escenario.population_size['1_000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 1000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.population_size['1e3']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe ser un número entero."
+  ]
+ },
+ "escenario.population_size['2147483647']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "escenario.population_size['2147483648']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "escenario.population_size['abc']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe ser un número entero."
+  ]
+ },
+ "escenario.population_size['٣']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "escenario.population_size['２']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "escenario.population_size[None]": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La población es obligatoria."
+  ]
+ },
+ "escenario.region_id['   ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": null
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La región es obligatoria."
+  ]
+ },
+ "escenario.region_id[' 42 ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 42
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa región no está en el catálogo de Nuevo León."
+  ]
+ },
+ "escenario.region_id['']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": null
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La región es obligatoria."
+  ]
+ },
+ "escenario.region_id['+7']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 7
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa región no está en el catálogo de Nuevo León."
+  ]
+ },
+ "escenario.region_id[',']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": null
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La región debe ser un número entero."
+  ]
+ },
+ "escenario.region_id['--1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": null
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La región debe ser un número entero."
+  ]
+ },
+ "escenario.region_id['-1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": null
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La región debe estar entre 1 y 2,147,483,647."
+  ]
+ },
+ "escenario.region_id['0']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": null
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La región debe estar entre 1 y 2,147,483,647."
+  ]
+ },
+ "escenario.region_id['1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.region_id['1,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1000
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa región no está en el catálogo de Nuevo León."
+  ]
+ },
+ "escenario.region_id['1,000,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1000000
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa región no está en el catálogo de Nuevo León."
+  ]
+ },
+ "escenario.region_id['1.5']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": null
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La región debe ser un número entero."
+  ]
+ },
+ "escenario.region_id['120']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 120
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa región no está en el catálogo de Nuevo León."
+  ]
+ },
+ "escenario.region_id['121']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 121
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa región no está en el catálogo de Nuevo León."
+  ]
+ },
+ "escenario.region_id['1_000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 1000
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa región no está en el catálogo de Nuevo León."
+  ]
+ },
+ "escenario.region_id['1e3']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": null
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La región debe ser un número entero."
+  ]
+ },
+ "escenario.region_id['2147483647']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 2147483647
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa región no está en el catálogo de Nuevo León."
+  ]
+ },
+ "escenario.region_id['2147483648']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": null
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La región debe estar entre 1 y 2,147,483,647."
+  ]
+ },
+ "escenario.region_id['abc']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": null
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La región debe ser un número entero."
+  ]
+ },
+ "escenario.region_id['٣']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 3
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.region_id['２']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 2
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio."
+  ]
+ },
+ "escenario.region_id[None]": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": null
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La región es obligatoria."
+  ]
+ },
+ "escenario.region_inexistente": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": 1,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000,
+   "region_id": 99
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "Esa región no está en el catálogo de Nuevo León."
+  ]
+ },
+ "escenario.vacio": {
+  "datos": {
+   "age_unknown_policy": null,
+   "description": null,
+   "disease_id": null,
+   "horizon_days": null,
+   "initial_infected": null,
+   "name": "",
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null,
+   "region_id": null
+  },
+  "errores": [
+   "El nombre del escenario es obligatorio.",
+   "La región es obligatoria.",
+   "La enfermedad es obligatoria.",
+   "La duración en días es obligatoria.",
+   "La población es obligatoria.",
+   "Los infectados iniciales es obligatoria."
+  ]
+ },
+ "intervencion.base": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.end_day['   ']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day[' 42 ']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 42,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.end_day['']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['+7']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin no puede ser anterior al de inicio.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day[',']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin debe ser un número entero.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['--1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin debe ser un número entero.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['-1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin debe estar entre 0 y 120.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin no puede ser anterior al de inicio.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin no puede ser anterior al de inicio.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['1,000']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin debe estar entre 0 y 120.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['1,000,000']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin debe estar entre 0 y 120.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['1.5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin debe ser un número entero.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['120']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 120,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['121']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin debe estar entre 0 y 120.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['1_000']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin debe estar entre 0 y 120.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['1e3']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin debe ser un número entero.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['2147483647']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin debe estar entre 0 y 120.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['2147483648']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin debe estar entre 0 y 120.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['abc']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin debe ser un número entero.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['٣']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin no puede ser anterior al de inicio.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day['２']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin no puede ser anterior al de inicio.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.end_day[None]": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.enum_y_arreglo": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "grupos": [
+     "60+",
+     "0-19"
+    ],
+    "nota": "texto"
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«modo» debe ser uno de: a, b."
+  ]
+ },
+ "intervencion.factores": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": null,
+   "coverage": null,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "La cobertura debe ser un número entre 0 y 1.",
+   "El cumplimiento debe estar entre 0 y 1."
+  ]
+ },
+ "intervencion.fin_antes_del_inicio": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "El día de fin no puede ser anterior al de inicio.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['-0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» no puede ser menor que 5."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['-0.1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['-inf']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» no puede ser menor que 5."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['0.5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» no puede ser menor que 5."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['1,000']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['1.5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['1e-3']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['30']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "desde": 30,
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_desde['31']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "desde": 31,
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_desde['5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "desde": 5,
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_desde['7.0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['abc']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['inf']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_desde['nan']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«desde» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['-0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» no puede ser menor que 1."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['-0.1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['-inf']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» no puede ser menor que 1."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['0.5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 1
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_dias['1,000']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['1.5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['1e-3']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['30']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 30
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_dias['31']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» no puede ser mayor que 30."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_dias['7.0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['abc']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['inf']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_dias['nan']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "«dias» debe ser un número entero."
+  ]
+ },
+ "intervencion.p_PRUEBA_fraccion['-0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "fraccion": -0.0
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_fraccion['-0.1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«fraccion» no puede ser menor que 0."
+  ]
+ },
+ "intervencion.p_PRUEBA_fraccion['-inf']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«fraccion» no puede ser menor que 0."
+  ]
+ },
+ "intervencion.p_PRUEBA_fraccion['0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "fraccion": 0.0
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_fraccion['0.5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "fraccion": 0.5
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_fraccion['1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "fraccion": 1.0
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_fraccion['1,000']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«fraccion» debe ser un número."
+  ]
+ },
+ "intervencion.p_PRUEBA_fraccion['1.5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«fraccion» no puede ser mayor que 1."
+  ]
+ },
+ "intervencion.p_PRUEBA_fraccion['1e-3']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "fraccion": 0.001
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_fraccion['30']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«fraccion» no puede ser mayor que 1."
+  ]
+ },
+ "intervencion.p_PRUEBA_fraccion['31']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«fraccion» no puede ser mayor que 1."
+  ]
+ },
+ "intervencion.p_PRUEBA_fraccion['5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«fraccion» no puede ser mayor que 1."
+  ]
+ },
+ "intervencion.p_PRUEBA_fraccion['7.0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«fraccion» no puede ser mayor que 1."
+  ]
+ },
+ "intervencion.p_PRUEBA_fraccion['abc']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«fraccion» debe ser un número."
+  ]
+ },
+ "intervencion.p_PRUEBA_fraccion['inf']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«fraccion» no puede ser mayor que 1."
+  ]
+ },
+ "intervencion.p_PRUEBA_fraccion['nan']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "fraccion": "float:nan"
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['-0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": -0.0
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['-0.1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": -0.1
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['-inf']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": "float:-inf"
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": 0.0
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['0.5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": 0.5
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": 1.0
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['1,000']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«libre» debe ser un número."
+  ]
+ },
+ "intervencion.p_PRUEBA_libre['1.5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": 1.5
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['1e-3']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": 0.001
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['30']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": 30.0
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['31']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": 31.0
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": 5.0
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['7.0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": 7.0
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['abc']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 10
+  },
+  "errores": [
+   "«libre» debe ser un número."
+  ]
+ },
+ "intervencion.p_PRUEBA_libre['inf']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": "float:inf"
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.p_PRUEBA_libre['nan']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5,
+    "libre": "float:nan"
+   },
+   "start_day": 10
+  },
+  "errores": []
+ },
+ "intervencion.sin_params": {
+  "datos": {
+   "code": "SIN_PARAMS",
+   "compliance": null,
+   "coverage": null,
+   "end_day": null,
+   "intervention_type_id": 8,
+   "params": {},
+   "start_day": 0
+  },
+  "errores": []
+ },
+ "intervencion.start_day['   ']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio es obligatoria."
+  ]
+ },
+ "intervencion.start_day[' 42 ']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 42
+  },
+  "errores": [
+   "El día de fin no puede ser anterior al de inicio.",
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.start_day['']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio es obligatoria."
+  ]
+ },
+ "intervencion.start_day['+7']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 7
+  },
+  "errores": []
+ },
+ "intervencion.start_day[',']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio debe ser un número entero."
+  ]
+ },
+ "intervencion.start_day['--1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio debe ser un número entero."
+  ]
+ },
+ "intervencion.start_day['-1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio debe estar entre 0 y 120."
+  ]
+ },
+ "intervencion.start_day['0']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 0
+  },
+  "errores": []
+ },
+ "intervencion.start_day['1']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 1
+  },
+  "errores": []
+ },
+ "intervencion.start_day['1,000']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio debe estar entre 0 y 120."
+  ]
+ },
+ "intervencion.start_day['1,000,000']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio debe estar entre 0 y 120."
+  ]
+ },
+ "intervencion.start_day['1.5']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio debe ser un número entero."
+  ]
+ },
+ "intervencion.start_day['120']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": null,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 120
+  },
+  "errores": [
+   "El día de fin no puede ser anterior al de inicio."
+  ]
+ },
+ "intervencion.start_day['121']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio debe estar entre 0 y 120."
+  ]
+ },
+ "intervencion.start_day['1_000']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio debe estar entre 0 y 120."
+  ]
+ },
+ "intervencion.start_day['1e3']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio debe ser un número entero."
+  ]
+ },
+ "intervencion.start_day['2147483647']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio debe estar entre 0 y 120."
+  ]
+ },
+ "intervencion.start_day['2147483648']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio debe estar entre 0 y 120."
+  ]
+ },
+ "intervencion.start_day['abc']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio debe ser un número entero."
+  ]
+ },
+ "intervencion.start_day['٣']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 3
+  },
+  "errores": []
+ },
+ "intervencion.start_day['２']": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 2
+  },
+  "errores": []
+ },
+ "intervencion.start_day[None]": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": null
+  },
+  "errores": [
+   "El día de inicio es obligatoria."
+  ]
+ },
+ "intervencion.tipo_desconocido": {
+  "datos": {
+   "code": "OTRO",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 20,
+   "intervention_type_id": null,
+   "params": {},
+   "start_day": 10
+  },
+  "errores": [
+   "Elige un tipo de intervención del catálogo."
+  ]
+ },
+ "intervencion.traslape": {
+  "datos": {
+   "code": "PRUEBA",
+   "compliance": 0.8,
+   "coverage": 0.5,
+   "end_day": 70,
+   "intervention_type_id": 7,
+   "params": {
+    "dias": 5
+   },
+   "start_day": 55
+  },
+  "errores": [
+   "Ya hay una intervención «Tipo de prueba» del día 50 al 60, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+  ]
+ },
+ "intervencion.vacio": {
+  "datos": {
+   "code": "",
+   "compliance": null,
+   "coverage": null,
+   "end_day": null,
+   "intervention_type_id": null,
+   "params": {},
+   "start_day": null
+  },
+  "errores": [
+   "Elige un tipo de intervención del catálogo.",
+   "El día de inicio es obligatoria."
+  ]
+ },
+ "version.base": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.horizon_days['   ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días es obligatoria."
+  ]
+ },
+ "version.horizon_days[' 42 ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 42,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.horizon_days['']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días es obligatoria."
+  ]
+ },
+ "version.horizon_days['+7']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 7,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.horizon_days[',']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días debe ser un número entero."
+  ]
+ },
+ "version.horizon_days['--1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días debe ser un número entero."
+  ]
+ },
+ "version.horizon_days['-1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días debe estar entre 1 y 1,095."
+  ]
+ },
+ "version.horizon_days['0']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días debe estar entre 1 y 1,095."
+  ]
+ },
+ "version.horizon_days['1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 1,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.horizon_days['1,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 1000,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.horizon_days['1,000,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días debe estar entre 1 y 1,095."
+  ]
+ },
+ "version.horizon_days['1.5']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días debe ser un número entero."
+  ]
+ },
+ "version.horizon_days['120']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 120,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.horizon_days['121']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 121,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.horizon_days['1_000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 1000,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.horizon_days['1e3']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días debe ser un número entero."
+  ]
+ },
+ "version.horizon_days['2147483647']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días debe estar entre 1 y 1,095."
+  ]
+ },
+ "version.horizon_days['2147483648']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días debe estar entre 1 y 1,095."
+  ]
+ },
+ "version.horizon_days['abc']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días debe ser un número entero."
+  ]
+ },
+ "version.horizon_days['٣']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 3,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.horizon_days['２']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 2,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.horizon_days[None]": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "La duración en días es obligatoria."
+  ]
+ },
+ "version.initial_infected['   ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales es obligatoria."
+  ]
+ },
+ "version.initial_infected[' 42 ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 42,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.initial_infected['']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales es obligatoria."
+  ]
+ },
+ "version.initial_infected['+7']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 7,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.initial_infected[',']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales debe ser un número entero."
+  ]
+ },
+ "version.initial_infected['--1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales debe ser un número entero."
+  ]
+ },
+ "version.initial_infected['-1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales debe estar entre 1 y 20,000,000."
+  ]
+ },
+ "version.initial_infected['0']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales debe estar entre 1 y 20,000,000."
+  ]
+ },
+ "version.initial_infected['1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 1,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.initial_infected['1,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 1000,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.initial_infected['1,000,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 1000000,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales no pueden superar la población."
+  ]
+ },
+ "version.initial_infected['1.5']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales debe ser un número entero."
+  ]
+ },
+ "version.initial_infected['120']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 120,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.initial_infected['121']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 121,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.initial_infected['1_000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 1000,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.initial_infected['1e3']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales debe ser un número entero."
+  ]
+ },
+ "version.initial_infected['2147483647']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales debe estar entre 1 y 20,000,000."
+  ]
+ },
+ "version.initial_infected['2147483648']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales debe estar entre 1 y 20,000,000."
+  ]
+ },
+ "version.initial_infected['abc']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales debe ser un número entero."
+  ]
+ },
+ "version.initial_infected['٣']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 3,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.initial_infected['２']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 2,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": []
+ },
+ "version.initial_infected[None]": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": null,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Los infectados iniciales es obligatoria."
+  ]
+ },
+ "version.population_size['   ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población es obligatoria."
+  ]
+ },
+ "version.population_size[' 42 ']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "version.population_size['']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población es obligatoria."
+  ]
+ },
+ "version.population_size['+7']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "version.population_size[',']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe ser un número entero."
+  ]
+ },
+ "version.population_size['--1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe ser un número entero."
+  ]
+ },
+ "version.population_size['-1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "version.population_size['0']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "version.population_size['1']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "version.population_size['1,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 1000
+  },
+  "errores": []
+ },
+ "version.population_size['1,000,000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 1000000
+  },
+  "errores": []
+ },
+ "version.population_size['1.5']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe ser un número entero."
+  ]
+ },
+ "version.population_size['120']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "version.population_size['121']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "version.population_size['1_000']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 1000
+  },
+  "errores": []
+ },
+ "version.population_size['1e3']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe ser un número entero."
+  ]
+ },
+ "version.population_size['2147483647']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "version.population_size['2147483648']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "version.population_size['abc']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe ser un número entero."
+  ]
+ },
+ "version.population_size['٣']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "version.population_size['２']": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población debe estar entre 1,000 y 20,000,000."
+  ]
+ },
+ "version.population_size[None]": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": "Cambio de prueba",
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La población es obligatoria."
+  ]
+ },
+ "version.sin_notas": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": 90,
+   "initial_infected": 10,
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": 50000
+  },
+  "errores": [
+   "Explica en el comentario qué cambia esta versión."
+  ]
+ },
+ "version.vacio": {
+  "datos": {
+   "age_unknown_policy": null,
+   "horizon_days": null,
+   "initial_infected": null,
+   "notes": null,
+   "population_age_unknown": 0,
+   "population_by_age": null,
+   "population_size": null
+  },
+  "errores": [
+   "La duración en días es obligatoria.",
+   "La población es obligatoria.",
+   "Los infectados iniciales es obligatoria.",
+   "Explica en el comentario qué cambia esta versión."
+  ]
+ }
+}

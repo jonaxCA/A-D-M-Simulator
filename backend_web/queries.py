@@ -23,6 +23,7 @@ from datetime import date, timedelta
 
 import psycopg2
 
+from . import conversion
 from .audit import log_audit
 from .db import execute, get_conn, query
 
@@ -1447,53 +1448,6 @@ def get_enfermedades_para_captura():
     )
 
 
-def _entero(valor, minimo, maximo, etiqueta, errores, obligatorio=False):
-    """Convierte y acota un entero de formulario. Devuelve None si viene vacio
-    o si no pasa; los errores se acumulan en `errores`."""
-    texto = (valor or "").strip()
-    if not texto:
-        if obligatorio:
-            errores.append(f"{etiqueta} es obligatorio.")
-        return None
-    try:
-        n = int(texto)
-    except ValueError:
-        errores.append(f"{etiqueta} debe ser un número entero.")
-        return None
-    if not (minimo <= n <= maximo):
-        errores.append(f"{etiqueta} debe estar entre {minimo} y {maximo}.")
-        return None
-    return n
-
-
-def _fecha(valor, etiqueta, errores, obligatorio=False):
-    texto = (valor or "").strip()
-    if not texto:
-        if obligatorio:
-            errores.append(f"{etiqueta} es obligatoria.")
-        return None
-    try:
-        return date.fromisoformat(texto)
-    except ValueError:
-        errores.append(f"{etiqueta} no tiene un formato de fecha válido.")
-        return None
-
-
-def _decimal(valor, minimo, maximo, etiqueta, errores):
-    texto = (valor or "").strip()
-    if not texto:
-        return None
-    try:
-        n = float(texto)
-    except ValueError:
-        errores.append(f"{etiqueta} debe ser un número.")
-        return None
-    if not (minimo <= n <= maximo):
-        errores.append(f"{etiqueta} debe estar entre {minimo} y {maximo}.")
-        return None
-    return n
-
-
 def valida_caso(form):
     """Valida el formulario contra los CHECK reales de `cases`.
 
@@ -1503,13 +1457,24 @@ def valida_caso(form):
     """
     errores = []
     datos = {
-        "disease_id": _entero(form.get("disease_id"), 1, 2**31, "La enfermedad", errores, True),
-        "region_id": _entero(form.get("region_id"), 1, 2**31, "El municipio", errores, True),
-        "report_date": _fecha(form.get("report_date"), "La fecha de reporte", errores, True),
-        "onset_date": _fecha(form.get("onset_date"), "La fecha de inicio de síntomas", errores),
-        "age": _entero(form.get("age"), 0, 120, "La edad", errores),
-        "latitude": _decimal(form.get("latitude"), -90, 90, "La latitud", errores),
-        "longitude": _decimal(form.get("longitude"), -180, 180, "La longitud", errores),
+        "disease_id": conversion.entero(
+            form.get("disease_id"), errores, etiqueta="La enfermedad", minimo=1,
+            maximo=2**31, miles=False, falta="La enfermedad es obligatorio."),
+        "region_id": conversion.entero(
+            form.get("region_id"), errores, etiqueta="El municipio", minimo=1,
+            maximo=2**31, miles=False, falta="El municipio es obligatorio."),
+        "report_date": conversion.fecha(
+            form.get("report_date"), errores, etiqueta="La fecha de reporte"),
+        "onset_date": conversion.fecha(
+            form.get("onset_date"), errores, etiqueta="La fecha de inicio de síntomas",
+            obligatorio=False),
+        "age": conversion.entero(
+            form.get("age"), errores, etiqueta="La edad", minimo=0, maximo=120,
+            obligatorio=False, miles=False),
+        "latitude": conversion.decimal(
+            form.get("latitude"), errores, etiqueta="La latitud", minimo=-90, maximo=90),
+        "longitude": conversion.decimal(
+            form.get("longitude"), errores, etiqueta="La longitud", minimo=-180, maximo=180),
     }
 
     for campo, dominio, etiqueta in (
@@ -2537,28 +2502,6 @@ def get_escenarios(busqueda=None):
     return salida
 
 
-def _entero_en_rango(valor, etiqueta, minimo, maximo, errores):
-    """Entero obligatorio y acotado, con la etiqueta primero.
-
-    OJO: NO es `_entero`, que ya existia con otra firma
-    (valor, minimo, maximo, etiqueta, errores, obligatorio) y la usa la captura
-    de casos. Se llama distinto a proposito: cuando las dos se llamaban igual, la
-    segunda definicion tapaba a la primera y /reportes/nuevo respondia 500.
-    """
-    if valor is None or str(valor).strip() == "":
-        errores.append(f"{etiqueta} es obligatoria.")
-        return None
-    try:
-        n = int(str(valor).strip().replace(",", ""))
-    except ValueError:
-        errores.append(f"{etiqueta} debe ser un número entero.")
-        return None
-    if not minimo <= n <= maximo:
-        errores.append(f"{etiqueta} debe estar entre {minimo:,} y {maximo:,}.")
-        return None
-    return n
-
-
 def valida_escenario(form, regiones, enfermedades):
     """Valida el formulario de alta y, si cuadra, lo contrasta contra el motor.
 
@@ -2579,13 +2522,15 @@ def valida_escenario(form, regiones, enfermedades):
         errores.append("El nombre no puede pasar de 160 caracteres.")
 
     por_id = {r["id"]: r for r in regiones}
-    region_id = _entero_en_rango(form.get("region_id"), "La región", 1, 2**31 - 1, errores)
+    region_id = conversion.entero(form.get("region_id"), errores, etiqueta="La región",
+                                  minimo=1, maximo=2**31 - 1)
     region = por_id.get(region_id)
     if region_id is not None and region is None:
         errores.append("Esa región no está en el catálogo de Nuevo León.")
 
     enf_por_id = {e["id"]: e for e in enfermedades}
-    disease_id = _entero_en_rango(form.get("disease_id"), "La enfermedad", 1, 2**31 - 1, errores)
+    disease_id = conversion.entero(form.get("disease_id"), errores, etiqueta="La enfermedad",
+                                   minimo=1, maximo=2**31 - 1)
     enfermedad = enf_por_id.get(disease_id)
     if disease_id is not None and enfermedad is None:
         errores.append("Esa enfermedad no está activa en el catálogo.")
@@ -2626,8 +2571,8 @@ def _valida_parametros_version(form, region, errores):
     Lo comparten el alta del escenario y el alta de una version nueva; separarlo
     evita que las dos pantallas acepten cosas distintas.
     """
-    dias = _entero_en_rango(form.get("horizon_days"), "La duración en días",
-                   DIAS_MIN, DIAS_MAX, errores)
+    dias = conversion.entero(form.get("horizon_days"), errores,
+                             etiqueta="La duración en días", minimo=DIAS_MIN, maximo=DIAS_MAX)
     estratificar = bool(form.get("estratificar"))
     grupos = sin_edad = politica = None
     poblacion = None
@@ -2650,11 +2595,13 @@ def _valida_parametros_version(form, region, errores):
                         f"elige qué hacer con ellas.")
                     politica = None
     else:
-        poblacion = _entero_en_rango(form.get("population_size"), "La población",
-                            POBLACION_MIN, POBLACION_MAX, errores)
+        poblacion = conversion.entero(form.get("population_size"), errores,
+                                      etiqueta="La población", minimo=POBLACION_MIN,
+                                      maximo=POBLACION_MAX)
 
-    iniciales = _entero_en_rango(form.get("initial_infected"), "Los infectados iniciales",
-                        1, POBLACION_MAX, errores)
+    iniciales = conversion.entero(form.get("initial_infected"), errores,
+                                  etiqueta="Los infectados iniciales", minimo=1,
+                                  maximo=POBLACION_MAX)
     if iniciales is not None and poblacion is not None and iniciales > poblacion:
         errores.append("Los infectados iniciales no pueden superar la población.")
 
@@ -2981,22 +2928,6 @@ def revisa_version(detalle):
         return list(exc.errores), []
 
 
-def _numero(crudo, etiqueta, spec, errores, entero):
-    try:
-        valor = int(crudo) if entero else float(crudo)
-    except ValueError:
-        errores.append(f"{etiqueta} debe ser un número{' entero' if entero else ''}.")
-        return None
-    minimo, maximo = spec.get("minimum"), spec.get("maximum")
-    if minimo is not None and valor < minimo:
-        errores.append(f"{etiqueta} no puede ser menor que {minimo}.")
-        return None
-    if maximo is not None and valor > maximo:
-        errores.append(f"{etiqueta} no puede ser mayor que {maximo}.")
-        return None
-    return valor
-
-
 def params_desde_schema(form, schema, errores, prefijo="p_"):
     """Lee los parametros de una intervencion segun su param_schema.
 
@@ -3019,12 +2950,10 @@ def params_desde_schema(form, schema, errores, prefijo="p_"):
                 errores.append(f"{etiqueta} debe ser uno de: {', '.join(spec['enum'])}.")
                 continue
             salida[clave] = crudo
-        elif spec.get("type") == "integer":
-            valor = _numero(crudo, etiqueta, spec, errores, entero=True)
-            if valor is not None:
-                salida[clave] = valor
-        elif spec.get("type") == "number":
-            valor = _numero(crudo, etiqueta, spec, errores, entero=False)
+        elif spec.get("type") in ("integer", "number"):
+            valor = conversion.numero_de_esquema(
+                crudo, errores, etiqueta=etiqueta, spec=spec,
+                tipo=int if spec["type"] == "integer" else float)
             if valor is not None:
                 salida[clave] = valor
         elif spec.get("type") == "array":
@@ -3062,11 +2991,13 @@ def valida_intervencion(form, tipos, version, existentes):
     if tipo is None:
         errores.append("Elige un tipo de intervención del catálogo.")
 
-    inicio = _entero_en_rango(form.get("start_day"), "El día de inicio", 0, horizonte, errores)
+    inicio = conversion.entero(form.get("start_day"), errores, etiqueta="El día de inicio",
+                               minimo=0, maximo=horizonte)
     crudo_fin = (form.get("end_day") or "").strip()
     fin = None
     if crudo_fin:
-        fin = _entero_en_rango(crudo_fin, "El día de fin", 0, horizonte, errores)
+        fin = conversion.entero(crudo_fin, errores, etiqueta="El día de fin",
+                                minimo=0, maximo=horizonte)
         if fin is not None and inicio is not None and fin < inicio:
             errores.append("El día de fin no puede ser anterior al de inicio.")
             fin = None
@@ -3677,7 +3608,7 @@ def get_run(run_id):
 
 def get_runs_recientes(limit=20):
     """Ultimas corridas de cualquier escenario, para la lista de la pantalla
-    de simulaciones (item 12 del checklist: 'lista de corridas recientes')."""
+    de simulaciones."""
     return query(
         """
         SELECT r.id, r.status, r.seed, r.queued_at, r.started_at, r.finished_at,
@@ -3724,17 +3655,9 @@ def get_runs_completados_para_comparar(limit=50):
 
 
 def get_corridas_para_comparar(run_ids):
-    """Devuelve corridas completadas seleccionadas con su serie diaria."""
-    ids = []
-    for valor in run_ids:
-        try:
-            run_id = int(valor)
-        except (TypeError, ValueError):
-            continue
-        if run_id not in ids:
-            ids.append(run_id)
-
-    if len(ids) < 2:
+    """Devuelve corridas completadas seleccionadas con su serie diaria, en el
+    orden de `run_ids`: una lista de enteros sin repetir."""
+    if len(run_ids) < 2:
         return []
 
     rows = query(
@@ -3755,11 +3678,11 @@ def get_corridas_para_comparar(run_ids):
         WHERE r.status = 'completado'
           AND r.id = ANY(%s)
         """,
-        (ids,),
+        (run_ids,),
     )
 
     por_id = {fila["id"]: fila for fila in rows}
-    return [por_id[run_id] for run_id in ids if run_id in por_id]
+    return [por_id[run_id] for run_id in run_ids if run_id in por_id]
 
 
 def get_resultado_run(run_id):
@@ -3959,7 +3882,7 @@ def buscar_run_equivalente(run_id, scenario_version_id, seed, checksum):
     """Otra corrida COMPLETADA con la misma version, la misma semilla y la
     misma huella de escenario (scenario_checksum de motor.huella_escenario()).
 
-    Es la demostracion de reproducibilidad del item 10 del checklist: misma
+    Es la demostracion de reproducibilidad: misma
     entrada + misma semilla + mismo motor => mismo resultado. Devuelve la fila
     (con su `resumen` para poder comparar indicador por indicador) o None si
     esta es la primera corrida con esa combinacion.
