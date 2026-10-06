@@ -1168,8 +1168,6 @@ _GRUPO_EDAD_SQL = """
          ELSE '65+' END
 """
 
-SEXO_LABEL = {"F": "Femenino", "M": "Masculino", "O": "Otro"}
-
 
 def _monitoreo_where(disease_id, region_id, dias):
     """Fragmento WHERE compartido por las consultas de la pantalla. Devuelve
@@ -1256,7 +1254,7 @@ def get_monitoreo_sexo(disease_id=None, region_id=None, dias=30):
     )
     total = sum(r["casos"] for r in rows) or 1
     return [{
-        "label": SEXO_LABEL.get(r["sex"], "No especificado"),
+        "label": SEXOS.get(r["sex"], "No especificado"),
         "casos": r["casos"],
         "pct": round(r["casos"] / total * 100, 1),
     } for r in rows]
