@@ -6,5 +6,7 @@
 - Lo que solo existe por cómo funciona la página (campos ocultos de concurrencia, semilla en
   blanco, casillas marcadas) se lee con `app/formularios.py`. Convertir texto a número o fecha
   es de `backend_web/conversion.py`, porque una API también lo necesitaría.
+- Los textos para mostrar (frases, etiquetas, fechas legibles) se arman en `app/presentacion.py`
+  con lo que devuelve `backend_web`, que regresa datos crudos.
 - Los candados actuales mandan al dashboard a quien rechazan. Si un rol no puede ver el
   dashboard, usa `abort(403)` para no crear un ciclo de redirecciones.

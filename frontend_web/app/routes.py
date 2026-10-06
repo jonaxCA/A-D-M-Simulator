@@ -30,7 +30,7 @@ from flask import (Blueprint, jsonify, render_template, request, redirect,
 from backend_web import queries, simulaciones
 from backend_web.audit import log_audit
 from backend_web.auth import attempt_login, create_token, hash_password
-from . import formularios
+from . import formularios, presentacion
 from .permisos import (login_required, admin_required, roles_required, tiene_rol,
                        get_current_user, contexto_de_peticion, COOKIE_NAME)
 
@@ -1053,7 +1053,7 @@ def monitoreo():
         sexos=sexos,
         totales=totales,
         zonas=zonas,
-        insights=queries.get_monitoreo_insights(zonas["zonas"], edades, totales, f["dias"]),
+        insights=presentacion.monitoreo_insights(zonas["zonas"], edades, totales, f["dias"]),
         enfermedades=queries.get_enfermedades_catalogo(),
         municipios=queries.get_municipios_catalogo(),
         indicadores=INDICADORES,
