@@ -118,7 +118,7 @@
                   title="Supuestos: {{ e.parametros.supuestos | join(', ') }}">{{ e.parametros.supuestos | length }} supuesto{{ 's' if e.parametros.supuestos | length != 1 }}</span>
             {% endif %}
           </td>
-          <td class="celda-fecha">{{ e.alta_label }}</td>
+          <td class="celda-fecha">{{ e.alta | fecha_corta }}</td>
           <td class="col-acciones">
             <button type="button" class="btn-detalle" aria-expanded="false"
                     aria-controls="detalle-{{ e.id }}" title="Ver ficha">👁</button>
@@ -146,7 +146,7 @@
                 <ul class="detalle-lista">
                   <li><span>Total histórico</span><span>{{ "{:,}".format(e.casos_total) }}</span></li>
                   <li><span>Últimos 30 días</span><span>{{ "{:,}".format(e.casos_30d) }}</span></li>
-                  <li><span>Último reporte</span><span>{{ e.ultimo_caso_label }}</span></li>
+                  <li><span>Último reporte</span><span>{{ e.ultimo_caso | fecha_corta or "Sin casos registrados" }}</span></li>
                 </ul>
               </div>
               <div>

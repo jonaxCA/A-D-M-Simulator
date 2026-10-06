@@ -26,7 +26,7 @@
       <div class="estado-cifra-label">Población 60+</div>
     </div>
     <div>
-      <span class="badge fuente-pill fuente-agregado">{{ estado.fuente_poblacion.label }}</span>
+      <span class="badge fuente-pill fuente-agregado">{{ estado.fuente_poblacion | fuente_etiqueta }}</span>
       <div class="estado-cifra-label">Fuente</div>
     </div>
   </div>
@@ -87,9 +87,9 @@
           <td>
             <div class="fuente-celda">
               <span class="badge fuente-pill {{ 'fuente-manual' if m.fuente_poblacion.tipo == 'manual' else 'fuente-censal' }}"
-                    title="{{ m.fuente_poblacion.detalle or '' }}">Población: {{ m.fuente_poblacion.label }}</span>
+                    title="{{ m.fuente_poblacion | fuente_detalle or '' }}">Población: {{ m.fuente_poblacion | fuente_etiqueta }}</span>
               <span class="badge fuente-pill {{ 'fuente-manual' if m.fuente_poblacion_60.tipo == 'manual' else 'fuente-censal' }}"
-                    title="{{ m.fuente_poblacion_60.detalle or '' }}">60+: {{ m.fuente_poblacion_60.label }}</span>
+                    title="{{ m.fuente_poblacion_60 | fuente_detalle or '' }}">60+: {{ m.fuente_poblacion_60 | fuente_etiqueta }}</span>
             </div>
           </td>
           {% if es_admin %}

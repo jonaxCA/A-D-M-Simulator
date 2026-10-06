@@ -178,18 +178,6 @@ def get_enfermedades_catalogo():
 # ademas agente, tipo de patogeno y nivel de riesgo; no existen en el esquema y
 # se decidio NO agregarlos (ni como columnas ni inventados en Python), asi que
 # esas tres columnas no aparecen en la tabla.
-_MESES = ("Ene", "Feb", "Mar", "Abr", "May", "Jun",
-          "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
-
-
-def _fecha_corta(valor):
-    """'12 Oct 2026'. Se arma a mano en vez de con strftime porque %b depende
-    del locale del sistema y aqui la vista siempre va en espanol."""
-    if valor is None:
-        return None
-    return f"{valor.day:02d} {_MESES[valor.month - 1]} {valor.year}"
-
-
 def get_enfermedades_stats():
     """Las 4 tarjetas del encabezado. 'Detectadas recientemente' cuenta
     enfermedades con al menos un caso en Nuevo Leon en los ultimos 30 dias --
@@ -286,10 +274,10 @@ def get_enfermedades(busqueda=None, estado=None, pagina=1, por_pagina=10):
         "activa": r["is_active"],
         "estado_label": "Activa" if r["is_active"] else "Inactiva",
         "actividad": _actividad(r["casos_total"], r["casos_30d"]),
-        "alta_label": _fecha_corta(r["created_at"]),
+        "alta": r["created_at"],
         "casos_total": r["casos_total"],
         "casos_30d": r["casos_30d"],
-        "ultimo_caso_label": _fecha_corta(r["ultimo_caso"]) or "Sin casos registrados",
+        "ultimo_caso": r["ultimo_caso"],
         "parametros": estado_parametros(r["default_params"]),
     } for r in rows]
 
@@ -1771,16 +1759,15 @@ ORDEN_REGIONES = {
 
 
 def _fuente_campo(reason, adjusted_at, adjusted_by_name, fuente_censal):
-    """Arma el texto de la columna Fuente de la poblacion total de un municipio.
-    Si hay un ajuste manual vigente, se ve distinto a la fuente censal -- nunca
-    se le atribuye a INEGI un valor que un administrador corrigio.
+    """De donde sale una cifra de poblacion. Si hay un ajuste manual vigente se
+    distingue de la fuente censal: nunca se le atribuye a INEGI un valor que un
+    administrador corrigio. El texto lo arma frontend_web (presentacion.py).
 
     Solo aplica a `population` o a una correccion registrada de las bandas de
     edad que producen el 60+ derivado."""
     if reason is None:
-        return {"tipo": "censal", "label": fuente_censal, "detalle": None}
-    detalle = f"Corregido por {adjusted_by_name or 'un administrador'} el {_fecha_corta(adjusted_at)}: {reason}"
-    return {"tipo": "manual", "label": "Corrección manual", "detalle": detalle}
+        return {"tipo": "censal", "fuente": fuente_censal}
+    return {"tipo": "manual", "motivo": reason, "fecha": adjusted_at, "por": adjusted_by_name}
 
 
 def get_estado_nl():
@@ -1798,8 +1785,7 @@ def get_estado_nl():
         _fuente_campo(correccion_edad["reason"], correccion_edad["occurred_at"],
                       correccion_edad["full_name"], "Grupos 60-79 y 80+ del Censo 2020")
         if correccion_edad else
-        {"tipo": "derivado", "label": "Grupos 60-79 y 80+ del Censo 2020",
-         "detalle": "Se deriva de las bandas de edad del estado; no se captura aparte."}
+        {"tipo": "derivado", "fuente": "Grupos 60-79 y 80+ del Censo 2020"}
     )
     return {
         "id": row["id"],
@@ -1807,7 +1793,7 @@ def get_estado_nl():
         "nombre": row["name"],
         "poblacion": row["population"],
         "poblacion_60": row["population_60plus"],
-        "fuente_poblacion": {"tipo": "agregado", "label": "Suma de los 51 municipios", "detalle": None},
+        "fuente_poblacion": {"tipo": "agregado"},
         "fuente_poblacion_60": fuente_60,
     }
 
@@ -1872,8 +1858,7 @@ def get_regiones_catalogo(busqueda=None, orden="nombre", direccion="asc"):
                           ajuste_edad["full_name"],
                           "Grupos 60-79 y 80+ del Censo 2020")
             if ajuste_edad else
-            {"tipo": "derivado", "label": "Grupos 60-79 y 80+ del Censo 2020",
-             "detalle": "Se calcula a partir de las bandas de edad; no se captura aparte."}
+            {"tipo": "derivado", "fuente": "Grupos 60-79 y 80+ del Censo 2020"}
         )
         municipios.append({
             "id": r["id"],

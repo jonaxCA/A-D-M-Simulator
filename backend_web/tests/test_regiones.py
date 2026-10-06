@@ -108,6 +108,20 @@ class RegionesCatalogoTests(unittest.TestCase):
         self.assertNotIn("population", catalogo[0])
 
 
+class FuenteDePoblacionTests(unittest.TestCase):
+    """La fuente de una cifra viaja como datos; el texto que ve la persona lo
+    arma frontend_web/app/presentacion.py. Una API recibe lo mismo."""
+
+    def test_censal(self):
+        self.assertEqual(queries._fuente_campo(None, None, None, "INEGI, Censo 2020"),
+                         {"tipo": "censal", "fuente": "INEGI, Censo 2020"})
+
+    def test_correccion_manual(self):
+        fecha = object()
+        self.assertEqual(queries._fuente_campo("Conteo 2025", fecha, "Ana", "INEGI, Censo 2020"),
+                         {"tipo": "manual", "motivo": "Conteo 2025", "fecha": fecha, "por": "Ana"})
+
+
 class ValidacionPoblacionTests(unittest.TestCase):
     def test_valores_validos(self):
         pob, errores = queries.valida_poblacion_municipio("1000", "Fuente X")

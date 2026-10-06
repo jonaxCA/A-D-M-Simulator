@@ -3,6 +3,8 @@ from flask import Flask
 from backend_web import simulaciones
 from backend_web.auth import secreto_jwt
 
+from . import presentacion
+
 from ..config import Config
 
 
@@ -23,5 +25,8 @@ def create_app():
     app.jinja_env.filters["id_esc"] = simulaciones.id_escenario
     app.jinja_env.filters["estado_sim"] = simulaciones.estado_visible
     app.jinja_env.filters["badge_sim"] = simulaciones.clase_badge_estado
+    app.jinja_env.filters["fecha_corta"] = presentacion.fecha_corta
+    app.jinja_env.filters["fuente_etiqueta"] = presentacion.fuente_etiqueta
+    app.jinja_env.filters["fuente_detalle"] = presentacion.fuente_detalle
 
     return app
