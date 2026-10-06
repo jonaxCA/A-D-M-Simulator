@@ -252,7 +252,8 @@ def reporte_nuevo():
         return render_template("reporte_form.html", catalogos=catalogos,
                                form={}, errores=[], active_nav="dashboard")
 
-    datos, errores = queries.valida_caso(request.form)
+    datos, errores = queries.valida_caso(request.form, catalogos["enfermedades"],
+                                         catalogos["municipios"])
     if errores:
         return render_template("reporte_form.html", catalogos=catalogos,
                                form=request.form, errores=errores,

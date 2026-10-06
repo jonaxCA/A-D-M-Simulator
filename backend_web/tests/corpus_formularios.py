@@ -20,6 +20,8 @@ ENFERMEDADES = [
     {"id": 1, "name": "Simulable", "simulable": True, "faltan": 0, "sin_fuente": 0},
     {"id": 2, "name": "Incompleta", "simulable": False, "faltan": 2, "sin_fuente": 1},
 ]
+# Lo que ofrece la captura de casos: solo municipios, sin el estado.
+MUNICIPIOS = [{"id": 1, "name": "Municipio de prueba"}]
 PARAMETROS_ENFERMEDAD = {
     "r0": {"valor": 2.1, "fuente": "Fuente de prueba", "supuesto": False},
     "incubacion_dias": {"valor": 4.0, "fuente": None, "supuesto": True},

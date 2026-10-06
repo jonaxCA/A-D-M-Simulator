@@ -79,17 +79,45 @@ class EnteroTests(unittest.TestCase):
         self.assertEqual(errores, ["La edad debe ser un número entero.",
                                    "La edad debe estar entre 0 y 2000."])
 
-    def test_vacio_obligatorio_opcional_y_mensaje_propio(self):
+    def test_vacio_obligatorio_y_opcional(self):
         errores = []
         for vacio in (None, "", "   "):
             self.assertIsNone(conversion.entero(vacio, errores, etiqueta="La región",
                                                 minimo=1, maximo=9))
         self.assertIsNone(conversion.entero("", errores, etiqueta="La edad", minimo=0,
                                             maximo=9, obligatorio=False))
-        conversion.entero("", errores, etiqueta="El municipio", minimo=1, maximo=9,
-                          falta="El municipio es obligatorio.")
-        self.assertEqual(errores, ["La región es obligatoria."] * 3
-                         + ["El municipio es obligatorio."])
+        self.assertEqual(errores, ["La región es obligatoria."] * 3)
+
+    def test_los_mensajes_concuerdan_con_el_articulo_de_la_etiqueta(self):
+        """Antes el genero lo fijaba la funcion, no la etiqueta, y salian cosas
+        como "La enfermedad es obligatorio." o "Los infectados iniciales es
+        obligatoria."."""
+        casos = {
+            "El municipio": ["El municipio es obligatorio.",
+                             "El municipio debe ser un número entero.",
+                             "El municipio debe estar entre 1 y 9."],
+            "La enfermedad": ["La enfermedad es obligatoria.",
+                              "La enfermedad debe ser un número entero.",
+                              "La enfermedad debe estar entre 1 y 9."],
+            "Los infectados iniciales": ["Los infectados iniciales son obligatorios.",
+                                         "Los infectados iniciales deben ser un número entero.",
+                                         "Los infectados iniciales deben estar entre 1 y 9."],
+            "Las dosis": ["Las dosis son obligatorias.",
+                          "Las dosis deben ser un número entero.",
+                          "Las dosis deben estar entre 1 y 9."],
+            "«dias»": ["«dias» es obligatorio.",
+                       "«dias» debe ser un número entero.",
+                       "«dias» debe estar entre 1 y 9."],
+        }
+        for etiqueta, esperados in casos.items():
+            with self.subTest(etiqueta=etiqueta):
+                errores = []
+                for valor in ("", "x", "10"):
+                    conversion.entero(valor, errores, etiqueta=etiqueta, minimo=1, maximo=9)
+                self.assertEqual(errores, esperados)
+        errores = []
+        conversion.fecha("", errores, etiqueta="El día del reporte")
+        self.assertEqual(errores, ["El día del reporte es obligatorio."])
 
 
 class DecimalYFechaTests(unittest.TestCase):
@@ -99,7 +127,7 @@ class DecimalYFechaTests(unittest.TestCase):
                                              minimo=-90, maximo=90))
         self.assertEqual(conversion.decimal(" 25.6 ", errores, etiqueta="La latitud",
                                             minimo=-90, maximo=90), 25.6)
-        conversion.decimal("nan", errores, etiqueta="La latitud", minimo=-90, maximo=90)
+        conversion.decimal("91", errores, etiqueta="La latitud", minimo=-90, maximo=90)
         self.assertEqual(errores, ["La latitud debe estar entre -90 y 90."])
 
     def test_fecha(self):
@@ -130,6 +158,31 @@ class NumeroDeEsquemaTests(unittest.TestCase):
         self.assertEqual(errores, ["«d» no puede ser menor que 1.",
                                    "«d» no puede ser mayor que 30.",
                                    "«d» debe ser un número entero."])
+
+
+class NoFinitosTests(unittest.TestCase):
+    """float() acepta "nan" e "inf". nan no es menor ni mayor que nada, asi que
+    pasaba cualquier limite; un parametro de intervencion con nan llegaba a la
+    columna jsonb, PostgreSQL lo rechazaba y la ruta respondia 500."""
+
+    NO_FINITOS = ("nan", "NaN", "inf", "-inf", "Infinity", "1e400")
+
+    def test_numero_de_esquema_los_rechaza_con_o_sin_limites(self):
+        for spec in ({"minimum": 0, "maximum": 1}, {"minimum": 0}, {}):
+            for texto in self.NO_FINITOS:
+                with self.subTest(spec=spec, texto=texto):
+                    errores = []
+                    self.assertIsNone(conversion.numero_de_esquema(
+                        texto, errores, etiqueta="«reduccion»", spec=spec, tipo=float))
+                    self.assertEqual(errores, ["«reduccion» debe ser un número."])
+
+    def test_decimal_los_rechaza(self):
+        for texto in self.NO_FINITOS:
+            with self.subTest(texto=texto):
+                errores = []
+                self.assertIsNone(conversion.decimal(texto, errores, etiqueta="La latitud",
+                                                     minimo=-90, maximo=90))
+                self.assertEqual(errores, ["La latitud debe ser un número."])
 
 
 if __name__ == "__main__":

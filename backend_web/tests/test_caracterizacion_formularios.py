@@ -28,13 +28,13 @@ from unittest.mock import patch
 
 from backend_web import queries
 from backend_web.tests.corpus_formularios import (CASOS, ENFERMEDADES, EXISTENTES,
-                                                  PARAMETROS_ENFERMEDAD, REGIONES,
-                                                  TIPOS, VERSION)
+                                                  MUNICIPIOS, PARAMETROS_ENFERMEDAD,
+                                                  REGIONES, TIPOS, VERSION)
 
 SNAPSHOT = pathlib.Path(__file__).with_name("snapshot_formularios.json")
 
 LLAMADAS = {
-    "valida_caso": lambda form: queries.valida_caso(form),
+    "valida_caso": lambda form: queries.valida_caso(form, ENFERMEDADES, MUNICIPIOS),
     "valida_escenario": lambda form: queries.valida_escenario(form, REGIONES, ENFERMEDADES),
     "valida_version": lambda form: queries.valida_version(form, REGIONES[0],
                                                           PARAMETROS_ENFERMEDAD),

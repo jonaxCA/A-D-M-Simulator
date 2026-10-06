@@ -196,6 +196,18 @@ class IntervencionesRutasTests(AppTestCase):
             self.assertIn("eficacia", resp.data.decode("utf-8", "replace"))
             self.assertEqual(self._n(), 0)
 
+    def test_un_parametro_nan_devuelve_400_y_no_guarda(self):
+        """nan pasaba la validacion (no es menor que 0 ni mayor que 1), la
+        columna jsonb lo rechazaba y la ruta respondia 500."""
+        with self.app.test_client() as client:
+            self._login(client, "alex.cavazos", "Epidemia2026!")
+            resp = client.post(f"/escenarios/{self.sid}/intervenciones", data={
+                "code": "REDUCCION_AFORO", "start_day": "10",
+                "p_REDUCCION_AFORO_reduccion": "nan"})
+            self.assertEqual(resp.status_code, 400)
+            self.assertIn("«reduccion» debe ser un número", resp.data.decode("utf-8", "replace"))
+            self.assertEqual(self._n(), 0)
+
     def test_quien_no_es_dueno_no_edita(self):
         """diana.flores tiene el rol, pero el escenario es de alex.cavazos."""
         with self.app.test_client() as client:
@@ -249,6 +261,7 @@ class VersionadoRutasTests(IntervencionesRutasTests):
     test_anonimo_no_ve_el_detalle = None
     test_el_dueno_agrega_y_la_linea_de_tiempo_la_dibuja = None
     test_alta_invalida_devuelve_400_y_no_guarda = None
+    test_un_parametro_nan_devuelve_400_y_no_guarda = None
     test_quien_no_es_dueno_no_edita = None
     test_el_administrador_si_edita_lo_ajeno = None
     test_una_version_que_no_es_borrador_no_se_edita = None
@@ -352,6 +365,7 @@ class AprobacionRutasTests(IntervencionesRutasTests):
     test_anonimo_no_ve_el_detalle = None
     test_el_dueno_agrega_y_la_linea_de_tiempo_la_dibuja = None
     test_alta_invalida_devuelve_400_y_no_guarda = None
+    test_un_parametro_nan_devuelve_400_y_no_guarda = None
     test_quien_no_es_dueno_no_edita = None
     test_el_administrador_si_edita_lo_ajeno = None
     test_una_version_que_no_es_borrador_no_se_edita = None

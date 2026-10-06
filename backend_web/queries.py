@@ -1448,21 +1448,27 @@ def get_enfermedades_para_captura():
     )
 
 
-def valida_caso(form):
+def valida_caso(form, enfermedades, municipios):
     """Valida el formulario contra los CHECK reales de `cases`.
 
     Devuelve (datos_limpios, errores). Los dominios cerrados (sexo, resultado,
     severidad) se comparan contra los diccionarios de arriba: lo que no este
     ahi se descarta, no se manda a la base.
+
+    `enfermedades` y `municipios` son los catalogos que ofrece el formulario
+    (get_enfermedades_para_captura y get_municipios_catalogo). Un id que no
+    este ahi se rechaza aqui y no al insertar: una enfermedad inactiva o el
+    estado pasarian la llave foranea, y un id que no cabe en la columna
+    (diseases.id es smallint) hacia que el INSERT respondiera 500.
     """
     errores = []
     datos = {
         "disease_id": conversion.entero(
             form.get("disease_id"), errores, etiqueta="La enfermedad", minimo=1,
-            maximo=2**31, miles=False, falta="La enfermedad es obligatorio."),
+            maximo=2**31, miles=False),
         "region_id": conversion.entero(
             form.get("region_id"), errores, etiqueta="El municipio", minimo=1,
-            maximo=2**31, miles=False, falta="El municipio es obligatorio."),
+            maximo=2**31, miles=False),
         "report_date": conversion.fecha(
             form.get("report_date"), errores, etiqueta="La fecha de reporte"),
         "onset_date": conversion.fecha(
@@ -1476,6 +1482,12 @@ def valida_caso(form):
         "longitude": conversion.decimal(
             form.get("longitude"), errores, etiqueta="La longitud", minimo=-180, maximo=180),
     }
+    if datos["disease_id"] is not None and \
+            datos["disease_id"] not in {e["id"] for e in enfermedades}:
+        errores.append("Esa enfermedad no está activa en el catálogo.")
+    if datos["region_id"] is not None and \
+            datos["region_id"] not in {m["id"] for m in municipios}:
+        errores.append("Ese municipio no está en el catálogo de Nuevo León.")
 
     for campo, dominio, etiqueta in (
         ("sex", SEXOS, "El sexo"),
@@ -2764,6 +2776,9 @@ def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption):
     try:
         costo = float(texto)
     except ValueError:
+        costo = None
+    # "nan" e "inf" convierten sin error y la columna numeric los guardaria.
+    if costo is None or not math.isfinite(costo):
         errores.append("El importe debe ser numerico.")
         return None, errores
 

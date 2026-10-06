@@ -43,6 +43,14 @@ class ComparacionCostosTests(ConUsuarioSimulado):
 
         self.assertIn("El importe no puede ser negativo.", errores)
 
+    def test_rechaza_importes_no_finitos(self):
+        """float() acepta "nan" e "inf", y la columna numeric los guardaria."""
+        for texto in ("nan", "inf", "-inf", "1e400"):
+            with self.subTest(texto=texto):
+                datos, errores = queries.valida_costo_intervencion(texto, "fuente", False)
+                self.assertIsNone(datos)
+                self.assertEqual(errores, ["El importe debe ser numerico."])
+
     def test_exige_fuente_si_no_es_supuesto(self):
         _, errores = queries.valida_costo_intervencion(
             "100",
