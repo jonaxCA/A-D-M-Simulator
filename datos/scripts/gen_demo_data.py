@@ -17,6 +17,7 @@ asi que regenerar el archivo cambia esa linea aunque los datos sean los mismos.
 """
 import random
 import datetime
+import sys
 import bcrypt
 
 random.seed(42)
@@ -70,6 +71,8 @@ def gen_password_hash(password: str) -> str:
 
 
 def main():
+    # LF y UTF-8 tambien en Windows, donde la salida redirigida saldria en cp1252.
+    sys.stdout.reconfigure(newline="\n", encoding="utf-8")
     out = []
     out.append("-- =============================================================================")
     out.append("-- demo_datos_nl.sql  (NO es parte de la migracion oficial 001-010)")
@@ -80,6 +83,9 @@ def main():
     out.append("--")
     out.append("-- Requiere: dump_completo.sql ya aplicado (schema + catalogos + admin).")
     out.append("-- =============================================================================")
+    out.append("")
+    out.append("-- El archivo esta en UTF-8; sin esto, psql en Windows lo lee como WIN1252.")
+    out.append("SET client_encoding = 'UTF8';")
     out.append("")
     out.append("BEGIN;")
     out.append("")

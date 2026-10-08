@@ -101,7 +101,10 @@ psql -h localhost -U postgres -d simulador_epidemico -v ON_ERROR_STOP=1 -f datos
 ```
 
 En Windows PowerShell es lo mismo, pero anteponiendo la ruta a `psql.exe` si no
-está en el `PATH`.
+está en el `PATH`. No hace falta configurar la codificación de la consola: los tres
+archivos están en UTF-8 y lo declaran en su primera instrucción
+(`SET client_encoding = 'UTF8'`). Sin eso, `psql` en Windows los leería como WIN1252
+y los municipios con acento quedarían como “AnÃ¡huac”.
 
 **Qué hace cada uno:**
 
@@ -377,6 +380,7 @@ python datos/scripts/prepara_base_pruebas.py
 | `psycopg2.OperationalError` al arrancar la app (p. ej. *la autentificación password falló para el usuario «epidemia_app»*) | El `DATABASE_URL` del `.env` no coincide con tu base/usuario/contraseña reales. Revisa el Paso 4.2. Antes, con PostgreSQL de Windows en español, este error salía disfrazado de `UnicodeDecodeError: ... byte 0xf3`; si todavía lo ves, es el mismo problema. |
 | `permission denied for table ...` | Te faltó el Paso 3 (los `GRANT`), o lo corriste **antes** del Paso 2, cuando las tablas todavía no existían. Vuelve a correrlo. |
 | Todo se ve en **cero** y no puedes entrar | Falta `demo_datos_nl.sql` (Paso 2). Sin él no existe `diana.flores` ni hay casos. |
+| Municipios como “AnÃ¡huac” o “General TerÃ¡n” en Regiones y el mapa | La base se cargó en Windows con una versión de las semillas que no declaraba su codificación. Volver a correr la semilla no los corrige, porque no pisa filas que ya existen. Corrígelos con `psql -h localhost -U postgres -d simulador_epidemico -c "UPDATE regions SET name = convert_from(convert_to(name, 'WIN1252'), 'UTF8') WHERE level = 'municipio' AND strpos(name, U&'\00C3') > 0;"`, que deshace exactamente la lectura equivocada (9 municipios), o vuelve a empezar de cero (abajo). |
 | Las **gráficas no aparecen** (el resto sí) | Highcharts se carga desde su CDN: necesitas internet. |
 | `syntax error at or near "NULLS"` al cargar el esquema | Tu PostgreSQL es menor a 15. Actualiza. |
 | El puerto 5000 está ocupado | Pon `EPIDEMIA_PORT=5001` en el `.env`, o libera el 5000. En macOS suele ocuparlo *AirPlay Receiver*. |

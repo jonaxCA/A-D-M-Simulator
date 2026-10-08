@@ -74,6 +74,11 @@ YA_EXISTEN = {"006", "018", "019", "021", "026", "031", "039", "046", "048", "04
 # El tabulado usa el nombre corto; el catalogo oficial, el completo.
 ALIAS = {"carmen": "el carmen"}
 
+# La semilla esta en UTF-8. Sin esta linea, psql en Windows la lee con la
+# pagina de codigos de la consola (WIN1252) y "Anahuac" con acento queda con
+# dos caracteres raros en la base. Va en ASCII y antes de cualquier acento.
+CODIFICACION = "SET client_encoding = 'UTF8';"
+
 
 def normaliza(s):
     s = unicodedata.normalize("NFKD", s.strip().lower())
@@ -228,7 +233,8 @@ def lee_grupos_edad(poblacion, poblacion_60):
 
 
 def main():
-    sys.stdout.reconfigure(newline="\n")   # LF tambien en Windows
+    # LF y UTF-8 tambien en Windows, donde la salida redirigida saldria en cp1252.
+    sys.stdout.reconfigure(newline="\n", encoding="utf-8")
     centroides = json.load(open(os.path.join(GEO_DIR, "nl_centroides.json"), encoding="utf-8"))
     catalogo = json.load(open(os.path.join(GEO_DIR, "nl_catalogo_oficial.json"), encoding="utf-8"))
     poblacion = lee_censo(catalogo)
@@ -252,6 +258,9 @@ def main():
     lines.append("-- archivo, y esas migraciones solo alcanzan filas que ya existen.")
     lines.append("-- Las bandas se incluyen por el mismo motivo: 021 corre antes que esta semilla.")
     lines.append("-- =============================================================================")
+    lines.append("")
+    lines.append("-- El archivo esta en UTF-8; sin esto, psql en Windows lo lee como WIN1252.")
+    lines.append(CODIFICACION)
     lines.append("")
     lines.append("BEGIN;")
     lines.append("")
