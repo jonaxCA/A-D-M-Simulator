@@ -116,6 +116,34 @@ class CapaDeDatosSinFlaskTests(unittest.TestCase):
         self.assertEqual(culpables, [])
 
 
+class ImportsAlPrincipioTests(unittest.TestCase):
+    """En backend_web los imports van al principio del modulo.
+
+    Ahi se ve de un vistazo de que depende cada modulo, y un ciclo o un modulo
+    que no carga truena al arrancar la app, no la primera vez que alguien usa
+    la pantalla que llama a esa funcion. Si un import solo funciona dentro de
+    una funcion, hay un ciclo que resolver.
+    """
+
+    def test_ningun_import_dentro_de_funciones_ni_a_mitad_del_modulo(self):
+        culpables = []
+        for ruta in sorted((RAIZ / "backend_web").rglob("*.py")):
+            if "tests" in ruta.parts or "__pycache__" in ruta.parts:
+                continue
+            rel = ruta.relative_to(RAIZ).as_posix()
+            arbol = ast.parse(ruta.read_text(encoding="utf-8"), rel)
+            es_import = (ast.Import, ast.ImportFrom)
+            culpables += [f"{rel}:{n.lineno} dentro de una funcion" for n in ast.walk(arbol)
+                          if isinstance(n, es_import) and n not in arbol.body]
+            cuerpo = [n for n in arbol.body if not (isinstance(n, ast.Expr)
+                                                    and isinstance(n.value, ast.Constant))]
+            primero = next((i for i, n in enumerate(cuerpo) if not isinstance(n, es_import)),
+                           len(cuerpo))
+            culpables += [f"{rel}:{n.lineno} a mitad del modulo" for n in cuerpo[primero:]
+                          if isinstance(n, es_import)]
+        self.assertEqual(culpables, [])
+
+
 class MotorUnaSolaVezTests(unittest.TestCase):
     """queries.py y simulaciones.py tienen que ver EL MISMO motor.
 
@@ -139,6 +167,13 @@ class MotorUnaSolaVezTests(unittest.TestCase):
 
         with self.assertRaises(simulaciones.EscenarioInvalido):
             resolver({"poblacion": -1})
+
+    def test_queries_usa_las_mismas_clases_del_motor(self):
+        from backend_web import queries
+        from procesamiento.motor import parametros
+
+        self.assertIs(queries.EscenarioInvalido, parametros.EscenarioInvalido)
+        self.assertIs(queries.resolver, parametros.resolver)
 
 
 if __name__ == "__main__":

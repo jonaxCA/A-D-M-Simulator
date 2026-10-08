@@ -2,6 +2,7 @@
 un solo pool de conexiones para toda la app (tal como se pidio: "se puede
 entrar de manera indiscriminada a la DB").
 """
+import json
 import os
 import psycopg2
 import psycopg2.extras
@@ -76,3 +77,12 @@ def execute(sql, params=None):
             rowcount = cur.rowcount
         conn.commit()
         return rowcount
+
+
+def a_jsonb(datos):
+    """El valor para un parametro `%s::jsonb`, o None para guardar NULL. Lo que
+    JSON no sabe escribir (fechas, Decimal) se guarda como texto, y los acentos
+    tal cual."""
+    if datos is None:
+        return None
+    return json.dumps(datos, default=str, ensure_ascii=False)

@@ -7,9 +7,7 @@ ocurre de verdad mientras alguien usa el sistema genera un renglon aqui.
 No hay historial previo cargado a proposito: la pantalla de Auditoria se ve
 vacia hasta que alguien de verdad usa el sistema, y eso es lo correcto.
 """
-import json
-
-from .db import execute
+from .db import a_jsonb, execute
 
 
 _INSERTA = """
@@ -62,6 +60,4 @@ def _limpia(datos):
 
 
 def _serializa(datos):
-    if datos is None:
-        return None
-    return json.dumps(_limpia(datos), default=str, ensure_ascii=False)
+    return None if datos is None else a_jsonb(_limpia(datos))

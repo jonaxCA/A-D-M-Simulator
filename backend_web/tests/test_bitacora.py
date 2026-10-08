@@ -12,10 +12,12 @@ import ast
 import pathlib
 import unittest
 import uuid
+from datetime import date
+from decimal import Decimal
 
 from backend_web.tests.base import contexto_de_prueba, requiere_base, usuario_con_rol
-from backend_web.audit import log_audit
-from backend_web.db import get_conn, query
+from backend_web.audit import _serializa, log_audit
+from backend_web.db import a_jsonb, get_conn, query
 
 RAIZ = pathlib.Path(__file__).resolve().parents[2]
 
@@ -45,6 +47,24 @@ class UnaSolaEscrituraTests(unittest.TestCase):
                     and not any(k.arg == "cur" for k in n.keywords)):
                 sin_cur.append(f"queries.py:{n.lineno}")
         self.assertEqual(sin_cur, [])
+
+
+class SerializacionTests(unittest.TestCase):
+    """Lo que se guarda en las columnas jsonb, sin base."""
+
+    def test_a_jsonb_escribe_fechas_y_decimales_como_texto_y_los_acentos_tal_cual(self):
+        self.assertIsNone(a_jsonb(None))
+        self.assertEqual(
+            a_jsonb({"fecha": date(2026, 10, 8), "monto": Decimal("12.50"),
+                     "municipio": "Anáhuac", "bandas": {"0-19": 3}}),
+            '{"fecha": "2026-10-08", "monto": "12.50", "municipio": "Anáhuac", '
+            '"bandas": {"0-19": 3}}')
+
+    def test_la_bitacora_no_guarda_contrasenas(self):
+        datos = {"id": 7, "username": "ana", "password_hash": "x", "password": "y",
+                 "token_hash": "z"}
+        self.assertEqual(_serializa(datos), '{"id": 7, "username": "ana"}')
+        self.assertIsNone(_serializa(None))
 
 
 @requiere_base

@@ -24,9 +24,14 @@ from datetime import date, timedelta
 
 import psycopg2
 
+from procesamiento.motor import EscenarioInvalido, validar_escenario
+from procesamiento.motor.parametros import (
+    DIAS_MAX, DIAS_MIN, POBLACION_MAX, POBLACION_MIN, POLITICAS_EDAD_DESCONOCIDA, resolver,
+)
+
 from . import conversion
 from .audit import log_audit
-from .db import execute, get_conn, query
+from .db import a_jsonb, execute, get_conn, query
 
 NL_ESTADO_CODE = "19"
 
@@ -2191,14 +2196,10 @@ def actualiza_poblacion_municipio(region_id, population, motivo, esperado_popula
 # ---------------------------------------------------------------------------
 # Escenarios (Bloque D) -- alta, consulta y validacion contra el motor
 # ---------------------------------------------------------------------------
-# Los limites del formulario NO se copian: se importan del motor, que es quien
-# los hace cumplir al simular. Duplicarlos como numeros sueltos aqui garantiza
-# que un dia se desalineen y que la pantalla acepte algo que la corrida rechaza.
-from procesamiento.motor import validar_escenario                    # noqa: E402
-from procesamiento.motor.parametros import (                         # noqa: E402
-    DIAS_MAX, DIAS_MIN, POBLACION_MAX, POBLACION_MIN,
-    POLITICAS_EDAD_DESCONOCIDA,
-)
+# Los limites del formulario NO se copian: se importan del motor (al principio
+# del archivo), que es quien los hace cumplir al simular. Duplicarlos como
+# numeros sueltos aqui garantiza que un dia se desalineen y que la pantalla
+# acepte algo que la corrida rechaza.
 
 LIMITES_ESCENARIO = {
     "poblacion_min": POBLACION_MIN, "poblacion_max": POBLACION_MAX,
@@ -2505,7 +2506,6 @@ def crea_escenario(datos, *, contexto):
 
     Devuelve (ok, error, scenario_id).
     """
-    from .audit import _serializa
 
     owner_id = contexto.user_id
     try:
@@ -2530,7 +2530,7 @@ def crea_escenario(datos, *, contexto):
                        RETURNING id""",
                     (scenario_id, datos["population_size"], datos["horizon_days"],
                      datos["initial_infected"], datos["notes"], owner_id,
-                     _serializa(datos["population_by_age"]) if datos["population_by_age"] else None,
+                     a_jsonb(datos["population_by_age"]) if datos["population_by_age"] else None,
                      datos["population_age_unknown"], datos["age_unknown_policy"]))
                 version_id = cur.fetchone()[0]
 
@@ -2731,9 +2731,6 @@ def revisa_version(detalle):
     degrada a aleatorio. Si no se muestran, el usuario cree que pidio algo que
     no esta pasando.
     """
-    from procesamiento.motor import EscenarioInvalido
-    from procesamiento.motor.parametros import resolver
-
     if not detalle["version"]:
         return ["El escenario no tiene una versión vigente."], []
 
@@ -2864,7 +2861,6 @@ def valida_intervencion(form, tipos, version, existentes):
 
 def agrega_intervencion(version_id, datos, *, contexto):
     """Agrega la intervencion al final del orden de la version."""
-    from .audit import _serializa
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -2881,7 +2877,7 @@ def agrega_intervencion(version_id, datos, *, contexto):
                        RETURNING id""",
                     (version_id, datos["intervention_type_id"], datos["start_day"],
                      datos["end_day"], datos["coverage"], datos["compliance"],
-                     _serializa(datos["params"] or {}), orden))
+                     a_jsonb(datos["params"] or {}), orden))
                 iid = cur.fetchone()[0]
                 log_audit(contexto, "CREATE", "scenario_interventions", iid,
                           data_after={**datos, "scenario_version_id": version_id,
@@ -2997,7 +2993,6 @@ def crea_version(scenario_id, datos, *, contexto):
     Devuelve (ok, error, version_number).
     """
     user_id = contexto.user_id
-    from .audit import _serializa
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -3027,7 +3022,7 @@ def crea_version(scenario_id, datos, *, contexto):
                     (scenario_id, siguiente, datos["population_size"],
                      datos["horizon_days"], datos["initial_infected"], datos["notes"],
                      user_id,
-                     _serializa(datos["population_by_age"]) if datos["population_by_age"] else None,
+                     a_jsonb(datos["population_by_age"]) if datos["population_by_age"] else None,
                      datos["population_age_unknown"], datos["age_unknown_policy"]))
                 nueva_id = cur.fetchone()[0]
                 cur.execute(_SQL_COPIA_INTERVENCIONES, (nueva_id, origen_id))
@@ -3058,7 +3053,6 @@ def duplica_escenario(scenario_id, version_number, nombre, *, contexto):
     Devuelve (ok, error, scenario_id_nuevo).
     """
     user_id = contexto.user_id
-    from .audit import _serializa
 
     nombre = (nombre or "").strip()
     if not nombre:
@@ -3102,7 +3096,7 @@ def duplica_escenario(scenario_id, version_number, nombre, *, contexto):
                     (nuevo_id, poblacion, dias, iniciales,
                      f"Duplicado de la versión {version_number} del escenario "
                      f"#{scenario_id}.", user_id,
-                     _serializa(por_edad) if por_edad else None, sin_edad, politica))
+                     a_jsonb(por_edad) if por_edad else None, sin_edad, politica))
                 nueva_version_id = cur.fetchone()[0]
                 cur.execute(_SQL_COPIA_INTERVENCIONES, (nueva_version_id, origen_id))
                 copiadas = cur.rowcount

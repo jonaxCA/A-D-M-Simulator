@@ -1,18 +1,22 @@
 # AGENTS.md — backend_web
 
-> **Estado: Vigente** · 2026-09-25 · Complementa el `AGENTS.md` de la raíz.
+> **Estado: Vigente** · 2026-10-08 · Complementa el `AGENTS.md` de la raíz.
 
 - Para escribir datos, sigue el patrón de `crear_caso` y `crear_enfermedad` en `queries.py`:
   validar, escribir y regresar `(id, error)` con el error en español.
 - `query()` nunca hace commit. Para escribir usa `get_conn()` y `conn.commit()`;
   un `INSERT ... RETURNING` hecho con `query()` se pierde sin dar error.
 - Parámetros siempre con `%s`. Nunca armes SQL con f-strings ni concatenando datos.
+- Para una columna `jsonb`, pasa el valor con `db.a_jsonb()` en un `%s::jsonb`.
 - `db.py` abre una conexión por consulta: usa una sola consulta con `GROUP BY` en lugar de una
   por elemento.
 - Para convertir el texto de un formulario usa `conversion.py` (`entero`, `decimal`, `fecha`,
   `numero_de_esquema`), con argumentos por nombre. Las reglas de dominio (una fecha futura, un
   inicio después del fin) van en las `valida_*`, no ahí.
 - `backend_web` no importa de `frontend_web` (lo vigila `test_integridad`).
+- Los imports van al principio del módulo, nunca dentro de una función ni a la mitad (también
+  lo vigila `test_integridad`). Si uno solo funciona dentro de una función, hay un ciclo que
+  resolver.
 
 ## Escenarios, simulaciones y comparación
 
