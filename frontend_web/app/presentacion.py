@@ -17,6 +17,13 @@ def fecha_corta(valor):
     return f"{valor.day:02d} {_MESES[valor.month - 1]} {valor.year}"
 
 
+def fecha_hora(valor, segundos=False):
+    """'2026-10-06 14:05', o con segundos para la bitacora."""
+    if valor is None:
+        return None
+    return valor.strftime("%Y-%m-%d %H:%M:%S" if segundos else "%Y-%m-%d %H:%M")
+
+
 _TENDENCIA = {"critico": "Critico", "alerta": "Alerta", "estable": "Estable"}
 
 _ESTADOS_VERSION = {
@@ -111,6 +118,15 @@ def fuente_detalle(fuente):
     if fuente["tipo"] == "derivado":
         return "Se calcula a partir de las bandas de edad; no se captura aparte."
     return None
+
+
+_ESTADOS_USUARIO = {"activo": "Activo", "pendiente": "Pendiente", "inactivo": "Inactivo"}
+
+
+def estado_usuario(clave):
+    """El estado de una cuenta (queries.get_usuarios_lista). La clave es
+    tambien la clase CSS del distintivo."""
+    return _ESTADOS_USUARIO[clave]
 
 
 def monitoreo_insights(zonas, edades, totales, dias):

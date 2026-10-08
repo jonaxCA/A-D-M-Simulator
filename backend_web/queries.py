@@ -796,7 +796,7 @@ def get_mapa_serie_temporal(disease_id=None, dias=30):
 # ---------------------------------------------------------------------------
 # Nota: el schema de users NO tiene columna "departamento" (ese filtro del
 # diseno original no se pudo traer -- no hay ese dato en ningun lado).
-# "Pendiente" e "Inactivo" son estados que yo derive, no columnas reales:
+# "pendiente" e "inactivo" son estados que yo derive, no columnas reales:
 #   activo    -> is_active = TRUE  y ya inicio sesion alguna vez
 #   pendiente -> is_active = TRUE  pero nunca ha iniciado sesion (last_login_at NULL)
 #   inactivo  -> is_active = FALSE (baja logica)
@@ -854,18 +854,18 @@ def get_usuarios_lista(busqueda=None, rol_id=None, estado=None):
     out = []
     for r in rows:
         if not r["is_active"]:
-            estado_calc = "Inactivo"
+            estado_calc = "inactivo"
         elif r["last_login_at"] is None:
-            estado_calc = "Pendiente"
+            estado_calc = "pendiente"
         else:
-            estado_calc = "Activo"
+            estado_calc = "activo"
         out.append({
             "id": r["id"],
             "nombre": r["full_name"],
             "correo": r["email"],
-            "roles": r["roles"] or "Sin rol asignado",
+            "roles": r["roles"],
             "estado": estado_calc,
-            "ultimo_acceso": r["last_login_at"].strftime("%Y-%m-%d %H:%M") if r["last_login_at"] else "Nunca",
+            "ultimo_acceso": r["last_login_at"],
         })
     return out
 

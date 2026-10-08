@@ -78,17 +78,17 @@
       <tr>
         <td class="fuerte">{{ u.nombre }}</td>
         <td>{{ u.correo }}</td>
-        <td>{{ u.roles }}</td>
-        <td><span class="badge badge-{{ u.estado|lower }}">{{ u.estado }}</span></td>
-        <td>{{ u.ultimo_acceso }}</td>
+        <td>{{ u.roles or 'Sin rol asignado' }}</td>
+        <td><span class="badge badge-{{ u.estado }}">{{ u.estado|estado_usuario }}</span></td>
+        <td>{{ u.ultimo_acceso|fecha_hora or 'Nunca' }}</td>
         <td class="col-acciones">
           <a class="btn btn-mini" href="{{ url_for('main.usuario_editar', user_id=u.id) }}">Editar</a>
 
           <form method="post" action="{{ url_for('main.usuario_estado', user_id=u.id) }}" class="inline-form">
-            <input type="hidden" name="activar" value="{{ '0' if u.estado != 'Inactivo' else '1' }}">
+            <input type="hidden" name="activar" value="{{ '0' if u.estado != 'inactivo' else '1' }}">
             <button type="submit" class="btn btn-mini"
-                    {{ 'disabled title=No-puedes-desactivarte-a-ti-mismo' if u.id == current_user.sub and u.estado != 'Inactivo' else '' }}>
-              {{ 'Reactivar' if u.estado == 'Inactivo' else 'Desactivar' }}
+                    {{ 'disabled title=No-puedes-desactivarte-a-ti-mismo' if u.id == current_user.sub and u.estado != 'inactivo' else '' }}>
+              {{ 'Reactivar' if u.estado == 'inactivo' else 'Desactivar' }}
             </button>
           </form>
 

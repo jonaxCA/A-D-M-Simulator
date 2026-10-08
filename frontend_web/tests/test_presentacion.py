@@ -13,10 +13,11 @@ from frontend_web.tests.base import AppTestCase, ConUsuarioSimulado, requiere_ba
 from backend_web import queries
 from backend_web.db import get_conn
 from frontend_web.app.permisos import COOKIE_NAME
-from frontend_web.app.presentacion import (actividad_etiqueta, estado_catalogo, estado_version,
-                                           fecha_corta, fuente_detalle, fuente_etiqueta,
-                                           monitoreo_insights, tendencia_etiqueta,
-                                           texto_informativo, valor_parametro)
+from frontend_web.app.presentacion import (actividad_etiqueta, estado_catalogo, estado_usuario,
+                                           estado_version, fecha_corta, fecha_hora,
+                                           fuente_detalle, fuente_etiqueta, monitoreo_insights,
+                                           tendencia_etiqueta, texto_informativo,
+                                           valor_parametro)
 
 TOTALES = {"casos_pct": 15.2}
 
@@ -351,6 +352,63 @@ class MonitoreoMuestraLosTextosTests(AppTestCase):
         distintivos = re.findall(r'badge badge-(\w+)">(\w+)<', html)
         self.assertTrue(distintivos)
         self.assertEqual([c for c, _ in distintivos], [t.lower() for _, t in distintivos])
+
+
+class UsuariosTextosTests(unittest.TestCase):
+    def test_estado_de_la_cuenta(self):
+        self.assertEqual([estado_usuario(c) for c in ("activo", "pendiente", "inactivo")],
+                         ["Activo", "Pendiente", "Inactivo"])
+
+    def test_fecha_y_hora(self):
+        momento = datetime(2026, 10, 6, 14, 5, 33)
+        self.assertEqual(fecha_hora(momento), "2026-10-06 14:05")
+        self.assertEqual(fecha_hora(momento, segundos=True), "2026-10-06 14:05:33")
+        self.assertIsNone(fecha_hora(None))
+
+
+class UsuariosMuestraCadaEstadoTests(ConUsuarioSimulado):
+    """Los tres estados, una cuenta sin rol y la propia, con datos simulados:
+    la base de demostracion no tiene cuentas sin rol."""
+
+    def _usuario(self, uid, nombre, estado, roles, acceso):
+        return {"id": uid, "nombre": nombre, "correo": f"{uid}@x.mx", "roles": roles,
+                "estado": estado, "ultimo_acceso": acceso}
+
+    @patch("frontend_web.app.routes.queries.get_roles_catalogo", return_value=[])
+    @patch("frontend_web.app.routes.queries.get_usuarios_resumen")
+    @patch("frontend_web.app.routes.queries.get_usuarios_lista")
+    def test_cada_fila(self, mock_lista, mock_resumen, _roles):
+        mock_resumen.return_value = {"total": 3, "activos": 1, "pendientes": 1, "inactivos": 1}
+        mock_lista.return_value = [
+            self._usuario(999, "Alfa", "activo", "Administrador",
+                          datetime(2026, 10, 6, 14, 5, 33)),
+            self._usuario(2, "Beta", "pendiente", None, None),
+            self._usuario(3, "Gama", "inactivo", "Analista", datetime(2026, 9, 1, 8, 0)),
+        ]
+        with self.app.test_client() as client:
+            client.set_cookie(COOKIE_NAME, self._token("ADMINISTRADOR"))
+            html = client.get("/usuarios").get_data(as_text=True)
+        alfa, resto = html.split(">Alfa<")[1].split(">Beta<")
+        beta, gama = resto.split(">Gama<")
+
+        self.assertIn("<td>Administrador</td>", alfa)
+        self.assertIn('badge badge-activo">Activo<', alfa)
+        self.assertIn("<td>2026-10-06 14:05</td>", alfa)
+        self.assertIn('name="activar" value="0"', alfa)
+        self.assertIn("disabled title=No-puedes-desactivarte-a-ti-mismo", alfa)
+
+        self.assertIn("<td>Sin rol asignado</td>", beta)
+        self.assertIn('badge badge-pendiente">Pendiente<', beta)
+        self.assertIn("<td>Nunca</td>", beta)
+        self.assertIn('name="activar" value="0"', beta)
+        self.assertNotIn("No-puedes-desactivarte", beta)
+        self.assertIn("Desactivar", beta)
+
+        self.assertIn('badge badge-inactivo">Inactivo<', gama)
+        self.assertIn("<td>2026-09-01 08:00</td>", gama)
+        self.assertIn('name="activar" value="1"', gama)
+        self.assertIn("Reactivar", gama)
+        self.assertNotIn("Desactivar", gama)
 
 
 if __name__ == "__main__":
