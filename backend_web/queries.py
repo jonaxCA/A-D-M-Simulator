@@ -873,117 +873,17 @@ def get_usuarios_lista(busqueda=None, rol_id=None, estado=None):
 # ---------------------------------------------------------------------------
 # Auditoria (pantalla adaptada del diseno de la companera)
 # ---------------------------------------------------------------------------
-# Nota: audit_log NO tiene columnas "descripcion" ni "estado" -- se arman
-# aqui: descripcion es un texto generado a partir de accion+entidad, y estado
-# se deriva de la accion (LOGIN_FAILED/PERMISSION_DENIED = Fallido, resto =
-# Correcto). "Usuarios activos" del resumen es una aproximacion: usuarios con
-# un LOGIN registrado en las ultimas 24 horas (no hay tabla de sesiones).
+# Nota: audit_log NO tiene columnas "descripcion" ni "estado": las arma
+# frontend_web/app/presentacion.py con la accion, el modulo y data_after.
+# "Usuarios activos" del resumen es una aproximacion: usuarios con un LOGIN
+# registrado en las ultimas 24 horas (no hay tabla de sesiones).
 #
 # Caso especial: RUN (ciclo de vida de una simulacion). ejecutar_run() audita
-# las 4 etapas -- solicitada/ejecutando/completada/fallida -- pero las 4
-# quedan con la MISMA action='RUN' en audit_log (ver backend_web/simulaciones.py
-# y backend_web/audit.py); lo que las distingue es data_after['estado']
-# ('encolado'/'ejecutando'/'completado'/'fallido'/'cancelado'). Si la bitacora
-# solo mira `action`, las 4 etapas se ven identicas ("Ejecucion"/"Correcto"
-# las 4, incluida la fallida) y parecen "no aparecer" -- ese fue el bug
-# reportado en UAT. _descripcion_run()/_estado_run() abren data_after para
-# que cada etapa tenga su propio texto y su propio badge.
-
-ACCIONES_FALLIDAS = ("LOGIN_FAILED", "PERMISSION_DENIED")
-
-DESCRIPCION_POR_ACCION = {
-    "LOGIN": "Inicio de sesion exitoso",
-    "LOGIN_FAILED": "Intento de inicio de sesion fallido",
-    "LOGOUT": "Cierre de sesion",
-    "EXPORT": "Exportacion de datos",
-    "CREATE": "Alta de registro",
-    "UPDATE": "Modificacion de registro",
-    "DELETE": "Baja de registro",
-    "PUBLISH": "Publicacion",
-    "RUN": "Ejecucion de simulacion",
-    "CANCEL": "Cancelacion",
-    "SYNC": "Sincronizacion",
-    "PERMISSION_DENIED": "Acceso denegado por permisos",
-}
-
-# Etiqueta de la etapa (para la columna Descripcion) y clase visual de estado
-# (para la columna Estado) por cada valor que puede tomar data_after['estado']
-# en un evento RUN. El texto reusa el vocabulario del propio UAT ("solicitada,
-# ejecutando, completada y fallida"); el estado reusa las MISMAS 3 clases de
-# badge que ya existen en styles.css (correcto/pendiente/fallido/inactivo) --
-# no se agrega ninguna clase nueva.
-RUN_ETAPA = {
-    "encolado": ("Simulacion solicitada", "Pendiente"),
-    "ejecutando": ("Simulacion en ejecucion (inicio)", "Pendiente"),
-    "completado": ("Simulacion completada", "Correcto"),
-    "fallido": ("Simulacion fallida", "Fallido"),
-    "cancelado": ("Simulacion cancelada", "Inactivo"),
-    "abortado_antes_de_ejecutar": (
-        "Simulacion no iniciada (ya tomada por otro proceso)", "Inactivo",
-    ),
-}
-
-# Envio, aprobacion y rechazo de una version quedan como UPDATE en audit_log;
-# lo que los distingue es data_after['status']. Sin esto los tres se ven
-# iguales ("Modificacion de registro"), igual que pasaba con RUN.
-VERSION_ETAPA = {
-    "en_revision": "Version enviada a revision",
-    "aprobado": "Version aprobada",
-    "rechazado": "Version rechazada",
-}
-
-
-
-def _resumen_indicadores_run(data_after):
-    """Resumen corto de resultado.resumen para la Descripcion de una etapa
-    'completado' (item del UAT: la completada debe verse "con indicadores")."""
-    indicadores = (data_after or {}).get("indicadores") or {}
-    partes = []
-    if "tasa_ataque" in indicadores:
-        try:
-            partes.append(f"tasa de ataque {float(indicadores['tasa_ataque']) * 100:.1f}%")
-        except (TypeError, ValueError):
-            pass
-    if "casos_acumulados" in indicadores:
-        partes.append(f"{indicadores['casos_acumulados']} casos acumulados")
-    if "fallecimientos" in indicadores:
-        partes.append(f"{indicadores['fallecimientos']} fallecimientos")
-    return ", ".join(partes)
-
-
-def _describe_evento_auditoria(action, entity_id, data_after, entity_type=None):
-    """(descripcion, estado_visible) para una fila de audit_log. Aisla el
-    caso especial de RUN (ver nota arriba) del resto de acciones, que siguen
-    la regla original: LOGIN_FAILED/PERMISSION_DENIED = Fallido, todo lo
-    demas = Correcto."""
-    if action == "RUN":
-        etapa = (data_after or {}).get("estado")
-        base, estado = RUN_ETAPA.get(etapa, (DESCRIPCION_POR_ACCION["RUN"], "Correcto"))
-        try:
-            from .simulaciones import id_simulacion
-            identificador = f" {id_simulacion(entity_id)}" if entity_id else ""
-        except (ImportError, ValueError, TypeError):
-            identificador = ""
-        if etapa == "completado":
-            resumen = _resumen_indicadores_run(data_after)
-            descripcion = f"{base}{identificador}" + (f": {resumen}" if resumen else "")
-        elif etapa == "fallido":
-            error = (data_after or {}).get("error") or "sin detalle"
-            descripcion = f"{base}{identificador}: {error}"
-        else:
-            descripcion = f"{base}{identificador}"
-        return descripcion, estado
-    if action == "UPDATE" and entity_type == "scenario_versions":
-        etapa = (data_after or {}).get("status")
-        if etapa in VERSION_ETAPA:
-            numero = (data_after or {}).get("version_number")
-            sufijo = f" (v{numero})" if numero else ""
-            return f"{VERSION_ETAPA[etapa]}{sufijo}", "Correcto"
-
-
-    descripcion = DESCRIPCION_POR_ACCION.get(action, action)
-    estado = "Fallido" if action in ACCIONES_FALLIDAS else "Correcto"
-    return descripcion, estado
+# cada etapa -- solicitada/ejecutando/completada/fallida -- con la MISMA
+# action='RUN' (ver backend_web/simulaciones.py y backend_web/audit.py); lo
+# que las distingue es data_after['estado'] ('encolado'/'ejecutando'/
+# 'completado'/'fallido'/'cancelado'). Por eso el filtro de Accion acepta la
+# forma compuesta 'RUN::<etapa>'.
 
 
 def get_auditoria_resumen():
@@ -1009,7 +909,10 @@ def get_auditoria_lista(busqueda=None, usuario_id=None, modulo=None, accion=None
     'RUN::fallido') que produce get_acciones_auditoria() -- necesaria porque
     las 4 etapas de una corrida comparten la misma action='RUN' y solo se
     distinguen por data_after['estado']; sin la forma compuesta, el filtro de
-    Accion no podria aislar solo las 'fallidas' o solo las 'completadas'."""
+    Accion no podria aislar solo las 'fallidas' o solo las 'completadas'.
+
+    Cada evento viaja crudo, con `datos` = data_after; la descripcion y el
+    estado para mostrar los arma frontend_web/app/presentacion.py."""
     condiciones = []
     params = []
     if busqueda:
@@ -1045,20 +948,16 @@ def get_auditoria_lista(busqueda=None, usuario_id=None, modulo=None, accion=None
         """,
         tuple(params),
     )
-    out = []
-    for r in rows:
-        descripcion, estado = _describe_evento_auditoria(r["action"], r["entity_id"], r["data_after"], r["entity_type"])
-        out.append({
-            "id": r["id"],
-            "fecha": r["occurred_at"].strftime("%Y-%m-%d %H:%M:%S"),
-            "usuario": r["usuario"] or "Anonimo",
-            "modulo": r["entity_type"],
-            "accion": r["action"],
-            "descripcion": descripcion,
-            "ip": str(r["ip_address"]) if r["ip_address"] else "-",
-            "estado": estado,
-        })
-    return out
+    return [{
+        "id": r["id"],
+        "fecha": r["occurred_at"],
+        "usuario": r["usuario"],
+        "modulo": r["entity_type"],
+        "accion": r["action"],
+        "entidad_id": r["entity_id"],
+        "datos": r["data_after"],
+        "ip": r["ip_address"],
+    } for r in rows]
 
 
 def get_modulos_auditoria():
@@ -1067,26 +966,17 @@ def get_modulos_auditoria():
 
 
 def get_acciones_auditoria():
-    """Opciones para el filtro Accion. RUN se desglosa en sus etapas reales
-    (RUN::encolado, RUN::ejecutando, ...) usando data_after['estado'] -- ver
-    nota junto a RUN_ETAPA -- para que el filtro pueda aislar, por ejemplo,
-    solo las simulaciones fallidas."""
+    """Los valores que acepta `accion` en get_auditoria_lista(), para el
+    filtro Accion: cada accion registrada y, en lugar de RUN, sus etapas
+    reales (RUN::encolado, RUN::ejecutando, ...) segun data_after['estado'],
+    para que el filtro pueda aislar, por ejemplo, solo las simulaciones
+    fallidas."""
     rows = query("SELECT DISTINCT action FROM audit_log WHERE action <> 'RUN' ORDER BY action")
-    opciones = [{"valor": r["action"], "etiqueta": DESCRIPCION_POR_ACCION.get(r["action"], r["action"])}
-                for r in rows]
-
     etapas = query(
         "SELECT DISTINCT data_after->>'estado' AS etapa FROM audit_log "
         "WHERE action = 'RUN' AND data_after->>'estado' IS NOT NULL ORDER BY 1"
     )
-    orden_etapas = list(RUN_ETAPA.keys())
-    filas_etapas = [r["etapa"] for r in etapas]
-    filas_etapas.sort(key=lambda e: orden_etapas.index(e) if e in orden_etapas else len(orden_etapas))
-    for etapa in filas_etapas:
-        etiqueta, _estado = RUN_ETAPA.get(etapa, (f"Ejecucion de simulacion ({etapa})", "Correcto"))
-        opciones.append({"valor": f"RUN::{etapa}", "etiqueta": etiqueta})
-
-    return opciones
+    return [r["action"] for r in rows] + [f"RUN::{r['etapa']}" for r in etapas]
 
 
 def get_usuarios_para_filtro():

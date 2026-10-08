@@ -9,8 +9,8 @@ incluida la fallida). Ver backend_web/tests/test_auditoria.py para las
 pruebas de la funcion pura; este archivo confirma el HTML que de verdad
 recibe el admin.
 
-Nota de acentos: las descripciones que arma backend_web.queries (igual que
-DESCRIPCION_POR_ACCION ya existente, p.ej. "Inicio de sesion exitoso") van
+Nota de acentos: las descripciones que arma frontend_web/app/presentacion.py
+(igual que _DESCRIPCION_POR_ACCION, p.ej. "Inicio de sesion exitoso") van
 SIN acentos -- es la convencion que ya tenia ese diccionario antes de este
 cambio. Lo que si tiene acentos es el texto fijo de la plantilla
 (auditoria.html: "Bitácora", "Acción", etc.), que este archivo no toca.

@@ -13,9 +13,11 @@ from frontend_web.tests.base import AppTestCase, ConUsuarioSimulado, requiere_ba
 from backend_web import queries
 from backend_web.db import get_conn
 from frontend_web.app.permisos import COOKIE_NAME
-from frontend_web.app.presentacion import (actividad_etiqueta, estado_catalogo, estado_usuario,
-                                           estado_version, fecha_corta, fecha_hora,
-                                           fuente_detalle, fuente_etiqueta, monitoreo_insights,
+from frontend_web.app.presentacion import (actividad_etiqueta, describe_evento_auditoria,
+                                           estado_catalogo, estado_usuario, estado_version,
+                                           fecha_corta, fecha_hora, filas_bitacora,
+                                           fuente_detalle, fuente_etiqueta,
+                                           monitoreo_insights, opciones_accion,
                                            tendencia_etiqueta, texto_informativo,
                                            valor_parametro)
 
@@ -409,6 +411,85 @@ class UsuariosMuestraCadaEstadoTests(ConUsuarioSimulado):
         self.assertIn('name="activar" value="1"', gama)
         self.assertIn("Reactivar", gama)
         self.assertNotIn("Desactivar", gama)
+
+
+class BitacoraTextosTests(unittest.TestCase):
+    """Las etapas de RUN y de las versiones en describe_evento_auditoria las
+    cubre backend_web/tests/test_auditoria.py."""
+
+    def test_opciones_del_filtro_con_las_etapas_en_el_orden_de_la_corrida(self):
+        valores = ["DELETE", "LOGIN", "OTRA", "RUN::abortado_antes_de_ejecutar",
+                   "RUN::completado", "RUN::encolado", "RUN::zzz"]
+        self.assertEqual(opciones_accion(valores), [
+            {"valor": "DELETE", "etiqueta": "Baja de registro"},
+            {"valor": "LOGIN", "etiqueta": "Inicio de sesion exitoso"},
+            {"valor": "OTRA", "etiqueta": "OTRA"},
+            {"valor": "RUN::encolado", "etiqueta": "Simulacion solicitada"},
+            {"valor": "RUN::completado", "etiqueta": "Simulacion completada"},
+            {"valor": "RUN::abortado_antes_de_ejecutar",
+             "etiqueta": "Simulacion no iniciada (ya tomada por otro proceso)"},
+            {"valor": "RUN::zzz", "etiqueta": "Ejecucion de simulacion (zzz)"},
+        ])
+
+    def test_cada_evento_con_su_descripcion_y_su_estado(self):
+        corrida = {"id": 1, "fecha": None, "usuario": None, "modulo": "simulation_run",
+                   "accion": "RUN", "entidad_id": "42", "datos": {"estado": "fallido",
+                                                                 "error": "boom"}, "ip": None}
+        version = {**corrida, "id": 2, "modulo": "scenario_versions", "accion": "UPDATE",
+                   "entidad_id": "7", "datos": {"status": "aprobado", "version_number": 2}}
+        self.assertEqual(filas_bitacora([corrida, version]), [
+            {**corrida, "descripcion": "Simulacion fallida SIM-00042: boom", "estado": "Fallido"},
+            {**version, "descripcion": "Version aprobada (v2)", "estado": "Correcto"}])
+
+    def test_acceso_denegado_se_ve_fallido(self):
+        self.assertEqual(describe_evento_auditoria("PERMISSION_DENIED", None, None, "users"),
+                         ("Acceso denegado por permisos", "Fallido"))
+
+
+class BitacoraMuestraCadaEventoTests(ConUsuarioSimulado):
+    """Fecha, usuario, IP y estado de cada fila, y las opciones del filtro, con
+    datos simulados."""
+
+    def _evento(self, eid, accion, modulo, datos, usuario, ip):
+        return {"id": eid, "fecha": datetime(2026, 10, 6, 14, 5, eid), "usuario": usuario,
+                "modulo": modulo, "accion": accion, "entidad_id": str(eid), "datos": datos,
+                "ip": ip}
+
+    @patch("frontend_web.app.routes.queries.get_acciones_auditoria")
+    @patch("frontend_web.app.routes.queries.get_modulos_auditoria", return_value=[])
+    @patch("frontend_web.app.routes.queries.get_usuarios_para_filtro", return_value=[])
+    @patch("frontend_web.app.routes.queries.get_auditoria_resumen")
+    @patch("frontend_web.app.routes.queries.get_auditoria_lista")
+    def test_cada_fila_y_el_filtro(self, mock_lista, mock_resumen, _usuarios, _modulos,
+                                   mock_acciones):
+        mock_resumen.return_value = {"eventos_totales": 2, "criticas": 0, "fallidos": 1,
+                                     "activos_24h": 0}
+        mock_lista.return_value = [
+            self._evento(7, "RUN", "simulation_run", {"estado": "fallido", "error": "boom"},
+                         "Ana", "10.9.8.7"),
+            self._evento(9, "LOGIN_FAILED", "users", None, None, None),
+        ]
+        mock_acciones.return_value = ["LOGIN_FAILED", "RUN::fallido", "RUN::encolado"]
+        with self.app.test_client() as client:
+            client.set_cookie(COOKIE_NAME, self._token("ADMINISTRADOR"))
+            html = client.get("/auditoria").get_data(as_text=True)
+        corrida, login = html.split("<tbody>")[1].split("</tbody>")[0].split("</tr>")[:2]
+
+        self.assertIn('<td class="suave">2026-10-06 14:05:07</td>', corrida)
+        self.assertIn('<td class="fuerte">Ana</td>', corrida)
+        self.assertIn("Simulacion fallida SIM-00007: boom", corrida)
+        self.assertIn('<td class="suave">10.9.8.7</td>', corrida)
+        self.assertIn('badge badge-fallido">Fallido<', corrida)
+
+        self.assertIn('<td class="suave">2026-10-06 14:05:09</td>', login)
+        self.assertIn('<td class="fuerte">Anonimo</td>', login)
+        self.assertIn("Intento de inicio de sesion fallido", login)
+        self.assertIn('<td class="suave">-</td>', login)
+
+        opciones = re.findall(r'<option value="(RUN::\w+|LOGIN_FAILED)" >([^<]+)<', html)
+        self.assertEqual(opciones, [("LOGIN_FAILED", "Intento de inicio de sesion fallido"),
+                                    ("RUN::encolado", "Simulacion solicitada"),
+                                    ("RUN::fallido", "Simulacion fallida")])
 
 
 if __name__ == "__main__":

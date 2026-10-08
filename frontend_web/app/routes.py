@@ -1453,12 +1453,12 @@ def auditoria():
     accion = request.args.get("accion") or None
 
     resumen = queries.get_auditoria_resumen()
-    eventos = queries.get_auditoria_lista(
+    eventos = presentacion.filas_bitacora(queries.get_auditoria_lista(
         busqueda=busqueda, usuario_id=usuario_id, modulo=modulo, accion=accion, limit=100
-    )
+    ))
     usuarios_filtro = queries.get_usuarios_para_filtro()
     modulos = queries.get_modulos_auditoria()
-    acciones = queries.get_acciones_auditoria()
+    acciones = presentacion.opciones_accion(queries.get_acciones_auditoria())
 
     return render_template(
         "auditoria.html",
