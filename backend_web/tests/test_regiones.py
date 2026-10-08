@@ -461,5 +461,108 @@ class ActualizaGruposEdadTests(unittest.TestCase):
         self.assertEqual(self._bitacora_nueva(), [])
 
 
+class CorreccionGruposEdadSinBaseTests(unittest.TestCase):
+    """Los pasos de actualiza_grupos_edad_municipio que no tocan la base: lo
+    que se revisa del formulario y lo que se compara contra lo guardado."""
+
+    ACTUALES = {"0-19": 10, "20-39": 20, "40-59": 30, "60-79": 40, "80+": 5}
+    ESPERADOS = {**ACTUALES, "edad_no_especificada": 3}
+
+    def test_el_motivo_es_obligatorio_y_de_500_caracteres_como_mucho(self):
+        valida = queries._valida_correccion_grupos
+        for motivo in ("", "   ", None):
+            self.assertEqual(valida(self.ACTUALES, motivo),
+                             "Indica la fuente o el motivo de la corrección.")
+        self.assertIsNone(valida(self.ACTUALES, "x" * 500))
+        self.assertIsNone(valida(self.ACTUALES, "  " + "x" * 500 + "  "))
+        self.assertEqual(valida(self.ACTUALES, "x" * 501),
+                         "La fuente o motivo no puede pasar de 500 caracteres.")
+
+    def test_tienen_que_venir_las_cinco_bandas_y_nada_mas(self):
+        sin_una = {g: v for g, v in self.ACTUALES.items() if g != "80+"}
+        for grupos in (sin_una, {**self.ACTUALES, "edad_no_especificada": 3}):
+            self.assertEqual(queries._valida_correccion_grupos(grupos, "Motivo"),
+                             "Debes enviar las cinco bandas de edad.")
+
+    def test_lo_guardado_tiene_que_estar_completo(self):
+        revisa = queries._revisa_correccion_grupos
+        movidas = {**self.ACTUALES, "0-19": 9, "20-39": 21}
+        sin_una = {g: v for g, v in self.ACTUALES.items() if g != "60-79"}
+        for actuales, sin_edad in ((sin_una, 3), (self.ACTUALES, None)):
+            self.assertIn("no tiene todas sus bandas de edad cargadas",
+                          revisa(movidas, self.ESPERADOS, actuales, sin_edad))
+        self.assertIsNone(revisa(movidas, self.ESPERADOS, self.ACTUALES, 3))
+
+    def test_un_cambio_en_la_edad_no_especificada_tambien_es_conflicto(self):
+        movidas = {**self.ACTUALES, "0-19": 9, "20-39": 21}
+        self.assertIn("Los datos del municipio cambiaron",
+                      queries._revisa_correccion_grupos(movidas, self.ESPERADOS,
+                                                        self.ACTUALES, 4))
+        # Si tambien cambio una banda, gana el aviso de las bandas.
+        self.assertIn("Otra persona corrigió las bandas",
+                      queries._revisa_correccion_grupos(
+                          movidas, {**self.ESPERADOS, "80+": 6}, self.ACTUALES, 4))
+
+
+class CorreccionGruposEdadBitacoraTests(unittest.TestCase):
+    """Lo que la correccion de bandas deja en la bitacora y a quien rechaza,
+    sobre Agualeguas como ActualizaGruposEdadTests. Cada prueba deja las
+    bandas como estaban."""
+
+    CODIGO = "19002"
+
+    def setUp(self):
+        self.admin = contexto_de_prueba(usuario_con_rol("ADMINISTRADOR"))
+        self.region_id = query("SELECT id FROM regions WHERE code = %s",
+                               (self.CODIGO,), one=True)["id"]
+        self.estado_id = query("SELECT id FROM regions WHERE code = '19'", one=True)["id"]
+        bandas = {rid: query("SELECT age_group, population FROM region_age_groups "
+                             "WHERE region_id = %s", (rid,))
+                  for rid in (self.region_id, self.estado_id)}
+        self.addCleanup(self._restaura_bandas, bandas)
+        desglose = queries.get_grupos_edad_municipio(self.region_id)
+        self.actuales = dict(desglose["grupos"])
+        self.esperados = {**self.actuales,
+                          "edad_no_especificada": desglose["edad_no_especificada"]}
+        self.ultima_bitacora = query("SELECT coalesce(max(id), 0) AS m FROM audit_log",
+                                     one=True)["m"]
+
+    def _restaura_bandas(self, bandas):
+        for rid, filas in bandas.items():
+            for fila in filas:
+                _restaura("UPDATE region_age_groups SET population = %s "
+                          "WHERE region_id = %s AND age_group = %s",
+                          (fila["population"], rid, fila["age_group"]))
+
+    def _movidas(self):
+        return {**self.actuales, "0-19": self.actuales["0-19"] - 2,
+                "20-39": self.actuales["20-39"] + 2}
+
+    def test_el_motivo_se_guarda_recortado_y_el_estado_nombra_al_municipio(self):
+        ok, error, _ = queries.actualiza_grupos_edad_municipio(
+            self.region_id, self._movidas(), self.esperados, "  Conteo 2025  ",
+            contexto=self.admin)
+        self.assertTrue(ok, error)
+        filas = query("""SELECT data_after ->> 'age_correction_reason' AS motivo
+                         FROM audit_log WHERE id > %s AND entity_type = 'regions'
+                         ORDER BY id""", (self.ultima_bitacora,))
+        self.assertEqual([f["motivo"] for f in filas], [
+            "Conteo 2025", "Agregado estatal tras corregir Agualeguas: Conteo 2025"])
+
+    def test_una_region_de_nuevo_leon_que_no_es_municipio_se_rechaza(self):
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""INSERT INTO regions (code, name, level, parent_region_id)
+                               VALUES ('19ZZZ-PRUEBA', 'AGEB de prueba', 'ageb', %s)
+                               RETURNING id""", (self.estado_id,))
+                ageb_id = cur.fetchone()[0]
+            conn.commit()
+        self.addCleanup(_restaura, "DELETE FROM regions WHERE id = %s", (ageb_id,))
+        ok, error, _ = queries.actualiza_grupos_edad_municipio(
+            ageb_id, self._movidas(), self.esperados, "Motivo", contexto=self.admin)
+        self.assertFalse(ok)
+        self.assertEqual(error, "Ese municipio ya no existe en el catálogo.")
+
+
 if __name__ == "__main__":
     unittest.main()

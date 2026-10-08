@@ -1850,141 +1850,37 @@ def actualiza_grupos_edad_municipio(region_id, grupos, esperados,
     """Corrige las bandas de un municipio y su agregado estatal en una sola
     transaccion. Rechaza formularios obsoletos y conserva la suma de población
     con edad declarada: esta pantalla corrige clasificacion, no inventa ni
-    elimina personas. El trigger 022 deriva el 60+ de 60-79 y 80+."""
-    if not motivo or not motivo.strip():
-        return False, "Indica la fuente o el motivo de la corrección.", None
-    if len(motivo.strip()) > 500:
-        return False, "La fuente o motivo no puede pasar de 500 caracteres.", None
-    if set(grupos) != set(GRUPOS_EDAD_MUNICIPIO):
-        return False, "Debes enviar las cinco bandas de edad.", None
+    elimina personas. El trigger 022 deriva el 60+ de 60-79 y 80+.
+
+    Cada paso es una funcion de abajo y todos usan el mismo cursor: si uno
+    falla, no queda nada escrito, ni en las bandas ni en la bitacora."""
+    error = _valida_correccion_grupos(grupos, motivo)
+    if error:
+        return False, error, None
+    motivo = motivo.strip()
 
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """SELECT r.id, r.name, r.level, r.parent_region_id
-                       FROM regions r
-                       JOIN regions e ON e.id = r.parent_region_id
-                       WHERE r.id = %s AND e.code = %s
-                       FOR UPDATE OF r""",
-                    (region_id, NL_ESTADO_CODE),
-                )
-                region = cur.fetchone()
-                if not region or region[2] != "municipio":
+                municipio = _bloquea_municipio(cur, region_id)
+                if municipio is None:
                     return False, "Ese municipio ya no existe en el catálogo.", None
-                municipio_id, nombre, _, estado_id = region
+                municipio_id, nombre, estado_id = municipio
 
-                cur.execute(
-                    """SELECT g.age_group, g.lower_bound, g.population
-                       FROM region_age_groups g
-                       WHERE g.region_id = %s
-                       FOR UPDATE""",
-                    (region_id,),
-                )
-                rows = cur.fetchall()
-                actuales = {r[0]: r[2] for r in rows if r[1] is not None}
-                edad_no_especificada = next(
-                    (r[2] for r in rows if r[1] is None), None)
-                if (set(actuales) != set(GRUPOS_EDAD_MUNICIPIO)
-                        or edad_no_especificada is None):
-                    return False, (
-                        "Este municipio no tiene todas sus bandas de edad cargadas. "
-                        "Vuelve a ejecutar la semilla nl_municipios_completos.sql."
-                    ), None
+                actuales, edad_no_especificada = _bloquea_grupos_edad(cur, region_id)
+                error = _revisa_correccion_grupos(grupos, esperados, actuales,
+                                                  edad_no_especificada)
+                if error:
+                    return False, error, None
 
-                if any(esperados.get(g) != actuales[g]
-                       for g in GRUPOS_EDAD_MUNICIPIO):
-                    return False, (
-                        "Otra persona corrigió las bandas mientras editabas. "
-                        "Recarga la página e intenta de nuevo."
-                    ), None
-                if esperados.get("edad_no_especificada") != edad_no_especificada:
-                    return False, (
-                        "Los datos del municipio cambiaron mientras editabas. "
-                        "Recarga la página e intenta de nuevo."
-                    ), None
-                if sum(grupos.values()) != sum(actuales.values()):
-                    return False, (
-                        "La suma de las cinco bandas debe conservar la población "
-                        "con edad declarada del municipio."
-                    ), None
-                if all(grupos[g] == actuales[g] for g in GRUPOS_EDAD_MUNICIPIO):
-                    return False, "No hay cambios en las bandas de edad.", None
-
-                antes = _snap_grupos_edad(actuales, edad_no_especificada)
-                grupos_modificados = [g for g in GRUPOS_EDAD_MUNICIPIO
-                                      if grupos[g] != actuales[g]]
-                for grupo in GRUPOS_EDAD_MUNICIPIO:
-                    if grupos[grupo] != actuales[grupo]:
-                        cur.execute(
-                            """UPDATE region_age_groups SET population = %s
-                               WHERE region_id = %s AND age_group = %s""",
-                            (grupos[grupo], region_id, grupo),
-                        )
-
-                cur.execute(
-                    """SELECT age_group, sum(g.population)
-                       FROM region_age_groups g
-                       JOIN regions m ON m.id = g.region_id
-                       WHERE m.parent_region_id = %s AND m.level = 'municipio'
-                       GROUP BY age_group""",
-                    (estado_id,),
-                )
-                totales_estado = dict(cur.fetchall())
-                cur.execute(
-                    """SELECT age_group, population
-                       FROM region_age_groups WHERE region_id = %s FOR UPDATE""",
-                    (estado_id,),
-                )
-                estado_antes = {r[0]: r[1] for r in cur.fetchall()}
-                for grupo, total in totales_estado.items():
-                    if estado_antes.get(grupo) != total:
-                        cur.execute(
-                            """UPDATE region_age_groups SET population = %s
-                               WHERE region_id = %s AND age_group = %s""",
-                            (total, estado_id, grupo),
-                        )
-
-                cur.execute(
-                    """SELECT age_group, population
-                       FROM region_age_groups WHERE region_id = %s""",
-                    (region_id,),
-                )
-                despues = {r[0]: r[1] for r in cur.fetchall()}
-                cur.execute(
-                    "SELECT population_60plus FROM regions WHERE id = %s",
-                    (region_id,),
-                )
-                p60_despues = cur.fetchone()[0]
-                log_audit(
-                    contexto, "UPDATE", "regions", municipio_id,
-                    data_before=antes,
-                    data_after={
-                        **_snap_grupos_edad(despues, edad_no_especificada),
-                        "population_60plus": p60_despues,
-                        "age_groups_modified": grupos_modificados,
-                        "age_correction_reason": motivo.strip(),
-                    },
-                    cur=cur,
-                )
-
-                estado_cambio = any(estado_antes.get(g) != totales_estado.get(g)
-                                    for g in totales_estado)
-                if estado_cambio:
-                    log_audit(
-                        contexto, "UPDATE", "regions", estado_id,
-                        data_before={"population_by_age": estado_antes},
-                        data_after={
-                            "population_by_age": totales_estado,
-                            "age_groups_modified": [
-                                g for g in totales_estado
-                                if estado_antes.get(g) != totales_estado[g]],
-                            "age_correction_reason": (
-                                f"Agregado estatal tras corregir {nombre}: "
-                                f"{motivo.strip()}"),
-                        },
-                        cur=cur,
-                    )
+                modificados = _escribe_grupos_edad(cur, region_id, grupos, actuales)
+                estado_antes, totales_estado = _recalcula_grupos_estado(cur, estado_id)
+                p60_despues = _audita_grupos_municipio(
+                    cur, contexto, municipio_id, region_id, actuales, edad_no_especificada,
+                    modificados, motivo)
+                estado_cambio = _audita_grupos_estado(
+                    cur, contexto, estado_id, estado_antes, totales_estado,
+                    f"Agregado estatal tras corregir {nombre}: {motivo}")
             conn.commit()
         return True, None, {
             "municipio": nombre,
@@ -1993,6 +1889,162 @@ def actualiza_grupos_edad_municipio(region_id, grupos, esperados,
         }
     except psycopg2.errors.CheckViolation:
         return False, "Las bandas no cumplen las restricciones de la base.", None
+
+
+def _valida_correccion_grupos(grupos, motivo):
+    """Lo que se revisa sin tocar la base: el motivo y que vengan las cinco
+    bandas. Regresa el error o None."""
+    if not motivo or not motivo.strip():
+        return "Indica la fuente o el motivo de la corrección."
+    if len(motivo.strip()) > 500:
+        return "La fuente o motivo no puede pasar de 500 caracteres."
+    if set(grupos) != set(GRUPOS_EDAD_MUNICIPIO):
+        return "Debes enviar las cinco bandas de edad."
+    return None
+
+
+def _bloquea_municipio(cur, region_id):
+    """(id, nombre, id del estado) del municipio, bloqueado hasta el final de
+    la transaccion; None si no es un municipio de Nuevo Leon."""
+    cur.execute(
+        """SELECT r.id, r.name, r.level, r.parent_region_id
+           FROM regions r
+           JOIN regions e ON e.id = r.parent_region_id
+           WHERE r.id = %s AND e.code = %s
+           FOR UPDATE OF r""",
+        (region_id, NL_ESTADO_CODE),
+    )
+    region = cur.fetchone()
+    if not region or region[2] != "municipio":
+        return None
+    municipio_id, nombre, _, estado_id = region
+    return municipio_id, nombre, estado_id
+
+
+def _bloquea_grupos_edad(cur, region_id):
+    """Las bandas del municipio y su edad no especificada, bloqueadas. Si falta
+    alguna fila, el diccionario o la edad no especificada vienen incompletos."""
+    cur.execute(
+        """SELECT g.age_group, g.lower_bound, g.population
+           FROM region_age_groups g
+           WHERE g.region_id = %s
+           FOR UPDATE""",
+        (region_id,),
+    )
+    rows = cur.fetchall()
+    actuales = {r[0]: r[2] for r in rows if r[1] is not None}
+    edad_no_especificada = next((r[2] for r in rows if r[1] is None), None)
+    return actuales, edad_no_especificada
+
+
+def _revisa_correccion_grupos(grupos, esperados, actuales, edad_no_especificada):
+    """Lo que se revisa contra lo guardado: que esten todas las bandas, que
+    nadie las haya cambiado mientras se editaban (`esperados`), que la suma se
+    conserve y que haya algo que cambiar. Regresa el error o None."""
+    if (set(actuales) != set(GRUPOS_EDAD_MUNICIPIO)
+            or edad_no_especificada is None):
+        return ("Este municipio no tiene todas sus bandas de edad cargadas. "
+                "Vuelve a ejecutar la semilla nl_municipios_completos.sql.")
+    if any(esperados.get(g) != actuales[g] for g in GRUPOS_EDAD_MUNICIPIO):
+        return ("Otra persona corrigió las bandas mientras editabas. "
+                "Recarga la página e intenta de nuevo.")
+    if esperados.get("edad_no_especificada") != edad_no_especificada:
+        return ("Los datos del municipio cambiaron mientras editabas. "
+                "Recarga la página e intenta de nuevo.")
+    if sum(grupos.values()) != sum(actuales.values()):
+        return ("La suma de las cinco bandas debe conservar la población "
+                "con edad declarada del municipio.")
+    if all(grupos[g] == actuales[g] for g in GRUPOS_EDAD_MUNICIPIO):
+        return "No hay cambios en las bandas de edad."
+    return None
+
+
+def _escribe_grupos_edad(cur, region_id, grupos, actuales):
+    """Escribe solo las bandas que cambiaron y regresa cuales, en el orden de
+    GRUPOS_EDAD_MUNICIPIO."""
+    modificados = [g for g in GRUPOS_EDAD_MUNICIPIO if grupos[g] != actuales[g]]
+    for grupo in modificados:
+        cur.execute(
+            """UPDATE region_age_groups SET population = %s
+               WHERE region_id = %s AND age_group = %s""",
+            (grupos[grupo], region_id, grupo),
+        )
+    return modificados
+
+
+def _recalcula_grupos_estado(cur, estado_id):
+    """Vuelve a sumar las bandas del estado a partir de sus municipios y
+    escribe las que cambiaron. Regresa (bandas de antes, bandas sumadas)."""
+    cur.execute(
+        """SELECT age_group, sum(g.population)
+           FROM region_age_groups g
+           JOIN regions m ON m.id = g.region_id
+           WHERE m.parent_region_id = %s AND m.level = 'municipio'
+           GROUP BY age_group""",
+        (estado_id,),
+    )
+    totales_estado = dict(cur.fetchall())
+    cur.execute(
+        """SELECT age_group, population
+           FROM region_age_groups WHERE region_id = %s FOR UPDATE""",
+        (estado_id,),
+    )
+    estado_antes = {r[0]: r[1] for r in cur.fetchall()}
+    for grupo, total in totales_estado.items():
+        if estado_antes.get(grupo) != total:
+            cur.execute(
+                """UPDATE region_age_groups SET population = %s
+                   WHERE region_id = %s AND age_group = %s""",
+                (total, estado_id, grupo),
+            )
+    return estado_antes, totales_estado
+
+
+def _audita_grupos_municipio(cur, contexto, municipio_id, region_id, actuales,
+                             edad_no_especificada, modificados, motivo):
+    """Registra la correccion del municipio con sus bandas de antes y de
+    despues. Regresa el 60+ que derivo el trigger."""
+    cur.execute(
+        """SELECT age_group, population
+           FROM region_age_groups WHERE region_id = %s""",
+        (region_id,),
+    )
+    despues = {r[0]: r[1] for r in cur.fetchall()}
+    cur.execute(
+        "SELECT population_60plus FROM regions WHERE id = %s",
+        (region_id,),
+    )
+    p60_despues = cur.fetchone()[0]
+    log_audit(
+        contexto, "UPDATE", "regions", municipio_id,
+        data_before=_snap_grupos_edad(actuales, edad_no_especificada),
+        data_after={
+            **_snap_grupos_edad(despues, edad_no_especificada),
+            "population_60plus": p60_despues,
+            "age_groups_modified": modificados,
+            "age_correction_reason": motivo,
+        },
+        cur=cur,
+    )
+    return p60_despues
+
+
+def _audita_grupos_estado(cur, contexto, estado_id, estado_antes, totales_estado, motivo):
+    """Registra el agregado estatal si alguna banda cambio. Regresa si cambio."""
+    modificados = [g for g in totales_estado if estado_antes.get(g) != totales_estado[g]]
+    if not modificados:
+        return False
+    log_audit(
+        contexto, "UPDATE", "regions", estado_id,
+        data_before={"population_by_age": estado_antes},
+        data_after={
+            "population_by_age": totales_estado,
+            "age_groups_modified": modificados,
+            "age_correction_reason": motivo,
+        },
+        cur=cur,
+    )
+    return True
 
 
 def valida_poblacion_municipio(population_raw, motivo, poblacion_60_actual=None):
