@@ -448,6 +448,10 @@ Para regenerar los datos sintéticos (o ajustar tendencias por municipio):
 python datos/scripts/gen_demo_data.py > datos/postgres/semillas/demo_datos_nl.sql
 ```
 
+Si no cambiaste el script, lo único que cambia en el archivo son los tres hashes de
+contraseña, porque la sal de bcrypt es aleatoria. Cualquier cambio a la semilla se hace en el
+script y no en el archivo: `backend_web/tests/test_archivos_sql.py` falla si dejan de coincidir.
+
 ## Decisiones que falta validar.
 
 - **Tasa de incidencia**: la cambié de "%" (como en el mock de Figma) a *casos por

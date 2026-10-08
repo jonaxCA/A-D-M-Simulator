@@ -20,6 +20,10 @@
   acento; el dump ya lo trae en su encabezado. Sin esa línea, `psql` en Windows lo lee como
   WIN1252 y los acentos quedan dañados en la base. Los generadores de semillas escriben UTF-8
   también en Windows.
+- Las semillas no se editan a mano: se cambia su generador (`scripts/build_regiones_sql.py` o
+  `scripts/gen_demo_data.py`) y se regenera el archivo. `backend_web/tests/test_archivos_sql.py`
+  falla si el archivo ya no sale de su script; en la de demostración solo pueden cambiar los
+  tres hashes de contraseña.
 - No relajes las reglas de negocio de la base para que el código pase: `fn_version_aprobada`,
   el CHECK que impide aprobar la versión propia y el trigger que hace de `audit_log` una tabla
   de solo inserción.
