@@ -36,11 +36,19 @@ class MonitoreoInsightsTests(unittest.TestCase):
         self.assertEqual(_geografica(zonas), "El mayor cambio (+40.0%) se registra en "
                                              "Monterrey durante los últimos 7 días.")
 
-    def test_el_signo_del_cambio(self):
-        self.assertIn("(-25.0%)", _geografica([{"zona": "García", "casos": 3,
-                                                "variacion": -25.0}]))
-        self.assertIn("(+0.0%)", _geografica([{"zona": "García", "casos": 3,
-                                               "variacion": 0.0}]))
+    def test_un_aumento_lleva_su_signo(self):
+        self.assertIn("(+0.5%) se registra en García",
+                      _geografica([{"zona": "García", "casos": 3, "variacion": 0.5}]))
+
+    def test_sin_aumento_no_nombra_ninguna_zona(self):
+        """Un "mayor cambio (+0.0%)" en una zona solo diria cual quedo primera
+        en la lista."""
+        for variaciones in ([0.0, 0.0], [0.0, -10.0], [-25.0, -3.0]):
+            with self.subTest(variaciones=variaciones):
+                zonas = [{"zona": f"Zona {i}", "casos": 3, "variacion": v}
+                         for i, v in enumerate(variaciones)]
+                self.assertEqual(_geografica(zonas),
+                                 "Ninguna zona aumentó sus casos en los últimos 7 días.")
 
     def test_en_empate_gana_la_primera_zona(self):
         zonas = [{"zona": "Apodaca", "casos": 1, "variacion": 10.0},
@@ -354,6 +362,57 @@ class MonitoreoMuestraLosTextosTests(AppTestCase):
         distintivos = re.findall(r'badge badge-(\w+)">(\w+)<', html)
         self.assertTrue(distintivos)
         self.assertEqual([c for c, _ in distintivos], [t.lower() for _, t in distintivos])
+
+
+def _tarjeta_geografica(html):
+    return re.search(r"<h3>Tendencia geográfica</h3>\s*<p>([^<]*)</p>", html).group(1)
+
+
+@requiere_base
+class MonitoreoTarjetaGeograficaTests(ConUsuarioSimulado):
+    """La tarjeta geografica compara todas las zonas del ambito, en el orden fijo
+    de la consulta: no cambia con la pagina, la busqueda ni el orden de la tabla."""
+
+    # Santa Catarina y Zuazua empatan en el mayor aumento y quedan fuera de la
+    # primera pagina: en el orden de la consulta gana Santa Catarina, en el
+    # inverso Zuazua, y entre las 10 primeras, Monterrey.
+    TODAS = [{"id": i, "zona": nombre, "casos": casos, "incidencia": 1.0, "variacion": var,
+              "graves": 0, "estado": "estable"}
+             for i, (nombre, casos, var) in enumerate([
+                 ("Apodaca", 9, 10.0), ("Escobedo", 8, 8.0), ("García", 7, 5.0),
+                 ("Guadalupe", 6, 0.0), ("Juárez", 5, -4.0), ("Monterrey", 4, 12.0),
+                 ("Pesquería", 3, 1.0), ("Salinas Victoria", 3, 2.0), ("San Nicolás", 2, 3.0),
+                 ("San Pedro", 2, 4.0), ("Santa Catarina", 1, 80.0), ("Zuazua", 1, 80.0)], 1)]
+
+    def _zonas(self, busqueda=None, orden="casos", pagina=1, por_pagina=10, **_ambito):
+        zonas = [z for z in self.TODAS if not busqueda or busqueda.lower() in z["zona"].lower()]
+        if orden != "casos":
+            zonas = zonas[::-1]
+        return {"zonas": zonas[(pagina - 1) * por_pagina:pagina * por_pagina],
+                "total": len(zonas), "pagina": pagina,
+                "paginas": max(1, -(-len(zonas) // por_pagina)),
+                "desde": (pagina - 1) * por_pagina + 1, "hasta": min(pagina * por_pagina, len(zonas))}
+
+    def test_el_mismo_texto_en_cualquier_pagina_busqueda_u_orden(self):
+        with patch("frontend_web.app.routes.queries.get_monitoreo_zonas", side_effect=self._zonas):
+            with self.app.test_client() as client:
+                client.set_cookie(COOKIE_NAME, self._token())
+                for consulta in ("", "pagina=2", "q=Apo", "indicador=casos",
+                                 "indicador=incidencia&pagina=2"):
+                    with self.subTest(consulta=consulta):
+                        html = client.get(f"/monitoreo?{consulta}").get_data(as_text=True)
+                        self.assertEqual(_tarjeta_geografica(html),
+                                         "El mayor cambio (+80.0%) se registra en Santa "
+                                         "Catarina durante los últimos 7 días.")
+
+    def test_con_los_datos_de_la_base(self):
+        with self.app.test_client() as client:
+            client.set_cookie(COOKIE_NAME, self._token())
+            textos = {consulta: _tarjeta_geografica(
+                          client.get(f"/monitoreo?dias=90&{consulta}").get_data(as_text=True))
+                      for consulta in ("pagina=1", "pagina=2", "pagina=6", "indicador=casos",
+                                       "indicador=incidencia&pagina=3", "q=San")}
+        self.assertEqual(len(set(textos.values())), 1, textos)
 
 
 class UsuariosTextosTests(unittest.TestCase):

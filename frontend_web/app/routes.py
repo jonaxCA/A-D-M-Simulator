@@ -1046,6 +1046,10 @@ def monitoreo():
     totales = queries.get_monitoreo_totales(**ambito)
     zonas = queries.get_monitoreo_zonas(busqueda=f["busqueda"] or None,
                                         orden=f["indicador"], pagina=pagina, **ambito)
+    # La tarjeta geografica compara todas las zonas del ambito, como las otras
+    # dos tarjetas, y en el orden fijo de la consulta: no depende de la pagina,
+    # la busqueda ni el orden que se eligieron para la tabla.
+    todas = queries.get_monitoreo_zonas(pagina=1, por_pagina=EXPORT_MAX_FILAS, **ambito)
 
     return render_template(
         "monitoreo.html",
@@ -1054,7 +1058,7 @@ def monitoreo():
         sexos=sexos,
         totales=totales,
         zonas=zonas,
-        insights=presentacion.monitoreo_insights(zonas["zonas"], edades, totales, f["dias"]),
+        insights=presentacion.monitoreo_insights(todas["zonas"], edades, totales, f["dias"]),
         enfermedades=queries.get_enfermedades_catalogo(),
         municipios=queries.get_municipios_catalogo(),
         indicadores=INDICADORES,

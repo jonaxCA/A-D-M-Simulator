@@ -255,15 +255,22 @@ def opciones_accion(valores):
 
 def monitoreo_insights(zonas, edades, totales, dias):
     """Los 3 textos de las tarjetas de arriba de Monitoreo. Son funcion pura de
-    lo que ya se consulto: no vuelve a pegarle a la base."""
+    lo que ya se consulto: no vuelve a pegarle a la base.
+
+    `zonas` son todas las del ambito, en un orden fijo: con un empate en la
+    variacion gana la primera, asi que una pagina de la tabla o el orden que
+    eligio la persona cambiarian el texto. Solo se nombra una zona si alguna
+    aumento; si la mayor variacion es 0 o negativa, nombrar una seria mentir."""
     con_casos = [z for z in zonas if z["casos"]]
-    if con_casos:
-        top = max(con_casos, key=lambda z: z["variacion"])
-        signo = "+" if top["variacion"] >= 0 else ""
-        geografica = (f"El mayor cambio ({signo}{top['variacion']}%) se registra en "
-                      f"{top['zona']} durante los últimos 7 días.")
-    else:
+    if not con_casos:
         geografica = "Todavía no hay casos capturados en el periodo seleccionado."
+    else:
+        top = max(con_casos, key=lambda z: z["variacion"])
+        if top["variacion"] > 0:
+            geografica = (f"El mayor cambio (+{top['variacion']}%) se registra en "
+                          f"{top['zona']} durante los últimos 7 días.")
+        else:
+            geografica = "Ninguna zona aumentó sus casos en los últimos 7 días."
 
     pct = totales["casos_pct"]
     verbo = "aumentó" if pct > 0 else ("disminuyó" if pct < 0 else "se mantuvo")
