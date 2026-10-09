@@ -17,9 +17,9 @@ def esperado(form, nombre):
     abrirse, para el control de concurrencia.
 
     Devuelve (valor, valido). Hay que distinguir tres casos, porque colapsarlos
-    en "None = invalido" dejaba sin editar a todo municipio con la columna en
-    NULL: el formulario se rechazaba siempre y el mensaje pedia recargar, lo
-    que no arreglaba nada.
+    en "None = invalido" dejaria sin editar a todo municipio con la columna en
+    NULL: el formulario se rechazaria siempre y el mensaje pediria recargar, lo
+    que no arregla nada.
 
       - campo ausente o con basura -> (None, False): el POST no viene de
         nuestro formulario, o llego incompleto.

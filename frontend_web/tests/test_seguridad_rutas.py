@@ -1,14 +1,14 @@
 """
-Arreglos de la auditoria del segundo avance, del lado de las rutas:
+Seguridad, del lado de las rutas:
 
-  1. `/login?next=` ya no redirige fuera del sitio.
-  2. `run.py` no arranca con el depurador abierto a la red.
-  3. Desactivar una cuenta o quitarle un rol surte efecto en la siguiente
-     peticion, aunque su token siga vigente.
-  4. El alta de una enfermedad solo fija parametros si quien la da de alta
-     puede editarlos (EPIDEMIOLOGO / ADMINISTRADOR).
-  5. Sin JWT_SECRET_KEY la app no arranca.
-  8. Una intervencion invalida ya no borra el historial de versiones.
+  - `/login?next=` no redirige fuera del sitio.
+  - `run.py` no arranca con el depurador abierto a la red.
+  - Desactivar una cuenta o quitarle un rol surte efecto en la siguiente
+    peticion, aunque su token siga vigente.
+  - El alta de una enfermedad solo fija parametros si quien la da de alta
+    puede editarlos (EPIDEMIOLOGO / ADMINISTRADOR).
+  - Sin JWT_SECRET_KEY la app no arranca.
+  - Una intervencion invalida no borra el historial de versiones.
 
 Ejecutar:
     python -m unittest frontend_web.tests.test_seguridad_rutas -v

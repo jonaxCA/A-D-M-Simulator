@@ -4,9 +4,14 @@ El repo tiene menos "basura" de la que sugiere su tamaño. Las 119 funciones de 
 
 Propongo tres fases, de menor a mayor riesgo. Cada una iría en PRs chicos y con las pruebas pasando.
 
-## Fase 1: borrar lo que sobra (≈3,600 líneas, riesgo bajo)
+## Fase 1: borrar lo que sobra (riesgo bajo)
 
-Ya se completó esta fase.
+Ya se completó esta fase. Medida con git sobre sus commits (`a911b3e..94a9c0c`), quitó 501
+líneas y agregó 124:
+
+- 444 de las borradas son los dos documentos obsoletos, `CHECKLIST_SEGUNDO_AVANCE.md` y
+  `revision_bloques_E_F.md`.
+- Casi todas las agregadas son el `AGENTS.md` de la raíz y este checklist.
 
 ## Fase 2: consolidar duplicados (≈250–400 líneas, riesgo medio)
 

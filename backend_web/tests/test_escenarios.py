@@ -1,5 +1,5 @@
 """
-Pruebas del alta de escenarios (bloque D, rebanada 1). Integracion contra
+Pruebas del alta de escenarios. Integracion contra
 PostgreSQL real, igual que el resto del proyecto.
 
 Requieren una base con datos/postgres/dump_completo.sql y las semillas
@@ -93,8 +93,8 @@ class ValidacionEscenarioTests(_ConCatalogo):
                          sum(self.mty["grupos"].values()) + self.mty["sin_edad"])
 
     def test_el_estado_completo_cabe(self):
-        """Nuevo Leon tiene 5,784,442 habitantes. Con el tope anterior de 5
-        millones este escenario era imposible de representar."""
+        """Nuevo Leon tiene 5,784,442 habitantes: con un tope de 5 millones,
+        este escenario no se podria representar."""
         if not self.estado["grupos"]:
             self.skipTest("falta la migracion 021: no hay grupos de edad")
         datos, errores = queries.valida_escenario(

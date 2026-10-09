@@ -1,5 +1,5 @@
 """
-Pruebas de las rutas de escenarios (bloque D, rebanada 1). Flask test client
+Pruebas de las rutas de escenarios. Flask test client
 contra PostgreSQL real; mismo requisito de base que las demas.
 
 El POST de alta se salta solo, con aviso, si falta la migracion 023.
@@ -17,10 +17,9 @@ from backend_web.db import get_conn, query
 NOMBRE = "ZZZ escenario de prueba de rutas"
 
 # Codigo de una enfermedad fixture, deliberadamente incompleta (sin r0), para
-# probar el aviso "no simulable" del formulario. Antes de la migracion 025 el
-# catalogo real siempre tenia alguna enfermedad incompleta que servia para
-# esto; 025 cierra el ultimo pendiente y deja las 6 del catalogo simulables,
-# asi que la prueba ya no puede apoyarse en datos reales y crea la suya.
+# probar el aviso "no simulable" del formulario. Desde la migracion 025 las 6
+# enfermedades del catalogo son simulables, asi que la prueba no puede
+# apoyarse en datos reales y crea la suya.
 CODIGO_INCOMPLETA = "ZZZ_INCOMPLETA_PRUEBA"
 
 

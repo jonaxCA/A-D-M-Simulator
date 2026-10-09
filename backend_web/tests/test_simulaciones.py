@@ -1,5 +1,5 @@
 """
-Pruebas del Bloque F (ejecucion, estados y resultados de simulaciones).
+Pruebas de la ejecucion, estados y resultados de simulaciones.
 
 Dos grupos, en el mismo archivo:
 

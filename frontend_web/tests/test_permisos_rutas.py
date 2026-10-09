@@ -1,5 +1,5 @@
 """
-Candados por rol de las rutas nuevas del segundo avance (Bloque H, #21).
+Candados por rol de las rutas (issue #21).
 CAPTURISTA no tiene 'scenarios.read' (010_datos_iniciales.sql): no entra a
 escenarios, ni por el menu ni escribiendo la URL.
 

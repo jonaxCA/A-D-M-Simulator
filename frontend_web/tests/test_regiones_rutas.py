@@ -127,7 +127,7 @@ class RegionesRutasTests(AppTestCase):
             resp_get = client.get(f"/regiones/{self.region_id}/editar")
             self.assertEqual(resp_get.status_code, 200)
 
-            # El formulario ya no trae el 60 y mas; se muestra de solo lectura.
+            # El formulario no trae el 60 y mas; se muestra de solo lectura.
             self.assertNotIn(b'name="population_60plus"', resp_get.data)
 
             nueva_pob = self.pob_original + 321
@@ -162,7 +162,7 @@ class RegionesRutasTests(AppTestCase):
 
     def test_admin_datos_invalidos_no_cambian_nada_y_muestran_error(self):
         """Una poblacion total por debajo del 60 y mas del propio municipio es
-        imposible, y el 60 y mas ya no se puede "arreglar" bajandolo."""
+        imposible, y el 60 y mas no se puede "arreglar" bajandolo."""
         with self.app.test_client() as client:
             self._login(client, "admin", "Admin2026!")
             resp = client.post(

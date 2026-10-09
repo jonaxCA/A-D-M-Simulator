@@ -1,6 +1,6 @@
 """
 Pruebas de integracion de rutas HTTP (Flask test client) contra PostgreSQL
-real, del Bloque F (simulaciones). Mismo requisito de base que
+real, de simulaciones. Mismo requisito de base que
 backend_web/tests/test_regiones_rutas.py: necesita el escenario de
 demostracion cargado (datos/postgres/semillas/demo_datos_nl.sql).
 

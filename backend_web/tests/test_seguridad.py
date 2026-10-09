@@ -1,12 +1,12 @@
 """
-Arreglos de la auditoria del segundo avance, del lado de backend_web:
+Seguridad, del lado de backend_web:
 
-  5. Sin JWT_SECRET_KEY / DATABASE_URL (o con los valores de ejemplo) no se
-     firma ni se conecta nada. Y un error de conexion de PostgreSQL en
-     espanol (cp1252) llega como OperationalError legible, no como
-     UnicodeDecodeError.
-  7. Cinco contrasenas equivocadas seguidas bloquean la cuenta 15 minutos.
-  +  El token lleva `sub` como cadena (RFC 7519).
+  - Sin JWT_SECRET_KEY / DATABASE_URL (o con los valores de ejemplo) no se
+    firma ni se conecta nada. Y un error de conexion de PostgreSQL en
+    espanol (cp1252) llega como OperationalError legible, no como
+    UnicodeDecodeError.
+  - Cinco contrasenas equivocadas seguidas bloquean la cuenta 15 minutos.
+  - El token lleva `sub` como cadena (RFC 7519).
 
 Ejecutar:
     python -m unittest backend_web.tests.test_seguridad -v

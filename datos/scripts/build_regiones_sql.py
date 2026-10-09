@@ -15,10 +15,10 @@ Entradas:
     oficial; lo genera datos/scripts/build_municipios_inegi.py
   - datos/geo/nl_catalogo_oficial.json catalogo INEGI de clave -> nombre
 
-La poblacion ya NO es aproximada: sale del censo. Antes estos 41 municipios
-llevaban cifras de orden de magnitud, con errores de hasta 82% (Pesqueria tenia
-26,000 contra 147,624 reales), lo que distorsionaba la incidencia por cada
-100,000 habitantes justo en los municipios de mayor crecimiento.
+La poblacion sale del censo, no de aproximaciones: cifras de orden de magnitud
+llegan a errores de hasta 82% (Pesqueria: 26,000 estimados contra 147,624
+reales) y distorsionan la incidencia por cada 100,000 habitantes justo en los
+municipios de mayor crecimiento.
 
 POR QUE LA SEMILLA TRAE TAMBIEN population_60plus
 Las migraciones 015 y 016 corrigen por `code` las filas que YA existen cuando

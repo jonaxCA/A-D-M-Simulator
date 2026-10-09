@@ -315,10 +315,10 @@ def _tasa_por_grupo(enf, clave, grupos, por_edad, errores, traza, alias=()):
     """Resuelve una tasa que puede venir global o desglosada por grupo de edad.
 
     Cuando la poblacion viene estratificada se prefiere la tabla por edad si
-    existe; si no, la tasa global. Antes ganaba siempre la clave principal,
-    asi que una enfermedad con `letalidad` y `letalidad_por_edad` ignoraba la
-    segunda: el dato mas fino quedaba sin efecto, que es justo lo contrario
-    de para que se captura. Sin estratificar pasa al reves, porque una tabla
+    existe; si no, la tasa global. Si ganara siempre la clave principal, una
+    enfermedad con `letalidad` y `letalidad_por_edad` ignoraria la segunda: el
+    dato mas fino quedaria sin efecto, que es justo lo contrario de para que
+    se captura. Sin estratificar pasa al reves, porque una tabla
     por edad no se puede aplicar a una poblacion sin grupos.
     """
     candidatos = [(k, _desempaca(enf[k])) for k in (clave, *alias) if k in enf]

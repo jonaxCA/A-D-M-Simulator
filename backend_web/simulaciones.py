@@ -1,12 +1,12 @@
 """
-Bloque F -- Ejecucion, estados y resultados de simulaciones.
+Ejecucion, estados y resultados de simulaciones.
 
 Tres responsabilidades que viven aqui a proposito, separadas de queries.py
 (que solo habla SQL) y de routes.py (que solo habla HTTP):
 
   1. Obtener la entrada del motor de una version de escenario aprobada. La
      traduccion es queries.escenario_de_version(), la misma que usa la
-     revision del bloque D: lo que se aprueba es lo que se simula. Aqui solo
+     revision de escenarios: lo que se aprueba es lo que se simula. Aqui solo
      se revisa que la version este aprobada y que su enfermedad sea simulable.
      Esto NO puede vivir en procesamiento/motor/: ese paquete es
      deliberadamente independiente de Flask y de la base de datos.
@@ -23,12 +23,12 @@ import logging
 import time
 
 # El motor se importa como `procesamiento.motor`, igual que en queries.py.
-# Antes este modulo metia procesamiento/ en sys.path e importaba `motor`: Python
-# cargaba el paquete DOS veces, bajo dos nombres, con dos clases
-# EscenarioInvalido distintas. Un `except EscenarioInvalido` de un lado no
-# atrapaba lo que lanzaba el otro. backend_web/tests/test_integridad.py vigila
-# que no vuelva a pasar. (Las pruebas del motor siguen usando `from motor
-# import ...` porque corren desde dentro de procesamiento/, en otro proceso.)
+# Con otro nombre (por ejemplo, metiendo procesamiento/ en sys.path e
+# importando `motor`), Python cargaria el paquete DOS veces, con dos clases
+# EscenarioInvalido distintas: un `except EscenarioInvalido` de un lado no
+# atraparia lo que lanza el otro. backend_web/tests/test_integridad.py lo
+# vigila. (Las pruebas del motor usan `from motor import ...` porque corren
+# desde dentro de procesamiento/, en otro proceso.)
 from procesamiento.motor import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular  # noqa: F401
 from procesamiento.motor.modelo import SIMPLIFICACIONES                      # noqa: F401
 from procesamiento.motor.parametros import EscenarioInvalido
@@ -324,13 +324,13 @@ def recupera_corridas_interrumpidas():
     _marca_fallido_y_audita protege contra cualquier error DENTRO del hilo,
     pero no contra que el proceso entero muera: el hilo es daemon y se va con
     el. Con `FLASK_DEBUG=1` eso pasa cada vez que se guarda un .py (el
-    recargador reinicia el servidor), y la corrida se quedaba en 'ejecutando'
-    para siempre, con la pantalla de detalle consultando su estado cada
-    segundo.
+    recargador reinicia el servidor), y sin esto la corrida se quedaria en
+    'ejecutando' para siempre, con la pantalla de detalle consultando su
+    estado cada segundo.
 
     Se llama desde frontend_web/run.py al arrancar, NO desde create_app():
     las pruebas crean la app muchas veces y no deben cerrar corridas ajenas.
-    Supone un solo proceso sirviendo, que es como corre este avance. Con
+    Supone un solo proceso sirviendo, que es como corre hoy la app. Con
     varios procesos (gunicorn -w 4), uno que arranca cerraria corridas vivas
     de los otros; ese caso lo resuelve la cola con worker del documento de
     arquitectura, no este barrido.

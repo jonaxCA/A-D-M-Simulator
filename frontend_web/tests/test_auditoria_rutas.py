@@ -11,8 +11,8 @@ recibe el admin.
 
 Nota de acentos: las descripciones que arma frontend_web/app/presentacion.py
 (igual que _DESCRIPCION_POR_ACCION, p.ej. "Inicio de sesion exitoso") van
-SIN acentos -- es la convencion que ya tenia ese diccionario antes de este
-cambio. Lo que si tiene acentos es el texto fijo de la plantilla
+SIN acentos, como todo ese diccionario. Lo que si tiene acentos es el texto
+fijo de la plantilla
 (auditoria.html: "Bitácora", "Acción", etc.), que este archivo no toca.
 
 Ejecutar:

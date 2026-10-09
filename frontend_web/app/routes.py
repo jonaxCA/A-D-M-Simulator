@@ -10,12 +10,12 @@ Recorrido funcional actual:
 Alcance de esta version:
     - Pantallas funcionales: dashboard publico, login, dashboard autenticado,
       mapa, monitoreo, catalogo de enfermedades, captura de casos, regiones,
-      usuarios, auditoria, escenarios (Bloque D: crear, versionar, enviar a
-      revision y aprobar) y simulaciones (Bloque F: correr versiones ya
-      aprobadas, en segundo plano, con resultados e indicadores) y comparacion
-      de corridas con costos y frontera de Pareto (Bloque G).
-    - Todo corre en un solo proceso Flask contra PostgreSQL directamente
-      (sin la capa de microservicios -- eso es alcance del segundo parcial).
+      usuarios, auditoria, escenarios (crear, versionar, enviar a revision y
+      aprobar), simulaciones (correr versiones ya aprobadas, en segundo plano,
+      con resultados e indicadores) y comparacion de corridas con costos y
+      frontera de Pareto.
+    - Todo corre en un solo proceso Flask contra PostgreSQL directamente,
+      sin la capa de microservicios.
     - Mapa acotado a Nuevo Leon.
 """
 import csv
@@ -524,7 +524,7 @@ def export_resumen_csv():
 
 
 # ---------------------------------------------------------------------------
-# Regiones (Bloque C) -- Nuevo Leon y sus 51 municipios
+# Regiones -- Nuevo Leon y sus 51 municipios
 # ---------------------------------------------------------------------------
 # Consulta abierta a cualquier usuario autenticado (igual que Enfermedades).
 # La edicion de poblacion, mas abajo, es exclusiva de ADMINISTRADOR: tanto el
@@ -692,11 +692,11 @@ def region_edades_editar(region_id):
 
 
 # ---------------------------------------------------------------------------
-# Escenarios (Bloque D) -- alta y consulta
+# Escenarios -- alta y consulta
 # ---------------------------------------------------------------------------
 # Consultar es abierto a cualquier usuario autenticado. Dar de alta es de
 # ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR: el ANALISTA es quien arma y envia a
-# revision segun el flujo del bloque D.
+# revision segun el flujo de aprobacion.
 ROLES_ESCENARIO = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 
 
@@ -719,8 +719,7 @@ def escenario_nuevo():
     transaccion: un escenario sin version no se puede simular ni revisar.
 
     Antes de guardar, el escenario se contrasta con el motor. Vale la pena que
-    el rechazo aparezca aqui y no al momento de correr la simulacion, que es
-    donde el bloque F lo encontraria.
+    el rechazo aparezca aqui y no al momento de correr la simulacion.
     """
     regiones = queries.get_regiones_para_escenario()
     enfermedades = queries.get_enfermedades_para_escenario()
@@ -1090,10 +1089,10 @@ def export_monitoreo_csv():
 
 
 # ---------------------------------------------------------------------------
-# 6.5 Simulaciones (Bloque F) -- ejecucion, estados y resultados
+# 6.5 Simulaciones -- ejecucion, estados y resultados
 # ---------------------------------------------------------------------------
 # Esta pantalla solo lista las versiones de escenario (se crean y aprueban en
-# la de escenarios, bloque D) y permite correr las aprobadas. La traduccion
+# la de escenarios) y permite correr las aprobadas. La traduccion
 # version -> entrada del motor y la corrida en hilo viven en
 # backend_web.simulaciones; aqui solo hay HTTP.
 def _lanza_corrida(version_id, seed, forzar_error):
@@ -1112,8 +1111,9 @@ def _lanza_corrida(version_id, seed, forzar_error):
 
     # daemon=True: si el proceso de Flask se detiene, el hilo no lo detiene a
     # su vez ni deja el proceso colgado esperandolo. La corrida en si queda en
-    # 'ejecutando' sin terminar -- aceptable para este avance monolitico, sin
-    # cola de trabajos que reencole lo interrumpido.
+    # 'ejecutando' hasta que el servidor vuelve a arrancar y
+    # simulaciones.recupera_corridas_interrumpidas la cierra como fallida: no
+    # hay una cola de trabajos que la reencole.
     hilo = threading.Thread(
         target=simulaciones.ejecutar_run,
         args=(run_id,),
@@ -1245,8 +1245,8 @@ def simulacion_reejecutar(run_id):
 
 
 # ---------------------------------------------------------------------------
-# 7. Usuarios y Auditoria -- adaptadas del diseno de la companera, con datos
-#    reales de Postgres (ver notas de alcance en queries.py)
+# 7. Usuarios y Auditoria -- con datos reales de Postgres (ver notas de
+#    alcance en queries.py)
 # ---------------------------------------------------------------------------
 @bp.route("/usuarios")
 @admin_required

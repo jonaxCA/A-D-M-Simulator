@@ -101,7 +101,7 @@ class RegionesCatalogoTests(unittest.TestCase):
 
     def test_get_municipios_catalogo_no_se_rompe(self):
         """Requisito explicito: esta funcion la usan otras pantallas
-        (Captura de casos) y no debe verse afectada por el Bloque C."""
+        (Captura de casos) y no debe verse afectada por la de Regiones."""
         catalogo = queries.get_municipios_catalogo()
         self.assertEqual(len(catalogo), 51)
         self.assertIn("name", catalogo[0])
@@ -137,7 +137,7 @@ class ValidacionPoblacionTests(unittest.TestCase):
         self.assertTrue(any("entero" in e for e in errores))
 
     def test_rechaza_total_menor_que_el_60_derivado(self):
-        """El 60 y mas ya no se captura, pero sigue acotando por abajo: un
+        """El 60 y mas no se captura, pero sigue acotando por abajo: un
         municipio no puede tener menos habitantes que sus propios mayores."""
         _, errores = queries.valida_poblacion_municipio("100", "motivo", 200)
         self.assertTrue(any("no puede ser menor" in e for e in errores))
@@ -319,8 +319,8 @@ class PoblacionSinDatoTests(unittest.TestCase):
         _restaura_estado()
 
     def test_el_60_derivado_no_lo_toca_una_correccion_de_poblacion(self):
-        """Antes las dos cifras se editaban juntas y podian quedar incoherentes.
-        Ahora el 60 y mas sale de region_age_groups y la pantalla no lo ofrece."""
+        """Si las dos cifras se editaran juntas podrian quedar incoherentes: el 60
+        y mas sale de region_age_groups y la pantalla no lo ofrece."""
         ok, error, _ = queries.actualiza_poblacion_municipio(
             self.objetivo["id"], self.objetivo["population"] + 1_000,
             "Conteo intercensal 2025", self.objetivo["population"], contexto=contexto_de_prueba(self.admin_id))

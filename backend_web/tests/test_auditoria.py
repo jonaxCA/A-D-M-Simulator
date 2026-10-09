@@ -209,7 +209,7 @@ class AuditoriaIntegracionTests(ConCorridasDePrueba):
         self.assertIn("RUN::ejecutando", opciones)
         self.assertIn("RUN::completado", opciones)
         self.assertEqual(opciones["RUN::completado"], "Simulacion completada")
-        # RUN "plano" ya no debe listarse: solo sus etapas.
+        # RUN "plano" no se lista: solo sus etapas.
         self.assertNotIn("RUN", opciones)
 
 

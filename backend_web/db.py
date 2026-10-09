@@ -11,10 +11,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Sin valor por omision. Antes habia uno que entraba como el superusuario
-# `postgres` con una contrasena fija: si faltaba el .env, la app se conectaba
-# con otra cuenta y otros permisos sin avisar, y el error que salia (si salia)
-# no decia que el problema era la configuracion.
+# Sin valor por omision: con uno fijo (por ejemplo, el superusuario `postgres`
+# con una contrasena escrita en el codigo), si faltara el .env la app se
+# conectaria con otra cuenta y otros permisos sin avisar, y el error, si
+# saliera, no diria que el problema es la configuracion.
 DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip()
 
 

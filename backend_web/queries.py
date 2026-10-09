@@ -797,7 +797,7 @@ def get_mapa_serie_temporal(disease_id=None, dias=30):
 
 
 # ---------------------------------------------------------------------------
-# Usuarios (pantalla adaptada del diseno de la companera)
+# Usuarios
 # ---------------------------------------------------------------------------
 # Nota: el schema de users NO tiene columna "departamento" (ese filtro del
 # diseno original no se pudo traer -- no hay ese dato en ningun lado).
@@ -876,7 +876,7 @@ def get_usuarios_lista(busqueda=None, rol_id=None, estado=None):
 
 
 # ---------------------------------------------------------------------------
-# Auditoria (pantalla adaptada del diseno de la companera)
+# Auditoria
 # ---------------------------------------------------------------------------
 # Nota: audit_log NO tiene columnas "descripcion" ni "estado": las arma
 # frontend_web/app/presentacion.py con la accion, el modulo y data_after.
@@ -1170,9 +1170,9 @@ def get_monitoreo_zonas(disease_id=None, region_id=None, dias=30, busqueda=None,
 
     # psycopg2 liga los %s por el orden en que aparecen en el TEXTO del SQL, no
     # por clausula: primero los dos FILTER del SELECT, luego el JOIN, luego el
-    # WHERE y al final LIMIT/OFFSET. Armar la lista en otro orden hace que el
-    # periodo y la ventana se crucen (bug real: con dias=7 la ventana quedaba
-    # en 7 dias y prev7 salia siempre 0, o sea +100% / Critico en toda zona).
+    # WHERE y al final LIMIT/OFFSET. Armar la lista en otro orden cruza el
+    # periodo y la ventana: con dias=7 la ventana quedaria en 7 dias y prev7
+    # saldria siempre 0, o sea +100% / Critico en toda zona.
     params = [dias - 1, dias - 1, dias - 1, ventana]
     if disease_id:
         cond_join.append("c.disease_id = %s")
@@ -1598,7 +1598,7 @@ def eliminar_usuario(user_id):
 
 
 # ---------------------------------------------------------------------------
-# Catalogo de Regiones (Bloque C) -- Nuevo Leon y sus 51 municipios
+# Catalogo de Regiones -- Nuevo Leon y sus 51 municipios
 # ---------------------------------------------------------------------------
 # Consulta abierta a cualquier usuario autenticado. La edicion de poblacion
 # (mas abajo) es exclusiva de ADMINISTRADOR -- el candado real vive en la ruta
@@ -2073,7 +2073,7 @@ def valida_poblacion_municipio(population_raw, motivo, poblacion_60_actual=None)
 
     poblacion = _entero_no_negativo(population_raw, "La población total")
 
-    # La poblacion de 60 y mas ya no se captura: se deriva de region_age_groups
+    # La poblacion de 60 y mas no se captura: se deriva de region_age_groups
     # (migracion 022). Lo que si se valida es que la correccion no deje al
     # municipio con menos habitantes que su propio grupo de 60 y mas.
     if poblacion is not None and poblacion_60_actual is not None \
@@ -2246,7 +2246,7 @@ def actualiza_poblacion_municipio(region_id, population, motivo, esperado_popula
         return False, "Los datos no cumplen las restricciones de la base.", None
 
 # ---------------------------------------------------------------------------
-# Escenarios (Bloque D) -- alta, consulta y validacion contra el motor
+# Escenarios -- alta, consulta y validacion contra el motor
 # ---------------------------------------------------------------------------
 # Los limites del formulario NO se copian: se importan del motor (al principio
 # del archivo), que es quien los hace cumplir al simular. Duplicarlos como
@@ -2604,7 +2604,7 @@ def crea_escenario(datos, *, contexto):
 
 
 # ---------------------------------------------------------------------------
-# Intervenciones de una version (Bloque D) -- alta, baja y orden
+# Intervenciones de una version -- alta, baja y orden
 # ---------------------------------------------------------------------------
 # El formulario de parametros se genera desde `intervention_types.param_schema`,
 # que es JSON Schema. No hay un formulario por tipo escrito a mano: agregar un
@@ -3016,7 +3016,7 @@ def mueve_intervencion(version_id, intervention_id, direccion, *, contexto):
 
 
 # ---------------------------------------------------------------------------
-# Versiones nuevas y duplicado (Bloque D)
+# Versiones nuevas y duplicado
 # ---------------------------------------------------------------------------
 # Modificar un escenario NUNCA sobrescribe: crea la version siguiente. La
 # anterior queda intacta, con su autor, su fecha y su comentario, y se puede
@@ -3040,7 +3040,7 @@ def crea_version(scenario_id, datos, *, contexto):
     Las intervenciones se copian: si no, cada cambio de un numero obligaria a
     capturarlas otra vez y nadie versionaria nada. La version nueva nace
     `borrador` aunque la anterior estuviera aprobada -- es el default de la
-    columna y lo que pide el flujo del bloque D.
+    columna y lo que pide el flujo de aprobacion.
 
     Devuelve (ok, error, version_number).
     """
@@ -3168,7 +3168,7 @@ def duplica_escenario(scenario_id, version_number, nombre, *, contexto):
 
 
 # ---------------------------------------------------------------------------
-# Flujo de aprobacion (Bloque D)
+# Flujo de aprobacion
 # ---------------------------------------------------------------------------
 # borrador -> en_revision -> aprobado | rechazado
 #
@@ -3327,12 +3327,12 @@ def resuelve_revision(scenario_id, decision, comentario, *, contexto):
 
 
 # ---------------------------------------------------------------------------
-# Simulaciones (Bloque F) -- ejecucion, estados y resultados
+# Simulaciones -- ejecucion, estados y resultados
 # ---------------------------------------------------------------------------
 # Todo lo de aqui es de SOLO LECTURA sobre scenarios/scenario_versions (los
-# escribe el bloque D, mas arriba). Lo unico que se escribe en este bloque son
-# simulation_batches, simulation_runs y simulation_results -- la corrida, no
-# el escenario.
+# escriben las secciones de escenarios, mas arriba). Lo unico que se escribe
+# en esta seccion son simulation_batches, simulation_runs y
+# simulation_results -- la corrida, no el escenario.
 #
 # La entrada del motor sale de escenario_de_version(), la misma traduccion que
 # usa la revision; backend_web.simulaciones solo la invoca.
@@ -3365,7 +3365,7 @@ def listar_versiones_escenario():
     """Todas las versiones de escenario, para la pantalla de simulaciones.
 
     Es de solo lectura: crear, editar y aprobar versiones es de la pantalla de
-    escenarios (bloque D). Las aprobadas van primero -- son las unicas que se
+    escenarios. Las aprobadas van primero -- son las unicas que se
     pueden correr.
     """
     return query(
@@ -3690,7 +3690,7 @@ def marcar_run_fallido(run_id, mensaje):
 
     Desde 'encolado' hay que poner tambien started_at: ck_simulation_runs_inicio
     (007) exige que solo 'encolado' lo tenga en NULL. Sin el COALESCE, cerrar
-    una corrida que nunca arranco violaba esa restriccion y la dejaba encolada
+    una corrida que nunca arranco violaria esa restriccion y la dejaria encolada
     para siempre. Se usa la misma hora del cierre: duro cero.
     """
     return len(_transiciona_run(
