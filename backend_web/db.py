@@ -2,6 +2,7 @@
 un solo pool de conexiones para toda la app (tal como se pidio: "se puede
 entrar de manera indiscriminada a la DB").
 """
+import json
 import os
 import psycopg2
 import psycopg2.extras
@@ -10,10 +11,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Sin valor por omision. Antes habia uno que entraba como el superusuario
-# `postgres` con una contrasena fija: si faltaba el .env, la app se conectaba
-# con otra cuenta y otros permisos sin avisar, y el error que salia (si salia)
-# no decia que el problema era la configuracion.
+# Sin valor por omision: con uno fijo (por ejemplo, el superusuario `postgres`
+# con una contrasena escrita en el codigo), si faltara el .env la app se
+# conectaria con otra cuenta y otros permisos sin avisar, y el error, si
+# saliera, no diria que el problema es la configuracion.
 DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip()
 
 
@@ -76,3 +77,12 @@ def execute(sql, params=None):
             rowcount = cur.rowcount
         conn.commit()
         return rowcount
+
+
+def a_jsonb(datos):
+    """El valor para un parametro `%s::jsonb`, o None para guardar NULL. Lo que
+    JSON no sabe escribir (fechas, Decimal) se guarda como texto, y los acentos
+    tal cual."""
+    if datos is None:
+        return None
+    return json.dumps(datos, default=str, ensure_ascii=False)

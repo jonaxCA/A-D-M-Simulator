@@ -79,12 +79,12 @@
     <tbody>
       {% for e in eventos %}
       <tr>
-        <td class="suave">{{ e.fecha }}</td>
-        <td class="fuerte">{{ e.usuario }}</td>
+        <td class="suave">{{ e.fecha|fecha_hora(segundos=True) }}</td>
+        <td class="fuerte">{{ e.usuario or 'Anonimo' }}</td>
         <td>{{ e.modulo }}</td>
         <td>{{ e.accion }}</td>
         <td class="suave">{{ e.descripcion }}</td>
-        <td class="suave">{{ e.ip }}</td>
+        <td class="suave">{{ e.ip or '-' }}</td>
         <td><span class="badge badge-{{ e.estado|lower }}">{{ e.estado }}</span></td>
       </tr>
       {% else %}

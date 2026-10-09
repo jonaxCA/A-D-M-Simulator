@@ -15,6 +15,9 @@
 -- Las bandas se incluyen por el mismo motivo: 021 corre antes que esta semilla.
 -- =============================================================================
 
+-- El archivo esta en UTF-8; sin esto, psql en Windows lo lee como WIN1252.
+SET client_encoding = 'UTF8';
+
 BEGIN;
 
 INSERT INTO regions (code, name, level, parent_region_id, population,

@@ -1,12 +1,12 @@
 """
-Bloque F -- Ejecucion, estados y resultados de simulaciones.
+Ejecucion, estados y resultados de simulaciones.
 
 Tres responsabilidades que viven aqui a proposito, separadas de queries.py
 (que solo habla SQL) y de routes.py (que solo habla HTTP):
 
   1. Obtener la entrada del motor de una version de escenario aprobada. La
      traduccion es queries.escenario_de_version(), la misma que usa la
-     revision del bloque D: lo que se aprueba es lo que se simula. Aqui solo
+     revision de escenarios: lo que se aprueba es lo que se simula. Aqui solo
      se revisa que la version este aprobada y que su enfermedad sea simulable.
      Esto NO puede vivir en procesamiento/motor/: ese paquete es
      deliberadamente independiente de Flask y de la base de datos.
@@ -15,23 +15,20 @@ Tres responsabilidades que viven aqui a proposito, separadas de queries.py
   3. La corrida en segundo plano: lo que un hilo ejecuta despues de que la
      ruta ya respondio con el redirect al detalle.
 
-Nada de lo de aqui importa Flask. `ejecutar_run` sí registra auditoria y por
-eso importa backend_web.audit.log_audit, que ya sabe operar sin contexto de
-peticion (ver el guard en audit.py) -- indispensable porque este modulo corre
-dentro de un hilo, no dentro de una peticion HTTP.
+Nada de lo de aqui importa Flask. `ejecutar_run` corre en un hilo, sin
+peticion HTTP detras, asi que audita con Contexto.sin_peticion(): el usuario
+que pidio la corrida, sin IP.
 """
 import logging
-import os
-import sys
 import time
 
 # El motor se importa como `procesamiento.motor`, igual que en queries.py.
-# Antes este modulo metia procesamiento/ en sys.path e importaba `motor`: Python
-# cargaba el paquete DOS veces, bajo dos nombres, con dos clases
-# EscenarioInvalido distintas. Un `except EscenarioInvalido` de un lado no
-# atrapaba lo que lanzaba el otro. backend_web/tests/test_integridad.py vigila
-# que no vuelva a pasar. (Las pruebas del motor siguen usando `from motor
-# import ...` porque corren desde dentro de procesamiento/, en otro proceso.)
+# Con otro nombre (por ejemplo, metiendo procesamiento/ en sys.path e
+# importando `motor`), Python cargaria el paquete DOS veces, con dos clases
+# EscenarioInvalido distintas: un `except EscenarioInvalido` de un lado no
+# atraparia lo que lanza el otro. backend_web/tests/test_integridad.py lo
+# vigila. (Las pruebas del motor usan `from motor import ...` porque corren
+# desde dentro de procesamiento/, en otro proceso.)
 from procesamiento.motor import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular  # noqa: F401
 from procesamiento.motor.modelo import SIMPLIFICACIONES                      # noqa: F401
 from procesamiento.motor.parametros import EscenarioInvalido
@@ -39,6 +36,7 @@ from procesamiento.motor.pareto import ComparacionInvalida, comparar as comparar
 
 from . import queries
 from .audit import log_audit
+from .contexto import Contexto
 
 MENSAJE_ERROR_FORZADO = (
     "Error forzado de prueba: se solicito explicitamente desde la pantalla de "
@@ -127,17 +125,9 @@ def construir_escenario_desde_version(version_id):
 # Comparacion costo vs impacto
 # ---------------------------------------------------------------------------
 def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
-    """Usa corridas completadas y el motor de Pareto para comparar costo e impacto."""
-    ids = []
-    for valor in run_ids:
-        try:
-            run_id = int(valor)
-        except (TypeError, ValueError):
-            continue
-        if run_id not in ids:
-            ids.append(run_id)
-
-    if len(ids) < 2:
+    """Usa corridas completadas y el motor de Pareto para comparar costo e
+    impacto. `run_ids` es una lista de enteros sin repetir."""
+    if len(run_ids) < 2:
         return None, ["Selecciona al menos dos corridas completadas."]
 
     costos = {}
@@ -153,7 +143,7 @@ def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
     entradas = []
     errores = []
 
-    for run_id in ids:
+    for run_id in run_ids:
         run = queries.get_run(run_id)
         if not run or run["status"] != "completado":
             errores.append(f"La corrida {id_simulacion(run_id)} no esta completada.")
@@ -214,6 +204,7 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
     run = queries.get_run(run_id)
     if not run:
         return
+    contexto = Contexto.sin_peticion(run["requested_by"])
 
     try:
         if not queries.marcar_run_ejecutando(run_id):
@@ -223,7 +214,7 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
             # auditar, y seguir de todos modos correria el motor sobre una
             # corrida que este hilo ya no es duenio de avanzar.
             log_audit(
-                run["requested_by"], "RUN", "simulation_run", entity_id=str(run_id),
+                contexto, "RUN", "simulation_run", entity_id=str(run_id),
                 data_after={
                     "estado": "abortado_antes_de_ejecutar",
                     "seed": run["seed"],
@@ -232,7 +223,7 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
                 },
             )
             return
-        log_audit(run["requested_by"], "RUN", "simulation_run", entity_id=str(run_id),
+        log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
                   data_after={"estado": "ejecutando", "seed": run["seed"],
                               "engine_version": run["engine_version"]})
 
@@ -261,7 +252,7 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
                 "La corrida %s termino en el motor, pero ya no estaba en "
                 "'ejecutando'; el resultado se descarto.", run_id)
             return
-        log_audit(run["requested_by"], "RUN", "simulation_run", entity_id=str(run_id),
+        log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
                   data_after={
                       "estado": "completado", "seed": run["seed"],
                       "engine_version": resultado["engine_version"],
@@ -307,7 +298,8 @@ def _marca_fallido_y_audita(run, mensaje):
         return
 
     try:
-        log_audit(run["requested_by"], "RUN", "simulation_run", entity_id=str(run["id"]),
+        log_audit(Contexto.sin_peticion(run["requested_by"]), "RUN", "simulation_run",
+                  entity_id=str(run["id"]),
                   data_after={"estado": "fallido", "seed": run["seed"], "error": mensaje[:500]})
     except Exception:
         logging.getLogger(__name__).exception(
@@ -332,13 +324,13 @@ def recupera_corridas_interrumpidas():
     _marca_fallido_y_audita protege contra cualquier error DENTRO del hilo,
     pero no contra que el proceso entero muera: el hilo es daemon y se va con
     el. Con `FLASK_DEBUG=1` eso pasa cada vez que se guarda un .py (el
-    recargador reinicia el servidor), y la corrida se quedaba en 'ejecutando'
-    para siempre, con la pantalla de detalle consultando su estado cada
-    segundo.
+    recargador reinicia el servidor), y sin esto la corrida se quedaria en
+    'ejecutando' para siempre, con la pantalla de detalle consultando su
+    estado cada segundo.
 
     Se llama desde frontend_web/run.py al arrancar, NO desde create_app():
     las pruebas crean la app muchas veces y no deben cerrar corridas ajenas.
-    Supone un solo proceso sirviendo, que es como corre este avance. Con
+    Supone un solo proceso sirviendo, que es como corre hoy la app. Con
     varios procesos (gunicorn -w 4), uno que arranca cerraria corridas vivas
     de los otros; ese caso lo resuelve la cola con worker del documento de
     arquitectura, no este barrido.
@@ -348,7 +340,7 @@ def recupera_corridas_interrumpidas():
     filas = queries.marca_corridas_interrumpidas(MENSAJE_INTERRUMPIDA)
     for fila in filas:
         try:
-            log_audit(fila["requested_by"], "RUN", "simulation_run",
+            log_audit(Contexto.sin_peticion(fila["requested_by"]), "RUN", "simulation_run",
                       entity_id=str(fila["id"]),
                       data_after={"estado": "fallido", "seed": fila["seed"],
                                   "error": MENSAJE_INTERRUMPIDA[:500],

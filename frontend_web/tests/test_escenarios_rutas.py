@@ -1,5 +1,5 @@
 """
-Pruebas de las rutas de escenarios (bloque D, rebanada 1). Flask test client
+Pruebas de las rutas de escenarios. Flask test client
 contra PostgreSQL real; mismo requisito de base que las demas.
 
 El POST de alta se salta solo, con aviso, si falta la migracion 023.
@@ -7,31 +7,23 @@ El POST de alta se salta solo, con aviso, si falta la migracion 023.
 Ejecutar:
     python -m unittest frontend_web.tests.test_escenarios_rutas -v
 """
-import os
 import unittest
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from frontend_web.tests.base import AppTestCase
 from backend_web import queries
 from backend_web.db import get_conn, query
-from frontend_web.app import create_app
+
 
 NOMBRE = "ZZZ escenario de prueba de rutas"
 
 # Codigo de una enfermedad fixture, deliberadamente incompleta (sin r0), para
-# probar el aviso "no simulable" del formulario. Antes de la migracion 025 el
-# catalogo real siempre tenia alguna enfermedad incompleta que servia para
-# esto; 025 cierra el ultimo pendiente y deja las 6 del catalogo simulables,
-# asi que la prueba ya no puede apoyarse en datos reales y crea la suya.
+# probar el aviso "no simulable" del formulario. Desde la migracion 025 las 6
+# enfermedades del catalogo son simulables, asi que la prueba no puede
+# apoyarse en datos reales y crea la suya.
 CODIGO_INCOMPLETA = "ZZZ_INCOMPLETA_PRUEBA"
 
 
-class EscenariosRutasTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-
+class EscenariosRutasTests(AppTestCase):
     def setUp(self):
         self.mty = query("SELECT id, population FROM regions WHERE code = '19039'", one=True)
         self._borra()
@@ -69,11 +61,6 @@ class EscenariosRutasTests(unittest.TestCase):
                 conn.commit()
         except Exception as exc:                       # limpieza best-effort
             print(f"[tearDown] no se pudo limpiar: {exc}")
-
-    def _login(self, client, usuario, password):
-        resp = client.post("/login", data={"usuario": usuario, "password": password},
-                           follow_redirects=False)
-        self.assertEqual(resp.status_code, 302, f"login de {usuario} fallo: {resp.data}")
 
     def test_anonimo_no_ve_escenarios(self):
         with self.app.test_client() as client:
@@ -136,17 +123,12 @@ class EscenariosRutasTests(unittest.TestCase):
             self.assertIn(NOMBRE, client.get("/escenarios").data.decode("utf-8", "replace"))
 
 
-class IntervencionesRutasTests(unittest.TestCase):
+class IntervencionesRutasTests(AppTestCase):
     """El editor vive en el detalle del escenario. Tres cosas tienen que
     cumplirse para editar: el rol, que la version siga en borrador y ser dueno
     del escenario (o ADMINISTRADOR)."""
 
     NOMBRE = "ZZZ escenario de rutas con intervenciones"
-
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
 
     def setUp(self):
         if not queries._hay_columnas_de_edad_en_version():
@@ -182,11 +164,6 @@ class IntervencionesRutasTests(unittest.TestCase):
         except Exception as exc:                       # limpieza best-effort
             print(f"[tearDown] no se pudo limpiar: {exc}")
 
-    def _login(self, client, usuario, password):
-        resp = client.post("/login", data={"usuario": usuario, "password": password},
-                           follow_redirects=False)
-        self.assertEqual(resp.status_code, 302, f"login de {usuario} fallo")
-
     def _n(self):
         return len(queries.get_escenario_detalle(self.sid)["intervenciones"])
 
@@ -216,6 +193,18 @@ class IntervencionesRutasTests(unittest.TestCase):
                 "code": "CUBREBOCAS", "start_day": "5"})       # falta «eficacia»
             self.assertEqual(resp.status_code, 400)
             self.assertIn("eficacia", resp.data.decode("utf-8", "replace"))
+            self.assertEqual(self._n(), 0)
+
+    def test_un_parametro_nan_devuelve_400_y_no_guarda(self):
+        """nan pasaba la validacion (no es menor que 0 ni mayor que 1), la
+        columna jsonb lo rechazaba y la ruta respondia 500."""
+        with self.app.test_client() as client:
+            self._login(client, "alex.cavazos", "Epidemia2026!")
+            resp = client.post(f"/escenarios/{self.sid}/intervenciones", data={
+                "code": "REDUCCION_AFORO", "start_day": "10",
+                "p_REDUCCION_AFORO_reduccion": "nan"})
+            self.assertEqual(resp.status_code, 400)
+            self.assertIn("«reduccion» debe ser un número", resp.data.decode("utf-8", "replace"))
             self.assertEqual(self._n(), 0)
 
     def test_quien_no_es_dueno_no_edita(self):
@@ -271,6 +260,7 @@ class VersionadoRutasTests(IntervencionesRutasTests):
     test_anonimo_no_ve_el_detalle = None
     test_el_dueno_agrega_y_la_linea_de_tiempo_la_dibuja = None
     test_alta_invalida_devuelve_400_y_no_guarda = None
+    test_un_parametro_nan_devuelve_400_y_no_guarda = None
     test_quien_no_es_dueno_no_edita = None
     test_el_administrador_si_edita_lo_ajeno = None
     test_una_version_que_no_es_borrador_no_se_edita = None
@@ -374,6 +364,7 @@ class AprobacionRutasTests(IntervencionesRutasTests):
     test_anonimo_no_ve_el_detalle = None
     test_el_dueno_agrega_y_la_linea_de_tiempo_la_dibuja = None
     test_alta_invalida_devuelve_400_y_no_guarda = None
+    test_un_parametro_nan_devuelve_400_y_no_guarda = None
     test_quien_no_es_dueno_no_edita = None
     test_el_administrador_si_edita_lo_ajeno = None
     test_una_version_que_no_es_borrador_no_se_edita = None
@@ -467,6 +458,22 @@ class AprobacionRutasTests(IntervencionesRutasTests):
                              "quien opera el sistema no valida la epidemiología")
             admin.post(f"/escenarios/{self.sid}/revisar", data={"decision": "aprobar"},
                        follow_redirects=True)
+        self.assertEqual(self._estado(), "en_revision")
+
+    def test_quien_no_es_dueno_no_envia_a_revision(self):
+        """diana.flores tiene el rol para trabajar escenarios, pero este es de
+        alex.cavazos."""
+        with self.app.test_client() as client:
+            self._login(client, "diana.flores", "Epidemia2026!")
+            resp = self._envia(client)
+        self.assertIn("Solo quien creó el escenario puede enviarlo a revisión",
+                      resp.data.decode("utf-8", "replace"))
+        self.assertEqual(self._estado(), "borrador")
+
+    def test_el_administrador_si_envia_lo_ajeno(self):
+        with self.app.test_client() as admin:
+            self._login(admin, "admin", "Admin2026!")
+            self._envia(admin)
         self.assertEqual(self._estado(), "en_revision")
 
 

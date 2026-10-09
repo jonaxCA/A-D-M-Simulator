@@ -62,7 +62,7 @@
               {%- if e.version_status == 'aprobado' %} param-con-fuente
               {%- elif e.version_status == 'rechazado' %} param-sin-fuente
               {%- elif e.version_status == 'en_revision' %} param-supuesto
-              {%- else %} param-falta-pill{% endif %}">{{ e.version_label }}</span>
+              {%- else %} param-falta-pill{% endif %}">{{ e.version_status | estado_version }}</span>
           </td>
           <td>
             {% if e.population_size %}{{ "{:,}".format(e.population_size) }}{% else %}—{% endif %}

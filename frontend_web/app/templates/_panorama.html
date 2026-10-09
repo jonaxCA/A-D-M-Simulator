@@ -69,7 +69,7 @@
         {% for row in situacion %}
         <tr>
           <td>{{ row.enfermedad }}</td>
-          <td><span class="badge badge-{{ row.estado|lower }}">{{ row.estado }}</span></td>
+          <td><span class="badge badge-{{ row.estado }}">{{ row.estado | tendencia_etiqueta }}</span></td>
           <td>{{ "{:,}".format(row.incidencia) }}</td>
         </tr>
         {% endfor %}

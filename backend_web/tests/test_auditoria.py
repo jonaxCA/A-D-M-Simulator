@@ -6,15 +6,19 @@ Motivo del archivo: bug de UAT donde admin abre /auditoria despues de una
 corrida real y no puede distinguir "solicitada" de "ejecutando", "completada"
 o "fallida" -- las 4 etapas quedan en audit_log con la MISMA action='RUN'
 (ver backend_web/simulaciones.py y backend_web/audit.py); lo que las
-distingue es data_after['estado']. get_auditoria_lista()/get_acciones_auditoria()
-tenian que abrir ese JSON en vez de mirar solo `action`.
+distingue es data_after['estado']. La bitacora tiene que abrir ese JSON en vez
+de mirar solo `action`.
+
+Los textos los arma frontend_web/app/presentacion.py con lo que regresan
+get_auditoria_lista() y get_acciones_auditoria(); estas pruebas los obtienen de
+ahi.
 
 Dos grupos, igual que test_simulaciones.py:
-  - `DescribeEventoAuditoriaTests`: la funcion pura _describe_evento_auditoria
+  - `DescribeEventoAuditoriaTests`: la funcion pura describe_evento_auditoria
     (sin SQL). Corre en cualquier maquina.
   - `AuditoriaIntegracionTests`: contra PostgreSQL real, corriendo una
     simulacion de verdad (demora_seg=0) y verificando que las 4 etapas
-    aparecen en get_auditoria_lista() con etiquetas distintas y que el
+    aparecen en la bitacora con etiquetas distintas y que el
     filtro compuesto 'RUN::<etapa>' aisla cada una.
 
 Ejecutar:
@@ -22,17 +26,17 @@ Ejecutar:
     JWT_SECRET_KEY=test-secret \
         python -m unittest backend_web.tests.test_auditoria -v
 """
-import os
 import unittest
+from datetime import datetime
+from unittest.mock import patch
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from backend_web.tests.base import ConCorridasDePrueba
 from backend_web import queries, simulaciones
-from backend_web.db import get_conn, query
+from frontend_web.app import presentacion
 
 
 # ---------------------------------------------------------------------------
-# Funcion pura: _describe_evento_auditoria (sin SQL, sin Flask)
+# Funcion pura: presentacion.describe_evento_auditoria (sin SQL, sin Flask)
 # ---------------------------------------------------------------------------
 class DescribeEventoAuditoriaTests(unittest.TestCase):
     def test_las_4_etapas_de_run_dan_descripcion_y_estado_distintos(self):
@@ -44,7 +48,7 @@ class DescribeEventoAuditoriaTests(unittest.TestCase):
         }
         descripciones = set()
         for etapa, estado_esperado in casos.items():
-            descripcion, estado = queries._describe_evento_auditoria(
+            descripcion, estado = presentacion.describe_evento_auditoria(
                 "RUN", "42", {"estado": etapa}
             )
             self.assertEqual(estado, estado_esperado, etapa)
@@ -57,19 +61,19 @@ class DescribeEventoAuditoriaTests(unittest.TestCase):
         # El bug concreto que reporto UAT: una corrida que SI fallo (forzar
         # error como ADMINISTRADOR) se mostraba con estado "Correcto" porque
         # 'RUN' no estaba en ACCIONES_FALLIDAS. Ahora debe mirar data_after.
-        _descripcion, estado = queries._describe_evento_auditoria(
+        _descripcion, estado = presentacion.describe_evento_auditoria(
             "RUN", "176", {"estado": "fallido", "error": "boom"}
         )
         self.assertEqual(estado, "Fallido")
 
     def test_run_fallido_incluye_el_mensaje_de_error(self):
-        descripcion, _estado = queries._describe_evento_auditoria(
+        descripcion, _estado = presentacion.describe_evento_auditoria(
             "RUN", "176", {"estado": "fallido", "error": "Error forzado de prueba"}
         )
         self.assertIn("Error forzado de prueba", descripcion)
 
     def test_run_completado_incluye_indicadores(self):
-        descripcion, estado = queries._describe_evento_auditoria(
+        descripcion, estado = presentacion.describe_evento_auditoria(
             "RUN", "174",
             {"estado": "completado", "indicadores": {
                 "tasa_ataque": 0.475, "casos_acumulados": 237546, "fallecimientos": 113,
@@ -81,27 +85,27 @@ class DescribeEventoAuditoriaTests(unittest.TestCase):
         self.assertIn("113", descripcion)
 
     def test_run_etapa_desconocida_no_truena(self):
-        descripcion, estado = queries._describe_evento_auditoria(
+        descripcion, estado = presentacion.describe_evento_auditoria(
             "RUN", "1", {"estado": "algo_nuevo_que_no_existe_todavia"}
         )
         self.assertTrue(descripcion)
         self.assertEqual(estado, "Correcto")
 
     def test_run_sin_data_after_no_truena(self):
-        descripcion, estado = queries._describe_evento_auditoria("RUN", "1", None)
+        descripcion, estado = presentacion.describe_evento_auditoria("RUN", "1", None)
         self.assertTrue(descripcion)
         self.assertEqual(estado, "Correcto")
 
     def test_acciones_no_run_se_comportan_igual_que_antes(self):
-        descripcion, estado = queries._describe_evento_auditoria("LOGIN_FAILED", "9", None)
+        descripcion, estado = presentacion.describe_evento_auditoria("LOGIN_FAILED", "9", None)
         self.assertEqual(estado, "Fallido")
-        descripcion, estado = queries._describe_evento_auditoria("LOGIN", "9", None)
+        descripcion, estado = presentacion.describe_evento_auditoria("LOGIN", "9", None)
         self.assertEqual(estado, "Correcto")
         
     def test_envio_aprobacion_y_rechazo_de_version_se_distinguen(self):
         descripciones = set()
         for etapa in ("en_revision", "aprobado", "rechazado"):
-            descripcion, estado = queries._describe_evento_auditoria(
+            descripcion, estado = presentacion.describe_evento_auditoria(
                 "UPDATE", "7", {"status": etapa, "version_number": 2},
                 "scenario_versions")
             self.assertEqual(estado, "Correcto", etapa)
@@ -110,75 +114,56 @@ class DescribeEventoAuditoriaTests(unittest.TestCase):
         self.assertEqual(len(descripciones), 3, descripciones)
 
     def test_update_de_otro_modulo_no_cambia(self):
-        descripcion, _estado = queries._describe_evento_auditoria(
+        descripcion, _estado = presentacion.describe_evento_auditoria(
             "UPDATE", "7", {"status": "aprobado"}, "users")
         self.assertEqual(descripcion, "Modificacion de registro")
 
+
+# ---------------------------------------------------------------------------
+# Lo que regresa queries (sin SQL: se simula la consulta)
+# ---------------------------------------------------------------------------
+class BitacoraDatosCrudosTests(unittest.TestCase):
+    """La bitacora viaja como datos; el texto que ve la persona lo arma
+    frontend_web/app/presentacion.py. Una API recibe lo mismo."""
+
+    def test_cada_evento_viaja_crudo(self):
+        momento = datetime(2026, 10, 6, 14, 5, 33)
+        fila = {"id": 1, "occurred_at": momento, "action": "RUN", "entity_type": "simulation_run",
+                "entity_id": "42", "ip_address": None, "data_after": {"estado": "fallido"},
+                "usuario": None}
+        with patch.object(queries, "query", return_value=[fila]):
+            evento, = queries.get_auditoria_lista()
+        self.assertEqual(evento, {"id": 1, "fecha": momento, "usuario": None,
+                                  "modulo": "simulation_run", "accion": "RUN", "entidad_id": "42",
+                                  "datos": {"estado": "fallido"}, "ip": None})
+
+    def test_el_filtro_de_accion_recibe_valores(self):
+        def consulta(sql, params=None, one=False):
+            if "action <> 'RUN'" in sql:
+                return [{"action": "DELETE"}, {"action": "LOGIN"}]
+            return [{"etapa": "completado"}, {"etapa": "encolado"}]
+        with patch.object(queries, "query", side_effect=consulta):
+            self.assertEqual(queries.get_acciones_auditoria(),
+                             ["DELETE", "LOGIN", "RUN::completado", "RUN::encolado"])
 
 
 # ---------------------------------------------------------------------------
 # Integracion contra PostgreSQL real
 # ---------------------------------------------------------------------------
-def _tiene_base():
-    try:
-        query("SELECT 1", one=True)
-        return True
-    except Exception:
-        return False
-
-
-@unittest.skipUnless(_tiene_base(), "Requiere PostgreSQL en DATABASE_URL (ver docstring del modulo).")
-class AuditoriaIntegracionTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.version_aprobada = query(
-            """
-            SELECT sv.id FROM scenario_versions sv
-            JOIN scenarios s ON s.id = sv.scenario_id
-            WHERE s.name = 'Ola Influenza ZMM - otono 2026' AND sv.status = 'aprobado'
-            """,
-            one=True,
-        )
-        if not cls.version_aprobada:
-            raise unittest.SkipTest(
-                "No se encontro el escenario de demostracion aprobado; "
-                "carga datos/postgres/semillas/demo_datos_nl.sql."
-            )
-        cls.version_id = cls.version_aprobada["id"]
-        cls.user_id = query(
-            "SELECT id FROM users WHERE username = 'alex.cavazos'", one=True
-        )["id"]
-
-    def setUp(self):
-        self._batches_creados = []
-
-    def tearDown(self):
-        # Igual que test_simulaciones.py: audit_log es de solo insercion
-        # (trigger fn_solo_insercion) y NO se limpia -- son eventos reales.
-        for batch_id in self._batches_creados:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("DELETE FROM simulation_batches WHERE id = %s", (batch_id,))
-                conn.commit()
-
-    def _encola(self, seed):
-        run_id, batch_id, error = queries.crear_corrida(
-            self.version_id, seed, self.user_id, simulaciones.ENGINE_VERSION,
-        )
-        self.assertIsNone(error, error)
-        self._batches_creados.append(batch_id)
-        return run_id
-
+class AuditoriaIntegracionTests(ConCorridasDePrueba):
     def test_corrida_completa_deja_las_3_etapas_visibles_y_distintas(self):
         run_id = self._encola(seed=910001)
         from backend_web.audit import log_audit
-        log_audit(self.user_id, "RUN", "simulation_run", entity_id=str(run_id),
-                   data_after={"estado": "encolado", "seed": 910001,
-                               "scenario_version_id": self.version_id,
-                               "forzar_error": False})
+        from backend_web.contexto import Contexto
+        log_audit(Contexto.sin_peticion(self.user_id), "RUN", "simulation_run",
+                  entity_id=str(run_id),
+                  data_after={"estado": "encolado", "seed": 910001,
+                              "scenario_version_id": self.version_id,
+                              "forzar_error": False})
         simulaciones.ejecutar_run(run_id, demora_seg=0)
 
-        eventos = queries.get_auditoria_lista(modulo="simulation_run", limit=500)
+        eventos = presentacion.filas_bitacora(
+            queries.get_auditoria_lista(modulo="simulation_run", limit=500))
         propios = [e for e in eventos if e["accion"] == "RUN"
                    and f"SIM-{run_id:05d}" in e["descripcion"]]
         etapas_vistas = {e["descripcion"].split(" SIM-")[0] for e in propios}
@@ -195,7 +180,8 @@ class AuditoriaIntegracionTests(unittest.TestCase):
         run_id = self._encola(seed=910002)
         simulaciones.ejecutar_run(run_id, forzar_error=True, demora_seg=0)
 
-        eventos = queries.get_auditoria_lista(modulo="simulation_run", limit=500)
+        eventos = presentacion.filas_bitacora(
+            queries.get_auditoria_lista(modulo="simulation_run", limit=500))
         fallida = next(e for e in eventos if e["accion"] == "RUN"
                         and f"SIM-{run_id:05d}" in e["descripcion"]
                         and e["descripcion"].startswith("Simulacion fallida"))
@@ -206,7 +192,8 @@ class AuditoriaIntegracionTests(unittest.TestCase):
         run_id = self._encola(seed=910003)
         simulaciones.ejecutar_run(run_id, forzar_error=True, demora_seg=0)
 
-        eventos = queries.get_auditoria_lista(accion="RUN::fallido", limit=500)
+        eventos = presentacion.filas_bitacora(
+            queries.get_auditoria_lista(accion="RUN::fallido", limit=500))
         self.assertTrue(eventos)
         for e in eventos:
             self.assertEqual(e["estado"], "Fallido")
@@ -216,12 +203,13 @@ class AuditoriaIntegracionTests(unittest.TestCase):
         run_id = self._encola(seed=910004)
         simulaciones.ejecutar_run(run_id, demora_seg=0)
 
-        opciones = {o["valor"]: o["etiqueta"] for o in queries.get_acciones_auditoria()}
+        opciones = {o["valor"]: o["etiqueta"]
+                    for o in presentacion.opciones_accion(queries.get_acciones_auditoria())}
         self.assertIn("RUN::encolado", opciones)
         self.assertIn("RUN::ejecutando", opciones)
         self.assertIn("RUN::completado", opciones)
         self.assertEqual(opciones["RUN::completado"], "Simulacion completada")
-        # RUN "plano" ya no debe listarse: solo sus etapas.
+        # RUN "plano" no se lista: solo sus etapas.
         self.assertNotIn("RUN", opciones)
 
 

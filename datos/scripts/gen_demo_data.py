@@ -12,11 +12,13 @@ Uso (desde la raiz del proyecto):
   python3 datos/scripts/gen_demo_data.py > datos/postgres/semillas/demo_datos_nl.sql
   psql -d simulador_epidemico -v ON_ERROR_STOP=1 -f datos/postgres/semillas/demo_datos_nl.sql
 
-Ojo: cada corrida genera un hash bcrypt nuevo para la usuaria de demostracion,
-asi que regenerar el archivo cambia esa linea aunque los datos sean los mismos.
+Ojo: cada corrida genera un hash bcrypt nuevo para cada una de las tres cuentas
+(sal aleatoria), asi que regenerar el archivo cambia esas tres lineas aunque los
+datos sean los mismos. Todo lo demas sale igual byte por byte.
 """
 import random
 import datetime
+import sys
 import bcrypt
 
 random.seed(42)
@@ -70,6 +72,8 @@ def gen_password_hash(password: str) -> str:
 
 
 def main():
+    # LF y UTF-8 tambien en Windows, donde la salida redirigida saldria en cp1252.
+    sys.stdout.reconfigure(newline="\n", encoding="utf-8")
     out = []
     out.append("-- =============================================================================")
     out.append("-- demo_datos_nl.sql  (NO es parte de la migracion oficial 001-010)")
@@ -80,6 +84,9 @@ def main():
     out.append("--")
     out.append("-- Requiere: dump_completo.sql ya aplicado (schema + catalogos + admin).")
     out.append("-- =============================================================================")
+    out.append("")
+    out.append("-- El archivo esta en UTF-8; sin esto, psql en Windows lo lee como WIN1252.")
+    out.append("SET client_encoding = 'UTF8';")
     out.append("")
     out.append("BEGIN;")
     out.append("")
@@ -93,14 +100,18 @@ def main():
     out.append("-- ---------------------------------------------------------------------------")
     out.append("-- Enfermedades adicionales, solo para variedad visual en 'Resumen de Situacion'.")
     out.append("-- Parametros de literatura general, NO calibrados -- mismo criterio que 010.")
+    out.append("--")
+    out.append("-- r0 / dias_hospitalizacion / tasa_hospitalizacion / letalidad, con fuente o")
+    out.append("-- supuesto explicito: mismo valor y mismo texto que la migracion")
+    out.append("-- 025_parametros_enfermedades_restantes.sql. Van tambien en esta semilla")
+    out.append("-- porque dump_completo.sql (que trae esa migracion) corre ANTES que esta")
+    out.append("-- semilla (ver docs/INSTALACION.md, Paso 2): en una instalacion nueva esas")
+    out.append("-- tres filas todavia no existen cuando corre la migracion, asi que su UPDATE")
+    out.append("-- no tiene nada que actualizar. Sin este duplicado, una instalacion nueva")
+    out.append("-- terminaria con dengue, zika y malaria sin poder simularse hasta que alguien")
+    out.append("-- volviera a correr el dump. Se genera con datos/scripts/gen_demo_data.py: si")
+    out.append("-- se regenera este archivo, editar los valores alla, no aqui.")
     out.append("-- ---------------------------------------------------------------------------")
-    # r0 / dias_hospitalizacion / tasa_hospitalizacion / letalidad con fuente o
-    # supuesto explicito: mismos valores y texto que la migracion
-    # 025_parametros_enfermedades_restantes.sql. Van tambien aqui porque el dump
-    # (que trae esa migracion) corre ANTES que esta semilla -- ver el header de
-    # esa migracion. Sin esto, una instalacion nueva crea estas tres
-    # enfermedades sin poder simularse hasta que alguien vuelva a correr el
-    # dump sobre una base que ya tenga la semilla aplicada.
     out.append("""INSERT INTO diseases (code, name, description, default_params) VALUES
     ('DENGUE_DEMO', 'Dengue',
      'Arbovirus transmitido por Aedes aegypti. Parametros de referencia, no calibrados.',
