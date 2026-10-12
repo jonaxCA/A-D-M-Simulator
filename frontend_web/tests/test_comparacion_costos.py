@@ -1,39 +1,12 @@
-import os
 import unittest
 from unittest.mock import patch
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from frontend_web.tests.base import ConUsuarioSimulado
 from backend_web import queries
-from backend_web.auth import create_token
-from frontend_web.app import create_app
 from frontend_web.app.permisos import COOKIE_NAME
 
 
-class ComparacionCostosTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-
-    def setUp(self):
-        # El token es de un usuario inventado (id 999) y las consultas estan
-        # simuladas, asi que la revalidacion contra `users` tambien: devuelve
-        # el usuario del token tal cual, con `sub` como entero, igual que
-        # backend_web.auth.usuario_vigente con una cuenta activa.
-        simulado = patch("frontend_web.app.permisos.usuario_vigente",
-                         side_effect=lambda u: {**u, "sub": int(u["sub"])})
-        simulado.start()
-        self.addCleanup(simulado.stop)
-
-    def _token(self, rol):
-        return create_token({
-            "id": 999,
-            "username": "prueba",
-            "full_name": "Usuario Prueba",
-            "roles": [rol],
-        })
-
+class ComparacionCostosTests(ConUsuarioSimulado):
     def _tipo(self):
         return {
             "id": 7,
@@ -69,6 +42,14 @@ class ComparacionCostosTests(unittest.TestCase):
         )
 
         self.assertIn("El importe no puede ser negativo.", errores)
+
+    def test_rechaza_importes_no_finitos(self):
+        """float() acepta "nan" e "inf", y la columna numeric los guardaria."""
+        for texto in ("nan", "inf", "-inf", "1e400"):
+            with self.subTest(texto=texto):
+                datos, errores = queries.valida_costo_intervencion(texto, "fuente", False)
+                self.assertIsNone(datos)
+                self.assertEqual(errores, ["El importe debe ser numerico."])
 
     def test_exige_fuente_si_no_es_supuesto(self):
         _, errores = queries.valida_costo_intervencion(

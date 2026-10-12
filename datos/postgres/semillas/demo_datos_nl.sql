@@ -8,6 +8,9 @@
 -- Requiere: dump_completo.sql ya aplicado (schema + catalogos + admin).
 -- =============================================================================
 
+-- El archivo esta en UTF-8; sin esto, psql en Windows lo lee como WIN1252.
+SET client_encoding = 'UTF8';
+
 BEGIN;
 
 -- Reinicio limpio de las tablas que toca esta demo. No toca users/roles reales

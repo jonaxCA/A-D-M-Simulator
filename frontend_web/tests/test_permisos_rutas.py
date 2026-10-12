@@ -1,63 +1,25 @@
 """
-Candados por rol de las rutas nuevas del segundo avance (Bloque H, #21).
+Candados por rol de las rutas (issue #21).
 CAPTURISTA no tiene 'scenarios.read' (010_datos_iniciales.sql): no entra a
 escenarios, ni por el menu ni escribiendo la URL.
 
 Ejecutar:
     python -m unittest frontend_web.tests.test_permisos_rutas -v
 """
-import os
-import secrets
 import unittest
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
-from backend_web.auth import create_token, hash_password
-from backend_web.db import get_conn, query
-from frontend_web.app import create_app
+from frontend_web.tests.base import (CAPTURISTA_PRUEBA, AppTestCase, capturista_de_prueba,
+                                     requiere_base)
+from backend_web.db import query
+from backend_web.tests.base import token_de
 from frontend_web.app.permisos import COOKIE_NAME
 
-# Mismo usuario que usa test_simulaciones_rutas.py: activo, con una
-# contrasena al azar que no se guarda en ningun lado; la prueba entra con un
-# token firmado. Tiene que estar activo: permisos.get_current_user revalida la
-# cuenta en cada peticion y una inactiva ya no entra ni con token valido.
-CAPTURISTA_PRUEBA = "prueba.capturista"
 
-
-def _tiene_base():
-    try:
-        query("SELECT 1", one=True)
-        return True
-    except Exception:
-        return False
-
-
-@unittest.skipUnless(_tiene_base(), "Requiere PostgreSQL en DATABASE_URL.")
-class PermisosRutasTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-
+@requiere_base
+class PermisosRutasTests(AppTestCase):
     def _token_capturista(self):
-        with get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """INSERT INTO users (username, email, password_hash, full_name, is_active)
-                       VALUES (%s, %s, %s, 'Capturista de prueba', TRUE)
-                       ON CONFLICT (username) DO UPDATE SET is_active = TRUE""",
-                    (CAPTURISTA_PRUEBA, f"{CAPTURISTA_PRUEBA}@example.com",
-                     hash_password(secrets.token_urlsafe(24))))
-                cur.execute(
-                    """INSERT INTO user_roles (user_id, role_id)
-                       SELECT u.id, r.id FROM users u, roles r
-                       WHERE u.username = %s AND r.code = 'CAPTURISTA'
-                       ON CONFLICT DO NOTHING""", (CAPTURISTA_PRUEBA,))
-            conn.commit()
-        user_id = query("SELECT id FROM users WHERE username = %s",
-                        (CAPTURISTA_PRUEBA,), one=True)["id"]
-        return create_token({"id": user_id, "username": CAPTURISTA_PRUEBA,
-                             "full_name": "Capturista de prueba", "roles": ["CAPTURISTA"]})
+        capturista_de_prueba()
+        return token_de(CAPTURISTA_PRUEBA)
 
     def test_capturista_no_entra_a_escenarios(self):
         rutas = ["/escenarios"]
@@ -79,6 +41,39 @@ class PermisosRutasTests(unittest.TestCase):
                                         "password": "Epidemia2026!"})
             resp = client.get("/escenarios")
             self.assertEqual(resp.status_code, 200)
+
+    def test_cada_candado_registra_el_modulo_de_su_pantalla(self):
+        """El modulo del PERMISSION_DENIED es lo que permite rastrear intentos
+        en la bitacora. Incluye los dos valores por omision, que no son el
+        mismo: "users" en admin_required y "diseases" en roles_required."""
+        enfermedad = query("SELECT min(id) AS v FROM diseases", one=True)["v"]
+        municipio = query("SELECT min(id) AS v FROM regions WHERE level = 'municipio'",
+                          one=True)["v"]
+        casos = [
+            ("/usuarios", "users"),                          # admin_required
+            ("/auditoria", "users"),                         # admin_required
+            (f"/enfermedades/{enfermedad}/editar", "diseases"),  # roles_required
+            (f"/regiones/{municipio}/editar", "regions"),
+            ("/escenarios", "scenarios"),
+            ("/revisiones", "scenario_versions"),
+            ("/simulaciones", "simulations"),
+            ("/comparacion/costos", "intervention_types"),
+        ]
+        capturista = capturista_de_prueba()
+        with self.app.test_client() as client:
+            client.set_cookie(COOKIE_NAME, token_de(CAPTURISTA_PRUEBA))
+            for ruta, modulo in casos:
+                with self.subTest(ruta=ruta):
+                    resp = client.get(ruta, follow_redirects=False)
+                    self.assertEqual(resp.status_code, 302)
+                    self.assertIn("/dashboard", resp.headers["Location"])
+                    fila = query(
+                        """SELECT entity_type FROM audit_log
+                           WHERE action = 'PERMISSION_DENIED' AND entity_id = %s
+                             AND user_id = %s
+                           ORDER BY id DESC LIMIT 1""",
+                        (ruta, capturista), one=True)
+                    self.assertEqual(fila["entity_type"], modulo)
 
 
 if __name__ == "__main__":

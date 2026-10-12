@@ -7,21 +7,13 @@ Ejecutar:
     JWT_SECRET_KEY=test-secret \
         python -m unittest frontend_web.tests.test_regiones_rutas -v
 """
-import os
 import unittest
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from frontend_web.tests.base import AppTestCase
 from backend_web.db import get_conn, query
-from frontend_web.app import create_app
 
 
-class RegionesRutasTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-
+class RegionesRutasTests(AppTestCase):
     def setUp(self):
         municipio = query(
             "SELECT id, population, population_60plus FROM regions WHERE code = '19003'",
@@ -52,11 +44,6 @@ class RegionesRutasTests(unittest.TestCase):
                     (estado_id, estado_id),
                 )
             conn.commit()
-
-    def _login(self, client, usuario, password):
-        resp = client.post("/login", data={"usuario": usuario, "password": password},
-                            follow_redirects=False)
-        self.assertEqual(resp.status_code, 302, f"login de {usuario} fallo: {resp.data}")
 
     def test_usuario_autenticado_sin_admin_puede_consultar(self):
         with self.app.test_client() as client:
@@ -140,7 +127,7 @@ class RegionesRutasTests(unittest.TestCase):
             resp_get = client.get(f"/regiones/{self.region_id}/editar")
             self.assertEqual(resp_get.status_code, 200)
 
-            # El formulario ya no trae el 60 y mas; se muestra de solo lectura.
+            # El formulario no trae el 60 y mas; se muestra de solo lectura.
             self.assertNotIn(b'name="population_60plus"', resp_get.data)
 
             nueva_pob = self.pob_original + 321
@@ -166,10 +153,16 @@ class RegionesRutasTests(unittest.TestCase):
 
             resp_listado = client.get("/regiones")
             self.assertIn("Corrección manual".encode(), resp_listado.data)
+            # En la fila de este municipio: otra fila con una correccion (de otra
+            # prueba, o de la demostracion) no debe bastar para pasar.
+            nombre = query("SELECT name FROM regions WHERE id = %s",
+                           (self.region_id,), one=True)["name"]
+            fila_html = resp_listado.get_data(as_text=True).split(f">{nombre}<", 1)[1].split("</tr>")[0]
+            self.assertIn("Población: Corrección manual", fila_html)
 
     def test_admin_datos_invalidos_no_cambian_nada_y_muestran_error(self):
         """Una poblacion total por debajo del 60 y mas del propio municipio es
-        imposible, y el 60 y mas ya no se puede "arreglar" bajandolo."""
+        imposible, y el 60 y mas no se puede "arreglar" bajandolo."""
         with self.app.test_client() as client:
             self._login(client, "admin", "Admin2026!")
             resp = client.post(

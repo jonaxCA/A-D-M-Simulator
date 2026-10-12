@@ -1,7 +1,6 @@
 """
 Autenticacion real contra la tabla users. JWT (PyJWT) guardado en una cookie
-httponly -- cumple el "login con JWT" que pide el rubro del primer parcial,
-sin traer todavia la capa de microservicios (eso es el segundo parcial).
+httponly.
 
 El secreto que firma los tokens sale SOLO de JWT_SECRET_KEY. No hay valor por
 omision: con uno fijo en el codigo, cualquiera que lea el repositorio puede

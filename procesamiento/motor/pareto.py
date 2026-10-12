@@ -19,7 +19,6 @@ intervencion, con la misma trazabilidad que los parametros de enfermedad:
 {"CIERRE_ESCUELAS": {"valor": 15.0, "fuente": "...", "supuesto": true}}.
 """
 
-import math
 
 from .modelo import huella_escenario
 from .parametros import (INTERVENCIONES_CAPA, EscenarioInvalido, _desempaca,

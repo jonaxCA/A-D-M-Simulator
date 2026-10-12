@@ -21,7 +21,7 @@ import pathlib
 import re
 import unittest
 
-from backend_web.queries import PARAMETROS_SIMULACION, estado_parametros
+from backend_web.queries import PARAMETROS_SIMULACION, _actividad, estado_parametros
 
 RAIZ = pathlib.Path(__file__).resolve().parents[2]
 MIGRACIONES = RAIZ / "datos" / "postgres" / "migraciones"
@@ -157,6 +157,27 @@ class Migracion025Tests(unittest.TestCase):
         self.assertFalse(aplica_migracion)
         self.assertEqual(resultado["r0"]["valor"], 9.99)
         self.assertEqual(resultado["r0"]["fuente"], "Capturado a mano desde /enfermedades")
+
+
+class DatosCrudosTests(unittest.TestCase):
+    """estado_parametros y la actividad regresan datos; el texto para leer lo
+    arma frontend_web/app/presentacion.py. Una API recibe lo mismo."""
+
+    def test_los_parametros_viajan_sin_texto_armado(self):
+        tabla = {"80+": 0.005, "0-19": 0.0001}
+        estado = estado_parametros({
+            "r0": {"valor": 2.1, "fuente": "F", "supuesto": False},
+            "letalidad_por_edad": {"valor": tabla, "fuente": "G", "supuesto": True}})
+        r0 = next(d for d in estado["detalle"] if d["clave"] == "r0")
+        self.assertEqual(r0["valor"], 2.1)
+        self.assertNotIn("valor_label", r0)
+        self.assertEqual(estado["informativos"], [
+            {"etiqueta": "Letalidad por grupo de edad", "valor": tabla, "fuente": "G",
+             "supuesto": True}])
+
+    def test_la_actividad_es_una_clave(self):
+        self.assertEqual([_actividad(0, 0), _actividad(5, 0), _actividad(5, 1)],
+                         ["sin_casos", "historico", "con_casos"])
 
 
 class SeisEnfermedadesSimulablesTests(unittest.TestCase):

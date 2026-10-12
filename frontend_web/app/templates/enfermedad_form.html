@@ -122,7 +122,7 @@
         <li>
           <span>{{ p.etiqueta }}{% if p.supuesto %}
             <span class="badge param-pill param-supuesto">supuesto</span>{% endif %}</span>
-          <span>{{ p.texto }}</span>
+          <span>{{ p.valor | texto_informativo }}</span>
         </li>
         {% if p.fuente %}
         <li class="param-fuente-fila"><span></span><span class="param-fuente-texto">{{ p.fuente }}</span></li>

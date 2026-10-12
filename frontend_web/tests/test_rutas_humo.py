@@ -15,30 +15,18 @@ verifican sus propias pruebas.
 Ejecutar:
     python -m unittest frontend_web.tests.test_rutas_humo -v
 """
-import os
 import unittest
 
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-
+from frontend_web.tests.base import AppTestCase
 from backend_web.db import get_conn, query
-from frontend_web.app import create_app
+
 
 # Rutas que cambian estado y no se pueden pedir a ciegas: tienen su propia
 # prueba. Se listan para que quede claro que la omision es a proposito.
 FUERA_DEL_HUMO = {"main.logout"}
 
 
-class RutasHumoTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.testing = True
-
-    def _login(self, client):
-        resp = client.post("/login", data={"usuario": "admin", "password": "Admin2026!"},
-                           follow_redirects=False)
-        self.assertEqual(resp.status_code, 302, "login de admin fallo")
-
+class RutasHumoTests(AppTestCase):
     def _sustituciones(self):
         """Un id real para cada parametro de ruta que exista en el mapa."""
         escenario = query("SELECT id FROM scenarios ORDER BY id LIMIT 1", one=True)
@@ -57,7 +45,7 @@ class RutasHumoTests(unittest.TestCase):
         valores = self._sustituciones()
         revisadas, saltadas = [], []
         with self.app.test_client() as client:
-            self._login(client)
+            self._login(client, "admin", "Admin2026!")
             for regla in self.app.url_map.iter_rules():
                 if "GET" not in (regla.methods or set()) or regla.endpoint in FUERA_DEL_HUMO:
                     continue
@@ -87,7 +75,7 @@ class RutasHumoTests(unittest.TestCase):
                  "test_result": "positivo", "severity": "leve"}
         try:
             with self.app.test_client() as client:
-                self._login(client)
+                self._login(client, "admin", "Admin2026!")
                 resp = client.post("/reportes/nuevo", data=datos, follow_redirects=False)
                 self.assertIn(resp.status_code, (200, 302, 400),
                               f"respondio {resp.status_code}")

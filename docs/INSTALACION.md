@@ -101,7 +101,10 @@ psql -h localhost -U postgres -d simulador_epidemico -v ON_ERROR_STOP=1 -f datos
 ```
 
 En Windows PowerShell es lo mismo, pero anteponiendo la ruta a `psql.exe` si no
-está en el `PATH`.
+está en el `PATH`. No hace falta configurar la codificación de la consola: los tres
+archivos están en UTF-8 y lo declaran en su primera instrucción
+(`SET client_encoding = 'UTF8'`). Sin eso, `psql` en Windows los leería como WIN1252
+y los municipios con acento quedarían como “AnÃ¡huac”.
 
 **Qué hace cada uno:**
 
@@ -342,6 +345,30 @@ psql -h localhost -U postgres -d simulador_epidemico -Atc "SELECT 'casos='||coun
 
 ---
 
+## Base para las pruebas
+
+Las pruebas **no** corren contra `simulador_epidemico`, sino contra su propia base,
+`simulador_epidemico_pruebas`. `audit_log` es de solo inserción: lo que una prueba
+escribe ahí no se puede borrar, y algunas pantallas (Regiones, por ejemplo) leen de
+ahí si una cifra fue corregida a mano. Corriendo contra la base de la demostración,
+la suite le dejaría marcas visibles.
+
+Créala una vez, y otra vez cuando cambien el dump o las semillas. Es lo mismo que
+los pasos 2 y 3, sobre la base de pruebas, y pide la contraseña de `postgres`:
+
+```bash
+python datos/scripts/prepara_base_pruebas.py
+```
+
+- Usa el mismo usuario y contraseña de tu `DATABASE_URL`; solo cambia el nombre de
+  la base (le agrega `_pruebas`). No hay que escribir otra credencial.
+- Para usar otra base, define `DATABASE_URL_PRUEBAS` en el `.env`. Si apunta a la
+  misma base que `DATABASE_URL`, las pruebas se niegan a correr.
+- Mientras la base de pruebas no exista, las pruebas que la necesitan se saltan o
+  fallan con un mensaje que lo dice.
+
+---
+
 ## Problemas comunes
 
 | Síntoma | Causa y solución |
@@ -353,6 +380,7 @@ psql -h localhost -U postgres -d simulador_epidemico -Atc "SELECT 'casos='||coun
 | `psycopg2.OperationalError` al arrancar la app (p. ej. *la autentificación password falló para el usuario «epidemia_app»*) | El `DATABASE_URL` del `.env` no coincide con tu base/usuario/contraseña reales. Revisa el Paso 4.2. Antes, con PostgreSQL de Windows en español, este error salía disfrazado de `UnicodeDecodeError: ... byte 0xf3`; si todavía lo ves, es el mismo problema. |
 | `permission denied for table ...` | Te faltó el Paso 3 (los `GRANT`), o lo corriste **antes** del Paso 2, cuando las tablas todavía no existían. Vuelve a correrlo. |
 | Todo se ve en **cero** y no puedes entrar | Falta `demo_datos_nl.sql` (Paso 2). Sin él no existe `diana.flores` ni hay casos. |
+| Municipios como “AnÃ¡huac” o “General TerÃ¡n” en Regiones y el mapa | La base se cargó en Windows con una versión de las semillas que no declaraba su codificación. Volver a correr la semilla no los corrige, porque no pisa filas que ya existen. Corrígelos con `psql -h localhost -U postgres -d simulador_epidemico -c "UPDATE regions SET name = convert_from(convert_to(name, 'WIN1252'), 'UTF8') WHERE level = 'municipio' AND strpos(name, U&'\00C3') > 0;"`, que deshace exactamente la lectura equivocada (9 municipios), o vuelve a empezar de cero (abajo). |
 | Las **gráficas no aparecen** (el resto sí) | Highcharts se carga desde su CDN: necesitas internet. |
 | `syntax error at or near "NULLS"` al cargar el esquema | Tu PostgreSQL es menor a 15. Actualiza. |
 | El puerto 5000 está ocupado | Pon `EPIDEMIA_PORT=5001` en el `.env`, o libera el 5000. En macOS suele ocuparlo *AirPlay Receiver*. |
@@ -419,6 +447,10 @@ Para regenerar los datos sintéticos (o ajustar tendencias por municipio):
 ```bash
 python datos/scripts/gen_demo_data.py > datos/postgres/semillas/demo_datos_nl.sql
 ```
+
+Si no cambiaste el script, lo único que cambia en el archivo son los tres hashes de
+contraseña, porque la sal de bcrypt es aleatoria. Cualquier cambio a la semilla se hace en el
+script y no en el archivo: `backend_web/tests/test_archivos_sql.py` falla si dejan de coincidir.
 
 ## Decisiones que falta validar.
 
@@ -525,11 +557,12 @@ datos/scripts/build_grupos_edad.py       ITER -> censo/nl_estructura_edad_munici
 datos/scripts/build_letalidad_edad.py    literatura + censo -> migracion 020
 datos/scripts/gen_demo_data.py           generador de los datos de demostracion (semilla fija)
 datos/scripts/verifica_migraciones.py    comprueba migraciones sueltas contra el dump
+datos/scripts/prepara_base_pruebas.py    crea la base en la que corren las pruebas
 datos/geo/inegi_mg2024/      capa municipal oficial (Marco Geoestadistico 2024, ent. 19)
 datos/geo/                   catalogo INEGI y centroides de los 51 municipios
 datos/censo/                 poblacion municipal y estructura por edad (Censo 2020, INEGI)
 
-docs/                        plan de trabajo (CHECKLIST_SEGUNDO_AVANCE.md) y esta guia
+docs/                        esta guia, decisiones del equipo, arquitectura y contexto
 frontend_web/requerimientos.txt    dependencias de la app web
 procesamiento/requerimientos.txt   dependencias del motor
 .env.example                 plantilla de configuracion (el .env real no se sube)

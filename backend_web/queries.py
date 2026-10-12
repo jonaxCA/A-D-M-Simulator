@@ -11,9 +11,10 @@ modelo de datos (regions) soporta cualquier estado del pais.
 Regla de clasificacion de tendencia (semana actual vs la previa, mismas 7+7
 dias que usa el dashboard): es un umbral definido por el equipo, no viene
 del documento del proyecto
-    >= 50%  de aumento  -> "Critico"
-    >= 15%  de aumento  -> "Alerta"
-    resto (estable o a la baja) -> "Estable"
+    >= 50%  de aumento  -> "critico"
+    >= 15%  de aumento  -> "alerta"
+    resto (estable o a la baja) -> "estable"
+Se devuelve la clave; el texto lo arma frontend_web/app/presentacion.py.
 """
 import json
 import math
@@ -23,7 +24,14 @@ from datetime import date, timedelta
 
 import psycopg2
 
-from .db import execute, get_conn, query
+from procesamiento.motor import EscenarioInvalido, validar_escenario
+from procesamiento.motor.parametros import (
+    DIAS_MAX, DIAS_MIN, POBLACION_MAX, POBLACION_MIN, POLITICAS_EDAD_DESCONOCIDA, resolver,
+)
+
+from . import conversion
+from .audit import log_audit
+from .db import a_jsonb, execute, get_conn, query
 
 NL_ESTADO_CODE = "19"
 
@@ -35,11 +43,12 @@ def _pct_change(actual, previa):
 
 
 def _clasifica_tendencia(pct):
+    """Clave del semaforo de tendencia; el texto lo arma frontend_web."""
     if pct >= 50:
-        return "Critico"
+        return "critico"
     if pct >= 15:
-        return "Alerta"
-    return "Estable"
+        return "alerta"
+    return "estable"
 
 
 def get_resumen_indicadores():
@@ -176,18 +185,6 @@ def get_enfermedades_catalogo():
 # ademas agente, tipo de patogeno y nivel de riesgo; no existen en el esquema y
 # se decidio NO agregarlos (ni como columnas ni inventados en Python), asi que
 # esas tres columnas no aparecen en la tabla.
-_MESES = ("Ene", "Feb", "Mar", "Abr", "May", "Jun",
-          "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
-
-
-def _fecha_corta(valor):
-    """'12 Oct 2026'. Se arma a mano en vez de con strftime porque %b depende
-    del locale del sistema y aqui la vista siempre va en espanol."""
-    if valor is None:
-        return None
-    return f"{valor.day:02d} {_MESES[valor.month - 1]} {valor.year}"
-
-
 def get_enfermedades_stats():
     """Las 4 tarjetas del encabezado. 'Detectadas recientemente' cuenta
     enfermedades con al menos un caso en Nuevo Leon en los ultimos 30 dias --
@@ -282,12 +279,11 @@ def get_enfermedades(busqueda=None, estado=None, pagina=1, por_pagina=10):
         "nombre": r["name"],
         "descripcion": r["description"],
         "activa": r["is_active"],
-        "estado_label": "Activa" if r["is_active"] else "Inactiva",
         "actividad": _actividad(r["casos_total"], r["casos_30d"]),
-        "alta_label": _fecha_corta(r["created_at"]),
+        "alta": r["created_at"],
         "casos_total": r["casos_total"],
         "casos_30d": r["casos_30d"],
-        "ultimo_caso_label": _fecha_corta(r["ultimo_caso"]) or "Sin casos registrados",
+        "ultimo_caso": r["ultimo_caso"],
         "parametros": estado_parametros(r["default_params"]),
     } for r in rows]
 
@@ -335,12 +331,12 @@ def normaliza_codigo(valor):
 def _actividad(casos_total, casos_30d):
     """Situacion epidemiologica derivada de `cases`, acotada a Nuevo Leon
     igual que el resto de la pantalla. Ver la nota de arriba: esto NO es
-    is_active."""
+    is_active. Devuelve una clave; el texto lo arma frontend_web."""
     if casos_30d:
-        return {"clave": "con_casos", "label": "Con casos activos"}
+        return "con_casos"
     if casos_total:
-        return {"clave": "historico", "label": "Solo histórico"}
-    return {"clave": "sin_casos", "label": "Sin casos"}
+        return "historico"
+    return "sin_casos"
 
 
 def valida_enfermedad(code, name):
@@ -467,32 +463,6 @@ def _desarma_param(bruto):
     return None, None, False
 
 
-def _inicio_de_grupo(par):
-    """Ordena "0-19", "20-39", ..., "80+" por la edad con que empiezan. Lo que
-    no empiece con un numero se va al final, en orden alfabetico."""
-    clave = str(par[0])
-    digitos = ""
-    for c in clave:
-        if not c.isdigit():
-            break
-        digitos += c
-    return (0, int(digitos), clave) if digitos else (1, 0, clave)
-
-
-def _numero_corto(valor):
-    """3.11e-05 se lee mejor como 0.00311%. Solo para mostrar."""
-    if isinstance(valor, (int, float)) and not isinstance(valor, bool):
-        return f"{valor * 100:.4g}%"
-    return str(valor)
-
-
-def _formatea_valor(spec, valor):
-    if valor is None:
-        return None
-    mostrado = valor * 100 if spec.get("porcentaje") else valor
-    return f"{mostrado:g} {spec['unidad']}".strip()
-
-
 def estado_parametros(default_params):
     """Todo lo que la pantalla necesita saber de los parametros de una
     enfermedad: valor, procedencia y si alcanza para simular."""
@@ -527,7 +497,6 @@ def estado_parametros(default_params):
             # El formulario trabaja en % para las tasas; la base guarda 0–1.
             "valor_form": ("" if valor is None
                            else f"{valor * 100:g}" if spec.get("porcentaje") else f"{valor:g}"),
-            "valor_label": _formatea_valor(spec, valor),
             "fuente": fuente or "",
             "supuesto": supuesto,
             "estado": estado,
@@ -535,8 +504,8 @@ def estado_parametros(default_params):
 
     # Un informativo puede venir pelado ({"0-19": 0.0001, ...}, como lo dejo
     # 010) o con trazabilidad ({"valor": {...}, "fuente": ..., "supuesto": ...},
-    # como lo deja 020). Sin desenvolverlo, la pantalla imprimia el diccionario
-    # entero -- fuente incluida -- en una sola linea ilegible.
+    # como lo deja 020). Se desenvuelve aqui para que `valor` sea siempre el
+    # dato, sin la fuente; el texto lo arma frontend_web.
     informativos = []
     for clave, etiqueta in PARAMETROS_INFORMATIVOS.items():
         bruto = params.get(clave)
@@ -547,15 +516,7 @@ def estado_parametros(default_params):
             valor = bruto                      # formato pelado: el valor es el dict
         if valor in (None, {}, ""):
             continue
-        if isinstance(valor, dict):
-            # Por edad, no por el orden en que JSONB devuelve las claves: sin
-            # esto "80+" sale primero y la tabla se lee al reves de como se
-            # piensa.
-            texto = ", ".join(f"{k}: {_numero_corto(v)}"
-                              for k, v in sorted(valor.items(), key=_inicio_de_grupo))
-        else:
-            texto = str(valor)
-        informativos.append({"etiqueta": etiqueta, "texto": texto,
+        informativos.append({"etiqueta": etiqueta, "valor": valor,
                              "fuente": fuente or "", "supuesto": supuesto})
 
     return {
@@ -651,19 +612,20 @@ def set_enfermedad_activa(disease_id, activa):
 
 
 BUCKETS = [
-    (0, 15, "baja", "Baja"),
-    (15, 30, "moderada", "Moderada"),
-    (30, 45, "alta", "Alta"),
-    (45, 60, "muy_alta", "Muy alta"),
-    (60, float("inf"), "critica", "Critica"),
+    (0, 15, "baja"),
+    (15, 30, "moderada"),
+    (30, 45, "alta"),
+    (45, 60, "muy_alta"),
+    (60, float("inf"), "critica"),
 ]
 
 
 def _bucket(incidencia):
-    for lo, hi, key, label in BUCKETS:
+    """Nivel del semaforo del mapa para una incidencia por 100k."""
+    for lo, hi, nivel in BUCKETS:
         if lo <= incidencia < hi:
-            return key, label
-    return "critica", "Critica"
+            return nivel
+    return "critica"
 
 
 def get_mapa_municipios(disease_id=None, dias=30):
@@ -701,7 +663,6 @@ def get_mapa_municipios(disease_id=None, dias=30):
         casos_previo = r["casos_previo"] or 0
         incidencia = round(casos / r["population"] * 100000, 1) if r["population"] else 0.0
         variacion = _pct_change(casos, casos_previo)
-        bucket_key, bucket_label = _bucket(incidencia)
         out.append({
             "id": r["id"],
             "region_code": r["code"],
@@ -711,8 +672,7 @@ def get_mapa_municipios(disease_id=None, dias=30):
             "variacion": variacion,
             "lat": float(r["centroid_lat"]),
             "lon": float(r["centroid_lon"]),
-            "nivel": bucket_key,
-            "nivel_label": bucket_label,
+            "nivel": _bucket(incidencia),
         })
     return out
 
@@ -837,11 +797,11 @@ def get_mapa_serie_temporal(disease_id=None, dias=30):
 
 
 # ---------------------------------------------------------------------------
-# Usuarios (pantalla adaptada del diseno de la companera)
+# Usuarios
 # ---------------------------------------------------------------------------
 # Nota: el schema de users NO tiene columna "departamento" (ese filtro del
 # diseno original no se pudo traer -- no hay ese dato en ningun lado).
-# "Pendiente" e "Inactivo" son estados que yo derive, no columnas reales:
+# "pendiente" e "inactivo" son estados que yo derive, no columnas reales:
 #   activo    -> is_active = TRUE  y ya inicio sesion alguna vez
 #   pendiente -> is_active = TRUE  pero nunca ha iniciado sesion (last_login_at NULL)
 #   inactivo  -> is_active = FALSE (baja logica)
@@ -899,136 +859,36 @@ def get_usuarios_lista(busqueda=None, rol_id=None, estado=None):
     out = []
     for r in rows:
         if not r["is_active"]:
-            estado_calc = "Inactivo"
+            estado_calc = "inactivo"
         elif r["last_login_at"] is None:
-            estado_calc = "Pendiente"
+            estado_calc = "pendiente"
         else:
-            estado_calc = "Activo"
+            estado_calc = "activo"
         out.append({
             "id": r["id"],
             "nombre": r["full_name"],
             "correo": r["email"],
-            "roles": r["roles"] or "Sin rol asignado",
+            "roles": r["roles"],
             "estado": estado_calc,
-            "ultimo_acceso": r["last_login_at"].strftime("%Y-%m-%d %H:%M") if r["last_login_at"] else "Nunca",
+            "ultimo_acceso": r["last_login_at"],
         })
     return out
 
 
 # ---------------------------------------------------------------------------
-# Auditoria (pantalla adaptada del diseno de la companera)
+# Auditoria
 # ---------------------------------------------------------------------------
-# Nota: audit_log NO tiene columnas "descripcion" ni "estado" -- se arman
-# aqui: descripcion es un texto generado a partir de accion+entidad, y estado
-# se deriva de la accion (LOGIN_FAILED/PERMISSION_DENIED = Fallido, resto =
-# Correcto). "Usuarios activos" del resumen es una aproximacion: usuarios con
-# un LOGIN registrado en las ultimas 24 horas (no hay tabla de sesiones).
+# Nota: audit_log NO tiene columnas "descripcion" ni "estado": las arma
+# frontend_web/app/presentacion.py con la accion, el modulo y data_after.
+# "Usuarios activos" del resumen es una aproximacion: usuarios con un LOGIN
+# registrado en las ultimas 24 horas (no hay tabla de sesiones).
 #
 # Caso especial: RUN (ciclo de vida de una simulacion). ejecutar_run() audita
-# las 4 etapas -- solicitada/ejecutando/completada/fallida -- pero las 4
-# quedan con la MISMA action='RUN' en audit_log (ver backend_web/simulaciones.py
-# y backend_web/audit.py); lo que las distingue es data_after['estado']
-# ('encolado'/'ejecutando'/'completado'/'fallido'/'cancelado'). Si la bitacora
-# solo mira `action`, las 4 etapas se ven identicas ("Ejecucion"/"Correcto"
-# las 4, incluida la fallida) y parecen "no aparecer" -- ese fue el bug
-# reportado en UAT. _descripcion_run()/_estado_run() abren data_after para
-# que cada etapa tenga su propio texto y su propio badge.
-
-ACCIONES_FALLIDAS = ("LOGIN_FAILED", "PERMISSION_DENIED")
-
-DESCRIPCION_POR_ACCION = {
-    "LOGIN": "Inicio de sesion exitoso",
-    "LOGIN_FAILED": "Intento de inicio de sesion fallido",
-    "LOGOUT": "Cierre de sesion",
-    "EXPORT": "Exportacion de datos",
-    "CREATE": "Alta de registro",
-    "UPDATE": "Modificacion de registro",
-    "DELETE": "Baja de registro",
-    "PUBLISH": "Publicacion",
-    "RUN": "Ejecucion de simulacion",
-    "CANCEL": "Cancelacion",
-    "SYNC": "Sincronizacion",
-    "PERMISSION_DENIED": "Acceso denegado por permisos",
-}
-
-# Etiqueta de la etapa (para la columna Descripcion) y clase visual de estado
-# (para la columna Estado) por cada valor que puede tomar data_after['estado']
-# en un evento RUN. El texto reusa el vocabulario del propio UAT ("solicitada,
-# ejecutando, completada y fallida"); el estado reusa las MISMAS 3 clases de
-# badge que ya existen en styles.css (correcto/pendiente/fallido/inactivo) --
-# no se agrega ninguna clase nueva.
-RUN_ETAPA = {
-    "encolado": ("Simulacion solicitada", "Pendiente"),
-    "ejecutando": ("Simulacion en ejecucion (inicio)", "Pendiente"),
-    "completado": ("Simulacion completada", "Correcto"),
-    "fallido": ("Simulacion fallida", "Fallido"),
-    "cancelado": ("Simulacion cancelada", "Inactivo"),
-    "abortado_antes_de_ejecutar": (
-        "Simulacion no iniciada (ya tomada por otro proceso)", "Inactivo",
-    ),
-}
-
-# Envio, aprobacion y rechazo de una version quedan como UPDATE en audit_log;
-# lo que los distingue es data_after['status']. Sin esto los tres se ven
-# iguales ("Modificacion de registro"), igual que pasaba con RUN.
-VERSION_ETAPA = {
-    "en_revision": "Version enviada a revision",
-    "aprobado": "Version aprobada",
-    "rechazado": "Version rechazada",
-}
-
-
-
-def _resumen_indicadores_run(data_after):
-    """Resumen corto de resultado.resumen para la Descripcion de una etapa
-    'completado' (item del UAT: la completada debe verse "con indicadores")."""
-    indicadores = (data_after or {}).get("indicadores") or {}
-    partes = []
-    if "tasa_ataque" in indicadores:
-        try:
-            partes.append(f"tasa de ataque {float(indicadores['tasa_ataque']) * 100:.1f}%")
-        except (TypeError, ValueError):
-            pass
-    if "casos_acumulados" in indicadores:
-        partes.append(f"{indicadores['casos_acumulados']} casos acumulados")
-    if "fallecimientos" in indicadores:
-        partes.append(f"{indicadores['fallecimientos']} fallecimientos")
-    return ", ".join(partes)
-
-
-def _describe_evento_auditoria(action, entity_id, data_after, entity_type=None):
-    """(descripcion, estado_visible) para una fila de audit_log. Aisla el
-    caso especial de RUN (ver nota arriba) del resto de acciones, que siguen
-    la regla original: LOGIN_FAILED/PERMISSION_DENIED = Fallido, todo lo
-    demas = Correcto."""
-    if action == "RUN":
-        etapa = (data_after or {}).get("estado")
-        base, estado = RUN_ETAPA.get(etapa, (DESCRIPCION_POR_ACCION["RUN"], "Correcto"))
-        try:
-            from .simulaciones import id_simulacion
-            identificador = f" {id_simulacion(entity_id)}" if entity_id else ""
-        except (ImportError, ValueError, TypeError):
-            identificador = ""
-        if etapa == "completado":
-            resumen = _resumen_indicadores_run(data_after)
-            descripcion = f"{base}{identificador}" + (f": {resumen}" if resumen else "")
-        elif etapa == "fallido":
-            error = (data_after or {}).get("error") or "sin detalle"
-            descripcion = f"{base}{identificador}: {error}"
-        else:
-            descripcion = f"{base}{identificador}"
-        return descripcion, estado
-    if action == "UPDATE" and entity_type == "scenario_versions":
-        etapa = (data_after or {}).get("status")
-        if etapa in VERSION_ETAPA:
-            numero = (data_after or {}).get("version_number")
-            sufijo = f" (v{numero})" if numero else ""
-            return f"{VERSION_ETAPA[etapa]}{sufijo}", "Correcto"
-
-
-    descripcion = DESCRIPCION_POR_ACCION.get(action, action)
-    estado = "Fallido" if action in ACCIONES_FALLIDAS else "Correcto"
-    return descripcion, estado
+# cada etapa -- solicitada/ejecutando/completada/fallida -- con la MISMA
+# action='RUN' (ver backend_web/simulaciones.py y backend_web/audit.py); lo
+# que las distingue es data_after['estado'] ('encolado'/'ejecutando'/
+# 'completado'/'fallido'/'cancelado'). Por eso el filtro de Accion acepta la
+# forma compuesta 'RUN::<etapa>'.
 
 
 def get_auditoria_resumen():
@@ -1054,7 +914,10 @@ def get_auditoria_lista(busqueda=None, usuario_id=None, modulo=None, accion=None
     'RUN::fallido') que produce get_acciones_auditoria() -- necesaria porque
     las 4 etapas de una corrida comparten la misma action='RUN' y solo se
     distinguen por data_after['estado']; sin la forma compuesta, el filtro de
-    Accion no podria aislar solo las 'fallidas' o solo las 'completadas'."""
+    Accion no podria aislar solo las 'fallidas' o solo las 'completadas'.
+
+    Cada evento viaja crudo, con `datos` = data_after; la descripcion y el
+    estado para mostrar los arma frontend_web/app/presentacion.py."""
     condiciones = []
     params = []
     if busqueda:
@@ -1090,20 +953,16 @@ def get_auditoria_lista(busqueda=None, usuario_id=None, modulo=None, accion=None
         """,
         tuple(params),
     )
-    out = []
-    for r in rows:
-        descripcion, estado = _describe_evento_auditoria(r["action"], r["entity_id"], r["data_after"], r["entity_type"])
-        out.append({
-            "id": r["id"],
-            "fecha": r["occurred_at"].strftime("%Y-%m-%d %H:%M:%S"),
-            "usuario": r["usuario"] or "Anonimo",
-            "modulo": r["entity_type"],
-            "accion": r["action"],
-            "descripcion": descripcion,
-            "ip": str(r["ip_address"]) if r["ip_address"] else "-",
-            "estado": estado,
-        })
-    return out
+    return [{
+        "id": r["id"],
+        "fecha": r["occurred_at"],
+        "usuario": r["usuario"],
+        "modulo": r["entity_type"],
+        "accion": r["action"],
+        "entidad_id": r["entity_id"],
+        "datos": r["data_after"],
+        "ip": r["ip_address"],
+    } for r in rows]
 
 
 def get_modulos_auditoria():
@@ -1112,26 +971,17 @@ def get_modulos_auditoria():
 
 
 def get_acciones_auditoria():
-    """Opciones para el filtro Accion. RUN se desglosa en sus etapas reales
-    (RUN::encolado, RUN::ejecutando, ...) usando data_after['estado'] -- ver
-    nota junto a RUN_ETAPA -- para que el filtro pueda aislar, por ejemplo,
-    solo las simulaciones fallidas."""
+    """Los valores que acepta `accion` en get_auditoria_lista(), para el
+    filtro Accion: cada accion registrada y, en lugar de RUN, sus etapas
+    reales (RUN::encolado, RUN::ejecutando, ...) segun data_after['estado'],
+    para que el filtro pueda aislar, por ejemplo, solo las simulaciones
+    fallidas."""
     rows = query("SELECT DISTINCT action FROM audit_log WHERE action <> 'RUN' ORDER BY action")
-    opciones = [{"valor": r["action"], "etiqueta": DESCRIPCION_POR_ACCION.get(r["action"], r["action"])}
-                for r in rows]
-
     etapas = query(
         "SELECT DISTINCT data_after->>'estado' AS etapa FROM audit_log "
         "WHERE action = 'RUN' AND data_after->>'estado' IS NOT NULL ORDER BY 1"
     )
-    orden_etapas = list(RUN_ETAPA.keys())
-    filas_etapas = [r["etapa"] for r in etapas]
-    filas_etapas.sort(key=lambda e: orden_etapas.index(e) if e in orden_etapas else len(orden_etapas))
-    for etapa in filas_etapas:
-        etiqueta, _estado = RUN_ETAPA.get(etapa, (f"Ejecucion de simulacion ({etapa})", "Correcto"))
-        opciones.append({"valor": f"RUN::{etapa}", "etiqueta": etiqueta})
-
-    return opciones
+    return [r["action"] for r in rows] + [f"RUN::{r['etapa']}" for r in etapas]
 
 
 def get_usuarios_para_filtro():
@@ -1165,8 +1015,6 @@ _GRUPO_EDAD_SQL = """
          WHEN c.age < 65 THEN '45-64'
          ELSE '65+' END
 """
-
-SEXO_LABEL = {"F": "Femenino", "M": "Masculino", "O": "Otro"}
 
 
 def _monitoreo_where(disease_id, region_id, dias):
@@ -1254,7 +1102,7 @@ def get_monitoreo_sexo(disease_id=None, region_id=None, dias=30):
     )
     total = sum(r["casos"] for r in rows) or 1
     return [{
-        "label": SEXO_LABEL.get(r["sex"], "No especificado"),
+        "label": SEXOS.get(r["sex"], "No especificado"),
         "casos": r["casos"],
         "pct": round(r["casos"] / total * 100, 1),
     } for r in rows]
@@ -1322,9 +1170,9 @@ def get_monitoreo_zonas(disease_id=None, region_id=None, dias=30, busqueda=None,
 
     # psycopg2 liga los %s por el orden en que aparecen en el TEXTO del SQL, no
     # por clausula: primero los dos FILTER del SELECT, luego el JOIN, luego el
-    # WHERE y al final LIMIT/OFFSET. Armar la lista en otro orden hace que el
-    # periodo y la ventana se crucen (bug real: con dias=7 la ventana quedaba
-    # en 7 dias y prev7 salia siempre 0, o sea +100% / Critico en toda zona).
+    # WHERE y al final LIMIT/OFFSET. Armar la lista en otro orden cruza el
+    # periodo y la ventana: con dias=7 la ventana quedaria en 7 dias y prev7
+    # saldria siempre 0, o sea +100% / Critico en toda zona.
     params = [dias - 1, dias - 1, dias - 1, ventana]
     if disease_id:
         cond_join.append("c.disease_id = %s")
@@ -1385,34 +1233,6 @@ def get_monitoreo_zonas(disease_id=None, region_id=None, dias=30, busqueda=None,
     }
 
 
-def get_monitoreo_insights(zonas, edades, totales, dias):
-    """Los 3 textos de las tarjetas de arriba. Son funcion pura de lo que ya
-    se consulto -- no vuelve a pegarle a la base."""
-    con_casos = [z for z in zonas if z["casos"]]
-    if con_casos:
-        top = max(con_casos, key=lambda z: z["variacion"])
-        signo = "+" if top["variacion"] >= 0 else ""
-        geografica = (f"El mayor cambio ({signo}{top['variacion']}%) se registra en "
-                      f"{top['zona']} durante los últimos 7 días.")
-    else:
-        geografica = "Todavía no hay casos capturados en el periodo seleccionado."
-
-    pct = totales["casos_pct"]
-    verbo = "aumentó" if pct > 0 else ("disminuyó" if pct < 0 else "se mantuvo")
-    global_txt = (f"La incidencia general {verbo} un {abs(pct)}% respecto al periodo "
-                  f"anterior de {dias} días.")
-
-    activos = [e for e in edades if e["casos"]]
-    if activos:
-        peor = max(activos, key=lambda e: e["casos"])
-        critica = (f"El grupo con más casos es el de {peor['grupo']} años "
-                   f"({peor['casos']:,} casos).")
-    else:
-        critica = "Sin casos con edad registrada en el periodo."
-
-    return {"geografica": geografica, "global": global_txt, "critica": critica}
-
-
 # ---------------------------------------------------------------------------
 # Alta de casos (pantalla "+ Nuevo Reporte" del dashboard)
 # ---------------------------------------------------------------------------
@@ -1446,70 +1266,46 @@ def get_enfermedades_para_captura():
     )
 
 
-def _entero(valor, minimo, maximo, etiqueta, errores, obligatorio=False):
-    """Convierte y acota un entero de formulario. Devuelve None si viene vacio
-    o si no pasa; los errores se acumulan en `errores`."""
-    texto = (valor or "").strip()
-    if not texto:
-        if obligatorio:
-            errores.append(f"{etiqueta} es obligatorio.")
-        return None
-    try:
-        n = int(texto)
-    except ValueError:
-        errores.append(f"{etiqueta} debe ser un número entero.")
-        return None
-    if not (minimo <= n <= maximo):
-        errores.append(f"{etiqueta} debe estar entre {minimo} y {maximo}.")
-        return None
-    return n
-
-
-def _fecha(valor, etiqueta, errores, obligatorio=False):
-    texto = (valor or "").strip()
-    if not texto:
-        if obligatorio:
-            errores.append(f"{etiqueta} es obligatoria.")
-        return None
-    try:
-        return date.fromisoformat(texto)
-    except ValueError:
-        errores.append(f"{etiqueta} no tiene un formato de fecha válido.")
-        return None
-
-
-def _decimal(valor, minimo, maximo, etiqueta, errores):
-    texto = (valor or "").strip()
-    if not texto:
-        return None
-    try:
-        n = float(texto)
-    except ValueError:
-        errores.append(f"{etiqueta} debe ser un número.")
-        return None
-    if not (minimo <= n <= maximo):
-        errores.append(f"{etiqueta} debe estar entre {minimo} y {maximo}.")
-        return None
-    return n
-
-
-def valida_caso(form):
+def valida_caso(form, enfermedades, municipios):
     """Valida el formulario contra los CHECK reales de `cases`.
 
     Devuelve (datos_limpios, errores). Los dominios cerrados (sexo, resultado,
     severidad) se comparan contra los diccionarios de arriba: lo que no este
     ahi se descarta, no se manda a la base.
+
+    `enfermedades` y `municipios` son los catalogos que ofrece el formulario
+    (get_enfermedades_para_captura y get_municipios_catalogo). Un id que no
+    este ahi se rechaza aqui y no al insertar: una enfermedad inactiva o el
+    estado pasarian la llave foranea, y un id que no cabe en la columna
+    (diseases.id es smallint) hacia que el INSERT respondiera 500.
     """
     errores = []
     datos = {
-        "disease_id": _entero(form.get("disease_id"), 1, 2**31, "La enfermedad", errores, True),
-        "region_id": _entero(form.get("region_id"), 1, 2**31, "El municipio", errores, True),
-        "report_date": _fecha(form.get("report_date"), "La fecha de reporte", errores, True),
-        "onset_date": _fecha(form.get("onset_date"), "La fecha de inicio de síntomas", errores),
-        "age": _entero(form.get("age"), 0, 120, "La edad", errores),
-        "latitude": _decimal(form.get("latitude"), -90, 90, "La latitud", errores),
-        "longitude": _decimal(form.get("longitude"), -180, 180, "La longitud", errores),
+        "disease_id": conversion.entero(
+            form.get("disease_id"), errores, etiqueta="La enfermedad", minimo=1,
+            maximo=2**31, miles=False),
+        "region_id": conversion.entero(
+            form.get("region_id"), errores, etiqueta="El municipio", minimo=1,
+            maximo=2**31, miles=False),
+        "report_date": conversion.fecha(
+            form.get("report_date"), errores, etiqueta="La fecha de reporte"),
+        "onset_date": conversion.fecha(
+            form.get("onset_date"), errores, etiqueta="La fecha de inicio de síntomas",
+            obligatorio=False),
+        "age": conversion.entero(
+            form.get("age"), errores, etiqueta="La edad", minimo=0, maximo=120,
+            obligatorio=False, miles=False),
+        "latitude": conversion.decimal(
+            form.get("latitude"), errores, etiqueta="La latitud", minimo=-90, maximo=90),
+        "longitude": conversion.decimal(
+            form.get("longitude"), errores, etiqueta="La longitud", minimo=-180, maximo=180),
     }
+    if datos["disease_id"] is not None and \
+            datos["disease_id"] not in {e["id"] for e in enfermedades}:
+        errores.append("Esa enfermedad no está activa en el catálogo.")
+    if datos["region_id"] is not None and \
+            datos["region_id"] not in {m["id"] for m in municipios}:
+        errores.append("Ese municipio no está en el catálogo de Nuevo León.")
 
     for campo, dominio, etiqueta in (
         ("sex", SEXOS, "El sexo"),
@@ -1802,7 +1598,7 @@ def eliminar_usuario(user_id):
 
 
 # ---------------------------------------------------------------------------
-# Catalogo de Regiones (Bloque C) -- Nuevo Leon y sus 51 municipios
+# Catalogo de Regiones -- Nuevo Leon y sus 51 municipios
 # ---------------------------------------------------------------------------
 # Consulta abierta a cualquier usuario autenticado. La edicion de poblacion
 # (mas abajo) es exclusiva de ADMINISTRADOR -- el candado real vive en la ruta
@@ -1823,16 +1619,15 @@ ORDEN_REGIONES = {
 
 
 def _fuente_campo(reason, adjusted_at, adjusted_by_name, fuente_censal):
-    """Arma el texto de la columna Fuente de la poblacion total de un municipio.
-    Si hay un ajuste manual vigente, se ve distinto a la fuente censal -- nunca
-    se le atribuye a INEGI un valor que un administrador corrigio.
+    """De donde sale una cifra de poblacion. Si hay un ajuste manual vigente se
+    distingue de la fuente censal: nunca se le atribuye a INEGI un valor que un
+    administrador corrigio. El texto lo arma frontend_web (presentacion.py).
 
     Solo aplica a `population` o a una correccion registrada de las bandas de
     edad que producen el 60+ derivado."""
     if reason is None:
-        return {"tipo": "censal", "label": fuente_censal, "detalle": None}
-    detalle = f"Corregido por {adjusted_by_name or 'un administrador'} el {_fecha_corta(adjusted_at)}: {reason}"
-    return {"tipo": "manual", "label": "Corrección manual", "detalle": detalle}
+        return {"tipo": "censal", "fuente": fuente_censal}
+    return {"tipo": "manual", "motivo": reason, "fecha": adjusted_at, "por": adjusted_by_name}
 
 
 def get_estado_nl():
@@ -1850,8 +1645,7 @@ def get_estado_nl():
         _fuente_campo(correccion_edad["reason"], correccion_edad["occurred_at"],
                       correccion_edad["full_name"], "Grupos 60-79 y 80+ del Censo 2020")
         if correccion_edad else
-        {"tipo": "derivado", "label": "Grupos 60-79 y 80+ del Censo 2020",
-         "detalle": "Se deriva de las bandas de edad del estado; no se captura aparte."}
+        {"tipo": "derivado", "fuente": "Grupos 60-79 y 80+ del Censo 2020"}
     )
     return {
         "id": row["id"],
@@ -1859,7 +1653,7 @@ def get_estado_nl():
         "nombre": row["name"],
         "poblacion": row["population"],
         "poblacion_60": row["population_60plus"],
-        "fuente_poblacion": {"tipo": "agregado", "label": "Suma de los 51 municipios", "detalle": None},
+        "fuente_poblacion": {"tipo": "agregado"},
         "fuente_poblacion_60": fuente_60,
     }
 
@@ -1924,8 +1718,7 @@ def get_regiones_catalogo(busqueda=None, orden="nombre", direccion="asc"):
                           ajuste_edad["full_name"],
                           "Grupos 60-79 y 80+ del Censo 2020")
             if ajuste_edad else
-            {"tipo": "derivado", "label": "Grupos 60-79 y 80+ del Censo 2020",
-             "detalle": "Se calcula a partir de las bandas de edad; no se captura aparte."}
+            {"tipo": "derivado", "fuente": "Grupos 60-79 y 80+ del Censo 2020"}
         )
         municipios.append({
             "id": r["id"],
@@ -2053,163 +1846,41 @@ def _ultima_correccion_grupos_edad(region_ids):
 
 
 def actualiza_grupos_edad_municipio(region_id, grupos, esperados,
-                                    motivo, admin_user_id):
+                                    motivo, *, contexto):
     """Corrige las bandas de un municipio y su agregado estatal en una sola
     transaccion. Rechaza formularios obsoletos y conserva la suma de población
     con edad declarada: esta pantalla corrige clasificacion, no inventa ni
-    elimina personas. El trigger 022 deriva el 60+ de 60-79 y 80+."""
-    from flask import request
+    elimina personas. El trigger 022 deriva el 60+ de 60-79 y 80+.
 
-    from .audit import _serializa
-
-    ip = request.remote_addr
-    ua = (request.headers.get("User-Agent") or "")[:255]
-    if not motivo or not motivo.strip():
-        return False, "Indica la fuente o el motivo de la corrección.", None
-    if len(motivo.strip()) > 500:
-        return False, "La fuente o motivo no puede pasar de 500 caracteres.", None
-    if set(grupos) != set(GRUPOS_EDAD_MUNICIPIO):
-        return False, "Debes enviar las cinco bandas de edad.", None
+    Cada paso es una funcion de abajo y todos usan el mismo cursor: si uno
+    falla, no queda nada escrito, ni en las bandas ni en la bitacora."""
+    error = _valida_correccion_grupos(grupos, motivo)
+    if error:
+        return False, error, None
+    motivo = motivo.strip()
 
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """SELECT r.id, r.name, r.level, r.parent_region_id
-                       FROM regions r
-                       JOIN regions e ON e.id = r.parent_region_id
-                       WHERE r.id = %s AND e.code = %s
-                       FOR UPDATE OF r""",
-                    (region_id, NL_ESTADO_CODE),
-                )
-                region = cur.fetchone()
-                if not region or region[2] != "municipio":
+                municipio = _bloquea_municipio(cur, region_id)
+                if municipio is None:
                     return False, "Ese municipio ya no existe en el catálogo.", None
-                municipio_id, nombre, _, estado_id = region
+                municipio_id, nombre, estado_id = municipio
 
-                cur.execute(
-                    """SELECT g.age_group, g.lower_bound, g.population
-                       FROM region_age_groups g
-                       WHERE g.region_id = %s
-                       FOR UPDATE""",
-                    (region_id,),
-                )
-                rows = cur.fetchall()
-                actuales = {r[0]: r[2] for r in rows if r[1] is not None}
-                edad_no_especificada = next(
-                    (r[2] for r in rows if r[1] is None), None)
-                if (set(actuales) != set(GRUPOS_EDAD_MUNICIPIO)
-                        or edad_no_especificada is None):
-                    return False, (
-                        "Este municipio no tiene todas sus bandas de edad cargadas. "
-                        "Vuelve a ejecutar la semilla nl_municipios_completos.sql."
-                    ), None
+                actuales, edad_no_especificada = _bloquea_grupos_edad(cur, region_id)
+                error = _revisa_correccion_grupos(grupos, esperados, actuales,
+                                                  edad_no_especificada)
+                if error:
+                    return False, error, None
 
-                if any(esperados.get(g) != actuales[g]
-                       for g in GRUPOS_EDAD_MUNICIPIO):
-                    return False, (
-                        "Otra persona corrigió las bandas mientras editabas. "
-                        "Recarga la página e intenta de nuevo."
-                    ), None
-                if esperados.get("edad_no_especificada") != edad_no_especificada:
-                    return False, (
-                        "Los datos del municipio cambiaron mientras editabas. "
-                        "Recarga la página e intenta de nuevo."
-                    ), None
-                if sum(grupos.values()) != sum(actuales.values()):
-                    return False, (
-                        "La suma de las cinco bandas debe conservar la población "
-                        "con edad declarada del municipio."
-                    ), None
-                if all(grupos[g] == actuales[g] for g in GRUPOS_EDAD_MUNICIPIO):
-                    return False, "No hay cambios en las bandas de edad.", None
-
-                antes = _snap_grupos_edad(actuales, edad_no_especificada)
-                grupos_modificados = [g for g in GRUPOS_EDAD_MUNICIPIO
-                                      if grupos[g] != actuales[g]]
-                for grupo in GRUPOS_EDAD_MUNICIPIO:
-                    if grupos[grupo] != actuales[grupo]:
-                        cur.execute(
-                            """UPDATE region_age_groups SET population = %s
-                               WHERE region_id = %s AND age_group = %s""",
-                            (grupos[grupo], region_id, grupo),
-                        )
-
-                cur.execute(
-                    """SELECT age_group, sum(g.population)
-                       FROM region_age_groups g
-                       JOIN regions m ON m.id = g.region_id
-                       WHERE m.parent_region_id = %s AND m.level = 'municipio'
-                       GROUP BY age_group""",
-                    (estado_id,),
-                )
-                totales_estado = dict(cur.fetchall())
-                cur.execute(
-                    """SELECT age_group, population
-                       FROM region_age_groups WHERE region_id = %s FOR UPDATE""",
-                    (estado_id,),
-                )
-                estado_antes = {r[0]: r[1] for r in cur.fetchall()}
-                for grupo, total in totales_estado.items():
-                    if estado_antes.get(grupo) != total:
-                        cur.execute(
-                            """UPDATE region_age_groups SET population = %s
-                               WHERE region_id = %s AND age_group = %s""",
-                            (total, estado_id, grupo),
-                        )
-
-                cur.execute(
-                    """SELECT age_group, population
-                       FROM region_age_groups WHERE region_id = %s""",
-                    (region_id,),
-                )
-                despues = {r[0]: r[1] for r in cur.fetchall()}
-                cur.execute(
-                    "SELECT population_60plus FROM regions WHERE id = %s",
-                    (region_id,),
-                )
-                p60_despues = cur.fetchone()[0]
-                cur.execute(
-                    """INSERT INTO audit_log
-                           (user_id, action, entity_type, entity_id, ip_address,
-                            user_agent, data_before, data_after)
-                       VALUES (%s, 'UPDATE', 'regions', %s, %s::inet, %s,
-                               %s::jsonb, %s::jsonb)""",
-                    (
-                        admin_user_id, str(municipio_id), ip, ua,
-                        _serializa(antes),
-                        _serializa({
-                            **_snap_grupos_edad(despues, edad_no_especificada),
-                            "population_60plus": p60_despues,
-                            "age_groups_modified": grupos_modificados,
-                            "age_correction_reason": motivo.strip(),
-                        }),
-                    ),
-                )
-
-                estado_cambio = any(estado_antes.get(g) != totales_estado.get(g)
-                                    for g in totales_estado)
-                if estado_cambio:
-                    cur.execute(
-                        """INSERT INTO audit_log
-                               (user_id, action, entity_type, entity_id, ip_address,
-                                user_agent, data_before, data_after)
-                           VALUES (%s, 'UPDATE', 'regions', %s, %s::inet, %s,
-                                   %s::jsonb, %s::jsonb)""",
-                        (
-                            admin_user_id, str(estado_id), ip, ua,
-                            _serializa({"population_by_age": estado_antes}),
-                            _serializa({
-                                "population_by_age": totales_estado,
-                                "age_groups_modified": [
-                                    g for g in totales_estado
-                                    if estado_antes.get(g) != totales_estado[g]],
-                                "age_correction_reason": (
-                                    f"Agregado estatal tras corregir {nombre}: "
-                                    f"{motivo.strip()}"),
-                            }),
-                        ),
-                    )
+                modificados = _escribe_grupos_edad(cur, region_id, grupos, actuales)
+                estado_antes, totales_estado = _recalcula_grupos_estado(cur, estado_id)
+                p60_despues = _audita_grupos_municipio(
+                    cur, contexto, municipio_id, region_id, actuales, edad_no_especificada,
+                    modificados, motivo)
+                estado_cambio = _audita_grupos_estado(
+                    cur, contexto, estado_id, estado_antes, totales_estado,
+                    f"Agregado estatal tras corregir {nombre}: {motivo}")
             conn.commit()
         return True, None, {
             "municipio": nombre,
@@ -2218,6 +1889,162 @@ def actualiza_grupos_edad_municipio(region_id, grupos, esperados,
         }
     except psycopg2.errors.CheckViolation:
         return False, "Las bandas no cumplen las restricciones de la base.", None
+
+
+def _valida_correccion_grupos(grupos, motivo):
+    """Lo que se revisa sin tocar la base: el motivo y que vengan las cinco
+    bandas. Regresa el error o None."""
+    if not motivo or not motivo.strip():
+        return "Indica la fuente o el motivo de la corrección."
+    if len(motivo.strip()) > 500:
+        return "La fuente o motivo no puede pasar de 500 caracteres."
+    if set(grupos) != set(GRUPOS_EDAD_MUNICIPIO):
+        return "Debes enviar las cinco bandas de edad."
+    return None
+
+
+def _bloquea_municipio(cur, region_id):
+    """(id, nombre, id del estado) del municipio, bloqueado hasta el final de
+    la transaccion; None si no es un municipio de Nuevo Leon."""
+    cur.execute(
+        """SELECT r.id, r.name, r.level, r.parent_region_id
+           FROM regions r
+           JOIN regions e ON e.id = r.parent_region_id
+           WHERE r.id = %s AND e.code = %s
+           FOR UPDATE OF r""",
+        (region_id, NL_ESTADO_CODE),
+    )
+    region = cur.fetchone()
+    if not region or region[2] != "municipio":
+        return None
+    municipio_id, nombre, _, estado_id = region
+    return municipio_id, nombre, estado_id
+
+
+def _bloquea_grupos_edad(cur, region_id):
+    """Las bandas del municipio y su edad no especificada, bloqueadas. Si falta
+    alguna fila, el diccionario o la edad no especificada vienen incompletos."""
+    cur.execute(
+        """SELECT g.age_group, g.lower_bound, g.population
+           FROM region_age_groups g
+           WHERE g.region_id = %s
+           FOR UPDATE""",
+        (region_id,),
+    )
+    rows = cur.fetchall()
+    actuales = {r[0]: r[2] for r in rows if r[1] is not None}
+    edad_no_especificada = next((r[2] for r in rows if r[1] is None), None)
+    return actuales, edad_no_especificada
+
+
+def _revisa_correccion_grupos(grupos, esperados, actuales, edad_no_especificada):
+    """Lo que se revisa contra lo guardado: que esten todas las bandas, que
+    nadie las haya cambiado mientras se editaban (`esperados`), que la suma se
+    conserve y que haya algo que cambiar. Regresa el error o None."""
+    if (set(actuales) != set(GRUPOS_EDAD_MUNICIPIO)
+            or edad_no_especificada is None):
+        return ("Este municipio no tiene todas sus bandas de edad cargadas. "
+                "Vuelve a ejecutar la semilla nl_municipios_completos.sql.")
+    if any(esperados.get(g) != actuales[g] for g in GRUPOS_EDAD_MUNICIPIO):
+        return ("Otra persona corrigió las bandas mientras editabas. "
+                "Recarga la página e intenta de nuevo.")
+    if esperados.get("edad_no_especificada") != edad_no_especificada:
+        return ("Los datos del municipio cambiaron mientras editabas. "
+                "Recarga la página e intenta de nuevo.")
+    if sum(grupos.values()) != sum(actuales.values()):
+        return ("La suma de las cinco bandas debe conservar la población "
+                "con edad declarada del municipio.")
+    if all(grupos[g] == actuales[g] for g in GRUPOS_EDAD_MUNICIPIO):
+        return "No hay cambios en las bandas de edad."
+    return None
+
+
+def _escribe_grupos_edad(cur, region_id, grupos, actuales):
+    """Escribe solo las bandas que cambiaron y regresa cuales, en el orden de
+    GRUPOS_EDAD_MUNICIPIO."""
+    modificados = [g for g in GRUPOS_EDAD_MUNICIPIO if grupos[g] != actuales[g]]
+    for grupo in modificados:
+        cur.execute(
+            """UPDATE region_age_groups SET population = %s
+               WHERE region_id = %s AND age_group = %s""",
+            (grupos[grupo], region_id, grupo),
+        )
+    return modificados
+
+
+def _recalcula_grupos_estado(cur, estado_id):
+    """Vuelve a sumar las bandas del estado a partir de sus municipios y
+    escribe las que cambiaron. Regresa (bandas de antes, bandas sumadas)."""
+    cur.execute(
+        """SELECT age_group, sum(g.population)
+           FROM region_age_groups g
+           JOIN regions m ON m.id = g.region_id
+           WHERE m.parent_region_id = %s AND m.level = 'municipio'
+           GROUP BY age_group""",
+        (estado_id,),
+    )
+    totales_estado = dict(cur.fetchall())
+    cur.execute(
+        """SELECT age_group, population
+           FROM region_age_groups WHERE region_id = %s FOR UPDATE""",
+        (estado_id,),
+    )
+    estado_antes = {r[0]: r[1] for r in cur.fetchall()}
+    for grupo, total in totales_estado.items():
+        if estado_antes.get(grupo) != total:
+            cur.execute(
+                """UPDATE region_age_groups SET population = %s
+                   WHERE region_id = %s AND age_group = %s""",
+                (total, estado_id, grupo),
+            )
+    return estado_antes, totales_estado
+
+
+def _audita_grupos_municipio(cur, contexto, municipio_id, region_id, actuales,
+                             edad_no_especificada, modificados, motivo):
+    """Registra la correccion del municipio con sus bandas de antes y de
+    despues. Regresa el 60+ que derivo el trigger."""
+    cur.execute(
+        """SELECT age_group, population
+           FROM region_age_groups WHERE region_id = %s""",
+        (region_id,),
+    )
+    despues = {r[0]: r[1] for r in cur.fetchall()}
+    cur.execute(
+        "SELECT population_60plus FROM regions WHERE id = %s",
+        (region_id,),
+    )
+    p60_despues = cur.fetchone()[0]
+    log_audit(
+        contexto, "UPDATE", "regions", municipio_id,
+        data_before=_snap_grupos_edad(actuales, edad_no_especificada),
+        data_after={
+            **_snap_grupos_edad(despues, edad_no_especificada),
+            "population_60plus": p60_despues,
+            "age_groups_modified": modificados,
+            "age_correction_reason": motivo,
+        },
+        cur=cur,
+    )
+    return p60_despues
+
+
+def _audita_grupos_estado(cur, contexto, estado_id, estado_antes, totales_estado, motivo):
+    """Registra el agregado estatal si alguna banda cambio. Regresa si cambio."""
+    modificados = [g for g in totales_estado if estado_antes.get(g) != totales_estado[g]]
+    if not modificados:
+        return False
+    log_audit(
+        contexto, "UPDATE", "regions", estado_id,
+        data_before={"population_by_age": estado_antes},
+        data_after={
+            "population_by_age": totales_estado,
+            "age_groups_modified": modificados,
+            "age_correction_reason": motivo,
+        },
+        cur=cur,
+    )
+    return True
 
 
 def valida_poblacion_municipio(population_raw, motivo, poblacion_60_actual=None):
@@ -2246,7 +2073,7 @@ def valida_poblacion_municipio(population_raw, motivo, poblacion_60_actual=None)
 
     poblacion = _entero_no_negativo(population_raw, "La población total")
 
-    # La poblacion de 60 y mas ya no se captura: se deriva de region_age_groups
+    # La poblacion de 60 y mas no se captura: se deriva de region_age_groups
     # (migracion 022). Lo que si se valida es que la correccion no deje al
     # municipio con menos habitantes que su propio grupo de 60 y mas.
     if poblacion is not None and poblacion_60_actual is not None \
@@ -2263,8 +2090,8 @@ def valida_poblacion_municipio(population_raw, motivo, poblacion_60_actual=None)
     return poblacion, errores
 
 
-def actualiza_poblacion_municipio(region_id, population, motivo, admin_user_id,
-                                  esperado_population):
+def actualiza_poblacion_municipio(region_id, population, motivo, esperado_population,
+                                  *, contexto):
     """Corrige la poblacion total de un municipio. Solo la debe llamar una ruta
     ya protegida con admin_required -- aqui no se vuelve a checar el rol.
 
@@ -2285,12 +2112,7 @@ def actualiza_poblacion_municipio(region_id, population, motivo, admin_user_id,
     Devuelve (ok, error, resultado). `resultado` trae el antes/despues del
     municipio y, si aplico, del estado -- para el mensaje de confirmacion.
     """
-    from flask import request
-
-    from .audit import _serializa
-
-    ip = request.remote_addr
-    ua = (request.headers.get("User-Agent") or "")[:255]
+    admin_user_id = contexto.user_id
 
     try:
         with get_conn() as conn:
@@ -2346,21 +2168,15 @@ def actualiza_poblacion_municipio(region_id, population, motivo, admin_user_id,
                          valor_antes, valor_nuevo, motivo.strip(), admin_user_id),
                     )
 
-                cur.execute(
-                    """
-                    INSERT INTO audit_log (user_id, action, entity_type, entity_id,
-                                           ip_address, user_agent, data_before, data_after)
-                    VALUES (%s, 'UPDATE', 'regions', %s, %s::inet, %s, %s::jsonb, %s::jsonb)
-                    """,
-                    (
-                        admin_user_id, str(region_id), ip, ua,
-                        _serializa(antes_municipio),
-                        _serializa({
-                            "id": region_id, "name": nombre,
-                            "population": population, "population_60plus": pob60_actual,
-                            "fuente_motivo": motivo.strip(),
-                        }),
-                    ),
+                log_audit(
+                    contexto, "UPDATE", "regions", region_id,
+                    data_before=antes_municipio,
+                    data_after={
+                        "id": region_id, "name": nombre,
+                        "population": population, "population_60plus": pob60_actual,
+                        "fuente_motivo": motivo.strip(),
+                    },
+                    cur=cur,
                 )
 
                 cur.execute(
@@ -2399,25 +2215,19 @@ def actualiza_poblacion_municipio(region_id, population, motivo, admin_user_id,
                          or estado_antes_row[2] != estado_despues_row[1])
                 )
                 if estado_cambio:
-                    cur.execute(
-                        """
-                        INSERT INTO audit_log (user_id, action, entity_type, entity_id,
-                                               ip_address, user_agent, data_before, data_after)
-                        VALUES (%s, 'UPDATE', 'regions', %s, %s::inet, %s, %s::jsonb, %s::jsonb)
-                        """,
-                        (
-                            admin_user_id, str(padre_id), ip, ua,
-                            _serializa({
-                                "population": estado_antes_row[1],
-                                "population_60plus": estado_antes_row[2],
-                                "nota": "agregado de los 51 municipios de Nuevo León",
-                            }),
-                            _serializa({
-                                "population": estado_despues_row[0],
-                                "population_60plus": estado_despues_row[1],
-                                "nota": f"recalculado tras corregir {nombre}",
-                            }),
-                        ),
+                    log_audit(
+                        contexto, "UPDATE", "regions", padre_id,
+                        data_before={
+                            "population": estado_antes_row[1],
+                            "population_60plus": estado_antes_row[2],
+                            "nota": "agregado de los 51 municipios de Nuevo León",
+                        },
+                        data_after={
+                            "population": estado_despues_row[0],
+                            "population_60plus": estado_despues_row[1],
+                            "nota": f"recalculado tras corregir {nombre}",
+                        },
+                        cur=cur,
                     )
             conn.commit()
         return True, None, {
@@ -2436,23 +2246,12 @@ def actualiza_poblacion_municipio(region_id, population, motivo, admin_user_id,
         return False, "Los datos no cumplen las restricciones de la base.", None
 
 # ---------------------------------------------------------------------------
-# Escenarios (Bloque D) -- alta, consulta y validacion contra el motor
+# Escenarios -- alta, consulta y validacion contra el motor
 # ---------------------------------------------------------------------------
-# Los limites del formulario NO se copian: se importan del motor, que es quien
-# los hace cumplir al simular. Duplicarlos como numeros sueltos aqui garantiza
-# que un dia se desalineen y que la pantalla acepte algo que la corrida rechaza.
-from procesamiento.motor import validar_escenario                    # noqa: E402
-from procesamiento.motor.parametros import (                         # noqa: E402
-    DIAS_MAX, DIAS_MIN, POBLACION_MAX, POBLACION_MIN,
-    POLITICAS_EDAD_DESCONOCIDA,
-)
-
-ESTADOS_VERSION = {
-    "borrador": "Borrador",
-    "en_revision": "En revisión",
-    "aprobado": "Aprobado",
-    "rechazado": "Rechazado",
-}
+# Los limites del formulario NO se copian: se importan del motor (al principio
+# del archivo), que es quien los hace cumplir al simular. Duplicarlos como
+# numeros sueltos aqui garantiza que un dia se desalineen y que la pantalla
+# acepte algo que la corrida rechaza.
 
 LIMITES_ESCENARIO = {
     "poblacion_min": POBLACION_MIN, "poblacion_max": POBLACION_MAX,
@@ -2565,32 +2364,9 @@ def get_escenarios(busqueda=None):
     salida = []
     for f in filas:
         fila = dict(f)
-        fila["version_label"] = ESTADOS_VERSION.get(f["version_status"], "—")
         fila["por_edad"] = bool(f["population_by_age"])
         salida.append(fila)
     return salida
-
-
-def _entero_en_rango(valor, etiqueta, minimo, maximo, errores):
-    """Entero obligatorio y acotado, con la etiqueta primero.
-
-    OJO: NO es `_entero`, que ya existia con otra firma
-    (valor, minimo, maximo, etiqueta, errores, obligatorio) y la usa la captura
-    de casos. Se llama distinto a proposito: cuando las dos se llamaban igual, la
-    segunda definicion tapaba a la primera y /reportes/nuevo respondia 500.
-    """
-    if valor is None or str(valor).strip() == "":
-        errores.append(f"{etiqueta} es obligatoria.")
-        return None
-    try:
-        n = int(str(valor).strip().replace(",", ""))
-    except ValueError:
-        errores.append(f"{etiqueta} debe ser un número entero.")
-        return None
-    if not minimo <= n <= maximo:
-        errores.append(f"{etiqueta} debe estar entre {minimo:,} y {maximo:,}.")
-        return None
-    return n
 
 
 def valida_escenario(form, regiones, enfermedades):
@@ -2613,13 +2389,15 @@ def valida_escenario(form, regiones, enfermedades):
         errores.append("El nombre no puede pasar de 160 caracteres.")
 
     por_id = {r["id"]: r for r in regiones}
-    region_id = _entero_en_rango(form.get("region_id"), "La región", 1, 2**31 - 1, errores)
+    region_id = conversion.entero(form.get("region_id"), errores, etiqueta="La región",
+                                  minimo=1, maximo=2**31 - 1)
     region = por_id.get(region_id)
     if region_id is not None and region is None:
         errores.append("Esa región no está en el catálogo de Nuevo León.")
 
     enf_por_id = {e["id"]: e for e in enfermedades}
-    disease_id = _entero_en_rango(form.get("disease_id"), "La enfermedad", 1, 2**31 - 1, errores)
+    disease_id = conversion.entero(form.get("disease_id"), errores, etiqueta="La enfermedad",
+                                   minimo=1, maximo=2**31 - 1)
     enfermedad = enf_por_id.get(disease_id)
     if disease_id is not None and enfermedad is None:
         errores.append("Esa enfermedad no está activa en el catálogo.")
@@ -2660,8 +2438,8 @@ def _valida_parametros_version(form, region, errores):
     Lo comparten el alta del escenario y el alta de una version nueva; separarlo
     evita que las dos pantallas acepten cosas distintas.
     """
-    dias = _entero_en_rango(form.get("horizon_days"), "La duración en días",
-                   DIAS_MIN, DIAS_MAX, errores)
+    dias = conversion.entero(form.get("horizon_days"), errores,
+                             etiqueta="La duración en días", minimo=DIAS_MIN, maximo=DIAS_MAX)
     estratificar = bool(form.get("estratificar"))
     grupos = sin_edad = politica = None
     poblacion = None
@@ -2684,11 +2462,13 @@ def _valida_parametros_version(form, region, errores):
                         f"elige qué hacer con ellas.")
                     politica = None
     else:
-        poblacion = _entero_en_rango(form.get("population_size"), "La población",
-                            POBLACION_MIN, POBLACION_MAX, errores)
+        poblacion = conversion.entero(form.get("population_size"), errores,
+                                      etiqueta="La población", minimo=POBLACION_MIN,
+                                      maximo=POBLACION_MAX)
 
-    iniciales = _entero_en_rango(form.get("initial_infected"), "Los infectados iniciales",
-                        1, POBLACION_MAX, errores)
+    iniciales = conversion.entero(form.get("initial_infected"), errores,
+                                  etiqueta="Los infectados iniciales", minimo=1,
+                                  maximo=POBLACION_MAX)
     if iniciales is not None and poblacion is not None and iniciales > poblacion:
         errores.append("Los infectados iniciales no pueden superar la población.")
 
@@ -2769,7 +2549,7 @@ def escenario_de_version(detalle):
                                 intervenciones_para_motor(detalle["intervenciones"]))
 
 
-def crea_escenario(datos, owner_id):
+def crea_escenario(datos, *, contexto):
     """Da de alta el escenario y su version 1 en una sola transaccion.
 
     Un escenario sin version no significa nada -- no se puede simular ni
@@ -2778,12 +2558,8 @@ def crea_escenario(datos, owner_id):
 
     Devuelve (ok, error, scenario_id).
     """
-    from flask import request
 
-    from .audit import _serializa
-
-    ip = request.remote_addr
-    ua = (request.headers.get("User-Agent") or "")[:255]
+    owner_id = contexto.user_id
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -2806,17 +2582,14 @@ def crea_escenario(datos, owner_id):
                        RETURNING id""",
                     (scenario_id, datos["population_size"], datos["horizon_days"],
                      datos["initial_infected"], datos["notes"], owner_id,
-                     _serializa(datos["population_by_age"]) if datos["population_by_age"] else None,
+                     a_jsonb(datos["population_by_age"]) if datos["population_by_age"] else None,
                      datos["population_age_unknown"], datos["age_unknown_policy"]))
                 version_id = cur.fetchone()[0]
 
-                cur.execute(
-                    """INSERT INTO audit_log (user_id, action, entity_type, entity_id,
-                                              ip_address, user_agent, data_after)
-                       VALUES (%s, 'CREATE', 'scenarios', %s, %s::inet, %s, %s::jsonb)""",
-                    (owner_id, str(scenario_id), ip, ua,
-                     _serializa({**datos, "scenario_id": scenario_id,
-                                 "version_id": version_id, "version_number": 1})))
+                log_audit(contexto, "CREATE", "scenarios", scenario_id,
+                          data_after={**datos, "scenario_id": scenario_id,
+                                      "version_id": version_id, "version_number": 1},
+                          cur=cur)
             conn.commit()
         return True, None, scenario_id
     except psycopg2.errors.UniqueViolation:
@@ -2831,21 +2604,11 @@ def crea_escenario(datos, owner_id):
 
 
 # ---------------------------------------------------------------------------
-# Intervenciones de una version (Bloque D) -- alta, baja y orden
+# Intervenciones de una version -- alta, baja y orden
 # ---------------------------------------------------------------------------
 # El formulario de parametros se genera desde `intervention_types.param_schema`,
 # que es JSON Schema. No hay un formulario por tipo escrito a mano: agregar un
 # septimo tipo de intervencion es una fila en el catalogo, no codigo nuevo.
-
-def _ip():
-    from flask import request
-    return request.remote_addr
-
-
-def _ua():
-    from flask import request
-    return (request.headers.get("User-Agent") or "")[:255]
-
 
 def get_tipos_intervencion():
     """Tipos activos, con el esquema que describe sus parametros."""
@@ -2867,6 +2630,9 @@ def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption):
     try:
         costo = float(texto)
     except ValueError:
+        costo = None
+    # "nan" e "inf" convierten sin error y la columna numeric los guardaria.
+    if costo is None or not math.isfinite(costo):
         errores.append("El importe debe ser numerico.")
         return None, errores
 
@@ -3017,9 +2783,6 @@ def revisa_version(detalle):
     degrada a aleatorio. Si no se muestran, el usuario cree que pidio algo que
     no esta pasando.
     """
-    from procesamiento.motor import EscenarioInvalido
-    from procesamiento.motor.parametros import resolver
-
     if not detalle["version"]:
         return ["El escenario no tiene una versión vigente."], []
 
@@ -3029,22 +2792,6 @@ def revisa_version(detalle):
         # La excepcion trae .errores (una lista); args[0] es el mismo mensaje ya
         # unido con "; ", y tratarlo como lista lo parte en letras.
         return list(exc.errores), []
-
-
-def _numero(crudo, etiqueta, spec, errores, entero):
-    try:
-        valor = int(crudo) if entero else float(crudo)
-    except ValueError:
-        errores.append(f"{etiqueta} debe ser un número{' entero' if entero else ''}.")
-        return None
-    minimo, maximo = spec.get("minimum"), spec.get("maximum")
-    if minimo is not None and valor < minimo:
-        errores.append(f"{etiqueta} no puede ser menor que {minimo}.")
-        return None
-    if maximo is not None and valor > maximo:
-        errores.append(f"{etiqueta} no puede ser mayor que {maximo}.")
-        return None
-    return valor
 
 
 def params_desde_schema(form, schema, errores, prefijo="p_"):
@@ -3069,12 +2816,10 @@ def params_desde_schema(form, schema, errores, prefijo="p_"):
                 errores.append(f"{etiqueta} debe ser uno de: {', '.join(spec['enum'])}.")
                 continue
             salida[clave] = crudo
-        elif spec.get("type") == "integer":
-            valor = _numero(crudo, etiqueta, spec, errores, entero=True)
-            if valor is not None:
-                salida[clave] = valor
-        elif spec.get("type") == "number":
-            valor = _numero(crudo, etiqueta, spec, errores, entero=False)
+        elif spec.get("type") in ("integer", "number"):
+            valor = conversion.numero_de_esquema(
+                crudo, errores, etiqueta=etiqueta, spec=spec,
+                tipo=int if spec["type"] == "integer" else float)
             if valor is not None:
                 salida[clave] = valor
         elif spec.get("type") == "array":
@@ -3112,11 +2857,13 @@ def valida_intervencion(form, tipos, version, existentes):
     if tipo is None:
         errores.append("Elige un tipo de intervención del catálogo.")
 
-    inicio = _entero_en_rango(form.get("start_day"), "El día de inicio", 0, horizonte, errores)
+    inicio = conversion.entero(form.get("start_day"), errores, etiqueta="El día de inicio",
+                               minimo=0, maximo=horizonte)
     crudo_fin = (form.get("end_day") or "").strip()
     fin = None
     if crudo_fin:
-        fin = _entero_en_rango(crudo_fin, "El día de fin", 0, horizonte, errores)
+        fin = conversion.entero(crudo_fin, errores, etiqueta="El día de fin",
+                                minimo=0, maximo=horizonte)
         if fin is not None and inicio is not None and fin < inicio:
             errores.append("El día de fin no puede ser anterior al de inicio.")
             fin = None
@@ -3164,25 +2911,8 @@ def valida_intervencion(form, tipos, version, existentes):
     return datos, errores
 
 
-def _auditar(cur, user_id, accion, entity_type, entity_id, antes=None, despues=None):
-    """Inserta en audit_log dentro de la transaccion que la llama.
-
-    Se usa `cur` y no `log_audit` a proposito: la bitacora tiene que confirmarse
-    junto con el cambio que describe, no en una conexion aparte.
-    """
-    from .audit import _serializa
-    cur.execute(
-        """INSERT INTO audit_log (user_id, action, entity_type, entity_id,
-                                  ip_address, user_agent, data_before, data_after)
-           VALUES (%s, %s, %s, %s, %s::inet, %s, %s::jsonb, %s::jsonb)""",
-        (user_id, accion, entity_type, str(entity_id), _ip(), _ua(),
-         _serializa(antes) if antes else None,
-         _serializa(despues) if despues else None))
-
-
-def agrega_intervencion(version_id, datos, user_id):
+def agrega_intervencion(version_id, datos, *, contexto):
     """Agrega la intervencion al final del orden de la version."""
-    from .audit import _serializa
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -3199,11 +2929,12 @@ def agrega_intervencion(version_id, datos, user_id):
                        RETURNING id""",
                     (version_id, datos["intervention_type_id"], datos["start_day"],
                      datos["end_day"], datos["coverage"], datos["compliance"],
-                     _serializa(datos["params"] or {}), orden))
+                     a_jsonb(datos["params"] or {}), orden))
                 iid = cur.fetchone()[0]
-                _auditar(cur, user_id, "CREATE", "scenario_interventions", iid,
-                         despues={**datos, "scenario_version_id": version_id,
-                                  "order_index": orden})
+                log_audit(contexto, "CREATE", "scenario_interventions", iid,
+                          data_after={**datos, "scenario_version_id": version_id,
+                                      "order_index": orden},
+                          cur=cur)
             conn.commit()
         return True, None
     except psycopg2.errors.UniqueViolation:
@@ -3213,7 +2944,7 @@ def agrega_intervencion(version_id, datos, user_id):
         return False, f"Los datos no cumplen las restricciones de la base: {exc}"
 
 
-def quita_intervencion(version_id, intervention_id, user_id):
+def quita_intervencion(version_id, intervention_id, *, contexto):
     """Quita una intervencion y cierra el hueco que deja en el orden."""
     try:
         with get_conn() as conn:
@@ -3240,15 +2971,15 @@ def quita_intervencion(version_id, intervention_id, user_id):
                     """UPDATE scenario_interventions SET order_index = order_index - 1
                        WHERE scenario_version_id = %s AND order_index > %s""",
                     (version_id, antes["order_index"]))
-                _auditar(cur, user_id, "DELETE", "scenario_interventions",
-                         intervention_id, antes=antes)
+                log_audit(contexto, "DELETE", "scenario_interventions", intervention_id,
+                          data_before=antes, cur=cur)
             conn.commit()
         return True, None
     except psycopg2.errors.CheckViolation as exc:
         return False, f"No se pudo quitar: {exc}"
 
 
-def mueve_intervencion(version_id, intervention_id, direccion, user_id):
+def mueve_intervencion(version_id, intervention_id, direccion, *, contexto):
     """Sube o baja una intervencion una posicion, intercambiandola con su vecina."""
     if direccion not in ("subir", "bajar"):
         return False, "Dirección de movimiento inválida."
@@ -3274,9 +3005,10 @@ def mueve_intervencion(version_id, intervention_id, direccion, user_id):
                 for nuevo, iid in enumerate(posiciones):
                     cur.execute("UPDATE scenario_interventions SET order_index = %s "
                                 "WHERE id = %s", (nuevo, iid))
-                _auditar(cur, user_id, "UPDATE", "scenario_interventions",
-                         intervention_id, antes={"order_index": i},
-                         despues={"order_index": j})
+                log_audit(contexto, "UPDATE", "scenario_interventions", intervention_id,
+                          data_before={"order_index": i},
+                          data_after={"order_index": j},
+                          cur=cur)
             conn.commit()
         return True, None
     except psycopg2.errors.CheckViolation as exc:
@@ -3284,7 +3016,7 @@ def mueve_intervencion(version_id, intervention_id, direccion, user_id):
 
 
 # ---------------------------------------------------------------------------
-# Versiones nuevas y duplicado (Bloque D)
+# Versiones nuevas y duplicado
 # ---------------------------------------------------------------------------
 # Modificar un escenario NUNCA sobrescribe: crea la version siguiente. La
 # anterior queda intacta, con su autor, su fecha y su comentario, y se puede
@@ -3302,17 +3034,17 @@ _SQL_COPIA_INTERVENCIONES = """
 """
 
 
-def crea_version(scenario_id, datos, user_id):
+def crea_version(scenario_id, datos, *, contexto):
     """Crea la version siguiente a partir de la vigente.
 
     Las intervenciones se copian: si no, cada cambio de un numero obligaria a
     capturarlas otra vez y nadie versionaria nada. La version nueva nace
     `borrador` aunque la anterior estuviera aprobada -- es el default de la
-    columna y lo que pide el flujo del bloque D.
+    columna y lo que pide el flujo de aprobacion.
 
     Devuelve (ok, error, version_number).
     """
-    from .audit import _serializa
+    user_id = contexto.user_id
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -3342,22 +3074,18 @@ def crea_version(scenario_id, datos, user_id):
                     (scenario_id, siguiente, datos["population_size"],
                      datos["horizon_days"], datos["initial_infected"], datos["notes"],
                      user_id,
-                     _serializa(datos["population_by_age"]) if datos["population_by_age"] else None,
+                     a_jsonb(datos["population_by_age"]) if datos["population_by_age"] else None,
                      datos["population_age_unknown"], datos["age_unknown_policy"]))
                 nueva_id = cur.fetchone()[0]
                 cur.execute(_SQL_COPIA_INTERVENCIONES, (nueva_id, origen_id))
                 copiadas = cur.rowcount
 
-                cur.execute(
-                    """INSERT INTO audit_log (user_id, action, entity_type, entity_id,
-                                              ip_address, user_agent, data_before, data_after)
-                       VALUES (%s, 'CREATE', 'scenario_versions', %s, %s::inet, %s,
-                               %s::jsonb, %s::jsonb)""",
-                    (user_id, str(nueva_id), _ip(), _ua(),
-                     _serializa({"version_vigente_anterior": ultimo}),
-                     _serializa({**datos, "scenario_id": scenario_id,
-                                 "version_number": siguiente,
-                                 "intervenciones_copiadas": copiadas})))
+                log_audit(contexto, "CREATE", "scenario_versions", nueva_id,
+                          data_before={"version_vigente_anterior": ultimo},
+                          data_after={**datos, "scenario_id": scenario_id,
+                                      "version_number": siguiente,
+                                      "intervenciones_copiadas": copiadas},
+                          cur=cur)
             conn.commit()
         return True, None, siguiente
     except psycopg2.errors.CheckViolation as exc:
@@ -3367,7 +3095,7 @@ def crea_version(scenario_id, datos, user_id):
                        "página y vuelve a intentarlo."), None
 
 
-def duplica_escenario(scenario_id, version_number, nombre, user_id):
+def duplica_escenario(scenario_id, version_number, nombre, *, contexto):
     """Crea un escenario nuevo a partir de una version de otro.
 
     Se copian enfermedad, region, parametros de la version e intervenciones. El
@@ -3376,7 +3104,7 @@ def duplica_escenario(scenario_id, version_number, nombre, user_id):
 
     Devuelve (ok, error, scenario_id_nuevo).
     """
-    from .audit import _serializa
+    user_id = contexto.user_id
 
     nombre = (nombre or "").strip()
     if not nombre:
@@ -3420,19 +3148,16 @@ def duplica_escenario(scenario_id, version_number, nombre, user_id):
                     (nuevo_id, poblacion, dias, iniciales,
                      f"Duplicado de la versión {version_number} del escenario "
                      f"#{scenario_id}.", user_id,
-                     _serializa(por_edad) if por_edad else None, sin_edad, politica))
+                     a_jsonb(por_edad) if por_edad else None, sin_edad, politica))
                 nueva_version_id = cur.fetchone()[0]
                 cur.execute(_SQL_COPIA_INTERVENCIONES, (nueva_version_id, origen_id))
                 copiadas = cur.rowcount
 
-                cur.execute(
-                    """INSERT INTO audit_log (user_id, action, entity_type, entity_id,
-                                              ip_address, user_agent, data_after)
-                       VALUES (%s, 'CREATE', 'scenarios', %s, %s::inet, %s, %s::jsonb)""",
-                    (user_id, str(nuevo_id), _ip(), _ua(),
-                     _serializa({"name": nombre, "duplicado_de": scenario_id,
-                                 "version_origen": version_number,
-                                 "intervenciones_copiadas": copiadas})))
+                log_audit(contexto, "CREATE", "scenarios", nuevo_id,
+                          data_after={"name": nombre, "duplicado_de": scenario_id,
+                                      "version_origen": version_number,
+                                      "intervenciones_copiadas": copiadas},
+                          cur=cur)
             conn.commit()
         return True, None, nuevo_id
     except psycopg2.errors.UniqueViolation:
@@ -3443,7 +3168,7 @@ def duplica_escenario(scenario_id, version_number, nombre, user_id):
 
 
 # ---------------------------------------------------------------------------
-# Flujo de aprobacion (Bloque D)
+# Flujo de aprobacion
 # ---------------------------------------------------------------------------
 # borrador -> en_revision -> aprobado | rechazado
 #
@@ -3477,7 +3202,7 @@ def get_pendientes_revision():
            ORDER BY v.submitted_at, s.name""")]
 
 
-def envia_a_revision(scenario_id, user_id):
+def envia_a_revision(scenario_id, *, contexto):
     """Manda la version vigente de borrador a en_revision.
 
     Antes de enviar se vuelve a contrastar con el motor: mandar a revisar algo
@@ -3501,7 +3226,6 @@ def envia_a_revision(scenario_id, user_id):
     # salida de borrador, asi que es el punto donde la version deja de poder
     # cambiar y tiene que quedar explicandose a si misma. Se toman los vivos en
     # este instante, que son los que el revisor va a estar mirando.
-    from .audit import _serializa
     congelar = _hay_parametros_congelados()
     try:
         with get_conn() as conn:
@@ -3527,17 +3251,18 @@ def envia_a_revision(scenario_id, user_id):
                 if not fila:
                     return False, ("Alguien cambió el estado de esta versión mientras "
                                    "la enviabas. Recarga la página.")
-                _auditar(cur, user_id, "UPDATE", "scenario_versions", version["id"],
-                         antes={"status": "borrador"},
-                         despues={"status": "en_revision", "version_number": fila[0],
-                                  "parametros_congelados": congelar})
+                log_audit(contexto, "UPDATE", "scenario_versions", version["id"],
+                          data_before={"status": "borrador"},
+                          data_after={"status": "en_revision", "version_number": fila[0],
+                                      "parametros_congelados": congelar},
+                          cur=cur)
             conn.commit()
         return True, None
     except psycopg2.errors.CheckViolation as exc:
         return False, f"La base rechazó el envío: {exc}"
 
 
-def resuelve_revision(scenario_id, decision, comentario, revisor_id):
+def resuelve_revision(scenario_id, decision, comentario, *, contexto):
     """Aprueba o rechaza la version que esta en revision.
 
     `decision` es 'aprobar' o 'rechazar'. Rechazar exige motivo -- lo pide el
@@ -3550,6 +3275,7 @@ def resuelve_revision(scenario_id, decision, comentario, revisor_id):
 
     Devuelve (ok, error, estado_nuevo).
     """
+    revisor_id = contexto.user_id
     estado = DECISIONES_REVISION.get(decision)
     if estado is None:
         return False, "Decisión inválida: solo se puede aprobar o rechazar.", None
@@ -3588,10 +3314,11 @@ def resuelve_revision(scenario_id, decision, comentario, revisor_id):
                 if not fila:
                     return False, ("Alguien resolvió esta revisión mientras la tuya "
                                    "estaba abierta. Recarga la página."), None
-                _auditar(cur, revisor_id, "UPDATE", "scenario_versions", version["id"],
-                         antes={"status": "en_revision"},
-                         despues={"status": estado, "version_number": fila[0],
-                                  "review_comment": comentario or None})
+                log_audit(contexto, "UPDATE", "scenario_versions", version["id"],
+                          data_before={"status": "en_revision"},
+                          data_after={"status": estado, "version_number": fila[0],
+                                      "review_comment": comentario or None},
+                          cur=cur)
             conn.commit()
         return True, None, estado
     except psycopg2.errors.CheckViolation as exc:
@@ -3600,12 +3327,12 @@ def resuelve_revision(scenario_id, decision, comentario, revisor_id):
 
 
 # ---------------------------------------------------------------------------
-# Simulaciones (Bloque F) -- ejecucion, estados y resultados
+# Simulaciones -- ejecucion, estados y resultados
 # ---------------------------------------------------------------------------
 # Todo lo de aqui es de SOLO LECTURA sobre scenarios/scenario_versions (los
-# escribe el bloque D, mas arriba). Lo unico que se escribe en este bloque son
-# simulation_batches, simulation_runs y simulation_results -- la corrida, no
-# el escenario.
+# escriben las secciones de escenarios, mas arriba). Lo unico que se escribe
+# en esta seccion son simulation_batches, simulation_runs y
+# simulation_results -- la corrida, no el escenario.
 #
 # La entrada del motor sale de escenario_de_version(), la misma traduccion que
 # usa la revision; backend_web.simulaciones solo la invoca.
@@ -3638,7 +3365,7 @@ def listar_versiones_escenario():
     """Todas las versiones de escenario, para la pantalla de simulaciones.
 
     Es de solo lectura: crear, editar y aprobar versiones es de la pantalla de
-    escenarios (bloque D). Las aprobadas van primero -- son las unicas que se
+    escenarios. Las aprobadas van primero -- son las unicas que se
     pueden correr.
     """
     return query(
@@ -3744,7 +3471,7 @@ def get_run(run_id):
 
 def get_runs_recientes(limit=20):
     """Ultimas corridas de cualquier escenario, para la lista de la pantalla
-    de simulaciones (item 12 del checklist: 'lista de corridas recientes')."""
+    de simulaciones."""
     return query(
         """
         SELECT r.id, r.status, r.seed, r.queued_at, r.started_at, r.finished_at,
@@ -3791,17 +3518,9 @@ def get_runs_completados_para_comparar(limit=50):
 
 
 def get_corridas_para_comparar(run_ids):
-    """Devuelve corridas completadas seleccionadas con su serie diaria."""
-    ids = []
-    for valor in run_ids:
-        try:
-            run_id = int(valor)
-        except (TypeError, ValueError):
-            continue
-        if run_id not in ids:
-            ids.append(run_id)
-
-    if len(ids) < 2:
+    """Devuelve corridas completadas seleccionadas con su serie diaria, en el
+    orden de `run_ids`: una lista de enteros sin repetir."""
+    if len(run_ids) < 2:
         return []
 
     rows = query(
@@ -3822,11 +3541,11 @@ def get_corridas_para_comparar(run_ids):
         WHERE r.status = 'completado'
           AND r.id = ANY(%s)
         """,
-        (ids,),
+        (run_ids,),
     )
 
     por_id = {fila["id"]: fila for fila in rows}
-    return [por_id[run_id] for run_id in ids if run_id in por_id]
+    return [por_id[run_id] for run_id in run_ids if run_id in por_id]
 
 
 def get_resultado_run(run_id):
@@ -3971,7 +3690,7 @@ def marcar_run_fallido(run_id, mensaje):
 
     Desde 'encolado' hay que poner tambien started_at: ck_simulation_runs_inicio
     (007) exige que solo 'encolado' lo tenga en NULL. Sin el COALESCE, cerrar
-    una corrida que nunca arranco violaba esa restriccion y la dejaba encolada
+    una corrida que nunca arranco violaria esa restriccion y la dejaria encolada
     para siempre. Se usa la misma hora del cierre: duro cero.
     """
     return len(_transiciona_run(
@@ -4026,7 +3745,7 @@ def buscar_run_equivalente(run_id, scenario_version_id, seed, checksum):
     """Otra corrida COMPLETADA con la misma version, la misma semilla y la
     misma huella de escenario (scenario_checksum de motor.huella_escenario()).
 
-    Es la demostracion de reproducibilidad del item 10 del checklist: misma
+    Es la demostracion de reproducibilidad: misma
     entrada + misma semilla + mismo motor => mismo resultado. Devuelve la fila
     (con su `resumen` para poder comparar indicador por indicador) o None si
     esta es la primera corrida con esa combinacion.

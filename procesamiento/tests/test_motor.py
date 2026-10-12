@@ -260,7 +260,7 @@ class EdadDesconocida(unittest.TestCase):
 class LetalidadPorEdad(unittest.TestCase):
     """`letalidad_por_edad` existe para afinar el dato cuando la poblacion viene
     abierta por grupos. Si la tasa global lo tapara, capturarlo no serviria de
-    nada, que es como estaba antes."""
+    nada."""
 
     def test_con_poblacion_por_edad_gana_la_tabla(self):
         esc = escenario()

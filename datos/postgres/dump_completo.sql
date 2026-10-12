@@ -1,3 +1,6 @@
+-- El archivo esta en UTF-8; sin esto, psql en Windows lo lee como WIN1252.
+SET client_encoding = 'UTF8';
+
 -- =============================================================================
 -- dump_completo.sql
 -- Simulador de respuesta a epidemias — construccion completa de la base

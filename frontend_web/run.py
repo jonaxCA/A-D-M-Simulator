@@ -23,7 +23,7 @@ def opciones_arranque(entorno=None):
     """(host, puerto, debug) a partir del entorno.
 
     El depurador de Werkzeug ejecuta Python arbitrario desde el navegador. Con
-    `host="0.0.0.0"` eso quedaba al alcance de cualquiera en la misma red, asi
+    `host="0.0.0.0"` eso queda al alcance de cualquiera en la misma red, asi
     que esa combinacion se rechaza en vez de confiar en que nadie la use.
     """
     entorno = os.environ if entorno is None else entorno

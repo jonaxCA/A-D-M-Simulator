@@ -227,6 +227,7 @@ def escribe_sql(municipios):
 
     sin_edad = sum(m["sin_edad"] for m in municipios)
     con_sin_edad = sum(1 for m in municipios if m["sin_edad"])
+    valores = ",\n".join(filas)
     cuerpo = f"""-- =============================================================================
 -- 021_poblacion_por_grupo_edad.sql
 -- Dominio: catalogos.
@@ -323,7 +324,7 @@ $grants$;
 INSERT INTO region_age_groups (region_id, age_group, lower_bound, population)
 SELECT r.id, v.grupo, v.inicio, v.pob
 FROM (VALUES
-{",\n".join(filas)}
+{valores}
 ) AS v(code, grupo, inicio, pob)
 JOIN regions r ON r.code = v.code
 ON CONFLICT (region_id, age_group) DO NOTHING;

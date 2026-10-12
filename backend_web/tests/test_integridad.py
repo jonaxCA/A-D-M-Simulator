@@ -77,6 +77,73 @@ class SinNombresTapadosTests(unittest.TestCase):
         self.assertEqual(faltan, [], f"módulos que ya no existen: {faltan}")
 
 
+def _imports_de_backend_web(paquete):
+    """'archivo:linea' de cada import de `paquete` (o de un submodulo suyo) en
+    backend_web, sin contar sus pruebas, incluidos los que estan dentro de una
+    funcion."""
+    culpables = []
+    for ruta in sorted((RAIZ / "backend_web").rglob("*.py")):
+        if "tests" in ruta.parts or "__pycache__" in ruta.parts:
+            continue
+        rel = ruta.relative_to(RAIZ).as_posix()
+        for n in ast.walk(ast.parse(ruta.read_text(encoding="utf-8"), rel)):
+            modulos = ([a.name for a in n.names] if isinstance(n, ast.Import)
+                       else [n.module or ""] if isinstance(n, ast.ImportFrom) else [])
+            if any(m == paquete or m.startswith(paquete + ".") for m in modulos):
+                culpables.append(f"{rel}:{n.lineno}")
+    return culpables
+
+
+class CapaDeDatosSinFlaskTests(unittest.TestCase):
+    """backend_web no importa Flask, ni siquiera dentro de una funcion.
+
+    La capa de datos recibe quien y desde donde en un Contexto
+    (backend_web/contexto.py). Leerlo de flask.request la ataba a una peticion
+    web: no se podia llamar desde un hilo, un script o un microservicio, y las
+    pruebas tenian que sustituir flask.request a mano.
+    """
+
+    def test_ningun_modulo_de_backend_web_importa_flask(self):
+        culpables = _imports_de_backend_web("flask")
+        self.assertEqual(culpables, [])
+
+    def test_ningun_modulo_de_backend_web_importa_de_frontend_web(self):
+        """La dependencia va de la web a los datos, nunca al reves: las valida_*
+        tienen que poder usarse desde una API o la app de escritorio sin cargar
+        la web. Por eso la conversion de texto vive en backend_web/conversion.py
+        y no en frontend_web/app/formularios.py."""
+        culpables = _imports_de_backend_web("frontend_web")
+        self.assertEqual(culpables, [])
+
+
+class ImportsAlPrincipioTests(unittest.TestCase):
+    """En backend_web los imports van al principio del modulo.
+
+    Ahi se ve de un vistazo de que depende cada modulo, y un ciclo o un modulo
+    que no carga truena al arrancar la app, no la primera vez que alguien usa
+    la pantalla que llama a esa funcion. Si un import solo funciona dentro de
+    una funcion, hay un ciclo que resolver.
+    """
+
+    def test_ningun_import_dentro_de_funciones_ni_a_mitad_del_modulo(self):
+        culpables = []
+        for ruta in sorted((RAIZ / "backend_web").rglob("*.py")):
+            if "tests" in ruta.parts or "__pycache__" in ruta.parts:
+                continue
+            rel = ruta.relative_to(RAIZ).as_posix()
+            arbol = ast.parse(ruta.read_text(encoding="utf-8"), rel)
+            es_import = (ast.Import, ast.ImportFrom)
+            culpables += [f"{rel}:{n.lineno} dentro de una funcion" for n in ast.walk(arbol)
+                          if isinstance(n, es_import) and n not in arbol.body]
+            cuerpo = [n for n in arbol.body if not (isinstance(n, ast.Expr)
+                                                    and isinstance(n.value, ast.Constant))]
+            primero = next((i for i, n in enumerate(cuerpo) if not isinstance(n, es_import)),
+                           len(cuerpo))
+            culpables += [f"{rel}:{n.lineno} a mitad del modulo" for n in cuerpo[primero:]
+                          if isinstance(n, es_import)]
+        self.assertEqual(culpables, [])
+
+
 class MotorUnaSolaVezTests(unittest.TestCase):
     """queries.py y simulaciones.py tienen que ver EL MISMO motor.
 
@@ -100,6 +167,13 @@ class MotorUnaSolaVezTests(unittest.TestCase):
 
         with self.assertRaises(simulaciones.EscenarioInvalido):
             resolver({"poblacion": -1})
+
+    def test_queries_usa_las_mismas_clases_del_motor(self):
+        from backend_web import queries
+        from procesamiento.motor import parametros
+
+        self.assertIs(queries.EscenarioInvalido, parametros.EscenarioInvalido)
+        self.assertIs(queries.resolver, parametros.resolver)
 
 
 if __name__ == "__main__":

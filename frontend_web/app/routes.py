@@ -10,18 +10,16 @@ Recorrido funcional actual:
 Alcance de esta version:
     - Pantallas funcionales: dashboard publico, login, dashboard autenticado,
       mapa, monitoreo, catalogo de enfermedades, captura de casos, regiones,
-      usuarios, auditoria, escenarios (Bloque D: crear, versionar, enviar a
-      revision y aprobar) y simulaciones (Bloque F: correr versiones ya
-      aprobadas, en segundo plano, con resultados e indicadores). Comparacion
-      sigue como stub "Proximamente"; la frontera de Pareto ya existe en
-      motor/pareto.py, pendiente de conectarse (Bloque G).
-    - Todo corre en un solo proceso Flask contra PostgreSQL directamente
-      (sin la capa de microservicios -- eso es alcance del segundo parcial).
+      usuarios, auditoria, escenarios (crear, versionar, enviar a revision y
+      aprobar), simulaciones (correr versiones ya aprobadas, en segundo plano,
+      con resultados e indicadores) y comparacion de corridas con costos y
+      frontera de Pareto.
+    - Todo corre en un solo proceso Flask contra PostgreSQL directamente,
+      sin la capa de microservicios.
     - Mapa acotado a Nuevo Leon.
 """
 import csv
 import io
-import random
 import threading
 from datetime import date, datetime, timezone
 from urllib.parse import urlsplit
@@ -32,18 +30,11 @@ from flask import (Blueprint, jsonify, render_template, request, redirect,
 from backend_web import queries, simulaciones
 from backend_web.audit import log_audit
 from backend_web.auth import attempt_login, create_token, hash_password
+from . import formularios, presentacion
 from .permisos import (login_required, admin_required, roles_required, tiene_rol,
-                       get_current_user, COOKIE_NAME)
+                       get_current_user, contexto_de_peticion, COOKIE_NAME)
 
 bp = Blueprint("main", __name__)
-
-STUB_ITEMS = {
-}
-
-# Semilla aleatoria por defecto cuando el formulario de "Ejecutar simulacion"
-# la deja en blanco. simulation_runs.seed es BIGINT >= 0 (ck_simulation_runs_seed);
-# 2**31-1 alcanza de sobra y coincide con lo que numpy acepta sin rodeos.
-SEED_MAX = 2**31 - 1
 
 # Roles que pueden encolar una corrida, segun la matriz de permisos de
 # 010_datos_iniciales.sql: 'simulations.run' se le otorga a ANALISTA y a
@@ -151,10 +142,10 @@ def login():
     password = request.form.get("password") or ""
     user, error = attempt_login(usuario, password)
     if error:
-        log_audit(None, "LOGIN_FAILED", "users", entity_id=usuario)
+        log_audit(contexto_de_peticion(None), "LOGIN_FAILED", "users", entity_id=usuario)
         return render_template("login.html", error=error, usuario=usuario), 401
 
-    log_audit(user["id"], "LOGIN", "users", entity_id=str(user["id"]))
+    log_audit(contexto_de_peticion(user["id"]), "LOGIN", "users", entity_id=str(user["id"]))
     token = create_token(user)
     next_url = destino_seguro(request.args.get("next")) or url_for("main.dashboard")
     resp = make_response(redirect(next_url))
@@ -168,7 +159,7 @@ def login():
 def logout():
     user = get_current_user()
     if user:
-        log_audit(user["sub"], "LOGOUT", "users", entity_id=str(user["sub"]))
+        log_audit(contexto_de_peticion(user["sub"]), "LOGOUT", "users", entity_id=str(user["sub"]))
     resp = make_response(redirect(url_for("main.dashboard_publico")))
     resp.delete_cookie(COOKIE_NAME)
     return resp
@@ -261,7 +252,8 @@ def reporte_nuevo():
         return render_template("reporte_form.html", catalogos=catalogos,
                                form={}, errores=[], active_nav="dashboard")
 
-    datos, errores = queries.valida_caso(request.form)
+    datos, errores = queries.valida_caso(request.form, catalogos["enfermedades"],
+                                         catalogos["municipios"])
     if errores:
         return render_template("reporte_form.html", catalogos=catalogos,
                                form=request.form, errores=errores,
@@ -274,7 +266,7 @@ def reporte_nuevo():
                                active_nav="dashboard"), 400
 
     caso = queries.get_caso(nuevo_id)
-    log_audit(g.user["sub"], "CREATE", "cases", entity_id=str(nuevo_id),
+    log_audit(contexto_de_peticion(), "CREATE", "cases", entity_id=str(nuevo_id),
               data_after=dict(caso))
     flash(f"Reporte #{nuevo_id} capturado: {caso['enfermedad']} en "
           f"{caso['municipio']}, {caso['report_date']}. Queda pendiente de validación.", "ok")
@@ -371,7 +363,7 @@ def enfermedad_nueva():
                                parametros=queries.estado_parametros(params),
                                errores=[error], active_nav="enfermedades"), 400
 
-    log_audit(g.user["sub"], "CREATE", "diseases", entity_id=str(nuevo_id),
+    log_audit(contexto_de_peticion(), "CREATE", "diseases", entity_id=str(nuevo_id),
               data_after=_snapshot_enfermedad(queries.get_enfermedad(nuevo_id)))
     flash(f"Enfermedad «{datos['name']}» registrada con el código {datos['code']}.", "ok")
     return redirect(url_for("main.enfermedades"))
@@ -433,7 +425,7 @@ def enfermedad_editar(disease_id):
                                parametros=queries.estado_parametros(params),
                                errores=[error], active_nav="enfermedades"), 400
 
-    log_audit(g.user["sub"], "UPDATE", "diseases", entity_id=str(disease_id),
+    log_audit(contexto_de_peticion(), "UPDATE", "diseases", entity_id=str(disease_id),
               data_before=antes,
               data_after=_snapshot_enfermedad(queries.get_enfermedad(disease_id)))
     flash(f"«{datos['name']}» actualizada.", "ok")
@@ -452,57 +444,87 @@ def enfermedad_estado(disease_id):
 
     activa = request.form.get("activa") == "1"
     queries.set_enfermedad_activa(disease_id, activa)
-    log_audit(g.user["sub"], "UPDATE", "diseases", entity_id=str(disease_id),
+    log_audit(contexto_de_peticion(), "UPDATE", "diseases", entity_id=str(disease_id),
               data_before=_snapshot_enfermedad(actual),
               data_after=_snapshot_enfermedad(queries.get_enfermedad(disease_id)))
     flash(f"«{actual['name']}» quedó {'activa' if activa else 'inactiva'} en el catálogo.", "ok")
     return redirect(request.referrer or url_for("main.enfermedades"))
 
 
-@bp.route("/export/enfermedades.csv")
-@login_required
-def export_enfermedades_csv():
-    filtros = _filtros_enfermedades(request.args)
-    listado = queries.get_enfermedades(pagina=1, por_pagina=EXPORT_MAX_FILAS, **filtros)
+# Una hoja de calculo lee como formula la celda que empieza con alguno de estos
+# caracteres. Los nombres de enfermedad los escribe cualquier usuario
+# autenticado, asi que un nombre como =HYPERLINK(...) se ejecutaria en la
+# computadora de quien abra el export.
+_INICIO_DE_FORMULA = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _celda_csv(valor):
+    """El valor tal cual, salvo el texto que una hoja de calculo leeria como
+    formula: a ese se le antepone un apostrofo, como recomienda OWASP. Los
+    numeros no se tocan: un -12.5 de monitoreo es un numero, no una formula."""
+    if isinstance(valor, str) and valor.startswith(_INICIO_DE_FORMULA):
+        return "'" + valor
+    return valor
+
+
+def _csv(nombre_archivo, encabezados, filas):
+    """Respuesta de descarga con un CSV. Todas las exportaciones pasan por aqui
+    para que el formato del archivo se decida en un solo lugar.
+
+    Empieza con el BOM de UTF-8: sin el, Excel en Windows abre el archivo con
+    la codificacion local y muestra "CÃ³digo" en vez de "Código". Quien lo lea
+    con un programa tiene que usar `utf-8-sig`, que acepta el archivo con o
+    sin BOM.
+    """
     buf = io.StringIO()
+    buf.write("\ufeff")
     writer = csv.writer(buf)
-    writer.writerow(["Código", "Enfermedad", "Estado", "Actividad", "Alta en catálogo",
-                     "Casos NL (total)", "Casos NL (30 días)",
-                     "Simulable", "Parámetros faltantes", "Parámetros supuestos"])
-    for e in listado["enfermedades"]:
-        p = e["parametros"]
-        writer.writerow([e["code"], e["nombre"], e["estado_label"],
-                         e["actividad"]["label"], e["alta_label"],
-                         e["casos_total"], e["casos_30d"],
-                         "Sí" if p["simulable"] else "No",
-                         len(p["faltan"]), len(p["supuestos"])])
+    writer.writerow(encabezados)
+    writer.writerows([_celda_csv(v) for v in fila] for fila in filas)
     resp = make_response(buf.getvalue())
     resp.headers["Content-Type"] = "text/csv; charset=utf-8"
-    resp.headers["Content-Disposition"] = "attachment; filename=catalogo_enfermedades.csv"
+    resp.headers["Content-Disposition"] = f"attachment; filename={nombre_archivo}"
     return resp
 
 
+@bp.route("/export/enfermedades.csv")
+@login_required
+def export_enfermedades_csv():
+    log_audit(contexto_de_peticion(), "EXPORT", "reports", entity_id="catalogo_enfermedades")
+    filtros = _filtros_enfermedades(request.args)
+    listado = queries.get_enfermedades(pagina=1, por_pagina=EXPORT_MAX_FILAS, **filtros)
+    return _csv(
+        "catalogo_enfermedades.csv",
+        ["Código", "Enfermedad", "Estado", "Actividad", "Alta en catálogo",
+         "Casos NL (total)", "Casos NL (30 días)",
+         "Simulable", "Parámetros faltantes", "Parámetros supuestos"],
+        ([e["code"], e["nombre"], presentacion.estado_catalogo(e["activa"]),
+          presentacion.actividad_etiqueta(e["actividad"]), presentacion.fecha_corta(e["alta"]),
+          e["casos_total"], e["casos_30d"],
+          "Sí" if e["parametros"]["simulable"] else "No",
+          len(e["parametros"]["faltan"]), len(e["parametros"]["supuestos"])]
+         for e in listado["enfermedades"]),
+    )
+
+
 # ---------------------------------------------------------------------------
-# Extras chicos pero reales: exportar CSV, y stubs para el resto del sidebar
+# Extras chicos pero reales: exportar CSV, y el resto del sidebar
 # ---------------------------------------------------------------------------
 @bp.route("/export/resumen.csv")
 @login_required
 def export_resumen_csv():
-    log_audit(g.user["sub"], "EXPORT", "reports", entity_id="resumen_situacion")
+    log_audit(contexto_de_peticion(), "EXPORT", "reports", entity_id="resumen_situacion")
     situacion = queries.get_resumen_situacion(limit=20)
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(["Enfermedad", "Estado", "Casos (7 dias)"])
-    for row in situacion:
-        writer.writerow([row["enfermedad"], row["estado"], row["incidencia"]])
-    resp = make_response(buf.getvalue())
-    resp.headers["Content-Type"] = "text/csv; charset=utf-8"
-    resp.headers["Content-Disposition"] = "attachment; filename=resumen_situacion.csv"
-    return resp
+    return _csv(
+        "resumen_situacion.csv",
+        ["Enfermedad", "Estado", "Casos (7 dias)"],
+        ([row["enfermedad"], presentacion.tendencia_etiqueta(row["estado"]), row["incidencia"]]
+         for row in situacion),
+    )
 
 
 # ---------------------------------------------------------------------------
-# Regiones (Bloque C) -- Nuevo Leon y sus 51 municipios
+# Regiones -- Nuevo Leon y sus 51 municipios
 # ---------------------------------------------------------------------------
 # Consulta abierta a cualquier usuario autenticado (igual que Enfermedades).
 # La edicion de poblacion, mas abajo, es exclusiva de ADMINISTRADOR: tanto el
@@ -522,32 +544,6 @@ def regiones():
         catalogo=catalogo,
         active_nav="regiones",
     )
-
-
-def _esperado(nombre):
-    """Lee uno de los campos ocultos con el valor que el formulario traia al
-    abrirse, para el control de concurrencia.
-
-    Devuelve (valor, valido). Hay que distinguir tres casos, porque colapsarlos
-    en "None = invalido" dejaba sin editar a todo municipio con la columna en
-    NULL: el formulario se rechazaba siempre y el mensaje pedia recargar, lo
-    que no arreglaba nada.
-
-      - campo ausente o con basura -> (None, False): el POST no viene de
-        nuestro formulario, o llego incompleto.
-      - campo presente y vacio     -> (None, True): la columna estaba en NULL,
-        que es un estado legitimo.
-      - campo con un entero        -> (int, True).
-    """
-    if nombre not in request.form:
-        return None, False
-    crudo = request.form[nombre].strip()
-    if crudo == "":
-        return None, True
-    try:
-        return int(crudo), True
-    except ValueError:
-        return None, False
 
 
 @bp.route("/regiones/<int:region_id>/editar", methods=["GET", "POST"])
@@ -572,7 +568,7 @@ def region_editar(region_id):
 
     population_raw = request.form.get("population")
     motivo = request.form.get("motivo") or ""
-    esperado_population, ok_pob = _esperado("esperado_population")
+    esperado_population, ok_pob = formularios.esperado(request.form, "esperado_population")
     valores = {"population": population_raw, "motivo": motivo}
 
     poblacion, errores = queries.valida_poblacion_municipio(
@@ -585,7 +581,8 @@ def region_editar(region_id):
                                valores=valores, active_nav="regiones"), 400
 
     ok, error, resultado = queries.actualiza_poblacion_municipio(
-        region_id, poblacion, motivo, g.user["sub"], esperado_population,
+        region_id, poblacion, motivo, esperado_population,
+        contexto=contexto_de_peticion(),
     )
     if not ok:
         return render_template("region_form.html", municipio=municipio, errores=[error],
@@ -662,11 +659,11 @@ def region_edades_editar(region_id):
 
     esperados = {}
     for c in campos:
-        esperados[c["grupo"]], valido = _esperado(c["esperado"])
+        esperados[c["grupo"]], valido = formularios.esperado(request.form, c["esperado"])
         if not valido:
             errores.append("No se pudo verificar el estado del formulario. Recarga la página.")
-    esperados["edad_no_especificada"], valido_sin_edad = _esperado(
-        "esperado_edad_no_especificada")
+    esperados["edad_no_especificada"], valido_sin_edad = formularios.esperado(
+        request.form, "esperado_edad_no_especificada")
     if not valido_sin_edad:
         errores.append("No se pudo verificar la edad no especificada. Recarga la página.")
 
@@ -678,7 +675,7 @@ def region_edades_editar(region_id):
         ), 400
 
     ok, error, resultado = queries.actualiza_grupos_edad_municipio(
-        region_id, grupos, esperados, motivo, g.user["sub"])
+        region_id, grupos, esperados, motivo, contexto=contexto_de_peticion())
     if not ok:
         return render_template(
             "region_edades_form.html", municipio=municipio, campos=campos,
@@ -695,11 +692,11 @@ def region_edades_editar(region_id):
 
 
 # ---------------------------------------------------------------------------
-# Escenarios (Bloque D) -- alta y consulta
+# Escenarios -- alta y consulta
 # ---------------------------------------------------------------------------
 # Consultar es abierto a cualquier usuario autenticado. Dar de alta es de
 # ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR: el ANALISTA es quien arma y envia a
-# revision segun el flujo del bloque D.
+# revision segun el flujo de aprobacion.
 ROLES_ESCENARIO = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 
 
@@ -722,8 +719,7 @@ def escenario_nuevo():
     transaccion: un escenario sin version no se puede simular ni revisar.
 
     Antes de guardar, el escenario se contrasta con el motor. Vale la pena que
-    el rechazo aparezca aqui y no al momento de correr la simulacion, que es
-    donde el bloque F lo encontraria.
+    el rechazo aparezca aqui y no al momento de correr la simulacion.
     """
     regiones = queries.get_regiones_para_escenario()
     enfermedades = queries.get_enfermedades_para_escenario()
@@ -744,7 +740,7 @@ def escenario_nuevo():
     valores["estratificar"] = bool(request.form.get("estratificar"))
 
     if not errores:
-        ok, error, scenario_id = queries.crea_escenario(datos, g.user["sub"])
+        ok, error, scenario_id = queries.crea_escenario(datos, contexto=contexto_de_peticion())
         if ok:
             flash(f"Escenario «{datos['name']}» creado con su versión 1 en borrador.", "ok")
             return redirect(url_for("main.escenarios"))
@@ -761,6 +757,12 @@ def escenario_nuevo():
 # la vez: el rol, que la version siga en borrador, y ser dueno del escenario (o
 # ADMINISTRADOR). Lo primero lo hace el decorador; los otros dos se revisan
 # aqui, porque dependen de la fila y no del usuario.
+def _es_dueno_o_admin(escenario):
+    """Quien creo el escenario, o un ADMINISTRADOR. Es la regla para editar
+    intervenciones, crear versiones y enviar a revision."""
+    return escenario["owner_id"] == g.user["sub"] or tiene_rol(g.user, "ADMINISTRADOR")
+
+
 def _puede_editar(detalle):
     """(puede, motivo). El motivo se muestra al usuario tal cual."""
     if not detalle["version"]:
@@ -768,8 +770,7 @@ def _puede_editar(detalle):
     if detalle["version"]["status"] != "borrador":
         return False, ("Esta versión ya no es un borrador: para cambiar sus "
                        "intervenciones hay que crear una versión nueva.")
-    if (detalle["escenario"]["owner_id"] != g.user["sub"]
-            and not tiene_rol(g.user, "ADMINISTRADOR")):
+    if not _es_dueno_o_admin(detalle["escenario"]):
         return False, "Solo quien creó el escenario puede editar sus intervenciones."
     return True, None
 
@@ -826,8 +827,7 @@ def version_nueva(scenario_id):
     if not detalle["version"]:
         flash("Ese escenario no tiene una versión de la que partir.", "error")
         return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
-    if (detalle["escenario"]["owner_id"] != g.user["sub"]
-            and not tiene_rol(g.user, "ADMINISTRADOR")):
+    if not _es_dueno_o_admin(detalle["escenario"]):
         flash("Solo quien creó el escenario puede versionarlo.", "error")
         return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
 
@@ -853,7 +853,7 @@ def version_nueva(scenario_id):
     datos, errores = queries.valida_version(
         request.form, region, detalle["escenario"]["default_params"])
     if not errores:
-        ok, error, numero = queries.crea_version(scenario_id, datos, g.user["sub"])
+        ok, error, numero = queries.crea_version(scenario_id, datos, contexto=contexto_de_peticion())
         if ok:
             flash(f"Versión {numero} creada en borrador, con las intervenciones de la "
                   f"versión {version['version_number']} copiadas.", "ok")
@@ -878,7 +878,7 @@ def escenario_duplicar(scenario_id):
     """
     numero = request.form.get("version", type=int)
     ok, error, nuevo_id = queries.duplica_escenario(
-        scenario_id, numero, request.form.get("name"), g.user["sub"])
+        scenario_id, numero, request.form.get("name"), contexto=contexto_de_peticion())
     if ok:
         flash("Escenario duplicado. Esta copia es tuya y empieza en borrador.", "ok")
         return redirect(url_for("main.escenario_detalle", scenario_id=nuevo_id))
@@ -902,7 +902,7 @@ def intervencion_agregar(scenario_id):
         request.form, tipos, detalle["version"], detalle["intervenciones"])
     if not errores:
         ok, error = queries.agrega_intervencion(
-            detalle["version"]["id"], datos, g.user["sub"])
+            detalle["version"]["id"], datos, contexto=contexto_de_peticion())
         if ok:
             flash(f"Intervención «{datos['code']}» agregada a la versión "
                   f"{detalle['version']['version_number']}.", "ok")
@@ -932,7 +932,7 @@ def intervencion_quitar(scenario_id, intervencion_id):
         flash(motivo, "error")
     else:
         ok, error = queries.quita_intervencion(
-            detalle["version"]["id"], intervencion_id, g.user["sub"])
+            detalle["version"]["id"], intervencion_id, contexto=contexto_de_peticion())
         flash("Intervención quitada." if ok else error, "ok" if ok else "error")
     return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
 
@@ -950,7 +950,7 @@ def intervencion_mover(scenario_id, intervencion_id):
     else:
         ok, error = queries.mueve_intervencion(
             detalle["version"]["id"], intervencion_id,
-            request.form.get("direccion"), g.user["sub"])
+            request.form.get("direccion"), contexto=contexto_de_peticion())
         if not ok and error:
             flash(error, "error")
     return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
@@ -969,11 +969,10 @@ def version_enviar(scenario_id):
     detalle = _detalle_o_404(scenario_id)
     if detalle is None:
         return redirect(url_for("main.escenarios"))
-    if (detalle["escenario"]["owner_id"] != g.user["sub"]
-            and not tiene_rol(g.user, "ADMINISTRADOR")):
+    if not _es_dueno_o_admin(detalle["escenario"]):
         flash("Solo quien creó el escenario puede enviarlo a revisión.", "error")
     else:
-        ok, error = queries.envia_a_revision(scenario_id, g.user["sub"])
+        ok, error = queries.envia_a_revision(scenario_id, contexto=contexto_de_peticion())
         flash("Versión enviada a revisión." if ok else error, "ok" if ok else "error")
     return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
 
@@ -983,7 +982,7 @@ def version_enviar(scenario_id):
 def version_revisar(scenario_id):
     ok, error, estado = queries.resuelve_revision(
         scenario_id, request.form.get("decision"),
-        request.form.get("comentario"), g.user["sub"])
+        request.form.get("comentario"), contexto=contexto_de_peticion())
     if ok:
         # "Versión aprobado" chirría: el estado de la base es masculino y la
         # versión es femenina, así que el mensaje usa su propia palabra.
@@ -1046,6 +1045,10 @@ def monitoreo():
     totales = queries.get_monitoreo_totales(**ambito)
     zonas = queries.get_monitoreo_zonas(busqueda=f["busqueda"] or None,
                                         orden=f["indicador"], pagina=pagina, **ambito)
+    # La tarjeta geografica compara todas las zonas del ambito, como las otras
+    # dos tarjetas, y en el orden fijo de la consulta: no depende de la pagina,
+    # la busqueda ni el orden que se eligieron para la tabla.
+    todas = queries.get_monitoreo_zonas(pagina=1, por_pagina=EXPORT_MAX_FILAS, **ambito)
 
     return render_template(
         "monitoreo.html",
@@ -1054,7 +1057,7 @@ def monitoreo():
         sexos=sexos,
         totales=totales,
         zonas=zonas,
-        insights=queries.get_monitoreo_insights(zonas["zonas"], edades, totales, f["dias"]),
+        insights=presentacion.monitoreo_insights(todas["zonas"], edades, totales, f["dias"]),
         enfermedades=queries.get_enfermedades_catalogo(),
         municipios=queries.get_municipios_catalogo(),
         indicadores=INDICADORES,
@@ -1069,47 +1072,29 @@ def monitoreo():
 @login_required
 def export_monitoreo_csv():
     f = _filtros_monitoreo(request.args)
-    log_audit(g.user["sub"], "EXPORT", "reports", entity_id="monitoreo_zonas")
+    log_audit(contexto_de_peticion(), "EXPORT", "reports", entity_id="monitoreo_zonas")
     zonas = queries.get_monitoreo_zonas(
         disease_id=f["disease_id"], region_id=f["region_id"], dias=f["dias"],
         busqueda=f["busqueda"] or None, orden=f["indicador"],
         pagina=1, por_pagina=EXPORT_MAX_FILAS,
     )
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(["Zona", f"Casos ({f['dias']} días)", "Incidencia / 100k",
-                     "Variación 7d (%)", "Graves", "Estado"])
-    for z in zonas["zonas"]:
-        writer.writerow([z["zona"], z["casos"], z["incidencia"], z["variacion"],
-                         z["graves"], z["estado"]])
-    resp = make_response(buf.getvalue())
-    resp.headers["Content-Type"] = "text/csv; charset=utf-8"
-    resp.headers["Content-Disposition"] = "attachment; filename=monitoreo_zonas.csv"
-    return resp
+    return _csv(
+        "monitoreo_zonas.csv",
+        ["Zona", f"Casos ({f['dias']} días)", "Incidencia / 100k",
+         "Variación 7d (%)", "Graves", "Estado"],
+        ([z["zona"], z["casos"], z["incidencia"], z["variacion"], z["graves"],
+          presentacion.tendencia_etiqueta(z["estado"])]
+         for z in zonas["zonas"]),
+    )
 
 
 # ---------------------------------------------------------------------------
-# 6.5 Simulaciones (Bloque F) -- ejecucion, estados y resultados
+# 6.5 Simulaciones -- ejecucion, estados y resultados
 # ---------------------------------------------------------------------------
 # Esta pantalla solo lista las versiones de escenario (se crean y aprueban en
-# la de escenarios, bloque D) y permite correr las aprobadas. La traduccion
+# la de escenarios) y permite correr las aprobadas. La traduccion
 # version -> entrada del motor y la corrida en hilo viven en
 # backend_web.simulaciones; aqui solo hay HTTP.
-def _seed_desde_form(valor):
-    """Semilla opcional del formulario: vacio => aleatoria; con valor => debe
-    ser un entero >= 0 (ck_simulation_runs_seed). Devuelve (seed, error)."""
-    crudo = (valor or "").strip()
-    if not crudo:
-        return random.randint(0, SEED_MAX), None
-    try:
-        seed = int(crudo)
-    except ValueError:
-        return None, "La semilla debe ser un número entero."
-    if seed < 0:
-        return None, "La semilla debe ser un número entero mayor o igual a 0."
-    return seed, None
-
-
 def _lanza_corrida(version_id, seed, forzar_error):
     """Encola la corrida y arranca el hilo que la ejecuta. Devuelve
     (run_id, error): si error no es None, no se creo nada que lanzar."""
@@ -1119,15 +1104,16 @@ def _lanza_corrida(version_id, seed, forzar_error):
     if error:
         return None, error
 
-    log_audit(g.user["sub"], "RUN", "simulation_run", entity_id=str(run_id),
+    log_audit(contexto_de_peticion(), "RUN", "simulation_run", entity_id=str(run_id),
               data_after={"estado": "encolado", "seed": seed,
                          "scenario_version_id": version_id,
                          "forzar_error": forzar_error})
 
     # daemon=True: si el proceso de Flask se detiene, el hilo no lo detiene a
     # su vez ni deja el proceso colgado esperandolo. La corrida en si queda en
-    # 'ejecutando' sin terminar -- aceptable para este avance monolitico, sin
-    # cola de trabajos que reencole lo interrumpido.
+    # 'ejecutando' hasta que el servidor vuelve a arrancar y
+    # simulaciones.recupera_corridas_interrumpidas la cierra como fallida: no
+    # hay una cola de trabajos que la reencole.
     hilo = threading.Thread(
         target=simulaciones.ejecutar_run,
         args=(run_id,),
@@ -1161,12 +1147,12 @@ def simulacion_ejecutar(version_id):
     trigger fn_version_aprobada (014) lo checa una cuarta si alguien se salta
     todo lo anterior.
     """
-    seed, error = _seed_desde_form(request.form.get("seed"))
+    seed, error = formularios.semilla(request.form.get("seed"))
     if error:
         flash(error, "error")
         return redirect(url_for("main.simulaciones_lista"))
 
-    # La casilla "forzar error (prueba)" (item 7 del checklist) es la unica
+    # La casilla "forzar error (prueba)" es la unica
     # forma documentada de disparar el camino de ERROR a proposito, y solo
     # tiene efecto si quien la marco es ADMINISTRADOR -- ignorarla en
     # silencio para cualquier otro rol es mas seguro que solo ocultarla en la
@@ -1239,7 +1225,7 @@ def simulacion_estado(run_id):
 @bp.route("/simulaciones/corridas/<int:run_id>/reejecutar", methods=["POST"])
 @roles_required(*ROLES_EJECUTAN_SIMULACION, entity_type="simulations")
 def simulacion_reejecutar(run_id):
-    """"Re-ejecutar con la misma semilla" (item 10 del checklist): nueva
+    """"Re-ejecutar con la misma semilla": nueva
     corrida sobre la MISMA version y la MISMA semilla. Si el escenario y el
     engine_version no cambiaron, el resultado tiene que salir identico -- eso
     es justo lo que la pantalla de detalle de la corrida nueva compara."""
@@ -1259,8 +1245,8 @@ def simulacion_reejecutar(run_id):
 
 
 # ---------------------------------------------------------------------------
-# 7. Usuarios y Auditoria -- adaptadas del diseno de la companera, con datos
-#    reales de Postgres (ver notas de alcance en queries.py)
+# 7. Usuarios y Auditoria -- con datos reales de Postgres (ver notas de
+#    alcance en queries.py)
 # ---------------------------------------------------------------------------
 @bp.route("/usuarios")
 @admin_required
@@ -1338,7 +1324,7 @@ def usuario_nuevo():
         return render_template("usuario_form.html", roles=roles, usuario=datos,
                                errores=[error], active_nav="usuarios"), 400
 
-    log_audit(g.user["sub"], "CREATE", "users", entity_id=str(nuevo_id),
+    log_audit(contexto_de_peticion(), "CREATE", "users", entity_id=str(nuevo_id),
               data_after=_snapshot(queries.get_usuario(nuevo_id)))
     flash(f"Usuario '{datos['username'].lower()}' creado.", "ok")
     return redirect(url_for("main.usuarios"))
@@ -1396,7 +1382,7 @@ def usuario_editar(user_id):
         return render_template("usuario_form.html", roles=roles, usuario=vista,
                                errores=[error], active_nav="usuarios"), 400
 
-    log_audit(g.user["sub"], "UPDATE", "users", entity_id=str(user_id),
+    log_audit(contexto_de_peticion(), "UPDATE", "users", entity_id=str(user_id),
               data_before=antes,
               data_after=_snapshot(queries.get_usuario(user_id)))
     flash(f"Usuario '{actual['username']}' actualizado.", "ok")
@@ -1419,7 +1405,7 @@ def usuario_estado(user_id):
         return redirect(url_for("main.usuarios"))
 
     queries.desactivar_usuario(user_id, activo=activar)
-    log_audit(g.user["sub"], "UPDATE", "users", entity_id=str(user_id),
+    log_audit(contexto_de_peticion(), "UPDATE", "users", entity_id=str(user_id),
               data_before=_snapshot(actual),
               data_after=_snapshot(queries.get_usuario(user_id)))
     flash(("Usuario reactivado." if activar else "Usuario desactivado (baja logica)."), "ok")
@@ -1452,7 +1438,7 @@ def usuario_eliminar(user_id):
         flash(error, "error")
         return redirect(url_for("main.usuarios"))
 
-    log_audit(g.user["sub"], "DELETE", "users", entity_id=str(user_id),
+    log_audit(contexto_de_peticion(), "DELETE", "users", entity_id=str(user_id),
               data_before=antes)
     flash(f"Usuario '{actual['username']}' eliminado.", "ok")
     return redirect(url_for("main.usuarios"))
@@ -1471,12 +1457,12 @@ def auditoria():
     accion = request.args.get("accion") or None
 
     resumen = queries.get_auditoria_resumen()
-    eventos = queries.get_auditoria_lista(
+    eventos = presentacion.filas_bitacora(queries.get_auditoria_lista(
         busqueda=busqueda, usuario_id=usuario_id, modulo=modulo, accion=accion, limit=100
-    )
+    ))
     usuarios_filtro = queries.get_usuarios_para_filtro()
     modulos = queries.get_modulos_auditoria()
-    acciones = queries.get_acciones_auditoria()
+    acciones = presentacion.opciones_accion(queries.get_acciones_auditoria())
 
     return render_template(
         "auditoria.html",
@@ -1497,12 +1483,13 @@ def auditoria():
 @roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
 def comparacion():
     seleccionados = request.args.getlist("run_id")
-    corridas = queries.get_corridas_para_comparar(seleccionados)
+    run_ids = formularios.ids_de(seleccionados)
+    corridas = queries.get_corridas_para_comparar(run_ids)
     comparacion_pareto = None
     errores_pareto = []
     if len(seleccionados) >= 2:
         comparacion_pareto, errores_pareto = (
-            simulaciones.construir_comparacion_costo_impacto(seleccionados)
+            simulaciones.construir_comparacion_costo_impacto(run_ids)
         )
     return render_template(
         "comparacion.html",
@@ -1560,7 +1547,7 @@ def comparacion_costos():
     queries.actualiza_costo_intervencion(intervention_type_id, datos)
 
     log_audit(
-        g.user["sub"],
+        contexto_de_peticion(),
         "UPDATE",
         "intervention_types",
         entity_id=str(intervention_type_id),
@@ -1570,16 +1557,6 @@ def comparacion_costos():
 
     flash("Costo de la intervencion actualizado.", "ok")
     return redirect(url_for("main.comparacion_costos"))
-
-
-@bp.route("/stub/<name>")
-@login_required
-def stub(name):
-    #Solo para pantallas pendientes; las demas van al dashboard
-    if name not in STUB_ITEMS:
-        return redirect(url_for("main.dashboard"))
-    titulo = STUB_ITEMS.get(name, name.capitalize())
-    return render_template("stub.html", titulo=titulo, active_nav=name)
 
 
 @bp.app_errorhandler(403)
