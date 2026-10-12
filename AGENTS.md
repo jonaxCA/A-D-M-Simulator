@@ -1,26 +1,35 @@
 # AGENTS.md
 
-> **Estado: Vigente** · 2026-10-06
+> **Estado: Vigente** · 2026-10-12
 > Si algo aquí choca con lo que pide la persona en la sesión, pregunta antes de actuar.
 
 ## Contexto
 
-Simulador de respuesta a epidemias (ver `README.md`). Proyecto universitario de ocho personas;
-buena parte del código se generó con IA y el equipo no lo conoce a fondo. Prefiere cambios
-pequeños, legibles y fáciles de revisar.
+Simulador de respuesta a epidemias (ver `README.md`). Proyecto universitario: seis personas
+programan. Buena parte del código se generó con IA y el equipo no lo conoce a fondo. Prefiere
+cambios pequeños, legibles y fáciles de revisar.
 
-## Etapa actual
+## Etapa actual: segundo parcial
 
-- Monolito: una sola app Flask conectada directo a PostgreSQL.
-- El motor es un SEIR de prueba, sin agentes. Los documentos de arquitectura y de contexto
-  describen el sistema final (ABM, microservicios); no es lo que se construye ahora.
+- **Sistema web:** el monolito Flask sigue conectado directo a PostgreSQL y **no llama a los
+  microservicios**.
+- **Microservicios:** 26 servicios Flask pequeños en `microservicios/`, cada uno en su
+  contenedor de Docker, con Redis y JWT. Son para las apps de escritorio (XML) y móvil
+  (JSON).
+  - Antes de tocar esa carpeta, lee `microservicios/AGENTS.md`.
+  - El catálogo de servicios está en `docs/arquitectura/microservicios.md` y las tareas en
+    `docs/CHECKLIST_SEGUNDO_PARCIAL.md`.
+- **Motor:** un SEIR de prueba, sin agentes. Los documentos de arquitectura y de contexto
+  describen el sistema final (ABM, MongoDB, Cloud Storage, nginx); no es lo que se construye
+  ahora.
 
 ## Fuera de alcance
 
-MongoDB, Redis, colas externas, microservicios, CUDA/Numba/FLAME GPU, ABM, app móvil,
-app de escritorio, contratos OpenAPI/XSD, calibración, IA predictiva, visualización 3D y
-un modelo económico sofisticado. No crees código en `microservicios/`, `infra/`,
-`frontend_movil/`, `frontend_desktop/` ni `docs/contratos/`.
+MongoDB, Google Cloud Storage, nginx, CUDA/Numba/FLAME GPU, ABM, calibración, IA predictiva,
+visualización 3D, límites de consumo y un modelo económico sofisticado.
+
+Las apps móvil y de escritorio están por confirmar con el profesor. Hasta entonces no crees
+código en `frontend_movil/` ni en `frontend_desktop/`.
 
 ## Reglas
 
@@ -43,7 +52,9 @@ un modelo económico sofisticado. No crees código en `microservicios/`, `infra/
 ## Comandos
 
 - Sitio: `python -m frontend_web.run`.
-- `docker compose up`, que menciona `CONTRIBUTING.md`, todavía no existe.
+- Microservicios: `docker compose -f infra/docker-compose.yml up --build`. Existirá cuando
+  esté el bloque J del checklist; hasta entonces, el `docker compose up` de `CONTRIBUTING.md`
+  no levanta nada.
 - Verificar que el dump coincide con las migraciones: `python datos/scripts/verifica_migraciones.py`.
 - Las pruebas corren contra `<base>_pruebas`, nunca contra la de la demostración. Se crea con
   `python datos/scripts/prepara_base_pruebas.py` (ver `docs/INSTALACION.md`).
@@ -68,7 +79,10 @@ Cuando se decidan, quedarán en `docs/decisiones.md`.
 4. `docs/arquitectura/arquitectura_v1.md`.
 5. `docs/contexto/simulador.md`.
 
-Para el esquema de la base, las migraciones ganan sobre cualquier documento.
+Para el esquema de la base, las migraciones ganan sobre cualquier documento. Dentro de
+`microservicios/`, `infra/` y `docs/contratos/`, el catálogo
+(`docs/arquitectura/microservicios.md`) y el `AGENTS.md` de cada carpeta ganan sobre este
+archivo.
 
 ## Git y cierre
 
