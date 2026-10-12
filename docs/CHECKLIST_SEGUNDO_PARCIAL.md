@@ -25,14 +25,14 @@ son las tareas.
 
 ## Reparto propuesto
 
-| Integrante | Servicios | Bloques transversales | Días aprox. | Revisa a |
-|---|---|---|---|---|
-| 1 | `auth`, `sesiones` | **A** Biblioteca común y plantilla · **L** Seguridad | 10.5 | 2 |
-| 2 | `usuarios`, `roles`, `regiones`, `poblacion`, `zonas`, `series` | **K** Redis | 10 | 1 |
-| 3 | `enfermedades`, `parametros`, `tipos-intervencion`, `casos`, `sincronizacion`, `indicadores` | **N** Sistema web · **P** Documentación | 9.75 | 6 |
-| 4 | `escenarios`, `intervenciones`, `aprobacion`, `validacion`, `escenarios-xml` | — | 9.5 | 5 |
-| 5 | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto`, `notificaciones` | — | 10 | 4 |
-| 6 | `estado-servicios` | **I** Consola · **J** Docker · **M** Contratos · **O2** Integración | 10.5 | 3 |
+| Integrante | Servicios                                                                                    | Bloques transversales                                               | Días aprox. | Revisa a |
+|------------|----------------------------------------------------------------------------------------------|---------------------------------------------------------------------|-------------|----------|
+| 1          | `auth`, `sesiones`                                                                           | **A** Biblioteca común y plantilla · **L** Seguridad                | 10.5        | 2        |
+| 2          | `usuarios`, `roles`, `regiones`, `poblacion`, `zonas`, `series`                              | **K** Redis                                                         | 10          | 1        |
+| 3          | `enfermedades`, `parametros`, `tipos-intervencion`, `casos`, `sincronizacion`, `indicadores` | **N** Sistema web · **P** Documentación                             | 9.75        | 6        |
+| 4          | `escenarios`, `intervenciones`, `aprobacion`, `validacion`, `escenarios-xml`                 | —                                                                   | 9.5         | 5        |
+| 5          | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto`, `notificaciones`             | —                                                                   | 10          | 4        |
+| 6          | `estado-servicios`                                                                           | **I** Consola · **J** Docker · **M** Contratos · **O2** Integración | 10.5        | 3        |
 
 - El reparto se equilibra **por esfuerzo, no por número de servicios**. Un servicio de solo
   lectura (`regiones`) es medio día; uno con reglas y llamadas a otros (`escenarios-xml`) son
@@ -51,15 +51,15 @@ son las tareas.
 
 ## Calendario (diez días hábiles)
 
-| Días | Qué |
-|---|---|
-| 1 | Bloque 0 completo. El integrante 6 arranca la imagen base y el compose con PostgreSQL y Redis; el integrante 1, la biblioteca común |
-| 2–3 | Biblioteca mínima (A1–A4) y plantilla (A6). Los demás: borrador de OpenAPI y mapa de funciones de sus servicios |
-| **3 · Hito 0** | Cada quien genera sus servicios con la plantilla, y los 26 contenedores responden `/health` |
-| **5 · Hito 1** | `auth` emite tokens y cada servicio responde **un GET protegido** en XML y en JSON, con Swagger. La consola lista los 26 servicios y su salud |
-| 6–8 | Escrituras, llamadas entre servicios, cola del simulador, XSD y el probador de la consola |
-| 9 | Pruebas de integración y guion de aceptación completo, corrido desde la consola |
-| **10 · Entrega** | Congelamiento, evidencias y `.tar.gz` |
+| Días             | Qué                                                                                                                                           |
+|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| 1                | Bloque 0 completo. El integrante 6 arranca la imagen base y el compose con PostgreSQL y Redis; el integrante 1, la biblioteca común           |
+| 2–3              | Biblioteca mínima (A1–A4) y plantilla (A6). Los demás: borrador de OpenAPI y mapa de funciones de sus servicios                               |
+| **3 · Hito 0**   | Cada quien genera sus servicios con la plantilla, y los 26 contenedores responden `/health`                                                   |
+| **5 · Hito 1**   | `auth` emite tokens y cada servicio responde **un GET protegido** en XML y en JSON, con Swagger. La consola lista los 26 servicios y su salud |
+| 6–8              | Escrituras, llamadas entre servicios, cola del simulador, XSD y el probador de la consola                                                     |
+| 9                | Pruebas de integración y guion de aceptación completo, corrido desde la consola                                                               |
+| **10 · Entrega** | Congelamiento, evidencias y `.tar.gz`                                                                                                         |
 
 **Si el tiempo no alcanza, el orden de recorte es este** (los imprescindibles cubren los diez
 entregables):
@@ -85,27 +85,22 @@ entregables):
 - [ ] Los `.env` nunca entran al repositorio; solo `.env.example` y `.env.shared.example`
 - [ ] El `.tar.gz` de entrega incluye la carpeta `.git`
 
-### Decidido
+### Decidido (cada decisión queda anotada en `docs/decisiones.md`)
 - [ ] Docker: un contenedor por microservicio (ya no es opcional)
 - [ ] Los microservicios solo los usan las apps; el monolito no los consume
 - [ ] El catálogo de `docs/arquitectura/microservicios.md` es la referencia. Si un servicio
       cambia de tarea, de tablas o de puerto, se cambia ahí primero
-
-### Por decidir (se anota en `docs/decisiones.md`)
-- [ ] **(decidir)** Formato. Propuesta: el de clase, XML por defecto y JSON con
-      `?format=json`. Además, aceptar `Accept: application/json` como alternativa
-- [ ] **(decidir)** Si las apps de escritorio y móvil se entregan en este parcial o solo sus
-      servicios. **Confirmarlo con el profesor**
-- [ ] **(decidir)** Rutas en inglés, como en la arquitectura y en el catálogo, o en español
-- [ ] **(decidir)** Nombres de los servicios. Propuesta: los del catálogo, en español
-- [ ] **(decidir)** Si hace falta la `pasarela` (una sola entrada) o las apps usan el
-      directorio de `estado-servicios`
-- [ ] **(decidir)** Pruebas de los servicios con `pytest`, que también corre las 431 actuales
-      de `unittest`
-- [ ] **(decidir)** Validación de XSD con `xmlschema` o con `lxml`, y lectura de XML con
-      `defusedxml`, como en clase
-- [ ] Reservar los números de migración de esta etapa: 026 en adelante (regla de
-      `datos/AGENTS.md`)
+- [ ] Formato: el de clase, XML por defecto y JSON con `?format=json`. También se acepta
+      `Accept: application/json`; si los dos chocan, manda `?format`
+- [ ] Entregas: en este parcial, los 26 servicios con sus contratos; las apps de escritorio
+      y móvil, en el tercer parcial. Mientras tanto, la consola hace sus veces
+- [ ] Rutas en inglés, como en la arquitectura y en el catálogo (`/api/v1/scenarios`)
+- [ ] Nombres de los servicios en español, los del catálogo (`escenarios`, `corridas`…)
+- [ ] Sin `pasarela`: las apps y la consola piden la URL de cada servicio al directorio de
+      `estado-servicios`
+- [ ] Pruebas de los servicios con `pytest`, que también corre las 431 actuales de `unittest`
+- [ ] Validación de XSD con `xmlschema` y lectura de XML con `defusedxml`, como en clase
+- [ ] Migraciones de esta etapa reservadas: 026 en adelante (regla de `datos/AGENTS.md`)
 
 ### Estructura acordada
 - [ ] `microservicios/comun/` (paquete `epidemia_comun`), `microservicios/<servicio>/` para
