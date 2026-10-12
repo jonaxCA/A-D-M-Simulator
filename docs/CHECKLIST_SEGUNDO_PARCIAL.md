@@ -18,8 +18,8 @@ en [`docs/arquitectura/microservicios.md`](arquitectura/microservicios.md). Este
 son las tareas.
 
 > Propuesta para repartir temprano. Cada bloque tiene un responsable y un revisor, y cada
-> casilla debería ser un issue, una rama y un Pull Request. Las casillas marcadas
-> **(decidir)** se resuelven en el bloque 0, antes de escribir código.
+> casilla debería ser un issue, una rama y un Pull Request. Las decisiones de esta etapa
+> ya están tomadas: están en el bloque 0 y en `docs/decisiones.md`.
 
 ---
 
@@ -126,8 +126,11 @@ referencia.
 - [ ] Arranque con waitress en el puerto 8000 dentro del contenedor
 
 ### A2. Formatos
-- [ ] `responder(datos, raiz)`: XML por defecto y JSON con `?format=json`. Un valor
-      desconocido es error 400, no el formato por omisión
+- [ ] `responder(datos, raiz)`: XML por defecto y JSON con `?format=json` o con
+      `Accept: application/json`; si los dos chocan, manda `?format`
+- [ ] Un valor desconocido de `?format` es error 400, no el formato por omisión. Un `Accept`
+      distinto de `application/json` (como el `text/html` de un navegador) se ignora y se
+      responde XML
 - [ ] Nombres singulares para los elementos de las colecciones (`escenarios` → `escenario`)
 - [ ] `leer_cuerpo()`: acepta JSON o XML según el `Content-Type`, con `defusedxml` y límite de
       tamaño
@@ -184,7 +187,8 @@ referencia.
 Vale para los 26. Cada servicio de los bloques B a H tiene una casilla que la remite.
 
 - [ ] Generado con la plantilla y en el puerto del catálogo
-- [ ] Responde XML por defecto y JSON con `?format=json`, y acepta cuerpos en los dos formatos
+- [ ] Responde XML por defecto y JSON con `?format=json` o `Accept: application/json`, y
+      acepta cuerpos en los dos formatos
 - [ ] `/health`, `/docs` (Swagger) y `/openapi.json`
 - [ ] Errores RFC 7807 en los dos formatos
 - [ ] Rutas protegidas con los mismos roles que la pantalla equivalente del monolito
@@ -558,7 +562,8 @@ cumplido.
 - [ ] 1. `docker compose up` desde cero: los 26 servicios, la consola, PostgreSQL y Redis en
       verde
 - [ ] 2. En la consola, el panel de salud muestra los 26 en verde
-- [ ] 3. `/health` de un servicio en XML (sin parámetro) y en JSON (`?format=json`)
+- [ ] 3. `/health` de un servicio en XML (sin parámetro), en JSON con `?format=json` y en
+      JSON con `Accept: application/json`
 - [ ] 4. Abrir el Swagger de varios servicios desde el selector
 - [ ] 5. Iniciar sesión como analista: recibir *access* y *refresh*
 - [ ] 6. Consultar el catálogo de enfermedades en XML y en JSON
@@ -593,7 +598,7 @@ Verificaciones extra:
 - MongoDB, Google Cloud Storage y nginx: no se vieron en clase
 - Motor CUDA o Numba y lotes de 30 o más réplicas
 - Límites de consumo (*rate limiting*) y HTTPS con certificados reales
-- Las apps de escritorio y móvil: los servicios quedan listos para ellas, salvo que el
-  profesor diga que entran en este parcial
+- Las apps de escritorio y móvil: se entregan en el tercer parcial. Los servicios y sus
+  contratos quedan listos y documentados para ellas
 - Los servicios opcionales del catálogo: `recuperacion`, `dispositivos`, `evidencias`,
-  `vacunas`, `configuracion` y `pasarela`
+  `vacunas` y `configuracion`
