@@ -1,0 +1,34 @@
+name: epidemia
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    # La contraseña llega por el entorno y no se escribe en ningún archivo versionado.
+    # noeviction: con la memoria llena, Redis rechaza escrituras en vez de borrar
+    # sesiones o revocaciones.
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server
+        --requirepass "$$REDIS_PASSWORD"
+        --appendonly yes
+        --maxmemory 256mb
+        --maxmemory-policy noeviction
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Falta REDIS_PASSWORD en infra/.env (copia infra/.env.example)}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    # Solo en 127.0.0.1: nadie fuera de la máquina llega a Redis.
+    ports:
+      - "127.0.0.1:${REDIS_PUERTO_LOCAL:-6380}:6379"
+    volumes:
+      - redis-datos:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  redis-datos:

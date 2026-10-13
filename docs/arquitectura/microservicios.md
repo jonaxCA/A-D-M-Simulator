@@ -38,7 +38,8 @@ específicas. Sin MongoDB, Cloud Storage ni nginx.
 | Analítica  | 5251–5253 |
 | Plataforma | 5260–5262 |
 
-Fuera de este esquema quedan el monolito (5000), PostgreSQL (5432) y Redis (6379).
+Fuera de este esquema quedan el monolito (5000), PostgreSQL (5432) y Redis (6379 en la red
+de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 
 ---
 
@@ -147,14 +148,29 @@ aceptan las rutas marcadas como internas.
 
 ## Llaves de Redis por servicio
 
-| Servicio                                       | Llaves                                                                           |
-|------------------------------------------------|----------------------------------------------------------------------------------|
-| `auth`, `sesiones`                             | `session:<h(sid)>`, `refresh:<h(rt)>`, `jwt:revoked:<jti>`, `user:<id>:sessions` |
-| `corridas`                                     | `queue:simulaciones` (lista), `lock:corrida:<version>`                           |
-| `simulador`                                    | `job:<id>:progress`                                                              |
-| `resultados`, `indicadores`, `series`, `zonas` | `cache:<servicio>:<clave>` (TTL corto)                                           |
-| `sincronizacion`                               | `sync:lote:<id>`                                                                 |
-| `estado-servicios`                             | `health:<servicio>`, `health:history:<servicio>`                                 |
+Los nombres salen de `microservicios/comun/epidemia_comun/llaves.py`, y una prueba revisa que
+coincidan con esta tabla. Todas llevan TTL, salvo la cola. Del `sid` y del *refresh* solo se
+guarda su huella (SHA-256).
+
+| Llave                       | Qué guarda                                                                        | TTL                                                                | Escribe                                        | Módulo     |
+|-----------------------------|-----------------------------------------------------------------------------------|--------------------------------------------------------------------|------------------------------------------------|------------|
+| `session:<h(sid)>`          | Hash: usuario, roles, creada, expira y la huella del *refresh* vigente            | La sesión, contada desde el login; renovar no la alarga            | `auth`, `sesiones`                             | `sesiones` |
+| `user:<id>:sessions`        | Conjunto con las huellas de las sesiones de una cuenta                            | La sesión                                                          | `auth`, `sesiones`                             | `sesiones` |
+| `refresh:<h(rt)>`           | Huella del `sid` de su sesión                                                     | Lo que le quede a la sesión                                        | `auth`, `sesiones`                             | `sesiones` |
+| `refresh:usado:<h(rt)>`     | Huella del `sid` de un *refresh* ya rotado, para detectar si alguien lo reutiliza | Lo que le quede a la sesión                                        | `sesiones`                                     | `sesiones` |
+| `jwt:revoked:<jti>`         | `1`                                                                               | Lo que le quede al token, más 60 s                                 | `sesiones`                                     | `sesiones` |
+| `queue:simulaciones`        | Lista de ids de corrida                                                           | **Sin TTL**: la vacía el `simulador`, y lo que manda es PostgreSQL | `corridas`                                     | `cola`     |
+| `lock:corrida:<version>`    | Marca de la petición que lo tomó                                                  | Unos segundos                                                      | `corridas`                                     | `candados` |
+| `job:<id>:progress`         | Avance de una corrida                                                             | Lo fija el `simulador`                                             | `simulador`                                    | —          |
+| `cache:<servicio>:<clave>`  | La respuesta, en JSON                                                             | Corto; lo fija cada servicio                                       | `resultados`, `indicadores`, `series`, `zonas` | `cache`    |
+| `sync:lote:<id>`            | Resultado de un lote ya recibido                                                  | Lo fija `sincronizacion`                                           | `sincronizacion`                               | —          |
+| `health:<servicio>`         | Última salud de un servicio                                                       | Lo fija `estado-servicios`                                         | `estado-servicios`                             | —          |
+| `health:history:<servicio>` | Lista corta de sondeos                                                            | Lo fija `estado-servicios`                                         | `estado-servicios`                             | —          |
+
+- Todas las rutas protegidas leen `session:` y `jwt:revoked:` desde `@requiere_token`, con
+  `sesiones.verificar()`.
+- Las llaves sin módulo se escriben con `requerido()` u `opcional()` de `redis_compartido`,
+  siempre con `ex=`. Quien implemente el servicio anota aquí el TTL que eligió.
 
 ## Opcionales (si sobra tiempo o las apps los piden)
 

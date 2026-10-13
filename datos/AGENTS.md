@@ -4,7 +4,8 @@
 
 ## Migraciones nuevas
 
-1. Confirma el número con la persona: hay números reservados.
+1. Confirma el número con la persona: hay números reservados. Las del segundo parcial van de
+   la 026 en adelante (D16 de `docs/decisiones.md`).
 2. Copia la estructura de la 017: encabezado, `BEGIN;` … `COMMIT;` y registro en `schema_migrations`.
 3. Hazla idempotente (`IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) y agrega `COMMENT ON` a todo lo nuevo.
 4. Copia el archivo tal cual al final de `postgres/dump_completo.sql` y actualiza el número de

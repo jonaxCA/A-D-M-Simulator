@@ -51,15 +51,15 @@ son las tareas.
 
 ## Calendario (diez días hábiles)
 
-| Días             | Qué                                                                                                                                           |
-|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| 1                | Bloque 0 completo. El integrante 6 arranca la imagen base y el compose con PostgreSQL y Redis; el integrante 1, la biblioteca común           |
-| 2–3              | Biblioteca mínima (A1–A4) y plantilla (A6). Los demás: borrador de OpenAPI y mapa de funciones de sus servicios                               |
-| **3 · Hito 0**   | Cada quien genera sus servicios con la plantilla, y los 26 contenedores responden `/health`                                                   |
-| **5 · Hito 1**   | `auth` emite tokens y cada servicio responde **un GET protegido** en XML y en JSON, con Swagger. La consola lista los 26 servicios y su salud |
-| 6–8              | Escrituras, llamadas entre servicios, cola del simulador, XSD y el probador de la consola                                                     |
-| 9                | Pruebas de integración y guion de aceptación completo, corrido desde la consola                                                               |
-| **10 · Entrega** | Congelamiento, evidencias y `.tar.gz`                                                                                                         |
+| Días             | Qué                                                                                                                                               |
+|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1                | Bloque 0 completo. El integrante 6 arranca la imagen base y agrega PostgreSQL al compose, que ya trae Redis; el integrante 1, la biblioteca común |
+| 2–3              | Biblioteca mínima (A1–A4) y plantilla (A6). Los demás: borrador de OpenAPI y mapa de funciones de sus servicios                                   |
+| **3 · Hito 0**   | Cada quien genera sus servicios con la plantilla, y los 26 contenedores responden `/health`                                                       |
+| **5 · Hito 1**   | `auth` emite tokens y cada servicio responde **un GET protegido** en XML y en JSON, con Swagger. La consola lista los 26 servicios y su salud     |
+| 6–8              | Escrituras, llamadas entre servicios, cola del simulador, XSD y el probador de la consola                                                         |
+| 9                | Pruebas de integración y guion de aceptación completo, corrido desde la consola                                                                   |
+| **10 · Entrega** | Congelamiento, evidencias y `.tar.gz`                                                                                                             |
 
 **Si el tiempo no alcanza, el orden de recorte es este** (los imprescindibles cubren los diez
 entregables):
@@ -149,7 +149,7 @@ referencia.
   - [ ] `alg=HS256` (rechaza `none`);
   - [ ] firma;
   - [ ] `iss`, `aud`, `exp` y `nbf`;
-  - [ ] que no esté revocado en Redis;
+  - [ ] que no esté revocado ni su sesión cerrada (`sesiones.verificar()`);
   - [ ] el rol.
 - [ ] `@solo_servicios`: para las rutas internas, acepta solo un token de servicio
 - [ ] Del token sale el `Contexto` (usuario, IP, user agent) que ya usan las funciones que
@@ -157,8 +157,8 @@ referencia.
 - [ ] Si Redis está caído, una ruta protegida responde 503 y nunca deja pasar
 
 ### A5. Salud, Swagger y registro
-- [ ] `/health` en XML y JSON, con el estado de PostgreSQL y de Redis y la versión del
-      servicio
+- [ ] `/health` en XML y JSON, con el estado de PostgreSQL y de Redis
+      (`redis_compartido.estado()`) y la versión del servicio
 - [ ] `/openapi.json` servido desde el contrato del servicio y Swagger UI en `/docs`
 - [ ] Cada petición se registra con método, ruta, código, duración, usuario y un
       `X-Correlation-ID`
@@ -212,15 +212,18 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 ### B1. `auth` · Integrante 1
 - [ ] Login con el bloqueo por intentos y la bitácora (`LOGIN` / `LOGIN_FAILED`) de hoy
 - [ ] Emite el *access* (20 min) y el *refresh*, y abre la sesión en Redis
+      (`sesiones.abrir()`)
 - [ ] Claims: `iss`, `aud`, `sub`, `roles`, `sid`, `jti`, `iat`, `nbf`, `exp`
 - [ ] Una cuenta inactiva o bloqueada recibe el mismo mensaje que una contraseña equivocada
 - [ ] Cumple la definición de terminado
 
 ### B2. `sesiones` · Integrante 1
 - [ ] `refresh` rota el *refresh*; uno ya usado cierra la sesión completa
-- [ ] `logout` revoca el *access* y cierra la sesión
+      (`sesiones.renovar()`)
+- [ ] `logout` revoca el *access* y cierra la sesión (`sesiones.revocar()` y `cerrar()`)
 - [ ] `current` dice quién soy, mis roles y cuándo vence la sesión
-- [ ] Ruta interna para cerrar todas las sesiones de una cuenta (la usan `usuarios` y `roles`)
+- [ ] Ruta interna para cerrar todas las sesiones de una cuenta (la usan `usuarios` y `roles`),
+      con `sesiones.cerrar_todas()`
 - [ ] Cumple la definición de terminado
 
 ### B3. `usuarios` · Integrante 2
@@ -332,9 +335,9 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 
 ### F1. `corridas`
 - [ ] Lanzar una corrida solo sobre una versión aprobada: crea el lote y la corrida, la mete
-      en la cola de Redis y responde 202 con su id
+      en la cola de Redis (`cola.encolar()`) y responde 202 con su id
 - [ ] Semilla opcional; `forzar_error` solo para ADMINISTRADOR, como hoy
-- [ ] Candado en Redis (`lock:corrida:<version>`) para que un doble clic no lance dos corridas
+- [ ] Candado en Redis (`candados.candado(llaves.candado_corrida(version), ttl)`) para que un doble clic no lance dos corridas
 - [ ] Estado y progreso (leídos de Redis y de PostgreSQL), y cancelar una corrida encolada
 - [ ] Cumple la definición de terminado
 
@@ -431,7 +434,7 @@ es la herramienta del guion de aceptación.
 - [ ] `infra/docker-compose.yml` con:
   - [ ] PostgreSQL, con volumen e inicialización: dump, semillas y migraciones 026 en
         adelante;
-  - [ ] Redis, con contraseña y AOF;
+  - [x] Redis, con contraseña y AOF (lo hizo el bloque K);
   - [ ] los 26 servicios y la consola;
   - [ ] `depends_on` con `condition: service_healthy`.
 - [ ] Perfiles del compose por dominio (`identidad`, `catalogos`, `escenarios`…), para
@@ -448,11 +451,34 @@ es la herramienta del guion de aceptación.
 
 ## K. Redis en operación · Integrante 2
 
-- [ ] Contenedor de Redis con `requirepass`, `appendonly yes` y `noeviction`, para que no se
-      expulsen sesiones ni revocaciones
-- [ ] Mantener la tabla de llaves del catálogo: cada llave con su TTL y su servicio dueño
-- [ ] En Redis se guarda el hash de los identificadores de sesión y de *refresh*, no el valor
-- [ ] Si Redis se cae:
+La capa de Redis de la biblioteca común y el contenedor se adelantaron antes del día 1. Su uso
+está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
+
+### K0. Módulo de Redis de `epidemia_comun` (listo)
+- [x] Cliente compartido con tiempos de espera cortos:
+  - [x] `requerido()` falla cerrado, con 503;
+  - [x] `opcional()` deja seguir con la base.
+- [x] `sesiones`:
+  - [x] abrir, renovar con *refresh* de un solo uso, cerrar y cerrar todas las de una cuenta;
+  - [x] revocar y verificar en un solo viaje.
+- [x] `cache` con TTL, que conserva `Decimal` y fechas
+- [x] `candados` con NX y TTL; solo suelta el candado quien lo tomó
+- [x] `cola` de corridas, con un cliente aparte para la espera bloqueante
+- [x] `llaves.py` con las llaves del catálogo, y una prueba que revisa que coincidan con la
+      tabla
+- [x] 33 pruebas con fakeredis; también pasan contra el Redis del compose con
+      `REDIS_URL_PRUEBAS`
+
+### K1. En operación
+- [x] Contenedor de Redis con `requirepass`, `appendonly yes` y `noeviction`, para que no se
+      expulsen sesiones ni revocaciones (`infra/docker-compose.yml`, Redis 7.4). Probado:
+      *healthcheck* en verde, rechaza conexiones sin contraseña, los datos sobreviven a un
+      reinicio y las 33 pruebas pasan contra él
+- [x] Tabla de llaves del catálogo con su TTL y su servicio dueño. Quien implemente
+      `simulador`, `sincronizacion` y `estado-servicios` anota el TTL de sus llaves
+- [x] En Redis se guarda la huella de los identificadores de sesión y de *refresh*, no el
+      valor
+- [ ] Si Redis se cae, en los servicios (la biblioteca ya lo hace y lo prueba):
   - [ ] lo protegido responde 503;
   - [ ] los catálogos públicos siguen respondiendo;
   - [ ] las cachés se reconstruyen solas al volver.
