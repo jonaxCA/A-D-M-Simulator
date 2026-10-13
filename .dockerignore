@@ -1,0 +1,13 @@
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.shared.example
+.git/
+**/__pycache__/
+**/.pytest_cache/
+**/*.pyc
+**/*.pyo
+.venv/
+venv/
+**/*.sqlite
+**/*.log
