@@ -1,0 +1,2104 @@
+{
+  "info": {
+    "name": "EPIDEMIA · tipos-intervencion, indicadores, series y zonas",
+    "description": "Pruebas de los servicios 5215, 5251, 5252 y 5253: salud, Swagger, contrato, XML y JSON, permisos y errores RFC 7807.\n\n1. Importa esta colección y `local.postman_environment.json`.\n2. Genera un token con `python microservicios/comun/scripts/token_pruebas.py` y pégalo en la variable `token` del entorno.\n3. Corre la colección completa en orden (Runner): Zonas guarda el municipio que usa Series.\n\nDesde la terminal: `npx newman run docs/contratos/postman/catalogos_analitica.postman_collection.json -e docs/contratos/postman/local.postman_environment.json --env-var token=$TOKEN`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "tipo_code",
+      "value": ""
+    },
+    {
+      "key": "region_id",
+      "value": ""
+    },
+    {
+      "key": "mayor_cambio_p1",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Salud, Swagger y contrato",
+      "description": "/health en JSON y XML, /openapi.json y /docs de los cuatro servicios. Públicos.",
+      "item": [
+        {
+          "name": "tipos-intervencion · /health (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "pm.test(\"Trae X-Correlation-ID\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.be.a(\"string\").and.not.empty);",
+                  "const s = pm.response.json();",
+                  "pm.test(\"Es tipos-intervencion\", () => pm.expect(s.servicio).to.eql(\"tipos-intervencion\"));",
+                  "pm.test(\"PostgreSQL y Redis arriba\", () => { pm.expect(s.postgresql).to.be.true; pm.expect(s.redis).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_tipos}}/health?format=json",
+              "host": [
+                "{{url_tipos}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "tipos-intervencion · /health (XML por omisión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/xml\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/xml\"));",
+                  "pm.test(\"Raíz <salud>\", () => pm.expect(pm.response.text()).to.match(/<salud[\\s>]/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_tipos}}/health",
+              "host": [
+                "{{url_tipos}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "tipos-intervencion · /openapi.json",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "const c = pm.response.json();",
+                  "pm.test(\"OpenAPI 3.0.3 con rutas\", () => { pm.expect(c.openapi).to.eql(\"3.0.3\"); pm.expect(Object.keys(c.paths)).to.not.be.empty; });",
+                  "pm.test(\"Servidor en el puerto 5215\", () => pm.expect(c.servers[0].url).to.include(\":5215\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_tipos}}/openapi.json",
+              "host": [
+                "{{url_tipos}}"
+              ],
+              "path": [
+                "openapi.json"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "tipos-intervencion · Swagger UI (/docs)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type text/html\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"text/html\"));",
+                  "pm.test(\"Carga Swagger UI apuntando a /openapi.json\", () => { pm.expect(pm.response.text()).to.include(\"swagger-ui\"); pm.expect(pm.response.text()).to.include(\"/openapi.json\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_tipos}}/docs",
+              "host": [
+                "{{url_tipos}}"
+              ],
+              "path": [
+                "docs"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "indicadores · /health (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "pm.test(\"Trae X-Correlation-ID\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.be.a(\"string\").and.not.empty);",
+                  "const s = pm.response.json();",
+                  "pm.test(\"Es indicadores\", () => pm.expect(s.servicio).to.eql(\"indicadores\"));",
+                  "pm.test(\"PostgreSQL y Redis arriba\", () => { pm.expect(s.postgresql).to.be.true; pm.expect(s.redis).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_indicadores}}/health?format=json",
+              "host": [
+                "{{url_indicadores}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "indicadores · /health (XML por omisión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/xml\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/xml\"));",
+                  "pm.test(\"Raíz <salud>\", () => pm.expect(pm.response.text()).to.match(/<salud[\\s>]/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_indicadores}}/health",
+              "host": [
+                "{{url_indicadores}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "indicadores · /openapi.json",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "const c = pm.response.json();",
+                  "pm.test(\"OpenAPI 3.0.3 con rutas\", () => { pm.expect(c.openapi).to.eql(\"3.0.3\"); pm.expect(Object.keys(c.paths)).to.not.be.empty; });",
+                  "pm.test(\"Servidor en el puerto 5251\", () => pm.expect(c.servers[0].url).to.include(\":5251\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_indicadores}}/openapi.json",
+              "host": [
+                "{{url_indicadores}}"
+              ],
+              "path": [
+                "openapi.json"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "indicadores · Swagger UI (/docs)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type text/html\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"text/html\"));",
+                  "pm.test(\"Carga Swagger UI apuntando a /openapi.json\", () => { pm.expect(pm.response.text()).to.include(\"swagger-ui\"); pm.expect(pm.response.text()).to.include(\"/openapi.json\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_indicadores}}/docs",
+              "host": [
+                "{{url_indicadores}}"
+              ],
+              "path": [
+                "docs"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "series · /health (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "pm.test(\"Trae X-Correlation-ID\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.be.a(\"string\").and.not.empty);",
+                  "const s = pm.response.json();",
+                  "pm.test(\"Es series\", () => pm.expect(s.servicio).to.eql(\"series\"));",
+                  "pm.test(\"PostgreSQL y Redis arriba\", () => { pm.expect(s.postgresql).to.be.true; pm.expect(s.redis).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/health?format=json",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "series · /health (XML por omisión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/xml\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/xml\"));",
+                  "pm.test(\"Raíz <salud>\", () => pm.expect(pm.response.text()).to.match(/<salud[\\s>]/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/health",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "series · /openapi.json",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "const c = pm.response.json();",
+                  "pm.test(\"OpenAPI 3.0.3 con rutas\", () => { pm.expect(c.openapi).to.eql(\"3.0.3\"); pm.expect(Object.keys(c.paths)).to.not.be.empty; });",
+                  "pm.test(\"Servidor en el puerto 5252\", () => pm.expect(c.servers[0].url).to.include(\":5252\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/openapi.json",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "openapi.json"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "series · Swagger UI (/docs)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type text/html\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"text/html\"));",
+                  "pm.test(\"Carga Swagger UI apuntando a /openapi.json\", () => { pm.expect(pm.response.text()).to.include(\"swagger-ui\"); pm.expect(pm.response.text()).to.include(\"/openapi.json\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/docs",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "docs"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "zonas · /health (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "pm.test(\"Trae X-Correlation-ID\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.be.a(\"string\").and.not.empty);",
+                  "const s = pm.response.json();",
+                  "pm.test(\"Es zonas\", () => pm.expect(s.servicio).to.eql(\"zonas\"));",
+                  "pm.test(\"PostgreSQL y Redis arriba\", () => { pm.expect(s.postgresql).to.be.true; pm.expect(s.redis).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/health?format=json",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "zonas · /health (XML por omisión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/xml\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/xml\"));",
+                  "pm.test(\"Raíz <salud>\", () => pm.expect(pm.response.text()).to.match(/<salud[\\s>]/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/health",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "zonas · /openapi.json",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "const c = pm.response.json();",
+                  "pm.test(\"OpenAPI 3.0.3 con rutas\", () => { pm.expect(c.openapi).to.eql(\"3.0.3\"); pm.expect(Object.keys(c.paths)).to.not.be.empty; });",
+                  "pm.test(\"Servidor en el puerto 5253\", () => pm.expect(c.servers[0].url).to.include(\":5253\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/openapi.json",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "openapi.json"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "zonas · Swagger UI (/docs)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type text/html\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"text/html\"));",
+                  "pm.test(\"Carga Swagger UI apuntando a /openapi.json\", () => { pm.expect(pm.response.text()).to.include(\"swagger-ui\"); pm.expect(pm.response.text()).to.include(\"/openapi.json\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/docs",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "docs"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "tipos-intervencion (5215)",
+      "description": "Catálogo público de solo lectura.",
+      "item": [
+        {
+          "name": "Listar tipos (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"total = número de tipos\", () => pm.expect(d.total).to.eql(d.tipos.length));",
+                  "pm.test(\"Cada tipo trae code y param_schema\", () => d.tipos.forEach(t => {",
+                  "  pm.expect(t.code).to.match(/^[A-Z][A-Z0-9_]*$/); pm.expect(t.param_schema).to.be.an(\"object\"); }));",
+                  "if (d.tipos.length) pm.collectionVariables.set(\"tipo_code\", d.tipos[0].code);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_tipos}}/api/v1/intervention-types?format=json",
+              "host": [
+                "{{url_tipos}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "intervention-types"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar tipos (XML por omisión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/xml\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/xml\"));",
+                  "pm.test(\"Raíz <catalogo_tipos_intervencion>\", () => pm.expect(pm.response.text()).to.match(/<catalogo_tipos_intervencion[\\s>]/));",
+                  "pm.test(\"Elementos <tipo> en singular\", () => pm.expect(pm.response.text()).to.include(\"<tipo>\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_tipos}}/api/v1/intervention-types",
+              "host": [
+                "{{url_tipos}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "intervention-types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar tipos (Accept: application/json)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{url_tipos}}/api/v1/intervention-types",
+              "host": [
+                "{{url_tipos}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "intervention-types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tipo por código",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "pm.test(\"Es el código pedido\", () => pm.expect(pm.response.json().code).to.eql(pm.collectionVariables.get(\"tipo_code\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_tipos}}/api/v1/intervention-types/{{tipo_code}}?format=json",
+              "host": [
+                "{{url_tipos}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "intervention-types",
+                "{{tipo_code}}"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tipo por código en minúsculas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Mismo tipo\", () => pm.expect(pm.response.json().code).to.eql(pm.collectionVariables.get(\"tipo_code\")));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.url.path[pm.request.url.path.length - 1] = (pm.collectionVariables.get(\"tipo_code\") || \"\").toLowerCase();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_tipos}}/api/v1/intervention-types/{{tipo_code}}?format=json",
+              "host": [
+                "{{url_tipos}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "intervention-types",
+                "{{tipo_code}}"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "La prueba manda el código en minúsculas desde el pre-request."
+          }
+        },
+        {
+          "name": "Código inexistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Content-Type application/problem+json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\"));",
+                  "pm.test(\"codigo NO_ENCONTRADO\", () => pm.expect(pm.response.json().codigo).to.eql(\"NO_ENCONTRADO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_tipos}}/api/v1/intervention-types/NO_EXISTE?format=json",
+              "host": [
+                "{{url_tipos}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "intervention-types",
+                "NO_EXISTE"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Formato desconocido → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_tipos}}/api/v1/intervention-types?format=csv",
+              "host": [
+                "{{url_tipos}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "intervention-types"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "csv"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "auth": {
+        "type": "noauth"
+      }
+    },
+    {
+      "name": "indicadores (5251)",
+      "description": "Públicos, como el tablero del monolito.",
+      "item": [
+        {
+          "name": "Indicadores (JSON, sin token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "pm.test(\"Trae X-Correlation-ID\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.be.a(\"string\").and.not.empty);",
+                  "const d = pm.response.json();",
+                  "pm.test(\"Las seis cifras del tablero\", () => pm.expect(d).to.have.all.keys(\"casos_activos\",\"casos_pct\",\"tasa_incidencia\",\"tasa_pct\",\"zonas_en_riesgo\",\"simulaciones_activas\"));",
+                  "pm.test(\"Son números\", () => Object.values(d).forEach(v => pm.expect(v).to.be.a(\"number\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_indicadores}}/api/v1/dashboard/indicators?format=json",
+              "host": [
+                "{{url_indicadores}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "indicators"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Indicadores (XML)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/xml\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/xml\"));",
+                  "pm.test(\"Raíz <indicadores>\", () => pm.expect(pm.response.text()).to.match(/<indicadores[\\s>]/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_indicadores}}/api/v1/dashboard/indicators",
+              "host": [
+                "{{url_indicadores}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "indicators"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Situación (limit=3)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const e = pm.response.json().enfermedades;",
+                  "pm.test(\"Máximo 3 enfermedades\", () => pm.expect(e.length).to.be.at.most(3));",
+                  "pm.test(\"Tendencia válida\", () => e.forEach(x => pm.expect([\"estable\",\"alerta\",\"critico\"]).to.include(x.estado)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_indicadores}}/api/v1/dashboard/situation?limit=3&format=json",
+              "host": [
+                "{{url_indicadores}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "situation"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "3"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Situación (XML)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/xml\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/xml\"));",
+                  "pm.test(\"Raíz <situacion>\", () => pm.expect(pm.response.text()).to.match(/<situacion[\\s>]/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_indicadores}}/api/v1/dashboard/situation",
+              "host": [
+                "{{url_indicadores}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "situation"
+              ]
+            }
+          }
+        },
+        {
+          "name": "limit=21 → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Content-Type application/problem+json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\"));",
+                  "pm.test(\"codigo DATOS_INVALIDOS\", () => pm.expect(pm.response.json().codigo).to.eql(\"DATOS_INVALIDOS\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_indicadores}}/api/v1/dashboard/situation?limit=21&format=json",
+              "host": [
+                "{{url_indicadores}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "situation"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "21"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "limit=abc → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Content-Type application/problem+json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\"));",
+                  "pm.test(\"codigo DATOS_INVALIDOS\", () => pm.expect(pm.response.json().codigo).to.eql(\"DATOS_INVALIDOS\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_indicadores}}/api/v1/dashboard/situation?limit=abc&format=json",
+              "host": [
+                "{{url_indicadores}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "situation"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "abc"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "auth": {
+        "type": "noauth"
+      }
+    },
+    {
+      "name": "zonas (5253)",
+      "description": "Requieren token de cualquier rol.",
+      "item": [
+        {
+          "name": "Sin token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Content-Type application/problem+json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\"));",
+                  "pm.test(\"codigo TOKEN_AUSENTE\", () => pm.expect(pm.response.json().codigo).to.eql(\"TOKEN_AUSENTE\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/api/v1/zones?format=json",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Token inválido → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Content-Type application/problem+json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\"));",
+                  "pm.test(\"codigo TOKEN_INVALIDO\", () => pm.expect(pm.response.json().codigo).to.eql(\"TOKEN_INVALIDO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/api/v1/zones?format=json",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "no-es-un-jwt",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Detalle por zona (90 días, 5 por página)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"Página de 5\", () => pm.expect(d.zonas.length).to.be.at.most(5));",
+                  "pm.test(\"51 municipios en total\", () => pm.expect(d.total).to.eql(51));",
+                  "pm.test(\"Semáforo válido\", () => d.zonas.forEach(z => pm.expect([\"estable\",\"alerta\",\"critico\"]).to.include(z.estado)));",
+                  "pm.test(\"mayor_cambio es dato, no texto\", () => {",
+                  "  pm.expect([\"con_aumento\",\"sin_aumento\",\"sin_casos\"]).to.include(d.mayor_cambio.estado);",
+                  "  if (d.mayor_cambio.estado === \"con_aumento\") pm.expect(d.mayor_cambio.zona.variacion).to.be.above(0);",
+                  "  else pm.expect(d.mayor_cambio.zona).to.be.null; });",
+                  "pm.test(\"Repite los filtros\", () => pm.expect(d.filtros.days).to.eql(90));",
+                  "if (d.zonas.length) pm.collectionVariables.set(\"region_id\", d.zonas[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/api/v1/zones?days=90&size=5&format=json",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "90"
+                },
+                {
+                  "key": "size",
+                  "value": "5"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "mayor_cambio no depende de la página",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Igual que en la primera página\", () => {",
+                  "  const primero = pm.collectionVariables.get(\"mayor_cambio_p1\");",
+                  "  pm.expect(JSON.stringify(pm.response.json().mayor_cambio)).to.eql(primero); });"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.sendRequest({",
+                  "  url: pm.variables.replaceIn(\"{{url_zonas}}/api/v1/zones?days=90&size=1&page=1&format=json\"),",
+                  "  header: { Authorization: \"Bearer \" + pm.environment.get(\"token\") }",
+                  "}, (err, res) => pm.collectionVariables.set(\"mayor_cambio_p1\", JSON.stringify(res.json().mayor_cambio)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/api/v1/zones?days=90&size=1&page=3&format=json",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "90"
+                },
+                {
+                  "key": "size",
+                  "value": "1"
+                },
+                {
+                  "key": "page",
+                  "value": "3"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "El pre-request pide la página 1 y guarda su mayor_cambio para comparar."
+          }
+        },
+        {
+          "name": "Búsqueda por nombre",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Solo Monterrey\", () => pm.response.json().zonas.forEach(z => pm.expect(z.zona.toLowerCase()).to.include(\"monterrey\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/api/v1/zones?q=monterrey&days=90&format=json",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "monterrey"
+                },
+                {
+                  "key": "days",
+                  "value": "90"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Detalle por zona (XML)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/xml\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/xml\"));",
+                  "pm.test(\"Raíz <zonas_detalle>\", () => pm.expect(pm.response.text()).to.match(/<zonas_detalle[\\s>]/));",
+                  "pm.test(\"Elementos <zona>\", () => pm.expect(pm.response.text()).to.include(\"<zona>\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/api/v1/zones?days=90&size=3",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "90"
+                },
+                {
+                  "key": "size",
+                  "value": "3"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "order=nombre → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Content-Type application/problem+json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\"));",
+                  "pm.test(\"codigo DATOS_INVALIDOS\", () => pm.expect(pm.response.json().codigo).to.eql(\"DATOS_INVALIDOS\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/api/v1/zones?order=nombre&format=json",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones"
+              ],
+              "query": [
+                {
+                  "key": "order",
+                  "value": "nombre"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "size=101 → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Content-Type application/problem+json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\"));",
+                  "pm.test(\"codigo DATOS_INVALIDOS\", () => pm.expect(pm.response.json().codigo).to.eql(\"DATOS_INVALIDOS\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/api/v1/zones?size=101&format=json",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones"
+              ],
+              "query": [
+                {
+                  "key": "size",
+                  "value": "101"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Municipio inexistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Content-Type application/problem+json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\"));",
+                  "pm.test(\"codigo NO_ENCONTRADO\", () => pm.expect(pm.response.json().codigo).to.eql(\"NO_ENCONTRADO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/api/v1/zones?region_id=999999&format=json",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones"
+              ],
+              "query": [
+                {
+                  "key": "region_id",
+                  "value": "999999"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mapa (60 días)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"51 municipios con coordenadas y nivel\", () => { pm.expect(d.municipios.length).to.eql(51);",
+                  "  d.municipios.forEach(m => { pm.expect(m.lat).to.be.a(\"number\"); pm.expect(m.nivel).to.be.a(\"string\"); pm.expect(m.tendencia).to.be.an(\"array\"); }); });",
+                  "pm.test(\"Serie: 60 fechas y un renglón por municipio\", () => { pm.expect(d.serie.fechas.length).to.eql(60);",
+                  "  pm.expect(d.serie.municipios.length).to.eql(51); pm.expect(d.serie.municipios[0].casos.length).to.eql(60); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/api/v1/zones/map?days=60&format=json",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones",
+                "map"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "60"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mapa (XML válido aunque las claves INEGI empiecen con dígito)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/xml\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/xml\"));",
+                  "pm.test(\"Raíz <mapa>\", () => pm.expect(pm.response.text()).to.match(/<mapa[\\s>]/));",
+                  "pm.test(\"Sin etiquetas que empiecen con dígito\", () => pm.expect(pm.response.text()).to.not.match(/<\\d/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/api/v1/zones/map?days=7",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones",
+                "map"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mapa days=90 → 422 (el mapa usa 7, 30 o 60)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Content-Type application/problem+json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\"));",
+                  "pm.test(\"codigo DATOS_INVALIDOS\", () => pm.expect(pm.response.json().codigo).to.eql(\"DATOS_INVALIDOS\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_zonas}}/api/v1/zones/map?days=90&format=json",
+              "host": [
+                "{{url_zonas}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones",
+                "map"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "90"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{token}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "series (5252)",
+      "description": "Requieren token de cualquier rol.",
+      "item": [
+        {
+          "name": "Sin token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Content-Type application/problem+json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\"));",
+                  "pm.test(\"codigo TOKEN_AUSENTE\", () => pm.expect(pm.response.json().codigo).to.eql(\"TOKEN_AUSENTE\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/api/v1/series/cases?format=json",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "series",
+                "cases"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Curva epidémica (90 días)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "pm.test(\"Trae X-Correlation-ID\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.be.a(\"string\").and.not.empty);",
+                  "const d = pm.response.json();",
+                  "pm.test(\"Puntos con fecha, casos e incidencia acumulada\", () => d.puntos.forEach(p => {",
+                  "  pm.expect(p.fecha).to.match(/^\\d{4}-\\d{2}-\\d{2}$/); pm.expect(p.casos).to.be.a(\"number\"); pm.expect(p.incidencia_acum).to.be.a(\"number\"); }));",
+                  "pm.test(\"Filtros por omisión\", () => pm.expect(d.filtros).to.eql({disease_id: null, region_id: null, days: 90}));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/api/v1/series/cases?days=90&format=json",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "series",
+                "cases"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "90"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Curva de un municipio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Filtró por el municipio\", () => pm.expect(String(pm.response.json().filtros.region_id)).to.eql(String(pm.collectionVariables.get(\"region_id\"))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/api/v1/series/cases?days=90&region_id={{region_id}}&format=json",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "series",
+                "cases"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "90"
+                },
+                {
+                  "key": "region_id",
+                  "value": "{{region_id}}"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "Usa el municipio que guardó la carpeta Zonas."
+          }
+        },
+        {
+          "name": "Curva de una enfermedad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/api/v1/series/cases?days=90&disease_id={{disease_id}}&format=json",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "series",
+                "cases"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "90"
+                },
+                {
+                  "key": "disease_id",
+                  "value": "{{disease_id}}"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Por edad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Los seis grupos en orden\", () => pm.expect(pm.response.json().grupos.map(g => g.grupo)).to.eql([\"0-4\",\"5-14\",\"15-24\",\"25-44\",\"45-64\",\"65+\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/api/v1/series/cases/by-age?days=90&format=json",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "series",
+                "cases",
+                "by-age"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "90"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Por edad (XML)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type application/xml\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/xml\"));",
+                  "pm.test(\"Raíz <casos_por_edad>\", () => pm.expect(pm.response.text()).to.match(/<casos_por_edad[\\s>]/));",
+                  "pm.test(\"Elementos <grupo>\", () => pm.expect(pm.response.text()).to.include(\"<grupo>\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/api/v1/series/cases/by-age?days=90",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "series",
+                "cases",
+                "by-age"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "90"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Por sexo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json().sexos;",
+                  "pm.test(\"Porcentajes suman ~100\", () => { if (s.length) pm.expect(s.reduce((a, x) => a + x.pct, 0)).to.be.within(99, 101); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/api/v1/series/cases/by-sex?days=90&format=json",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "series",
+                "cases",
+                "by-sex"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "90"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Totales",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Periodo contra periodo previo\", () => pm.expect(pm.response.json().totales).to.have.all.keys(\"casos\",\"casos_previo\",\"casos_pct\",\"incidencia\",\"incidencia_previa\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/api/v1/series/cases/totals?days=90&format=json",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "series",
+                "cases",
+                "totals"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "90"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "days=15 → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Content-Type application/problem+json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\"));",
+                  "pm.test(\"codigo DATOS_INVALIDOS\", () => pm.expect(pm.response.json().codigo).to.eql(\"DATOS_INVALIDOS\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/api/v1/series/cases?days=15&format=json",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "series",
+                "cases"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "15"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Enfermedad inexistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Content-Type application/problem+json\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\"));",
+                  "pm.test(\"codigo NO_ENCONTRADO\", () => pm.expect(pm.response.json().codigo).to.eql(\"NO_ENCONTRADO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_series}}/api/v1/series/cases?disease_id=999999&format=json",
+              "host": [
+                "{{url_series}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "series",
+                "cases"
+              ],
+              "query": [
+                {
+                  "key": "disease_id",
+                  "value": "999999"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{token}}",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  ]
+}

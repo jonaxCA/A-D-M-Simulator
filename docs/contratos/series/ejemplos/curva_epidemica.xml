@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<curva_epidemica><filtros><disease_id nil="true" /><region_id nil="true" /><days tipo="numero">90</days></filtros><puntos><punto><fecha>2026-07-20</fecha><casos tipo="numero">83</casos><incidencia_acum tipo="numero">1.43</incidencia_acum></punto><punto><fecha>2026-07-21</fecha><casos tipo="numero">88</casos><incidencia_acum tipo="numero">2.96</incidencia_acum></punto><punto><fecha>2026-07-22</fecha><casos tipo="numero">77</casos><incidencia_acum tipo="numero">4.29</incidencia_acum></punto></puntos></curva_epidemica>
