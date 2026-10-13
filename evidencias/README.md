@@ -1,65 +1,90 @@
-# Evidencias · grupo 14:00
+# Evidencias — segundo parcial
 
-Generadas el 2026-10-13 sobre la rama `feat/segundo-parcial-grupo-2pm`, con los 12 servicios
-corriendo contra una base recién cargada (`dump_completo.sql` hasta la migración 026, más las
-semillas) y el Redis de `infra/docker-compose.yml`. Cada servicio se conectó con su propio rol
-de PostgreSQL (`svc_<servicio>`). Los pasos exactos están en la sección "Docker" de
-`docs/INSTALACION.md`.
+Evidencia de funcionamiento de los microservicios. Cada archivo dice la fecha y el commit con
+que se tomó.
 
-En ninguna captura aparece un token completo ni una contraseña: Swagger muestra el token como
-`******` y se ocultó el bloque `curl`, que lo repite.
+**Nunca** se guardan aquí contraseñas, tokens (`access_token`, `refresh_token`,
+`Authorization`), secretos ni el contenido de un `.env`. En capturas y archivos, se reemplazan
+por `JWT_DE_EJEMPLO`, `REFRESH_DE_EJEMPLO` o `***`.
 
-## Pruebas
+## Contenido
 
-| Archivo | Qué es | Resultado |
-|---|---|---|
-| [`pruebas/pytest_microservicios.txt`](pruebas/pytest_microservicios.txt) | Salida de `python -m pytest microservicios -q -rx` | 291 pasan, 3 `xfail` |
-| [`pruebas/roles_postgres.txt`](pruebas/roles_postgres.txt) | Permisos de la migración 026 probados en la base real, rol por rol, dentro de `BEGIN … ROLLBACK` | 21 de 21 OK; `epidemia_app` conserva sus permisos; la 026 corre dos veces sin error |
+```
+evidencias/
+  README.md
+  pruebas/          resultado de las pruebas automáticas
+  peticiones/       petición y respuesta reales de cada servicio, en JSON y XML
+  capturas/         capturas de Swagger, Postman y del estado de los contenedores
+```
 
-Los 3 `xfail` documentan el mismo bug pendiente: `epidemia_comun.formatos.a_xml` usa claves
-como `0-19` como etiqueta y el XML queda mal formado (ver `docs/MANUAL_TECNICO.md`, §14).
+`peticiones/` y `capturas/` se crean al subir su primera evidencia.
 
-## Capturas de Swagger
+| Carpeta | Archivo | Qué es | Estado |
+|---|---|---|---|
+| `pruebas/` | `pruebas_unitarias_2026-10-13.txt` | Salida de `pytest -v` de la biblioteca común y de los 12 servicios: **198 pasan, 0 fallan**. Base de datos y Redis simulados. | Hecho |
+| `peticiones/` | `<servicio>/<operacion>_<caso>.md` | Petición y respuesta contra los servicios levantados con la base real | Pendiente |
+| `capturas/` | `<servicio>/<operacion>_<formato>.png` | Swagger o Postman ejecutando la petición | Pendiente |
+| `capturas/` | `docker/` | `docker ps` y `docker compose ps` con los contenedores `healthy` | Pendiente |
 
-Una carpeta por servicio en `servicios/`. En cada una:
+## Cómo se toma cada evidencia
 
-- `health.png`: `/health?format=json` con PostgreSQL y Redis en `true`.
-- `xml.png`: la ruta ejecutada en Swagger sin `?format` y con `Accept: application/xml`.
-- `json.png`: la misma ruta con `?format=json`.
+### Pruebas (`pruebas/`)
 
-Las rutas protegidas se ejecutaron con el token de `admin` (ADMINISTRADOR), obtenido de `auth`.
+Desde la raíz, con el entorno virtual activo, una carpeta a la vez (ver
+`docs/INSTALACION.md`, Paso M6):
 
-| Servicio | Puerto | Ruta | Token | XML | JSON |
-|---|---|---|---|---|---|
-| [`auth`](servicios/auth/) | 5201 | `GET /api/v1/auth/captcha` | No | 200 | 200 |
-| [`sesiones`](servicios/sesiones/) | 5202 | `GET /api/v1/sessions/current` | Sí | 200 | 200 |
-| [`usuarios`](servicios/usuarios/) | 5203 | `GET /api/v1/users` | Sí (ADMINISTRADOR) | 200 | 200 |
-| [`roles`](servicios/roles/) | 5204 | `GET /api/v1/roles` | Sí (ADMINISTRADOR) | 200 | 200 |
-| [`enfermedades`](servicios/enfermedades/) | 5211 | `GET /api/v1/diseases/1` | No | 200 | 200 |
-| [`parametros`](servicios/parametros/) | 5212 | `GET /api/v1/diseases/4/parameters` | No | 200 | 200 |
-| [`regiones`](servicios/regiones/) | 5213 | `GET /api/v1/regions/2` | No | 200 | 200 |
-| [`poblacion`](servicios/poblacion/) | 5214 | `GET /api/v1/regions/2/population` | No | 200 | 200 |
-| [`tipos-intervencion`](servicios/tipos-intervencion/) | 5215 | `GET /api/v1/intervention-types` | No | 200 | 200 |
-| [`indicadores`](servicios/indicadores/) | 5251 | `GET /api/v1/dashboard/indicators` | No | 200 | 200 |
-| [`series`](servicios/series/) | 5252 | `GET /api/v1/series/cases/by-age?days=90` | Sí | 200 | 200 |
-| [`zonas`](servicios/zonas/) | 5253 | `GET /api/v1/zones?days=90&size=3` | Sí | 200 | 200 |
+```bash
+python -m pytest microservicios/<carpeta> -v -p no:cacheprovider --no-header
+```
 
-## Recorrido de Swagger de analítica y catálogo
+El archivo se nombra `pruebas_unitarias_<AAAA-MM-DD>.txt` y empieza con la fecha, la rama y el
+commit.
 
-`swagger/` tiene un recorrido más completo de `tipos-intervencion`, `indicadores`, `series` y
-`zonas` (2026-10-12, contra la base local): vista general, rutas en XML y JSON, errores 401 y
-404 y el diálogo **Authorize** con el token oculto (`******`).
+### Peticiones (`peticiones/<servicio>/`)
 
-| Carpeta | Capturas |
-|---|---|
-| [`swagger/tipos-intervencion/`](swagger/tipos-intervencion/) | vista general, lista en JSON y XML, por código, código inexistente (404) |
-| [`swagger/indicadores/`](swagger/indicadores/) | vista general, indicadores en JSON y XML, situación en JSON y XML |
-| [`swagger/series/`](swagger/series/) | vista general, sin token (401), Authorize, curva, por edad (JSON y XML), por sexo, totales |
-| [`swagger/zonas/`](swagger/zonas/) | vista general, sin token (401), Authorize, detalle por zona (JSON y XML), mapa |
+Un archivo por operación y caso: `login_ok.md`, `login_captcha_vencido.md`,
+`users_crear_sin_permiso.md`. Cada uno lleva:
 
-## Notas
+1. URL completa y método.
+2. Objetivo de la operación.
+3. Parámetros de ruta y de consulta.
+4. Encabezados (`Authorization: Bearer JWT_DE_EJEMPLO`, `Content-Type`, `Accept`).
+5. Cuerpo de la petición, en JSON o XML.
+6. Respuesta completa y código HTTP.
+7. Qué cambió en PostgreSQL o en Redis, cuando aplique (la fila de `audit_log` o la llave
+   creada, con su TTL).
 
-Por el bug de `a_xml`, en `enfermedades` se capturó el detalle (el listado incluye
-`letalidad_por_edad`) y en `parametros` la enfermedad 4 (Dengue), que no la tiene. En XML
-siguen mal formados `GET /api/v1/diseases`, los parámetros de COVID-19 e influenza y
-`GET /api/v1/regions/{id}/age-groups`; en JSON responden bien.
+Por servicio, al menos un caso de cada tipo que tenga:
+
+- operación correcta, en JSON y en XML;
+- parámetro inválido (422);
+- registro inexistente (404);
+- sin token (401) y sin permiso (403);
+- error de negocio (409).
+
+### Capturas (`capturas/`)
+
+- `capturas/<servicio>/`: Swagger (`http://127.0.0.1:<puerto>/docs`) o Postman, con la
+  petición y la respuesta visibles, una en JSON y otra en XML. Colección de Postman:
+  `docs/contratos/postman/`.
+- `capturas/docker/`: `docker ps` con los contenedores en `(healthy)` y
+  `docker compose -f infra/docker-compose.yml ps` con Redis en `(healthy)`.
+
+## Pendiente por servicio
+
+Marca cada casilla al subir su evidencia.
+
+| Servicio | Puerto | Peticiones | Captura JSON | Captura XML |
+|---|---|---|---|---|
+| `auth` | 5201 | [ ] | [ ] | [ ] |
+| `sesiones` | 5202 | [ ] | [ ] | [ ] |
+| `usuarios` | 5203 | [ ] | [ ] | [ ] |
+| `roles` | 5204 | [ ] | [ ] | [ ] |
+| `enfermedades` | 5211 | [ ] | [ ] | [ ] |
+| `parametros` | 5212 | [ ] | [ ] | [ ] |
+| `regiones` | 5213 | [ ] | [ ] | [ ] |
+| `poblacion` | 5214 | [ ] | [ ] | [ ] |
+| `tipos-intervencion` | 5215 | [ ] | [ ] | [ ] |
+| `indicadores` | 5251 | [ ] | [ ] | [ ] |
+| `series` | 5252 | [ ] | [ ] | [ ] |
+| `zonas` | 5253 | [ ] | [ ] | [ ] |
