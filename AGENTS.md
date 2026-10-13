@@ -15,7 +15,8 @@ cambios pequeños, legibles y fáciles de revisar.
   microservicios**.
 - **Microservicios:** 26 servicios Flask pequeños en `microservicios/`, cada uno en su
   contenedor de Docker, con Redis y JWT. Son para las apps de escritorio (XML) y móvil
-  (JSON).
+  (JSON), que se entregan en el tercer parcial; mientras tanto, la consola de pruebas hace
+  sus veces.
   - Antes de tocar esa carpeta, lee `microservicios/AGENTS.md`.
   - El catálogo de servicios está en `docs/arquitectura/microservicios.md` y las tareas en
     `docs/CHECKLIST_SEGUNDO_PARCIAL.md`.
@@ -28,8 +29,8 @@ cambios pequeños, legibles y fáciles de revisar.
 MongoDB, Google Cloud Storage, nginx, CUDA/Numba/FLAME GPU, ABM, calibración, IA predictiva,
 visualización 3D, límites de consumo y un modelo económico sofisticado.
 
-Las apps móvil y de escritorio están por confirmar con el profesor. Hasta entonces no crees
-código en `frontend_movil/` ni en `frontend_desktop/`.
+Las apps de escritorio y móvil se entregan en el tercer parcial (D10 de `docs/decisiones.md`).
+En este no crees código en `frontend_movil/` ni en `frontend_desktop/`.
 
 ## Reglas
 
@@ -63,15 +64,21 @@ código en `frontend_movil/` ni en `frontend_desktop/`.
 
 ## Decisiones abiertas: pregunta antes de implementar
 
-- Quién captura casos, quién aprueba versiones y quién consulta la auditoría.
-- Cuántas réplicas usa una comparación y cómo se resumen.
-- Si la población de un escenario son habitantes o agentes simulados.
-- Unidad de costo: personas-día, pesos o ambos por separado.
-- Si una versión guarda una copia de los parámetros de la enfermedad al enviarse a revisión.
-- Qué parte del trabajo con escenarios queda en la web y qué en la app de escritorio.
-- Política para corregir datos en migraciones aplicadas.
+Cada una tiene su número en `docs/decisiones.md`:
 
-Cuando se decidan, quedarán en `docs/decisiones.md`.
+- Quién captura casos, quién aprueba versiones y quién consulta la auditoría (D1).
+- El papel del SEIR (D2).
+- Unidad de costo: personas-día, pesos o ambos por separado (D3).
+- Qué parte del trabajo con escenarios queda en la web y qué en la app de escritorio (D4).
+- Si la población de un escenario son habitantes o agentes simulados (D6).
+- Política para corregir datos en migraciones aplicadas (D7).
+- Cuántas réplicas usa una comparación y cómo se resumen (D8; se revisa en el tercer
+  parcial).
+- Si una versión guarda una copia de los parámetros de la enfermedad al enviarse a revisión.
+
+Las de los microservicios (formato, entregas, rutas, pasarela, pruebas, XSD y migraciones)
+ya están tomadas: son D9 a D16, resumidas en `microservicios/AGENTS.md`. Cuando se tome una
+de esta lista, se marca en `docs/decisiones.md` y se quita de aquí.
 
 ## Qué manda cuando dos fuentes se contradicen
 
