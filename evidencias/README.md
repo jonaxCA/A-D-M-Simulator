@@ -44,6 +44,21 @@ Las rutas protegidas se ejecutaron con el token de `admin` (ADMINISTRADOR), obte
 | [`series`](servicios/series/) | 5252 | `GET /api/v1/series/cases/by-age?days=90` | Sí | 200 | 200 |
 | [`zonas`](servicios/zonas/) | 5253 | `GET /api/v1/zones?days=90&size=3` | Sí | 200 | 200 |
 
+## Recorrido de Swagger de analítica y catálogo
+
+`swagger/` tiene un recorrido más completo de `tipos-intervencion`, `indicadores`, `series` y
+`zonas` (2026-10-12, contra la base local): vista general, rutas en XML y JSON, errores 401 y
+404 y el diálogo **Authorize** con el token oculto (`******`).
+
+| Carpeta | Capturas |
+|---|---|
+| [`swagger/tipos-intervencion/`](swagger/tipos-intervencion/) | vista general, lista en JSON y XML, por código, código inexistente (404) |
+| [`swagger/indicadores/`](swagger/indicadores/) | vista general, indicadores en JSON y XML, situación en JSON y XML |
+| [`swagger/series/`](swagger/series/) | vista general, sin token (401), Authorize, curva, por edad (JSON y XML), por sexo, totales |
+| [`swagger/zonas/`](swagger/zonas/) | vista general, sin token (401), Authorize, detalle por zona (JSON y XML), mapa |
+
+## Notas
+
 Por el bug de `a_xml`, en `enfermedades` se capturó el detalle (el listado incluye
 `letalidad_por_edad`) y en `parametros` la enfermedad 4 (Dengue), que no la tiene. En XML
 siguen mal formados `GET /api/v1/diseases`, los parámetros de COVID-19 e influenza y
