@@ -37,7 +37,7 @@ docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
    sácalo a su propio módulo y deja `queries.py` como fachada (LIMP-11e).
 3. Si algo hace falta en dos servicios, va en `epidemia_comun`, no copiado.
 4. Si `epidemia_comun` todavía no tiene lo que necesitas, agrégalo ahí o avisa a quien
-   lleva el bloque A. No lo resuelvas dentro del servicio.
+   lleva el bloque A (o el K, si es de Redis). No lo resuelvas dentro del servicio.
 
 ## Reglas
 
@@ -67,11 +67,19 @@ docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
      `estado-servicios`).
    - Nunca escribas en un log, en una respuesta ni en la bitácora un token, una contraseña
      o un `password_hash`.
-8. **Redis.**
-   - Solo las llaves del catálogo, siempre con TTL. De `sid` y del *refresh* se guarda el
-     hash, no el valor.
+8. **Redis.** Todo pasa por `epidemia_comun` (ver `comun/README.md`); nunca crees un
+   `redis.Redis` en un servicio.
+   - Sesiones y revocación con `sesiones`, caché con `cache`, candados con `candados` y la
+     cola con `cola`. Las demás llaves del catálogo se escriben con `requerido()` u
+     `opcional()` de `redis_compartido`.
+   - Solo las llaves de `llaves.py`, que son las del catálogo, y siempre con TTL; la cola es
+     la única sin él. Una llave nueva va en `llaves.py` y en la tabla del catálogo, y una
+     prueba revisa que coincidan.
+   - De `sid` y del *refresh* se guarda la huella, no el valor.
    - Con Redis caído, una ruta protegida responde 503 y nunca deja pasar. Los catálogos
      públicos siguen respondiendo.
+   - La clave de la caché lleva todo lo que cambia la respuesta, incluido el ámbito de quien
+     pregunta. Si no, una persona puede ver datos de otra.
 9. **Llamadas entre servicios.**
    - Solo con `llamar()` de la biblioteca, nunca con `requests` directo. Así llevan tiempo
      de espera, token y `X-Correlation-ID`.
@@ -107,7 +115,16 @@ docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
   igual al de `docs/contratos/`.
 - Antes de dar algo por terminado, las 431 pruebas del monolito también tienen que pasar.
 
-## Comandos (existirán cuando estén los bloques A y J)
+## Comandos
+
+Ya existen:
+
+- Pruebas de la biblioteca:
+  `python -m pytest microservicios/comun/tests`
+- Solo Redis (necesita `infra/.env`, copiado de `infra/.env.example`):
+  `docker compose -f infra/docker-compose.yml up -d redis`
+
+Existirán cuando estén los bloques A y J:
 
 - Levantar todo: `docker compose -f infra/docker-compose.yml up --build`
 - Solo un dominio: `docker compose -f infra/docker-compose.yml --profile escenarios up`

@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "epidemia-comun"
+version = "0.1.0"
+description = "Código que comparten los microservicios de EPIDEMIA."
+requires-python = ">=3.9"
+dependencies = [
+    "redis>=5.0,<7",
+]
+
+[project.optional-dependencies]
+pruebas = ["fakeredis>=2.20,<3", "pytest>=7"]
+
+[tool.setuptools]
+packages = ["epidemia_comun"]
