@@ -11,6 +11,13 @@ plantilla (bloque A), y **Redis** (bloque K).
 - `ErrorAPI` y `respuesta_error`: errores estándar JSON/XML sin revelar trazas.
 - `requiere_token(roles=...)` y `solo_servicios`: verifican JWT HS256, audiencia, vencimiento, sesión en Redis y rol.
 - `crear_app(nombre, contrato, registrar_rutas)`: Flask con `/health`, `/docs` y `/openapi.json`.
+- `filtros_ambito(args, periodos)` y `clave_ambito(filtros)`: valida `disease_id`, `region_id`
+  y `days` (422 si no son válidos, 404 si la enfermedad o el municipio no existen). La usan
+  `series` y `zonas`.
+
+`microservicios/conftest.py` trae para las pruebas de los servicios un fakeredis compartido
+por `crear_app` y `redis_compartido` (`redis_falso`, con `apagar_redis()` para simular la
+caída), un firmador de tokens con sesión (`token`) y `crear_cliente("<paquete>")`.
 
 ## Instalación dentro del entorno de desarrollo
 

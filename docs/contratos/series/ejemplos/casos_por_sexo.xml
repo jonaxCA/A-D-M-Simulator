@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<casos_por_sexo><filtros><disease_id nil="true" /><region_id nil="true" /><days tipo="numero">90</days></filtros><sexos><sexo><label>Masculino</label><casos tipo="numero">1920</casos><pct tipo="numero">50.2</pct></sexo><sexo><label>Femenino</label><casos tipo="numero">1904</casos><pct tipo="numero">49.8</pct></sexo></sexos></casos_por_sexo>

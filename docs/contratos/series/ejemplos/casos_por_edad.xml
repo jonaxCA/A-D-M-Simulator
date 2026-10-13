@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<casos_por_edad><filtros><disease_id nil="true" /><region_id nil="true" /><days tipo="numero">90</days></filtros><grupos><grupo><grupo>0-4</grupo><casos tipo="numero">300</casos></grupo><grupo><grupo>5-14</grupo><casos tipo="numero">399</casos></grupo><grupo><grupo>15-24</grupo><casos tipo="numero">605</casos></grupo></grupos></casos_por_edad>

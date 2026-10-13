@@ -1,0 +1,485 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - series",
+    "version": "0.1.0",
+    "description": "Curva epidémica y series por edad, sexo y totales, con los filtros de Monitoreo."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5252"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/series/cases": {
+      "get": {
+        "summary": "Curva epidémica",
+        "operationId": "curva_epidemica",
+        "description": "Casos por día e incidencia acumulada por 100k.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por enfermedad"
+          },
+          {
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por municipio de Nuevo León"
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                7,
+                30,
+                90
+              ]
+            },
+            "description": "Periodo en días (por omisión 30)"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "filtros": {
+                    "disease_id": null,
+                    "region_id": null,
+                    "days": 90
+                  },
+                  "puntos": [
+                    {
+                      "fecha": "2026-07-20",
+                      "casos": 83,
+                      "incidencia_acum": 1.43
+                    },
+                    {
+                      "fecha": "2026-07-21",
+                      "casos": 88,
+                      "incidencia_acum": 2.96
+                    },
+                    {
+                      "fecha": "2026-07-22",
+                      "casos": 77,
+                      "incidencia_acum": 4.29
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<curva_epidemica><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days></filtros><puntos><punto><fecha>2026-07-20</fecha><casos tipo=\"numero\">83</casos><incidencia_acum tipo=\"numero\">1.43</incidencia_acum></punto><punto><fecha>2026-07-21</fecha><casos tipo=\"numero\">88</casos><incidencia_acum tipo=\"numero\">2.96</incidencia_acum></punto><punto><fecha>2026-07-22</fecha><casos tipo=\"numero\">77</casos><incidencia_acum tipo=\"numero\">4.29</incidencia_acum></punto></puntos></curva_epidemica>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      }
+    },
+    "/api/v1/series/cases/by-age": {
+      "get": {
+        "summary": "Casos por grupo de edad",
+        "operationId": "casos_por_edad",
+        "description": "Siempre los seis grupos en orden, aunque alguno venga en cero.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por enfermedad"
+          },
+          {
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por municipio de Nuevo León"
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                7,
+                30,
+                90
+              ]
+            },
+            "description": "Periodo en días (por omisión 30)"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "filtros": {
+                    "disease_id": null,
+                    "region_id": null,
+                    "days": 90
+                  },
+                  "grupos": [
+                    {
+                      "grupo": "0-4",
+                      "casos": 300
+                    },
+                    {
+                      "grupo": "5-14",
+                      "casos": 399
+                    },
+                    {
+                      "grupo": "15-24",
+                      "casos": 605
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<casos_por_edad><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days></filtros><grupos><grupo><grupo>0-4</grupo><casos tipo=\"numero\">300</casos></grupo><grupo><grupo>5-14</grupo><casos tipo=\"numero\">399</casos></grupo><grupo><grupo>15-24</grupo><casos tipo=\"numero\">605</casos></grupo></grupos></casos_por_edad>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      }
+    },
+    "/api/v1/series/cases/by-sex": {
+      "get": {
+        "summary": "Casos por sexo",
+        "operationId": "casos_por_sexo",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por enfermedad"
+          },
+          {
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por municipio de Nuevo León"
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                7,
+                30,
+                90
+              ]
+            },
+            "description": "Periodo en días (por omisión 30)"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "filtros": {
+                    "disease_id": null,
+                    "region_id": null,
+                    "days": 90
+                  },
+                  "sexos": [
+                    {
+                      "label": "Masculino",
+                      "casos": 1920,
+                      "pct": 50.2
+                    },
+                    {
+                      "label": "Femenino",
+                      "casos": 1904,
+                      "pct": 49.8
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<casos_por_sexo><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days></filtros><sexos><sexo><label>Masculino</label><casos tipo=\"numero\">1920</casos><pct tipo=\"numero\">50.2</pct></sexo><sexo><label>Femenino</label><casos tipo=\"numero\">1904</casos><pct tipo=\"numero\">49.8</pct></sexo></sexos></casos_por_sexo>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      }
+    },
+    "/api/v1/series/cases/totals": {
+      "get": {
+        "summary": "Totales del periodo",
+        "operationId": "totales_periodo",
+        "description": "Casos e incidencia del periodo contra el periodo previo de igual largo.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por enfermedad"
+          },
+          {
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por municipio de Nuevo León"
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                7,
+                30,
+                90
+              ]
+            },
+            "description": "Periodo en días (por omisión 30)"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "filtros": {
+                    "disease_id": null,
+                    "region_id": null,
+                    "days": 90
+                  },
+                  "totales": {
+                    "casos": 3824,
+                    "casos_previo": 0,
+                    "casos_pct": 100.0,
+                    "incidencia": 66.1,
+                    "incidencia_previa": 0.0
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<totales><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days></filtros><totales><casos tipo=\"numero\">3824</casos><casos_previo tipo=\"numero\">0</casos_previo><casos_pct tipo=\"numero\">100.0</casos_pct><incidencia tipo=\"numero\">66.1</incidencia><incidencia_previa tipo=\"numero\">0.0</incidencia_previa></totales></totales>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      }
+    }
+  }
+}

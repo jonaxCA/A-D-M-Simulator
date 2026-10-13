@@ -1,0 +1,14 @@
+{
+  "filtros": {
+    "disease_id": null,
+    "region_id": null,
+    "days": 90
+  },
+  "totales": {
+    "casos": 3824,
+    "casos_previo": 0,
+    "casos_pct": 100.0,
+    "incidencia": 66.1,
+    "incidencia_previa": 0.0
+  }
+}

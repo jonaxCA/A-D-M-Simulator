@@ -1,0 +1,23 @@
+{
+  "id": 1,
+  "code": "CIERRE_ESCUELAS",
+  "name": "Cierre de escuelas",
+  "description": "Desactiva la capa escuela a partir del dia indicado.",
+  "target_layer": "escuela",
+  "primitive": "edge_modifier",
+  "param_schema": {
+    "type": "object",
+    "properties": {
+      "reduccion": {
+        "type": "number",
+        "default": 1.0,
+        "maximum": 1,
+        "minimum": 0
+      }
+    }
+  },
+  "unit_cost": null,
+  "cost_unit": "por_habitante_dia",
+  "cost_source": null,
+  "cost_is_assumption": true
+}

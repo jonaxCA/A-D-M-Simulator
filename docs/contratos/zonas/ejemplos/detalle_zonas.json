@@ -1,0 +1,47 @@
+{
+  "zonas": [
+    {
+      "id": 6,
+      "zona": "General Escobedo",
+      "casos": 549,
+      "incidencia": 114.1,
+      "variacion": 0.0,
+      "graves": 77,
+      "estado": "estable"
+    },
+    {
+      "id": 4,
+      "zona": "Guadalupe",
+      "casos": 683,
+      "incidencia": 106.2,
+      "variacion": 0.0,
+      "graves": 76,
+      "estado": "estable"
+    },
+    {
+      "id": 5,
+      "zona": "Apodaca",
+      "casos": 618,
+      "incidencia": 94.1,
+      "variacion": 0.0,
+      "graves": 79,
+      "estado": "estable"
+    }
+  ],
+  "total": 51,
+  "pagina": 1,
+  "paginas": 17,
+  "desde": 1,
+  "hasta": 3,
+  "filtros": {
+    "disease_id": null,
+    "region_id": null,
+    "days": 90,
+    "q": null,
+    "order": "incidencia"
+  },
+  "mayor_cambio": {
+    "estado": "sin_aumento",
+    "zona": null
+  }
+}

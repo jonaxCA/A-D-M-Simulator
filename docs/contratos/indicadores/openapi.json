@@ -1,0 +1,165 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - indicadores",
+    "version": "0.1.0",
+    "description": "Indicadores del tablero y resumen de situación por enfermedad. Públicos, como el tablero del monolito."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5251"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/dashboard/indicators": {
+      "get": {
+        "summary": "Indicadores del tablero",
+        "operationId": "indicadores_tablero",
+        "description": "Casos activos, tasa de incidencia por 100k, zonas en riesgo y simulaciones activas, con su variación semanal.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "casos_activos": 0,
+                  "casos_pct": 0.0,
+                  "tasa_incidencia": 0.0,
+                  "tasa_pct": 0.0,
+                  "zonas_en_riesgo": 0,
+                  "simulaciones_activas": 70
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<indicadores><casos_activos tipo=\"numero\">0</casos_activos><casos_pct tipo=\"numero\">0.0</casos_pct><tasa_incidencia tipo=\"numero\">0.0</tasa_incidencia><tasa_pct tipo=\"numero\">0.0</tasa_pct><zonas_en_riesgo tipo=\"numero\">0</zonas_en_riesgo><simulaciones_activas tipo=\"numero\">70</simulaciones_activas></indicadores>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/situation": {
+      "get": {
+        "summary": "Resumen de situación",
+        "operationId": "resumen_situacion",
+        "description": "Casos de la última semana por enfermedad, con su tendencia (estable, alerta o critico).",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            },
+            "description": "Número de enfermedades (por omisión 5)"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "enfermedades": []
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<situacion><enfermedades /></situacion>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      }
+    }
+  }
+}

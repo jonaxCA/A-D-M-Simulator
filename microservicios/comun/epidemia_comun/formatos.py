@@ -21,7 +21,10 @@ def _normalizar(valor):
 
 SINGULARES = {"regiones": "region", "enfermedades": "enfermedad",
               "municipios": "municipio", "intervenciones": "intervencion",
-              "escenarios": "escenario", "corridas": "corrida"}
+              "escenarios": "escenario", "corridas": "corrida",
+              "tipos": "tipo", "zonas": "zona", "puntos": "punto",
+              "grupos": "grupo", "sexos": "sexo", "fechas": "fecha",
+              "tendencia": "punto"}
 
 
 def _elemento(padre, nombre, valor):

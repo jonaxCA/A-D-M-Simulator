@@ -1,0 +1,399 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - zonas",
+    "version": "0.1.0",
+    "description": "Detalle por zona y datos del mapa por municipio de Nuevo León."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5253"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/zones": {
+      "get": {
+        "summary": "Detalle por zona",
+        "operationId": "detalle_zonas",
+        "description": "Una fila por municipio con casos, incidencia, variación a 7 días, graves y semáforo. mayor_cambio se calcula sobre todas las zonas del ámbito, sin importar la página.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por enfermedad"
+          },
+          {
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por municipio de Nuevo León"
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                7,
+                30,
+                90
+              ]
+            },
+            "description": "Periodo en días (por omisión 30)"
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Busca por nombre de municipio"
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "casos",
+                "incidencia"
+              ]
+            },
+            "description": "Orden de la tabla (por omisión incidencia)"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "zonas": [
+                    {
+                      "id": 6,
+                      "zona": "General Escobedo",
+                      "casos": 549,
+                      "incidencia": 114.1,
+                      "variacion": 0.0,
+                      "graves": 77,
+                      "estado": "estable"
+                    },
+                    {
+                      "id": 4,
+                      "zona": "Guadalupe",
+                      "casos": 683,
+                      "incidencia": 106.2,
+                      "variacion": 0.0,
+                      "graves": 76,
+                      "estado": "estable"
+                    },
+                    {
+                      "id": 5,
+                      "zona": "Apodaca",
+                      "casos": 618,
+                      "incidencia": 94.1,
+                      "variacion": 0.0,
+                      "graves": 79,
+                      "estado": "estable"
+                    }
+                  ],
+                  "total": 51,
+                  "pagina": 1,
+                  "paginas": 17,
+                  "desde": 1,
+                  "hasta": 3,
+                  "filtros": {
+                    "disease_id": null,
+                    "region_id": null,
+                    "days": 90,
+                    "q": null,
+                    "order": "incidencia"
+                  },
+                  "mayor_cambio": {
+                    "estado": "sin_aumento",
+                    "zona": null
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<zonas_detalle><zonas><zona><id tipo=\"numero\">6</id><zona>General Escobedo</zona><casos tipo=\"numero\">549</casos><incidencia tipo=\"numero\">114.1</incidencia><variacion tipo=\"numero\">0.0</variacion><graves tipo=\"numero\">77</graves><estado>estable</estado></zona><zona><id tipo=\"numero\">4</id><zona>Guadalupe</zona><casos tipo=\"numero\">683</casos><incidencia tipo=\"numero\">106.2</incidencia><variacion tipo=\"numero\">0.0</variacion><graves tipo=\"numero\">76</graves><estado>estable</estado></zona><zona><id tipo=\"numero\">5</id><zona>Apodaca</zona><casos tipo=\"numero\">618</casos><incidencia tipo=\"numero\">94.1</incidencia><variacion tipo=\"numero\">0.0</variacion><graves tipo=\"numero\">79</graves><estado>estable</estado></zona></zonas><total tipo=\"numero\">51</total><pagina tipo=\"numero\">1</pagina><paginas tipo=\"numero\">17</paginas><desde tipo=\"numero\">1</desde><hasta tipo=\"numero\">3</hasta><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days><q nil=\"true\" /><order>incidencia</order></filtros><mayor_cambio><estado>sin_aumento</estado><zona nil=\"true\" /></mayor_cambio></zonas_detalle>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      }
+    },
+    "/api/v1/zones/map": {
+      "get": {
+        "summary": "Datos del mapa",
+        "operationId": "datos_mapa",
+        "description": "Municipios con incidencia, nivel del semáforo y tendencia de 14 días, más la serie acumulada día por día para la línea de tiempo.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por enfermedad"
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                7,
+                30,
+                60
+              ]
+            },
+            "description": "Periodo en días (por omisión 30)"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "municipios": [
+                    {
+                      "id": 12,
+                      "region_code": "19001",
+                      "nombre": "Abasolo",
+                      "casos": 0,
+                      "incidencia": 0.0,
+                      "variacion": 0.0,
+                      "lat": 25.940267,
+                      "lon": -100.40595,
+                      "nivel": "baja",
+                      "tendencia": []
+                    },
+                    {
+                      "id": 13,
+                      "region_code": "19002",
+                      "nombre": "Agualeguas",
+                      "casos": 0,
+                      "incidencia": 0.0,
+                      "variacion": 0.0,
+                      "lat": 26.298727,
+                      "lon": -99.703122,
+                      "nivel": "baja",
+                      "tendencia": []
+                    },
+                    {
+                      "id": 15,
+                      "region_code": "19004",
+                      "nombre": "Allende",
+                      "casos": 0,
+                      "incidencia": 0.0,
+                      "variacion": 0.0,
+                      "lat": 25.301434,
+                      "lon": -100.029546,
+                      "nivel": "baja",
+                      "tendencia": []
+                    }
+                  ],
+                  "serie": {
+                    "fechas": [
+                      "2026-10-06",
+                      "2026-10-07",
+                      "2026-10-08"
+                    ],
+                    "dias_periodo": 7,
+                    "municipios": [
+                      {
+                        "region_code": "19001",
+                        "casos": [
+                          0,
+                          0,
+                          0
+                        ],
+                        "incidencia": [
+                          0.0,
+                          0.0,
+                          0.0
+                        ],
+                        "variacion": [
+                          0.0,
+                          0.0,
+                          0.0
+                        ]
+                      },
+                      {
+                        "region_code": "19002",
+                        "casos": [
+                          0,
+                          0,
+                          0
+                        ],
+                        "incidencia": [
+                          0.0,
+                          0.0,
+                          0.0
+                        ],
+                        "variacion": [
+                          0.0,
+                          0.0,
+                          0.0
+                        ]
+                      },
+                      {
+                        "region_code": "19003",
+                        "casos": [
+                          0,
+                          0,
+                          0
+                        ],
+                        "incidencia": [
+                          0.0,
+                          0.0,
+                          0.0
+                        ],
+                        "variacion": [
+                          0.0,
+                          0.0,
+                          0.0
+                        ]
+                      }
+                    ]
+                  },
+                  "filtros": {
+                    "disease_id": null,
+                    "days": 7
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<mapa><municipios><municipio><id tipo=\"numero\">12</id><region_code>19001</region_code><nombre>Abasolo</nombre><casos tipo=\"numero\">0</casos><incidencia tipo=\"numero\">0.0</incidencia><variacion tipo=\"numero\">0.0</variacion><lat tipo=\"numero\">25.940267</lat><lon tipo=\"numero\">-100.40595</lon><nivel>baja</nivel><tendencia /></municipio><municipio><id tipo=\"numero\">13</id><region_code>19002</region_code><nombre>Agualeguas</nombre><casos tipo=\"numero\">0</casos><incidencia tipo=\"numero\">0.0</incidencia><variacion tipo=\"numero\">0.0</variacion><lat tipo=\"numero\">26.298727</lat><lon tipo=\"numero\">-99.703122</lon><nivel>baja</nivel><tendencia /></municipio><municipio><id tipo=\"numero\">15</id><region_code>19004</region_code><nombre>Allende</nombre><casos tipo=\"numero\">0</casos><incidencia tipo=\"numero\">0.0</incidencia><variacion tipo=\"numero\">0.0</variacion><lat tipo=\"numero\">25.301434</lat><lon tipo=\"numero\">-100.029546</lon><nivel>baja</nivel><tendencia /></municipio></municipios><serie><fechas><fecha>2026-10-06</fecha><fecha>2026-10-07</fecha><fecha>2026-10-08</fecha></fechas><dias_periodo tipo=\"numero\">7</dias_periodo><municipios><municipio><region_code>19001</region_code><casos><item tipo=\"numero\">0</item><item tipo=\"numero\">0</item><item tipo=\"numero\">0</item></casos><incidencia><item tipo=\"numero\">0.0</item><item tipo=\"numero\">0.0</item><item tipo=\"numero\">0.0</item></incidencia><variacion><item tipo=\"numero\">0.0</item><item tipo=\"numero\">0.0</item><item tipo=\"numero\">0.0</item></variacion></municipio><municipio><region_code>19002</region_code><casos><item tipo=\"numero\">0</item><item tipo=\"numero\">0</item><item tipo=\"numero\">0</item></casos><incidencia><item tipo=\"numero\">0.0</item><item tipo=\"numero\">0.0</item><item tipo=\"numero\">0.0</item></incidencia><variacion><item tipo=\"numero\">0.0</item><item tipo=\"numero\">0.0</item><item tipo=\"numero\">0.0</item></variacion></municipio><municipio><region_code>19003</region_code><casos><item tipo=\"numero\">0</item><item tipo=\"numero\">0</item><item tipo=\"numero\">0</item></casos><incidencia><item tipo=\"numero\">0.0</item><item tipo=\"numero\">0.0</item><item tipo=\"numero\">0.0</item></incidencia><variacion><item tipo=\"numero\">0.0</item><item tipo=\"numero\">0.0</item><item tipo=\"numero\">0.0</item></variacion></municipio></municipios></serie><filtros><disease_id nil=\"true\" /><days tipo=\"numero\">7</days></filtros></mapa>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      }
+    }
+  }
+}

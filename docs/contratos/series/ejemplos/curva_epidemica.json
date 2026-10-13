@@ -1,0 +1,24 @@
+{
+  "filtros": {
+    "disease_id": null,
+    "region_id": null,
+    "days": 90
+  },
+  "puntos": [
+    {
+      "fecha": "2026-07-20",
+      "casos": 83,
+      "incidencia_acum": 1.43
+    },
+    {
+      "fecha": "2026-07-21",
+      "casos": 88,
+      "incidencia_acum": 2.96
+    },
+    {
+      "fecha": "2026-07-22",
+      "casos": 77,
+      "incidencia_acum": 4.29
+    }
+  ]
+}
