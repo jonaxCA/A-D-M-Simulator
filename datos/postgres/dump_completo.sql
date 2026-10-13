@@ -3485,8 +3485,9 @@ GRANT INSERT ON audit_log TO svc_parametros;
 
 -- regiones: solo lectura. La fuente de cada cifra sale de los ajustes manuales
 -- y de la última corrección de bandas en audit_log, con el nombre de quien la hizo.
-GRANT SELECT ON regions, region_age_groups, region_population_adjustments, users, audit_log
-    TO svc_regiones;
+GRANT SELECT ON regions, region_age_groups, region_population_adjustments TO svc_regiones;
+GRANT SELECT (id, full_name) ON users TO svc_regiones;
+GRANT SELECT (id, user_id, entity_type, entity_id, data_after, occurred_at) ON audit_log TO svc_regiones;
 
 -- poblacion: corrige la población del municipio y recalcula la del estado;
 -- population_60plus la deriva el trigger de la 022, que corre con los
