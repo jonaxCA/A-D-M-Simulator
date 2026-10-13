@@ -1,0 +1,12 @@
+$ python -m pytest microservicios -q -rx
+# 2026-10-13T12:46:32-06:00 · rama feat/grupo14-pendientes · Python 3.14.4
+........................................................................ [ 24%]
+...................................... [ 37%]
+.x................................x.......................x............. [ 61%]
+........................................................................ [ 86%]
+........................................                                 [100%]
+=========================== short test summary info ============================
+XFAIL microservicios/enfermedades/tests/test_enfermedades.py::test_lista_xml_valido_con_letalidad_por_edad - epidemia_comun.formatos.a_xml usa claves como '0-19' de letalidad_por_edad como etiqueta y el XML queda mal formado
+XFAIL microservicios/parametros/tests/test_parametros.py::test_xml_valido_con_letalidad_por_edad - epidemia_comun.formatos.a_xml usa claves como '0-19' de letalidad_por_edad como etiqueta y el XML queda mal formado
+XFAIL microservicios/poblacion/tests/test_poblacion.py::test_grupos_en_xml_valido - epidemia_comun.formatos.a_xml usa claves como '0-19' como etiqueta y el XML queda mal formado
+291 passed, 3 xfailed, 34 subtests passed in 12.24s

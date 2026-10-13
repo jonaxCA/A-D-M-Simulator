@@ -80,6 +80,32 @@ def test_token_con_firma_incorrecta():
     assert e.value.estado == 401
 
 
+def token_servicio(**cambios):
+    ahora = int(time.time())
+    datos = {"iss": "epidemia-auth", "aud": "epidemia-interno", "sub": "usuarios",
+             "jti": str(uuid4()), "iat": ahora, "nbf": ahora - 1, "exp": ahora + 60}
+    datos.update(cambios)
+    return jwt.encode(datos, AJUSTES["JWT_SECRET_KEY"], algorithm="HS256")
+
+
+def test_token_de_servicio_valido_en_ruta_interna():
+    salida = verificar_token(token_servicio(), AJUSTES, RedisFalso(), interno=True)
+    assert salida["sub"] == "usuarios"
+
+
+def test_token_de_servicio_rechazado_en_ruta_de_personas():
+    with pytest.raises(ErrorAPI) as e:
+        verificar_token(token_servicio(), AJUSTES, RedisFalso(["session:" + identificador_sesion("sesion-uno")]))
+    assert e.value.estado == 401 and e.value.codigo == "TOKEN_INVALIDO"
+
+
+def test_token_de_persona_rechazado_en_ruta_solo_servicios():
+    with pytest.raises(ErrorAPI) as e:
+        verificar_token(token(), AJUSTES, RedisFalso(["session:" + identificador_sesion("sesion-uno")]),
+                        interno=True)
+    assert e.value.estado == 401 and e.value.codigo == "TOKEN_INVALIDO"
+
+
 def test_alg_none_rechazado():
     falso = jwt.encode({"sub": "7"}, key="", algorithm="none")
     with pytest.raises(ErrorAPI) as e:

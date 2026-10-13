@@ -124,8 +124,8 @@ Todas se corren con `pytest`, que también corre las de `unittest`.
 
 Ya existen:
 
-- Pruebas de la biblioteca:
-  `python -m pytest microservicios/comun/tests`
+- Pruebas de los servicios y la biblioteca:
+  `python -m pytest microservicios`
 - Solo Redis (necesita `infra/.env`, copiado de `infra/.env.example`):
   `docker compose -f infra/docker-compose.yml up -d redis`
 
