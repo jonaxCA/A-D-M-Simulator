@@ -1,2 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<sesion><access_token>JWT_DE_EJEMPLO</access_token><refresh_token>REFRESH_DE_EJEMPLO</refresh_token><token_type>Bearer</token_type><expires_in tipo="numero">1200</expires_in><sesion_expira tipo="numero">1791895491</sesion_expira><usuario><id tipo="numero">7</id><username>analista1</username><full_name>Ana Lista</full_name><roles><item>ANALISTA</item></roles></usuario></sesion>

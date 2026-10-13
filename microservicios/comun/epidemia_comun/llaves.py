@@ -29,10 +29,6 @@ def revocado(jti):
     return f"jwt:revoked:{jti}"
 
 
-def captcha(captcha_id):
-    return f"captcha:{captcha_id}"
-
-
 def candado_corrida(version):
     return f"lock:corrida:{version}"
 

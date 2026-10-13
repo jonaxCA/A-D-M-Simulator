@@ -4,7 +4,7 @@ Inicia sesión: revisa usuario y contraseña, emite el *access* y el *refresh* y
 en Redis. Renovar, cerrar y revocar sesiones es tarea de `sesiones`.
 
 Puerto externo: 5201; puerto interno en Docker: 8000. Contrato en
-`docs/contratos/auth/openapi.json`, con ejemplos en `docs/contratos/auth/ejemplos/`.
+`docs/contratos/auth/openapi.json`.
 
 ## Rutas
 
@@ -19,7 +19,7 @@ Las dos son públicas: son la puerta de entrada, todavía no hay token que pedir
 
 Sin SMTP no hay segundo factor por correo; en su lugar, cada intento de login necesita un
 captcha nuevo. Va antes que la contraseña, así que para probar una contraseña hay que resolver
-uno. Se guarda en Redis (`captcha:<id>`, TTL 300 s) y se borra al usarse, acierte o no. Junto
+uno. Se guarda en Redis (`captcha:<id>`, TTL 300 s; la llave aún no está en `llaves.py` ni en el catálogo) y se borra al usarse, acierte o no. Junto
 con el bloqueo de cinco intentos de `backend_web.auth`, frena a quien adivina contraseñas.
 
 ### Login

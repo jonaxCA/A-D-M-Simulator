@@ -1,8 +1,0 @@
-{
-  "type": "about:blank",
-  "title": "Unauthorized",
-  "status": 401,
-  "detail": "Usuario o contraseña incorrectos.",
-  "codigo": "CREDENCIALES_INVALIDAS",
-  "instance": "/api/v1/auth/login"
-}
