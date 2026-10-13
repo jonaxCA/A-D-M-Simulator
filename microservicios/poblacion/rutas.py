@@ -80,11 +80,16 @@ def registrar(app):
         # valida_grupos_edad_municipio solo regresa las cinco bandas; el control de
         # concurrencia también compara la edad no especificada, como en el monolito.
         sin_edad = datos["expected_groups"].get("edad_no_especificada")
-        if isinstance(sin_edad, bool) or not isinstance(sin_edad, (int, str)) \
-                or not str(sin_edad).strip().isdigit():
+        try:
+            if isinstance(sin_edad, bool) or not isinstance(sin_edad, (int, str)):
+                raise ValueError
+            sin_edad = int(str(sin_edad).strip())
+            if not 0 <= sin_edad <= 2147483647:
+                raise ValueError
+        except ValueError:
             raise ErrorAPI(422, "DATOS_INVALIDOS",
                            "expected_groups.edad_no_especificada debe ser un entero no negativo.")
-        esperados["edad_no_especificada"] = int(str(sin_edad).strip())
+        esperados["edad_no_especificada"] = sin_edad
         ok, error, resultado = queries.actualiza_grupos_edad_municipio(
             region_id, grupos_validados, esperados, datos["reason"], contexto=g.contexto)
         if not ok:
