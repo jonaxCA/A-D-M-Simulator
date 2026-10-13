@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - poblacion",
     "version": "0.1.0",
-    "description": "Servicio de poblacion del sistema de respuesta a epidemias"
+    "description": "Servicio de poblacion del sistema de respuesta a epidemias. Los ejemplos están en docs/contratos/poblacion/ejemplos."
   },
   "servers": [
     {
@@ -54,12 +54,21 @@
               "application/json": {
                 "schema": {
                   "type": "object"
+                },
+                "example": {
+                  "region_id": 4,
+                  "population": 643143,
+                  "population_60plus": 85216
                 }
               },
               "application/xml": {
                 "schema": {
-                  "type": "object"
-                }
+                  "type": "object",
+                  "xml": {
+                    "name": "poblacion"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<poblacion><region_id tipo=\"numero\">4</region_id><population tipo=\"numero\">643143</population><population_60plus tipo=\"numero\">85216</population_60plus></poblacion>\n"
               }
             }
           },
@@ -89,6 +98,7 @@
       "put": {
         "summary": "Corregir población municipal",
         "operationId": "corregir_poblaci_n_municipal",
+        "description": "Solo ADMINISTRADOR. expected_population es el valor que se leyó antes de editar; si otra persona lo cambió, responde 409.",
         "parameters": [
           {
             "in": "path",
@@ -119,12 +129,24 @@
               "application/json": {
                 "schema": {
                   "type": "object"
+                },
+                "example": {
+                  "municipio": "Guadalupe",
+                  "poblacion_antes": 643143,
+                  "poblacion_despues": 645020,
+                  "poblacion_60": 85216,
+                  "estado_actualizado": true,
+                  "municipios_sin_poblacion": 0
                 }
               },
               "application/xml": {
                 "schema": {
-                  "type": "object"
-                }
+                  "type": "object",
+                  "xml": {
+                    "name": "poblacion"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<poblacion><municipio>Guadalupe</municipio><poblacion_antes tipo=\"numero\">643143</poblacion_antes><poblacion_despues tipo=\"numero\">645020</poblacion_despues><poblacion_60 tipo=\"numero\">85216</poblacion_60><estado_actualizado tipo=\"booleano\">true</estado_actualizado><municipios_sin_poblacion tipo=\"numero\">0</municipios_sin_poblacion></poblacion>\n"
               }
             }
           },
@@ -173,6 +195,11 @@
                     "type": "string"
                   }
                 }
+              },
+              "example": {
+                "population": 645020,
+                "expected_population": 643143,
+                "reason": "Conteo municipal 2026"
               }
             },
             "application/xml": {
@@ -210,6 +237,7 @@
       "get": {
         "summary": "Consultar grupos de edad",
         "operationId": "consultar_grupos_de_edad",
+        "description": "Pendiente: el servicio usa las claves 0-19 y 80+ como etiqueta y su XML queda mal formado. El ejemplo XML muestra la forma válida con <entrada clave=\"...\">; mientras se corrige epidemia_comun.formatos, usa JSON.",
         "parameters": [
           {
             "in": "path",
@@ -240,12 +268,26 @@
               "application/json": {
                 "schema": {
                   "type": "object"
+                },
+                "example": {
+                  "grupos": {
+                    "0-19": 186512,
+                    "20-39": 196140,
+                    "40-59": 159481,
+                    "60-79": 74389,
+                    "80+": 10827
+                  },
+                  "edad_no_especificada": 15794
                 }
               },
               "application/xml": {
                 "schema": {
-                  "type": "object"
-                }
+                  "type": "object",
+                  "xml": {
+                    "name": "grupos_edad"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<grupos_edad><grupos><entrada clave=\"0-19\" tipo=\"numero\">186512</entrada><entrada clave=\"20-39\" tipo=\"numero\">196140</entrada><entrada clave=\"40-59\" tipo=\"numero\">159481</entrada><entrada clave=\"60-79\" tipo=\"numero\">74389</entrada><entrada clave=\"80+\" tipo=\"numero\">10827</entrada></grupos><edad_no_especificada tipo=\"numero\">15794</edad_no_especificada></grupos_edad>\n"
               }
             }
           },
@@ -275,6 +317,7 @@
       "put": {
         "summary": "Corregir grupos de edad",
         "operationId": "corregir_grupos_de_edad",
+        "description": "Solo ADMINISTRADOR. groups trae las cinco bandas; su suma debe conservar la población con edad declarada. expected_groups trae las cinco bandas y edad_no_especificada tal como se leyeron; si otra persona las cambió, responde 409.",
         "parameters": [
           {
             "in": "path",
@@ -305,12 +348,21 @@
               "application/json": {
                 "schema": {
                   "type": "object"
+                },
+                "example": {
+                  "municipio": "Guadalupe",
+                  "population_60plus": 85216,
+                  "estado_actualizado": true
                 }
               },
               "application/xml": {
                 "schema": {
-                  "type": "object"
-                }
+                  "type": "object",
+                  "xml": {
+                    "name": "grupos_edad"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<grupos_edad><municipio>Guadalupe</municipio><population_60plus tipo=\"numero\">85216</population_60plus><estado_actualizado tipo=\"booleano\">true</estado_actualizado></grupos_edad>\n"
               }
             }
           },
@@ -359,6 +411,24 @@
                     "type": "string"
                   }
                 }
+              },
+              "example": {
+                "groups": {
+                  "0-19": 186500,
+                  "20-39": 196152,
+                  "40-59": 159481,
+                  "60-79": 74389,
+                  "80+": 10827
+                },
+                "expected_groups": {
+                  "0-19": 186512,
+                  "20-39": 196140,
+                  "40-59": 159481,
+                  "60-79": 74389,
+                  "80+": 10827,
+                  "edad_no_especificada": 15794
+                },
+                "reason": "Reclasificación de registros 2026"
               }
             },
             "application/xml": {

@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - regiones",
     "version": "0.1.0",
-    "description": "Servicio de regiones del sistema de respuesta a epidemias"
+    "description": "Servicio de regiones del sistema de respuesta a epidemias. Público, de solo lectura y no usa Redis. Los ejemplos están en docs/contratos/regiones/ejemplos (listas recortadas)."
   },
   "servers": [
     {
@@ -75,12 +75,54 @@
               "application/json": {
                 "schema": {
                   "type": "object"
+                },
+                "example": {
+                  "municipios": [
+                    {
+                      "id": 3,
+                      "code": "19039",
+                      "nombre": "Monterrey",
+                      "poblacion": 1142994,
+                      "poblacion_60": 189513,
+                      "fuente_poblacion": {
+                        "tipo": "censal",
+                        "fuente": "INEGI, Censo 2020"
+                      },
+                      "fuente_poblacion_60": {
+                        "tipo": "derivado",
+                        "fuente": "Grupos 60-79 y 80+ del Censo 2020"
+                      }
+                    },
+                    {
+                      "id": 5,
+                      "code": "19006",
+                      "nombre": "Apodaca",
+                      "poblacion": 656464,
+                      "poblacion_60": 45288,
+                      "fuente_poblacion": {
+                        "tipo": "censal",
+                        "fuente": "INEGI, Censo 2020"
+                      },
+                      "fuente_poblacion_60": {
+                        "tipo": "derivado",
+                        "fuente": "Grupos 60-79 y 80+ del Censo 2020"
+                      }
+                    }
+                  ],
+                  "total": 51,
+                  "busqueda": "",
+                  "orden": "poblacion",
+                  "direccion": "desc"
                 }
               },
               "application/xml": {
                 "schema": {
-                  "type": "object"
-                }
+                  "type": "object",
+                  "xml": {
+                    "name": "catalogo_regiones"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<catalogo_regiones><municipios><municipio><id tipo=\"numero\">3</id><code>19039</code><nombre>Monterrey</nombre><poblacion tipo=\"numero\">1142994</poblacion><poblacion_60 tipo=\"numero\">189513</poblacion_60><fuente_poblacion><tipo>censal</tipo><fuente>INEGI, Censo 2020</fuente></fuente_poblacion><fuente_poblacion_60><tipo>derivado</tipo><fuente>Grupos 60-79 y 80+ del Censo 2020</fuente></fuente_poblacion_60></municipio><municipio><id tipo=\"numero\">5</id><code>19006</code><nombre>Apodaca</nombre><poblacion tipo=\"numero\">656464</poblacion><poblacion_60 tipo=\"numero\">45288</poblacion_60><fuente_poblacion><tipo>censal</tipo><fuente>INEGI, Censo 2020</fuente></fuente_poblacion><fuente_poblacion_60><tipo>derivado</tipo><fuente>Grupos 60-79 y 80+ del Censo 2020</fuente></fuente_poblacion_60></municipio></municipios><total tipo=\"numero\">51</total><busqueda /><orden>poblacion</orden><direccion>desc</direccion></catalogo_regiones>\n"
               }
             }
           },
@@ -142,12 +184,25 @@
               "application/json": {
                 "schema": {
                   "type": "object"
+                },
+                "example": {
+                  "id": 4,
+                  "code": "19026",
+                  "name": "Guadalupe",
+                  "level": "municipio",
+                  "parent_region_id": 1,
+                  "population": 643143,
+                  "population_60plus": 85216
                 }
               },
               "application/xml": {
                 "schema": {
-                  "type": "object"
-                }
+                  "type": "object",
+                  "xml": {
+                    "name": "region"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<region><id tipo=\"numero\">4</id><code>19026</code><name>Guadalupe</name><level>municipio</level><parent_region_id tipo=\"numero\">1</parent_region_id><population tipo=\"numero\">643143</population><population_60plus tipo=\"numero\">85216</population_60plus></region>\n"
               }
             }
           },

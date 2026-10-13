@@ -369,6 +369,148 @@ python datos/scripts/prepara_base_pruebas.py
 
 ---
 
+## Docker: microservicios del grupo 14:00
+
+Estos son los pasos exactos con que se levantaron los 12 servicios para las evidencias
+(`evidencias/servicios/`). PostgreSQL y Redis corren en contenedores; los servicios, con
+`waitress` en tu máquina, cada uno con su rol de la migración 026. Necesitas Docker Desktop
+(o Docker Engine en Linux), el cliente `psql` y el entorno de Python del paso 4 con las
+dependencias de abajo.
+
+```bash
+pip install -r backend_web/requerimientos.txt -r procesamiento/requerimientos.txt \
+            -r microservicios/comun/requirements.txt waitress==3.0.2
+```
+
+### 0. PostgreSQL en un contenedor
+
+Una base nueva en `127.0.0.1:5433`, para no tocar la de los pasos 1 a 3. Son los mismos
+pasos 1, 2 y 3 de arriba, contra el contenedor:
+
+```bash
+docker run -d --name epidemia-pg -e POSTGRES_PASSWORD="<contraseña de postgres>" \
+  -p 127.0.0.1:5433:5432 postgres:16-alpine
+export PGPASSWORD="<contraseña de postgres>"
+P="psql -h 127.0.0.1 -p 5433 -U postgres -v ON_ERROR_STOP=1"
+
+$P -c "CREATE DATABASE simulador_epidemico;"
+$P -c "CREATE ROLE epidemia_app LOGIN PASSWORD '<contraseña de epidemia_app>';"
+$P -d simulador_epidemico -f datos/postgres/dump_completo.sql          # trae de la 001 a la 026
+$P -d simulador_epidemico -f datos/postgres/semillas/nl_municipios_completos.sql
+$P -d simulador_epidemico -f datos/postgres/semillas/demo_datos_nl.sql
+$P -d simulador_epidemico -c "GRANT USAGE ON SCHEMA public TO epidemia_app;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO epidemia_app;
+  GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO epidemia_app;"
+
+# Contraseña de cada rol de la 026 (svc_auth, svc_sesiones, … svc_zonas)
+for s in auth sesiones usuarios roles enfermedades parametros regiones poblacion \
+         tipos_intervencion indicadores series zonas; do
+  $P -d simulador_epidemico -c "ALTER ROLE svc_$s PASSWORD '<contraseña del rol>';"
+done
+```
+
+Los avisos `NOTICE: ... does not exist, skipping` son normales: el dump es idempotente.
+
+### 1. Redis
+
+```bash
+cp infra/.env.example infra/.env        # escribe REDIS_PASSWORD (ver el comentario del archivo)
+docker compose -f infra/docker-compose.yml up -d redis
+docker compose -f infra/docker-compose.yml ps            # redis debe salir "healthy"
+```
+
+Queda en `127.0.0.1:6380` de tu máquina, con contraseña y AOF.
+
+### 2. Los 12 servicios
+
+Desde la raíz del repositorio, cada uno en su puerto del catálogo y con su rol:
+
+```bash
+REDIS_PASSWORD=$(grep '^REDIS_PASSWORD=' infra/.env | cut -d= -f2-)
+export PYTHONPATH="$PWD:$PWD/microservicios/comun"
+export REDIS_URL="redis://:$REDIS_PASSWORD@127.0.0.1:6380/0"
+export JWT_SECRET_KEY="<una cadena larga, la misma en todos los servicios>"
+
+for par in auth:5201 sesiones:5202 usuarios:5203 roles:5204 enfermedades:5211 \
+           parametros:5212 regiones:5213 poblacion:5214 tipos_intervencion:5215 \
+           indicadores:5251 series:5252 zonas:5253; do
+  s=${par%%:*}; p=${par##*:}
+  DATABASE_URL="postgresql://svc_$s:<contraseña del rol>@127.0.0.1:5433/simulador_epidemico" \
+    waitress-serve --listen=127.0.0.1:$p microservicios.$s.app:app > logs_$s.txt 2>&1 &
+done
+```
+
+- `JWT_SECRET_KEY` es obligatoria y no puede ser el valor de ejemplo: sin ella el servicio
+  no arranca. Debe ser la misma en todos, porque `auth` firma y los demás verifican.
+- Para apagarlos: `kill %1 %2 …` (o `pkill -f waitress-serve`), y
+  `docker rm -f epidemia-pg` y `docker compose -f infra/docker-compose.yml stop redis`.
+
+### 3. Alternativa: un servicio en su contenedor
+
+Cada servicio tiene su `Dockerfile` (`python:3.12-slim`, usuario sin privilegios, `waitress`
+en el puerto 8000 y `HEALTHCHECK` a `/health`). El contexto es la raíz del repositorio,
+porque copia `backend_web/`, `procesamiento/` y `microservicios/comun/`. Las evidencias no
+usaron este camino.
+
+| Servicio | Puerto | Servicio | Puerto |
+|---|---|---|---|
+| `auth` | 5201 | `regiones` | 5213 |
+| `sesiones` | 5202 | `poblacion` | 5214 |
+| `usuarios` | 5203 | `tipos-intervencion` | 5215 |
+| `roles` | 5204 | `indicadores` | 5251 |
+| `enfermedades` | 5211 | `series` | 5252 |
+| `parametros` | 5212 | `zonas` | 5253 |
+
+```bash
+docker build -f microservicios/regiones/Dockerfile -t epidemia/regiones .
+docker run --rm -p 5213:8000 --add-host=host.docker.internal:host-gateway \
+  -e DATABASE_URL="postgresql://svc_regiones:<contraseña del rol>@host.docker.internal:5433/simulador_epidemico" \
+  -e REDIS_URL="redis://:<REDIS_PASSWORD>@host.docker.internal:6380/0" \
+  -e JWT_SECRET_KEY="<la misma cadena de los demás>" \
+  epidemia/regiones
+```
+
+La carpeta de `tipos-intervencion` es `microservicios/tipos_intervencion/`.
+
+### 4. Comprobar
+
+```bash
+for p in 5201 5202 5203 5204 5211 5212 5213 5214 5215 5251 5252 5253; do
+  curl -s "http://127.0.0.1:$p/health?format=json"; echo
+done
+# cada uno: {"servicio": "...", "estado": "ok", "postgresql": true, "redis": true}
+```
+
+Para las rutas con candado, inicia sesión con `auth`:
+
+```bash
+curl -s "http://127.0.0.1:5201/api/v1/auth/captcha?format=json"
+# {"captcha_id": "...", "pregunta": "3 + 5", ...}
+curl -s -H "Content-Type: application/json" "http://127.0.0.1:5201/api/v1/auth/login?format=json" \
+  -d '{"usuario": "admin", "password": "<la de la tabla de credenciales>", "captcha_id": "...", "captcha_respuesta": "8"}'
+# {"access_token": "...", "refresh_token": "...", ...}
+```
+
+El captcha dura 5 minutos y sirve una vez. `usuarios` y `roles` exigen ADMINISTRADOR (`admin`).
+
+Swagger queda en `http://localhost:<puerto>/docs`. Ábrelo con `localhost`, no con
+`127.0.0.1`: el contrato declara `http://localhost:<puerto>` y con otro origen el navegador
+bloquea "Try it out". Pega el `access_token` en **Authorize** (sin `Bearer`). Para ver XML,
+deja `format` vacío y elige `application/xml` en **Media type**; para JSON, `format=json`.
+
+### 5. Pruebas de los microservicios
+
+No necesitan Docker ni base: usan fakeredis y la base simulada.
+
+```bash
+pip install -r backend_web/requerimientos.txt -r procesamiento/requerimientos.txt \
+            -r microservicios/comun/requirements.txt "fakeredis>=2.20,<3" pytest
+export PYTHONPATH="$PWD:$PWD/microservicios/comun"
+python -m pytest microservicios -q
+```
+
+---
+
 ## Problemas comunes
 
 | Síntoma | Causa y solución |

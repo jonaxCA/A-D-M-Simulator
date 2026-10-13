@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<grupos_edad><grupos><entrada clave="0-19" tipo="numero">186512</entrada><entrada clave="20-39" tipo="numero">196140</entrada><entrada clave="40-59" tipo="numero">159481</entrada><entrada clave="60-79" tipo="numero">74389</entrada><entrada clave="80+" tipo="numero">10827</entrada></grupos><edad_no_especificada tipo="numero">15794</edad_no_especificada></grupos_edad>

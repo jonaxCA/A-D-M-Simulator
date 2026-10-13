@@ -15,7 +15,8 @@ def _municipio(region_id):
 
 
 def _conflicto_o_invalido(error):
-    if "otra persona" in error.lower() or "obsoleto" in error.lower():
+    # Los tres mensajes de concurrencia de backend_web dicen "mientras editabas".
+    if "mientras editabas" in error.lower():
         raise ErrorAPI(409, "CONFLICTO", error)
     raise ErrorAPI(422, "DATOS_INVALIDOS", error)
 
@@ -76,6 +77,14 @@ def registrar(app):
         esperados, errores = queries.valida_grupos_edad_municipio(datos["expected_groups"])
         if errores:
             raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
+        # valida_grupos_edad_municipio solo regresa las cinco bandas; el control de
+        # concurrencia también compara la edad no especificada, como en el monolito.
+        sin_edad = datos["expected_groups"].get("edad_no_especificada")
+        if isinstance(sin_edad, bool) or not isinstance(sin_edad, (int, str)) \
+                or not str(sin_edad).strip().isdigit():
+            raise ErrorAPI(422, "DATOS_INVALIDOS",
+                           "expected_groups.edad_no_especificada debe ser un entero no negativo.")
+        esperados["edad_no_especificada"] = int(str(sin_edad).strip())
         ok, error, resultado = queries.actualiza_grupos_edad_municipio(
             region_id, grupos_validados, esperados, datos["reason"], contexto=g.contexto)
         if not ok:
