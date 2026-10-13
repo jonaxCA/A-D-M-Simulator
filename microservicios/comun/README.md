@@ -26,7 +26,7 @@ Desde la raíz del proyecto:
 ```bash
 pip install -r microservicios/comun/requirements.txt
 export PYTHONPATH="$PWD/microservicios/comun:$PWD"
-python -m pytest microservicios/comun/tests -q
+python -m pytest microservicios -q
 ```
 
 Variables necesarias: `JWT_SECRET_KEY`, `REDIS_URL`, `DATABASE_URL`; opcionales: `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_AUDIENCE_INTERNA`.
@@ -145,7 +145,7 @@ Notas:
 ## Pruebas
 
 ```bash
-python -m pytest microservicios/comun/tests
+python -m pytest microservicios
 ```
 
 - Corren con fakeredis y no necesitan Docker. Se corren con `pytest` (decisión D14); están

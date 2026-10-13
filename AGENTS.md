@@ -56,8 +56,8 @@ En este no crees código en `frontend_movil/` ni en `frontend_desktop/`.
 - Microservicios: `docker compose -f infra/docker-compose.yml up --build`. Por ahora solo
   levanta Redis, y necesita `infra/.env` (copia `infra/.env.example`). Los servicios llegan con
   el bloque J del checklist.
-- Pruebas de la biblioteca común:
-  `python -m pytest microservicios/comun/tests`.
+- Pruebas de los microservicios y de la biblioteca común:
+  `python -m pytest microservicios`.
 - Verificar que el dump coincide con las migraciones: `python datos/scripts/verifica_migraciones.py`.
 - Las pruebas corren contra `<base>_pruebas`, nunca contra la de la demostración. Se crea con
   `python datos/scripts/prepara_base_pruebas.py` (ver `docs/INSTALACION.md`).
