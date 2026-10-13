@@ -76,5 +76,5 @@ def test_ejemplos_json_y_xml_por_ruta(servicio, paquete, puerto, publico):
             en_json = json.loads(ejemplo.with_suffix(".json").read_text(encoding="utf-8"))
             en_xml = ejemplo.with_suffix(".xml").read_text(encoding="utf-8")
             assert contenido["application/json"]["example"] == en_json
-            assert contenido["application/xml"]["example"] == en_xml
+            assert contenido["application/xml"]["examples"]["respuesta"]["value"] == en_xml
             ET.fromstring(en_xml.encode("utf-8"))

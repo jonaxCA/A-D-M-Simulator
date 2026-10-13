@@ -58,9 +58,17 @@
               },
               "application/xml": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "xml": {
+                    "name": "indicadores"
+                  }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<indicadores><casos_activos tipo=\"numero\">0</casos_activos><casos_pct tipo=\"numero\">0.0</casos_pct><tasa_incidencia tipo=\"numero\">0.0</tasa_incidencia><tasa_pct tipo=\"numero\">0.0</tasa_pct><zonas_en_riesgo tipo=\"numero\">0</zonas_en_riesgo><simulaciones_activas tipo=\"numero\">70</simulaciones_activas></indicadores>\n"
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (listas recortadas)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<indicadores><casos_activos tipo=\"numero\">0</casos_activos><casos_pct tipo=\"numero\">0.0</casos_pct><tasa_incidencia tipo=\"numero\">0.0</tasa_incidencia><tasa_pct tipo=\"numero\">0.0</tasa_pct><zonas_en_riesgo tipo=\"numero\">0</zonas_en_riesgo><simulaciones_activas tipo=\"numero\">70</simulaciones_activas></indicadores>\n"
+                  }
+                }
               }
             }
           },
@@ -131,9 +139,17 @@
               },
               "application/xml": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "xml": {
+                    "name": "situacion"
+                  }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<situacion><enfermedades /></situacion>\n"
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (listas recortadas)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<situacion><enfermedades /></situacion>\n"
+                  }
+                }
               }
             }
           },

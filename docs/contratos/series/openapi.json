@@ -110,9 +110,17 @@
               },
               "application/xml": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "xml": {
+                    "name": "curva_epidemica"
+                  }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<curva_epidemica><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days></filtros><puntos><punto><fecha>2026-07-20</fecha><casos tipo=\"numero\">83</casos><incidencia_acum tipo=\"numero\">1.43</incidencia_acum></punto><punto><fecha>2026-07-21</fecha><casos tipo=\"numero\">88</casos><incidencia_acum tipo=\"numero\">2.96</incidencia_acum></punto><punto><fecha>2026-07-22</fecha><casos tipo=\"numero\">77</casos><incidencia_acum tipo=\"numero\">4.29</incidencia_acum></punto></puntos></curva_epidemica>\n"
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (listas recortadas)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<curva_epidemica><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days></filtros><puntos><punto><fecha>2026-07-20</fecha><casos tipo=\"numero\">83</casos><incidencia_acum tipo=\"numero\">1.43</incidencia_acum></punto><punto><fecha>2026-07-21</fecha><casos tipo=\"numero\">88</casos><incidencia_acum tipo=\"numero\">2.96</incidencia_acum></punto><punto><fecha>2026-07-22</fecha><casos tipo=\"numero\">77</casos><incidencia_acum tipo=\"numero\">4.29</incidencia_acum></punto></puntos></curva_epidemica>\n"
+                  }
+                }
               }
             }
           },
@@ -227,9 +235,17 @@
               },
               "application/xml": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "xml": {
+                    "name": "casos_por_edad"
+                  }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<casos_por_edad><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days></filtros><grupos><grupo><grupo>0-4</grupo><casos tipo=\"numero\">300</casos></grupo><grupo><grupo>5-14</grupo><casos tipo=\"numero\">399</casos></grupo><grupo><grupo>15-24</grupo><casos tipo=\"numero\">605</casos></grupo></grupos></casos_por_edad>\n"
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (listas recortadas)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<casos_por_edad><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days></filtros><grupos><grupo><grupo>0-4</grupo><casos tipo=\"numero\">300</casos></grupo><grupo><grupo>5-14</grupo><casos tipo=\"numero\">399</casos></grupo><grupo><grupo>15-24</grupo><casos tipo=\"numero\">605</casos></grupo></grupos></casos_por_edad>\n"
+                  }
+                }
               }
             }
           },
@@ -341,9 +357,17 @@
               },
               "application/xml": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "xml": {
+                    "name": "casos_por_sexo"
+                  }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<casos_por_sexo><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days></filtros><sexos><sexo><label>Masculino</label><casos tipo=\"numero\">1920</casos><pct tipo=\"numero\">50.2</pct></sexo><sexo><label>Femenino</label><casos tipo=\"numero\">1904</casos><pct tipo=\"numero\">49.8</pct></sexo></sexos></casos_por_sexo>\n"
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (listas recortadas)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<casos_por_sexo><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days></filtros><sexos><sexo><label>Masculino</label><casos tipo=\"numero\">1920</casos><pct tipo=\"numero\">50.2</pct></sexo><sexo><label>Femenino</label><casos tipo=\"numero\">1904</casos><pct tipo=\"numero\">49.8</pct></sexo></sexos></casos_por_sexo>\n"
+                  }
+                }
               }
             }
           },
@@ -451,9 +475,17 @@
               },
               "application/xml": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "xml": {
+                    "name": "totales"
+                  }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<totales><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days></filtros><totales><casos tipo=\"numero\">3824</casos><casos_previo tipo=\"numero\">0</casos_previo><casos_pct tipo=\"numero\">100.0</casos_pct><incidencia tipo=\"numero\">66.1</incidencia><incidencia_previa tipo=\"numero\">0.0</incidencia_previa></totales></totales>\n"
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (listas recortadas)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<totales><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days></filtros><totales><casos tipo=\"numero\">3824</casos><casos_previo tipo=\"numero\">0</casos_previo><casos_pct tipo=\"numero\">100.0</casos_pct><incidencia tipo=\"numero\">66.1</incidencia><incidencia_previa tipo=\"numero\">0.0</incidencia_previa></totales></totales>\n"
+                  }
+                }
               }
             }
           },
