@@ -244,8 +244,7 @@ sequenceDiagram
 ## 9. PostgreSQL
 
 - Una sola base (`simulador_epidemico`), creada con el dump, las semillas y las migraciones
-  de `datos/postgres/migraciones/` (ver [`INSTALACION.md`](../INSTALACION.md)). Este
-  parcial no agregó migraciones.
+  de `datos/postgres/migraciones/` (ver [`INSTALACION.md`](../INSTALACION.md)). Hoy todos se conectan con el mismo DATABASE_URL.
 - Los servicios usan las funciones de `backend_web` (`queries.py`, `auth.py`, `audit.py`);
   las escrituras propias de un servicio van en una transacción, con su `log_audit(..., cur=cur)`.
 - Cada servicio escribe solo las tablas de la columna "Escribe" de la sección 3. Hoy todos
@@ -267,26 +266,50 @@ sequenceDiagram
 ## 11. Pruebas
 
 - Unitarias con `pytest`, con PostgreSQL y Redis simulados (`fakeredis`); no necesitan
-  Docker. Resultado del 13 de octubre: **198 pasan, 0 fallan**
+  Docker. Resultado del 13 de octubre: **200 pasan, 0 fallan**
   (`evidencias/pruebas/pruebas_unitarias_2026-10-13.txt`).
 - Cubren: respuestas en XML y JSON, cuerpos en los dos formatos, validaciones, tokens
   ausentes, inválidos y revocados, roles sin permiso, Redis caído, bitácora y que el
   `openapi.json` servido sea el de `docs/contratos/`.
+- Pruebas de integración contra contenedores: no hechas.
 
-## 12. Diferencias con el catálogo
+## 12. Pendientes y fuera de alcance
 
-| Catálogo | Lo construido | Por qué |
-|---|---|---|
-| `auth` solo tiene `POST /auth/login` | Tiene además `GET /auth/captcha` | Sin SMTP no hay segundo factor por correo; el captcha frena la adivinación de contraseñas. |
-| Las llaves de Redis están en `llaves.py` y en la tabla del catálogo | `captcha:<id>` no está en ninguno de los dos | Para no modificar la biblioteca común; el nombre vive en `microservicios/auth/rutas.py`. |
-| `usuarios` y `roles` llaman a `sesiones` por HTTP | Cierran las sesiones con `sesiones.cerrar_todas()` de la biblioteca, sobre el mismo Redis | La ruta interna de `sesiones` pide un token de servicio que todavía nadie emite. |
-| `usuarios` da de alta la cuenta | La alta no asigna rol; se asigna después en `roles` | `roles` es el único que escribe `user_roles`. |
-| Un rol de PostgreSQL por servicio | Todos usan el mismo usuario de la base | Bloque L pendiente. |
+### Fuera de alcance de este parcial
 
-## 13. Pendiente
+- Las apps móvil y de escritorio: se entregan en el tercer parcial.
+- MongoDB, Google Cloud Storage y nginx.
+- Del grupo de las 10:00: los XSD, las pruebas de integración del flujo completo, el
+  docker-compose con todos los servicios y la consola.
 
-- Los 14 servicios del grupo de las 10:00, la consola y `estado-servicios`.
-- Los servicios, PostgreSQL y la imagen base en el compose (`docker compose up` de todo).
-- El token de servicio y los roles de PostgreSQL por servicio.
-- XSD de los recursos principales.
-- Evidencias de peticiones reales contra la base y capturas (`evidencias/`).
+### Pendientes del grupo 14:00
+
+- `epidemia_comun.formatos.a_xml` usa las claves del diccionario como etiqueta; claves como
+  `0-19` u `80+` producen XML mal formado. Se confirmó con los servicios corriendo: falla el
+  XML de `GET /api/v1/diseases`, el de `parametros` cuando la enfermedad tiene
+  `letalidad_por_edad` (COVID-19 e influenza) y el de `GET /regions/{id}/age-groups`. En JSON
+  responden bien. Hay tres pruebas `xfail` que lo documentan. La corrección va en la
+  biblioteca común (por ejemplo, `<entrada clave="0-19">`, que es lo que muestra el ejemplo
+  XML de `age-groups`), no en los servicios.
+
+### Corregido en esta entrega
+
+- `poblacion`: `PUT /age-groups` descartaba `expected_groups.edad_no_especificada`, que el
+  control de concurrencia de `backend_web` compara, y toda corrección terminaba en error.
+  Ahora la ruta la valida y la pasa, como la pantalla del monolito.
+- `poblacion`: el mensaje de concurrencia "Los datos del municipio cambiaron mientras
+  editabas" salía como 422; ahora, como los otros dos, es 409 `CONFLICTO`.
+- Migración 026: fallaba en una base real al buscar la secuencia de `user_roles`, que no
+  tiene columna `id`. Se corrigió y ya está al final de `dump_completo.sql`.
+
+### Diferencias entre el plan y el código
+
+- Ningún servicio emite todavía tokens de servicio; `usuarios` y `roles` cierran sesiones
+  directo en Redis en vez de llamar a `DELETE /api/v1/sessions/user/{id}`.
+- `@requiere_token` revisa Redis con el cliente de la fábrica, no con `sesiones.verificar()`.
+- `auth` usa la ruta `GET /api/v1/auth/captcha` y la llave `captcha:<id>`, que no están en el
+  catálogo ni en `llaves.py`.
+- Los servicios leen `DATABASE_URL`; para usar su rol de la 026 hay que pasarles la URL con
+  `svc_<servicio>`.
+- Los servicios no están todavía en `infra/docker-compose.yml` (el compose completo es del
+  grupo de las 10:00).
