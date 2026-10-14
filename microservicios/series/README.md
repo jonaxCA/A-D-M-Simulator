@@ -47,4 +47,4 @@ curl -H "Authorization: Bearer $TOKEN" \
   "http://127.0.0.1:5252/api/v1/series/cases?days=7&format=json"
 ```
 
-Pendiente: evidencia contra la base real y la entrada en el compose (bloque J).
+Pendiente: la entrada en el compose (bloque J). Evidencia de funcionamiento en `evidencias/servicios/series/`.

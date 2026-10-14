@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Parámetros epidemiológicos de una enfermedad (raíz <parametros>), los de
+     GET y PUT /api/v1/diseases/{id}/parameters.
+
+     Los seis parámetros que usa el motor y letalidad_por_edad se validan:
+     cada uno lleva valor, fuente (o nil) y supuesto. Los parámetros
+     informativos con otro formato (prob_asintomatico, transmisibilidad_base)
+     se aceptan sin validar su contenido. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:include schemaLocation="../comun/tipos.xsd"/>
+
+  <!-- {valor, fuente, supuesto}, o el formato de 010_datos_iniciales
+       {dist, media, desv}. El orden de las claves depende de la base. -->
+  <xs:complexType name="Parametro">
+    <xs:all>
+      <xs:element name="valor" type="NumeroONulo" minOccurs="0"/>
+      <xs:element name="fuente" type="TextoONulo" minOccurs="0"/>
+      <xs:element name="supuesto" type="Booleano" minOccurs="0"/>
+      <xs:element name="dist" type="xs:string" minOccurs="0"/>
+      <xs:element name="media" type="Numero" minOccurs="0"/>
+      <xs:element name="desv" type="Numero" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- Una tasa por grupo de edad: <entrada clave="0-19" tipo="numero">. -->
+  <xs:complexType name="Entrada">
+    <xs:simpleContent>
+      <xs:extension base="xs:double">
+        <xs:attribute name="clave" type="xs:string" use="required"/>
+        <xs:attribute name="tipo" type="xs:string" fixed="numero" use="required"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="PorEdad">
+    <xs:sequence>
+      <xs:element name="entrada" type="Entrada" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Con fuente (020_letalidad_por_edad) o la tabla sola (010_datos_iniciales). -->
+  <xs:complexType name="ParametroPorEdad">
+    <xs:choice>
+      <xs:sequence>
+        <xs:element name="valor" type="PorEdad"/>
+        <xs:element name="fuente" type="TextoONulo" minOccurs="0"/>
+        <xs:element name="supuesto" type="Booleano" minOccurs="0"/>
+      </xs:sequence>
+      <xs:element name="entrada" type="Entrada" maxOccurs="unbounded"/>
+    </xs:choice>
+  </xs:complexType>
+
+  <xs:complexType name="ListaParametros">
+    <xs:sequence>
+      <xs:any processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="parametros">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="disease_id" type="Entero"/>
+        <xs:element name="parametros" type="ListaParametros"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Declarados globalmente para que el comodín lax los valide. -->
+  <xs:element name="r0" type="Parametro"/>
+  <xs:element name="incubacion_dias" type="Parametro"/>
+  <xs:element name="infeccioso_dias" type="Parametro"/>
+  <xs:element name="dias_hospitalizacion" type="Parametro"/>
+  <xs:element name="tasa_hospitalizacion" type="Parametro"/>
+  <xs:element name="letalidad" type="Parametro"/>
+  <xs:element name="letalidad_por_edad" type="ParametroPorEdad"/>
+
+</xs:schema>

@@ -50,5 +50,5 @@ curl -X POST "http://127.0.0.1:5202/api/v1/sessions/refresh?format=json" \
 curl -X POST -H "Authorization: Bearer <access>" "http://127.0.0.1:5202/api/v1/sessions/logout?format=json"
 ```
 
-Pendiente: Dockerfile y entrada en el compose (bloque J); emitir el token de servicio que usa la
+Pendiente: entrada en el compose (bloque J); emitir el token de servicio que usa la
 ruta interna (bloque L).

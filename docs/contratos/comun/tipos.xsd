@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Tipos que comparten los XSD de los servicios: así escribe los valores
+     epidemia_comun.formatos.a_xml (números con tipo="numero", booleanos con
+     tipo="booleano" y nulos vacíos con nil="true"). -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:simpleType name="vacio">
+    <xs:restriction base="xs:string">
+      <xs:length value="0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="numeroOVacio">
+    <xs:union memberTypes="xs:double vacio"/>
+  </xs:simpleType>
+
+  <xs:complexType name="Numero">
+    <xs:simpleContent>
+      <xs:extension base="xs:double">
+        <xs:attribute name="tipo" type="xs:string" fixed="numero" use="required"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="Entero">
+    <xs:simpleContent>
+      <xs:extension base="xs:long">
+        <xs:attribute name="tipo" type="xs:string" fixed="numero" use="required"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="NumeroONulo">
+    <xs:simpleContent>
+      <xs:extension base="numeroOVacio">
+        <xs:attribute name="tipo" type="xs:string" fixed="numero"/>
+        <xs:attribute name="nil" type="xs:string" fixed="true"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="Booleano">
+    <xs:simpleContent>
+      <xs:extension base="xs:boolean">
+        <xs:attribute name="tipo" type="xs:string" fixed="booleano" use="required"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="TextoONulo">
+    <xs:simpleContent>
+      <xs:extension base="xs:string">
+        <xs:attribute name="nil" type="xs:string" fixed="true"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+</xs:schema>

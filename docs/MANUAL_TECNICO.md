@@ -39,7 +39,7 @@ Este manual cubre lo que le toca al grupo de las 14:00:
   documentación general.
 
 Los servicios de escenarios, simulación, vigilancia y plataforma, la consola, el
-`docker-compose` completo, los XSD y las pruebas de integración son del grupo de las 10:00.
+`docker-compose` completo, los XSD de escenario, resultado de una corrida, caso y lote de sincronización y las pruebas de integración del flujo completo son del grupo de las 10:00.
 
 ## 2. Arquitectura
 
@@ -63,6 +63,7 @@ Resumen; el detalle, con diagramas, está en
 | PyJWT | 2.7.0 | Firma y verificación de tokens HS256 |
 | redis-py | 5.x o 6.x | Cliente de Redis |
 | defusedxml | 0.7 | Lectura segura de cuerpos XML |
+| xmlschema | 3.4 o mayor | Validación de XML contra XSD (D15) |
 | requests | 2.31+ | Llamadas entre servicios (`llamar()`) |
 | waitress | 3.0.2 | Servidor WSGI dentro del contenedor |
 | Redis | 7.4 (`redis:7.4-alpine`) | Sesiones, revocación y caché |
@@ -80,10 +81,11 @@ microservicios/
   comun/            epidemia_comun, scripts y pruebas de la biblioteca
   conftest.py       fakeredis, tokens firmados y crear_cliente() para las pruebas
   <servicio>/       app.py, rutas.py, Dockerfile, README.md y tests/
+  pruebas_integracion/  flujo de identidad entre auth, sesiones, usuarios y roles
                     (tipos-intervencion vive en tipos_intervencion/)
 docs/
   arquitectura/     microservicios.md (plan), arquitectura_v2.md (lo construido)
-  contratos/        <servicio>/openapi.json y ejemplos/; postman/
+  contratos/        <servicio>/openapi.json, ejemplos/ y .xsd; comun/ (XSD compartidos); postman/
 datos/postgres/     migraciones (026 = roles por servicio), dump y semillas
 infra/              docker-compose.yml (Redis) y .env.example
 evidencias/         capturas de Swagger por servicio (ver su README)
@@ -372,6 +374,9 @@ El contenedor (`infra/docker-compose.yml`) usa Redis 7.4 con contraseña, AOF y
 - `enfermedades`, `parametros`, `regiones`, `poblacion`, `tipos-intervencion`, `indicadores`,
   `series` y `zonas` traen un ejemplo JSON y uno XML por ruta en el contrato y en
   `docs/contratos/<servicio>/ejemplos/`.
+- XSD (D15), validados con `xmlschema`: `docs/contratos/comun/problem.xsd` (el error de cualquier
+  servicio, con los tipos compartidos de `comun/tipos.xsd`), `enfermedades/enfermedad.xsd` y
+  `parametros/parametros.xsd`.
 - `docs/contratos/postman/` tiene una colección de Postman (también para `newman`) de
   `tipos-intervencion`, `indicadores`, `series` y `zonas`, con su guía.
 - En las rutas con candado, pega el token en **Authorize**. Abre Swagger con `localhost`, no
@@ -408,12 +413,21 @@ conserva en `evidencias/pruebas/pytest_microservicios.txt`.
 **Resultado posterior a la corrección XML:** 307 passed, 34 subtests passed in 1.64s.
 Registro de la ejecución en `evidencias/pruebas/pytest_microservicios_xml_corregido.txt`.
 
+**Con la validación XSD:** 322 passed (`evidencias/pruebas/pytest_microservicios_xsd.txt`).
+`comun/tests/test_xsd.py` valida contra los XSD los ejemplos XML de los contratos, respuestas
+reales de `enfermedades` y `parametros` (en todos los formatos de parámetros que conviven en la
+base) y los errores 401 y 404, y comprueba que un documento inválido se rechace.
+
+**Con las pruebas de integración iniciales (resultado actual):** 325 passed
+(`evidencias/pruebas/pytest_microservicios_integracion.txt`).
+
 | Dónde | Qué cubren |
 |---|---|
-| `comun/tests/` | Formatos, errores, ajustes, tokens (`alg: none`, firma, vencido, audiencia, revocado, rol, token de servicio en ruta de personas y de persona en `@solo_servicios`), sesiones, caché, candados, cola, llaves, Redis caído, contratos y ejemplos |
+| `comun/tests/` | Formatos, errores, ajustes, tokens (`alg: none`, firma, vencido, audiencia, revocado, rol, token de servicio en ruta de personas y de persona en `@solo_servicios`), sesiones, caché, candados, cola, llaves, Redis caído, contratos, ejemplos y XSD |
 | `auth`, `sesiones`, `usuarios`, `roles` | Login con captcha, refresh de un solo uso, logout, ruta interna, altas y bajas con bitácora, asignación de rol |
 | `enfermedades`, `parametros`, `regiones`, `poblacion` | XML por omisión, `?format=json` y `Accept`, 400, 401, 403, 404, 409, 422, cuerpos JSON y XML, `log_audit` en cada escritura, el código que no se edita, la baja sin `DELETE`, la fuente o supuesto obligatorio, el control de concurrencia y `regiones` con Redis caído |
 | `tipos_intervencion`, `indicadores`, `series`, `zonas` | Formatos, permisos, filtros, caché y Redis caído |
+| `pruebas_integracion/` | Integración iniciales: `auth`, `sesiones`, `usuarios` y `roles` juntos, con el mismo Redis y la misma base simulada. Un cambio de rol y una baja cierran las sesiones de la cuenta; el refresh y el logout valen en todos los servicios; con Redis caído todos responden 503 |
 
 Las tres pruebas de XML de `enfermedades`, `parametros` y `poblacion` ya no llevan
 `xfail`: ahora verifican XML bien formado y el contenido de `<entrada clave="...">`.
@@ -438,9 +452,11 @@ Los permisos de la 026 se probaron contra una base real, rol por rol:
 | `SERVICIO_<NOMBRE>_URL` | Solo si llama a otro | — | URL de otro servicio para `llamar()` |
 | `REDIS_PASSWORD`, `REDIS_PUERTO_LOCAL` | En `infra/.env` | — / `6380` | Contraseña y puerto del Redis del compose |
 
-Las variables se leen del entorno, de `.env.shared` en la raíz y de
-`microservicios/<servicio>/.env`. Ninguno de esos archivos se sube; las plantillas son
-`.env.example` e `infra/.env.example`.
+Las variables se toman del primer lugar donde se encuentren: el entorno, el `.env` de la raíz
+(el del monolito, que lee `backend_web`), `.env.shared` en la raíz y
+`microservicios/<servicio>/.env`. Como el `.env` de la raíz trae la `JWT_SECRET_KEY` del
+monolito, la de los servicios se define en el entorno. Ninguno de esos archivos se sube; las
+plantillas son `.env.example` e `infra/.env.example`.
 
 ## 13. Evidencias
 
@@ -454,19 +470,20 @@ ruta en Swagger en XML y en JSON. Las 12 respondieron 200.
 
 - Las apps móvil y de escritorio: se entregan en el tercer parcial.
 - MongoDB, Google Cloud Storage y nginx.
-- Del grupo de las 10:00: los XSD, las pruebas de integración del flujo completo, el
+- Del grupo de las 10:00: los XSD de escenario, resultado de una corrida, caso y lote de sincronización, las pruebas de integración del flujo completo, el
   `docker-compose` con todos los servicios y la consola.
 
 **Pendientes del grupo 14:00:**
 
-- Se corrigió la serialización de claves no válidas como etiqueta XML (`0-19`, `80+`)
-  en la biblioteca común; `de_xml` reconoce el atributo `clave` para reconstruir el
-  diccionario. Las tres pruebas que registraban este problema dejan de ser `xfail`.
-  La validación de la suite completa queda reflejada en el nuevo registro de pruebas,
-  y los endpoints deben volverse a verificar con los contenedores de la versión integrada.
+- Volver a verificar con los contenedores de la versión integrada los endpoints cuyo XML se
+  corrigió: `GET /api/v1/diseases`, `parametros` con `letalidad_por_edad` y
+  `GET /regions/{id}/age-groups`.
 
 **Corregido en esta entrega:**
 
+- Se corrigió la serialización de claves no válidas como etiqueta XML (`0-19`, `80+`)
+  en la biblioteca común; `de_xml` reconoce el atributo `clave` para reconstruir el
+  diccionario. Las tres pruebas que registraban este problema dejan de ser `xfail`.
 - `poblacion`: `PUT /age-groups` descartaba `expected_groups.edad_no_especificada`, que el
   control de concurrencia de `backend_web` compara, y toda corrección terminaba en error.
   Ahora la ruta la valida y la pasa, como la pantalla del monolito.
@@ -476,6 +493,7 @@ ruta en Swagger en XML y en JSON. Las 12 respondieron 200.
   tiene columna `id`. Se corrigió y ya está al final de `dump_completo.sql`.
 
 **Diferencias entre el plan y el código:**
+
 - Ningún servicio emite todavía tokens de servicio; `usuarios` y `roles` cierran sesiones
   directo en Redis en vez de llamar a `DELETE /api/v1/sessions/user/{id}`.
 - `@requiere_token` revisa Redis con el cliente de la fábrica, no con `sesiones.verificar()`.

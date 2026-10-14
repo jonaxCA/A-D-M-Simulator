@@ -25,29 +25,32 @@ Las peticiones y respuestas completas deben conservarse y verificarse por operac
 |---|---|---|
 | `pruebas/pruebas_unitarias_2026-10-13.txt` | Ejecución previa: 198 pruebas aprobadas, sin fallos informados | Histórico |
 | `pruebas/pytest_microservicios.txt` | Última ejecución anterior a corregir XML: **291 passed, 3 xfailed, 34 subtests passed** | Histórico |
-| `pruebas/pytest_microservicios_xml_corregido.txt` | Nueva ejecución después de corregir XML: 307 passed, 34 subtests passed in 1.64s | Registrada |
+| `pruebas/pytest_microservicios_xml_corregido.txt` | Nueva ejecución después de corregir XML: 307 passed, 34 subtests passed in 1.64s | Histórico |
+| `pruebas/pytest_microservicios_xsd.txt` | Ejecución con la validación XSD (D15): **322 passed**, con el detalle de las 15 pruebas de `test_xsd.py` | Histórico |
+| `pruebas/pytest_microservicios_integracion.txt` | Resultado actual, con las pruebas de integración iniciales: **325 passed**, con el detalle de las 3 de `pruebas_integracion/` | Registrada |
 | `pruebas/roles_postgres.txt` | Privilegios de roles por servicio: 21/21, según el registro existente | Registrado |
 | `servicios/<servicio>/health.png` | Estado de salud de cada servicio | 12 imágenes |
 | `servicios/<servicio>/json.png` | Respuesta en JSON de cada servicio | 12 imágenes |
 | `servicios/<servicio>/xml.png` | Respuesta en XML de cada servicio | 12 imágenes |
 | `swagger/` | Capturas adicionales de Swagger de algunos servicios | Parcial |
 
-No se afirma que los 26 microservicios estén desplegados ni que se haya probado
-un flujo de negocio integrado. Esos resultados deben verificarse por separado.
+No se afirma que los 26 microservicios estén desplegados ni que se haya probado un flujo
+de negocio contra los servicios desplegados. Las pruebas de integración iniciales
+(`microservicios/pruebas_integracion/`) recorren el flujo de identidad con Redis y base
+simulados; el flujo completo contra los contenedores debe verificarse por separado.
 
 ## Cómo se toma cada evidencia
 
 ### Pruebas (`pruebas/`)
 
-Desde la raíz, con el entorno virtual activo, una carpeta a la vez (ver
-`docs/INSTALACION.md`, Paso M6):
+Desde la raíz, con el entorno virtual activo (ver `docs/INSTALACION.md`, sección "Docker:
+microservicios del grupo 14:00", paso 5):
 
 ```bash
-python -m pytest microservicios/<carpeta> -v -p no:cacheprovider --no-header
+python -m pytest microservicios -v
 ```
 
-El archivo se nombra `pruebas_unitarias_<AAAA-MM-DD>.txt` y empieza con la fecha, la rama y el
-commit.
+Cada archivo de resultados indica la fecha y el resultado de la ejecución.
 
 ### Peticiones (`peticiones/<servicio>/`)
 
@@ -71,9 +74,9 @@ Por servicio, al menos un caso de cada tipo que tenga:
 - sin token (401) y sin permiso (403);
 - error de negocio (409).
 
-### Capturas (`capturas/`)
+### Capturas (`servicios/` y `swagger/`)
 
-- `servicios/<servicio>/`: Swagger (`http://127.0.0.1:<puerto>/docs`) o Postman, con la
+- `servicios/<servicio>/`: Swagger (`http://localhost:<puerto>/docs`) o Postman, con la
   petición y la respuesta visibles, una en JSON y otra en XML. Colección de Postman:
   `docs/contratos/postman/`.
 - Para contenedores: `docker ps` con los contenedores en `(healthy)` y

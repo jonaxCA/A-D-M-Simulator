@@ -36,4 +36,4 @@ curl "http://127.0.0.1:5215/api/v1/intervention-types"               # XML
 curl "http://127.0.0.1:5215/api/v1/intervention-types/CUBREBOCAS?format=json"
 ```
 
-Pendiente: evidencia contra la base real y la entrada en el compose (bloque J).
+Pendiente: la entrada en el compose (bloque J). Evidencia de funcionamiento en `evidencias/servicios/tipos-intervencion/`.

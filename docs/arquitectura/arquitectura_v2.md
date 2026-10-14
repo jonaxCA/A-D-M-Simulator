@@ -15,7 +15,10 @@
 - **Redis 7.4** en `infra/docker-compose.yml` (por ahora es lo único que levanta el compose).
 - **Un rol de PostgreSQL por servicio** en la migración `026_roles_por_servicio.sql`.
 - Un `Dockerfile` por servicio, contrato OpenAPI en `docs/contratos/<servicio>/` y Swagger en
-  `/docs` de cada uno.
+  `/docs` de cada uno. XSD del error, de la enfermedad y de sus parámetros, validados con
+  `xmlschema` (D15).
+- **Pruebas de integración iniciales** del flujo de identidad entre `auth`, `sesiones`,
+  `usuarios` y `roles` (`microservicios/pruebas_integracion/`).
 
 Los servicios son para las apps de escritorio (XML) y móvil (JSON) del tercer parcial. El
 monolito (`frontend_web`) sigue hablando directo con PostgreSQL y no los llama.
@@ -24,8 +27,8 @@ monolito (`frontend_web`) sigue hablando directo con PostgreSQL y no los llama.
 
 `casos`, `sincronizacion`, `escenarios`, `intervenciones`, `aprobacion`, `validacion`,
 `escenarios-xml`, `corridas`, `simulador`, `resultados`, `comparacion`, `pareto`,
-`notificaciones`, `estado-servicios`, la consola, el `docker-compose` completo, los XSD y las
-pruebas de integración del flujo completo. Están en el catálogo; este documento no los da por
+`notificaciones`, `estado-servicios`, la consola, el `docker-compose` completo, los XSD de escenario, resultado de una corrida, caso y lote de sincronización
+y las pruebas de integración del flujo completo. Están en el catálogo; este documento no los da por
 hechos.
 
 ## Diagrama

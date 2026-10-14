@@ -36,4 +36,4 @@ curl "http://127.0.0.1:5251/api/v1/dashboard/indicators?format=json"
 curl "http://127.0.0.1:5251/api/v1/dashboard/situation?limit=3"
 ```
 
-Pendiente: evidencia contra la base real y la entrada en el compose (bloque J).
+Pendiente: la entrada en el compose (bloque J). Evidencia de funcionamiento en `evidencias/servicios/indicadores/`.

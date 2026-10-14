@@ -64,4 +64,4 @@ curl -X POST "http://127.0.0.1:5201/api/v1/auth/login?format=json" \
 El `access_token` va como `Authorization: Bearer <token>` en las rutas protegidas de los demás
 servicios.
 
-Pendiente: Dockerfile y entrada en el compose (bloque J) y evidencia contra la base real.
+Pendiente: entrada en el compose (bloque J). Evidencia de funcionamiento en `evidencias/servicios/auth/`.
