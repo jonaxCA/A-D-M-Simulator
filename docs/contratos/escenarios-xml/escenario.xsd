@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Escenario completo de EPIDEMIA (versión, población por edad e intervenciones).
+  Sin espacio de nombres, igual que el resto de los documentos XML de los servicios.
+  Lo publica el servicio escenarios-xml en GET /api/v1/schemas/scenario.xsd.
+  Las referencias a la enfermedad, la región y el tipo de intervención son por CÓDIGO
+  (diseases.code, regions.code, intervention_types.code), no por id: los ids cambian de
+  una base a otra y los códigos no.
+  Reglas que un XSD no puede expresar (suma de la población por edad, fin_dia >= inicio_dia,
+  política de edad desconocida) las revisa el servicio al importar y las reporta como 422.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:simpleType name="TextoNoVacio">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:pattern value=".*\S.*"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Nombre">
+    <xs:restriction base="TextoNoVacio">
+      <xs:maxLength value="160"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CodigoCatalogo">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="40"/>
+      <xs:pattern value="[A-Za-z0-9_\-]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Proporción 0 a 1 con tres decimales, como NUMERIC(4,3) de la base. -->
+  <xs:simpleType name="Proporcion">
+    <xs:restriction base="xs:decimal">
+      <xs:minInclusive value="0"/>
+      <xs:maxInclusive value="1"/>
+      <xs:fractionDigits value="3"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Dia">
+    <xs:restriction base="xs:integer">
+      <xs:minInclusive value="0"/>
+      <xs:maxInclusive value="32767"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="GrupoEdad">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="0-19"/>
+      <xs:enumeration value="20-39"/>
+      <xs:enumeration value="40-59"/>
+      <xs:enumeration value="60-79"/>
+      <xs:enumeration value="80+"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="EstadoVersion">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="borrador"/>
+      <xs:enumeration value="en_revision"/>
+      <xs:enumeration value="aprobado"/>
+      <xs:enumeration value="rechazado"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PoliticaEdad">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="excluir"/>
+      <xs:enumeration value="prorratear"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TipoParametro">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="numero"/>
+      <xs:enumeration value="entero"/>
+      <xs:enumeration value="texto"/>
+      <xs:enumeration value="booleano"/>
+      <xs:enumeration value="lista"/>
+      <xs:enumeration value="json"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="Referencia">
+    <xs:attribute name="codigo" type="CodigoCatalogo" use="required"/>
+    <xs:attribute name="nombre" type="xs:string" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="GrupoPoblacion">
+    <xs:simpleContent>
+      <xs:extension base="xs:nonNegativeInteger">
+        <xs:attribute name="edad" type="GrupoEdad" use="required"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="PorEdad">
+    <xs:sequence>
+      <xs:element name="grupo" type="GrupoPoblacion" minOccurs="5" maxOccurs="5"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="EdadNoEspecificada">
+    <xs:simpleContent>
+      <xs:extension base="xs:nonNegativeInteger">
+        <xs:attribute name="politica" type="PoliticaEdad" use="optional"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="Poblacion">
+    <xs:sequence>
+      <xs:element name="por_edad" type="PorEdad" minOccurs="0"/>
+      <xs:element name="edad_no_especificada" type="EdadNoEspecificada" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="total" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:integer">
+          <xs:minInclusive value="1000"/>
+          <xs:maxInclusive value="5000000"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:complexType>
+
+  <!-- Valor de un parámetro: texto, o <elemento> repetido cuando tipo="lista". -->
+  <xs:complexType name="Parametro" mixed="true">
+    <xs:sequence>
+      <xs:element name="elemento" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="nombre" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="[A-Za-z_][A-Za-z0-9_]*"/>
+          <xs:maxLength value="60"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="tipo" type="TipoParametro" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="Parametros">
+    <xs:sequence>
+      <xs:element name="parametro" type="Parametro" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Intervencion">
+    <xs:sequence>
+      <xs:element name="inicio_dia" type="Dia"/>
+      <xs:element name="fin_dia" type="Dia" minOccurs="0"/>
+      <xs:element name="cobertura" type="Proporcion" minOccurs="0"/>
+      <xs:element name="cumplimiento" type="Proporcion" minOccurs="0"/>
+      <xs:element name="parametros" type="Parametros" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="orden" type="Dia" use="required"/>
+    <xs:attribute name="tipo" type="CodigoCatalogo" use="required"/>
+    <!-- Código de la región objetivo; si falta, aplica a toda la región del escenario. -->
+    <xs:attribute name="region" type="CodigoCatalogo" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="Intervenciones">
+    <xs:sequence>
+      <xs:element name="intervencion" type="Intervencion" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Version">
+    <xs:sequence>
+      <xs:element name="poblacion" type="Poblacion"/>
+      <xs:element name="horizonte_dias">
+        <xs:simpleType>
+          <xs:restriction base="xs:integer">
+            <xs:minInclusive value="1"/>
+            <xs:maxInclusive value="1095"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+      <xs:element name="infectados_iniciales" type="xs:positiveInteger"/>
+      <xs:element name="notas" type="xs:string" minOccurs="0"/>
+      <xs:element name="intervenciones" type="Intervenciones"/>
+    </xs:sequence>
+    <xs:attribute name="numero" type="xs:positiveInteger" use="required"/>
+    <!-- estado y vigente son informativos al exportar; al importar se ignoran: toda versión importada nace borrador. -->
+    <xs:attribute name="estado" type="EstadoVersion" use="optional"/>
+    <xs:attribute name="vigente" type="xs:boolean" use="optional"/>
+  </xs:complexType>
+
+  <xs:element name="escenario">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="nombre" type="Nombre"/>
+        <xs:element name="descripcion" type="xs:string" minOccurs="0"/>
+        <xs:element name="enfermedad" type="Referencia"/>
+        <xs:element name="region" type="Referencia"/>
+        <xs:element name="version" type="Version"/>
+      </xs:sequence>
+      <xs:attribute name="esquema" use="required" fixed="1.0" type="xs:string"/>
+      <xs:attribute name="id" type="xs:positiveInteger" use="optional"/>
+    </xs:complexType>
+    <xs:unique name="grupoUnico">
+      <xs:selector xpath="version/poblacion/por_edad/grupo"/>
+      <xs:field xpath="@edad"/>
+    </xs:unique>
+    <xs:unique name="ordenUnico">
+      <xs:selector xpath="version/intervenciones/intervencion"/>
+      <xs:field xpath="@orden"/>
+    </xs:unique>
+  </xs:element>
+</xs:schema>

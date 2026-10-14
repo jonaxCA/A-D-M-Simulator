@@ -1,0 +1,586 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - escenarios-xml",
+    "version": "0.1.0",
+    "description": "Exporta e importa escenarios completos como documento XML validado contra docs/contratos/escenarios-xml/escenario.xsd. Este servicio no escribe tablas: importa llamando a validacion, escenarios (en XML) e intervenciones. Los errores son RFC 7807 (docs/contratos/comun/error.xsd). Los ejemplos están en docs/contratos/escenarios-xml/ejemplos."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5235"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Problema": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "codigo",
+          "instance"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "codigo": {
+            "type": "string",
+            "example": "DATOS_INVALIDOS"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "errores": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ruta": {
+                  "type": "string"
+                },
+                "mensaje": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Importacion": {
+        "type": "object",
+        "required": [
+          "scenario_id",
+          "version_id",
+          "version_number",
+          "intervenciones_creadas",
+          "avisos"
+        ],
+        "properties": {
+          "scenario_id": {
+            "type": "integer"
+          },
+          "version_id": {
+            "type": "integer"
+          },
+          "version_number": {
+            "type": "integer",
+            "description": "Siempre 1: lo importado es un escenario nuevo."
+          },
+          "intervenciones_creadas": {
+            "type": "integer"
+          },
+          "avisos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/scenarios/{id}/export": {
+      "get": {
+        "summary": "Exportar un escenario completo en XML",
+        "operationId": "exportar_escenario",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Roles: ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR. Documento siempre XML (application/xml) validado contra escenario.xsd; ?format=json responde 400 y Accept se ignora. Registra EXPORT en la bitácora.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "description": "Número de versión; sin él, la vigente.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Solo afecta a los errores y a la respuesta de importación: XML por defecto, JSON con ?format=json o Accept: application/json. El export no admite json (400).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Documento del escenario",
+            "content": {
+              "application/xml": {
+                "schema": {
+                  "type": "string",
+                  "description": "Validable con escenario.xsd"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario esquema=\"1.0\" id=\"5\">\n  <nombre>Brote de influenza en Monterrey</nombre>\n  <descripcion>Cierre de escuelas y campaña de vacunación.</descripcion>\n  <enfermedad codigo=\"INFLUENZA_A_H1N1\"/>\n  <region codigo=\"19039\"/>\n  <version numero=\"1\" estado=\"borrador\" vigente=\"true\">\n    <poblacion total=\"100000\">\n      <por_edad>\n        <grupo edad=\"0-19\">28000</grupo>\n        <grupo edad=\"20-39\">31000</grupo>\n        <grupo edad=\"40-59\">24000</grupo>\n        <grupo edad=\"60-79\">12000</grupo>\n        <grupo edad=\"80+\">3000</grupo>\n      </por_edad>\n      <edad_no_especificada politica=\"prorratear\">2000</edad_no_especificada>\n    </poblacion>\n    <horizonte_dias>180</horizonte_dias>\n    <infectados_iniciales>10</infectados_iniciales>\n    <notas>Escenario de ejemplo; no son datos reales.</notas>\n    <intervenciones>\n      <intervencion orden=\"0\" tipo=\"CIERRE_ESCUELAS\">\n        <inicio_dia>20</inicio_dia>\n        <fin_dia>60</fin_dia>\n        <cobertura>0.800</cobertura>\n        <cumplimiento>0.900</cumplimiento>\n        <parametros>\n          <parametro nombre=\"reduccion\" tipo=\"numero\">0.8</parametro>\n        </parametros>\n      </intervencion>\n      <intervencion orden=\"1\" tipo=\"VACUNACION\" region=\"19039\">\n        <inicio_dia>30</inicio_dia>\n        <parametros>\n          <parametro nombre=\"eficacia\" tipo=\"numero\">0.6</parametro>\n          <parametro nombre=\"dosis_diarias\" tipo=\"entero\">500</parametro>\n          <parametro nombre=\"prioridad\" tipo=\"texto\">edad_desc</parametro>\n        </parametros>\n      </intervencion>\n    </intervenciones>\n  </version>\n</escenario>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "format distinto de xml",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El export es un documento y solo existe en XML (application/xml).",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/5/export"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El export es un documento y solo existe en XML (application/xml).</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/5/export</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios/5/export"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios/5/export</instance></problem>"
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios/5/export"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios/5/export</instance></problem>"
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el escenario.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/scenarios/999/export"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el escenario.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/scenarios/999/export</instance></problem>"
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "La versión no se puede exportar: La población por edad no tiene los grupos 0-19, 20-39, 40-59, 60-79, 80+.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/scenarios/5/export"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>La versión no se puede exportar: La población por edad no tiene los grupos 0-19, 20-39, 40-59, 60-79, 80+.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/scenarios/5/export</instance></problem>"
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "version debe ser un entero positivo.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/5/export"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>version debe ser un entero positivo.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/5/export</instance></problem>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/import": {
+      "post": {
+        "summary": "Importar un escenario desde XML",
+        "operationId": "importar_escenario",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Roles: ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR. Valida contra escenario.xsd (422 con errores por ruta), revisa reglas entre campos y códigos de catálogo (422), llama a validacion (POST /api/v1/validate), crea el escenario con escenarios (POST /api/v1/scenarios, en XML; con por_edad manda stratify=true y escenarios toma el reparto del censo, que validacion compara contra el del XML) y cada intervención con intervenciones (POST /api/v1/versions/{vid}/interventions, en JSON: sus parámetros pueden ser listas). La región destino de una intervención no se conserva (intervenciones no la guarda) y se avisa en avisos. Sin compensación automática: si una intervención falla, el escenario queda en borrador incompleto y el error (503 o el código que corresponda) indica el estado parcial. Nada se reintenta. XML mal formado o con DTD: 400; Content-Type distinto de XML: 415.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Solo afecta a los errores y a la respuesta de importación: XML por defecto, JSON con ?format=json o Accept: application/json. El export no admite json (400).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/xml": {
+              "schema": {
+                "type": "string",
+                "description": "Documento validable con escenario.xsd"
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario esquema=\"1.0\">\n  <nombre>Brote de influenza en Monterrey</nombre>\n  <descripcion>Cierre de escuelas y campaña de vacunación.</descripcion>\n  <enfermedad codigo=\"INFLUENZA_A_H1N1\"/>\n  <region codigo=\"19039\"/>\n  <version numero=\"1\" estado=\"borrador\" vigente=\"true\">\n    <poblacion total=\"100000\">\n      <por_edad>\n        <grupo edad=\"0-19\">28000</grupo>\n        <grupo edad=\"20-39\">31000</grupo>\n        <grupo edad=\"40-59\">24000</grupo>\n        <grupo edad=\"60-79\">12000</grupo>\n        <grupo edad=\"80+\">3000</grupo>\n      </por_edad>\n      <edad_no_especificada politica=\"prorratear\">2000</edad_no_especificada>\n    </poblacion>\n    <horizonte_dias>180</horizonte_dias>\n    <infectados_iniciales>10</infectados_iniciales>\n    <notas>Escenario de ejemplo; no son datos reales.</notas>\n    <intervenciones>\n      <intervencion orden=\"0\" tipo=\"CIERRE_ESCUELAS\">\n        <inicio_dia>20</inicio_dia>\n        <fin_dia>60</fin_dia>\n        <cobertura>0.800</cobertura>\n        <cumplimiento>0.900</cumplimiento>\n        <parametros>\n          <parametro nombre=\"reduccion\" tipo=\"numero\">0.8</parametro>\n        </parametros>\n      </intervencion>\n      <intervencion orden=\"1\" tipo=\"VACUNACION\" region=\"19039\">\n        <inicio_dia>30</inicio_dia>\n        <parametros>\n          <parametro nombre=\"eficacia\" tipo=\"numero\">0.6</parametro>\n          <parametro nombre=\"dosis_diarias\" tipo=\"entero\">500</parametro>\n          <parametro nombre=\"prioridad\" tipo=\"texto\">edad_desc</parametro>\n        </parametros>\n      </intervencion>\n    </intervenciones>\n  </version>\n</escenario>\n"
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Escenario creado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Importacion"
+                },
+                "example": {
+                  "scenario_id": 12,
+                  "version_id": 31,
+                  "version_number": 1,
+                  "intervenciones_creadas": 2,
+                  "avisos": []
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<importacion><scenario_id tipo=\"numero\">12</scenario_id><version_id tipo=\"numero\">31</version_id><version_number tipo=\"numero\">1</version_number><intervenciones_creadas tipo=\"numero\">2</intervenciones_creadas><avisos /></importacion>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo XML está mal formado.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/import"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo XML está mal formado.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/import</instance></problem>"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios/import"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios/import</instance></problem>"
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios/import"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios/import</instance></problem>"
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "El servicio escenarios respondió HTTP 409: Ya tienes un escenario con ese nombre.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/scenarios/import"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>El servicio escenarios respondió HTTP 409: Ya tienes un escenario con ese nombre.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/scenarios/import</instance></problem>"
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Request Entity Too Large",
+                  "status": 413,
+                  "detail": "La solicitud excede el tamaño permitido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/import"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Request Entity Too Large</title><status tipo=\"numero\">413</status><detail>La solicitud excede el tamaño permitido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/import</instance></problem>"
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unsupported Media Type",
+                  "status": 415,
+                  "detail": "Usa Content-Type: application/xml.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/import"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unsupported Media Type</title><status tipo=\"numero\">415</status><detail>Usa Content-Type: application/xml.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/import</instance></problem>"
+              }
+            }
+          },
+          "422": {
+            "description": "El XML no cumple el XSD, tiene datos inconsistentes, usa códigos inexistentes o la validación del motor lo rechazó. `errores` lista cada falla con su ruta.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "El XML no cumple el esquema scenario.xsd (1 falla). /escenario/version/intervenciones/intervencion[1]/cobertura: value must be <= 1",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/import",
+                  "errores": [
+                    {
+                      "ruta": "/escenario/version/intervenciones/intervencion[1]/cobertura",
+                      "mensaje": "value must be <= 1"
+                    }
+                  ]
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string",
+                  "description": "Validable con docs/contratos/comun/error.xsd"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>El XML no cumple el esquema scenario.xsd (1 falla). /escenario/version/intervenciones/intervencion[1]/cobertura: value must be &lt;= 1</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/import</instance><errores><item><ruta>/escenario/version/intervenciones/intervencion[1]/cobertura</ruta><mensaje>value must be &lt;= 1</mensaje></item></errores></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió. Estado parcial: el escenario 12 (versión 31, borrador) ya existe con 1 de 2 intervenciones; falló la de orden 1 (VACUNACION) y las siguientes no se intentaron. No se reintentó ni se borró nada: agrega las faltantes con POST /api/v1/versions/31/interventions o descarta el escenario.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios/import"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió. Estado parcial: el escenario 12 (versión 31, borrador) ya existe con 1 de 2 intervenciones; falló la de orden 1 (VACUNACION) y las siguientes no se intentaron. No se reintentó ni se borró nada: agrega las faltantes con POST /api/v1/versions/31/interventions o descarta el escenario.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/import</instance></problem>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schemas/scenario.xsd": {
+      "get": {
+        "summary": "XSD del documento de escenario",
+        "operationId": "esquema_escenario",
+        "description": "Público (no pide token): las apps lo descargan para validar antes de enviar. Es el archivo docs/contratos/escenarios-xml/escenario.xsd.",
+        "responses": {
+          "200": {
+            "description": "XML Schema",
+            "content": {
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" elementFormDefault=\"unqualified\">\n  <!-- ver docs/contratos/escenarios-xml/escenario.xsd -->\n</xs:schema>"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
