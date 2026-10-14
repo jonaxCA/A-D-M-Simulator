@@ -1,5 +1,12 @@
 name: epidemia
 
+# Parte común de los servicios. Cada uno se construye con la raíz del repositorio como
+# contexto y su propio Dockerfile; el HEALTHCHECK a /health sale del Dockerfile.
+# JWT_SECRET_KEY y DATABASE_URL_* van vacíos por defecto para que `up redis` no los exija; el
+# servicio que arranca sin ellos falla con un mensaje claro.
+x-servicio-base: &servicio-base
+  restart: unless-stopped
+
 services:
   redis:
     image: redis:7.4-alpine
@@ -29,6 +36,136 @@ services:
       timeout: 3s
       retries: 10
     restart: unless-stopped
+
+  # --- Vigilancia (perfil vigilancia) -------------------------------------------------------
+  casos:
+    <<: *servicio-base
+    build:
+      context: ..
+      dockerfile: microservicios/casos/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5221:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_CASOS:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  sincronizacion:
+    <<: *servicio-base
+    build:
+      context: ..
+      dockerfile: microservicios/sincronizacion/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5222:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_SINCRONIZACION:-}
+      SYNC_LOTE_TTL_SECONDS: ${SYNC_LOTE_TTL_SECONDS:-604800}
+      SERVICIO_CASOS_URL: http://casos:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+      casos:
+        condition: service_healthy
+
+  # --- Escenarios (perfil escenarios) -------------------------------------------------------
+  validacion:
+    <<: *servicio-base
+    build:
+      context: ..
+      dockerfile: microservicios/validacion/Dockerfile
+    profiles: [escenarios]
+    ports:
+      - "5234:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_VALIDACION:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  escenarios:
+    <<: *servicio-base
+    build:
+      context: ..
+      dockerfile: microservicios/escenarios/Dockerfile
+    profiles: [escenarios]
+    ports:
+      - "5231:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_ESCENARIOS:-}
+      SERVICIO_VALIDACION_URL: http://validacion:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+      validacion:
+        condition: service_healthy
+  intervenciones:
+    <<: *servicio-base
+    build:
+      context: ..
+      dockerfile: microservicios/intervenciones/Dockerfile
+    profiles: [escenarios]
+    ports:
+      - "5232:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_INTERVENCIONES:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  aprobacion:
+    <<: *servicio-base
+    build:
+      context: ..
+      dockerfile: microservicios/aprobacion/Dockerfile
+    profiles: [escenarios]
+    ports:
+      - "5233:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_APROBACION:-}
+      SERVICIO_VALIDACION_URL: http://validacion:8000
+      # notificaciones (otro grupo) aún no está en este compose: el aviso es best-effort
+      SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
+    depends_on:
+      redis:
+        condition: service_healthy
+      validacion:
+        condition: service_healthy
+  escenarios-xml:
+    <<: *servicio-base
+    build:
+      context: ..
+      dockerfile: microservicios/escenarios_xml/Dockerfile
+    profiles: [escenarios]
+    ports:
+      - "5235:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_ESCENARIOS_XML:-}
+      SERVICIO_VALIDACION_URL: http://validacion:8000
+      SERVICIO_ESCENARIOS_URL: http://escenarios:8000
+      SERVICIO_INTERVENCIONES_URL: http://intervenciones:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+      validacion:
+        condition: service_healthy
+      escenarios:
+        condition: service_healthy
+      intervenciones:
+        condition: service_healthy
 
 volumes:
   redis-datos:
