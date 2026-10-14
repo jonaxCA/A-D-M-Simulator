@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Service Unavailable",
+  "status": 503,
+  "detail": "Redis no está disponible.",
+  "codigo": "SERVICIO_NO_DISPONIBLE",
+  "instance": "/api/v1/cases"
+}

@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<problem><type>about:blank</type><title>Not Found</title><status tipo="numero">404</status><detail>No existe el caso.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/cases/1</instance></problem>
