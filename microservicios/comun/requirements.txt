@@ -3,3 +3,4 @@ PyJWT==2.7.0
 redis>=5,<7
 defusedxml>=0.7,<1
 requests>=2.31,<3
+xmlschema>=3,<5

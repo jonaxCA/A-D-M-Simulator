@@ -45,6 +45,10 @@ def lote(lote_id):
     return f"sync:lote:{lote_id}"
 
 
+def candado_lote(lote_id):
+    return f"sync:lote:{lote_id}:candado"
+
+
 def salud(servicio):
     return f"health:{servicio}"
 
