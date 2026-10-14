@@ -9,22 +9,31 @@ por `JWT_DE_EJEMPLO`, `REFRESH_DE_EJEMPLO` o `***`.
 
 ## Contenido
 
-```
+```text
 evidencias/
   README.md
-  pruebas/          resultado de las pruebas automáticas
-  peticiones/       petición y respuesta reales de cada servicio, en JSON y XML
-  capturas/         capturas de Swagger, Postman y del estado de los contenedores
+  pruebas/          pruebas automatizadas y verificación de privilegios PostgreSQL
+  servicios/        12 carpetas con health.png, json.png y xml.png
+  swagger/          capturas adicionales de los servicios que las incluyen
 ```
 
-`peticiones/` y `capturas/` se crean al subir su primera evidencia.
+En la rama del grupo 14:00 hay tres imágenes por cada uno de los 12 servicios,
+pero esto no prueba por sí solo que todos sus endpoints y escrituras hayan sido validados.
+Las peticiones y respuestas completas deben conservarse y verificarse por operación.
 
-| Carpeta | Archivo | Qué es | Estado |
-|---|---|---|---|
-| `pruebas/` | `pruebas_unitarias_2026-10-13.txt` | Salida de `pytest -v` de la biblioteca común y de los 12 servicios: **198 pasan, 0 fallan**. Base de datos y Redis simulados. | Hecho |
-| `peticiones/` | `<servicio>/<operacion>_<caso>.md` | Petición y respuesta contra los servicios levantados con la base real | Pendiente |
-| `capturas/` | `<servicio>/<operacion>_<formato>.png` | Swagger o Postman ejecutando la petición | Pendiente |
-| `capturas/` | `docker/` | `docker ps` y `docker compose ps` con los contenedores `healthy` | Pendiente |
+| Archivo o directorio | Alcance | Estado |
+|---|---|---|
+| `pruebas/pruebas_unitarias_2026-10-13.txt` | Ejecución previa: 198 pruebas aprobadas, sin fallos informados | Histórico |
+| `pruebas/pytest_microservicios.txt` | Última ejecución anterior a corregir XML: **291 passed, 3 xfailed, 34 subtests passed** | Histórico |
+| `pruebas/pytest_microservicios_xml_corregido.txt` | Nueva ejecución después de corregir XML: 307 passed, 34 subtests passed in 1.64s | Registrada |
+| `pruebas/roles_postgres.txt` | Privilegios de roles por servicio: 21/21, según el registro existente | Registrado |
+| `servicios/<servicio>/health.png` | Estado de salud de cada servicio | 12 imágenes |
+| `servicios/<servicio>/json.png` | Respuesta en JSON de cada servicio | 12 imágenes |
+| `servicios/<servicio>/xml.png` | Respuesta en XML de cada servicio | 12 imágenes |
+| `swagger/` | Capturas adicionales de Swagger de algunos servicios | Parcial |
+
+No se afirma que los 26 microservicios estén desplegados ni que se haya probado
+un flujo de negocio integrado. Esos resultados deben verificarse por separado.
 
 ## Cómo se toma cada evidencia
 
@@ -64,27 +73,27 @@ Por servicio, al menos un caso de cada tipo que tenga:
 
 ### Capturas (`capturas/`)
 
-- `capturas/<servicio>/`: Swagger (`http://127.0.0.1:<puerto>/docs`) o Postman, con la
+- `servicios/<servicio>/`: Swagger (`http://127.0.0.1:<puerto>/docs`) o Postman, con la
   petición y la respuesta visibles, una en JSON y otra en XML. Colección de Postman:
   `docs/contratos/postman/`.
-- `capturas/docker/`: `docker ps` con los contenedores en `(healthy)` y
+- Para contenedores: `docker ps` con los contenedores en `(healthy)` y
   `docker compose -f infra/docker-compose.yml ps` con Redis en `(healthy)`.
 
-## Pendiente por servicio
+## Evidencia por servicio
 
-Marca cada casilla al subir su evidencia.
+Las imágenes existentes se marcaron, pero falta verificar las peticiones completas de cada operación.
 
 | Servicio | Puerto | Peticiones | Captura JSON | Captura XML |
 |---|---|---|---|---|
-| `auth` | 5201 | [ ] | [ ] | [ ] |
-| `sesiones` | 5202 | [ ] | [ ] | [ ] |
-| `usuarios` | 5203 | [ ] | [ ] | [ ] |
-| `roles` | 5204 | [ ] | [ ] | [ ] |
-| `enfermedades` | 5211 | [ ] | [ ] | [ ] |
-| `parametros` | 5212 | [ ] | [ ] | [ ] |
-| `regiones` | 5213 | [ ] | [ ] | [ ] |
-| `poblacion` | 5214 | [ ] | [ ] | [ ] |
-| `tipos-intervencion` | 5215 | [ ] | [ ] | [ ] |
-| `indicadores` | 5251 | [ ] | [ ] | [ ] |
-| `series` | 5252 | [ ] | [ ] | [ ] |
-| `zonas` | 5253 | [ ] | [ ] | [ ] |
+| `auth` | 5201 | [ ] | [x] | [x] |
+| `sesiones` | 5202 | [ ] | [x] | [x] |
+| `usuarios` | 5203 | [ ] | [x] | [x] |
+| `roles` | 5204 | [ ] | [x] | [x] |
+| `enfermedades` | 5211 | [ ] | [x] | [x] |
+| `parametros` | 5212 | [ ] | [x] | [x] |
+| `regiones` | 5213 | [ ] | [x] | [x] |
+| `poblacion` | 5214 | [ ] | [x] | [x] |
+| `tipos-intervencion` | 5215 | [ ] | [x] | [x] |
+| `indicadores` | 5251 | [ ] | [x] | [x] |
+| `series` | 5252 | [ ] | [x] | [x] |
+| `zonas` | 5253 | [ ] | [x] | [x] |

@@ -99,10 +99,12 @@ def test_consulta_xml_por_omision(cliente):
     assert raiz.find("parametros").find("r0").findtext("valor") == "1.3"
 
 
-@pytest.mark.xfail(strict=True, reason="epidemia_comun.formatos.a_xml usa claves como '0-19' "
-                                       "de letalidad_por_edad como etiqueta y el XML queda mal formado")
 def test_xml_valido_con_letalidad_por_edad(cliente):
-    ET.fromstring(cliente.get("/api/v1/diseases/1/parameters").data)
+    respuesta = cliente.get("/api/v1/diseases/1/parameters")
+    assert respuesta.status_code == 200
+    raiz = ET.fromstring(respuesta.data)
+    assert raiz.find(".//entrada[@clave='0-19']").text == "0.0001"
+    assert raiz.find(".//entrada[@clave='80+']").text == "0.08"
 
 
 def test_consulta_json_con_format_y_con_accept(cliente):

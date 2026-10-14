@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import date, datetime
 from decimal import Decimal
 from xml.etree import ElementTree as ET
@@ -27,8 +28,17 @@ SINGULARES = {"regiones": "region", "enfermedades": "enfermedad",
               "tendencia": "punto"}
 
 
+# Un nombre de etiqueta XML no puede iniciar con numero ni contener "+".
+# Las claves que no cumplen se escriben como <entrada clave="0-19">.
+_NOMBRE_XML = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*$")
+
+
 def _elemento(padre, nombre, valor):
-    nodo = ET.SubElement(padre, str(nombre))
+    nombre = str(nombre)
+    if _NOMBRE_XML.fullmatch(nombre) and not nombre.lower().startswith("xml"):
+        nodo = ET.SubElement(padre, nombre)
+    else:
+        nodo = ET.SubElement(padre, "entrada", {"clave": nombre})
     if isinstance(valor, dict):
         for clave, dato in valor.items():
             _elemento(nodo, clave, dato)
@@ -91,12 +101,13 @@ def de_xml(datos):
         salida = {}
         for hijo in actual:
             valor = leer(hijo)
-            if hijo.tag in salida:
-                if not isinstance(salida[hijo.tag], list):
-                    salida[hijo.tag] = [salida[hijo.tag]]
-                salida[hijo.tag].append(valor)
+            clave = hijo.get("clave") if hijo.tag == "entrada" and "clave" in hijo.attrib else hijo.tag
+            if clave in salida:
+                if not isinstance(salida[clave], list):
+                    salida[clave] = [salida[clave]]
+                salida[clave].append(valor)
             else:
-                salida[hijo.tag] = valor
+                salida[clave] = valor
         return salida
     return leer(nodo)
 

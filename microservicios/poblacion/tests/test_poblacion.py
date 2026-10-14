@@ -87,10 +87,12 @@ def test_grupos_en_json(cliente):
     assert datos["grupos"] == GRUPOS and datos["edad_no_especificada"] == 6103
 
 
-@pytest.mark.xfail(strict=True, reason="epidemia_comun.formatos.a_xml usa claves como '0-19' "
-                                       "como etiqueta y el XML queda mal formado")
 def test_grupos_en_xml_valido(cliente):
-    ET.fromstring(cliente.get("/api/v1/regions/39/age-groups").data)
+    respuesta = cliente.get("/api/v1/regions/39/age-groups")
+    assert respuesta.status_code == 200
+    raiz = ET.fromstring(respuesta.data)
+    assert raiz.find(".//entrada[@clave='0-19']") is not None
+    assert raiz.find(".//entrada[@clave='80+']") is not None
 
 
 @pytest.mark.parametrize("ruta,cuerpo", [
