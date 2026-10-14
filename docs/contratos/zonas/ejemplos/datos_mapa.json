@@ -1,0 +1,108 @@
+{
+  "municipios": [
+    {
+      "id": 12,
+      "region_code": "19001",
+      "nombre": "Abasolo",
+      "casos": 0,
+      "incidencia": 0.0,
+      "variacion": 0.0,
+      "lat": 25.940267,
+      "lon": -100.40595,
+      "nivel": "baja",
+      "tendencia": []
+    },
+    {
+      "id": 13,
+      "region_code": "19002",
+      "nombre": "Agualeguas",
+      "casos": 0,
+      "incidencia": 0.0,
+      "variacion": 0.0,
+      "lat": 26.298727,
+      "lon": -99.703122,
+      "nivel": "baja",
+      "tendencia": []
+    },
+    {
+      "id": 15,
+      "region_code": "19004",
+      "nombre": "Allende",
+      "casos": 0,
+      "incidencia": 0.0,
+      "variacion": 0.0,
+      "lat": 25.301434,
+      "lon": -100.029546,
+      "nivel": "baja",
+      "tendencia": []
+    }
+  ],
+  "serie": {
+    "fechas": [
+      "2026-10-06",
+      "2026-10-07",
+      "2026-10-08"
+    ],
+    "dias_periodo": 7,
+    "municipios": [
+      {
+        "region_code": "19001",
+        "casos": [
+          0,
+          0,
+          0
+        ],
+        "incidencia": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "variacion": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "region_code": "19002",
+        "casos": [
+          0,
+          0,
+          0
+        ],
+        "incidencia": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "variacion": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "region_code": "19003",
+        "casos": [
+          0,
+          0,
+          0
+        ],
+        "incidencia": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "variacion": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ]
+  },
+  "filtros": {
+    "disease_id": null,
+    "days": 7
+  }
+}

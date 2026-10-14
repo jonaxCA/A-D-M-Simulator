@@ -18,21 +18,21 @@ en [`docs/arquitectura/microservicios.md`](arquitectura/microservicios.md). Este
 son las tareas.
 
 > Propuesta para repartir temprano. Cada bloque tiene un responsable y un revisor, y cada
-> casilla debería ser un issue, una rama y un Pull Request. Las casillas marcadas
-> **(decidir)** se resuelven en el bloque 0, antes de escribir código.
+> casilla debería ser un issue, una rama y un Pull Request. Las decisiones de esta etapa
+> ya están tomadas: están en el bloque 0 y en `docs/decisiones.md`.
 
 ---
 
 ## Reparto propuesto
 
-| Integrante | Servicios | Bloques transversales | Días aprox. | Revisa a |
-|---|---|---|---|---|
-| 1 | `auth`, `sesiones` | **A** Biblioteca común y plantilla · **L** Seguridad | 10.5 | 2 |
-| 2 | `usuarios`, `roles`, `regiones`, `poblacion`, `zonas`, `series` | **K** Redis | 10 | 1 |
-| 3 | `enfermedades`, `parametros`, `tipos-intervencion`, `casos`, `sincronizacion`, `indicadores` | **N** Sistema web · **P** Documentación | 9.75 | 6 |
-| 4 | `escenarios`, `intervenciones`, `aprobacion`, `validacion`, `escenarios-xml` | — | 9.5 | 5 |
-| 5 | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto`, `notificaciones` | — | 10 | 4 |
-| 6 | `estado-servicios` | **I** Consola · **J** Docker · **M** Contratos · **O2** Integración | 10.5 | 3 |
+| Integrante | Servicios                                                                                    | Bloques transversales                                               | Días aprox. | Revisa a |
+|------------|----------------------------------------------------------------------------------------------|---------------------------------------------------------------------|-------------|----------|
+| 1          | `auth`, `sesiones`                                                                           | **A** Biblioteca común y plantilla · **L** Seguridad                | 10.5        | 2        |
+| 2          | `usuarios`, `roles`, `regiones`, `poblacion`, `zonas`, `series`                              | **K** Redis                                                         | 10          | 1        |
+| 3          | `enfermedades`, `parametros`, `tipos-intervencion`, `casos`, `sincronizacion`, `indicadores` | **N** Sistema web · **P** Documentación                             | 9.75        | 6        |
+| 4          | `escenarios`, `intervenciones`, `aprobacion`, `validacion`, `escenarios-xml`                 | —                                                                   | 9.5         | 5        |
+| 5          | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto`, `notificaciones`             | —                                                                   | 10          | 4        |
+| 6          | `estado-servicios`                                                                           | **I** Consola · **J** Docker · **M** Contratos · **O2** Integración | 10.5        | 3        |
 
 - El reparto se equilibra **por esfuerzo, no por número de servicios**. Un servicio de solo
   lectura (`regiones`) es medio día; uno con reglas y llamadas a otros (`escenarios-xml`) son
@@ -51,15 +51,15 @@ son las tareas.
 
 ## Calendario (diez días hábiles)
 
-| Días | Qué |
-|---|---|
-| 1 | Bloque 0 completo. El integrante 6 arranca la imagen base y el compose con PostgreSQL y Redis; el integrante 1, la biblioteca común |
-| 2–3 | Biblioteca mínima (A1–A4) y plantilla (A6). Los demás: borrador de OpenAPI y mapa de funciones de sus servicios |
-| **3 · Hito 0** | Cada quien genera sus servicios con la plantilla, y los 26 contenedores responden `/health` |
-| **5 · Hito 1** | `auth` emite tokens y cada servicio responde **un GET protegido** en XML y en JSON, con Swagger. La consola lista los 26 servicios y su salud |
-| 6–8 | Escrituras, llamadas entre servicios, cola del simulador, XSD y el probador de la consola |
-| 9 | Pruebas de integración y guion de aceptación completo, corrido desde la consola |
-| **10 · Entrega** | Congelamiento, evidencias y `.tar.gz` |
+| Días             | Qué                                                                                                                                               |
+|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1                | Bloque 0 completo. El integrante 6 arranca la imagen base y agrega PostgreSQL al compose, que ya trae Redis; el integrante 1, la biblioteca común |
+| 2–3              | Biblioteca mínima (A1–A4) y plantilla (A6). Los demás: borrador de OpenAPI y mapa de funciones de sus servicios                                   |
+| **3 · Hito 0**   | Cada quien genera sus servicios con la plantilla, y los 26 contenedores responden `/health`                                                       |
+| **5 · Hito 1**   | `auth` emite tokens y cada servicio responde **un GET protegido** en XML y en JSON, con Swagger. La consola lista los 26 servicios y su salud     |
+| 6–8              | Escrituras, llamadas entre servicios, cola del simulador, XSD y el probador de la consola                                                         |
+| 9                | Pruebas de integración y guion de aceptación completo, corrido desde la consola                                                                   |
+| **10 · Entrega** | Congelamiento, evidencias y `.tar.gz`                                                                                                             |
 
 **Si el tiempo no alcanza, el orden de recorte es este** (los imprescindibles cubren los diez
 entregables):
@@ -85,27 +85,22 @@ entregables):
 - [ ] Los `.env` nunca entran al repositorio; solo `.env.example` y `.env.shared.example`
 - [ ] El `.tar.gz` de entrega incluye la carpeta `.git`
 
-### Decidido
+### Decidido (cada decisión queda anotada en `docs/decisiones.md`)
 - [ ] Docker: un contenedor por microservicio (ya no es opcional)
 - [ ] Los microservicios solo los usan las apps; el monolito no los consume
 - [ ] El catálogo de `docs/arquitectura/microservicios.md` es la referencia. Si un servicio
       cambia de tarea, de tablas o de puerto, se cambia ahí primero
-
-### Por decidir (se anota en `docs/decisiones.md`)
-- [ ] **(decidir)** Formato. Propuesta: el de clase, XML por defecto y JSON con
-      `?format=json`. Además, aceptar `Accept: application/json` como alternativa
-- [ ] **(decidir)** Si las apps de escritorio y móvil se entregan en este parcial o solo sus
-      servicios. **Confirmarlo con el profesor**
-- [ ] **(decidir)** Rutas en inglés, como en la arquitectura y en el catálogo, o en español
-- [ ] **(decidir)** Nombres de los servicios. Propuesta: los del catálogo, en español
-- [ ] **(decidir)** Si hace falta la `pasarela` (una sola entrada) o las apps usan el
-      directorio de `estado-servicios`
-- [ ] **(decidir)** Pruebas de los servicios con `pytest`, que también corre las 431 actuales
-      de `unittest`
-- [ ] **(decidir)** Validación de XSD con `xmlschema` o con `lxml`, y lectura de XML con
-      `defusedxml`, como en clase
-- [ ] Reservar los números de migración de esta etapa: 026 en adelante (regla de
-      `datos/AGENTS.md`)
+- [ ] Formato: el de clase, XML por defecto y JSON con `?format=json`. También se acepta
+      `Accept: application/json`; si los dos chocan, manda `?format`
+- [ ] Entregas: en este parcial, los 26 servicios con sus contratos; las apps de escritorio
+      y móvil, en el tercer parcial. Mientras tanto, la consola hace sus veces
+- [ ] Rutas en inglés, como en la arquitectura y en el catálogo (`/api/v1/scenarios`)
+- [ ] Nombres de los servicios en español, los del catálogo (`escenarios`, `corridas`…)
+- [ ] Sin `pasarela`: las apps y la consola piden la URL de cada servicio al directorio de
+      `estado-servicios`
+- [ ] Pruebas de los servicios con `pytest`, que también corre las 431 actuales de `unittest`
+- [ ] Validación de XSD con `xmlschema` y lectura de XML con `defusedxml`, como en clase
+- [ ] Migraciones de esta etapa reservadas: 026 en adelante (regla de `datos/AGENTS.md`)
 
 ### Estructura acordada
 - [ ] `microservicios/comun/` (paquete `epidemia_comun`), `microservicios/<servicio>/` para
@@ -131,8 +126,11 @@ referencia.
 - [ ] Arranque con waitress en el puerto 8000 dentro del contenedor
 
 ### A2. Formatos
-- [ ] `responder(datos, raiz)`: XML por defecto y JSON con `?format=json`. Un valor
-      desconocido es error 400, no el formato por omisión
+- [ ] `responder(datos, raiz)`: XML por defecto y JSON con `?format=json` o con
+      `Accept: application/json`; si los dos chocan, manda `?format`
+- [ ] Un valor desconocido de `?format` es error 400, no el formato por omisión. Un `Accept`
+      distinto de `application/json` (como el `text/html` de un navegador) se ignora y se
+      responde XML
 - [ ] Nombres singulares para los elementos de las colecciones (`escenarios` → `escenario`)
 - [ ] `leer_cuerpo()`: acepta JSON o XML según el `Content-Type`, con `defusedxml` y límite de
       tamaño
@@ -151,7 +149,7 @@ referencia.
   - [ ] `alg=HS256` (rechaza `none`);
   - [ ] firma;
   - [ ] `iss`, `aud`, `exp` y `nbf`;
-  - [ ] que no esté revocado en Redis;
+  - [ ] que no esté revocado ni su sesión cerrada (`sesiones.verificar()`);
   - [ ] el rol.
 - [ ] `@solo_servicios`: para las rutas internas, acepta solo un token de servicio
 - [ ] Del token sale el `Contexto` (usuario, IP, user agent) que ya usan las funciones que
@@ -159,8 +157,8 @@ referencia.
 - [ ] Si Redis está caído, una ruta protegida responde 503 y nunca deja pasar
 
 ### A5. Salud, Swagger y registro
-- [ ] `/health` en XML y JSON, con el estado de PostgreSQL y de Redis y la versión del
-      servicio
+- [ ] `/health` en XML y JSON, con el estado de PostgreSQL y de Redis
+      (`redis_compartido.estado()`) y la versión del servicio
 - [ ] `/openapi.json` servido desde el contrato del servicio y Swagger UI en `/docs`
 - [ ] Cada petición se registra con método, ruta, código, duración, usuario y un
       `X-Correlation-ID`
@@ -189,7 +187,8 @@ referencia.
 Vale para los 26. Cada servicio de los bloques B a H tiene una casilla que la remite.
 
 - [ ] Generado con la plantilla y en el puerto del catálogo
-- [ ] Responde XML por defecto y JSON con `?format=json`, y acepta cuerpos en los dos formatos
+- [ ] Responde XML por defecto y JSON con `?format=json` o `Accept: application/json`, y
+      acepta cuerpos en los dos formatos
 - [ ] `/health`, `/docs` (Swagger) y `/openapi.json`
 - [ ] Errores RFC 7807 en los dos formatos
 - [ ] Rutas protegidas con los mismos roles que la pantalla equivalente del monolito
@@ -213,15 +212,18 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 ### B1. `auth` · Integrante 1
 - [ ] Login con el bloqueo por intentos y la bitácora (`LOGIN` / `LOGIN_FAILED`) de hoy
 - [ ] Emite el *access* (20 min) y el *refresh*, y abre la sesión en Redis
+      (`sesiones.abrir()`)
 - [ ] Claims: `iss`, `aud`, `sub`, `roles`, `sid`, `jti`, `iat`, `nbf`, `exp`
 - [ ] Una cuenta inactiva o bloqueada recibe el mismo mensaje que una contraseña equivocada
 - [ ] Cumple la definición de terminado
 
 ### B2. `sesiones` · Integrante 1
 - [ ] `refresh` rota el *refresh*; uno ya usado cierra la sesión completa
-- [ ] `logout` revoca el *access* y cierra la sesión
+      (`sesiones.renovar()`)
+- [ ] `logout` revoca el *access* y cierra la sesión (`sesiones.revocar()` y `cerrar()`)
 - [ ] `current` dice quién soy, mis roles y cuándo vence la sesión
-- [ ] Ruta interna para cerrar todas las sesiones de una cuenta (la usan `usuarios` y `roles`)
+- [ ] Ruta interna para cerrar todas las sesiones de una cuenta (la usan `usuarios` y `roles`),
+      con `sesiones.cerrar_todas()`
 - [ ] Cumple la definición de terminado
 
 ### B3. `usuarios` · Integrante 2
@@ -333,9 +335,9 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 
 ### F1. `corridas`
 - [ ] Lanzar una corrida solo sobre una versión aprobada: crea el lote y la corrida, la mete
-      en la cola de Redis y responde 202 con su id
+      en la cola de Redis (`cola.encolar()`) y responde 202 con su id
 - [ ] Semilla opcional; `forzar_error` solo para ADMINISTRADOR, como hoy
-- [ ] Candado en Redis (`lock:corrida:<version>`) para que un doble clic no lance dos corridas
+- [ ] Candado en Redis (`candados.candado(llaves.candado_corrida(version), ttl)`) para que un doble clic no lance dos corridas
 - [ ] Estado y progreso (leídos de Redis y de PostgreSQL), y cancelar una corrida encolada
 - [ ] Cumple la definición de terminado
 
@@ -432,7 +434,7 @@ es la herramienta del guion de aceptación.
 - [ ] `infra/docker-compose.yml` con:
   - [ ] PostgreSQL, con volumen e inicialización: dump, semillas y migraciones 026 en
         adelante;
-  - [ ] Redis, con contraseña y AOF;
+  - [x] Redis, con contraseña y AOF (lo hizo el bloque K);
   - [ ] los 26 servicios y la consola;
   - [ ] `depends_on` con `condition: service_healthy`.
 - [ ] Perfiles del compose por dominio (`identidad`, `catalogos`, `escenarios`…), para
@@ -449,11 +451,34 @@ es la herramienta del guion de aceptación.
 
 ## K. Redis en operación · Integrante 2
 
-- [ ] Contenedor de Redis con `requirepass`, `appendonly yes` y `noeviction`, para que no se
-      expulsen sesiones ni revocaciones
-- [ ] Mantener la tabla de llaves del catálogo: cada llave con su TTL y su servicio dueño
-- [ ] En Redis se guarda el hash de los identificadores de sesión y de *refresh*, no el valor
-- [ ] Si Redis se cae:
+La capa de Redis de la biblioteca común y el contenedor se adelantaron antes del día 1. Su uso
+está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
+
+### K0. Módulo de Redis de `epidemia_comun` (listo)
+- [x] Cliente compartido con tiempos de espera cortos:
+  - [x] `requerido()` falla cerrado, con 503;
+  - [x] `opcional()` deja seguir con la base.
+- [x] `sesiones`:
+  - [x] abrir, renovar con *refresh* de un solo uso, cerrar y cerrar todas las de una cuenta;
+  - [x] revocar y verificar en un solo viaje.
+- [x] `cache` con TTL, que conserva `Decimal` y fechas
+- [x] `candados` con NX y TTL; solo suelta el candado quien lo tomó
+- [x] `cola` de corridas, con un cliente aparte para la espera bloqueante
+- [x] `llaves.py` con las llaves del catálogo, y una prueba que revisa que coincidan con la
+      tabla
+- [x] 33 pruebas con fakeredis; también pasan contra el Redis del compose con
+      `REDIS_URL_PRUEBAS`
+
+### K1. En operación
+- [x] Contenedor de Redis con `requirepass`, `appendonly yes` y `noeviction`, para que no se
+      expulsen sesiones ni revocaciones (`infra/docker-compose.yml`, Redis 7.4). Probado:
+      *healthcheck* en verde, rechaza conexiones sin contraseña, los datos sobreviven a un
+      reinicio y las 33 pruebas pasan contra él
+- [x] Tabla de llaves del catálogo con su TTL y su servicio dueño. Quien implemente
+      `simulador`, `sincronizacion` y `estado-servicios` anota el TTL de sus llaves
+- [x] En Redis se guarda la huella de los identificadores de sesión y de *refresh*, no el
+      valor
+- [ ] Si Redis se cae, en los servicios (la biblioteca ya lo hace y lo prueba):
   - [ ] lo protegido responde 503;
   - [ ] los catálogos públicos siguen respondiendo;
   - [ ] las cachés se reconstruyen solas al volver.
@@ -563,7 +588,8 @@ cumplido.
 - [ ] 1. `docker compose up` desde cero: los 26 servicios, la consola, PostgreSQL y Redis en
       verde
 - [ ] 2. En la consola, el panel de salud muestra los 26 en verde
-- [ ] 3. `/health` de un servicio en XML (sin parámetro) y en JSON (`?format=json`)
+- [ ] 3. `/health` de un servicio en XML (sin parámetro), en JSON con `?format=json` y en
+      JSON con `Accept: application/json`
 - [ ] 4. Abrir el Swagger de varios servicios desde el selector
 - [ ] 5. Iniciar sesión como analista: recibir *access* y *refresh*
 - [ ] 6. Consultar el catálogo de enfermedades en XML y en JSON
@@ -598,7 +624,7 @@ Verificaciones extra:
 - MongoDB, Google Cloud Storage y nginx: no se vieron en clase
 - Motor CUDA o Numba y lotes de 30 o más réplicas
 - Límites de consumo (*rate limiting*) y HTTPS con certificados reales
-- Las apps de escritorio y móvil: los servicios quedan listos para ellas, salvo que el
-  profesor diga que entran en este parcial
+- Las apps de escritorio y móvil: se entregan en el tercer parcial. Los servicios y sus
+  contratos quedan listos y documentados para ellas
 - Los servicios opcionales del catálogo: `recuperacion`, `dispositivos`, `evidencias`,
-  `vacunas`, `configuracion` y `pasarela`
+  `vacunas` y `configuracion`

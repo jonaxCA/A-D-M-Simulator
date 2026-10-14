@@ -33,6 +33,9 @@ refiere únicamente a los **datos de demostración** (`demo_datos_nl.sql`), no a
 Estas instrucciones funcionan en **Linux, macOS y Windows**. Si es tu primera vez,
 sigue los 5 pasos en orden y no te saltes ninguno.
 
+Para los microservicios y Docker, termina primero los pasos 1 a 3 y sigue en
+**Microservicios (segundo parcial)**, más abajo.
+
 ## Paso 0 — Qué necesitas instalado
 
 | Requisito | Versión | Cómo verificar |
@@ -369,6 +372,148 @@ python datos/scripts/prepara_base_pruebas.py
 
 ---
 
+## Docker: microservicios del grupo 14:00
+
+Estos son los pasos exactos con que se levantaron los 12 servicios para las evidencias
+(`evidencias/servicios/`). PostgreSQL y Redis corren en contenedores; los servicios, con
+`waitress` en tu máquina, cada uno con su rol de la migración 026. Necesitas Docker Desktop
+(o Docker Engine en Linux), el cliente `psql` y el entorno de Python del paso 4 con las
+dependencias de abajo.
+
+```bash
+pip install -r backend_web/requerimientos.txt -r procesamiento/requerimientos.txt \
+            -r microservicios/comun/requirements.txt waitress==3.0.2
+```
+
+### 0. PostgreSQL en un contenedor
+
+Una base nueva en `127.0.0.1:5433`, para no tocar la de los pasos 1 a 3. Son los mismos
+pasos 1, 2 y 3 de arriba, contra el contenedor:
+
+```bash
+docker run -d --name epidemia-pg -e POSTGRES_PASSWORD="<contraseña de postgres>" \
+  -p 127.0.0.1:5433:5432 postgres:16-alpine
+export PGPASSWORD="<contraseña de postgres>"
+P="psql -h 127.0.0.1 -p 5433 -U postgres -v ON_ERROR_STOP=1"
+
+$P -c "CREATE DATABASE simulador_epidemico;"
+$P -c "CREATE ROLE epidemia_app LOGIN PASSWORD '<contraseña de epidemia_app>';"
+$P -d simulador_epidemico -f datos/postgres/dump_completo.sql          # trae de la 001 a la 026
+$P -d simulador_epidemico -f datos/postgres/semillas/nl_municipios_completos.sql
+$P -d simulador_epidemico -f datos/postgres/semillas/demo_datos_nl.sql
+$P -d simulador_epidemico -c "GRANT USAGE ON SCHEMA public TO epidemia_app;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO epidemia_app;
+  GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO epidemia_app;"
+
+# Contraseña de cada rol de la 026 (svc_auth, svc_sesiones, … svc_zonas)
+for s in auth sesiones usuarios roles enfermedades parametros regiones poblacion \
+         tipos_intervencion indicadores series zonas; do
+  $P -d simulador_epidemico -c "ALTER ROLE svc_$s PASSWORD '<contraseña del rol>';"
+done
+```
+
+Los avisos `NOTICE: ... does not exist, skipping` son normales: el dump es idempotente.
+
+### 1. Redis
+
+```bash
+cp infra/.env.example infra/.env        # escribe REDIS_PASSWORD (ver el comentario del archivo)
+docker compose -f infra/docker-compose.yml up -d redis
+docker compose -f infra/docker-compose.yml ps            # redis debe salir "healthy"
+```
+
+Queda en `127.0.0.1:6380` de tu máquina, con contraseña y AOF.
+
+### 2. Los 12 servicios
+
+Desde la raíz del repositorio, cada uno en su puerto del catálogo y con su rol:
+
+```bash
+REDIS_PASSWORD=$(grep '^REDIS_PASSWORD=' infra/.env | cut -d= -f2-)
+export PYTHONPATH="$PWD:$PWD/microservicios/comun"
+export REDIS_URL="redis://:$REDIS_PASSWORD@127.0.0.1:6380/0"
+export JWT_SECRET_KEY="<una cadena larga, la misma en todos los servicios>"
+
+for par in auth:5201 sesiones:5202 usuarios:5203 roles:5204 enfermedades:5211 \
+           parametros:5212 regiones:5213 poblacion:5214 tipos_intervencion:5215 \
+           indicadores:5251 series:5252 zonas:5253; do
+  s=${par%%:*}; p=${par##*:}
+  DATABASE_URL="postgresql://svc_$s:<contraseña del rol>@127.0.0.1:5433/simulador_epidemico" \
+    waitress-serve --listen=127.0.0.1:$p microservicios.$s.app:app > logs_$s.txt 2>&1 &
+done
+```
+
+- `JWT_SECRET_KEY` es obligatoria y no puede ser el valor de ejemplo: sin ella el servicio
+  no arranca. Debe ser la misma en todos, porque `auth` firma y los demás verifican.
+- Para apagarlos: `kill %1 %2 …` (o `pkill -f waitress-serve`), y
+  `docker rm -f epidemia-pg` y `docker compose -f infra/docker-compose.yml stop redis`.
+
+### 3. Alternativa: un servicio en su contenedor
+
+Cada servicio tiene su `Dockerfile` (`python:3.12-slim`, usuario sin privilegios, `waitress`
+en el puerto 8000 y `HEALTHCHECK` a `/health`). El contexto es la raíz del repositorio,
+porque copia `backend_web/`, `procesamiento/` y `microservicios/comun/`. Las evidencias no
+usaron este camino.
+
+| Servicio | Puerto | Servicio | Puerto |
+|---|---|---|---|
+| `auth` | 5201 | `regiones` | 5213 |
+| `sesiones` | 5202 | `poblacion` | 5214 |
+| `usuarios` | 5203 | `tipos-intervencion` | 5215 |
+| `roles` | 5204 | `indicadores` | 5251 |
+| `enfermedades` | 5211 | `series` | 5252 |
+| `parametros` | 5212 | `zonas` | 5253 |
+
+```bash
+docker build -f microservicios/regiones/Dockerfile -t epidemia/regiones .
+docker run --rm -p 5213:8000 --add-host=host.docker.internal:host-gateway \
+  -e DATABASE_URL="postgresql://svc_regiones:<contraseña del rol>@host.docker.internal:5433/simulador_epidemico" \
+  -e REDIS_URL="redis://:<REDIS_PASSWORD>@host.docker.internal:6380/0" \
+  -e JWT_SECRET_KEY="<la misma cadena de los demás>" \
+  epidemia/regiones
+```
+
+La carpeta de `tipos-intervencion` es `microservicios/tipos_intervencion/`.
+
+### 4. Comprobar
+
+```bash
+for p in 5201 5202 5203 5204 5211 5212 5213 5214 5215 5251 5252 5253; do
+  curl -s "http://127.0.0.1:$p/health?format=json"; echo
+done
+# cada uno: {"servicio": "...", "estado": "ok", "postgresql": true, "redis": true}
+```
+
+Para las rutas con candado, inicia sesión con `auth`:
+
+```bash
+curl -s "http://127.0.0.1:5201/api/v1/auth/captcha?format=json"
+# {"captcha_id": "...", "pregunta": "3 + 5", ...}
+curl -s -H "Content-Type: application/json" "http://127.0.0.1:5201/api/v1/auth/login?format=json" \
+  -d '{"usuario": "admin", "password": "<la de la tabla de credenciales>", "captcha_id": "...", "captcha_respuesta": "8"}'
+# {"access_token": "...", "refresh_token": "...", ...}
+```
+
+El captcha dura 5 minutos y sirve una vez. `usuarios` y `roles` exigen ADMINISTRADOR (`admin`).
+
+Swagger queda en `http://localhost:<puerto>/docs`. Ábrelo con `localhost`, no con
+`127.0.0.1`: el contrato declara `http://localhost:<puerto>` y con otro origen el navegador
+bloquea "Try it out". Pega el `access_token` en **Authorize** (sin `Bearer`). Para ver XML,
+deja `format` vacío y elige `application/xml` en **Media type**; para JSON, `format=json`.
+
+### 5. Pruebas de los microservicios
+
+No necesitan Docker ni base: usan fakeredis y la base simulada.
+
+```bash
+pip install -r backend_web/requerimientos.txt -r procesamiento/requerimientos.txt \
+            -r microservicios/comun/requirements.txt "fakeredis>=2.20,<3" pytest
+export PYTHONPATH="$PWD:$PWD/microservicios/comun"
+python -m pytest microservicios -q
+```
+
+---
+
 ## Problemas comunes
 
 | Síntoma | Causa y solución |
@@ -399,6 +544,290 @@ Y repite desde el Paso 1.
 
 `demo_datos_nl.sql` es seguro de volver a correr las veces que quieras: trunca
 las tablas de casos, escenarios y simulaciones antes de insertar.
+
+---
+
+# Microservicios (segundo parcial)
+
+Los microservicios usan **la misma base** que la aplicación web: primero termina los pasos
+1 a 3 de arriba. Lo que hay construido y cómo se conecta está en
+[`arquitectura/arquitectura_v2.md`](arquitectura/arquitectura_v2.md).
+
+| Servicio | Carpeta | Puerto |
+|---|---|---|
+| `auth` | `microservicios/auth` | 5201 |
+| `sesiones` | `microservicios/sesiones` | 5202 |
+| `usuarios` | `microservicios/usuarios` | 5203 |
+| `roles` | `microservicios/roles` | 5204 |
+| `enfermedades` | `microservicios/enfermedades` | 5211 |
+| `parametros` | `microservicios/parametros` | 5212 |
+| `regiones` | `microservicios/regiones` | 5213 |
+| `poblacion` | `microservicios/poblacion` | 5214 |
+| `tipos-intervencion` | `microservicios/tipos_intervencion` | 5215 |
+| `indicadores` | `microservicios/indicadores` | 5251 |
+| `series` | `microservicios/series` | 5252 |
+| `zonas` | `microservicios/zonas` | 5253 |
+
+Redis corre en Docker. Los servicios pueden correr con Python en tu máquina (M3) o cada uno
+en su contenedor (M4).
+
+> **Hoy el compose levanta solo Redis.** Los servicios todavía no están en
+> `infra/docker-compose.yml`: cada uno se construye y se arranca con su propio `Dockerfile`.
+
+## Paso M0 — Qué necesitas instalado
+
+| Requisito | Cómo verificar |
+|---|---|
+| La base de los pasos 1 a 3 | `psql -h localhost -U postgres -d simulador_epidemico -Atc "SELECT count(*) FROM users"` |
+| **Docker Desktop** (Windows y macOS) o Docker Engine con el plugin de Compose (Linux) | `docker --version` y `docker compose version` |
+| El entorno virtual del Paso 4 | El prompt empieza con `(.venv)` |
+
+## Paso M1 — Levantar Redis
+
+1. Copia la plantilla de variables del compose:
+
+   ```bash
+   cp infra/.env.example infra/.env          # Windows: copy infra\.env.example infra\.env
+   ```
+
+2. En `infra/.env`, escribe una contraseña en `REDIS_PASSWORD`. Genérala con:
+
+   ```bash
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
+
+   Usa una nueva, no la de Memurai. `REDIS_PUERTO_LOCAL` se queda en `6380`.
+
+3. Levanta Redis desde la raíz del repositorio:
+
+   ```bash
+   docker compose -f infra/docker-compose.yml up -d redis
+   ```
+
+4. Comprueba que está sano:
+
+   ```bash
+   docker compose -f infra/docker-compose.yml ps          # STATUS: Up ... (healthy)
+   docker compose -f infra/docker-compose.yml exec redis redis-cli ping   # PONG
+   ```
+
+Qué deja levantado:
+
+- Redis 7.4 con contraseña, en la red de Docker `epidemia_default` con el nombre `redis`.
+- En tu máquina, solo en `127.0.0.1:6380`.
+- Sus datos en el volumen `epidemia_redis-datos` (`appendonly yes`): las sesiones sobreviven
+  a un reinicio del contenedor.
+
+Para detenerlo:
+
+```bash
+docker compose -f infra/docker-compose.yml stop        # lo detiene; conserva los datos
+docker compose -f infra/docker-compose.yml down        # borra el contenedor; conserva el volumen
+docker compose -f infra/docker-compose.yml down -v     # borra también el volumen (cierra todas las sesiones)
+```
+
+## Paso M2 — Variables de los servicios
+
+| Variable | Obligatoria | Valor |
+|---|---|---|
+| `JWT_SECRET_KEY` | Sí | Firma y verifica los tokens. **La misma en los 12 servicios**, y distinta de la del monolito. Genérala con `python -c "import secrets; print(secrets.token_urlsafe(48))"`. |
+| `REDIS_URL` | Sí | Fuera de Docker: `redis://:<REDIS_PASSWORD>@127.0.0.1:6380/0`. Dentro de Docker: `redis://:<REDIS_PASSWORD>@redis:6379/0`. **El mismo en los 12 servicios.** |
+| `DATABASE_URL` | Sí | La del Paso 4.2. Dentro de Docker, cambia `localhost` por `host.docker.internal`. |
+| `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_AUDIENCE_INTERNA` | No | Por omisión `epidemia-auth`, `epidemia-api` y `epidemia-interno`. |
+| `REDIS_TIMEOUT_SECONDS` | No | Cuánto espera una operación de Redis antes de darlo por caído. Por omisión `0.5`. |
+| `CONSOLE_ORIGIN` | No | El único origen al que se le abre CORS. Sin ella, no se abre a ninguno. |
+| `VERSION_SERVICIO` | No | La versión que muestra `/health`. Por omisión `0.1.0`. |
+
+Sin `JWT_SECRET_KEY` o `REDIS_URL`, o con el secreto de ejemplo, el servicio no arranca y
+dice cuál falta.
+
+Fuera de Docker, un servicio toma cada variable del primer lugar donde la encuentre:
+
+1. la terminal;
+2. el `.env` de la raíz (el del monolito);
+3. `.env.shared` en la raíz;
+4. `microservicios/<carpeta>/.env`.
+
+Como el `.env` de la raíz ya trae la `JWT_SECRET_KEY` del monolito, **define las variables de
+los servicios en la terminal**, como en el Paso M3.
+
+## Paso M3 — Correr los servicios con Python
+
+1. Con el entorno virtual activo, instala lo que usan los servicios:
+
+   ```bash
+   pip install -r microservicios/comun/requirements.txt
+   ```
+
+2. En cada terminal donde vayas a correr un servicio, define las variables.
+
+   **Linux / macOS:**
+
+   ```bash
+   export PYTHONPATH="$PWD:$PWD/microservicios/comun"
+   export JWT_SECRET_KEY="<secreto de los servicios>"
+   export REDIS_URL="redis://:<REDIS_PASSWORD>@127.0.0.1:6380/0"
+   ```
+
+   **Windows (PowerShell):**
+
+   ```powershell
+   $env:PYTHONPATH = "$PWD;$PWD\microservicios\comun"
+   $env:JWT_SECRET_KEY = "<secreto de los servicios>"
+   $env:REDIS_URL = "redis://:<REDIS_PASSWORD>@127.0.0.1:6380/0"
+   ```
+
+   `DATABASE_URL` la toma del `.env` de la raíz.
+
+3. Arranca cada servicio en su propia terminal, desde la raíz del repositorio:
+
+   ```bash
+   python -m microservicios.auth.app
+   python -m microservicios.sesiones.app
+   python -m microservicios.tipos_intervencion.app   # la carpeta usa guion bajo
+   ```
+
+   Cada uno queda en `http://127.0.0.1:<puerto>` (tabla de arriba). Para detenerlo:
+   `Ctrl + C`.
+
+## Paso M4 — Correr un servicio en su contenedor
+
+Con Redis del Paso M1 levantado, desde la raíz del repositorio. El ejemplo es `auth`; para
+otro servicio cambia la carpeta, el nombre y el puerto.
+
+1. Construye la imagen:
+
+   ```bash
+   docker build -f microservicios/auth/Dockerfile -t epidemia/auth .
+   ```
+
+2. Arráncala en la red del compose, para que llegue a Redis como `redis`.
+
+   **Linux / macOS:**
+
+   ```bash
+   docker run -d --name auth --network epidemia_default \
+     -p 127.0.0.1:5201:8000 \
+     -e JWT_SECRET_KEY="<secreto de los servicios>" \
+     -e REDIS_URL="redis://:<REDIS_PASSWORD>@redis:6379/0" \
+     -e DATABASE_URL="postgresql://epidemia_app:<contraseña>@host.docker.internal:5432/simulador_epidemico" \
+     epidemia/auth
+   ```
+
+   En Linux agrega `--add-host=host.docker.internal:host-gateway`.
+
+   **Windows (PowerShell):**
+
+   ```powershell
+   docker run -d --name auth --network epidemia_default `
+     -p 127.0.0.1:5201:8000 `
+     -e JWT_SECRET_KEY="<secreto de los servicios>" `
+     -e REDIS_URL="redis://:<REDIS_PASSWORD>@redis:6379/0" `
+     -e DATABASE_URL="postgresql://epidemia_app:<contraseña>@host.docker.internal:5432/simulador_epidemico" `
+     epidemia/auth
+   ```
+
+3. Comprueba su estado:
+
+   ```bash
+   docker ps --filter name=auth      # STATUS: Up ... (healthy)
+   ```
+
+   Dentro del contenedor escucha en 8000 con `waitress`. El `HEALTHCHECK` consulta `/health`
+   cada 30 s. Queda `healthy` solo si llega a PostgreSQL y a Redis; si no, queda `unhealthy`
+   (ver **Problemas comunes de los microservicios**).
+
+Para detenerlo y borrarlo:
+
+```bash
+docker stop auth
+docker rm auth
+```
+
+## Paso M5 — Comprobar que funcionan
+
+1. **Salud**, en XML (por omisión) y en JSON:
+
+   ```bash
+   curl "http://127.0.0.1:5201/health"
+   curl "http://127.0.0.1:5201/health?format=json"
+   ```
+
+   Esperado: `"estado": "ok"`, `"postgresql": true`, `"redis": true`.
+
+2. **Swagger:** abre `http://127.0.0.1:<puerto>/docs` en el navegador.
+
+3. **Iniciar sesión** (con `auth` y Redis levantados):
+
+   ```bash
+   curl "http://127.0.0.1:5201/api/v1/auth/captcha?format=json"
+   ```
+
+   Responde un `captcha_id` y una `pregunta` (por ejemplo `"4 + 7"`). Antes de 5 minutos,
+   manda la suma junto con el usuario. Cada captcha sirve para un solo intento:
+
+   ```bash
+   curl -X POST "http://127.0.0.1:5201/api/v1/auth/login?format=json" \
+        -H "Content-Type: application/json" \
+        -d '{"usuario": "admin", "password": "Admin2026!", "captcha_id": "<captcha_id>", "captcha_respuesta": "11"}'
+   ```
+
+   Responde `access_token` (20 minutos) y `refresh_token`.
+
+4. **Usar el token** en una ruta protegida:
+
+   ```bash
+   curl -H "Authorization: Bearer <access_token>" "http://127.0.0.1:5202/api/v1/sessions/current?format=json"
+   ```
+
+Las cuentas son las de **Credenciales** (Paso 5). Las rutas de `usuarios` y `roles` piden
+`admin`.
+
+## Paso M6 — Pruebas de los microservicios
+
+Con PostgreSQL y Redis simulados; no necesitan Docker ni la base. Instala sus dependencias una
+vez:
+
+```bash
+pip install -e "microservicios/comun[pruebas]"
+```
+
+Corre **una carpeta a la vez**:
+
+```bash
+python -m pytest microservicios/comun/tests
+python -m pytest microservicios/auth
+python -m pytest microservicios/sesiones
+python -m pytest microservicios/usuarios
+python -m pytest microservicios/roles
+python -m pytest microservicios/tipos_intervencion
+python -m pytest microservicios/indicadores
+python -m pytest microservicios/series
+python -m pytest microservicios/zonas
+```
+
+Las de `enfermedades`, `parametros`, `regiones` y `poblacion` están en
+`microservicios/comun/tests/test_catalogos.py`.
+
+Si juntas `microservicios/comun/tests` con la carpeta de un servicio en un solo comando,
+`pytest` confunde las carpetas `tests/` y reporta errores que no existen.
+
+## Problemas comunes de los microservicios
+
+| Síntoma | Causa y solución |
+|---|---|
+| `RuntimeError: Configura JWT_SECRET_KEY con un secreto propio antes de iniciar.` | Falta el secreto, o el servicio está tomando el valor de ejemplo del `.env` de la raíz. Defínelo en la terminal (Paso M3). |
+| `RuntimeError: Configura REDIS_URL antes de iniciar.` | Falta `REDIS_URL` en la terminal o en `docker run`. |
+| `Falta REDIS_PASSWORD en infra/.env` al levantar el compose | No existe `infra/.env` o `REDIS_PASSWORD` está vacía (Paso M1). |
+| `/health` dice `"redis": false` | Redis no está levantado, la contraseña de `REDIS_URL` no es la de `infra/.env`, o el host no corresponde: fuera de Docker es `127.0.0.1:6380`; dentro, `redis:6379` con `--network epidemia_default`. |
+| `/health` dice `"postgresql": false` en un contenedor | `DATABASE_URL` apunta a `localhost`, que dentro del contenedor es el propio contenedor: usa `host.docker.internal`. Si aun así falla, PostgreSQL no acepta conexiones desde Docker: revisa `listen_addresses` en `postgresql.conf` y agrega la red de Docker en `pg_hba.conf`. |
+| El contenedor queda `unhealthy` | Es el mismo `/health`: le falta PostgreSQL o Redis. `docker logs auth` muestra cuál. |
+| `network epidemia_default not found` | Redis no está levantado con el compose (Paso M1). |
+| 503 `SERVICIO_NO_DISPONIBLE` en el login o en una ruta protegida | Redis está caído o no se alcanza. |
+| 401 `TOKEN_INVALIDO` en un servicio con un token emitido por `auth` | Los dos servicios no tienen la misma `JWT_SECRET_KEY`. |
+| 401 `TOKEN_REVOCADO` | La sesión se cerró: logout, cuenta desactivada, contraseña o rol cambiados, o venció a las 8 horas. Vuelve a iniciar sesión. |
+| 422 en el login: "El captcha es incorrecto o venció" | El captcha se usa una sola vez y dura 5 minutos. Pide uno nuevo. |
+| `port is already allocated` | Ya hay algo en ese puerto, por ejemplo el mismo servicio corriendo con Python. Detén uno de los dos. |
 
 ---
 

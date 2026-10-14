@@ -1,0 +1,643 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - enfermedades",
+    "version": "0.1.0",
+    "description": "Servicio de enfermedades del sistema de respuesta a epidemias. Los ejemplos están en docs/contratos/enfermedades/ejemplos (listas recortadas)."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5211"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/diseases": {
+      "get": {
+        "summary": "Listar enfermedades",
+        "operationId": "listar_enfermedades",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "activa",
+                "inactiva"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "enfermedades": [
+                    {
+                      "id": 1,
+                      "code": "SARS_COV_2_ANCESTRAL",
+                      "nombre": "COVID-19 (variante ancestral)",
+                      "descripcion": "SARS-CoV-2, linaje original de 2020.",
+                      "activa": true,
+                      "actividad": "historico",
+                      "alta": "2026-09-01T16:00:00+00:00",
+                      "casos_total": 4210,
+                      "casos_30d": 0,
+                      "ultimo_caso": "2026-09-03",
+                      "parametros": {
+                        "detalle": [
+                          {
+                            "clave": "r0",
+                            "etiqueta": "R₀ — número reproductivo básico",
+                            "unidad": "contagios por caso",
+                            "min": 0.01,
+                            "max": 20.0,
+                            "paso": "0.01",
+                            "ayuda": "Contagios que genera un caso en una población sin inmunidad.",
+                            "valor": 2.5,
+                            "valor_form": "2.5",
+                            "fuente": "Liu et al. 2020",
+                            "supuesto": false,
+                            "estado": "con_fuente"
+                          }
+                        ],
+                        "informativos": [],
+                        "faltan": [],
+                        "supuestos": [],
+                        "sin_fuente": [],
+                        "simulable": true
+                      }
+                    }
+                  ],
+                  "total": 3,
+                  "pagina": 1,
+                  "por_pagina": 10,
+                  "paginas": 1,
+                  "desde": 1,
+                  "hasta": 3
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "catalogo_enfermedades"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<catalogo_enfermedades><enfermedades><enfermedad><id tipo=\"numero\">1</id><code>SARS_COV_2_ANCESTRAL</code><nombre>COVID-19 (variante ancestral)</nombre><descripcion>SARS-CoV-2, linaje original de 2020.</descripcion><activa tipo=\"booleano\">true</activa><actividad>historico</actividad><alta>2026-09-01T16:00:00+00:00</alta><casos_total tipo=\"numero\">4210</casos_total><casos_30d tipo=\"numero\">0</casos_30d><ultimo_caso>2026-09-03</ultimo_caso><parametros><detalle><item><clave>r0</clave><etiqueta>R₀ — número reproductivo básico</etiqueta><unidad>contagios por caso</unidad><min tipo=\"numero\">0.01</min><max tipo=\"numero\">20.0</max><paso>0.01</paso><ayuda>Contagios que genera un caso en una población sin inmunidad.</ayuda><valor tipo=\"numero\">2.5</valor><valor_form>2.5</valor_form><fuente>Liu et al. 2020</fuente><supuesto tipo=\"booleano\">false</supuesto><estado>con_fuente</estado></item></detalle><informativos /><faltan /><supuestos /><sin_fuente /><simulable tipo=\"booleano\">true</simulable></parametros></enfermedad></enfermedades><total tipo=\"numero\">3</total><pagina tipo=\"numero\">1</pagina><por_pagina tipo=\"numero\">10</por_pagina><paginas tipo=\"numero\">1</paginas><desde tipo=\"numero\">1</desde><hasta tipo=\"numero\">3</hasta></catalogo_enfermedades>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear enfermedad",
+        "operationId": "crear_enfermedad",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 4
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "enfermedad"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<enfermedad><id tipo=\"numero\">4</id></enfermedad>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "code": "DENGUE",
+                "name": "Dengue",
+                "description": "Arbovirosis transmitida por Aedes aegypti."
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/diseases/{disease_id}": {
+      "get": {
+        "summary": "Consultar enfermedad",
+        "operationId": "consultar_enfermedad",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "disease_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 1,
+                  "code": "SARS_COV_2_ANCESTRAL",
+                  "name": "COVID-19 (variante ancestral)",
+                  "description": "SARS-CoV-2, linaje original de 2020.",
+                  "is_active": true,
+                  "created_at": "2026-09-01T16:00:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "enfermedad"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<enfermedad><id tipo=\"numero\">1</id><code>SARS_COV_2_ANCESTRAL</code><name>COVID-19 (variante ancestral)</name><description>SARS-CoV-2, linaje original de 2020.</description><is_active tipo=\"booleano\">true</is_active><created_at>2026-09-01T16:00:00+00:00</created_at></enfermedad>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      },
+      "put": {
+        "summary": "Editar enfermedad",
+        "operationId": "editar_enfermedad",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "disease_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 1,
+                  "actualizada": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "enfermedad"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<enfermedad><id tipo=\"numero\">1</id><actualizada tipo=\"booleano\">true</actualizada></enfermedad>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "name": "COVID-19 (variante ancestral)",
+                "description": "SARS-CoV-2, linaje original de 2020."
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/diseases/{disease_id}/activate": {
+      "post": {
+        "summary": "Activar enfermedad",
+        "operationId": "activar_enfermedad",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "disease_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "is_active": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "enfermedad"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<enfermedad><id tipo=\"numero\">3</id><is_active tipo=\"booleano\">true</is_active></enfermedad>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/diseases/{disease_id}/deactivate": {
+      "post": {
+        "summary": "Desactivar enfermedad",
+        "operationId": "desactivar_enfermedad",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "disease_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "is_active": false
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "enfermedad"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<enfermedad><id tipo=\"numero\">3</id><is_active tipo=\"booleano\">false</is_active></enfermedad>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    }
+  }
+}

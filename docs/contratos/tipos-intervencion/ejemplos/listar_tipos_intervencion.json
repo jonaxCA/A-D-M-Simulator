@@ -1,0 +1,100 @@
+{
+  "total": 6,
+  "tipos": [
+    {
+      "id": 5,
+      "code": "VACUNACION",
+      "name": "Campania de vacunacion",
+      "description": "Reduce la susceptibilidad de los agentes seleccionados, con eficacia parcial y criterio de prioridad.",
+      "target_layer": "todas",
+      "primitive": "node_attr",
+      "param_schema": {
+        "type": "object",
+        "required": [
+          "eficacia",
+          "dosis_diarias"
+        ],
+        "properties": {
+          "eficacia": {
+            "type": "number",
+            "maximum": 1,
+            "minimum": 0
+          },
+          "prioridad": {
+            "enum": [
+              "edad_desc",
+              "zona",
+              "ocupacion"
+            ],
+            "type": "string"
+          },
+          "edad_minima": {
+            "type": "integer",
+            "maximum": 120,
+            "minimum": 0
+          },
+          "dosis_diarias": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "unit_cost": null,
+      "cost_unit": "por_dosis",
+      "cost_source": null,
+      "cost_is_assumption": true
+    },
+    {
+      "id": 4,
+      "code": "CIERRE_TRABAJO",
+      "name": "Cierre de centros de trabajo",
+      "description": "Desactiva o atenua la capa trabajo para los sectores indicados.",
+      "target_layer": "trabajo",
+      "primitive": "edge_modifier",
+      "param_schema": {
+        "type": "object",
+        "properties": {
+          "sectores": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reduccion": {
+            "type": "number",
+            "default": 1.0,
+            "maximum": 1,
+            "minimum": 0
+          }
+        }
+      },
+      "unit_cost": null,
+      "cost_unit": "por_habitante_dia",
+      "cost_source": null,
+      "cost_is_assumption": true
+    },
+    {
+      "id": 1,
+      "code": "CIERRE_ESCUELAS",
+      "name": "Cierre de escuelas",
+      "description": "Desactiva la capa escuela a partir del dia indicado.",
+      "target_layer": "escuela",
+      "primitive": "edge_modifier",
+      "param_schema": {
+        "type": "object",
+        "properties": {
+          "reduccion": {
+            "type": "number",
+            "default": 1.0,
+            "maximum": 1,
+            "minimum": 0
+          }
+        }
+      },
+      "unit_cost": null,
+      "cost_unit": "por_habitante_dia",
+      "cost_source": null,
+      "cost_is_assumption": true
+    }
+  ]
+}

@@ -1,0 +1,646 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - usuarios",
+    "version": "0.1.0",
+    "description": "Administra cuentas (solo ADMINISTRADOR). Escribe users; el rol se asigna en el servicio roles. Desactivar, eliminar o cambiar la contraseña cierra las sesiones de la cuenta."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5203"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/users": {
+      "get": {
+        "summary": "Listar cuentas",
+        "operationId": "listar_usuarios",
+        "description": "Filtros opcionales: q (nombre, correo o usuario), role_id y status (activo, pendiente, inactivo).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "role_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "activo",
+                "pendiente",
+                "inactivo"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 1,
+                  "usuarios": [
+                    {
+                      "id": 9,
+                      "nombre": "Ana Lista",
+                      "correo": "ana@ejemplo.mx",
+                      "roles": "Analista",
+                      "estado": "activo",
+                      "ultimo_acceso": "2026-10-12T09:30:00-06:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "catalogo_usuarios"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<catalogo_usuarios><total tipo=\"numero\">1</total><usuarios><item><id tipo=\"numero\">9</id><nombre>Ana Lista</nombre><correo>ana@ejemplo.mx</correo><roles>Analista</roles><estado>activo</estado><ultimo_acceso>2026-10-12T09:30:00-06:00</ultimo_acceso></item></usuarios></catalogo_usuarios>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Redis no disponible"
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear cuenta",
+        "operationId": "crear_usuario",
+        "description": "Alta sin rol: el rol se asigna con PUT /api/v1/roles/assignments/{user_id}. Contraseña de al menos 8 caracteres. Audita CREATE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Creado (responde 201)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 10,
+                  "username": "beto",
+                  "email": "beto@ejemplo.mx",
+                  "full_name": "Beto Ejemplo",
+                  "is_active": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "usuario"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">10</id><username>beto</username><email>beto@ejemplo.mx</email><full_name>Beto Ejemplo</full_name><is_active tipo=\"booleano\">true</is_active></usuario>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Redis no disponible"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "username": "beto",
+                "email": "beto@ejemplo.mx",
+                "full_name": "Beto Ejemplo",
+                "password": "CONTRASENA_DE_EJEMPLO",
+                "is_active": true
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "usuario"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><username>beto</username><email>beto@ejemplo.mx</email><full_name>Beto Ejemplo</full_name><password>CONTRASENA_DE_EJEMPLO</password><is_active tipo=\"booleano\">true</is_active></usuario>"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}": {
+      "get": {
+        "summary": "Consultar cuenta",
+        "operationId": "consultar_usuario",
+        "description": "Cuenta con su role_id y sus roles (códigos).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "description": "id de users",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 9,
+                  "username": "ana",
+                  "email": "ana@ejemplo.mx",
+                  "full_name": "Ana Lista",
+                  "is_active": true,
+                  "last_login_at": "2026-10-12T09:30:00-06:00",
+                  "created_at": "2026-09-01T10:00:00-06:00",
+                  "role_id": 3,
+                  "roles": [
+                    "ANALISTA"
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "usuario"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">9</id><username>ana</username><email>ana@ejemplo.mx</email><full_name>Ana Lista</full_name><is_active tipo=\"booleano\">true</is_active><last_login_at>2026-10-12T09:30:00-06:00</last_login_at><created_at>2026-09-01T10:00:00-06:00</created_at><role_id tipo=\"numero\">3</role_id><roles><item>ANALISTA</item></roles></usuario>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Redis no disponible"
+          }
+        }
+      },
+      "put": {
+        "summary": "Editar cuenta",
+        "operationId": "editar_usuario",
+        "description": "Edita email y full_name; password es opcional y, si viene, cierra las sesiones de la cuenta. El username no se edita. Audita UPDATE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "description": "id de users",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 9,
+                  "username": "ana",
+                  "email": "ana.lista@ejemplo.mx",
+                  "full_name": "Ana Lista",
+                  "is_active": true,
+                  "sesiones_cerradas": 0
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "usuario"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">9</id><username>ana</username><email>ana.lista@ejemplo.mx</email><full_name>Ana Lista</full_name><is_active tipo=\"booleano\">true</is_active><sesiones_cerradas tipo=\"numero\">0</sesiones_cerradas></usuario>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Redis no disponible"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "email": "ana.lista@ejemplo.mx",
+                "full_name": "Ana Lista",
+                "password": ""
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "usuario"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><email>ana.lista@ejemplo.mx</email><full_name>Ana Lista</full_name><password /></usuario>"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Eliminar cuenta",
+        "operationId": "eliminar_usuario",
+        "description": "Solo sin dependencias; con ellas responde 409 y hay que usar deactivate. Nadie se elimina a sí mismo. Audita DELETE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "description": "id de users",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 9,
+                  "eliminado": true,
+                  "sesiones_cerradas": 0
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "usuario"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">9</id><eliminado tipo=\"booleano\">true</eliminado><sesiones_cerradas tipo=\"numero\">0</sesiones_cerradas></usuario>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Redis no disponible"
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/{accion}": {
+      "post": {
+        "summary": "Activar o desactivar cuenta",
+        "operationId": "activar_usuario",
+        "description": "accion es activate o deactivate (baja lógica). Desactivar cierra todas las sesiones de la cuenta. Nadie se desactiva a sí mismo. Audita UPDATE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "description": "id de users",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "accion",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "activate",
+                "deactivate"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 9,
+                  "is_active": false,
+                  "sesiones_cerradas": 0
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "usuario"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">9</id><is_active tipo=\"booleano\">false</is_active><sesiones_cerradas tipo=\"numero\">0</sesiones_cerradas></usuario>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Redis no disponible"
+          }
+        }
+      }
+    }
+  }
+}

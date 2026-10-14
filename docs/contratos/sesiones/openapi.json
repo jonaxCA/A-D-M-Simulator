@@ -1,0 +1,349 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - sesiones",
+    "version": "0.1.0",
+    "description": "Renueva, cierra y revoca las sesiones que abre auth. Solo usa Redis."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5202"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "servicioAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token de servicio, audiencia epidemia-interno"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/sessions/refresh": {
+      "post": {
+        "summary": "Renovar el access",
+        "operationId": "renovar_sesion",
+        "description": "Pública: el refresh es la credencial. Rota el refresh; si llega uno ya usado, cierra la sesión completa (401 TOKEN_REVOCADO). Renovar no alarga la sesión.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "access_token": "JWT_DE_EJEMPLO",
+                  "refresh_token": "REFRESH_DE_EJEMPLO",
+                  "token_type": "Bearer",
+                  "expires_in": 1200,
+                  "sesion_expira": 1791895808
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "sesion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<sesion><access_token>JWT_DE_EJEMPLO</access_token><refresh_token>REFRESH_DE_EJEMPLO</refresh_token><token_type>Bearer</token_type><expires_in tipo=\"numero\">1200</expires_in><sesion_expira tipo=\"numero\">1791895808</sesion_expira></sesion>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token, token inválido, vencido o revocado"
+          },
+          "413": {
+            "description": "Cuerpo demasiado grande"
+          },
+          "415": {
+            "description": "Content-Type distinto de JSON o XML"
+          },
+          "422": {
+            "description": "Datos inválidos (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "refresh_token"
+                ],
+                "properties": {
+                  "refresh_token": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "refresh_token": "REFRESH_DE_EJEMPLO"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "refresh"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<refresh><refresh_token>REFRESH_DE_EJEMPLO</refresh_token></refresh>\n"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/logout": {
+      "post": {
+        "summary": "Cerrar sesión",
+        "operationId": "cerrar_sesion",
+        "description": "Revoca el access con el que se llama y cierra su sesión; el refresh deja de servir. Audita LOGOUT.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "cerrada": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "sesion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<sesion><cerrada tipo=\"booleano\">true</cerrada></sesion>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token, token inválido, vencido o revocado"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sessions/current": {
+      "get": {
+        "summary": "Sesión actual",
+        "operationId": "sesion_actual",
+        "description": "Usuario, roles, creación y vencimiento de la sesión (época Unix), y vencimiento del access.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "usuario": 7,
+                  "roles": [
+                    "ANALISTA"
+                  ],
+                  "creada": 1791867008,
+                  "expira": 1791895808,
+                  "access_expira": 1791868208
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "sesion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<sesion><usuario tipo=\"numero\">7</usuario><roles><item>ANALISTA</item></roles><creada tipo=\"numero\">1791867008</creada><expira tipo=\"numero\">1791895808</expira><access_expira tipo=\"numero\">1791868208</access_expira></sesion>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token, token inválido, vencido o revocado"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sessions/user/{id}": {
+      "delete": {
+        "summary": "Cerrar las sesiones de una cuenta",
+        "operationId": "cerrar_sesiones_usuario",
+        "description": "Interna: solo acepta un token de servicio (audiencia epidemia-interno). La llaman usuarios y roles al desactivar una cuenta o quitarle un rol.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "id de users",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "usuario": 9,
+                  "cerradas": 2
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "sesiones_cerradas"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<sesiones_cerradas><usuario tipo=\"numero\">9</usuario><cerradas tipo=\"numero\">2</cerradas></sesiones_cerradas>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token, token inválido, vencido o revocado"
+          },
+          "422": {
+            "description": "Datos inválidos (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+          }
+        },
+        "security": [
+          {
+            "servicioAuth": []
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,292 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - tipos-intervencion",
+    "version": "0.1.0",
+    "description": "Catálogo de tipos de intervención con el esquema de sus parámetros. Público y de solo lectura."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5215"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/intervention-types": {
+      "get": {
+        "summary": "Listar tipos de intervención",
+        "operationId": "listar_tipos_intervencion",
+        "description": "Tipos activos, ordenados por nombre, con su param_schema (JSON Schema).",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 6,
+                  "tipos": [
+                    {
+                      "id": 5,
+                      "code": "VACUNACION",
+                      "name": "Campania de vacunacion",
+                      "description": "Reduce la susceptibilidad de los agentes seleccionados, con eficacia parcial y criterio de prioridad.",
+                      "target_layer": "todas",
+                      "primitive": "node_attr",
+                      "param_schema": {
+                        "type": "object",
+                        "required": [
+                          "eficacia",
+                          "dosis_diarias"
+                        ],
+                        "properties": {
+                          "eficacia": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0
+                          },
+                          "prioridad": {
+                            "enum": [
+                              "edad_desc",
+                              "zona",
+                              "ocupacion"
+                            ],
+                            "type": "string"
+                          },
+                          "edad_minima": {
+                            "type": "integer",
+                            "maximum": 120,
+                            "minimum": 0
+                          },
+                          "dosis_diarias": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        }
+                      },
+                      "unit_cost": null,
+                      "cost_unit": "por_dosis",
+                      "cost_source": null,
+                      "cost_is_assumption": true
+                    },
+                    {
+                      "id": 4,
+                      "code": "CIERRE_TRABAJO",
+                      "name": "Cierre de centros de trabajo",
+                      "description": "Desactiva o atenua la capa trabajo para los sectores indicados.",
+                      "target_layer": "trabajo",
+                      "primitive": "edge_modifier",
+                      "param_schema": {
+                        "type": "object",
+                        "properties": {
+                          "sectores": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "reduccion": {
+                            "type": "number",
+                            "default": 1.0,
+                            "maximum": 1,
+                            "minimum": 0
+                          }
+                        }
+                      },
+                      "unit_cost": null,
+                      "cost_unit": "por_habitante_dia",
+                      "cost_source": null,
+                      "cost_is_assumption": true
+                    },
+                    {
+                      "id": 1,
+                      "code": "CIERRE_ESCUELAS",
+                      "name": "Cierre de escuelas",
+                      "description": "Desactiva la capa escuela a partir del dia indicado.",
+                      "target_layer": "escuela",
+                      "primitive": "edge_modifier",
+                      "param_schema": {
+                        "type": "object",
+                        "properties": {
+                          "reduccion": {
+                            "type": "number",
+                            "default": 1.0,
+                            "maximum": 1,
+                            "minimum": 0
+                          }
+                        }
+                      },
+                      "unit_cost": null,
+                      "cost_unit": "por_habitante_dia",
+                      "cost_source": null,
+                      "cost_is_assumption": true
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "catalogo_tipos_intervencion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (listas recortadas)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<catalogo_tipos_intervencion><total tipo=\"numero\">6</total><tipos><tipo><id tipo=\"numero\">5</id><code>VACUNACION</code><name>Campania de vacunacion</name><description>Reduce la susceptibilidad de los agentes seleccionados, con eficacia parcial y criterio de prioridad.</description><target_layer>todas</target_layer><primitive>node_attr</primitive><param_schema><type>object</type><required><item>eficacia</item><item>dosis_diarias</item></required><properties><eficacia><type>number</type><maximum tipo=\"numero\">1</maximum><minimum tipo=\"numero\">0</minimum></eficacia><prioridad><enum><item>edad_desc</item><item>zona</item><item>ocupacion</item></enum><type>string</type></prioridad><edad_minima><type>integer</type><maximum tipo=\"numero\">120</maximum><minimum tipo=\"numero\">0</minimum></edad_minima><dosis_diarias><type>integer</type><minimum tipo=\"numero\">1</minimum></dosis_diarias></properties></param_schema><unit_cost nil=\"true\" /><cost_unit>por_dosis</cost_unit><cost_source nil=\"true\" /><cost_is_assumption tipo=\"booleano\">true</cost_is_assumption></tipo><tipo><id tipo=\"numero\">4</id><code>CIERRE_TRABAJO</code><name>Cierre de centros de trabajo</name><description>Desactiva o atenua la capa trabajo para los sectores indicados.</description><target_layer>trabajo</target_layer><primitive>edge_modifier</primitive><param_schema><type>object</type><properties><sectores><type>array</type><items><type>string</type></items></sectores><reduccion><type>number</type><default tipo=\"numero\">1.0</default><maximum tipo=\"numero\">1</maximum><minimum tipo=\"numero\">0</minimum></reduccion></properties></param_schema><unit_cost nil=\"true\" /><cost_unit>por_habitante_dia</cost_unit><cost_source nil=\"true\" /><cost_is_assumption tipo=\"booleano\">true</cost_is_assumption></tipo><tipo><id tipo=\"numero\">1</id><code>CIERRE_ESCUELAS</code><name>Cierre de escuelas</name><description>Desactiva la capa escuela a partir del dia indicado.</description><target_layer>escuela</target_layer><primitive>edge_modifier</primitive><param_schema><type>object</type><properties><reduccion><type>number</type><default tipo=\"numero\">1.0</default><maximum tipo=\"numero\">1</maximum><minimum tipo=\"numero\">0</minimum></reduccion></properties></param_schema><unit_cost nil=\"true\" /><cost_unit>por_habitante_dia</cost_unit><cost_source nil=\"true\" /><cost_is_assumption tipo=\"booleano\">true</cost_is_assumption></tipo></tipos></catalogo_tipos_intervencion>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      }
+    },
+    "/api/v1/intervention-types/{code}": {
+      "get": {
+        "summary": "Consultar tipo de intervención",
+        "operationId": "consultar_tipo_intervencion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "description": "Código del tipo, por ejemplo CIERRE_ESCUELAS",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,49}$"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 1,
+                  "code": "CIERRE_ESCUELAS",
+                  "name": "Cierre de escuelas",
+                  "description": "Desactiva la capa escuela a partir del dia indicado.",
+                  "target_layer": "escuela",
+                  "primitive": "edge_modifier",
+                  "param_schema": {
+                    "type": "object",
+                    "properties": {
+                      "reduccion": {
+                        "type": "number",
+                        "default": 1.0,
+                        "maximum": 1,
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "unit_cost": null,
+                  "cost_unit": "por_habitante_dia",
+                  "cost_source": null,
+                  "cost_is_assumption": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "tipo"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (listas recortadas)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<tipo><id tipo=\"numero\">1</id><code>CIERRE_ESCUELAS</code><name>Cierre de escuelas</name><description>Desactiva la capa escuela a partir del dia indicado.</description><target_layer>escuela</target_layer><primitive>edge_modifier</primitive><param_schema><type>object</type><properties><reduccion><type>number</type><default tipo=\"numero\">1.0</default><maximum tipo=\"numero\">1</maximum><minimum tipo=\"numero\">0</minimum></reduccion></properties></param_schema><unit_cost nil=\"true\" /><cost_unit>por_habitante_dia</cost_unit><cost_source nil=\"true\" /><cost_is_assumption tipo=\"booleano\">true</cost_is_assumption></tipo>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "filtros": {
+    "disease_id": null,
+    "region_id": null,
+    "days": 90
+  },
+  "sexos": [
+    {
+      "label": "Masculino",
+      "casos": 1920,
+      "pct": 50.2
+    },
+    {
+      "label": "Femenino",
+      "casos": 1904,
+      "pct": 49.8
+    }
+  ]
+}

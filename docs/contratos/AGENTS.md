@@ -25,7 +25,7 @@ archivos, así que un contrato que no coincide con el servicio es un error del s
    nombre) crea `/api/v2/`, y `v1` sigue funcionando.
 3. Los nombres de campos, las claves y los códigos de error son los de la biblioteca común
    y del catálogo. No inventes otros para un solo servicio.
-4. Los ejemplos XML validan contra su `.xsd`, y los JSON contra el esquema del
-   `openapi.json`. Una prueba lo revisa.
+4. Los ejemplos XML validan contra su `.xsd` con `xmlschema`, y los JSON contra el esquema
+   del `openapi.json`. Una prueba de `pytest` lo revisa.
 5. En los ejemplos no hay datos reales de personas, tokens ni contraseñas.
 6. `README.md` de esta carpeta: cómo leer los contratos y dónde está cada uno.
