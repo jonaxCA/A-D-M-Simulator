@@ -276,15 +276,15 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 ## D. Vigilancia
 
 ### D1. `casos` · Integrante 3
-- [ ] Alta con las validaciones de hoy (`valida_caso`, catálogo vigente, fechas)
-- [ ] Consulta con filtros y un caso por id
+- [x] Alta con las validaciones de hoy (`valida_caso`, catálogo vigente, fechas)
+- [x] Consulta con filtros y un caso por id
 - [ ] Cumple la definición de terminado
 
 ### D2. `sincronizacion` · Integrante 3
-- [ ] Recibe un lote de casos de la app móvil y manda cada uno a `casos`, en JSON
-- [ ] El mismo lote enviado dos veces no duplica casos (Redis, `sync:lote:<id>`)
-- [ ] Regresa el resultado de cada caso: creado, duplicado o rechazado con su error
-- [ ] Consulta del resultado de un lote ya enviado
+- [x] Recibe un lote de casos de la app móvil y manda cada uno a `casos`, en JSON
+- [x] El mismo lote enviado dos veces no duplica casos (Redis, `sync:lote:<id>`)
+- [x] Regresa el resultado de cada caso: creado, duplicado o rechazado con su error
+- [x] Consulta del resultado de un lote ya enviado
 - [ ] Cumple la definición de terminado
 
 ---
@@ -292,41 +292,42 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 ## E. Escenarios · Integrante 4
 
 ### E1. `escenarios`
-- [ ] Alta: escenario y versión 1 en una sola transacción, después de pasar por `validacion`
-- [ ] Consulta, listado e historial de versiones
-- [ ] Versión siguiente (nunca sobrescribe) y duplicado
-- [ ] Acepta el escenario en XML (lo usa `escenarios-xml`)
+- [x] Alta: escenario y versión 1 en una sola transacción, después de pasar por `validacion`
+- [x] Consulta, listado e historial de versiones
+- [x] Versión siguiente (nunca sobrescribe) y duplicado
+- [x] Acepta el escenario en XML (lo usa `escenarios-xml`)
 - [ ] Cumple la definición de terminado
 
 ### E2. `intervenciones`
-- [ ] Agregar, quitar y reordenar mientras la versión es borrador; si no lo es, 409
-- [ ] Parámetros validados contra el `param_schema` del tipo
-- [ ] Costo de la intervención
+- [x] Agregar, quitar y reordenar mientras la versión es borrador; si no lo es, 409
+- [x] Parámetros validados contra el `param_schema` del tipo
+- [x] Costo de la intervención
 - [ ] Cumple la definición de terminado
 
 ### E3. `aprobacion`
-- [ ] Enviar a revisión, después de pasar por `validacion`
-- [ ] Aprobar o rechazar, con motivo obligatorio para rechazar
-- [ ] Nadie revisa su propia versión: 409 con mensaje claro, además del CHECK de la base
-- [ ] Si otra persona cambió el estado mientras tanto, 409 (control de concurrencia de hoy)
-- [ ] Bandeja de pendientes de revisión
-- [ ] Al aprobar, avisa con `notificaciones`
-- [ ] Solo escribe las columnas de estado y revisión de `scenario_versions` (permiso por
+- [x] Enviar a revisión, después de pasar por `validacion`
+- [x] Aprobar o rechazar, con motivo obligatorio para rechazar
+- [x] Nadie revisa su propia versión: 409 con mensaje claro, además del CHECK de la base
+- [x] Si otra persona cambió el estado mientras tanto, 409 (control de concurrencia de hoy)
+- [x] Bandeja de pendientes de revisión
+- [ ] Al aprobar, avisa con `notificaciones` (la llamada existe y es best-effort; falta el servicio
+      `notificaciones` y su token de servicio)
+- [x] Solo escribe las columnas de estado y revisión de `scenario_versions` (permiso por
       columna)
 - [ ] Cumple la definición de terminado
 
 ### E4. `validacion`
-- [ ] Recibe un escenario y regresa errores y **avisos** del motor, sin guardar nada
-- [ ] Valida una versión guardada por su id
+- [x] Recibe un escenario y regresa errores y **avisos** del motor, sin guardar nada
+- [x] Valida una versión guardada por su id
 - [ ] Cumple la definición de terminado
 
 ### E5. `escenarios-xml`
-- [ ] Exporta el escenario completo (versión, población por edad, intervenciones) en XML
-- [ ] Publica su XSD en `/api/v1/schemas/scenario.xsd`
-- [ ] Importa un XML: lo valida contra el XSD, luego con `validacion`, y crea el escenario con
+- [x] Exporta el escenario completo (versión, población por edad, intervenciones) en XML
+- [x] Publica su XSD en `/api/v1/schemas/scenario.xsd`
+- [x] Importa un XML: lo valida contra el XSD, luego con `validacion`, y crea el escenario con
       `escenarios` (le manda el XML) y las intervenciones con `intervenciones`
-- [ ] Un XML inválido regresa 422 con el detalle de la validación
-- [ ] Exportar e importar da la misma versión (prueba de ida y vuelta)
+- [x] Un XML inválido regresa 422 con el detalle de la validación
+- [x] Exportar e importar da la misma versión (prueba de ida y vuelta)
 - [ ] Cumple la definición de terminado
 
 ---
