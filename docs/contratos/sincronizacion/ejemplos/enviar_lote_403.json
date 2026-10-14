@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Forbidden",
+  "status": 403,
+  "detail": "No tienes permiso para esta operación.",
+  "codigo": "PERMISO_INSUFICIENTE",
+  "instance": "/api/v1/sync/cases"
+}
