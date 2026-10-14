@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Error RFC 7807 en XML (application/problem+xml), tal como lo produce
+  epidemia_comun.errores.respuesta_error con formatos.a_xml(datos, "problem").
+  Sin espacio de nombres. "status" lleva tipo="numero" porque a_xml marca así los números.
+  "errores" es una extensión opcional (lista de fallas con su ruta) que usan los servicios
+  que validan documentos, como escenarios-xml; cada falla es un <item>.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:complexType name="Estado">
+    <xs:simpleContent>
+      <xs:extension base="xs:integer">
+        <xs:attribute name="tipo" type="xs:string" use="optional" fixed="numero"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="Falla">
+    <xs:sequence>
+      <xs:element name="ruta" type="xs:string"/>
+      <xs:element name="mensaje" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Fallas">
+    <xs:sequence>
+      <xs:element name="item" type="Falla" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="problem">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="type" type="xs:string"/>
+        <xs:element name="title" type="xs:string"/>
+        <xs:element name="status" type="Estado"/>
+        <xs:element name="detail" type="xs:string"/>
+        <xs:element name="codigo">
+          <xs:simpleType>
+            <xs:restriction base="xs:string">
+              <xs:pattern value="[A-Z][A-Z_]*"/>
+            </xs:restriction>
+          </xs:simpleType>
+        </xs:element>
+        <xs:element name="instance" type="xs:string"/>
+        <xs:element name="errores" type="Fallas" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
