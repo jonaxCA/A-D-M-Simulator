@@ -1,0 +1,10 @@
+{
+  "code": "VACUNACION",
+  "start_day": 20,
+  "end_day": null,
+  "coverage": 0.6,
+  "compliance": null,
+  "params": {
+    "eficacia": 0.7
+  }
+}
