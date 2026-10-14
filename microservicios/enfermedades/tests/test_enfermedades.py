@@ -119,13 +119,15 @@ def test_lista_xml_por_omision(cliente):
     assert raiz.find("enfermedades").find("enfermedad").findtext("code") == "SARS_COV_2_ANCESTRAL"
 
 
-@pytest.mark.xfail(strict=True, reason="epidemia_comun.formatos.a_xml usa claves como '0-19' de "
-                                       "letalidad_por_edad como etiqueta y el XML queda mal formado")
 def test_lista_xml_valido_con_letalidad_por_edad(cliente, monkeypatch):
     con_edades = {**LISTADO["enfermedades"][0],
                   "parametros": {"informativos": [{"valor": {"0-19": 0.0001, "80+": 0.08}}]}}
     monkeypatch.setattr(queries, "get_enfermedades", lambda **f: dict(LISTADO, enfermedades=[con_edades]))
-    ET.fromstring(cliente.get("/api/v1/diseases").data)
+    respuesta = cliente.get("/api/v1/diseases")
+    assert respuesta.status_code == 200
+    raiz = ET.fromstring(respuesta.data)
+    assert raiz.find(".//entrada[@clave='0-19']").text == "0.0001"
+    assert raiz.find(".//entrada[@clave='80+']").text == "0.08"
 
 
 def test_lista_json_con_format_y_con_accept(cliente):

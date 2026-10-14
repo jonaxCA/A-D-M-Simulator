@@ -108,8 +108,11 @@ y `/docs` (Swagger UI). CORS solo para `CONSOLE_ORIGIN`.
 **`formatos`.** `responder(datos, raiz)` regresa XML por omisión y JSON con `?format=json` o
 `Accept: application/json`; un `?format` desconocido es 400. `a_xml` escapa todo, marca
 números (`tipo="numero"`), booleanos (`tipo="booleano"`) y nulos (`nil="true"`), y nombra en
-singular los elementos de las colecciones (`zonas` → `zona`). `leer_cuerpo()` acepta JSON o
-XML según el `Content-Type` (otro es 415), con `defusedxml` y un límite de 1 MB.
+singular los elementos de las colecciones (`zonas` → `zona`). Si la clave de un diccionario
+no puede ser etiqueta XML (por ejemplo `0-19` u `80+`), se escribe como
+`<entrada clave="0-19" tipo="numero">100</entrada>`; `de_xml` recupera la clave original.
+Las claves válidas mantienen las etiquetas anteriores. `leer_cuerpo()` acepta JSON o XML
+según el `Content-Type` (otro es 415), con `defusedxml` y un límite de 1 MB.
 
 **`errores`.** `ErrorAPI(estado, codigo, detalle)` y `respuesta_error()`, que la regresa como
 `application/problem+json` o `problem+xml` con `type`, `title`, `status`, `detail`, `codigo` e
@@ -398,8 +401,12 @@ No necesitan base ni Redis: `microservicios/conftest.py` inyecta fakeredis en la
 `redis_compartido`, firma tokens con un secreto de prueba y cada prueba simula la base con
 `monkeypatch`.
 
-**Conteo real (2026-10-13): 291 pasan y 3 `xfail`**, más 34 subpruebas de la biblioteca. La
-salida completa está en `evidencias/pruebas/pytest_microservicios.txt`.
+**Ejecución de referencia anterior (2026-10-13): 291 pasan y 3 `xfail`**, más
+34 subpruebas de la biblioteca. Corresponde al código previo a la corrección XML y se
+conserva en `evidencias/pruebas/pytest_microservicios.txt`.
+
+**Resultado posterior a la corrección XML:** 307 passed, 34 subtests passed in 1.64s.
+Registro de la ejecución en `evidencias/pruebas/pytest_microservicios_xml_corregido.txt`.
 
 | Dónde | Qué cubren |
 |---|---|
@@ -408,8 +415,9 @@ salida completa está en `evidencias/pruebas/pytest_microservicios.txt`.
 | `enfermedades`, `parametros`, `regiones`, `poblacion` | XML por omisión, `?format=json` y `Accept`, 400, 401, 403, 404, 409, 422, cuerpos JSON y XML, `log_audit` en cada escritura, el código que no se edita, la baja sin `DELETE`, la fuente o supuesto obligatorio, el control de concurrencia y `regiones` con Redis caído |
 | `tipos_intervencion`, `indicadores`, `series`, `zonas` | Formatos, permisos, filtros, caché y Redis caído |
 
-Los 3 `xfail` (`strict=True`) documentan el bug de `a_xml` de la sección 14: cuando se
-corrija, fallan y avisan que hay que quitarles la marca.
+Las tres pruebas de XML de `enfermedades`, `parametros` y `poblacion` ya no llevan
+`xfail`: ahora verifican XML bien formado y el contenido de `<entrada clave="...">`.
+Se añadieron regresiones de serialización y lectura en la biblioteca común.
 
 Los permisos de la 026 se probaron contra una base real, rol por rol:
 `evidencias/pruebas/roles_postgres.txt` (21 de 21).
@@ -451,13 +459,11 @@ ruta en Swagger en XML y en JSON. Las 12 respondieron 200.
 
 **Pendientes del grupo 14:00:**
 
-- `epidemia_comun.formatos.a_xml` usa las claves del diccionario como etiqueta; claves como
-  `0-19` u `80+` producen XML mal formado. Se confirmó con los servicios corriendo: falla el XML
-  de `GET /api/v1/diseases`, el de `parametros` cuando la enfermedad tiene
-  `letalidad_por_edad` (COVID-19 e influenza) y el de `GET /regions/{id}/age-groups`. En JSON
-  responden bien. Hay tres pruebas `xfail` que lo documentan. La corrección va en la
-  biblioteca común (por ejemplo, `<entrada clave="0-19">`, que es lo que muestra el ejemplo
-  XML de `age-groups`), no en los servicios.
+- Se corrigió la serialización de claves no válidas como etiqueta XML (`0-19`, `80+`)
+  en la biblioteca común; `de_xml` reconoce el atributo `clave` para reconstruir el
+  diccionario. Las tres pruebas que registraban este problema dejan de ser `xfail`.
+  La validación de la suite completa queda reflejada en el nuevo registro de pruebas,
+  y los endpoints deben volverse a verificar con los contenedores de la versión integrada.
 
 **Corregido en esta entrega:**
 
