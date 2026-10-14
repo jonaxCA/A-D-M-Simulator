@@ -1,0 +1,7 @@
+{
+  "population_size": 1142994,
+  "horizon_days": 150,
+  "initial_infected": 80,
+  "stratify": false,
+  "notes": "Más infectados iniciales."
+}
