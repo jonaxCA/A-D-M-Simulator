@@ -7,6 +7,8 @@
 
 ## Índice
 
+- [Reporte de cierre y correcciones del segundo parcial](REPORTE_TECNICO_SEGUNDO_PARCIAL.md)
+
 1. [Propósito y alcance](#1-propósito-y-alcance)
 2. [Arquitectura](#2-arquitectura)
 3. [Tecnologías](#3-tecnologías)
