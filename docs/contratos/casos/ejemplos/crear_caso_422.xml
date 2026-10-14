@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo="numero">422</status><detail>El sexo no es un valor del catálogo. La fecha de reporte no puede estar en el futuro.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/cases</instance></problem>
