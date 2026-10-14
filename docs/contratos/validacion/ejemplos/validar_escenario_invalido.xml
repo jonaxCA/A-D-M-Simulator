@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<validacion><valido tipo="booleano">false</valido><errores><item>Los infectados iniciales no pueden superar la población.</item></errores><avisos /></validacion>
