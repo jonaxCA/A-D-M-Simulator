@@ -1,0 +1,1713 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - intervenciones",
+    "version": "0.1.0",
+    "description": "Servicio intervenciones: agregar, quitar y reordenar las intervenciones de una versión en borrador (409 si no lo es), con parámetros validados contra el param_schema del tipo, y costo de la intervención. Roles: ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR; solo quien creó el escenario o un ADMINISTRADOR edita; el costo es de EPIDEMIOLOGO y ADMINISTRADOR. Cuerpos en JSON o XML; respuestas XML por defecto o JSON con ?format=json."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5232"
+    }
+  ],
+  "tags": [
+    {
+      "name": "intervenciones"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token del servicio auth, con sesión activa."
+      }
+    },
+    "schemas": {
+      "Problem": {
+        "type": "object",
+        "description": "Error RFC 7807 (application/problem+json o application/problem+xml).",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "codigo",
+          "instance"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "codigo": {
+            "type": "string",
+            "description": "Código de la tabla de errores de la biblioteca común."
+          },
+          "instance": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/versions/{version_id}/interventions": {
+      "get": {
+        "summary": "Listar las intervenciones de una versión",
+        "description": "Intervenciones de la versión en su orden de aplicación. editable es true si la versión es la vigente y sigue en borrador.",
+        "operationId": "listar_intervenciones",
+        "tags": [
+          "intervenciones"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "description": "Id de la versión (scenario_versions.id).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "responses": {
+          "200": {
+            "description": "Intervenciones de la versión",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "version_id": 31,
+                  "scenario_id": 12,
+                  "version_number": 2,
+                  "status": "borrador",
+                  "editable": true,
+                  "total": 2,
+                  "intervenciones": [
+                    {
+                      "id": 77,
+                      "code": "CIERRE_ESCUELAS",
+                      "name": "Cierre de escuelas",
+                      "target_layer": "escuela",
+                      "start_day": 10,
+                      "end_day": 40,
+                      "coverage": 0.8,
+                      "compliance": 0.9,
+                      "params": {
+                        "reduccion": 0.5
+                      },
+                      "order_index": 0
+                    },
+                    {
+                      "id": 78,
+                      "code": "VACUNACION",
+                      "name": "Vacunación",
+                      "target_layer": "poblacion",
+                      "start_day": 20,
+                      "end_day": null,
+                      "coverage": 0.6,
+                      "compliance": null,
+                      "params": {
+                        "eficacia": 0.7
+                      },
+                      "order_index": 1
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "intervenciones_version"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<intervenciones_version><version_id tipo=\"numero\">31</version_id><scenario_id tipo=\"numero\">12</scenario_id><version_number tipo=\"numero\">2</version_number><status>borrador</status><editable tipo=\"booleano\">true</editable><total tipo=\"numero\">2</total><intervenciones><intervencion><id tipo=\"numero\">77</id><code>CIERRE_ESCUELAS</code><name>Cierre de escuelas</name><target_layer>escuela</target_layer><start_day tipo=\"numero\">10</start_day><end_day tipo=\"numero\">40</end_day><coverage tipo=\"numero\">0.8</coverage><compliance tipo=\"numero\">0.9</compliance><params><reduccion tipo=\"numero\">0.5</reduccion></params><order_index tipo=\"numero\">0</order_index></intervencion><intervencion><id tipo=\"numero\">78</id><code>VACUNACION</code><name>Vacunación</name><target_layer>poblacion</target_layer><start_day tipo=\"numero\">20</start_day><end_day nil=\"true\" /><coverage tipo=\"numero\">0.6</coverage><compliance nil=\"true\" /><params><eficacia tipo=\"numero\">0.7</eficacia></params><order_index tipo=\"numero\">1</order_index></intervencion></intervenciones></intervenciones_version>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "El recurso no existe (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe la versión.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe la versión.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Agregar una intervención",
+        "description": "Agrega la intervención al final del orden. Solo si la versión es la vigente y está en borrador (si no, 409) y solo para quien creó el escenario o un ADMINISTRADOR. Los params se validan contra el param_schema del tipo; dos intervenciones del mismo tipo que se traslapan dan 409.",
+        "operationId": "agregar_intervencion",
+        "tags": [
+          "intervenciones"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "description": "Id de la versión (scenario_versions.id).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Intervención nueva.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "start_day"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "description": "Código del tipo (servicio tipos-intervencion)."
+                  },
+                  "start_day": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "end_day": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "coverage": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "nullable": true
+                  },
+                  "compliance": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "nullable": true
+                  },
+                  "params": {
+                    "type": "object",
+                    "description": "Parámetros según el param_schema del tipo; se rechazan los desconocidos.",
+                    "additionalProperties": true
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "code": "VACUNACION",
+                "start_day": 20,
+                "end_day": null,
+                "coverage": 0.6,
+                "compliance": null,
+                "params": {
+                  "eficacia": 0.7
+                }
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "start_day"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "description": "Código del tipo (servicio tipos-intervencion)."
+                  },
+                  "start_day": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "end_day": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "coverage": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "nullable": true
+                  },
+                  "compliance": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "nullable": true
+                  },
+                  "params": {
+                    "type": "object",
+                    "description": "Parámetros según el param_schema del tipo; se rechazan los desconocidos.",
+                    "additionalProperties": true
+                  }
+                },
+                "additionalProperties": false,
+                "xml": {
+                  "name": "intervencion"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<intervencion><code>VACUNACION</code><start_day tipo=\"numero\">20</start_day><end_day nil=\"true\" /><coverage tipo=\"numero\">0.6</coverage><compliance nil=\"true\" /><params><eficacia tipo=\"numero\">0.7</eficacia></params></intervencion>\n"
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Intervención agregada",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 78,
+                  "code": "VACUNACION",
+                  "name": "Vacunación",
+                  "target_layer": "poblacion",
+                  "start_day": 20,
+                  "end_day": null,
+                  "coverage": 0.6,
+                  "compliance": null,
+                  "params": {
+                    "eficacia": 0.7
+                  },
+                  "order_index": 1
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "intervencion"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<intervencion><id tipo=\"numero\">78</id><code>VACUNACION</code><name>Vacunación</name><target_layer>poblacion</target_layer><start_day tipo=\"numero\">20</start_day><end_day nil=\"true\" /><coverage tipo=\"numero\">0.6</coverage><compliance nil=\"true\" /><params><eficacia tipo=\"numero\">0.7</eficacia></params><order_index tipo=\"numero\">1</order_index></intervencion>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Solo quien creó el escenario puede editar sus intervenciones.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>Solo quien creó el escenario puede editar sus intervenciones.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "El recurso no existe (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe la versión.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe la versión.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "Esta versión ya no es un borrador: para cambiar sus intervenciones hay que crear una versión nueva.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>Esta versión ya no es un borrador: para cambiar sus intervenciones hay que crear una versión nueva.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type no soportado: usa application/json o application/xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unsupported Media Type",
+                  "status": 415,
+                  "detail": "Usa Content-Type: application/json o application/xml.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unsupported Media Type</title><status tipo=\"numero\">415</status><detail>Usa Content-Type: application/json o application/xml.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos (DATOS_INVALIDOS); el detalle trae los mensajes de validación en español.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "«eficacia» es obligatorio para este tipo de intervención.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>«eficacia» es obligatorio para este tipo de intervención.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/versions/{version_id}/interventions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/versions/{version_id}/interventions</instance></problem>\n"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/versions/{version_id}/interventions/{intervention_id}": {
+      "delete": {
+        "summary": "Quitar una intervención",
+        "description": "Quita la intervención y cierra el hueco en el orden. Mismas reglas que agregar.",
+        "operationId": "quitar_intervencion",
+        "tags": [
+          "intervenciones"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "description": "Id de la versión (scenario_versions.id).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "intervention_id",
+            "required": true,
+            "description": "Id de la intervención.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "responses": {
+          "200": {
+            "description": "Intervención quitada",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 78,
+                  "eliminada": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "intervencion"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<intervencion><id tipo=\"numero\">78</id><eliminada tipo=\"booleano\">true</eliminada></intervencion>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Solo quien creó el escenario puede editar sus intervenciones.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>Solo quien creó el escenario puede editar sus intervenciones.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "El recurso no existe (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Esa intervención ya no está en esta versión.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>Esa intervención ya no está en esta versión.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "Esta versión ya no es un borrador: para cambiar sus intervenciones hay que crear una versión nueva.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>Esta versión ya no es un borrador: para cambiar sus intervenciones hay que crear una versión nueva.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}</instance></problem>\n"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/versions/{version_id}/interventions/{intervention_id}/move": {
+      "post": {
+        "summary": "Subir o bajar una intervención",
+        "description": "Intercambia la intervención con su vecina. movida es false si ya estaba en el extremo (no es error). Mismas reglas que agregar.",
+        "operationId": "mover_intervencion",
+        "tags": [
+          "intervenciones"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "description": "Id de la versión (scenario_versions.id).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "intervention_id",
+            "required": true,
+            "description": "Id de la intervención.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Dirección del movimiento.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "direction"
+                ],
+                "properties": {
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "subir",
+                      "bajar",
+                      "up",
+                      "down"
+                    ],
+                    "description": "subir y bajar son los valores canónicos (los del monolito); up y down son alias."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "direction": "subir"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "direction"
+                ],
+                "properties": {
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "subir",
+                      "bajar",
+                      "up",
+                      "down"
+                    ],
+                    "description": "subir y bajar son los valores canónicos (los del monolito); up y down son alias."
+                  }
+                },
+                "additionalProperties": false,
+                "xml": {
+                  "name": "movimiento"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<movimiento><direction>subir</direction></movimiento>\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Orden actualizado",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 78,
+                  "direction": "subir",
+                  "movida": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "intervencion"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<intervencion><id tipo=\"numero\">78</id><direction>subir</direction><movida tipo=\"booleano\">true</movida></intervencion>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Solo quien creó el escenario puede editar sus intervenciones.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>Solo quien creó el escenario puede editar sus intervenciones.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "El recurso no existe (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Esa intervención ya no está en esta versión.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>Esa intervención ya no está en esta versión.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "Esta versión ya no es un borrador: para cambiar sus intervenciones hay que crear una versión nueva.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>Esta versión ya no es un borrador: para cambiar sus intervenciones hay que crear una versión nueva.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type no soportado: usa application/json o application/xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unsupported Media Type",
+                  "status": 415,
+                  "detail": "Usa Content-Type: application/json o application/xml.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unsupported Media Type</title><status tipo=\"numero\">415</status><detail>Usa Content-Type: application/json o application/xml.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos (DATOS_INVALIDOS); el detalle trae los mensajes de validación en español.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "direction debe ser subir o bajar (o up o down).",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>direction debe ser subir o bajar (o up o down).</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/versions/{version_id}/interventions/{intervention_id}/cost": {
+      "put": {
+        "summary": "Fijar el costo de una intervención",
+        "description": "Fija el costo unitario del TIPO de la intervención (como en el monolito, el costo vive en intervention_types y afecta a todas las del tipo), con la bitácora en la misma transacción. Solo EPIDEMIOLOGO y ADMINISTRADOR; no exige que la versión sea borrador.",
+        "operationId": "actualizar_costo_intervencion",
+        "tags": [
+          "intervenciones"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "description": "Id de la versión (scenario_versions.id).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "intervention_id",
+            "required": true,
+            "description": "Id de la intervención.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Costo unitario y su fuente.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "unit_cost"
+                ],
+                "properties": {
+                  "unit_cost": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "cost_source": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Obligatoria si el costo no es un supuesto."
+                  },
+                  "cost_is_assumption": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "unit_cost": 1500.0,
+                "cost_source": "SSNL 2025",
+                "cost_is_assumption": false
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "unit_cost"
+                ],
+                "properties": {
+                  "unit_cost": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "cost_source": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Obligatoria si el costo no es un supuesto."
+                  },
+                  "cost_is_assumption": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "additionalProperties": false,
+                "xml": {
+                  "name": "costo"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<costo><unit_cost tipo=\"numero\">1500.0</unit_cost><cost_source>SSNL 2025</cost_source><cost_is_assumption tipo=\"booleano\">false</cost_is_assumption></costo>\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Costo actualizado",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 77,
+                  "intervention_type_id": 2,
+                  "unit_cost": 1500.0,
+                  "cost_source": "SSNL 2025",
+                  "cost_is_assumption": false
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "costo_intervencion"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<costo_intervencion><id tipo=\"numero\">77</id><intervention_type_id tipo=\"numero\">2</intervention_type_id><unit_cost tipo=\"numero\">1500.0</unit_cost><cost_source>SSNL 2025</cost_source><cost_is_assumption tipo=\"booleano\">false</cost_is_assumption></costo_intervencion>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "El recurso no existe (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Esa intervención no está en esta versión.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>Esa intervención no está en esta versión.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type no soportado: usa application/json o application/xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unsupported Media Type",
+                  "status": 415,
+                  "detail": "Usa Content-Type: application/json o application/xml.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unsupported Media Type</title><status tipo=\"numero\">415</status><detail>Usa Content-Type: application/json o application/xml.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos (DATOS_INVALIDOS); el detalle trae los mensajes de validación en español.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "Un costo que no es supuesto debe incluir una fuente.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>Un costo que no es supuesto debe incluir una fuente.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/cost</instance></problem>\n"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "version_id": 31,
+  "scenario_id": 12,
+  "version_number": 2,
+  "status": "borrador",
+  "editable": true,
+  "total": 2,
+  "intervenciones": [
+    {
+      "id": 77,
+      "code": "CIERRE_ESCUELAS",
+      "name": "Cierre de escuelas",
+      "target_layer": "escuela",
+      "start_day": 10,
+      "end_day": 40,
+      "coverage": 0.8,
+      "compliance": 0.9,
+      "params": {
+        "reduccion": 0.5
+      },
+      "order_index": 0
+    },
+    {
+      "id": 78,
+      "code": "VACUNACION",
+      "name": "Vacunación",
+      "target_layer": "poblacion",
+      "start_day": 20,
+      "end_day": null,
+      "coverage": 0.6,
+      "compliance": null,
+      "params": {
+        "eficacia": 0.7
+      },
+      "order_index": 1
+    }
+  ]
+}
