@@ -1,0 +1,18 @@
+{
+  "total": 1,
+  "pendientes": [
+    {
+      "scenario_id": 3,
+      "name": "Brote de influenza en Monterrey",
+      "version_number": 2,
+      "submitted_at": "2026-10-01T10:00:00+00:00",
+      "population_size": 1100000,
+      "horizon_days": 60,
+      "created_by": 5,
+      "enfermedad": "Influenza",
+      "region": "Monterrey",
+      "autor": "Ana Analista",
+      "n_intervenciones": 1
+    }
+  ]
+}
