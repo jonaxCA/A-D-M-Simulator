@@ -1,0 +1,1987 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - escenarios",
+    "version": "0.1.0",
+    "description": "Servicio escenarios: alta (escenario y versión 1 en una transacción, validada), versiones nuevas que nunca sobrescriben, historial y duplicado. Roles: ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR; versionar solo quien creó el escenario o un ADMINISTRADOR. Los cuerpos se aceptan en JSON o XML; las respuestas, XML por defecto o JSON con ?format=json."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5231"
+    }
+  ],
+  "tags": [
+    {
+      "name": "escenarios"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token del servicio auth, con sesión activa."
+      }
+    },
+    "schemas": {
+      "Problem": {
+        "type": "object",
+        "description": "Error RFC 7807 (application/problem+json o application/problem+xml).",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "codigo",
+          "instance"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "codigo": {
+            "type": "string",
+            "description": "Código de la tabla de errores de la biblioteca común."
+          },
+          "instance": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/scenarios": {
+      "get": {
+        "summary": "Listar escenarios",
+        "description": "Escenarios con su versión vigente, del más reciente al más antiguo. Abierto a los tres roles.",
+        "operationId": "listar_escenarios",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "description": "Busca por nombre de escenario, enfermedad o región.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de escenarios",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 1,
+                  "escenarios": [
+                    {
+                      "id": 12,
+                      "name": "Brote de influenza en Monterrey",
+                      "description": "Escenario base.",
+                      "status": "borrador",
+                      "created_at": "2026-09-20T15:30:00+00:00",
+                      "enfermedad": "Influenza estacional",
+                      "region": "Monterrey",
+                      "autor": "Ana Analista",
+                      "version_number": 2,
+                      "version_status": "borrador",
+                      "population_size": 1142994,
+                      "horizon_days": 120,
+                      "initial_infected": 50,
+                      "por_edad": true
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "lista_escenarios"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<lista_escenarios><total tipo=\"numero\">1</total><escenarios><escenario><id tipo=\"numero\">12</id><name>Brote de influenza en Monterrey</name><description>Escenario base.</description><status>borrador</status><created_at>2026-09-20T15:30:00+00:00</created_at><enfermedad>Influenza estacional</enfermedad><region>Monterrey</region><autor>Ana Analista</autor><version_number tipo=\"numero\">2</version_number><version_status>borrador</version_status><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">120</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><por_edad tipo=\"booleano\">true</por_edad></escenario></escenarios></lista_escenarios>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear un escenario",
+        "description": "Crea el escenario y su versión 1 (borrador) en una sola transacción, con su registro en la bitácora. Antes de guardar, el escenario pasa por las reglas del monolito y por el servicio validacion. Acepta el cuerpo en JSON o XML (Content-Type).",
+        "operationId": "crear_escenario",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Escenario nuevo.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "disease_id",
+                  "region_id",
+                  "horizon_days",
+                  "initial_infected"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "disease_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "region_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "population_size": {
+                    "type": "integer",
+                    "description": "Obligatoria si stratify es false; si es true se toma del censo de la región."
+                  },
+                  "horizon_days": {
+                    "type": "integer"
+                  },
+                  "initial_infected": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "stratify": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Estratifica por grupo de edad con el censo de la región."
+                  },
+                  "age_unknown_policy": {
+                    "type": "string",
+                    "description": "Qué hacer con la gente sin edad declarada; obligatoria si hay."
+                  },
+                  "notes": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "name": "Brote de influenza en Monterrey",
+                "description": "Escenario base.",
+                "disease_id": 3,
+                "region_id": 5,
+                "population_size": 1142994,
+                "horizon_days": 90,
+                "initial_infected": 50,
+                "stratify": false,
+                "notes": null
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "disease_id",
+                  "region_id",
+                  "horizon_days",
+                  "initial_infected"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "disease_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "region_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "population_size": {
+                    "type": "integer",
+                    "description": "Obligatoria si stratify es false; si es true se toma del censo de la región."
+                  },
+                  "horizon_days": {
+                    "type": "integer"
+                  },
+                  "initial_infected": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "stratify": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Estratifica por grupo de edad con el censo de la región."
+                  },
+                  "age_unknown_policy": {
+                    "type": "string",
+                    "description": "Qué hacer con la gente sin edad declarada; obligatoria si hay."
+                  },
+                  "notes": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "additionalProperties": false,
+                "xml": {
+                  "name": "escenario"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><name>Brote de influenza en Monterrey</name><description>Escenario base.</description><disease_id tipo=\"numero\">3</disease_id><region_id tipo=\"numero\">5</region_id><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">90</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><stratify tipo=\"booleano\">false</stratify><notes nil=\"true\" /></escenario>\n"
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Escenario creado",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 13,
+                  "version_number": 1,
+                  "status": "borrador"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "escenario"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><id tipo=\"numero\">13</id><version_number tipo=\"numero\">1</version_number><status>borrador</status></escenario>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "Ya tienes un escenario con ese nombre. El nombre es único por autor, así que elige otro.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/scenarios"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>Ya tienes un escenario con ese nombre. El nombre es único por autor, así que elige otro.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type no soportado: usa application/json o application/xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unsupported Media Type",
+                  "status": 415,
+                  "detail": "Usa Content-Type: application/json o application/xml.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unsupported Media Type</title><status tipo=\"numero\">415</status><detail>Usa Content-Type: application/json o application/xml.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos (DATOS_INVALIDOS); el detalle trae los mensajes de validación en español.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "El nombre del escenario es obligatorio.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>El nombre del escenario es obligatorio.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/{scenario_id}": {
+      "get": {
+        "summary": "Consultar un escenario",
+        "description": "Escenario con una versión (la vigente, o la indicada en ?version=) y las intervenciones de esa versión. editable indica si todavía se pueden cambiar sus intervenciones.",
+        "operationId": "consultar_escenario",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "description": "Id del escenario.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "description": "Número de versión; por defecto la vigente.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "responses": {
+          "200": {
+            "description": "Escenario con su versión",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 12,
+                  "name": "Brote de influenza en Monterrey",
+                  "description": "Escenario base.",
+                  "status": "borrador",
+                  "owner_id": 7,
+                  "created_at": "2026-09-20T15:30:00+00:00",
+                  "disease_id": 3,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 5,
+                  "region": "Monterrey",
+                  "autor": "Ana Analista",
+                  "editable": true,
+                  "version": {
+                    "id": 31,
+                    "version_number": 2,
+                    "status": "borrador",
+                    "is_current": true,
+                    "population_size": 1142994,
+                    "horizon_days": 120,
+                    "initial_infected": 50,
+                    "notes": "Se amplía el horizonte a 120 días.",
+                    "created_at": "2026-09-22T10:05:00+00:00",
+                    "por_edad": true,
+                    "grupos_edad": [
+                      {
+                        "grupo": "0-14",
+                        "poblacion": 250000
+                      },
+                      {
+                        "grupo": "15-64",
+                        "poblacion": 760000
+                      },
+                      {
+                        "grupo": "65+",
+                        "poblacion": 132994
+                      }
+                    ],
+                    "population_age_unknown": 0,
+                    "age_unknown_policy": null,
+                    "autor": "Ana Analista",
+                    "revisor": null,
+                    "submitted_at": null,
+                    "reviewed_at": null,
+                    "review_comment": null
+                  },
+                  "intervenciones": [
+                    {
+                      "id": 77,
+                      "code": "CIERRE_ESCUELAS",
+                      "name": "Cierre de escuelas",
+                      "target_layer": "escuela",
+                      "start_day": 10,
+                      "end_day": 40,
+                      "coverage": 0.8,
+                      "compliance": 0.9,
+                      "params": {
+                        "reduccion": 0.5
+                      },
+                      "order_index": 0
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "escenario"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><id tipo=\"numero\">12</id><name>Brote de influenza en Monterrey</name><description>Escenario base.</description><status>borrador</status><owner_id tipo=\"numero\">7</owner_id><created_at>2026-09-20T15:30:00+00:00</created_at><disease_id tipo=\"numero\">3</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">5</region_id><region>Monterrey</region><autor>Ana Analista</autor><editable tipo=\"booleano\">true</editable><version><id tipo=\"numero\">31</id><version_number tipo=\"numero\">2</version_number><status>borrador</status><is_current tipo=\"booleano\">true</is_current><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">120</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><notes>Se amplía el horizonte a 120 días.</notes><created_at>2026-09-22T10:05:00+00:00</created_at><por_edad tipo=\"booleano\">true</por_edad><grupos_edad><item><grupo>0-14</grupo><poblacion tipo=\"numero\">250000</poblacion></item><item><grupo>15-64</grupo><poblacion tipo=\"numero\">760000</poblacion></item><item><grupo>65+</grupo><poblacion tipo=\"numero\">132994</poblacion></item></grupos_edad><population_age_unknown tipo=\"numero\">0</population_age_unknown><age_unknown_policy nil=\"true\" /><autor>Ana Analista</autor><revisor nil=\"true\" /><submitted_at nil=\"true\" /><reviewed_at nil=\"true\" /><review_comment nil=\"true\" /></version><intervenciones><intervencion><id tipo=\"numero\">77</id><code>CIERRE_ESCUELAS</code><name>Cierre de escuelas</name><target_layer>escuela</target_layer><start_day tipo=\"numero\">10</start_day><end_day tipo=\"numero\">40</end_day><coverage tipo=\"numero\">0.8</coverage><compliance tipo=\"numero\">0.9</compliance><params><reduccion tipo=\"numero\">0.5</reduccion></params><order_index tipo=\"numero\">0</order_index></intervencion></intervenciones></escenario>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios/{scenario_id}</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios/{scenario_id}</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "El recurso no existe (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el escenario o esa versión.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/scenarios/{scenario_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el escenario o esa versión.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/scenarios/{scenario_id}</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos (DATOS_INVALIDOS); el detalle trae los mensajes de validación en español.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "El campo version debe ser entero positivo.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>El campo version debe ser entero positivo.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios/{scenario_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}</instance></problem>\n"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/{scenario_id}/versions": {
+      "get": {
+        "summary": "Historial de versiones",
+        "description": "Todas las versiones del escenario, la más reciente primero, con el conteo de intervenciones.",
+        "operationId": "historial_versiones",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "description": "Id del escenario.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "responses": {
+          "200": {
+            "description": "Historial de versiones",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "scenario_id": 12,
+                  "total": 2,
+                  "versiones": [
+                    {
+                      "version_number": 2,
+                      "status": "borrador",
+                      "is_current": true,
+                      "population_size": 1142994,
+                      "horizon_days": 120,
+                      "initial_infected": 50,
+                      "notes": "Se amplía el horizonte a 120 días.",
+                      "created_at": "2026-09-22T10:05:00+00:00",
+                      "por_edad": true,
+                      "autor": "Ana Analista",
+                      "n_intervenciones": 1
+                    },
+                    {
+                      "version_number": 1,
+                      "status": "aprobado",
+                      "is_current": false,
+                      "population_size": 1142994,
+                      "horizon_days": 90,
+                      "initial_infected": 50,
+                      "notes": null,
+                      "created_at": "2026-09-20T15:30:00+00:00",
+                      "por_edad": true,
+                      "autor": "Ana Analista",
+                      "n_intervenciones": 1
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "historial_versiones"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<historial_versiones><scenario_id tipo=\"numero\">12</scenario_id><total tipo=\"numero\">2</total><versiones><item><version_number tipo=\"numero\">2</version_number><status>borrador</status><is_current tipo=\"booleano\">true</is_current><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">120</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><notes>Se amplía el horizonte a 120 días.</notes><created_at>2026-09-22T10:05:00+00:00</created_at><por_edad tipo=\"booleano\">true</por_edad><autor>Ana Analista</autor><n_intervenciones tipo=\"numero\">1</n_intervenciones></item><item><version_number tipo=\"numero\">1</version_number><status>aprobado</status><is_current tipo=\"booleano\">false</is_current><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">90</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><notes nil=\"true\" /><created_at>2026-09-20T15:30:00+00:00</created_at><por_edad tipo=\"booleano\">true</por_edad><autor>Ana Analista</autor><n_intervenciones tipo=\"numero\">1</n_intervenciones></item></versiones></historial_versiones>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "El recurso no existe (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el escenario o esa versión.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el escenario o esa versión.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear la versión siguiente",
+        "description": "Crea la versión siguiente (borrador, vigente) copiando las intervenciones de la vigente; nunca sobrescribe una versión existente. Solo quien creó el escenario o un ADMINISTRADOR.",
+        "operationId": "crear_version",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "description": "Id del escenario.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Parámetros de la versión nueva y motivo del cambio.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "horizon_days",
+                  "initial_infected",
+                  "notes"
+                ],
+                "properties": {
+                  "population_size": {
+                    "type": "integer"
+                  },
+                  "horizon_days": {
+                    "type": "integer"
+                  },
+                  "initial_infected": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "stratify": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "age_unknown_policy": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "Motivo del cambio; obligatorio."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "population_size": 1142994,
+                "horizon_days": 150,
+                "initial_infected": 80,
+                "stratify": false,
+                "notes": "Más infectados iniciales."
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "horizon_days",
+                  "initial_infected",
+                  "notes"
+                ],
+                "properties": {
+                  "population_size": {
+                    "type": "integer"
+                  },
+                  "horizon_days": {
+                    "type": "integer"
+                  },
+                  "initial_infected": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "stratify": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "age_unknown_policy": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "Motivo del cambio; obligatorio."
+                  }
+                },
+                "additionalProperties": false,
+                "xml": {
+                  "name": "version"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<version><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">150</horizon_days><initial_infected tipo=\"numero\">80</initial_infected><stratify tipo=\"booleano\">false</stratify><notes>Más infectados iniciales.</notes></version>\n"
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Versión creada",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "scenario_id": 12,
+                  "version_number": 3,
+                  "status": "borrador"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "version"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<version><scenario_id tipo=\"numero\">12</scenario_id><version_number tipo=\"numero\">3</version_number><status>borrador</status></version>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Solo quien creó el escenario puede versionarlo.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>Solo quien creó el escenario puede versionarlo.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "El recurso no existe (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el escenario o esa versión.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el escenario o esa versión.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "Otra persona creó una versión al mismo tiempo. Recarga la página y vuelve a intentarlo.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>Otra persona creó una versión al mismo tiempo. Recarga la página y vuelve a intentarlo.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type no soportado: usa application/json o application/xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unsupported Media Type",
+                  "status": 415,
+                  "detail": "Usa Content-Type: application/json o application/xml.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unsupported Media Type</title><status tipo=\"numero\">415</status><detail>Usa Content-Type: application/json o application/xml.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos (DATOS_INVALIDOS); el detalle trae los mensajes de validación en español.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "El nombre del escenario es obligatorio.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>El nombre del escenario es obligatorio.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/{scenario_id}/duplicate": {
+      "post": {
+        "summary": "Duplicar un escenario",
+        "description": "Crea un escenario nuevo (de quien duplica, borrador, versión 1) a partir de una versión de otro, con sus intervenciones. No exige ser dueño del original.",
+        "operationId": "duplicar_escenario",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "description": "Id del escenario.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Nombre del escenario nuevo y, opcionalmente, la versión a copiar.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Número de versión a copiar; por defecto la vigente."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "name": "Brote de influenza en Monterrey (copia)",
+                "version": 2
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Número de versión a copiar; por defecto la vigente."
+                  }
+                },
+                "additionalProperties": false,
+                "xml": {
+                  "name": "duplicado"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<duplicado><name>Brote de influenza en Monterrey (copia)</name><version tipo=\"numero\">2</version></duplicado>\n"
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Escenario duplicado",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 14,
+                  "duplicado_de": 12,
+                  "version_origen": 2,
+                  "version_number": 1,
+                  "status": "borrador"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "escenario"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><id tipo=\"numero\">14</id><duplicado_de tipo=\"numero\">12</duplicado_de><version_origen tipo=\"numero\">2</version_origen><version_number tipo=\"numero\">1</version_number><status>borrador</status></escenario>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}/duplicate"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}/duplicate</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/duplicate"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios/{scenario_id}/duplicate</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/duplicate"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios/{scenario_id}/duplicate</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "El recurso no existe (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Esa versión del escenario ya no existe.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/scenarios/{scenario_id}/duplicate"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>Esa versión del escenario ya no existe.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/scenarios/{scenario_id}/duplicate</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "Ya tienes un escenario con ese nombre. El nombre es único por autor, así que elige otro.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/scenarios/{scenario_id}/duplicate"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>Ya tienes un escenario con ese nombre. El nombre es único por autor, así que elige otro.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/scenarios/{scenario_id}/duplicate</instance></problem>\n"
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type no soportado: usa application/json o application/xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unsupported Media Type",
+                  "status": 415,
+                  "detail": "Usa Content-Type: application/json o application/xml.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}/duplicate"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unsupported Media Type</title><status tipo=\"numero\">415</status><detail>Usa Content-Type: application/json o application/xml.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}/duplicate</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos (DATOS_INVALIDOS); el detalle trae los mensajes de validación en español.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "El nombre del escenario es obligatorio.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}/duplicate"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>El nombre del escenario es obligatorio.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}/duplicate</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/duplicate"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}/duplicate</instance></problem>\n"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

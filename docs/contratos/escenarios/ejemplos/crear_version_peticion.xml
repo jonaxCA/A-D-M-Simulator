@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<version><population_size tipo="numero">1142994</population_size><horizon_days tipo="numero">150</horizon_days><initial_infected tipo="numero">80</initial_infected><stratify tipo="booleano">false</stratify><notes>Más infectados iniciales.</notes></version>

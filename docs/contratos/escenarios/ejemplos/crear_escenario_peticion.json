@@ -1,0 +1,11 @@
+{
+  "name": "Brote de influenza en Monterrey",
+  "description": "Escenario base.",
+  "disease_id": 3,
+  "region_id": 5,
+  "population_size": 1142994,
+  "horizon_days": 90,
+  "initial_infected": 50,
+  "stratify": false,
+  "notes": null
+}
