@@ -58,3 +58,5 @@ Abre <http://localhost:5000/>. Falta crear el rol `epidemia_app` y darle permiso
 ```bash
 cd procesamiento && python -m unittest discover -s tests -t .
 ```
+
+**Segundo parcial (grupo 14:00):** [Reporte técnico de cierre y retroalimentación](docs/REPORTE_TECNICO_SEGUNDO_PARCIAL.md) · [Índice de documentos](docs/INDICE_CIERRE_SEGUNDO_PARCIAL.md).

@@ -1,5 +1,7 @@
 # Evidencias — segundo parcial
 
+**Cierre del segundo parcial:** consultar el [reporte técnico de correcciones](../docs/REPORTE_TECNICO_SEGUNDO_PARCIAL.md) y la [nota XML](NOTA_CORRECCION_XML.md). Las pruebas 307/34 son una ejecución registrada y no equivalen a un despliegue de 26 servicios.
+
 Evidencia de funcionamiento de los microservicios. Cada archivo dice la fecha y el commit con
 que se tomó.
 
