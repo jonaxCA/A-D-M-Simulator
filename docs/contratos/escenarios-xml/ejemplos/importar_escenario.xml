@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<escenario esquema="1.0">
+  <nombre>Brote de influenza en Monterrey</nombre>
+  <descripcion>Cierre de escuelas y campaña de vacunación.</descripcion>
+  <enfermedad codigo="INFLUENZA_A_H1N1"/>
+  <region codigo="19039"/>
+  <version numero="1" estado="borrador" vigente="true">
+    <poblacion total="100000">
+      <por_edad>
+        <grupo edad="0-19">28000</grupo>
+        <grupo edad="20-39">31000</grupo>
+        <grupo edad="40-59">24000</grupo>
+        <grupo edad="60-79">12000</grupo>
+        <grupo edad="80+">3000</grupo>
+      </por_edad>
+      <edad_no_especificada politica="prorratear">2000</edad_no_especificada>
+    </poblacion>
+    <horizonte_dias>180</horizonte_dias>
+    <infectados_iniciales>10</infectados_iniciales>
+    <notas>Escenario de ejemplo; no son datos reales.</notas>
+    <intervenciones>
+      <intervencion orden="0" tipo="CIERRE_ESCUELAS">
+        <inicio_dia>20</inicio_dia>
+        <fin_dia>60</fin_dia>
+        <cobertura>0.800</cobertura>
+        <cumplimiento>0.900</cumplimiento>
+        <parametros>
+          <parametro nombre="reduccion" tipo="numero">0.8</parametro>
+        </parametros>
+      </intervencion>
+      <intervencion orden="1" tipo="VACUNACION" region="19039">
+        <inicio_dia>30</inicio_dia>
+        <parametros>
+          <parametro nombre="eficacia" tipo="numero">0.6</parametro>
+          <parametro nombre="dosis_diarias" tipo="entero">500</parametro>
+          <parametro nombre="prioridad" tipo="texto">edad_desc</parametro>
+        </parametros>
+      </intervencion>
+    </intervenciones>
+  </version>
+</escenario>

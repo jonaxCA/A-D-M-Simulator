@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<problem><type>about:blank</type><title>Bad Request</title><status tipo="numero">400</status><detail>El export es un documento y solo existe en XML (application/xml).</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/5/export</instance></problem>
