@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Error de cualquier servicio (application/problem+xml, RFC 7807), tal como lo
+     arma epidemia_comun.errores.respuesta_error. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:include schemaLocation="tipos.xsd"/>
+
+  <xs:simpleType name="codigoError">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[A-Z][A-Z_]*"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:element name="problem">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="type" type="xs:string"/>
+        <xs:element name="title" type="xs:string"/>
+        <xs:element name="status" type="Entero"/>
+        <xs:element name="detail" type="xs:string"/>
+        <xs:element name="codigo" type="codigoError"/>
+        <xs:element name="instance" type="xs:string"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

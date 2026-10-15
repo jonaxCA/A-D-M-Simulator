@@ -1,0 +1,21 @@
+{
+  "filtros": {
+    "disease_id": null,
+    "region_id": null,
+    "days": 90
+  },
+  "grupos": [
+    {
+      "grupo": "0-4",
+      "casos": 300
+    },
+    {
+      "grupo": "5-14",
+      "casos": 399
+    },
+    {
+      "grupo": "15-24",
+      "casos": 605
+    }
+  ]
+}

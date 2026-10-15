@@ -1,0 +1,45 @@
+{
+  "enfermedades": [
+    {
+      "id": 1,
+      "code": "SARS_COV_2_ANCESTRAL",
+      "nombre": "COVID-19 (variante ancestral)",
+      "descripcion": "SARS-CoV-2, linaje original de 2020.",
+      "activa": true,
+      "actividad": "historico",
+      "alta": "2026-09-01T16:00:00+00:00",
+      "casos_total": 4210,
+      "casos_30d": 0,
+      "ultimo_caso": "2026-09-03",
+      "parametros": {
+        "detalle": [
+          {
+            "clave": "r0",
+            "etiqueta": "R₀ — número reproductivo básico",
+            "unidad": "contagios por caso",
+            "min": 0.01,
+            "max": 20.0,
+            "paso": "0.01",
+            "ayuda": "Contagios que genera un caso en una población sin inmunidad.",
+            "valor": 2.5,
+            "valor_form": "2.5",
+            "fuente": "Liu et al. 2020",
+            "supuesto": false,
+            "estado": "con_fuente"
+          }
+        ],
+        "informativos": [],
+        "faltan": [],
+        "supuestos": [],
+        "sin_fuente": [],
+        "simulable": true
+      }
+    }
+  ],
+  "total": 3,
+  "pagina": 1,
+  "por_pagina": 10,
+  "paginas": 1,
+  "desde": 1,
+  "hasta": 3
+}

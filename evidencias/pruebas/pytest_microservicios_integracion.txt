@@ -1,0 +1,11 @@
+# Pruebas de microservicios: unitarias, XSD e integración iniciales
+# Fecha local: 2026-10-13 23:29:18 CST
+# Base: feat/segundo-parcial-grupo-2pm
+# Commit: 215b4a5 más los cambios sin commit de esta entrega
+# Comando: python -m pytest microservicios -q, y el detalle de pruebas_integracion con -v
+
+325 passed in 3.24s
+
+microservicios/pruebas_integracion/test_flujo_identidad.py::test_cambio_de_rol_y_baja_de_una_cuenta PASSED [ 33%]
+microservicios/pruebas_integracion/test_flujo_identidad.py::test_refresh_y_logout_valen_en_todos_los_servicios PASSED [ 66%]
+microservicios/pruebas_integracion/test_flujo_identidad.py::test_redis_caido_cierra_el_paso_en_todos PASSED [100%]

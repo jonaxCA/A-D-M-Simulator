@@ -1,0 +1,42 @@
+{
+  "detalle": [
+    {
+      "clave": "r0",
+      "etiqueta": "R₀ — número reproductivo básico",
+      "unidad": "contagios por caso",
+      "min": 0.01,
+      "max": 20.0,
+      "paso": "0.01",
+      "ayuda": "Contagios que genera un caso en una población sin inmunidad.",
+      "valor": 1.3,
+      "valor_form": "1.3",
+      "fuente": "Biggerstaff et al. 2014",
+      "supuesto": false,
+      "estado": "con_fuente"
+    },
+    {
+      "clave": "infeccioso_dias",
+      "etiqueta": "Período infeccioso",
+      "unidad": "días",
+      "min": 0.1,
+      "max": 60.0,
+      "paso": "0.1",
+      "ayuda": "Cuánto tiempo puede contagiar una persona.",
+      "valor": null,
+      "valor_form": "",
+      "fuente": "",
+      "supuesto": false,
+      "estado": "falta"
+    }
+  ],
+  "informativos": [],
+  "faltan": [
+    "infeccioso_dias",
+    "dias_hospitalizacion",
+    "tasa_hospitalizacion",
+    "letalidad"
+  ],
+  "supuestos": [],
+  "sin_fuente": [],
+  "simulable": false
+}

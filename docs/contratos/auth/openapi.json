@@ -1,0 +1,229 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - auth",
+    "version": "0.1.0",
+    "description": "Inicio de sesión. Emite el access (JWT HS256, 20 min) y el refresh, y abre la sesión en Redis (8 h). Cada intento de login necesita un captcha nuevo, de un solo uso."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5201"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/auth/captcha": {
+      "get": {
+        "summary": "Pedir un captcha",
+        "operationId": "pedir_captcha",
+        "description": "Regresa una suma de dos dígitos. La respuesta se manda en el login con su captcha_id; vence a los 300 s y se borra al usarse, acierte o no.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "captcha_id": "D7H0xiR5jwdtQrwUtIQC5w",
+                  "pregunta": "6 + 6",
+                  "expira": 1791866991
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "captcha"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<captcha><captcha_id>GcdGyhd9c8eKIGaA9fvtuA</captcha_id><pregunta>5 + 7</pregunta><expira tipo=\"numero\">1791866991</expira></captcha>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Iniciar sesión",
+        "operationId": "iniciar_sesion",
+        "description": "Revisa primero el captcha y después la contraseña (bcrypt, bloqueo tras cinco fallos). Cuenta inexistente, inactiva, bloqueada o contraseña equivocada dan el mismo 401. Audita LOGIN y LOGIN_FAILED.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "usuario",
+                  "password",
+                  "captcha_id",
+                  "captcha_respuesta"
+                ],
+                "properties": {
+                  "usuario": {
+                    "type": "string",
+                    "description": "Nombre de usuario o correo"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  },
+                  "captcha_id": {
+                    "type": "string"
+                  },
+                  "captcha_respuesta": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "usuario": "analista1",
+                "password": "CONTRASENA_DE_EJEMPLO",
+                "captcha_id": "D7H0xiR5jwdtQrwUtIQC5w",
+                "captcha_respuesta": "12"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "login"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<login><usuario>analista1</usuario><password>CONTRASENA_DE_EJEMPLO</password><captcha_id>D7H0xiR5jwdtQrwUtIQC5w</captcha_id><captcha_respuesta>12</captcha_respuesta></login>\n"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "access_token": "JWT_DE_EJEMPLO",
+                  "refresh_token": "REFRESH_DE_EJEMPLO",
+                  "token_type": "Bearer",
+                  "expires_in": 1200,
+                  "sesion_expira": 1791895491,
+                  "usuario": {
+                    "id": 7,
+                    "username": "analista1",
+                    "full_name": "Ana Lista",
+                    "roles": [
+                      "ANALISTA"
+                    ]
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "sesion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<sesion><access_token>JWT_DE_EJEMPLO</access_token><refresh_token>REFRESH_DE_EJEMPLO</refresh_token><token_type>Bearer</token_type><expires_in tipo=\"numero\">1200</expires_in><sesion_expira tipo=\"numero\">1791895491</sesion_expira><usuario><id tipo=\"numero\">7</id><username>analista1</username><full_name>Ana Lista</full_name><roles><item>ANALISTA</item></roles></usuario></sesion>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Usuario o contraseña incorrectos (CREDENCIALES_INVALIDAS)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Usuario o contraseña incorrectos.",
+                  "codigo": "CREDENCIALES_INVALIDAS",
+                  "instance": "/api/v1/auth/login"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Cuerpo demasiado grande"
+          },
+          "415": {
+            "description": "Content-Type distinto de JSON o XML"
+          },
+          "422": {
+            "description": "Falta un campo, o el captcha es incorrecto o venció (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+          }
+        }
+      }
+    }
+  }
+}

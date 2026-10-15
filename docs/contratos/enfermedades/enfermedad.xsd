@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Una enfermedad del servicio enfermedades (raíz <enfermedad>).
+     GET /api/v1/diseases/{id} trae la ficha completa; el alta regresa solo id,
+     la edición id y actualizada, y activar o desactivar id e is_active. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:include schemaLocation="../comun/tipos.xsd"/>
+
+  <xs:element name="enfermedad">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="id" type="Entero"/>
+        <xs:element name="code" type="xs:string" minOccurs="0"/>
+        <xs:element name="name" type="xs:string" minOccurs="0"/>
+        <xs:element name="description" type="TextoONulo" minOccurs="0"/>
+        <xs:element name="is_active" type="Booleano" minOccurs="0"/>
+        <xs:element name="created_at" type="xs:dateTime" minOccurs="0"/>
+        <xs:element name="actualizada" type="Booleano" minOccurs="0"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

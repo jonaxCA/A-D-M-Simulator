@@ -1,0 +1,334 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - roles",
+    "version": "0.1.0",
+    "description": "Consulta roles y permisos, y asigna el rol de una cuenta (solo ADMINISTRADOR). Escribe user_roles; cambiar el rol cierra las sesiones de la cuenta."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5204"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/roles": {
+      "get": {
+        "summary": "Listar roles",
+        "operationId": "listar_roles",
+        "description": "Roles ordenados por nombre.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 3,
+                  "roles": [
+                    {
+                      "id": 3,
+                      "code": "ANALISTA",
+                      "name": "Analista"
+                    },
+                    {
+                      "id": 2,
+                      "code": "EPIDEMIOLOGO",
+                      "name": "Epidemiólogo"
+                    },
+                    {
+                      "id": 1,
+                      "code": "ADMINISTRADOR",
+                      "name": "Administrador"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "catalogo_roles"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<catalogo_roles><total tipo=\"numero\">3</total><roles><item><id tipo=\"numero\">3</id><code>ANALISTA</code><name>Analista</name></item><item><id tipo=\"numero\">2</id><code>EPIDEMIOLOGO</code><name>Epidemiólogo</name></item><item><id tipo=\"numero\">1</id><code>ADMINISTRADOR</code><name>Administrador</name></item></roles></catalogo_roles>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Redis no disponible"
+          }
+        }
+      }
+    },
+    "/api/v1/roles/{role_id}/permissions": {
+      "get": {
+        "summary": "Permisos de un rol",
+        "operationId": "permisos_rol",
+        "description": "El rol con sus permisos de role_permissions.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "description": "id de roles",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "code": "ANALISTA",
+                  "name": "Analista",
+                  "permisos": [
+                    {
+                      "code": "cases.read",
+                      "resource": "cases",
+                      "action": "read",
+                      "description": "Consultar casos"
+                    },
+                    {
+                      "code": "dashboard.read",
+                      "resource": "dashboard",
+                      "action": "read",
+                      "description": "Ver el tablero"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "rol"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<rol><id tipo=\"numero\">3</id><code>ANALISTA</code><name>Analista</name><permisos><item><code>cases.read</code><resource>cases</resource><action>read</action><description>Consultar casos</description></item><item><code>dashboard.read</code><resource>dashboard</resource><action>read</action><description>Ver el tablero</description></item></permisos></rol>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Redis no disponible"
+          }
+        }
+      }
+    },
+    "/api/v1/roles/assignments/{user_id}": {
+      "put": {
+        "summary": "Asignar el rol de una cuenta",
+        "operationId": "asignar_rol",
+        "description": "Una cuenta tiene un rol, como en el sistema web: reemplaza el que tenga. Si cambia, cierra sus sesiones y audita UPDATE. Nadie se quita a sí mismo el rol de ADMINISTRADOR.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "description": "id de users",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "user_id": 9,
+                  "role_id": 2,
+                  "sesiones_cerradas": 0
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "asignacion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<asignacion><user_id tipo=\"numero\">9</user_id><role_id tipo=\"numero\">2</role_id><sesiones_cerradas tipo=\"numero\">0</sesiones_cerradas></asignacion>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Redis no disponible"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "role_id": 2
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "asignacion"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<asignacion><role_id tipo=\"numero\">2</role_id></asignacion>"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<parametros><disease_id tipo="numero">2</disease_id><parametros><r0><valor tipo="numero">1.3</valor><fuente>Biggerstaff et al. 2014</fuente><supuesto tipo="booleano">false</supuesto></r0><incubacion_dias><valor tipo="numero">1.4</valor><fuente>Lessler et al. 2009</fuente><supuesto tipo="booleano">false</supuesto></incubacion_dias><infeccioso_dias><valor tipo="numero">4.8</valor><fuente nil="true" /><supuesto tipo="booleano">true</supuesto></infeccioso_dias></parametros></parametros>

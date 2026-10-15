@@ -1,0 +1,38 @@
+{
+  "municipios": [
+    {
+      "id": 3,
+      "code": "19039",
+      "nombre": "Monterrey",
+      "poblacion": 1142994,
+      "poblacion_60": 189513,
+      "fuente_poblacion": {
+        "tipo": "censal",
+        "fuente": "INEGI, Censo 2020"
+      },
+      "fuente_poblacion_60": {
+        "tipo": "derivado",
+        "fuente": "Grupos 60-79 y 80+ del Censo 2020"
+      }
+    },
+    {
+      "id": 5,
+      "code": "19006",
+      "nombre": "Apodaca",
+      "poblacion": 656464,
+      "poblacion_60": 45288,
+      "fuente_poblacion": {
+        "tipo": "censal",
+        "fuente": "INEGI, Censo 2020"
+      },
+      "fuente_poblacion_60": {
+        "tipo": "derivado",
+        "fuente": "Grupos 60-79 y 80+ del Censo 2020"
+      }
+    }
+  ],
+  "total": 51,
+  "busqueda": "",
+  "orden": "poblacion",
+  "direccion": "desc"
+}
