@@ -370,7 +370,8 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 - [ ] Cumple la definición de terminado
 
 ### F5. `pareto`
-- [ ] Costo contra impacto y frontera de Pareto, con los indicadores pedidos a `resultados`
+- [x] Costo contra impacto y frontera de Pareto. Lee los resultados directo de la base
+      mientras no exista `resultados` (ver la nota del catálogo)
 - [ ] Cumple la definición de terminado
 
 ---

@@ -3,7 +3,7 @@ from flask import request
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import responder
 from epidemia_comun.seguridad import requiere_token
-from epidemia_comun.validaciones import entero_positivo
+from epidemia_comun.validaciones import corridas_a_comparar
 from backend_web import queries
 from procesamiento.motor import AVISO_SIMULACION
 
@@ -13,29 +13,11 @@ ROLES = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 MAXIMO = 50
 
 
-def ids_de_corridas(texto):
-    piezas = [p.strip() for p in (texto or "").split(",")]
-    if not any(piezas):
-        raise ErrorAPI(422, "DATOS_INVALIDOS",
-                       "Indica las corridas en runs, separadas por comas (por ejemplo, runs=12,15).")
-    ids = []
-    for pieza in piezas:
-        numero = entero_positivo(pieza, "runs")
-        if numero not in ids:
-            ids.append(numero)
-    if len(ids) < 2:
-        raise ErrorAPI(422, "DATOS_INVALIDOS", "Se necesitan al menos dos corridas distintas.")
-    if len(ids) > MAXIMO:
-        raise ErrorAPI(422, "DATOS_INVALIDOS",
-                       "Se pueden comparar hasta %d corridas a la vez." % MAXIMO)
-    return ids
-
-
 def registrar(app):
     @app.get("/api/v1/comparisons")
     @requiere_token(roles=ROLES)
     def comparar():
-        ids = ids_de_corridas(request.args.get("runs"))
+        ids = corridas_a_comparar(request.args.get("runs"), MAXIMO)
         corridas = queries.get_corridas_para_comparar(ids)
         # La consulta solo regresa corridas completadas con resultado guardado.
         faltan = [i for i in ids if i not in {c["id"] for c in corridas}]

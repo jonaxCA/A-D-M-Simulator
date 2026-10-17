@@ -85,19 +85,24 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 
 ## Simulación
 
-| #  | Servicio      | Hace una cosa                                                   | Rutas principales                                                                                                           | Escribe                                                      | Lee                                                                       | Llama a                                                 | Puerto |
-|----|---------------|-----------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|---------------------------------------------------------------------------|---------------------------------------------------------|--------|
-| 17 | `corridas`    | Lanza, cancela y consulta corridas                              | `POST /api/v1/runs` (202), `GET /api/v1/runs`, `GET /api/v1/runs/{id}` (estado y progreso), `POST /api/v1/runs/{id}/cancel` | `simulation_batches`, `simulation_runs` (alta y cancelación) | `scenario_versions`                                                       | Redis: encola la corrida y toma el candado              | 5241   |
-| 18 | `simulador`   | Proceso trabajador: toma corridas de la cola y ejecuta el motor | `GET /api/v1/worker/status` (más `/health`)                                                                                 | `simulation_runs` (estado), `simulation_results`             | escenarios y enfermedades                                                 | Redis (progreso); `notificaciones` al terminar o fallar | 5242   |
-| 19 | `resultados`  | Curvas e indicadores de una corrida                             | `GET /api/v1/runs/{id}/results`, `.../curves`, `.../indicators`                                                             | —                                                            | `simulation_results`, `simulation_runs`                                   | Redis (caché)                                           | 5243   |
-| 20 | `comparacion` | Compara corridas lado a lado                                    | `GET /api/v1/comparisons?runs=a,b,c`                                                                                        | —                                                            | `simulation_runs`, `simulation_results`, `scenario_versions`, `scenarios` | —                                                       | 5244   |
-| 21 | `pareto`      | Costo contra impacto y frontera de Pareto                       | `GET /api/v1/pareto?runs=a,b,c`                                                                                             | —                                                            | `scenario_interventions` (costos)                                         | `resultados` (indicadores, en JSON)                     | 5245   |
+| #  | Servicio      | Hace una cosa                                                   | Rutas principales                                                                                                           | Escribe                                                      | Lee                                                                                                                                                                | Llama a                                                 | Puerto |
+|----|---------------|-----------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|--------|
+| 17 | `corridas`    | Lanza, cancela y consulta corridas                              | `POST /api/v1/runs` (202), `GET /api/v1/runs`, `GET /api/v1/runs/{id}` (estado y progreso), `POST /api/v1/runs/{id}/cancel` | `simulation_batches`, `simulation_runs` (alta y cancelación) | `scenario_versions`                                                                                                                                                | Redis: encola la corrida y toma el candado              | 5241   |
+| 18 | `simulador`   | Proceso trabajador: toma corridas de la cola y ejecuta el motor | `GET /api/v1/worker/status` (más `/health`)                                                                                 | `simulation_runs` (estado), `simulation_results`             | escenarios y enfermedades                                                                                                                                          | Redis (progreso); `notificaciones` al terminar o fallar | 5242   |
+| 19 | `resultados`  | Curvas e indicadores de una corrida                             | `GET /api/v1/runs/{id}/results`, `.../curves`, `.../indicators`                                                             | —                                                            | `simulation_results`, `simulation_runs`                                                                                                                            | Redis (caché)                                           | 5243   |
+| 20 | `comparacion` | Compara corridas lado a lado                                    | `GET /api/v1/comparisons?runs=a,b,c`                                                                                        | —                                                            | `simulation_runs`, `simulation_results`, `scenario_versions`, `scenarios`                                                                                          | —                                                       | 5244   |
+| 21 | `pareto`      | Costo contra impacto y frontera de Pareto                       | `GET /api/v1/pareto?runs=a,b,c`                                                                                             | —                                                            | `simulation_runs`, `simulation_results`, `scenario_versions`, `scenarios`, `scenario_interventions`, `intervention_types` (costos), `diseases`, `regions`, `users` | — (ver nota)                                            | 5245   |
 
 - Excepción a "un dueño por tabla": `simulation_runs.status` lo cambian `corridas` (para
   cancelar una encolada) y `simulador` (para ejecutarla). Las dos usan la transición
   condicionada de hoy (`WHERE status = ...`), así que no se pisan.
 - Al arrancar, `simulador` cierra como fallidas las corridas que quedaron a medias (hoy es
   `recupera_corridas_interrumpidas`).
+- `pareto` lee los resultados directo de la base y no llama a `resultados`: reusa
+  `construir_comparacion_costo_impacto()`, el cálculo de la pantalla Comparación del
+  monolito, que también arma el escenario de cada versión y lee los costos. Se decidió así
+  el 17 de octubre porque `resultados` no existía; cuando exista, se puede volver a pedirle
+  el resumen de cada corrida.
 
 ## Analítica
 
@@ -135,7 +140,7 @@ app escritorio ───┤  token Bearer   │
 
    corridas ──cola Redis──► simulador ──► notificaciones
                                │
-                     resultados ◄── pareto
+                  base de datos ◄── pareto   (directo, sin resultados)
    sincronizacion ──JSON (un caso a la vez)──► casos
 
    estado-servicios ──XML──► /health de los 25 restantes

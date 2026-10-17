@@ -1,0 +1,244 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - pareto",
+    "version": "0.1.0",
+    "description": "Costo contra impacto de varias corridas completadas y su frontera de Pareto. Muestra opciones y costos; no recomienda un escenario."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5245"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/pareto": {
+      "get": {
+        "summary": "Costo contra impacto y frontera de Pareto",
+        "operationId": "comparar_costo_impacto",
+        "description": "Por cada corrida: su costo (con el desglose por intervención), su impacto en la métrica pedida, si alguna otra la domina y, contra la base, el impacto evitado y el costo por unidad evitada. `frontera` son las corridas no dominadas. Es el cálculo de la pantalla Comparación del monolito. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "runs",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+(,[0-9]+)+$"
+            },
+            "example": "12,13",
+            "description": "Ids de 2 a 50 corridas completadas, separados por comas"
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "fallecimientos",
+                "hospitalizaciones",
+                "casos_acumulados",
+                "pico_casos_activos",
+                "pico_hospitalizados"
+              ],
+              "default": "fallecimientos"
+            },
+            "description": "Eje de impacto"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+                  "metrica": "fallecimientos",
+                  "base": 12,
+                  "filas": [
+                    {
+                      "id": 12,
+                      "nombre": "SIM-00012 - A - Sin intervencion",
+                      "costo": 0,
+                      "impacto": 100,
+                      "desglose_costo": [],
+                      "semilla": 982314,
+                      "engine_version": "python-ref-0.1",
+                      "dias": 120,
+                      "poblacion": 500000,
+                      "dominado": false,
+                      "dominado_por": [],
+                      "impacto_evitado": null,
+                      "costo_adicional": null,
+                      "costo_por_unidad_evitada": null
+                    },
+                    {
+                      "id": 13,
+                      "nombre": "SIM-00013 - B - Cierre escolar",
+                      "costo": 292500000.0,
+                      "impacto": 67,
+                      "desglose_costo": [
+                        {
+                          "tipo": "CIERRE_ESCUELAS",
+                          "dia_inicio": 7,
+                          "dia_fin": 45,
+                          "dias_activos": 39,
+                          "intensidad": 1.0,
+                          "cantidad": 19500000,
+                          "unidad": "habitante_dia",
+                          "costo": 292500000.0
+                        }
+                      ],
+                      "semilla": 982314,
+                      "engine_version": "python-ref-0.1",
+                      "dias": 120,
+                      "poblacion": 500000,
+                      "dominado": false,
+                      "dominado_por": [],
+                      "impacto_evitado": 33,
+                      "costo_adicional": 292500000.0,
+                      "costo_por_unidad_evitada": 8863636.36
+                    },
+                    {
+                      "id": 14,
+                      "nombre": "SIM-00014 - C - Vacunacion 60+",
+                      "costo": 15879200.0,
+                      "impacto": 71,
+                      "desglose_costo": [
+                        {
+                          "tipo": "VACUNACION",
+                          "dia_inicio": 30,
+                          "dia_fin": null,
+                          "dias_activos": null,
+                          "intensidad": null,
+                          "cantidad": 39698,
+                          "unidad": "dosis",
+                          "costo": 15879200.0
+                        }
+                      ],
+                      "semilla": 982314,
+                      "engine_version": "python-ref-0.1",
+                      "dias": 120,
+                      "poblacion": 500000,
+                      "dominado": false,
+                      "dominado_por": [],
+                      "impacto_evitado": 29,
+                      "costo_adicional": 15879200.0,
+                      "costo_por_unidad_evitada": 547558.62
+                    },
+                    {
+                      "id": 15,
+                      "nombre": "SIM-00015 - D - Cierre + vacuna",
+                      "costo": 308379200.0,
+                      "impacto": 51,
+                      "desglose_costo": [
+                        {
+                          "tipo": "CIERRE_ESCUELAS",
+                          "dia_inicio": 7,
+                          "dia_fin": 45,
+                          "dias_activos": 39,
+                          "intensidad": 1.0,
+                          "cantidad": 19500000,
+                          "unidad": "habitante_dia",
+                          "costo": 292500000.0
+                        },
+                        {
+                          "tipo": "VACUNACION",
+                          "dia_inicio": 30,
+                          "dia_fin": null,
+                          "dias_activos": null,
+                          "intensidad": null,
+                          "cantidad": 39698,
+                          "unidad": "dosis",
+                          "costo": 15879200.0
+                        }
+                      ],
+                      "semilla": 982314,
+                      "engine_version": "python-ref-0.1",
+                      "dias": 120,
+                      "poblacion": 500000,
+                      "dominado": false,
+                      "dominado_por": [],
+                      "impacto_evitado": 49,
+                      "costo_adicional": 308379200.0,
+                      "costo_por_unidad_evitada": 6293453.06
+                    }
+                  ],
+                  "frontera": [
+                    12,
+                    14,
+                    13,
+                    15
+                  ],
+                  "trazabilidad_costos": [
+                    {
+                      "tipo": "CIERRE_ESCUELAS",
+                      "valor": 15.0,
+                      "unidad": "por_habitante_dia",
+                      "fuente": "Ejemplo del motor, no validado",
+                      "estado": "supuesto"
+                    },
+                    {
+                      "tipo": "VACUNACION",
+                      "valor": 400.0,
+                      "unidad": "por_dosis",
+                      "fuente": "Ejemplo del motor, no validado",
+                      "estado": "supuesto"
+                    }
+                  ],
+                  "modelo_costo": "unitario x poblacion x intensidad x dias (capas y testeo); unitario x dosis aplicadas (vacunacion)",
+                  "avisos": []
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "pareto"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<pareto><aviso>Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.</aviso><metrica>fallecimientos</metrica><base tipo=\"numero\">12</base><filas><fila><id tipo=\"numero\">12</id><nombre>SIM-00012 - A - Sin intervencion</nombre><costo tipo=\"numero\">0</costo><impacto tipo=\"numero\">100</impacto><desglose_costo /><semilla tipo=\"numero\">982314</semilla><engine_version>python-ref-0.1</engine_version><dias tipo=\"numero\">120</dias><poblacion tipo=\"numero\">500000</poblacion><dominado tipo=\"booleano\">false</dominado><dominado_por /><impacto_evitado nil=\"true\" /><costo_adicional nil=\"true\" /><costo_por_unidad_evitada nil=\"true\" /></fila><fila><id tipo=\"numero\">13</id><nombre>SIM-00013 - B - Cierre escolar</nombre><costo tipo=\"numero\">292500000.0</costo><impacto tipo=\"numero\">67</impacto><desglose_costo><intervencion><tipo>CIERRE_ESCUELAS</tipo><dia_inicio tipo=\"numero\">7</dia_inicio><dia_fin tipo=\"numero\">45</dia_fin><dias_activos tipo=\"numero\">39</dias_activos><intensidad tipo=\"numero\">1.0</intensidad><cantidad tipo=\"numero\">19500000</cantidad><unidad>habitante_dia</unidad><costo tipo=\"numero\">292500000.0</costo></intervencion></desglose_costo><semilla tipo=\"numero\">982314</semilla><engine_version>python-ref-0.1</engine_version><dias tipo=\"numero\">120</dias><poblacion tipo=\"numero\">500000</poblacion><dominado tipo=\"booleano\">false</dominado><dominado_por /><impacto_evitado tipo=\"numero\">33</impacto_evitado><costo_adicional tipo=\"numero\">292500000.0</costo_adicional><costo_por_unidad_evitada tipo=\"numero\">8863636.36</costo_por_unidad_evitada></fila><fila><id tipo=\"numero\">14</id><nombre>SIM-00014 - C - Vacunacion 60+</nombre><costo tipo=\"numero\">15879200.0</costo><impacto tipo=\"numero\">71</impacto><desglose_costo><intervencion><tipo>VACUNACION</tipo><dia_inicio tipo=\"numero\">30</dia_inicio><dia_fin nil=\"true\" /><dias_activos nil=\"true\" /><intensidad nil=\"true\" /><cantidad tipo=\"numero\">39698</cantidad><unidad>dosis</unidad><costo tipo=\"numero\">15879200.0</costo></intervencion></desglose_costo><semilla tipo=\"numero\">982314</semilla><engine_version>python-ref-0.1</engine_version><dias tipo=\"numero\">120</dias><poblacion tipo=\"numero\">500000</poblacion><dominado tipo=\"booleano\">false</dominado><dominado_por /><impacto_evitado tipo=\"numero\">29</impacto_evitado><costo_adicional tipo=\"numero\">15879200.0</costo_adicional><costo_por_unidad_evitada tipo=\"numero\">547558.62</costo_por_unidad_evitada></fila><fila><id tipo=\"numero\">15</id><nombre>SIM-00015 - D - Cierre + vacuna</nombre><costo tipo=\"numero\">308379200.0</costo><impacto tipo=\"numero\">51</impacto><desglose_costo><intervencion><tipo>CIERRE_ESCUELAS</tipo><dia_inicio tipo=\"numero\">7</dia_inicio><dia_fin tipo=\"numero\">45</dia_fin><dias_activos tipo=\"numero\">39</dias_activos><intensidad tipo=\"numero\">1.0</intensidad><cantidad tipo=\"numero\">19500000</cantidad><unidad>habitante_dia</unidad><costo tipo=\"numero\">292500000.0</costo></intervencion><intervencion><tipo>VACUNACION</tipo><dia_inicio tipo=\"numero\">30</dia_inicio><dia_fin nil=\"true\" /><dias_activos nil=\"true\" /><intensidad nil=\"true\" /><cantidad tipo=\"numero\">39698</cantidad><unidad>dosis</unidad><costo tipo=\"numero\">15879200.0</costo></intervencion></desglose_costo><semilla tipo=\"numero\">982314</semilla><engine_version>python-ref-0.1</engine_version><dias tipo=\"numero\">120</dias><poblacion tipo=\"numero\">500000</poblacion><dominado tipo=\"booleano\">false</dominado><dominado_por /><impacto_evitado tipo=\"numero\">49</impacto_evitado><costo_adicional tipo=\"numero\">308379200.0</costo_adicional><costo_por_unidad_evitada tipo=\"numero\">6293453.06</costo_por_unidad_evitada></fila></filas><frontera><corrida tipo=\"numero\">12</corrida><corrida tipo=\"numero\">14</corrida><corrida tipo=\"numero\">13</corrida><corrida tipo=\"numero\">15</corrida></frontera><trazabilidad_costos><costo><tipo>CIERRE_ESCUELAS</tipo><valor tipo=\"numero\">15.0</valor><unidad>por_habitante_dia</unidad><fuente>Ejemplo del motor, no validado</fuente><estado>supuesto</estado></costo><costo><tipo>VACUNACION</tipo><valor tipo=\"numero\">400.0</valor><unidad>por_dosis</unidad><fuente>Ejemplo del motor, no validado</fuente><estado>supuesto</estado></costo></trazabilidad_costos><modelo_costo>unitario x poblacion x intensidad x dias (capas y testeo); unitario x dosis aplicadas (vacunacion)</modelo_costo><avisos /></pareto>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "422": {
+            "description": "runs o metric inválidos, o las corridas no se pueden comparar: no existen, no han terminado, no tienen resultados o su versión ya no se puede simular"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      }
+    }
+  }
+}
