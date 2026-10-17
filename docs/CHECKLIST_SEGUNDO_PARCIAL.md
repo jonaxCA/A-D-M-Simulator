@@ -21,6 +21,13 @@ son las tareas.
 > casilla debería ser un issue, una rama y un Pull Request. Las decisiones de esta etapa
 > ya están tomadas: están en el bloque 0 y en `docs/decisiones.md`.
 
+> **Avance al 14 de octubre** (revisado contra el código del grupo de las 14:00, que entró a
+> `main` en el #117):
+> 12 de 26 servicios (identidad, catálogos y analítica), la biblioteca común, Redis y la
+> migración 026. Pasan las 431 pruebas del monolito y 310 de los servicios. Ningún servicio
+> cumple todavía la definición de terminado: falta meterlos al compose, a `estado-servicios`
+> y a la consola. Solo se marcó lo que se pudo comprobar.
+
 ---
 
 ## Reparto propuesto
@@ -78,36 +85,37 @@ entregables):
 ## 0. Organización y decisiones (todo el equipo, día 1)
 
 ### Repositorio y flujo
-- [ ] Una rama de integración, `segundo-parcial`, de la que salen todas las ramas de trabajo
+- [x] Una rama de integración, `segundo-parcial`, de la que salen todas las ramas de trabajo
+      (es `feat/segundo-parcial-grupo-2pm`)
 - [ ] Crear un issue por casilla de este documento, con responsable y etiqueta de bloque o
       de servicio
 - [ ] Una rama por issue y todo por Pull Request revisado por la pareja asignada
-- [ ] Los `.env` nunca entran al repositorio; solo `.env.example` y `.env.shared.example`
+- [x] Los `.env` nunca entran al repositorio; solo `.env.example` y `.env.shared.example`
 - [ ] El `.tar.gz` de entrega incluye la carpeta `.git`
 
 ### Decidido (cada decisión queda anotada en `docs/decisiones.md`)
-- [ ] Docker: un contenedor por microservicio (ya no es opcional)
-- [ ] Los microservicios solo los usan las apps; el monolito no los consume
-- [ ] El catálogo de `docs/arquitectura/microservicios.md` es la referencia. Si un servicio
+- [x] Docker: un contenedor por microservicio (ya no es opcional)
+- [x] Los microservicios solo los usan las apps; el monolito no los consume
+- [x] El catálogo de `docs/arquitectura/microservicios.md` es la referencia. Si un servicio
       cambia de tarea, de tablas o de puerto, se cambia ahí primero
-- [ ] Formato: el de clase, XML por defecto y JSON con `?format=json`. También se acepta
+- [x] Formato: el de clase, XML por defecto y JSON con `?format=json`. También se acepta
       `Accept: application/json`; si los dos chocan, manda `?format`
-- [ ] Entregas: en este parcial, los 26 servicios con sus contratos; las apps de escritorio
+- [x] Entregas: en este parcial, los 26 servicios con sus contratos; las apps de escritorio
       y móvil, en el tercer parcial. Mientras tanto, la consola hace sus veces
-- [ ] Rutas en inglés, como en la arquitectura y en el catálogo (`/api/v1/scenarios`)
-- [ ] Nombres de los servicios en español, los del catálogo (`escenarios`, `corridas`…)
-- [ ] Sin `pasarela`: las apps y la consola piden la URL de cada servicio al directorio de
+- [x] Rutas en inglés, como en la arquitectura y en el catálogo (`/api/v1/scenarios`)
+- [x] Nombres de los servicios en español, los del catálogo (`escenarios`, `corridas`…)
+- [x] Sin `pasarela`: las apps y la consola piden la URL de cada servicio al directorio de
       `estado-servicios`
-- [ ] Pruebas de los servicios con `pytest`, que también corre las 431 actuales de `unittest`
-- [ ] Validación de XSD con `xmlschema` y lectura de XML con `defusedxml`, como en clase
-- [ ] Migraciones de esta etapa reservadas: 026 en adelante (regla de `datos/AGENTS.md`)
+- [x] Pruebas de los servicios con `pytest`, que también corre las 431 actuales de `unittest`
+- [x] Validación de XSD con `xmlschema` y lectura de XML con `defusedxml`, como en clase
+- [x] Migraciones de esta etapa reservadas: 026 en adelante (regla de `datos/AGENTS.md`)
 
 ### Estructura acordada
 - [ ] `microservicios/comun/` (paquete `epidemia_comun`), `microservicios/<servicio>/` para
       los 26 y `microservicios/consola/`
 - [ ] `infra/docker/` con la imagen base y `infra/docker-compose.yml`
-- [ ] `docs/contratos/<servicio>/` con `openapi.json`, ejemplos y, si aplica, su `.xsd`
-- [ ] Llenar `microservicios/AGENTS.md`, que hoy está vacío, con las reglas de este documento
+- [x] `docs/contratos/<servicio>/` con `openapi.json`, ejemplos y, si aplica, su `.xsd`
+- [x] Llenar `microservicios/AGENTS.md`, que hoy está vacío, con las reglas de este documento
 
 ---
 
@@ -117,65 +125,67 @@ Lo que los 26 repiten vive aquí una sola vez. La `libreria_comun` de clase sirv
 referencia.
 
 ### A1. Arranque y configuración
-- [ ] `ajustes`: lee `.env.shared` (JWT, Redis, audiencia, TTL) y el `.env` del servicio. Las
+- [x] `ajustes`: lee `.env.shared` (JWT, Redis, audiencia, TTL) y el `.env` del servicio. Las
       variables de entorno del contenedor tienen prioridad
-- [ ] Falla al arrancar si falta un secreto o se queda con el valor de ejemplo, igual que hoy
+- [x] Falla al arrancar si falta un secreto o se queda con el valor de ejemplo, igual que hoy
       `secreto_jwt()`
-- [ ] `crear_app(nombre, contrato)`: registra errores, `/health`, `/docs`, `/openapi.json`,
+- [x] `crear_app(nombre, contrato)`: registra errores, `/health`, `/docs`, `/openapi.json`,
       CORS y el registro de peticiones
-- [ ] Arranque con waitress en el puerto 8000 dentro del contenedor
+- [x] Arranque con waitress en el puerto 8000 dentro del contenedor
 
 ### A2. Formatos
-- [ ] `responder(datos, raiz)`: XML por defecto y JSON con `?format=json` o con
+- [x] `responder(datos, raiz)`: XML por defecto y JSON con `?format=json` o con
       `Accept: application/json`; si los dos chocan, manda `?format`
-- [ ] Un valor desconocido de `?format` es error 400, no el formato por omisión. Un `Accept`
+- [x] Un valor desconocido de `?format` es error 400, no el formato por omisión. Un `Accept`
       distinto de `application/json` (como el `text/html` de un navegador) se ignora y se
       responde XML
-- [ ] Nombres singulares para los elementos de las colecciones (`escenarios` → `escenario`)
-- [ ] `leer_cuerpo()`: acepta JSON o XML según el `Content-Type`, con `defusedxml` y límite de
+- [x] Nombres singulares para los elementos de las colecciones (`escenarios` → `escenario`)
+- [x] `leer_cuerpo()`: acepta JSON o XML según el `Content-Type`, con `defusedxml` y límite de
       tamaño
-- [ ] Fechas en ISO 8601 y `Decimal` como número en los dos formatos
+- [x] Fechas en ISO 8601 y `Decimal` como número en los dos formatos
 
 ### A3. Errores
-- [ ] Errores RFC 7807 (`application/problem+json` y `application/problem+xml`) con un
+- [x] Errores RFC 7807 (`application/problem+json` y `application/problem+xml`) con un
       `codigo` estable: `TOKEN_AUSENTE`, `TOKEN_REVOCADO`, `PERMISO_INSUFICIENTE`,
       `NO_ENCONTRADO`, `CONFLICTO`, `DATOS_INVALIDOS`, `SERVICIO_NO_DISPONIBLE`…
 - [ ] Tabla única de códigos HTTP: 400, 401, 403, 404, 409, 422, 503 y 500
-- [ ] Un 500 no expone la traza ni el SQL
+- [x] Un 500 no expone la traza ni el SQL
 
 ### A4. Verificación de tokens
-- [ ] `@requiere_token(roles=...)` revisa, en este orden:
-  - [ ] `Authorization: Bearer`;
-  - [ ] `alg=HS256` (rechaza `none`);
-  - [ ] firma;
-  - [ ] `iss`, `aud`, `exp` y `nbf`;
-  - [ ] que no esté revocado ni su sesión cerrada (`sesiones.verificar()`);
-  - [ ] el rol.
-- [ ] `@solo_servicios`: para las rutas internas, acepta solo un token de servicio
-- [ ] Del token sale el `Contexto` (usuario, IP, user agent) que ya usan las funciones que
+- [x] `@requiere_token(roles=...)` revisa, en este orden:
+  - [x] `Authorization: Bearer`;
+  - [x] `alg=HS256` (rechaza `none`);
+  - [x] firma;
+  - [x] `iss`, `aud`, `exp` y `nbf`;
+  - [x] que no esté revocado ni su sesión cerrada (`sesiones.verificar()`);
+  - [x] el rol.
+- [x] `@solo_servicios`: para las rutas internas, acepta solo un token de servicio
+- [x] Del token sale el `Contexto` (usuario, IP, user agent) que ya usan las funciones que
       auditan
-- [ ] Si Redis está caído, una ruta protegida responde 503 y nunca deja pasar
+- [x] Si Redis está caído, una ruta protegida responde 503 y nunca deja pasar
 
 ### A5. Salud, Swagger y registro
-- [ ] `/health` en XML y JSON, con el estado de PostgreSQL y de Redis
+- [x] `/health` en XML y JSON, con el estado de PostgreSQL y de Redis
       (`redis_compartido.estado()`) y la versión del servicio
-- [ ] `/openapi.json` servido desde el contrato del servicio y Swagger UI en `/docs`
-- [ ] Cada petición se registra con método, ruta, código, duración, usuario y un
+- [x] `/openapi.json` servido desde el contrato del servicio y Swagger UI en `/docs`
+- [x] Cada petición se registra con método, ruta, código, duración, usuario y un
       `X-Correlation-ID`
 
 ### A6. Plantilla de servicio (lista el día 3)
 - [ ] `scripts/nuevo_servicio.py <nombre> <puerto>` genera:
-  - [ ] la carpeta, con `app.py`, `rutas.py` y `README.md`;
+      *Avance (14 oct): no agrega el servicio al compose ni genera la prueba de `/health`,
+      y su `Dockerfile` parte de `epidemia/base`, que todavía no existe.*
+  - [x] la carpeta, con `app.py`, `rutas.py` y `README.md`;
   - [ ] el `Dockerfile` y su entrada en el compose;
-  - [ ] el esqueleto de `openapi.json`;
+  - [x] el esqueleto de `openapi.json`;
   - [ ] una prueba de `/health`.
 - [ ] Un servicio recién generado ya responde `/health`, `/docs` y `/openapi.json` en su
       contenedor
 
 ### A7. Cliente entre servicios
-- [ ] `llamar(servicio, metodo, ruta, formato="json"|"xml", cuerpo=None)` resuelve la URL,
+- [x] `llamar(servicio, metodo, ruta, formato="json"|"xml", cuerpo=None)` resuelve la URL,
       reenvía el token de la persona o usa uno de servicio, y propaga el `X-Correlation-ID`
-- [ ] Tiempo de espera; un servicio caído se convierte en 503 `SERVICIO_NO_DISPONIBLE`, no en
+- [x] Tiempo de espera; un servicio caído se convierte en 503 `SERVICIO_NO_DISPONIBLE`, no en
       un 500
 - [ ] Pruebas de la biblioteca: formatos, errores, cada caso de rechazo de token, Redis caído
       y el cliente con un servicio que no responde
@@ -210,32 +220,32 @@ Base existente: `backend_web/auth.py` (bcrypt, bloqueo tras cinco intentos, reva
 la cuenta) y el CRUD de usuarios de `routes.py`.
 
 ### B1. `auth` · Integrante 1
-- [ ] Login con el bloqueo por intentos y la bitácora (`LOGIN` / `LOGIN_FAILED`) de hoy
-- [ ] Emite el *access* (20 min) y el *refresh*, y abre la sesión en Redis
+- [x] Login con el bloqueo por intentos y la bitácora (`LOGIN` / `LOGIN_FAILED`) de hoy
+- [x] Emite el *access* (20 min) y el *refresh*, y abre la sesión en Redis
       (`sesiones.abrir()`)
-- [ ] Claims: `iss`, `aud`, `sub`, `roles`, `sid`, `jti`, `iat`, `nbf`, `exp`
-- [ ] Una cuenta inactiva o bloqueada recibe el mismo mensaje que una contraseña equivocada
+- [x] Claims: `iss`, `aud`, `sub`, `roles`, `sid`, `jti`, `iat`, `nbf`, `exp`
+- [x] Una cuenta inactiva o bloqueada recibe el mismo mensaje que una contraseña equivocada
 - [ ] Cumple la definición de terminado
 
 ### B2. `sesiones` · Integrante 1
-- [ ] `refresh` rota el *refresh*; uno ya usado cierra la sesión completa
+- [x] `refresh` rota el *refresh*; uno ya usado cierra la sesión completa
       (`sesiones.renovar()`)
-- [ ] `logout` revoca el *access* y cierra la sesión (`sesiones.revocar()` y `cerrar()`)
-- [ ] `current` dice quién soy, mis roles y cuándo vence la sesión
-- [ ] Ruta interna para cerrar todas las sesiones de una cuenta (la usan `usuarios` y `roles`),
+- [x] `logout` revoca el *access* y cierra la sesión (`sesiones.revocar()` y `cerrar()`)
+- [x] `current` dice quién soy, mis roles y cuándo vence la sesión
+- [x] Ruta interna para cerrar todas las sesiones de una cuenta (la usan `usuarios` y `roles`),
       con `sesiones.cerrar_todas()`
 - [ ] Cumple la definición de terminado
 
 ### B3. `usuarios` · Integrante 2
-- [ ] Alta, consulta, edición, activar y desactivar (solo ADMINISTRADOR)
-- [ ] Eliminar solo sin dependencias (`dependencias_usuario`); con ellas, 409
-- [ ] Al desactivar una cuenta, llama a `sesiones` para cerrar las suyas
-- [ ] Nunca devuelve ni audita `password_hash`
+- [x] Alta, consulta, edición, activar y desactivar (solo ADMINISTRADOR)
+- [x] Eliminar solo sin dependencias (`dependencias_usuario`); con ellas, 409
+- [x] Al desactivar una cuenta, llama a `sesiones` para cerrar las suyas
+- [x] Nunca devuelve ni audita `password_hash`
 - [ ] Cumple la definición de terminado
 
 ### B4. `roles` · Integrante 2
-- [ ] Roles y sus permisos (`permissions`, `role_permissions`)
-- [ ] Asignar o quitar roles a una cuenta. Al quitar uno, llama a `sesiones`
+- [x] Roles y sus permisos (`permissions`, `role_permissions`)
+- [x] Asignar o quitar roles a una cuenta. Al quitar uno, llama a `sesiones`
 - [ ] Cumple la definición de terminado
 
 ---
@@ -243,32 +253,32 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 ## C. Catálogos
 
 ### C1. `enfermedades` · Integrante 3
-- [ ] Listado con búsqueda, filtros y paginación, como la pantalla
-- [ ] Alta y edición (EPIDEMIOLOGO y ADMINISTRADOR); el código no se edita
-- [ ] Activar y desactivar como baja lógica, nunca `DELETE`
+- [x] Listado con búsqueda, filtros y paginación, como la pantalla
+- [x] Alta y edición (EPIDEMIOLOGO y ADMINISTRADOR); el código no se edita
+- [x] Activar y desactivar como baja lógica, nunca `DELETE`
 - [ ] Cumple la definición de terminado
 
 ### C2. `parametros` · Integrante 3
-- [ ] Los seis parámetros con valor, fuente y marca de supuesto
-- [ ] No se guarda un parámetro sin fuente ni marca de supuesto
-- [ ] El estado: simulable, cuáles faltan y cuáles son supuestos
-- [ ] Solo escribe la columna `default_params` (permiso por columna)
+- [x] Los seis parámetros con valor, fuente y marca de supuesto
+- [x] No se guarda un parámetro sin fuente ni marca de supuesto
+- [x] El estado: simulable, cuáles faltan y cuáles son supuestos
+- [x] Solo escribe la columna `default_params` (permiso por columna)
 - [ ] Cumple la definición de terminado
 
 ### C3. `regiones` · Integrante 2
-- [ ] Nuevo León y sus 51 municipios, con la fuente de cada cifra como dato (`tipo`,
+- [x] Nuevo León y sus 51 municipios, con la fuente de cada cifra como dato (`tipo`,
       `fuente`…), no como texto
-- [ ] Responde aunque Redis esté caído
+- [x] Responde aunque Redis esté caído
 - [ ] Cumple la definición de terminado
 
 ### C4. `poblacion` · Integrante 2
-- [ ] Corrección de la población (ADMINISTRADOR), con el control de concurrencia de hoy
+- [x] Corrección de la población (ADMINISTRADOR), con el control de concurrencia de hoy
       (valor esperado)
-- [ ] Bandas de edad: consulta y corrección (los pasos de LIMP-11c)
+- [x] Bandas de edad: consulta y corrección (los pasos de LIMP-11c)
 - [ ] Cumple la definición de terminado
 
 ### C5. `tipos-intervencion` · Integrante 3
-- [ ] Los tipos con su `param_schema`
+- [x] Los tipos con su `param_schema`
 - [ ] Cumple la definición de terminado
 
 ---
@@ -368,16 +378,16 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 ## G. Analítica
 
 ### G1. `indicadores` · Integrante 3
-- [ ] Indicadores del tablero y resumen de situación, con caché en Redis
+- [x] Indicadores del tablero y resumen de situación, con caché en Redis
 - [ ] Cumple la definición de terminado
 
 ### G2. `series` · Integrante 2
-- [ ] Curva epidémica y series por edad, sexo y totales, con los filtros de Monitoreo
+- [x] Curva epidémica y series por edad, sexo y totales, con los filtros de Monitoreo
 - [ ] Cumple la definición de terminado
 
 ### G3. `zonas` · Integrante 2
-- [ ] Datos del mapa por municipio y detalle por zona (variación, semáforo, zonas en riesgo)
-- [ ] El texto de "mayor cambio" sigue la regla de LIMP-20: todas las zonas, orden fijo
+- [x] Datos del mapa por municipio y detalle por zona (variación, semáforo, zonas en riesgo)
+- [x] El texto de "mayor cambio" sigue la regla de LIMP-20: todas las zonas, orden fijo
 - [ ] Cumple la definición de terminado
 
 ---
@@ -431,6 +441,8 @@ es la herramienta del guion de aceptación.
       de `epidemia_comun`, `backend_web` y `procesamiento`. Imagen `epidemia/base`
 - [ ] Un `Dockerfile` por servicio: parte de `epidemia/base`, copia su carpeta, arranca en el
       puerto 8000 y tiene `HEALTHCHECK` a `/health`
+      *Avance (14 oct): los 12 servicios tienen `Dockerfile` con `HEALTHCHECK` y waitress en
+      el 8000, pero parten de `python:3.12-slim` y cada uno instala todo.*
 - [ ] `infra/docker-compose.yml` con:
   - [ ] PostgreSQL, con volumen e inicialización: dump, semillas y migraciones 026 en
         adelante;
@@ -441,11 +453,13 @@ es la herramienta del guion de aceptación.
       levantar solo una parte en máquinas con poca memoria
 - [ ] Red interna. Solo se publican los puertos del catálogo; PostgreSQL y Redis no quedan
       expuestos fuera de la máquina
-- [ ] Secretos en el `.env` del compose (sin versionar), con su `.env.example`
+- [x] Secretos en el `.env` del compose (sin versionar), con su `.env.example`
 - [ ] `docker compose up` desde cero levanta todo, con los 26 *healthchecks* en verde
 - [ ] Reconstruir y reiniciar un servicio no toca a los demás
 - [ ] Medir la memoria con todo arriba y anotarla en la guía
 - [ ] `docs/INSTALACION.md`: sección de Docker, desde cero
+      *Avance (14 oct): hay sección para Redis y un PostgreSQL aparte; falta el compose con
+      los servicios.*
 
 ---
 
@@ -478,11 +492,11 @@ está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
       `simulador`, `sincronizacion` y `estado-servicios` anota el TTL de sus llaves
 - [x] En Redis se guarda la huella de los identificadores de sesión y de *refresh*, no el
       valor
-- [ ] Si Redis se cae, en los servicios (la biblioteca ya lo hace y lo prueba):
-  - [ ] lo protegido responde 503;
-  - [ ] los catálogos públicos siguen respondiendo;
-  - [ ] las cachés se reconstruyen solas al volver.
-- [ ] Prueba con Redis apagado: el login y las escrituras fallan con 503 y los catálogos
+- [x] Si Redis se cae, en los servicios (la biblioteca ya lo hace y lo prueba):
+  - [x] lo protegido responde 503;
+  - [x] los catálogos públicos siguen respondiendo;
+  - [x] las cachés se reconstruyen solas al volver.
+- [x] Prueba con Redis apagado: el login y las escrituras fallan con 503 y los catálogos
       responden
 
 ---
@@ -492,24 +506,27 @@ está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
 - [ ] Un solo `JWT_SECRET_KEY` y una audiencia común (`epidemia-api`) en `.env.shared`
 - [ ] **Token de servicio** para las llamadas sin persona detrás: dura poco, tiene su propia
       audiencia (`epidemia-interno`) y solo lo aceptan las rutas internas
-- [ ] Cuando un servicio llama a otro por una persona, reenvía su token; nunca lo cambia por
+- [x] Cuando un servicio llama a otro por una persona, reenvía su token; nunca lo cambia por
       uno con más permisos
 - [ ] Migración 026: un rol de PostgreSQL por servicio, generado desde una tabla de permisos.
       Lleva permisos por columna para `parametros`, `poblacion` y `aprobacion`, y ninguno usa
       `postgres`
+      *Avance (14 oct): hecha para los 12 servicios que existen, con permisos por columna en
+      `parametros` y `poblacion`. Falta `aprobacion`, y los permisos están escritos a mano,
+      no generados desde una tabla.*
 - [ ] Prueba de roles: `regiones` **no puede** escribir en `scenarios`, y `aprobacion` no
       puede cambiar el contenido de una versión
-- [ ] CORS cerrado: solo el origen de la consola
-- [ ] Pruebas negativas de token:
-  - [ ] `alg: none`;
-  - [ ] firma con otro secreto;
-  - [ ] vencido;
-  - [ ] otra audiencia;
-  - [ ] revocado;
-  - [ ] rol insuficiente;
-  - [ ] token de servicio en una ruta pública.
-- [ ] La bitácora registra el usuario y la IP también cuando la operación llega por la API
-- [ ] La IP de origen se toma de la conexión, y de `X-Forwarded-For` solo si viene de la red
+- [x] CORS cerrado: solo el origen de la consola
+- [x] Pruebas negativas de token:
+  - [x] `alg: none`;
+  - [x] firma con otro secreto;
+  - [x] vencido;
+  - [x] otra audiencia;
+  - [x] revocado;
+  - [x] rol insuficiente;
+  - [x] token de servicio en una ruta pública.
+- [x] La bitácora registra el usuario y la IP también cuando la operación llega por la API
+- [x] La IP de origen se toma de la conexión, y de `X-Forwarded-For` solo si viene de la red
       interna de Docker
 
 ---
@@ -518,16 +535,18 @@ está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
 
 - [ ] Los 26 `docs/contratos/<servicio>/openapi.json`, idénticos al que sirve cada
       `/openapi.json`. Una prueba lo compara
+      *Avance (14 oct): 12 de 26. La prueba que los compara con lo servido cubre catálogos;
+      los de identidad no tienen ejemplos JSON ni XML.*
 - [ ] XSD de los recursos principales:
   - [ ] escenario completo;
   - [ ] resultado de una corrida;
-  - [ ] enfermedad con sus parámetros;
+  - [x] enfermedad con sus parámetros;
   - [ ] caso;
   - [ ] lote de sincronización;
-  - [ ] el error (`problem+xml`).
+  - [x] el error (`problem+xml`).
 - [ ] Prueba de contrato: cada ejemplo XML valida contra su XSD, y cada respuesta JSON contra
       su esquema del OpenAPI
-- [ ] Versionado: todo bajo `/api/v1/`; un cambio incompatible crea `/api/v2/`
+- [x] Versionado: todo bajo `/api/v1/`; un cambio incompatible crea `/api/v2/`
 - [ ] `docs/contratos/README.md`: cómo leer los contratos y dónde está cada uno
 
 ---
@@ -537,9 +556,9 @@ está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
 El monolito no consume los servicios, pero comparte la base con ellos.
 
 - [ ] Sigue funcionando igual, ya sea con PostgreSQL local o con el del compose
-- [ ] Las migraciones de esta etapa (roles por servicio) no le quitan permisos a
+- [x] Las migraciones de esta etapa (roles por servicio) no le quitan permisos a
       `epidemia_app`
-- [ ] Las 431 pruebas actuales siguen pasando
+- [x] Las 431 pruebas actuales siguen pasando
 - [ ] (Opcional) Enlace a la consola desde el menú de ADMINISTRADOR
 
 ---
@@ -547,9 +566,9 @@ El monolito no consume los servicios, pero comparte la base con ellos.
 ## O. Pruebas
 
 ### O1. Unitarias · cada responsable las de sus servicios
-- [ ] La biblioteca común: formatos, errores, tokens, Redis y el cliente entre servicios
+- [x] La biblioteca común: formatos, errores, tokens, Redis y el cliente entre servicios
 - [ ] Cada servicio: validaciones, reglas y permisos, con la base y Redis simulados
-- [ ] El motor y las pruebas actuales siguen pasando
+- [x] El motor y las pruebas actuales siguen pasando
 
 ### O2. Integración · Integrante 6
 - [ ] Un compose de pruebas sobre `simulador_epidemico_pruebas` y un Redis aparte, nunca sobre
@@ -567,12 +586,12 @@ El monolito no consume los servicios, pero comparte la base con ellos.
 
 ## P. Documentación y evidencias · Integrante 3
 
-- [ ] `docs/arquitectura/arquitectura_v2.md`: lo que sí se construyó, a partir del catálogo,
+- [x] `docs/arquitectura/arquitectura_v2.md`: lo que sí se construyó, a partir del catálogo,
       con un diagrama de servicios, Redis y PostgreSQL
 - [ ] Revisar que cada servicio tenga su README (es parte de la definición de terminado)
 - [ ] Actualizar `AGENTS.md`, `microservicios/AGENTS.md` y `docs/decisiones.md`
 - [ ] Carpeta `evidencias/`:
-  - [ ] resultado de las pruebas;
+  - [x] resultado de las pruebas;
   - [ ] el recorrido de aceptación de la consola;
   - [ ] capturas de Swagger y del panel de salud;
   - [ ] `docker compose ps` con todo en verde.
@@ -611,7 +630,7 @@ cumplido.
 - [ ] 22. Correr las pruebas unitarias, las de contrato y las de integración
 
 Verificaciones extra:
-- [ ] Un token con `alg: none`, vencido o de otra audiencia es rechazado
+- [x] Un token con `alg: none`, vencido o de otra audiencia es rechazado
 - [ ] El rol de base de un servicio no puede escribir en las tablas de otro
 - [ ] Misma semilla y misma versión dan el mismo resultado, ahora por la API
 - [ ] Ningún `.env`, token ni contraseña está en el repositorio, en las imágenes ni en las
