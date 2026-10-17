@@ -159,6 +159,7 @@ guarda su huella (SHA-256).
 | `refresh:<h(rt)>`           | Huella del `sid` de su sesión                                                     | Lo que le quede a la sesión                                        | `auth`, `sesiones`                             | `sesiones` |
 | `refresh:usado:<h(rt)>`     | Huella del `sid` de un *refresh* ya rotado, para detectar si alguien lo reutiliza | Lo que le quede a la sesión                                        | `sesiones`                                     | `sesiones` |
 | `jwt:revoked:<jti>`         | `1`                                                                               | Lo que le quede al token, más 60 s                                 | `sesiones`                                     | `sesiones` |
+| `captcha:<id>`              | La respuesta esperada de un captcha de inicio de sesión                           | 5 min; se borra al usarlo, así que sirve para un solo intento      | `auth`                                         | —          |
 | `queue:simulaciones`        | Lista de ids de corrida                                                           | **Sin TTL**: la vacía el `simulador`, y lo que manda es PostgreSQL | `corridas`                                     | `cola`     |
 | `lock:corrida:<version>`    | Marca de la petición que lo tomó                                                  | Unos segundos                                                      | `corridas`                                     | `candados` |
 | `job:<id>:progress`         | Avance de una corrida                                                             | Lo fija el `simulador`                                             | `simulador`                                    | —          |
@@ -167,10 +168,12 @@ guarda su huella (SHA-256).
 | `health:<servicio>`         | Última salud de un servicio                                                       | Lo fija `estado-servicios`                                         | `estado-servicios`                             | —          |
 | `health:history:<servicio>` | Lista corta de sondeos                                                            | Lo fija `estado-servicios`                                         | `estado-servicios`                             | —          |
 
-- Todas las rutas protegidas leen `session:` y `jwt:revoked:` desde `@requiere_token`, con
-  `sesiones.verificar()`.
+- Todas las rutas protegidas leen `session:` y `jwt:revoked:` desde `@requiere_token`
+  (`seguridad.py`), con la misma regla que `sesiones.verificar()`.
 - Las llaves sin módulo se escriben con `requerido()` u `opcional()` de `redis_compartido`,
   siempre con `ex=`. Quien implemente el servicio anota aquí el TTL que eligió.
+- Toda llave sale de `llaves.py`, también en la biblioteca. Una prueba busca llaves armadas a
+  mano (`"captcha:" + x` o `f"captcha:{x}"`) fuera de ese archivo.
 
 ## Opcionales (si sobra tiempo o las apps los piden)
 

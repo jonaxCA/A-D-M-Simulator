@@ -4,7 +4,7 @@ import jwt
 import pytest
 
 from backend_web import auth
-from epidemia_comun import sesiones
+from epidemia_comun import llaves, sesiones
 from epidemia_comun.seguridad import verificar_token
 from microservicios.auth import rutas
 
@@ -33,7 +33,7 @@ def cliente(crear_cliente, monkeypatch, bitacora):
 def resolver(cliente, redis_falso):
     datos = cliente.get("/api/v1/auth/captcha?format=json").get_json()
     a, b = (int(x) for x in datos["pregunta"].split(" + "))
-    assert redis_falso.ttl(rutas.llave_captcha(datos["captcha_id"])) > 0
+    assert redis_falso.ttl(llaves.captcha(datos["captcha_id"])) > 0
     return datos["captcha_id"], str(a + b)
 
 

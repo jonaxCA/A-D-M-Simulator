@@ -1,13 +1,13 @@
-import hashlib
 from functools import wraps
 
 import jwt
 
 from .errores import ErrorAPI
+from .llaves import huella, revocado, sesion
 
 
 def identificador_sesion(sid):
-    return hashlib.sha256(str(sid).encode("utf-8")).hexdigest()
+    return huella(str(sid))
 
 
 def verificar_token(token, ajustes, redis_client, roles=(), interno=False):
@@ -25,9 +25,9 @@ def verificar_token(token, ajustes, redis_client, roles=(), interno=False):
     if not interno and not payload.get("sid"):
         raise ErrorAPI(401, "TOKEN_INVALIDO", "Token sin sesión.")
     try:
-        if redis_client.exists("jwt:revoked:" + str(payload["jti"])):
+        if redis_client.exists(revocado(payload["jti"])):
             raise ErrorAPI(401, "TOKEN_REVOCADO", "La sesión fue revocada.")
-        if not interno and not redis_client.exists("session:" + identificador_sesion(payload["sid"])):
+        if not interno and not redis_client.exists(sesion(identificador_sesion(payload["sid"]))):
             raise ErrorAPI(401, "TOKEN_REVOCADO", "La sesión ya no está activa.")
         if interno:
             redis_client.ping()
