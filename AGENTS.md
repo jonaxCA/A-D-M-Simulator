@@ -74,7 +74,10 @@ Cada una tiene su número en `docs/decisiones.md`:
 - Política para corregir datos en migraciones aplicadas (D7).
 - Cuántas réplicas usa una comparación y cómo se resumen (D8; se revisa en el tercer
   parcial).
-- Si una versión guarda una copia de los parámetros de la enfermedad al enviarse a revisión.
+
+D5 ya se tomó: una versión es una fotografía. Guarda su población por grupo de edad y congela
+los parámetros de la enfermedad al enviarse a revisión (migraciones 023 y 024). Para una
+versión que ya salió de borrador, usa sus parámetros congelados, no los del catálogo.
 
 Las de los microservicios (formato, entregas, rutas, pasarela, pruebas, XSD y migraciones)
 ya están tomadas: son D9 a D16, resumidas en `microservicios/AGENTS.md`. Cuando se tome una
