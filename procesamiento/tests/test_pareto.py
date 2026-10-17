@@ -1,13 +1,15 @@
 """Pruebas de la comparacion de escenarios y la frontera de Pareto.
 
-    python -m unittest discover -s tests -t . -v
+    python -m pytest procesamiento/tests -v
 """
 
 import json
 import unittest
 
-from motor import ComparacionInvalida, EscenarioInvalido, comparar, costo_escenario, frontera_pareto, simular
-from tests.test_motor import escenario
+from procesamiento.motor import (ComparacionInvalida, EscenarioInvalido, comparar, costo_escenario,
+                                 frontera_pareto, simular)
+
+from .test_motor import escenario
 
 COSTOS = {
     "CIERRE_ESCUELAS": {"valor": 10.0, "fuente": "prueba", "supuesto": True},

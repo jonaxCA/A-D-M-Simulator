@@ -58,6 +58,8 @@ En este no crees código en `frontend_movil/` ni en `frontend_desktop/`.
   el bloque J del checklist.
 - Pruebas de los microservicios y de la biblioteca común:
   `python -m pytest microservicios`.
+- Pruebas del motor: `python -m pytest procesamiento/tests`. Se corren desde la raíz, igual
+  que todo lo demás.
 - Verificar que el dump coincide con las migraciones: `python datos/scripts/verifica_migraciones.py`.
 - Las pruebas corren contra `<base>_pruebas`, nunca contra la de la demostración. Se crea con
   `python datos/scripts/prepara_base_pruebas.py` (ver `docs/INSTALACION.md`).

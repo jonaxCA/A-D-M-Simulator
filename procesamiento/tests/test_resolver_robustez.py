@@ -15,15 +15,16 @@ cualquier nivel, por valores JSON al azar. La semilla es fija: la prueba da
 siempre el mismo resultado.
 
 Ejecutar:
-    cd procesamiento && python -m unittest tests.test_resolver_robustez -v
+    python -m pytest procesamiento/tests/test_resolver_robustez.py -v
 """
 import copy
 import random
 import traceback
 import unittest
 
-from motor.parametros import EscenarioInvalido, resolver
-from tests.corpus_resolver import INVALIDOS, VALIDOS
+from procesamiento.motor.parametros import EscenarioInvalido, resolver
+
+from .corpus_resolver import INVALIDOS, VALIDOS
 
 SEMILLA = 20261005
 ESCENARIOS = 6000

@@ -663,11 +663,17 @@ costo y frontera de Pareto para comparar escenarios. No depende de Flask ni de l
 base, y no trae valores epidemiológicos ni costos por defecto: cada parámetro debe
 venir con su fuente o marcado como supuesto.
 
+Desde la raíz del repositorio:
+
 ```bash
-cd procesamiento
-python -m motor                              # ejemplo A/B/C/D con frontera de Pareto
-python -m unittest discover -s tests -t .    # pruebas del motor
+python -m procesamiento.motor               # ejemplo A/B/C/D con frontera de Pareto
+python -m pytest procesamiento/tests        # pruebas del motor
 ```
+
+El motor se importa siempre como `procesamiento.motor`, también en las pruebas y en los
+microservicios. `import motor` solo funciona dentro de `procesamiento/` y carga una segunda
+copia, con otras clases de excepción: un `except EscenarioInvalido` de un lado no atrapa lo
+que lanza el otro.
 
 Los números del ejemplo son **supuestos ilustrativos**, no datos de Nuevo León.
 
