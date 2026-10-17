@@ -1,0 +1,181 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - comparacion",
+    "version": "0.1.0",
+    "description": "Compara corridas completadas lado a lado: indicadores y serie diaria de cada una. Muestra opciones; no recomienda un escenario."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5244"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/comparisons": {
+      "get": {
+        "summary": "Comparar corridas",
+        "operationId": "comparar_corridas",
+        "description": "Indicadores (fallecimientos, pico de casos activos, día del pico y tasa de ataque) y la serie diaria de cada corrida, en el orden pedido y sin repetidas. Las curvas superpuestas se arman con `serie`. Incluye el aviso de que los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR, como la pantalla Comparación del monolito.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "runs",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+(,[0-9]+)+$"
+            },
+            "example": "12,15",
+            "description": "Ids de 2 a 50 corridas completadas, separados por comas"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+                  "corridas": [
+                    {
+                      "id": 12,
+                      "scenario_id": 3,
+                      "version_number": 1,
+                      "scenario_name": "Ola Influenza ZMM - sin intervencion",
+                      "serie": [
+                        {
+                          "dia": 0,
+                          "S": 499900,
+                          "E": 0,
+                          "I": 100,
+                          "R": 0,
+                          "H": 0,
+                          "D": 0,
+                          "V": 0,
+                          "casos_activos": 100,
+                          "nuevos_casos": 0,
+                          "nuevas_hospitalizaciones": 0,
+                          "nuevas_defunciones": 0,
+                          "dosis_aplicadas": 0
+                        },
+                        {
+                          "dia": 1,
+                          "S": 499879,
+                          "E": 21,
+                          "I": 86,
+                          "R": 14,
+                          "H": 0,
+                          "D": 0,
+                          "V": 0,
+                          "casos_activos": 107,
+                          "nuevos_casos": 21,
+                          "nuevas_hospitalizaciones": 0,
+                          "nuevas_defunciones": 0,
+                          "dosis_aplicadas": 0
+                        }
+                      ],
+                      "fallecimientos": 100,
+                      "pico_casos_activos": 56052,
+                      "dia_pico": 98,
+                      "tasa_ataque": 0.650094
+                    },
+                    {
+                      "id": 15,
+                      "scenario_id": 3,
+                      "version_number": 2,
+                      "scenario_name": "Ola Influenza ZMM - con vacunacion",
+                      "serie": [
+                        {
+                          "dia": 0,
+                          "S": 499900,
+                          "E": 0,
+                          "I": 100,
+                          "R": 0,
+                          "H": 0,
+                          "D": 0,
+                          "V": 0,
+                          "casos_activos": 100,
+                          "nuevos_casos": 0,
+                          "nuevas_hospitalizaciones": 0,
+                          "nuevas_defunciones": 0,
+                          "dosis_aplicadas": 0
+                        },
+                        {
+                          "dia": 1,
+                          "S": 499879,
+                          "E": 21,
+                          "I": 86,
+                          "R": 14,
+                          "H": 0,
+                          "D": 0,
+                          "V": 0,
+                          "casos_activos": 107,
+                          "nuevos_casos": 21,
+                          "nuevas_hospitalizaciones": 0,
+                          "nuevas_defunciones": 0,
+                          "dosis_aplicadas": 0
+                        }
+                      ],
+                      "fallecimientos": 51,
+                      "pico_casos_activos": 46880,
+                      "dia_pico": 111,
+                      "tasa_ataque": 0.478136
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "comparacion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<comparacion><aviso>Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.</aviso><corridas><corrida><id tipo=\"numero\">12</id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">1</version_number><scenario_name>Ola Influenza ZMM - sin intervencion</scenario_name><serie><punto><dia tipo=\"numero\">0</dia><S tipo=\"numero\">499900</S><E tipo=\"numero\">0</E><I tipo=\"numero\">100</I><R tipo=\"numero\">0</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">100</casos_activos><nuevos_casos tipo=\"numero\">0</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">1</dia><S tipo=\"numero\">499879</S><E tipo=\"numero\">21</E><I tipo=\"numero\">86</I><R tipo=\"numero\">14</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">107</casos_activos><nuevos_casos tipo=\"numero\">21</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto></serie><fallecimientos tipo=\"numero\">100</fallecimientos><pico_casos_activos tipo=\"numero\">56052</pico_casos_activos><dia_pico tipo=\"numero\">98</dia_pico><tasa_ataque tipo=\"numero\">0.650094</tasa_ataque></corrida><corrida><id tipo=\"numero\">15</id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Ola Influenza ZMM - con vacunacion</scenario_name><serie><punto><dia tipo=\"numero\">0</dia><S tipo=\"numero\">499900</S><E tipo=\"numero\">0</E><I tipo=\"numero\">100</I><R tipo=\"numero\">0</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">100</casos_activos><nuevos_casos tipo=\"numero\">0</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">1</dia><S tipo=\"numero\">499879</S><E tipo=\"numero\">21</E><I tipo=\"numero\">86</I><R tipo=\"numero\">14</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">107</casos_activos><nuevos_casos tipo=\"numero\">21</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto></serie><fallecimientos tipo=\"numero\">51</fallecimientos><pico_casos_activos tipo=\"numero\">46880</pico_casos_activos><dia_pico tipo=\"numero\">111</dia_pico><tasa_ataque tipo=\"numero\">0.478136</tasa_ataque></corrida></corridas></comparacion>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Alguna corrida no existe, no ha terminado o no tiene resultados"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible"
+          }
+        }
+      }
+    }
+  }
+}

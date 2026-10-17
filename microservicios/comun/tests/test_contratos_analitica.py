@@ -1,4 +1,4 @@
-"""Contrato, rutas y Dockerfile de tipos-intervencion, indicadores, series y zonas."""
+"""Contrato, rutas y Dockerfile de tipos-intervencion, indicadores, series, zonas y comparacion."""
 import ast
 import json
 import re
@@ -14,6 +14,7 @@ SERVICIOS = [
     ("indicadores", "indicadores", 5251, True),
     ("series", "series", 5252, False),
     ("zonas", "zonas", 5253, False),
+    ("comparacion", "comparacion", 5244, False),
 ]
 
 

@@ -366,7 +366,7 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 - [ ] Cumple la definición de terminado
 
 ### F4. `comparacion`
-- [ ] Tabla comparativa y curvas superpuestas de varias corridas
+- [x] Tabla comparativa y curvas superpuestas de varias corridas
 - [ ] Cumple la definición de terminado
 
 ### F5. `pareto`
