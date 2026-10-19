@@ -21,12 +21,14 @@ son las tareas.
 > casilla debería ser un issue, una rama y un Pull Request. Las decisiones de esta etapa
 > ya están tomadas: están en el bloque 0 y en `docs/decisiones.md`.
 
-> **Avance al 14 de octubre** (revisado contra el código del grupo de las 14:00, que entró a
-> `main` en el #117):
-> 12 de 26 servicios (identidad, catálogos y analítica), la biblioteca común, Redis y la
-> migración 026. Pasan las 431 pruebas del monolito y 310 de los servicios. Ningún servicio
-> cumple todavía la definición de terminado: falta meterlos al compose, a `estado-servicios`
-> y a la consola. Solo se marcó lo que se pudo comprobar.
+> **Avance al 18 de octubre** (en `2do-parcial-gpo-10am`): 21 de 26 servicios. Identidad,
+> catálogos, vigilancia, escenarios, analítica, `comparacion` y `pareto`, con la biblioteca
+> común, Redis y las migraciones 026 y 027. Pasan las 1,144 pruebas (monolito, motor y
+> servicios) en un solo `pytest`. Faltan `corridas`, `simulador`, `resultados`,
+> `notificaciones` y `estado-servicios`. Ningún servicio cumple todavía la definición de
+> terminado: faltan `estado-servicios`, la consola y meter al compose los 14 que no están.
+> Las casillas de escenarios y vigilancia las marcó quien hizo esos servicios; las demás se
+> revisaron contra el código.
 
 ---
 

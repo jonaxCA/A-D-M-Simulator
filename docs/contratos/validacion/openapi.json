@@ -332,7 +332,7 @@
                     "name": "validacion"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<validacion><valido tipo=\"booleano\">true</valido><errores /><avisos><item>Parámetro infeccioso_dias sin fuente documentada.</item></avisos></validacion>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<validacion><valido tipo=\"booleano\">true</valido><errores /><avisos><aviso>Parámetro infeccioso_dias sin fuente documentada.</aviso></avisos></validacion>\n"
               }
             }
           },

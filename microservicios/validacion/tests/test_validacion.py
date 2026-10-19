@@ -195,7 +195,7 @@ def test_version_con_errores_sigue_siendo_200(cliente, analista, version, monkey
 
 def test_version_en_xml_por_defecto(cliente, analista, version):
     r = cliente.get("/api/v1/versions/7/validation", headers=analista)
-    assert r.mimetype == "application/xml" and b"<validacion>" in r.data and b"<item>aviso uno</item>" in r.data
+    assert r.mimetype == "application/xml" and b"<validacion>" in r.data and b"<avisos><aviso>aviso uno</aviso></avisos>" in r.data
 
 
 def test_version_inexistente_404_e_id_invalido_422(cliente, analista, version):
