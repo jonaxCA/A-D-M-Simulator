@@ -115,7 +115,7 @@ entregables):
 ### Estructura acordada
 - [ ] `microservicios/comun/` (paquete `epidemia_comun`), `microservicios/<servicio>/` para
       los 26 y `microservicios/consola/`
-- [ ] `infra/docker/` con la imagen base y `infra/docker-compose.yml`
+- [x] `infra/docker/` con la imagen base y `infra/docker-compose.yml`
 - [x] `docs/contratos/<servicio>/` con `openapi.json`, ejemplos y, si aplica, su `.xsd`
 - [x] Llenar `microservicios/AGENTS.md`, que hoy está vacío, con las reglas de este documento
 
@@ -175,8 +175,8 @@ referencia.
 
 ### A6. Plantilla de servicio (lista el día 3)
 - [ ] `scripts/nuevo_servicio.py <nombre> <puerto>` genera:
-      *Avance (14 oct): no agrega el servicio al compose ni genera la prueba de `/health`,
-      y su `Dockerfile` parte de `epidemia/base`, que todavía no existe.*
+      *Avance (19 oct): su `Dockerfile` ya es como los demás; falta que agregue el servicio
+      al compose y que genere la prueba de `/health`.*
   - [x] la carpeta, con `app.py`, `rutas.py` y `README.md`;
   - [ ] el `Dockerfile` y su entrada en el compose;
   - [x] el esqueleto de `openapi.json`;
@@ -441,19 +441,18 @@ es la herramienta del guion de aceptación.
 
 ## J. Docker: un contenedor por servicio · Integrante 6
 
-- [ ] `infra/docker/base.Dockerfile`: `python:3.12-slim`, usuario no root y las dependencias
+- [x] `infra/docker/base.Dockerfile`: `python:3.12-slim`, usuario no root y las dependencias
       de `epidemia_comun`, `backend_web` y `procesamiento`. Imagen `epidemia/base`
-- [ ] Un `Dockerfile` por servicio: parte de `epidemia/base`, copia su carpeta, arranca en el
+- [x] Un `Dockerfile` por servicio: parte de `epidemia/base`, copia su carpeta, arranca en el
       puerto 8000 y tiene `HEALTHCHECK` a `/health`
-      *Avance (14 oct): los 12 servicios tienen `Dockerfile` con `HEALTHCHECK` y waitress en
-      el 8000, pero parten de `python:3.12-slim` y cada uno instala todo.*
 - [ ] `infra/docker-compose.yml` con:
   - [ ] PostgreSQL, con volumen e inicialización: dump, semillas y migraciones 026 en
         adelante;
   - [x] Redis, con contraseña y AOF (lo hizo el bloque K);
-  - [ ] los 26 servicios y la consola;
-  - [ ] `depends_on` con `condition: service_healthy`.
-- [ ] Perfiles del compose por dominio (`identidad`, `catalogos`, `escenarios`…), para
+  - [ ] los 26 servicios y la consola (van 21: los que existen; faltan los cinco nuevos y la
+        consola);
+  - [x] `depends_on` con `condition: service_healthy`.
+- [x] Perfiles del compose por dominio (`identidad`, `catalogos`, `escenarios`…), para
       levantar solo una parte en máquinas con poca memoria
 - [ ] Red interna. Solo se publican los puertos del catálogo; PostgreSQL y Redis no quedan
       expuestos fuera de la máquina

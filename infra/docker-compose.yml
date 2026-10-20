@@ -7,6 +7,14 @@ name: epidemia
 x-servicio-base: &servicio-base
   restart: unless-stopped
 
+# Todos los Dockerfile parten de epidemia/base (infra/docker/base.Dockerfile). Con
+# additional_contexts el compose construye primero el servicio base y nunca la busca en
+# Docker Hub.
+x-construye: &construye
+  context: ..
+  additional_contexts:
+    epidemia/base: service:base
+
 services:
   redis:
     image: redis:7.4-alpine
@@ -37,11 +45,158 @@ services:
       retries: 10
     restart: unless-stopped
 
+  base:
+    image: epidemia/base
+    build:
+      context: ..
+      dockerfile: infra/docker/base.Dockerfile
+    deploy:
+      replicas: 0
+
+  # --- Identidad (perfil identidad) ---------------------------------------------------------
+  auth:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/auth/Dockerfile
+    profiles: [identidad]
+    ports:
+      - "5201:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_AUTH:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  sesiones:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/sesiones/Dockerfile
+    profiles: [identidad]
+    ports:
+      - "5202:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_SESIONES:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  usuarios:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/usuarios/Dockerfile
+    profiles: [identidad]
+    ports:
+      - "5203:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_USUARIOS:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  roles:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/roles/Dockerfile
+    profiles: [identidad]
+    ports:
+      - "5204:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_ROLES:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # --- Catálogos (perfil catalogos) ---------------------------------------------------------
+  enfermedades:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/enfermedades/Dockerfile
+    profiles: [catalogos]
+    ports:
+      - "5211:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_ENFERMEDADES:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  parametros:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/parametros/Dockerfile
+    profiles: [catalogos]
+    ports:
+      - "5212:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_PARAMETROS:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  regiones:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/regiones/Dockerfile
+    profiles: [catalogos]
+    ports:
+      - "5213:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_REGIONES:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  poblacion:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/poblacion/Dockerfile
+    profiles: [catalogos]
+    ports:
+      - "5214:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_POBLACION:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  tipos-intervencion:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/tipos_intervencion/Dockerfile
+    profiles: [catalogos]
+    ports:
+      - "5215:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_TIPOS_INTERVENCION:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+
   # --- Vigilancia (perfil vigilancia) -------------------------------------------------------
   casos:
     <<: *servicio-base
     build:
-      context: ..
+      <<: *construye
       dockerfile: microservicios/casos/Dockerfile
     profiles: [vigilancia]
     ports:
@@ -56,7 +211,7 @@ services:
   sincronizacion:
     <<: *servicio-base
     build:
-      context: ..
+      <<: *construye
       dockerfile: microservicios/sincronizacion/Dockerfile
     profiles: [vigilancia]
     ports:
@@ -77,7 +232,7 @@ services:
   validacion:
     <<: *servicio-base
     build:
-      context: ..
+      <<: *construye
       dockerfile: microservicios/validacion/Dockerfile
     profiles: [escenarios]
     ports:
@@ -92,7 +247,7 @@ services:
   escenarios:
     <<: *servicio-base
     build:
-      context: ..
+      <<: *construye
       dockerfile: microservicios/escenarios/Dockerfile
     profiles: [escenarios]
     ports:
@@ -110,7 +265,7 @@ services:
   intervenciones:
     <<: *servicio-base
     build:
-      context: ..
+      <<: *construye
       dockerfile: microservicios/intervenciones/Dockerfile
     profiles: [escenarios]
     ports:
@@ -125,7 +280,7 @@ services:
   aprobacion:
     <<: *servicio-base
     build:
-      context: ..
+      <<: *construye
       dockerfile: microservicios/aprobacion/Dockerfile
     profiles: [escenarios]
     ports:
@@ -145,7 +300,7 @@ services:
   escenarios-xml:
     <<: *servicio-base
     build:
-      context: ..
+      <<: *construye
       dockerfile: microservicios/escenarios_xml/Dockerfile
     profiles: [escenarios]
     ports:
@@ -165,6 +320,85 @@ services:
       escenarios:
         condition: service_healthy
       intervenciones:
+        condition: service_healthy
+
+  # --- Simulación (perfil simulacion) -------------------------------------------------------
+  comparacion:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/comparacion/Dockerfile
+    profiles: [simulacion]
+    ports:
+      - "5244:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_COMPARACION:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  pareto:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/pareto/Dockerfile
+    profiles: [simulacion]
+    ports:
+      - "5245:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_PARETO:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # --- Analítica (perfil analitica) ---------------------------------------------------------
+  indicadores:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/indicadores/Dockerfile
+    profiles: [analitica]
+    ports:
+      - "5251:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_INDICADORES:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  series:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/series/Dockerfile
+    profiles: [analitica]
+    ports:
+      - "5252:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_SERIES:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+  zonas:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/zonas/Dockerfile
+    profiles: [analitica]
+    ports:
+      - "5253:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_ZONAS:-}
+    depends_on:
+      redis:
         condition: service_healthy
 
 volumes:

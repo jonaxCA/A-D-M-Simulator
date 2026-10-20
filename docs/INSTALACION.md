@@ -447,29 +447,39 @@ done
 - Para apagarlos: `kill %1 %2 …` (o `pkill -f waitress-serve`), y
   `docker rm -f epidemia-pg` y `docker compose -f infra/docker-compose.yml stop redis`.
 
-### 3. Alternativa: un servicio en su contenedor
+### 3. Alternativa: los servicios en contenedores
 
-Cada servicio tiene su `Dockerfile` (`python:3.12-slim`, usuario sin privilegios, `waitress`
-en el puerto 8000 y `HEALTHCHECK` a `/health`). El contexto es la raíz del repositorio,
-porque copia `backend_web/`, `procesamiento/` y `microservicios/comun/`. Las evidencias no
-usaron este camino.
-
-| Servicio | Puerto | Servicio | Puerto |
-|---|---|---|---|
-| `auth` | 5201 | `regiones` | 5213 |
-| `sesiones` | 5202 | `poblacion` | 5214 |
-| `usuarios` | 5203 | `tipos-intervencion` | 5215 |
-| `roles` | 5204 | `indicadores` | 5251 |
-| `enfermedades` | 5211 | `series` | 5252 |
-| `parametros` | 5212 | `zonas` | 5253 |
+Todos los `Dockerfile` parten de la imagen `epidemia/base` (`infra/docker/base.Dockerfile`):
+Python 3.12, las dependencias y el código que comparten (`backend_web/`, `procesamiento/` y
+`microservicios/comun/`), con usuario sin privilegios. Cada servicio solo agrega su carpeta y
+su contrato, arranca `waitress` en el puerto 8000 y tiene `HEALTHCHECK` a `/health`. El compose
+construye la base antes que los servicios, y cada dominio es un perfil:
 
 ```bash
+docker compose -f infra/docker-compose.yml --profile '*' build
+docker compose -f infra/docker-compose.yml --profile catalogos up -d
+```
+
+| Perfil | Servicios |
+|---|---|
+| `identidad` | `auth`, `sesiones`, `usuarios`, `roles` |
+| `catalogos` | `enfermedades`, `parametros`, `regiones`, `poblacion`, `tipos-intervencion` |
+| `vigilancia` | `casos`, `sincronizacion` |
+| `escenarios` | `escenarios`, `intervenciones`, `aprobacion`, `validacion`, `escenarios-xml` |
+| `simulacion` | `comparacion`, `pareto` |
+| `analitica` | `indicadores`, `series`, `zonas` |
+
+Cada servicio lee su base de `DATABASE_URL_<SERVICIO>` en `infra/.env` (ver
+`infra/.env.example`). Mientras el PostgreSQL no esté en el compose, apunta al de tu máquina
+o al del paso 0 con `host.docker.internal`. Sin base, el servicio arranca, pero su `/health`
+responde 503 y Docker lo marca `unhealthy`.
+
+Un servicio suelto, sin compose, necesita antes la imagen base:
+
+```bash
+docker build -f infra/docker/base.Dockerfile -t epidemia/base .
 docker build -f microservicios/regiones/Dockerfile -t epidemia/regiones .
-docker run --rm -p 5213:8000 --add-host=host.docker.internal:host-gateway \
-  -e DATABASE_URL="postgresql://svc_regiones:<contraseña del rol>@host.docker.internal:5433/simulador_epidemico" \
-  -e REDIS_URL="redis://:<REDIS_PASSWORD>@host.docker.internal:6380/0" \
-  -e JWT_SECRET_KEY="<la misma cadena de los demás>" \
-  epidemia/regiones
+docker run --rm -p 5213:8000 --add-host=host.docker.internal:host-gateway   -e DATABASE_URL="postgresql://svc_regiones:<contraseña del rol>@host.docker.internal:5433/simulador_epidemico"   -e REDIS_URL="redis://:<REDIS_PASSWORD>@host.docker.internal:6380/0"   -e JWT_SECRET_KEY="<la misma cadena de los demás>"   epidemia/regiones
 ```
 
 La carpeta de `tipos-intervencion` es `microservicios/tipos_intervencion/`.

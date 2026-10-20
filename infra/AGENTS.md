@@ -11,6 +11,11 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
 1. Todos los servicios parten de la imagen `epidemia/base` (`docker/base.Dockerfile`), con
    usuario no root. Una dependencia se agrega en la base, no en el `Dockerfile` de un
    servicio.
+   - El compose la construye primero: es el servicio `base`, con cero réplicas, y cada
+     servicio la pide con `additional_contexts` (`epidemia/base: service:base`). Así nunca
+     se busca en Docker Hub. No la publiques ahí.
+   - El `Dockerfile` de un servicio solo copia su carpeta y su contrato. Úsalo igual que los
+     demás, o el que genera `nuevo_servicio.py`.
 2. Cada servicio escucha en 8000 dentro de su contenedor y publica el puerto del catálogo
    (`docs/arquitectura/microservicios.md`). No inventes puertos.
 3. Cada servicio tiene `HEALTHCHECK` a `/health`, y sus dependencias van con
