@@ -25,6 +25,9 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `023_escenarios_poblacion_por_edad.sql` | `scenario_versions` guarda la población por grupo de edad y la política de edad desconocida; el tope de población sube de 5 a 20 millones para que quepa el estado completo |
 | `024_version_congela_parametros.sql` | `scenario_versions.disease_params`: la versión congela los parámetros de la enfermedad al salir de borrador, para que corregir el catálogo no cambie el significado de lo ya aprobado |
 | `025_parametros_enfermedades_restantes.sql` | Captura R0, tasa de hospitalización, días de hospitalización y letalidad -- con fuente o supuesto explícito -- de `DENGUE_DEMO`, `ZIKA_DEMO`, `MALARIA_DEMO` y `PATOGENO_X`, las cuatro enfermedades que `017` y `020` no tocaron |
+| `026_roles_por_servicio.sql` | Un rol de PostgreSQL (`svc_*`) por cada uno de los 12 microservicios del grupo de las 14:00, con permisos por columna donde solo escriben una parte |
+| `027_roles_servicios_escenarios_casos.sql` | Los roles de los siete microservicios de escenarios y de captura de casos |
+| `028_roles_comparacion_pareto.sql` | Los roles de `comparacion` y `pareto`, los dos de solo lectura |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.
