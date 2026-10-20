@@ -3436,7 +3436,7 @@ $$;
 -- auth: attempt_login lee la cuenta y sus roles, y actualiza intentos fallidos,
 -- bloqueo y último acceso en users. Audita LOGIN y LOGIN_FAILED.
 GRANT SELECT ON users, roles, user_roles TO svc_auth;
-GRANT UPDATE (failed_attempts, last_login_at) ON users TO svc_auth
+GRANT UPDATE (failed_attempts, last_login_at) ON users TO svc_auth;
 GRANT INSERT ON audit_log TO svc_auth;
 
 -- sesiones: vive en Redis; solo audita LOGOUT.
