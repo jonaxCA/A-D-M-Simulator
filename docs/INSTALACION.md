@@ -453,12 +453,17 @@ Todos los `Dockerfile` parten de la imagen `epidemia/base` (`infra/docker/base.D
 Python 3.12, las dependencias y el código que comparten (`backend_web/`, `procesamiento/` y
 `microservicios/comun/`), con usuario sin privilegios. Cada servicio solo agrega su carpeta y
 su contrato, arranca `waitress` en el puerto 8000 y tiene `HEALTHCHECK` a `/health`. El compose
-construye la base antes que los servicios, y cada dominio es un perfil:
+construye la base antes que los servicios, y cada dominio es un perfil. Desde cero:
 
 ```bash
-docker compose -f infra/docker-compose.yml --profile '*' build
-docker compose -f infra/docker-compose.yml --profile catalogos up -d
+python infra/genera_env.py                    # crea infra/.env y llena las contraseñas vacías
+docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait
+docker compose -f infra/docker-compose.yml ps # todo debe salir "healthy"
 ```
+
+`genera_env.py` no imprime ninguna contraseña ni cambia las que ya tienen valor. Para levantar
+solo un dominio, cambia `'*'` por su perfil (`--profile catalogos`); sin `--profile` solo
+arrancan PostgreSQL y Redis.
 
 | Perfil | Servicios |
 |---|---|
@@ -469,10 +474,23 @@ docker compose -f infra/docker-compose.yml --profile catalogos up -d
 | `simulacion` | `comparacion`, `pareto` |
 | `analitica` | `indicadores`, `series`, `zonas` |
 
-Cada servicio lee su base de `DATABASE_URL_<SERVICIO>` en `infra/.env` (ver
-`infra/.env.example`). Mientras el PostgreSQL no esté en el compose, apunta al de tu máquina
-o al del paso 0 con `host.docker.internal`. Sin base, el servicio arranca, pero su `/health`
-responde 503 y Docker lo marca `unhealthy`.
+**La base.** El compose trae su propio PostgreSQL 16. La primera vez, con el volumen vacío,
+`infra/postgres/10-inicializa.sh` carga el dump (con todas las migraciones), las dos semillas y
+los permisos de `epidemia_app`, y pone la contraseña de cada rol `svc_*` desde
+`DB_PASSWORD_<SERVICIO>`. No toca la base de tu máquina. Queda en `127.0.0.1:5433`, así que el
+monolito también puede usarla:
+
+```
+DATABASE_URL=postgresql://epidemia_app:<EPIDEMIA_APP_PASSWORD de infra/.env>@127.0.0.1:5433/simulador_epidemico
+```
+
+Cada servicio se conecta con su rol. Para apuntar uno a otra base, define su
+`DATABASE_URL_<SERVICIO>` completo (ver `infra/.env.example`). Una migración nueva entra en un
+volumen ya cargado corriéndola con `psql` contra el puerto 5433; `down -v` borra la base y la
+vuelve a cargar desde cero en el siguiente `up`.
+
+Con todo arriba (los 21 servicios, PostgreSQL y Redis) son unos 900 MiB: de 33 a 49 MiB por
+servicio, 44 MiB PostgreSQL y 4 MiB Redis (medido el 19 de octubre).
 
 Un servicio suelto, sin compose, necesita antes la imagen base:
 

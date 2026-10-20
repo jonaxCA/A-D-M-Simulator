@@ -28,8 +28,13 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
    `noeviction`, para que no se expulsen sesiones ni revocaciones. Se publica solo en
    `127.0.0.1:6380`, para no chocar con Memurai. No le quites nada de eso; los servicios lo
    alcanzan como `redis:6379`.
-7. La base se inicializa con el dump, las semillas y las migraciones desde la 026, en ese
-   orden, igual que el Paso 2 de `docs/INSTALACION.md`.
+7. La base se inicializa con `postgres/10-inicializa.sh`, solo con el volumen vacío: el dump
+   (que trae todas las migraciones), las semillas y los permisos del monolito, igual que los
+   pasos 1 a 3 de `docs/INSTALACION.md`, y la contraseña de cada rol `svc_*`.
+   - Las contraseñas se leen del entorno con `\getenv`; nunca las pases por la línea de
+     comandos de `psql`.
+   - Un servicio nuevo necesita su `DB_PASSWORD_<SERVICIO>` en `postgres` y en su
+     `DATABASE_URL`, como los demás, y su rol en una migración.
 8. Las pruebas de integración usan su propio compose, sobre `simulador_epidemico_pruebas` y
    un Redis aparte. Nunca sobre la base de la demostración.
 9. Cada servicio tiene un perfil de dominio (`identidad`, `catalogos`, `vigilancia`,

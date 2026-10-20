@@ -53,9 +53,9 @@ En este no crees código en `frontend_movil/` ni en `frontend_desktop/`.
 ## Comandos
 
 - Sitio: `python -m frontend_web.run`.
-- Microservicios: `docker compose -f infra/docker-compose.yml up --build`. Por ahora solo
-  levanta Redis, y necesita `infra/.env` (copia `infra/.env.example`). Los servicios llegan con
-  el bloque J del checklist.
+- Microservicios: `python infra/genera_env.py` (crea `infra/.env` con las contraseñas) y
+  `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait`. Levanta
+  PostgreSQL con la base de la demostración, Redis y los servicios.
 - Pruebas de los microservicios y de la biblioteca común:
   `python -m pytest microservicios`.
 - Pruebas del motor: `python -m pytest procesamiento/tests`. Se corren desde la raíz, igual

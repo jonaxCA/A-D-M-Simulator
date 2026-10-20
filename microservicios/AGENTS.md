@@ -126,16 +126,15 @@ Ya existen:
 
 - Pruebas de los servicios y la biblioteca:
   `python -m pytest microservicios`
-- Solo Redis (necesita `infra/.env`, copiado de `infra/.env.example`):
-  `docker compose -f infra/docker-compose.yml up -d redis`
-
-Existirán cuando estén los bloques A y J:
-
-- Levantar todo: `docker compose -f infra/docker-compose.yml up --build`
-- Solo un dominio: `docker compose -f infra/docker-compose.yml --profile escenarios up`
-- Un servicio: `docker compose -f infra/docker-compose.yml up --build <servicio>`
+- Contraseñas de `infra/.env`: `python infra/genera_env.py`
+- Levantar todo: `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait`
+- Solo un dominio: `docker compose -f infra/docker-compose.yml --profile escenarios up -d`
+- Reconstruir un servicio sin tocar los demás:
+  `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --no-deps <servicio>`
 - Salud: `curl "http://localhost:<puerto>/health?format=json"`
-- Swagger: `http://localhost:<puerto>/docs` · Consola: `http://localhost:5260`
+- Swagger: `http://localhost:<puerto>/docs`
+
+Existirá con el bloque I: la consola en `http://localhost:5260`.
 
 ## Decisiones tomadas
 

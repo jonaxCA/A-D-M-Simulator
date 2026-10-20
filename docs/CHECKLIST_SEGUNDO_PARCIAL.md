@@ -446,7 +446,7 @@ es la herramienta del guion de aceptación.
 - [x] Un `Dockerfile` por servicio: parte de `epidemia/base`, copia su carpeta, arranca en el
       puerto 8000 y tiene `HEALTHCHECK` a `/health`
 - [ ] `infra/docker-compose.yml` con:
-  - [ ] PostgreSQL, con volumen e inicialización: dump, semillas y migraciones 026 en
+  - [x] PostgreSQL, con volumen e inicialización: dump, semillas y migraciones 026 en
         adelante;
   - [x] Redis, con contraseña y AOF (lo hizo el bloque K);
   - [ ] los 26 servicios y la consola (van 21: los que existen; faltan los cinco nuevos y la
@@ -454,15 +454,16 @@ es la herramienta del guion de aceptación.
   - [x] `depends_on` con `condition: service_healthy`.
 - [x] Perfiles del compose por dominio (`identidad`, `catalogos`, `escenarios`…), para
       levantar solo una parte en máquinas con poca memoria
-- [ ] Red interna. Solo se publican los puertos del catálogo; PostgreSQL y Redis no quedan
+- [x] Red interna. Solo se publican los puertos del catálogo; PostgreSQL y Redis no quedan
       expuestos fuera de la máquina
 - [x] Secretos en el `.env` del compose (sin versionar), con su `.env.example`
 - [ ] `docker compose up` desde cero levanta todo, con los 26 *healthchecks* en verde
-- [ ] Reconstruir y reiniciar un servicio no toca a los demás
-- [ ] Medir la memoria con todo arriba y anotarla en la guía
-- [ ] `docs/INSTALACION.md`: sección de Docker, desde cero
-      *Avance (14 oct): hay sección para Redis y un PostgreSQL aparte; falta el compose con
-      los servicios.*
+      *Avance (19 oct): desde cero, los 21 servicios que existen, PostgreSQL y Redis quedan en
+      verde en unos 35 s; ninguna ruta GET da 500 con las tres cuentas de la demostración.*
+- [x] Reconstruir y reiniciar un servicio no toca a los demás
+- [x] Medir la memoria con todo arriba y anotarla en la guía (con 21 servicios; volver a
+      medir con los 26)
+- [x] `docs/INSTALACION.md`: sección de Docker, desde cero
 
 ---
 
@@ -514,11 +515,13 @@ está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
 - [ ] Migración 026: un rol de PostgreSQL por servicio, generado desde una tabla de permisos.
       Lleva permisos por columna para `parametros`, `poblacion` y `aprobacion`, y ninguno usa
       `postgres`
-      *Avance (14 oct): hecha para los 12 servicios que existen, con permisos por columna en
-      `parametros` y `poblacion`. Falta `aprobacion`, y los permisos están escritos a mano,
-      no generados desde una tabla.*
+      *Avance (19 oct): la 026 y la 027 cubren 19 servicios, con permisos por columna en
+      `parametros`, `poblacion` y `aprobacion`; `comparacion` y `pareto` llegan en la 028.
+      Los permisos están escritos a mano, no generados desde una tabla.*
 - [ ] Prueba de roles: `regiones` **no puede** escribir en `scenarios`, y `aprobacion` no
       puede cambiar el contenido de una versión
+      *Avance (19 oct): comprobado a mano en el PostgreSQL del compose; falta como prueba
+      automática (bloque O2).*
 - [x] CORS cerrado: solo el origen de la consola
 - [x] Pruebas negativas de token:
   - [x] `alg: none`;
@@ -558,7 +561,7 @@ está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
 
 El monolito no consume los servicios, pero comparte la base con ellos.
 
-- [ ] Sigue funcionando igual, ya sea con PostgreSQL local o con el del compose
+- [x] Sigue funcionando igual, ya sea con PostgreSQL local o con el del compose
 - [x] Las migraciones de esta etapa (roles por servicio) no le quitan permisos a
       `epidemia_app`
 - [x] Las 431 pruebas actuales siguen pasando
