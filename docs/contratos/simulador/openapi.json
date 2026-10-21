@@ -1,0 +1,82 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - simulador",
+    "version": "0.1.0",
+    "description": "Proceso trabajador: toma corridas de la cola de Redis (queue:simulaciones), ejecuta el motor, guarda el resultado en PostgreSQL, publica el avance en job:<id>:progress y avisa a notificaciones al terminar o fallar. Su única ruta es el estado del trabajador."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5242"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token del servicio auth, con sesión activa en Redis."
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/worker/status": {
+      "get": {
+        "summary": "Estado del trabajador",
+        "operationId": "estado_trabajador",
+        "description": "Nombre del contenedor, si el hilo trabajador sigue vivo, la corrida que está ejecutando, cuántas lleva, la última y cuántas esperan en la cola. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "trabajador": "simulador-1",
+                  "activo": true,
+                  "corrida_actual": 44,
+                  "procesadas": 3,
+                  "ultima": {
+                    "id": 43,
+                    "status": "completado"
+                  },
+                  "pendientes": 1
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "trabajador"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<trabajador><trabajador>simulador-1</trabajador><activo tipo=\"booleano\">true</activo><corrida_actual tipo=\"numero\">44</corrida_actual><procesadas tipo=\"numero\">3</procesadas><ultima><id tipo=\"numero\">43</id><status>completado</status></ultima><pendientes tipo=\"numero\">1</pendientes></trabajador>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          }
+        }
+      }
+    }
+  }
+}

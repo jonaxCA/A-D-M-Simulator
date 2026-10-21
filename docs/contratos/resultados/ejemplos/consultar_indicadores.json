@@ -1,0 +1,45 @@
+{
+  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+  "run_id": 42,
+  "resumen": {
+    "casos_acumulados": 95,
+    "casos_activos_final": 57,
+    "pico_casos_activos": 57,
+    "dia_pico": 5,
+    "pico_nuevos_casos": 14,
+    "dia_pico_nuevos_casos": 5,
+    "hospitalizaciones": 0,
+    "pico_hospitalizados": 0,
+    "dia_pico_hospitalizados": 0,
+    "fallecimientos": 0,
+    "tasa_ataque": 0.000475,
+    "vacunados_protegidos": 0,
+    "dosis_aplicadas": 0,
+    "desglose_por_grupo": [
+      {
+        "grupo": "0-19",
+        "poblacion": 60000,
+        "casos": 25,
+        "fallecimientos": 0,
+        "vacunados_protegidos": 0,
+        "dosis_aplicadas": 0
+      },
+      {
+        "grupo": "20-59",
+        "poblacion": 110000,
+        "casos": 55,
+        "fallecimientos": 0,
+        "vacunados_protegidos": 0,
+        "dosis_aplicadas": 0
+      },
+      {
+        "grupo": "60+",
+        "poblacion": 30000,
+        "casos": 15,
+        "fallecimientos": 0,
+        "vacunados_protegidos": 0,
+        "dosis_aplicadas": 0
+      }
+    ]
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+  "simplificaciones": [
+    "Mezcla homogenea entre grupos de edad; la edad solo modifica hospitalizacion, letalidad y vacunacion.",
+    "Duraciones geometricas en pasos de un dia; solo se usa la media de cada distribucion.",
+    "Los hospitalizados no transmiten.",
+    "La vacuna se aplica sin conocer el estado inmunologico de la persona.",
+    "Las intervenciones sobre una capa reducen sus contactos en reduccion x cobertura x cumplimiento.",
+    "El modelo es de contagio directo persona a persona: dengue, zika y malaria (transmitidas por vector) se aproximan con el mismo SEIR, sin compartimentos de mosquito, sin estacionalidad ni dinamica del vector; su R0 y demas parametros equivalentes van marcados como supuesto (ver migracion 025) y los resultados deben leerse como orden de magnitud, no como pronostico."
+  ],
+  "corrida": {
+    "id": 42,
+    "scenario_version_id": 11,
+    "scenario_id": 3,
+    "version_number": 2,
+    "scenario_name": "Brote de influenza en Monterrey",
+    "disease_name": "Influenza",
+    "region_name": "Monterrey",
+    "seed": 982314,
+    "population_size": 200000,
+    "horizon_days": 5,
+    "finished_at": "2026-10-20T15:02:00+00:00"
+  },
+  "engine_version": "python-ref-0.1",
+  "scenario_checksum": "de8417bf8d7ff3a4e59ef77e663f55dfcc37f5fb510644e60d4497f9b971ea39",
+  "resumen": {
+    "casos_acumulados": 95,
+    "casos_activos_final": 57,
+    "pico_casos_activos": 57,
+    "dia_pico": 5,
+    "pico_nuevos_casos": 14,
+    "dia_pico_nuevos_casos": 5,
+    "hospitalizaciones": 0,
+    "pico_hospitalizados": 0,
+    "dia_pico_hospitalizados": 0,
+    "fallecimientos": 0,
+    "tasa_ataque": 0.000475,
+    "vacunados_protegidos": 0,
+    "dosis_aplicadas": 0,
+    "desglose_por_grupo": [
+      {
+        "grupo": "0-19",
+        "poblacion": 60000,
+        "casos": 25,
+        "fallecimientos": 0,
+        "vacunados_protegidos": 0,
+        "dosis_aplicadas": 0
+      },
+      {
+        "grupo": "20-59",
+        "poblacion": 110000,
+        "casos": 55,
+        "fallecimientos": 0,
+        "vacunados_protegidos": 0,
+        "dosis_aplicadas": 0
+      },
+      {
+        "grupo": "60+",
+        "poblacion": 30000,
+        "casos": 15,
+        "fallecimientos": 0,
+        "vacunados_protegidos": 0,
+        "dosis_aplicadas": 0
+      }
+    ]
+  },
+  "serie": [
+    {
+      "dia": 0,
+      "S": 199950,
+      "E": 0,
+      "I": 50,
+      "R": 0,
+      "H": 0,
+      "D": 0,
+      "V": 0,
+      "casos_activos": 50,
+      "nuevos_casos": 0,
+      "nuevas_hospitalizaciones": 0,
+      "nuevas_defunciones": 0,
+      "dosis_aplicadas": 0
+    },
+    {
+      "dia": 1,
+      "S": 199942,
+      "E": 8,
+      "I": 37,
+      "R": 13,
+      "H": 0,
+      "D": 0,
+      "V": 0,
+      "casos_activos": 45,
+      "nuevos_casos": 8,
+      "nuevas_hospitalizaciones": 0,
+      "nuevas_defunciones": 0,
+      "dosis_aplicadas": 0
+    },
+    {
+      "dia": 2,
+      "S": 199934,
+      "E": 12,
+      "I": 31,
+      "R": 23,
+      "H": 0,
+      "D": 0,
+      "V": 0,
+      "casos_activos": 43,
+      "nuevos_casos": 8,
+      "nuevas_hospitalizaciones": 0,
+      "nuevas_defunciones": 0,
+      "dosis_aplicadas": 0
+    },
+    {
+      "dia": 3,
+      "S": 199928,
+      "E": 14,
+      "I": 31,
+      "R": 27,
+      "H": 0,
+      "D": 0,
+      "V": 0,
+      "casos_activos": 45,
+      "nuevos_casos": 6,
+      "nuevas_hospitalizaciones": 0,
+      "nuevas_defunciones": 0,
+      "dosis_aplicadas": 0
+    },
+    {
+      "dia": 4,
+      "S": 199919,
+      "E": 17,
+      "I": 31,
+      "R": 33,
+      "H": 0,
+      "D": 0,
+      "V": 0,
+      "casos_activos": 48,
+      "nuevos_casos": 9,
+      "nuevas_hospitalizaciones": 0,
+      "nuevas_defunciones": 0,
+      "dosis_aplicadas": 0
+    },
+    {
+      "dia": 5,
+      "S": 199905,
+      "E": 26,
+      "I": 31,
+      "R": 38,
+      "H": 0,
+      "D": 0,
+      "V": 0,
+      "casos_activos": 57,
+      "nuevos_casos": 14,
+      "nuevas_hospitalizaciones": 0,
+      "nuevas_defunciones": 0,
+      "dosis_aplicadas": 0
+    }
+  ],
+  "trazabilidad": [
+    {
+      "parametro": "r0",
+      "valor": 1.8,
+      "fuente": "prueba",
+      "estado": "supuesto"
+    },
+    {
+      "parametro": "incubacion_dias",
+      "valor": 2.0,
+      "fuente": null,
+      "estado": "sin_fuente"
+    },
+    {
+      "parametro": "infeccioso_dias",
+      "valor": 5.0,
+      "fuente": null,
+      "estado": "sin_fuente"
+    }
+  ]
+}

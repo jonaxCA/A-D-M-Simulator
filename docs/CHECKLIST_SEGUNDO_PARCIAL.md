@@ -322,8 +322,8 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 - [x] Nadie revisa su propia versión: 409 con mensaje claro, además del CHECK de la base
 - [x] Si otra persona cambió el estado mientras tanto, 409 (control de concurrencia de hoy)
 - [x] Bandeja de pendientes de revisión
-- [ ] Al aprobar, avisa con `notificaciones` (la llamada existe y es best-effort; falta el servicio
-      `notificaciones` y su token de servicio)
+- [x] Al aprobar, avisa con `notificaciones` (best-effort, con token de servicio y tipo
+      `SCENARIO_APPROVED`, que agrega la migración 029)
 - [x] Solo escribe las columnas de estado y revisión de `scenario_versions` (permiso por
       columna)
 - [ ] Cumple la definición de terminado
@@ -347,25 +347,26 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 ## F. Simulación · Integrante 5
 
 ### F1. `corridas`
-- [ ] Lanzar una corrida solo sobre una versión aprobada: crea el lote y la corrida, la mete
+- [x] Lanzar una corrida solo sobre una versión aprobada: crea el lote y la corrida, la mete
       en la cola de Redis (`cola.encolar()`) y responde 202 con su id
-- [ ] Semilla opcional; `forzar_error` solo para ADMINISTRADOR, como hoy
-- [ ] Candado en Redis (`candados.candado(llaves.candado_corrida(version), ttl)`) para que un doble clic no lance dos corridas
-- [ ] Estado y progreso (leídos de Redis y de PostgreSQL), y cancelar una corrida encolada
+- [x] Semilla opcional; `forzar_error` solo para ADMINISTRADOR, como hoy
+- [x] Candado en Redis (`candados.candado(llaves.candado_corrida(version), ttl)`) para que un doble clic no lance dos corridas
+- [x] Estado y progreso (leídos de Redis y de PostgreSQL), y cancelar una corrida encolada
 - [ ] Cumple la definición de terminado
 
 ### F2. `simulador`
-- [ ] Proceso trabajador: toma corridas de `queue:simulaciones` y ejecuta el motor
-- [ ] Escribe el progreso en `job:<id>:progress` y el estado final y los resultados en
+- [x] Proceso trabajador: toma corridas de `queue:simulaciones` y ejecuta el motor
+- [x] Escribe el progreso en `job:<id>:progress` y el estado final y los resultados en
       PostgreSQL
-- [ ] Al arrancar, cierra como fallidas las corridas que quedaron a medias
-- [ ] Al terminar o fallar, avisa con `notificaciones` usando un token de servicio
-- [ ] Varios contenedores de `simulador` no toman la misma corrida (transición condicionada)
+- [x] Al arrancar, cierra como fallidas las corridas que quedaron a medias (solo las de
+      `ejecutando`: las encoladas siguen en la cola)
+- [x] Al terminar o fallar, avisa con `notificaciones` usando un token de servicio
+- [x] Varios contenedores de `simulador` no toman la misma corrida (transición condicionada)
 - [ ] Cumple la definición de terminado
 
 ### F3. `resultados`
-- [ ] Curvas e indicadores de una corrida, con caché en Redis cuando ya terminó
-- [ ] El aviso de que los resultados no son una predicción viaja en la respuesta
+- [x] Curvas e indicadores de una corrida, con caché en Redis cuando ya terminó
+- [x] El aviso de que los resultados no son una predicción viaja en la respuesta
 - [ ] Cumple la definición de terminado
 
 ### F4. `comparacion`
@@ -399,8 +400,8 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 ## H. Plataforma
 
 ### H1. `notificaciones` · Integrante 5
-- [ ] Las notificaciones de quien consulta, y marcar como leída
-- [ ] Ruta interna, solo con token de servicio, para crearlas (`simulador`, `aprobacion`)
+- [x] Las notificaciones de quien consulta, y marcar como leída
+- [x] Ruta interna, solo con token de servicio, para crearlas (`simulador`, `aprobacion`)
 - [ ] Cumple la definición de terminado
 
 ### H2. `estado-servicios` · Integrante 6
@@ -449,8 +450,7 @@ es la herramienta del guion de aceptación.
   - [x] PostgreSQL, con volumen e inicialización: dump, semillas y migraciones 026 en
         adelante;
   - [x] Redis, con contraseña y AOF (lo hizo el bloque K);
-  - [ ] los 26 servicios y la consola (van 21: los que existen; faltan los cinco nuevos y la
-        consola);
+  - [ ] los 26 servicios y la consola (van 25: faltan `estado-servicios` y la consola);
   - [x] `depends_on` con `condition: service_healthy`.
 - [x] Perfiles del compose por dominio (`identidad`, `catalogos`, `escenarios`…), para
       levantar solo una parte en máquinas con poca memoria
@@ -508,8 +508,9 @@ está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
 ## L. Seguridad entre componentes · Integrante 1
 
 - [ ] Un solo `JWT_SECRET_KEY` y una audiencia común (`epidemia-api`) en `.env.shared`
-- [ ] **Token de servicio** para las llamadas sin persona detrás: dura poco, tiene su propia
+- [x] **Token de servicio** para las llamadas sin persona detrás: dura poco, tiene su propia
       audiencia (`epidemia-interno`) y solo lo aceptan las rutas internas
+      (`epidemia_comun.seguridad.token_servicio()`, 60 s; lo usan `simulador` y `aprobacion`)
 - [x] Cuando un servicio llama a otro por una persona, reenvía su token; nunca lo cambia por
       uno con más permisos
 - [ ] Migración 026: un rol de PostgreSQL por servicio, generado desde una tabla de permisos.
@@ -545,7 +546,7 @@ está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
       los de identidad no tienen ejemplos JSON ni XML.*
 - [ ] XSD de los recursos principales:
   - [ ] escenario completo;
-  - [ ] resultado de una corrida;
+  - [x] resultado de una corrida;
   - [x] enfermedad con sus parámetros;
   - [ ] caso;
   - [ ] lote de sincronización;

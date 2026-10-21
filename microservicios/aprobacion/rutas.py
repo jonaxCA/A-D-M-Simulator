@@ -7,13 +7,13 @@ los textos de error en español son los que ya da backend_web.
 """
 import logging
 
-from flask import g
+from flask import current_app, g
 
 from backend_web import queries
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.http import llamar
-from epidemia_comun.seguridad import requiere_token
+from epidemia_comun.seguridad import requiere_token, token_servicio
 from epidemia_comun.validaciones import diccionario, entero_positivo
 
 log = logging.getLogger("aprobacion")
@@ -69,13 +69,20 @@ def _error_de_negocio(mensaje):
 
 
 def _notificar_aprobacion(escenario, version):
-    """Avisa a quien armó la versión. Si falla, la aprobación ya está hecha: solo se anota."""
+    """Avisa a quien armó la versión. Si falla, la aprobación ya está hecha: solo se anota.
+
+    La ruta que crea avisos es interna: va con un token de servicio, no con el de
+    quien aprueba."""
     try:
         resp = llamar("notificaciones", "POST", "/api/v1/notifications", formato="json", timeout=3,
+                      token=token_servicio(current_app.config, "aprobacion"),
                       cuerpo={"user_id": version["created_by"], "type": "SCENARIO_APPROVED",
-                              "entity_type": "scenario_versions", "entity_id": version["id"],
-                              "message": "Se aprobó la versión %d del escenario «%s»."
-                                         % (version["version_number"], escenario["name"])})
+                              "title": "Versión %d aprobada" % version["version_number"],
+                              "body": "Se aprobó la versión %d del escenario «%s»."
+                                      % (version["version_number"], escenario["name"]),
+                              "payload": {"scenario_id": escenario["id"],
+                                          "version_id": version["id"],
+                                          "version_number": version["version_number"]}})
         if resp.status_code >= 400:
             log.warning("notificaciones respondió %d al avisar la aprobación de la versión %s",
                         resp.status_code, version["id"])

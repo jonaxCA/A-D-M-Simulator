@@ -28,6 +28,7 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `026_roles_por_servicio.sql` | Un rol de PostgreSQL (`svc_*`) por cada uno de los 12 microservicios del grupo de las 14:00, con permisos por columna donde solo escriben una parte |
 | `027_roles_servicios_escenarios_casos.sql` | Los roles de los siete microservicios de escenarios y de captura de casos |
 | `028_roles_comparacion_pareto.sql` | Los roles de `comparacion` y `pareto`, los dos de solo lectura |
+| `029_roles_simulacion_notificaciones.sql` | Los roles de `corridas`, `simulador`, `resultados` y `notificaciones`, y el tipo de aviso `SCENARIO_APPROVED` en `notifications` |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.

@@ -1,4 +1,6 @@
+import time
 from functools import wraps
+from uuid import uuid4
 
 import jwt
 
@@ -8,6 +10,15 @@ from .llaves import huella, revocado, sesion
 
 def identificador_sesion(sid):
     return huella(str(sid))
+
+
+def token_servicio(ajustes, nombre, duracion=60):
+    # Para las llamadas sin persona detrás. Su audiencia es la interna: solo lo
+    # aceptan las rutas con @solo_servicios.
+    ahora = int(time.time())
+    claims = {"iss": ajustes["JWT_ISSUER"], "aud": ajustes["JWT_AUDIENCE_INTERNA"], "sub": nombre,
+              "jti": str(uuid4()), "iat": ahora, "nbf": ahora, "exp": ahora + duracion}
+    return jwt.encode(claims, ajustes["JWT_SECRET_KEY"], algorithm="HS256")
 
 
 def verificar_token(token, ajustes, redis_client, roles=(), interno=False):

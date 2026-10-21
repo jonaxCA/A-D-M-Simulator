@@ -1,0 +1,35 @@
+{
+  "total": 2,
+  "no_leidas": 1,
+  "notificaciones": [
+    {
+      "id": 7,
+      "user_id": 5,
+      "type": "RUN_FINISHED",
+      "title": "La corrida SIM-00042 terminó",
+      "body": "Brote de influenza en Monterrey, versión 2.",
+      "payload": {
+        "run_id": 42,
+        "status": "completado",
+        "scenario_id": 3,
+        "scenario_version_id": 11
+      },
+      "read_at": null,
+      "created_at": "2026-10-20T15:02:00+00:00"
+    },
+    {
+      "id": 6,
+      "user_id": 5,
+      "type": "SCENARIO_APPROVED",
+      "title": "Versión 2 aprobada",
+      "body": "Se aprobó la versión 2 del escenario «Brote de influenza en Monterrey».",
+      "payload": {
+        "scenario_id": 3,
+        "version_id": 11,
+        "version_number": 2
+      },
+      "read_at": "2026-10-20T14:30:00+00:00",
+      "created_at": "2026-10-20T14:10:00+00:00"
+    }
+  ]
+}
