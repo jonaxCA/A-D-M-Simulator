@@ -54,6 +54,9 @@ def crear_cliente(redis_falso):
         modulo = importlib.import_module("microservicios.%s.app" % paquete)
         app = modulo.app
         app.config["TESTING"] = True
+        # El fixture token firma con SECRETO_PRUEBAS. El entorno puede traer otro: en un
+        # pytest sin carpetas, backend_web/tests carga antes el .env de la raíz.
+        app.config["JWT_SECRET_KEY"] = SECRETO_PRUEBAS
         app.extensions["epidemia_redis"] = redis_falso
         return app.test_client()
     return crear

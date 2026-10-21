@@ -23,11 +23,9 @@ son las tareas.
 
 > **Avance al 21 de octubre** (en `2do-parcial-gpo-10am`): los 26 servicios, con la
 > biblioteca común, Redis, Docker y las migraciones 026 a 030. Pasan las 1,294 pruebas
-> (monolito, motor y servicios) en un solo
-> `pytest backend_web frontend_web procesamiento microservicios`, con la base de pruebas
-> rehecha después de la 029 (`prepara_base_pruebas.py`). Ningún servicio cumple todavía la
-> definición de terminado: faltan la consola y las pruebas de integración contra los
-> contenedores.
+> (monolito, motor y servicios) en un solo `pytest`, con la base de pruebas rehecha después
+> de la 029 (`prepara_base_pruebas.py`). Ningún servicio cumple todavía la definición de
+> terminado: faltan la consola y las pruebas de integración contra los contenedores.
 > Las casillas de escenarios y vigilancia las marcó quien hizo esos servicios; las demás se
 > revisaron contra el código.
 
