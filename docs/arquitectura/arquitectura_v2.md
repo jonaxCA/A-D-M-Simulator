@@ -1,8 +1,9 @@
-# EPIDEMIA — Arquitectura v2 (lo construido, grupo 14:00)
+# EPIDEMIA — Arquitectura v2 
 
-> **Estado:** 2026-10-13 · Describe lo que hay en el código de `microservicios/`, no el plan.
-> El plan completo de 26 servicios está en [`microservicios.md`](microservicios.md); el
-> sistema final, en [`arquitectura_v1.md`](arquitectura_v1.md). Si este documento y el
+> **Estado: vigente** 2026-10-13 · Este documento es un acta de lo construido en  `microservicios/`,
+> no el plan del sistema completo.
+> El plan de 26 servicios está en [`microservicios.md`](microservicios.md); el
+> sistema final (a actualizar), en [`arquitectura_v1.md`](arquitectura_v1.md). Si este documento y el
 > código no coinciden, manda el código.
 
 ## Qué se construyó
