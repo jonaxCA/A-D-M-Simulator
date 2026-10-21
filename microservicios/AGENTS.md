@@ -132,6 +132,8 @@ Ya existen:
 - Reconstruir un servicio sin tocar los demás:
   `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --no-deps <servicio>`
 - Salud: `curl "http://localhost:<puerto>/health?format=json"`
+- Salud de los 26 y directorio: `curl "http://localhost:5262/api/v1/services/health?format=json"`
+  y `/api/v1/services` (`estado-servicios`)
 - Swagger: `http://localhost:<puerto>/docs`
 
 Existirá con el bloque I: la consola en `http://localhost:5260`.

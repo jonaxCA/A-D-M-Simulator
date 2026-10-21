@@ -133,12 +133,14 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 | #  | Servicio           | Hace una cosa                                  | Rutas principales                                                                                                              | Escribe         | Lee | Llama a                                  | Puerto |
 |----|--------------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|-----------------|-----|------------------------------------------|--------|
 | 25 | `notificaciones`   | Avisos para las apps                           | `GET /api/v1/notifications`, `POST /api/v1/notifications/{id}/read`, `POST /api/v1/notifications` (solo con token de servicio) | `notifications` | —   | —                                        | 5261   |
-| 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/{nombre}/history`                                 | —               | —   | El `/health` de los otros 25, **en XML** | 5262   |
+| 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/{nombre}/history`                                 | —               | —   | El `/health` de los 26, incluido el suyo, **en XML** | 5262   |
 | —  | `consola`          | Página tipo Swagger/Postman para probar los 26 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
 
 - `estado-servicios` también es el directorio: las apps y la consola le preguntan la URL de
   cada servicio en vez de tenerlas escritas a mano. No hay pasarela; es la única forma de
-  encontrarlos.
+  encontrarlos. Sus tres rutas son públicas, porque la URL de `auth` se necesita antes de
+  iniciar sesión. Su rol de PostgreSQL solo se conecta, para su propio `/health` (migración
+  030).
 
 ---
 
@@ -159,7 +161,7 @@ app escritorio ───┤  token Bearer   │
                   base de datos ◄── pareto   (directo, sin resultados)
    sincronizacion ──JSON (un caso a la vez)──► casos
 
-   estado-servicios ──XML──► /health de los 25 restantes
+   estado-servicios ──XML──► /health de los 26
 ```
 
 Las llamadas entre servicios llevan el **token de la persona** y el `X-Correlation-ID`.
@@ -187,8 +189,8 @@ guarda su huella (SHA-256).
 | `cache:<servicio>:<clave>`  | La respuesta, en JSON                                                             | Corto; lo fija cada servicio (`resultados`: 300 s)                 | `resultados`, `indicadores`, `series`, `zonas` | `cache`    |
 | `sync:lote:<id>`            | Resultado de un lote ya recibido                                                  | 7 días (`SYNC_LOTE_TTL_SECONDS`, por defecto 604800)               | `sincronizacion`                               | —          |
 | `sync:lote:<id>:candado`    | Marca de la petición que está procesando ese lote                                 | 300 s                                                              | `sincronizacion`                               | `candados` |
-| `health:<servicio>`         | Última salud de un servicio                                                       | Lo fija `estado-servicios`                                         | `estado-servicios`                             | —          |
-| `health:history:<servicio>` | Lista corta de sondeos                                                            | Lo fija `estado-servicios`                                         | `estado-servicios`                             | —          |
+| `health:<servicio>`         | Último sondeo de un servicio, en JSON                                             | Tres intervalos de sondeo: 30 s con `SONDEO_SEGUNDOS` en 10        | `estado-servicios`                             | —          |
+| `health:history:<servicio>` | Lista con los últimos 30 sondeos, del más reciente al más viejo                   | Una hora desde el último sondeo                                    | `estado-servicios`                             | —          |
 
 - Todas las rutas protegidas leen `session:` y `jwt:revoked:` desde `@requiere_token`
   (`seguridad.py`), con la misma regla que `sesiones.verificar()`.

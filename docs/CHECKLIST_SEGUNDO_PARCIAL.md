@@ -21,12 +21,13 @@ son las tareas.
 > casilla debería ser un issue, una rama y un Pull Request. Las decisiones de esta etapa
 > ya están tomadas: están en el bloque 0 y en `docs/decisiones.md`.
 
-> **Avance al 18 de octubre** (en `2do-parcial-gpo-10am`): 21 de 26 servicios. Identidad,
-> catálogos, vigilancia, escenarios, analítica, `comparacion` y `pareto`, con la biblioteca
-> común, Redis y las migraciones 026 y 027. Pasan las 1,144 pruebas (monolito, motor y
-> servicios) en un solo `pytest`. Faltan `corridas`, `simulador`, `resultados`,
-> `notificaciones` y `estado-servicios`. Ningún servicio cumple todavía la definición de
-> terminado: faltan `estado-servicios`, la consola y meter al compose los 14 que no están.
+> **Avance al 21 de octubre** (en `2do-parcial-gpo-10am`): los 26 servicios, con la
+> biblioteca común, Redis, Docker y las migraciones 026 a 030. Pasan las 1,294 pruebas
+> (monolito, motor y servicios) en un solo
+> `pytest backend_web frontend_web procesamiento microservicios`, con la base de pruebas
+> rehecha después de la 029 (`prepara_base_pruebas.py`). Ningún servicio cumple todavía la
+> definición de terminado: faltan la consola y las pruebas de integración contra los
+> contenedores.
 > Las casillas de escenarios y vigilancia las marcó quien hizo esos servicios; las demás se
 > revisaron contra el código.
 
@@ -405,10 +406,12 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 - [ ] Cumple la definición de terminado
 
 ### H2. `estado-servicios` · Integrante 6
-- [ ] Directorio: nombre, URL, versión y enlace a `/docs` de los 26
-- [ ] Sondea el `/health` de cada uno **en XML** cada pocos segundos y guarda el último estado
+- [x] Directorio: nombre, URL, versión y enlace a `/docs` de los 26
+- [x] Sondea el `/health` de cada uno **en XML** cada pocos segundos y guarda el último estado
       y un historial corto en Redis
-- [ ] Un servicio caído aparece en rojo con la causa (base, Redis o el proceso)
+- [x] Un servicio caído aparece en rojo con la causa (base, Redis o el proceso)
+      *`estado-servicios` da el estado y la causa (`causas`); el rojo lo pinta la consola
+      (bloque I).*
 - [ ] Cumple la definición de terminado
 
 ---
@@ -450,19 +453,19 @@ es la herramienta del guion de aceptación.
   - [x] PostgreSQL, con volumen e inicialización: dump, semillas y migraciones 026 en
         adelante;
   - [x] Redis, con contraseña y AOF (lo hizo el bloque K);
-  - [ ] los 26 servicios y la consola (van 25: faltan `estado-servicios` y la consola);
+  - [ ] los 26 servicios y la consola (van los 26; falta la consola);
   - [x] `depends_on` con `condition: service_healthy`.
 - [x] Perfiles del compose por dominio (`identidad`, `catalogos`, `escenarios`…), para
       levantar solo una parte en máquinas con poca memoria
 - [x] Red interna. Solo se publican los puertos del catálogo; PostgreSQL y Redis no quedan
       expuestos fuera de la máquina
 - [x] Secretos en el `.env` del compose (sin versionar), con su `.env.example`
-- [ ] `docker compose up` desde cero levanta todo, con los 26 *healthchecks* en verde
-      *Avance (19 oct): desde cero, los 21 servicios que existen, PostgreSQL y Redis quedan en
-      verde en unos 35 s; ninguna ruta GET da 500 con las tres cuentas de la demostración.*
+- [x] `docker compose up` desde cero levanta todo, con los 26 *healthchecks* en verde
+      *(21 oct): los 26, PostgreSQL y Redis en verde en unos 3.5 min, construyendo las
+      imágenes; ninguna ruta GET da 500 con las tres cuentas de la demostración. La consola
+      se suma cuando exista.*
 - [x] Reconstruir y reiniciar un servicio no toca a los demás
-- [x] Medir la memoria con todo arriba y anotarla en la guía (con 21 servicios; volver a
-      medir con los 26)
+- [x] Medir la memoria con todo arriba y anotarla en la guía (con los 26, unos 1,100 MiB)
 - [x] `docs/INSTALACION.md`: sección de Docker, desde cero
 
 ---
@@ -516,9 +519,11 @@ está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
 - [ ] Migración 026: un rol de PostgreSQL por servicio, generado desde una tabla de permisos.
       Lleva permisos por columna para `parametros`, `poblacion` y `aprobacion`, y ninguno usa
       `postgres`
-      *Avance (19 oct): la 026 y la 027 cubren 19 servicios, con permisos por columna en
-      `parametros`, `poblacion` y `aprobacion`; `comparacion` y `pareto` llegan en la 028.
-      Los permisos están escritos a mano, no generados desde una tabla.*
+      *Avance (21 oct): de la 026 a la 030 cubren los 26, con permisos por columna donde
+      solo escriben una parte (`parametros`, `poblacion`, `aprobacion`, `corridas`,
+      `simulador` y `notificaciones`). La 029 es de `corridas`, `simulador`, `resultados` y
+      `notificaciones`, y la 030 de `estado-servicios`, que solo se conecta. Los permisos
+      están escritos a mano, no generados desde una tabla.*
 - [ ] Prueba de roles: `regiones` **no puede** escribir en `scenarios`, y `aprobacion` no
       puede cambiar el contenido de una versión
       *Avance (19 oct): comprobado a mano en el PostgreSQL del compose; falta como prueba
@@ -542,7 +547,7 @@ está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
 
 - [ ] Los 26 `docs/contratos/<servicio>/openapi.json`, idénticos al que sirve cada
       `/openapi.json`. Una prueba lo compara
-      *Avance (14 oct): 12 de 26. La prueba que los compara con lo servido cubre catálogos;
+      *Avance (21 oct): 26 de 26. La prueba que los compara con lo servido cubre catálogos;
       los de identidad no tienen ejemplos JSON ni XML.*
 - [ ] XSD de los recursos principales:
   - [ ] escenario completo;
@@ -584,6 +589,10 @@ El monolito no consume los servicios, pero comparte la base con ellos.
       resultados → comparación
 - [ ] Llamadas entre servicios en XML: `escenarios-xml` → `escenarios`, y `estado-servicios` →
       `/health`
+      *Avance (21 oct): `estado-servicios` ya sondea en XML. Probado a mano contra los
+      contenedores: un servicio detenido sale `caido`, con Redis detenido los 26 salen
+      `degradado` por Redis, y al volver Redis todo regresa sin reiniciar servicios. Falta
+      como prueba automática.*
 - [ ] Revocación entre servicios: logout en `sesiones` y el token rechazado en `escenarios`
 - [ ] La cola: dos `simulador` y diez corridas; cada corrida se ejecuta una sola vez
 - [ ] Redis apagado y encendido a mitad de la prueba

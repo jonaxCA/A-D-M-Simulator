@@ -471,8 +471,9 @@ arrancan PostgreSQL y Redis.
 | `catalogos` | `enfermedades`, `parametros`, `regiones`, `poblacion`, `tipos-intervencion` |
 | `vigilancia` | `casos`, `sincronizacion` |
 | `escenarios` | `escenarios`, `intervenciones`, `aprobacion`, `validacion`, `escenarios-xml` |
-| `simulacion` | `comparacion`, `pareto` |
+| `simulacion` | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto` |
 | `analitica` | `indicadores`, `series`, `zonas` |
+| `plataforma` | `notificaciones`, `estado-servicios` |
 
 **La base.** El compose trae su propio PostgreSQL 16. La primera vez, con el volumen vacío,
 `infra/postgres/10-inicializa.sh` carga el dump (con todas las migraciones), las dos semillas y
@@ -489,8 +490,8 @@ Cada servicio se conecta con su rol. Para apuntar uno a otra base, define su
 volumen ya cargado corriéndola con `psql` contra el puerto 5433; `down -v` borra la base y la
 vuelve a cargar desde cero en el siguiente `up`.
 
-Con todo arriba (los 21 servicios, PostgreSQL y Redis) son unos 900 MiB: de 33 a 49 MiB por
-servicio, 44 MiB PostgreSQL y 4 MiB Redis (medido el 19 de octubre).
+Con todo arriba (los 26 servicios, PostgreSQL y Redis) son unos 1,100 MiB: de 32 a 51 MiB por
+servicio, 83 MiB PostgreSQL y 6 MiB Redis (medido el 21 de octubre).
 
 Un servicio suelto, sin compose, necesita antes la imagen base:
 
@@ -509,6 +510,14 @@ for p in 5201 5202 5203 5204 5211 5212 5213 5214 5215 5251 5252 5253; do
   curl -s "http://127.0.0.1:$p/health?format=json"; echo
 done
 # cada uno: {"servicio": "...", "estado": "ok", "postgresql": true, "redis": true}
+```
+
+Con `estado-servicios` arriba, una sola consulta trae la salud de los 26 (los que no están
+arriba salen `caido`), y su directorio da la URL de cada uno:
+
+```bash
+curl -s "http://127.0.0.1:5262/api/v1/services/health?format=json"
+curl -s "http://127.0.0.1:5262/api/v1/services?format=json"
 ```
 
 Para las rutas con candado, inicia sesión con `auth`:

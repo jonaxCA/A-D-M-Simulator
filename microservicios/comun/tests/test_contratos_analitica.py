@@ -1,5 +1,5 @@
 """Contrato, rutas y Dockerfile de tipos-intervencion, indicadores, series, zonas, comparacion,
-pareto, corridas, resultados y notificaciones (simulador tiene los suyos: arranca con python -m)."""
+pareto, corridas, resultados, notificaciones y estado-servicios (simulador tiene los suyos)."""
 import ast
 import json
 import re
@@ -20,6 +20,7 @@ SERVICIOS = [
     ("corridas", "corridas", 5241, False),
     ("resultados", "resultados", 5243, False),
     ("notificaciones", "notificaciones", 5261, False),
+    ("estado-servicios", "estado_servicios", 5262, True),
 ]
 
 
@@ -66,7 +67,9 @@ def test_contrato_igual_a_las_rutas(servicio, paquete, puerto, publico):
 @pytest.mark.parametrize("servicio,paquete,puerto,publico", SERVICIOS)
 def test_dockerfile_y_app(servicio, paquete, puerto, publico):
     docker = (RAIZ / "microservicios" / paquete / "Dockerfile").read_text(encoding="utf-8")
-    assert "microservicios.%s.app:app" % paquete in docker
+    # estado-servicios arranca con python -m, como simulador: su sondeo corre junto al servidor.
+    assert ("microservicios.%s.app:app" % paquete in docker
+            or '"-m", "microservicios.%s"' % paquete in docker)
     assert "COPY docs/contratos/%s/" % servicio in docker
     assert "HEALTHCHECK" in docker and "USER epidemia" in docker
     app = (RAIZ / "microservicios" / paquete / "app.py").read_text(encoding="utf-8")

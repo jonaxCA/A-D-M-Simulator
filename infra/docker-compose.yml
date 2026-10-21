@@ -63,6 +63,7 @@ services:
       DB_PASSWORD_ENFERMEDADES: ${DB_PASSWORD_ENFERMEDADES:-}
       DB_PASSWORD_ESCENARIOS: ${DB_PASSWORD_ESCENARIOS:-}
       DB_PASSWORD_ESCENARIOS_XML: ${DB_PASSWORD_ESCENARIOS_XML:-}
+      DB_PASSWORD_ESTADO_SERVICIOS: ${DB_PASSWORD_ESTADO_SERVICIOS:-}
       DB_PASSWORD_INDICADORES: ${DB_PASSWORD_INDICADORES:-}
       DB_PASSWORD_INTERVENCIONES: ${DB_PASSWORD_INTERVENCIONES:-}
       DB_PASSWORD_NOTIFICACIONES: ${DB_PASSWORD_NOTIFICACIONES:-}
@@ -561,6 +562,28 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       DATABASE_URL: ${DATABASE_URL_NOTIFICACIONES:-postgresql://svc_notificaciones:${DB_PASSWORD_NOTIFICACIONES:-}@postgres:5432/simulador_epidemico}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  # Sondea el /health de los 26 por la red interna y no depende de ellos: el que no está
+  # arriba aparece caído. URL_PUBLICA es la que da su directorio a las apps y a la consola
+  # (ver infra/.env.example).
+  estado-servicios:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/estado_servicios/Dockerfile
+    profiles: [plataforma]
+    ports:
+      - "5262:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_ESTADO_SERVICIOS:-postgresql://svc_estado_servicios:${DB_PASSWORD_ESTADO_SERVICIOS:-}@postgres:5432/simulador_epidemico}
+      URL_SONDEO: "http://{servicio}:8000"
+      URL_PUBLICA: ${URL_PUBLICA:-}
     depends_on:
       postgres:
         condition: service_healthy

@@ -30,7 +30,8 @@ SINGULARES = {"regiones": "region", "enfermedades": "enfermedad",
               "desglose_costo": "intervencion", "trazabilidad_costos": "costo",
               "avisos": "aviso", "notificaciones": "notificacion",
               "desglose_por_grupo": "grupo_edad", "trazabilidad": "parametro",
-              "simplificaciones": "simplificacion"}
+              "simplificaciones": "simplificacion", "servicios": "servicio",
+              "causas": "causa", "sondeos": "sondeo"}
 
 
 # Un nombre de etiqueta XML no puede iniciar con numero ni contener "+".
