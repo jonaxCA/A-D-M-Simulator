@@ -1,6 +1,7 @@
 import logging
 from contextlib import contextmanager
 
+import jwt
 import pytest
 
 from backend_web import queries
@@ -228,7 +229,10 @@ def test_aprobar_audita_y_notifica(cliente, mundo, revisor):
                                True)]
     servicio, metodo, ruta, kw = mundo.llamadas[-1]
     assert (servicio, metodo, ruta) == ("notificaciones", "POST", "/api/v1/notifications")
-    assert kw["cuerpo"]["user_id"] == AUTOR and kw["cuerpo"]["entity_id"] == 11
+    assert kw["cuerpo"]["user_id"] == AUTOR and kw["cuerpo"]["type"] == "SCENARIO_APPROVED"
+    assert kw["cuerpo"]["payload"] == {"scenario_id": 3, "version_id": 11, "version_number": 2}
+    # Token de servicio (audiencia interna), no el de quien aprueba.
+    assert jwt.decode(kw["token"], options={"verify_signature": False})["aud"] == "epidemia-interno"
 
 
 def test_rechazar_con_comentario_no_notifica(cliente, mundo, revisor):

@@ -1,0 +1,11 @@
+{
+  "trabajador": "simulador-1",
+  "activo": true,
+  "corrida_actual": 44,
+  "procesadas": 3,
+  "ultima": {
+    "id": 43,
+    "status": "completado"
+  },
+  "pendientes": 1
+}

@@ -1,4 +1,5 @@
-"""Contrato, rutas y Dockerfile de tipos-intervencion, indicadores, series, zonas, comparacion y pareto."""
+"""Contrato, rutas y Dockerfile de tipos-intervencion, indicadores, series, zonas, comparacion,
+pareto, corridas, resultados y notificaciones (simulador tiene los suyos: arranca con python -m)."""
 import ast
 import json
 import re
@@ -16,7 +17,15 @@ SERVICIOS = [
     ("zonas", "zonas", 5253, False),
     ("comparacion", "comparacion", 5244, False),
     ("pareto", "pareto", 5245, False),
+    ("corridas", "corridas", 5241, False),
+    ("resultados", "resultados", 5243, False),
+    ("notificaciones", "notificaciones", 5261, False),
 ]
+
+
+def exito(item):
+    """La respuesta 2xx de una operación: 200, o 201 y 202 en las que crean."""
+    return next(v for k, v in item["responses"].items() if k.startswith("2"))
 
 
 def rutas_declaradas(paquete):
@@ -47,7 +56,7 @@ def test_contrato_igual_a_las_rutas(servicio, paquete, puerto, publico):
     en_contrato = set()
     for ruta, metodos in contrato["paths"].items():
         for metodo, item in metodos.items():
-            contenido = item["responses"]["200"]["content"]
+            contenido = exito(item)["content"]
             assert {"application/json", "application/xml"} <= set(contenido)
             en_contrato.add((ruta, metodo, item.get("security") == [{"bearerAuth": []}]))
     assert en_contrato == rutas_declaradas(paquete)
@@ -74,7 +83,7 @@ def test_ejemplos_json_y_xml_por_ruta(servicio, paquete, puerto, publico):
     for metodos in contrato["paths"].values():
         for item in metodos.values():
             ejemplo = carpeta / "ejemplos" / item["operationId"]
-            contenido = item["responses"]["200"]["content"]
+            contenido = exito(item)["content"]
             en_json = json.loads(ejemplo.with_suffix(".json").read_text(encoding="utf-8"))
             en_xml = ejemplo.with_suffix(".xml").read_text(encoding="utf-8")
             assert contenido["application/json"]["example"] == en_json

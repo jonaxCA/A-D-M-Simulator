@@ -10,6 +10,8 @@ plantilla (bloque A), y **Redis** (bloque K).
 - `responder(datos, raiz)` y `leer_cuerpo()`: XML por defecto, JSON con `?format=json`, lectura segura de XML.
 - `ErrorAPI` y `respuesta_error`: errores estándar JSON/XML sin revelar trazas.
 - `requiere_token(roles=...)` y `solo_servicios`: verifican JWT HS256, audiencia, vencimiento, sesión en Redis y rol.
+- `token_servicio(app.config, "simulador")`: firma un token de servicio (audiencia interna, 60 s) para
+  llamar con `llamar(..., token=...)` a una ruta con `@solo_servicios` cuando no hay persona detrás.
 - `crear_app(nombre, contrato, registrar_rutas)`: Flask con `/health`, `/docs` y `/openapi.json`.
 - `filtros_ambito(args, periodos)` y `clave_ambito(filtros)`: valida `disease_id`, `region_id`
   y `days` (422 si no son válidos, 404 si la enfermedad o el municipio no existen). La usan
@@ -120,13 +122,13 @@ filas = cache.obtener("zonas", f"pagina={pagina}&ambito={ambito}", 60,
                       lambda: queries.get_monitoreo_zonas(pagina=pagina, **ambito))
 
 # corridas: un doble clic no lanza dos corridas de la misma versión.
-with candados.candado(llaves.candado_corrida(version_id), ttl=30):
+with candados.candado(llaves.candado_corrida(version_id), ttl=10):
     corrida_id = crear_corrida(version_id)  # revisa en PostgreSQL y hace commit
-    cola.encolar(llaves.COLA_SIMULACIONES, corrida_id)
+    cola.encolar(llaves.COLA_SIMULACIONES, json.dumps({"id": corrida_id, "forzar_error": False}))
 
-# simulador: tomar() regresa el id como texto, o None si no llegó nada.
-corrida_id = cola.tomar(llaves.COLA_SIMULACIONES)
-opcional("progreso", lambda r: r.set(llaves.progreso(corrida_id), 40, ex=3600))
+# simulador: tomar() regresa el texto encolado, o None si no llegó nada.
+pedido = cola.tomar(llaves.COLA_SIMULACIONES)
+opcional("progreso", lambda r: r.set(llaves.progreso(corrida_id), 40, ex=86400))
 ```
 
 Notas:

@@ -9,7 +9,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from epidemia_comun.errores import ErrorAPI
-from epidemia_comun.seguridad import identificador_sesion, verificar_token
+from epidemia_comun.seguridad import identificador_sesion, token_servicio as emitir_servicio, verificar_token
 
 AJUSTES = {
     "JWT_SECRET_KEY": "pruebas-unitarias-no-usar-en-produccion",
@@ -111,3 +111,22 @@ def test_alg_none_rechazado():
     with pytest.raises(ErrorAPI) as e:
         verificar_token(falso, AJUSTES, RedisFalso())
     assert e.value.estado == 401
+
+
+def test_token_servicio_emitido_vale_en_ruta_interna():
+    salida = verificar_token(emitir_servicio(AJUSTES, "simulador"), AJUSTES, RedisFalso(), interno=True)
+    assert salida["sub"] == "simulador"
+    assert salida["exp"] - salida["iat"] == 60
+
+
+def test_token_servicio_emitido_no_vale_en_ruta_de_personas():
+    with pytest.raises(ErrorAPI) as e:
+        verificar_token(emitir_servicio(AJUSTES, "simulador"), AJUSTES, RedisFalso())
+    assert e.value.codigo == "TOKEN_INVALIDO"
+
+
+def test_token_servicio_emitido_vence():
+    with pytest.raises(ErrorAPI) as e:
+        verificar_token(emitir_servicio(AJUSTES, "simulador", duracion=-5), AJUSTES, RedisFalso(),
+                        interno=True)
+    assert e.value.codigo == "TOKEN_EXPIRADO"

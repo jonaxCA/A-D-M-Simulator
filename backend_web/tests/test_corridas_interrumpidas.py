@@ -41,7 +41,8 @@ class RecuperaCorridasTests(unittest.TestCase):
                           return_value=cerradas) as marca, \
                 patch.object(simulaciones, "log_audit") as audita:
             self.assertEqual(simulaciones.recupera_corridas_interrumpidas(), 2)
-        marca.assert_called_once_with(simulaciones.MENSAJE_INTERRUMPIDA)
+        marca.assert_called_once_with(simulaciones.MENSAJE_INTERRUMPIDA,
+                                      estados=("encolado", "ejecutando"))
         self.assertEqual(audita.call_count, 2)
         for llamada, fila in zip(audita.call_args_list, cerradas):
             args, kwargs = llamada
@@ -50,6 +51,11 @@ class RecuperaCorridasTests(unittest.TestCase):
             self.assertEqual(args[:3], (Contexto.sin_peticion(5), "RUN", "simulation_run"))
             self.assertEqual(kwargs["entity_id"], str(fila["id"]))
             self.assertEqual(kwargs["data_after"]["estado"], "fallido")
+
+    def test_el_simulador_solo_cierra_las_que_se_estaban_ejecutando(self):
+        with patch.object(queries, "marca_corridas_interrumpidas", return_value=[]) as marca:
+            simulaciones.recupera_corridas_interrumpidas(estados=("ejecutando",))
+        marca.assert_called_once_with(simulaciones.MENSAJE_INTERRUMPIDA, estados=("ejecutando",))
 
     def test_sin_corridas_huerfanas_no_audita_nada(self):
         with patch.object(queries, "marca_corridas_interrumpidas", return_value=[]), \
@@ -92,6 +98,18 @@ class MarcaCorridasInterrumpidasTests(_CorridasDePrueba):
             self.assertEqual(fila["status"], "fallido")
             self.assertEqual(fila["error_message"], simulaciones.MENSAJE_INTERRUMPIDA)
             self.assertIsNotNone(fila["finished_at"])
+
+    def test_con_estados_deja_esperando_a_las_encoladas(self):
+        encolada = self._encola(108)
+        ejecutando = self._encola(109)
+        self.assertTrue(queries.marcar_run_ejecutando(ejecutando))
+
+        filas = queries.marca_corridas_interrumpidas(
+            "x", run_ids=[encolada, ejecutando], estados=("ejecutando",))
+
+        self.assertEqual([f["id"] for f in filas], [ejecutando])
+        self.assertEqual(self._estado(encolada)["status"], "encolado")
+        self.assertEqual(self._estado(ejecutando)["status"], "fallido")
 
     def test_marcar_run_fallido_funciona_desde_encolado(self):
         """ck_simulation_runs_inicio exige started_at fuera de 'encolado'. Antes

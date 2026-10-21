@@ -12,6 +12,7 @@ CONTRATOS = Path(__file__).resolve().parents[3] / "docs/contratos"
 PROBLEM = xmlschema.XMLSchema(str(CONTRATOS / "comun/problem.xsd"))
 ENFERMEDAD = xmlschema.XMLSchema(str(CONTRATOS / "enfermedades/enfermedad.xsd"))
 PARAMETROS = xmlschema.XMLSchema(str(CONTRATOS / "parametros/parametros.xsd"))
+RESULTADO = xmlschema.XMLSchema(str(CONTRATOS / "resultados/resultado.xsd"))
 
 FICHA = {"id": 1, "code": "SARS_COV_2_ANCESTRAL", "name": "COVID-19", "description": None,
          "is_active": True, "created_at": datetime(2026, 9, 1, 16, tzinfo=timezone.utc)}
@@ -41,7 +42,7 @@ def parametros(crear_cliente, monkeypatch):
     return crear_cliente("parametros")
 
 
-ESQUEMAS = {"enfermedad": ENFERMEDAD, "parametros": PARAMETROS}
+ESQUEMAS = {"enfermedad": ENFERMEDAD, "parametros": PARAMETROS, "resultado": RESULTADO}
 EJEMPLOS = [a for a in sorted(CONTRATOS.glob("*/ejemplos/*.xml"))
             if ET.parse(a).getroot().tag in ESQUEMAS]
 
