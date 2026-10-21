@@ -135,8 +135,8 @@ Ya existen:
 - Salud de los 26 y directorio: `curl "http://localhost:5262/api/v1/services/health?format=json"`
   y `/api/v1/services` (`estado-servicios`)
 - Swagger: `http://localhost:<puerto>/docs`
-
-Existirá con el bloque I: la consola en `http://localhost:5260`.
+- Consola de pruebas: `http://localhost:5260`. Ábrela con `localhost`: los servicios solo abren
+  CORS para `CONSOLE_ORIGIN`, y en el compose es ese origen.
 
 ## Decisiones tomadas
 

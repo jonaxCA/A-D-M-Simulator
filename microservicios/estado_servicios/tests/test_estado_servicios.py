@@ -256,12 +256,16 @@ def test_cada_servicio_del_compose_con_su_puerto_y_perfil():
     vistos = {m.group(1): (m.group(2), int(m.group(3))) for m in re.finditer(
         r"^  ([a-z-]+):\n(?:    .*\n)*?    profiles: \[([a-z]+)\]\n    ports:\n      - \"(\d+):8000\"",
         compose, re.M)}
+    # La consola está en el compose, pero no es uno de los 26: no tiene /health de servicio.
+    vistos.pop("consola")
     assert vistos and all(sondeo.SERVICIOS[n] == v for n, v in vistos.items())
 
 
 def test_cada_servicio_existente_se_llama_como_en_el_directorio():
     # El sondeo compara el nombre que da /health con el del directorio.
     for app in sorted((RAIZ / "microservicios").glob("*/app.py")):
+        if app.parent.name == "consola":
+            continue
         texto = app.read_text(encoding="utf-8")
         nombre = re.search(r'crear_app\("([a-z-]+)"', texto).group(1)
         assert "port=%d" % sondeo.SERVICIOS[nombre][1] in texto, app

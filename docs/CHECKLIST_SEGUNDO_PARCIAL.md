@@ -24,8 +24,9 @@ son las tareas.
 > **Avance al 21 de octubre** (en `2do-parcial-gpo-10am`): los 26 servicios, con la
 > biblioteca común, Redis, Docker y las migraciones 026 a 030. Pasan las 1,294 pruebas
 > (monolito, motor y servicios) en un solo `pytest`, con la base de pruebas rehecha después
-> de la 029 (`prepara_base_pruebas.py`). Ningún servicio cumple todavía la definición de
-> terminado: faltan la consola y las pruebas de integración contra los contenedores.
+> de la 029 (`prepara_base_pruebas.py`). La consola ya tiene el panel de salud, Swagger y el
+> probador. Ningún servicio cumple todavía la definición de terminado: faltan el recorrido de
+> la consola y las pruebas de integración contra los contenedores.
 > Las casillas de escenarios y vigilancia las marcó quien hizo esos servicios; las demás se
 > revisaron contra el código.
 
@@ -419,25 +420,28 @@ la cuenta) y el CRUD de usuarios de `routes.py`.
 Es la página para comprobar que los 26 funcionan. Sustituye a la app mientras no exista, y
 es la herramienta del guion de aceptación.
 
-- [ ] Contenedor `consola` en el puerto 5260
-- [ ] Panel de salud con los 26 servicios: estado, versión y latencia, leídos de
+- [x] Contenedor `consola` en el puerto 5260
+- [x] Panel de salud con los 26 servicios: estado, versión y latencia, leídos de
       `estado-servicios`. Se actualiza solo
-- [ ] Swagger UI con un selector de los 26 contratos, y "Try it out" funcionando (CORS
+- [x] Swagger UI con un selector de los 26 contratos, y "Try it out" funcionando (CORS
       abierto solo para el origen de la consola)
-- [ ] Iniciar sesión desde la consola: pide el token a `auth` y lo pone como `Bearer` en
+- [x] Iniciar sesión desde la consola: pide el token a `auth` y lo pone como `Bearer` en
       Swagger y en el probador. El token vive en la memoria de la página, no en
       `localStorage`, y cerrar sesión llama a `sesiones`
-- [ ] Probador tipo Postman:
-  - [ ] elegir servicio, método y ruta;
-  - [ ] cuerpo en JSON o en XML;
-  - [ ] pedir la respuesta en JSON o en XML;
-  - [ ] ver código, tiempo, cabeceras (con el `X-Correlation-ID`) y el cuerpo con formato.
+- [x] Probador tipo Postman:
+  - [x] elegir servicio, método y ruta;
+  - [x] cuerpo en JSON o en XML;
+  - [x] pedir la respuesta en JSON o en XML;
+  - [x] ver código, tiempo, cabeceras (con el `X-Correlation-ID`) y el cuerpo con formato.
 - [ ] Recorrido de aceptación: los pasos del guion como peticiones listas para correr en
       orden, que guardan los ids que devuelve cada paso
-- [ ] Exportar una petición como comando `curl`, con el token oculto
-- [ ] Nunca muestra contraseñas; los tokens aparecen recortados
+- [x] Exportar una petición como comando `curl`, con el token oculto
+- [x] Nunca muestra contraseñas; los tokens aparecen recortados
 - [ ] Funciona contra los contenedores o contra servicios corriendo fuera de Docker (URL base
       configurable)
+      *Avance (21 oct): el directorio se cambia en la página y probado contra los
+      contenedores; falta probarla con los servicios fuera de Docker, que necesitan
+      `CONSOLE_ORIGIN` en su entorno.*
 
 ---
 
@@ -447,11 +451,11 @@ es la herramienta del guion de aceptación.
       de `epidemia_comun`, `backend_web` y `procesamiento`. Imagen `epidemia/base`
 - [x] Un `Dockerfile` por servicio: parte de `epidemia/base`, copia su carpeta, arranca en el
       puerto 8000 y tiene `HEALTHCHECK` a `/health`
-- [ ] `infra/docker-compose.yml` con:
+- [x] `infra/docker-compose.yml` con:
   - [x] PostgreSQL, con volumen e inicialización: dump, semillas y migraciones 026 en
         adelante;
   - [x] Redis, con contraseña y AOF (lo hizo el bloque K);
-  - [ ] los 26 servicios y la consola (van los 26; falta la consola);
+  - [x] los 26 servicios y la consola;
   - [x] `depends_on` con `condition: service_healthy`.
 - [x] Perfiles del compose por dominio (`identidad`, `catalogos`, `escenarios`…), para
       levantar solo una parte en máquinas con poca memoria

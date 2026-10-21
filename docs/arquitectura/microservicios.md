@@ -136,6 +136,9 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 | 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/{nombre}/history`                                 | —               | —   | El `/health` de los 26, incluido el suyo, **en XML** | 5262   |
 | —  | `consola`          | Página tipo Swagger/Postman para probar los 26 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
 
+- La `consola` es una página: el navegador llama a cada servicio con la URL que da el
+  directorio, y cada servicio abre CORS solo para `CONSOLE_ORIGIN` (en el compose,
+  `http://localhost:5260`). Su servidor solo entrega la página: no tiene base ni Redis.
 - `estado-servicios` también es el directorio: las apps y la consola le preguntan la URL de
   cada servicio en vez de tenerlas escritas a mano. No hay pasarela; es la única forma de
   encontrarlos. Sus tres rutas son públicas, porque la URL de `auth` se necesita antes de

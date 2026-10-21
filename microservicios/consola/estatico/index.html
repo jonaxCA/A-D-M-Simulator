@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consola de pruebas · EPIDEMIA</title>
+<link rel="stylesheet" href="/estatico/consola.css">
+<script src="/estatico/consola.js" defer></script>
+</head>
+<body>
+<header class="barra">
+  <h1>EPIDEMIA <span>Consola de pruebas</span></h1>
+  <form id="form-directorio" class="directorio">
+    <label for="directorio">Directorio (<code>estado-servicios</code>)</label>
+    <input id="directorio" type="url" required spellcheck="false">
+    <button type="submit">Conectar</button>
+  </form>
+</header>
+
+<main>
+  <section class="tarjeta" aria-labelledby="titulo-sesion">
+    <h2 id="titulo-sesion">Sesión</h2>
+    <form id="form-login" class="login" method="post">
+      <label>Usuario <input id="login-usuario" autocomplete="username" required></label>
+      <label>Contraseña <input id="login-password" type="password" autocomplete="current-password" required></label>
+      <label><span id="captcha-pregunta">Captcha</span>
+        <input id="login-captcha" inputmode="numeric" autocomplete="off" required></label>
+      <div class="acciones">
+        <button type="button" id="otro-captcha" class="secundario">Otro captcha</button>
+        <button type="submit">Iniciar sesión</button>
+      </div>
+    </form>
+    <div id="sesion-activa" class="sesion-activa" hidden>
+      <p id="sesion-datos"></p>
+      <div class="acciones">
+        <button type="button" id="renovar" class="secundario">Renovar token</button>
+        <button type="button" id="cerrar">Cerrar sesión</button>
+      </div>
+    </div>
+    <p id="sesion-mensaje" class="mensaje" role="status"></p>
+  </section>
+
+  <div class="pestanas" role="tablist">
+    <button type="button" role="tab" id="pestana-salud" aria-controls="vista-salud" aria-selected="true">Salud</button>
+    <button type="button" role="tab" id="pestana-swagger" aria-controls="vista-swagger" aria-selected="false">Swagger</button>
+    <button type="button" role="tab" id="pestana-probador" aria-controls="vista-probador" aria-selected="false">Probador</button>
+  </div>
+
+  <section id="vista-salud" class="tarjeta" role="tabpanel" aria-labelledby="pestana-salud">
+    <div class="encabezado-vista">
+      <div id="salud-resumen" class="resumen"></div>
+      <p id="salud-hora" class="nota" role="status"></p>
+    </div>
+    <div class="tabla-desliza">
+      <table class="salud">
+        <thead><tr><th>Servicio</th><th>Dominio</th><th>Estado</th><th>Causa</th>
+          <th>Versión</th><th>Latencia</th><th>Revisado</th></tr></thead>
+        <tbody id="salud-filas"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="vista-swagger" class="tarjeta" role="tabpanel" aria-labelledby="pestana-swagger" hidden>
+    <label class="fila">Servicio <select id="swagger-servicio"></select></label>
+    <p class="nota">Con la sesión iniciada, cada "Try it out" lleva el token como <code>Bearer</code>.</p>
+    <p id="swagger-mensaje" class="mensaje" role="status"></p>
+    <div id="swagger"></div>
+  </section>
+
+  <section id="vista-probador" class="tarjeta" role="tabpanel" aria-labelledby="pestana-probador" hidden>
+    <form id="form-probador" class="probador">
+      <div class="rejilla">
+        <label>Servicio <select id="probador-servicio"></select></label>
+        <label>Operación <select id="probador-operacion"></select></label>
+      </div>
+      <p id="probador-descripcion" class="nota"></p>
+      <fieldset id="probador-parametros" hidden>
+        <legend>Parámetros</legend>
+        <div id="probador-campos" class="rejilla"></div>
+      </fieldset>
+      <fieldset id="probador-cuerpo" hidden>
+        <legend>Cuerpo</legend>
+        <label class="fila">Formato
+          <select id="probador-formato-cuerpo">
+            <option value="json">JSON</option>
+            <option value="xml">XML</option>
+          </select></label>
+        <textarea id="probador-texto" rows="10" spellcheck="false"></textarea>
+      </fieldset>
+      <div class="rejilla">
+        <label>Respuesta en
+          <select id="probador-formato">
+            <option value="xml">XML (por omisión)</option>
+            <option value="json">JSON con ?format=json</option>
+            <option value="accept">JSON con Accept: application/json</option>
+          </select></label>
+        <label class="casilla"><input type="checkbox" id="probador-token" checked> Enviar el token de la sesión</label>
+      </div>
+      <div class="acciones">
+        <button type="button" id="probador-curl" class="secundario">Copiar como curl</button>
+        <button type="submit">Enviar</button>
+      </div>
+    </form>
+    <pre id="probador-comando" class="codigo" hidden></pre>
+    <div id="probador-resultado" hidden>
+      <p id="probador-estado" class="estado-http"></p>
+      <details>
+        <summary>Cabeceras</summary>
+        <dl id="probador-cabeceras" class="cabeceras"></dl>
+      </details>
+      <pre id="probador-respuesta" class="codigo"></pre>
+    </div>
+  </section>
+</main>
+</body>
+</html>
