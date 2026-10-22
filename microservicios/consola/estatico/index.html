@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Consola de pruebas · EPIDEMIA</title>
 <link rel="stylesheet" href="/estatico/consola.css">
+<script src="/estatico/recorrido.js" defer></script>
 <script src="/estatico/consola.js" defer></script>
 </head>
 <body>
@@ -44,6 +45,7 @@
     <button type="button" role="tab" id="pestana-salud" aria-controls="vista-salud" aria-selected="true">Salud</button>
     <button type="button" role="tab" id="pestana-swagger" aria-controls="vista-swagger" aria-selected="false">Swagger</button>
     <button type="button" role="tab" id="pestana-probador" aria-controls="vista-probador" aria-selected="false">Probador</button>
+    <button type="button" role="tab" id="pestana-recorrido" aria-controls="vista-recorrido" aria-selected="false">Recorrido</button>
   </div>
 
   <section id="vista-salud" class="tarjeta" role="tabpanel" aria-labelledby="pestana-salud">
@@ -110,6 +112,25 @@
       </details>
       <pre id="probador-respuesta" class="codigo"></pre>
     </div>
+  </section>
+
+  <section id="vista-recorrido" class="tarjeta" role="tabpanel" aria-labelledby="pestana-recorrido" hidden>
+    <div class="encabezado-vista">
+      <p class="nota">Los pasos del guion de aceptación, en orden. <strong>Seguir</strong> corre los
+        automáticos y se detiene en los que completa la persona: iniciar sesión, escribir un
+        importe o hacer algo fuera de la consola. Sus sesiones son aparte de la de arriba.</p>
+      <div class="acciones">
+        <button type="button" id="recorrido-reinicia" class="secundario">Empezar de nuevo</button>
+        <button type="button" id="recorrido-descarga" class="secundario">Descargar resumen</button>
+        <button type="button" id="recorrido-sigue">Seguir</button>
+      </div>
+    </div>
+    <p id="recorrido-mensaje" class="mensaje" role="status"></p>
+    <details class="guardados" open>
+      <summary>Valores guardados</summary>
+      <dl id="recorrido-guardados" class="cabeceras"></dl>
+    </details>
+    <ol id="recorrido-pasos" class="pasos"></ol>
   </section>
 </main>
 </body>

@@ -541,8 +541,9 @@ deja `format` vacío y elige `application/xml` en **Media type**; para JSON, `fo
 `localhost`, no con `127.0.0.1`: cada servicio abre CORS solo para `CONSOLE_ORIGIN`, que en el
 compose es `http://localhost:5260`. Tiene el panel de salud de los 26, el inicio de sesión
 (con captcha), Swagger de cada servicio con el token ya puesto y un probador que también
-exporta la petición como `curl`. El token vive solo en la memoria de la página: recargarla
-cierra la sesión de la consola. Swagger UI se descarga de unpkg.com la primera vez que abres
+exporta la petición como `curl`. La pestaña **Recorrido** tiene los pasos del guion de
+aceptación listos para correr en orden. El token vive solo en la memoria de la página:
+recargarla cierra la sesión de la consola. Swagger UI se descarga de unpkg.com la primera vez que abres
 su pestaña. Detalles en `microservicios/consola/README.md`.
 
 ### 5. Pruebas de los microservicios

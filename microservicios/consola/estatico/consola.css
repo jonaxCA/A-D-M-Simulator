@@ -149,6 +149,30 @@ fieldset .fila { margin-bottom: 8px; }
 .cabeceras dd { margin: 0; font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
 details { margin-bottom: 8px; }
 
+.insignia.pendiente { background: #f3f4f6; color: var(--texto-2); border-color: var(--borde); }
+.insignia.corriendo { background: #eef4fd; color: var(--azul); border-color: #c7dbf8; }
+.insignia.bien, .insignia.hecho { background: var(--verde-fondo); color: var(--verde); border-color: #a7f3d0; }
+.insignia.fallo { background: var(--rojo-fondo); color: var(--rojo); border-color: #fecaca; }
+
+.guardados { margin: 0 0 12px; }
+.pasos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.pasos > li { border: 1px solid var(--borde); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.pasos > li.fallo { border-color: #fecaca; box-shadow: inset 3px 0 var(--rojo); }
+.pasos > li.bien, .pasos > li.hecho { box-shadow: inset 3px 0 var(--verde); }
+.pasos p { margin: 0; }
+.paso-cabeza { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.paso-cabeza h3 { margin: 0; font-size: 15px; flex: 1 1 240px; }
+.paso-numero { font-weight: 700; color: var(--azul); min-width: 2.5em; }
+.bitacora { list-style: none; margin: 0; padding: 0; font-size: 13px; display: flex; flex-direction: column; gap: 3px; }
+.bitacora:empty { display: none; }
+.bitacora .peticion { font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
+.bitacora .peticion.mal { color: var(--ambar); }
+.bitacora .bien { color: var(--verde); }
+.bitacora .falla { color: var(--rojo); font-weight: 600; }
+.bitacora .guardado { color: var(--azul-oscuro); font-family: ui-monospace, Consolas, monospace; }
+.bitacora .nota { color: var(--texto-2); }
+.bitacora details summary { cursor: pointer; color: var(--texto-2); }
+
 /* Swagger UI muestra un curl con el token completo: la consola tiene el suyo, con el token oculto. */
 #swagger .curl-command, #swagger .request-snippets { display: none; }
 

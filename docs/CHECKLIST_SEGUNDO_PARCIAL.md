@@ -24,9 +24,10 @@ son las tareas.
 > **Avance al 21 de octubre** (en `2do-parcial-gpo-10am`): los 26 servicios, con la
 > biblioteca común, Redis, Docker y las migraciones 026 a 030. Pasan las 1,294 pruebas
 > (monolito, motor y servicios) en un solo `pytest`, con la base de pruebas rehecha después
-> de la 029 (`prepara_base_pruebas.py`). La consola ya tiene el panel de salud, Swagger y el
-> probador. Ningún servicio cumple todavía la definición de terminado: faltan el recorrido de
-> la consola y las pruebas de integración contra los contenedores.
+> de la 029 (`prepara_base_pruebas.py`). La consola ya tiene el panel de salud, Swagger, el
+> probador y el recorrido de aceptación. Ningún servicio cumple todavía la definición de
+> terminado: faltan correr el recorrido completo y las pruebas de integración contra los
+> contenedores.
 > Las casillas de escenarios y vigilancia las marcó quien hizo esos servicios; las demás se
 > revisaron contra el código.
 
@@ -433,7 +434,7 @@ es la herramienta del guion de aceptación.
   - [x] cuerpo en JSON o en XML;
   - [x] pedir la respuesta en JSON o en XML;
   - [x] ver código, tiempo, cabeceras (con el `X-Correlation-ID`) y el cuerpo con formato.
-- [ ] Recorrido de aceptación: los pasos del guion como peticiones listas para correr en
+- [x] Recorrido de aceptación: los pasos del guion como peticiones listas para correr en
       orden, que guardan los ids que devuelve cada paso
 - [x] Exportar una petición como comando `curl`, con el token oculto
 - [x] Nunca muestra contraseñas; los tokens aparecen recortados
@@ -599,6 +600,8 @@ El monolito no consume los servicios, pero comparte la base con ellos.
 - [ ] La cola: dos `simulador` y diez corridas; cada corrida se ejecuta una sola vez
 - [ ] Redis apagado y encendido a mitad de la prueba
 - [ ] El recorrido de la consola exportado como evidencia
+      *Avance (22 oct): la consola descarga el resumen (**Descargar resumen**); falta correr
+      el recorrido completo y guardarlo en `evidencias/`.*
 
 ---
 

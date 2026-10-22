@@ -473,11 +473,235 @@
     }
   }
 
+  // ----------------------------------------------------------------- recorrido de aceptación
+
+  // Los pasos están en recorrido.js. Aquí se pintan, se corren en orden y se anota lo que
+  // regresa cada petición. Sus sesiones son aparte de la de arriba y tampoco se guardan.
+  const recorrido = {pasos: [], sesiones: {}, guardados: {}, h: null, actual: null, ocupado: false};
+  const ESTADOS_PASO = {pendiente: "Pendiente", corriendo: "Corriendo…", bien: "Bien", fallo: "Falló", hecho: "Hecho"};
+
+  function nuevoRecorrido() {
+    recorrido.sesiones = {};
+    recorrido.guardados = {};
+    recorrido.h = window.Recorrido.herramientas({
+      urlDe: (nombre) => {
+        if (!servicio(nombre)) throw new Error(`El directorio no tiene ${nombre}: conecta la consola con estado-servicios.`);
+        return servicio(nombre).url;
+      },
+      pide, sesiones: recorrido.sesiones, anota: (evento) => anotaPaso(recorrido.actual, evento),
+    });
+    recorrido.pasos = window.Recorrido.PASOS.map((def) => ({def, estado: "pendiente", eventos: []}));
+    $("recorrido-pasos").replaceChildren(...recorrido.pasos.map(tarjetaPaso));
+    pintaGuardados();
+    avisa("recorrido-mensaje", "");
+  }
+
+  function lineaDe(evento) {
+    if (evento.peticion) {
+      const r = evento.peticion;
+      const linea = el("li", {class: "peticion " + (r.estado < 400 ? "bien" : "mal")},
+        `${r.metodo} ${r.servicio} ${r.ruta} → ${r.estado} · ${r.ms} ms`);
+      if (r.texto) {
+        linea.append(el("details", {}, el("summary", {text: "Respuesta"}),
+          el("pre", {class: "codigo", text: legible(r.texto, r.tipo)})));
+      }
+      return linea;
+    }
+    if (evento.bien) return el("li", {class: "bien", text: "✓ " + evento.bien});
+    if (evento.falla) return el("li", {class: "falla", text: "✗ " + evento.falla});
+    if (evento.guardado) return el("li", {class: "guardado", text: `${evento.guardado[0]} = ${evento.guardado[1]}`});
+    return el("li", {class: "nota", text: evento.nota});
+  }
+
+  function anotaPaso(paso, evento) {
+    if (!paso) return;
+    if (evento.progreso) {
+      if (!paso.lineaProgreso) {
+        paso.lineaProgreso = el("li", {class: "nota"});
+        paso.bitacora.append(paso.lineaProgreso);
+      }
+      paso.lineaProgreso.textContent = evento.progreso;
+      return;
+    }
+    if (evento.guardado) recorrido.guardados[evento.guardado[0]] = evento.guardado[1];
+    // El resumen descargable lleva cada petición sin su cuerpo.
+    const {texto, datos, ...peticion} = evento.peticion || {};
+    paso.eventos.push(evento.peticion ? {peticion} : evento);
+    paso.bitacora.append(lineaDe(evento));
+  }
+
+  function pintaPaso(paso) {
+    paso.insignia.className = "insignia " + paso.estado;
+    paso.insignia.textContent = ESTADOS_PASO[paso.estado];
+    paso.nodo.className = "paso " + paso.estado;
+  }
+
+  function pintaGuardados() {
+    const valores = Object.entries(recorrido.guardados);
+    $("recorrido-guardados").replaceChildren(...(valores.length
+      ? valores.flatMap(([clave, valor]) => [el("dt", {text: clave}), el("dd", {text: String(valor)})])
+      : [el("dd", {text: "Todavía nada."})]));
+  }
+
+  async function correPaso(paso, accion) {
+    if (recorrido.ocupado) return false;
+    recorrido.ocupado = true;
+    recorrido.actual = paso;
+    paso.estado = "corriendo";
+    paso.eventos = [];
+    paso.lineaProgreso = null;
+    paso.bitacora.replaceChildren();
+    pintaPaso(paso);
+    try {
+      await accion(recorrido.h);
+      paso.estado = "bien";
+    } catch (error) {
+      anotaPaso(paso, {falla: mensajeDe(error)});
+      paso.estado = "fallo";
+    } finally {
+      recorrido.ocupado = false;
+    }
+    pintaPaso(paso);
+    pintaGuardados();
+    return paso.estado === "bien";
+  }
+
+  async function captchaDePaso(paso) {
+    try {
+      const datos = await pideJSON(servicio("auth").url + "/api/v1/auth/captcha?format=json");
+      paso.captcha.id = datos.captcha_id;
+      paso.captcha.pregunta.textContent = `¿Cuánto es ${datos.pregunta}?`;
+      paso.captcha.respuesta.value = "";
+    } catch (error) {
+      paso.captcha.pregunta.textContent = "auth " + mensajeDe(error);
+    }
+  }
+
+  function formularioSesion(paso) {
+    const cuenta = window.Recorrido.CUENTAS[paso.def.sesion];
+    const usuario = el("input", {autocomplete: "username", spellcheck: "false", required: ""});
+    usuario.value = cuenta.usuario;
+    const clave = el("input", {type: "password", autocomplete: "current-password", required: ""});
+    paso.captcha = {id: null, pregunta: el("span", {text: "Captcha"}),
+                    respuesta: el("input", {inputmode: "numeric", autocomplete: "off", required: ""})};
+    const otro = el("button", {type: "button", class: "secundario", text: "Otro captcha"});
+    otro.addEventListener("click", () => captchaDePaso(paso));
+    const formulario = el("form", {class: "login", method: "post"},
+      el("label", {}, `Usuario (${cuenta.rol})`, usuario), el("label", {}, "Contraseña", clave),
+      el("label", {}, paso.captcha.pregunta, paso.captcha.respuesta),
+      el("div", {class: "acciones"}, otro, el("button", {type: "submit", text: "Iniciar sesión"})));
+    formulario.addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      const contrasena = clave.value;
+      clave.value = "";
+      const listo = await correPaso(paso, (h) => h.iniciaSesion(paso.def.sesion, usuario.value, contrasena,
+                                                              paso.captcha.id, paso.captcha.respuesta.value));
+      // Cada captcha sirve una vez, salga bien o mal.
+      paso.captcha.id = null;
+      if (listo) sigue(); else captchaDePaso(paso);
+    });
+    return formulario;
+  }
+
+  function formularioEntradas(paso) {
+    const campos = paso.def.entradas.map((entrada) =>
+      [entrada.clave, el("input", {inputmode: "decimal", autocomplete: "off", required: ""}), entrada.etiqueta]);
+    const formulario = el("form", {class: "rejilla", method: "post"},
+      ...campos.map(([, entrada, etiqueta]) => el("label", {}, etiqueta, entrada)),
+      el("div", {class: "acciones"}, el("button", {type: "submit", text: "Correr"})));
+    formulario.addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      const valores = Object.fromEntries(campos.map(([clave, entrada]) => [clave, entrada.value]));
+      if (await correPaso(paso, (h) => paso.def.correr(h, valores))) sigue();
+    });
+    return formulario;
+  }
+
+  function botonPaso(texto, accion, clase = "") {
+    const boton = el("button", {type: "button", class: clase, text: texto});
+    boton.addEventListener("click", accion);
+    return boton;
+  }
+
+  function tarjetaPaso(paso) {
+    const {def} = paso;
+    paso.insignia = el("span");
+    paso.bitacora = el("ul", {class: "bitacora"});
+    const partes = [];
+    if (def.detalle) partes.push(el("p", {class: "nota", text: def.detalle}));
+    if (def.manual) partes.push(el("p", {text: def.manual}));
+    if (def.comandos) partes.push(el("pre", {class: "codigo", text: def.comandos.join("\n")}));
+    if (def.sesion) {
+      partes.push(formularioSesion(paso));
+    } else if (def.entradas) {
+      partes.push(formularioEntradas(paso));
+    } else if (def.manual && !def.comprobar) {
+      partes.push(el("div", {class: "acciones"}, botonPaso("Listo", () => {
+        paso.estado = "hecho";
+        pintaPaso(paso);
+        sigue();
+      })));
+    } else {
+      const accion = def.comprobar || def.correr;
+      partes.push(el("div", {class: "acciones"}, botonPaso(def.comprobar ? "Comprobar" : "Correr", async () => {
+        if (await correPaso(paso, accion) && def.comprobar) sigue();
+      }, "secundario")));
+    }
+    paso.nodo = el("li", {}, el("div", {class: "paso-cabeza"}, el("span", {class: "paso-numero", text: def.n}),
+      el("h3", {text: def.titulo}), paso.insignia), ...partes, paso.bitacora);
+    pintaPaso(paso);
+    return paso.nodo;
+  }
+
+  function atiende(paso) {
+    paso.nodo.scrollIntoView({behavior: "smooth", block: "center"});
+    if (paso.def.sesion && !paso.captcha.id) captchaDePaso(paso);
+    avisa("recorrido-mensaje", `El paso ${paso.def.n} lo completa la persona.`);
+  }
+
+  // Corre en orden, desde el primero que no ha salido bien, hasta uno que pida algo a la
+  // persona (sesión, importes o algo que hacer fuera de la consola) o que falle.
+  async function sigue() {
+    for (const paso of recorrido.pasos) {
+      if (paso.estado === "bien" || paso.estado === "hecho") continue;
+      if (paso.def.sesion || paso.def.entradas || paso.def.manual) {
+        atiende(paso);
+        return;
+      }
+      if (!await correPaso(paso, paso.def.correr)) {
+        paso.nodo.scrollIntoView({behavior: "smooth", block: "center"});
+        avisa("recorrido-mensaje", `El paso ${paso.def.n} falló; corrígelo y vuelve a correrlo.`, true);
+        return;
+      }
+    }
+    avisa("recorrido-mensaje", "Recorrido completo. Descarga el resumen para las evidencias.");
+  }
+
+  function reinicia() {
+    if (window.confirm("¿Empezar de nuevo? Se olvidan los ids y las sesiones del recorrido.")) nuevoRecorrido();
+  }
+
+  function descargaResumen() {
+    const resumen = {recorrido: "Prueba de aceptación del segundo parcial", fecha: new Date().toISOString(),
+                     directorio: estado.directorio, guardados: recorrido.guardados,
+                     pasos: recorrido.pasos.map((p) => ({n: p.def.n, titulo: p.def.titulo, estado: p.estado,
+                                                         eventos: p.eventos}))};
+    const archivo = new Blob([JSON.stringify(resumen, null, 2)], {type: "application/json"});
+    const enlace = el("a", {href: URL.createObjectURL(archivo),
+                            download: `recorrido-aceptacion-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "")}.json`});
+    document.body.append(enlace);
+    enlace.click();
+    enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(enlace.href), 1000);
+  }
+
   // ----------------------------------------------------------------- pestañas y arranque
+
+  const VISTAS = ["salud", "swagger", "probador", "recorrido"];
 
   function muestraVista(vista) {
     estado.vista = vista;
-    for (const nombre of ["salud", "swagger", "probador"]) {
+    for (const nombre of VISTAS) {
       $("vista-" + nombre).hidden = nombre !== vista;
       $("pestana-" + nombre).setAttribute("aria-selected", String(nombre === vista));
     }
@@ -486,7 +710,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", async () => {
-    for (const nombre of ["salud", "swagger", "probador"]) {
+    for (const nombre of VISTAS) {
       $("pestana-" + nombre).addEventListener("click", () => muestraVista(nombre));
     }
     $("form-directorio").addEventListener("submit", (evento) => { evento.preventDefault(); conectar(); });
@@ -500,6 +724,10 @@
     $("probador-formato-cuerpo").addEventListener("change", cambiaFormatoCuerpo);
     $("form-probador").addEventListener("submit", envia);
     $("probador-curl").addEventListener("click", copiaCurl);
+    $("recorrido-sigue").addEventListener("click", sigue);
+    $("recorrido-reinicia").addEventListener("click", reinicia);
+    $("recorrido-descarga").addEventListener("click", descargaResumen);
+    nuevoRecorrido();
     try {
       $("directorio").value = (await pideJSON("/config?format=json")).directorio;
     } catch (error) {
