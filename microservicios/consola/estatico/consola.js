@@ -323,7 +323,9 @@
     for (const [ruta, metodos] of Object.entries(especificacion.paths)) {
       for (const [metodo, operacion] of Object.entries(metodos)) {
         if (["get", "post", "put", "patch", "delete"].includes(metodo)) {
-          operaciones.push({ruta, metodo: metodo.toUpperCase(), operacion});
+          // La seguridad puede venir en la operación o, para todas, en la raíz del contrato.
+          const seguridad = operacion.security !== undefined ? operacion.security : (especificacion.security || []);
+          operaciones.push({ruta, metodo: metodo.toUpperCase(), operacion, seguridad});
         }
       }
     }
@@ -361,7 +363,7 @@
     const {ruta, operacion} = elegida;
     $("probador-descripcion").textContent = operacion.summary || "";
     // Las rutas públicas no reciben el token.
-    $("probador-token").checked = Boolean(operacion.security && operacion.security.length);
+    $("probador-token").checked = elegida.seguridad.length > 0;
     const deRuta = [...ruta.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
     const parametros = (operacion.parameters || []).filter((p) => p.in === "path" || p.in === "query");
     const campos = deRuta.map((n) => parametros.find((p) => p.name === n && p.in === "path") || {name: n, in: "path"})
