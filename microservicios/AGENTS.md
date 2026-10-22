@@ -126,6 +126,8 @@ Ya existen:
 
 - Pruebas de los servicios y la biblioteca:
   `python -m pytest microservicios`
+- Pruebas de integración contra los contenedores, en su propio compose:
+  `python infra/pruebas_integracion.py`
 - Contraseñas de `infra/.env`: `python infra/genera_env.py`
 - Levantar todo: `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait`
 - Solo un dominio: `docker compose -f infra/docker-compose.yml --profile escenarios up -d`

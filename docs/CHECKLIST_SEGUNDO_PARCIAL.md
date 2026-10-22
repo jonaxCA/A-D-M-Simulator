@@ -21,13 +21,14 @@ son las tareas.
 > casilla debería ser un issue, una rama y un Pull Request. Las decisiones de esta etapa
 > ya están tomadas: están en el bloque 0 y en `docs/decisiones.md`.
 
-> **Avance al 21 de octubre** (en `2do-parcial-gpo-10am`): los 26 servicios, con la
-> biblioteca común, Redis, Docker y las migraciones 026 a 030. Pasan las 1,294 pruebas
-> (monolito, motor y servicios) en un solo `pytest`, con la base de pruebas rehecha después
-> de la 029 (`prepara_base_pruebas.py`). La consola ya tiene el panel de salud, Swagger, el
-> probador y el recorrido de aceptación. Ningún servicio cumple todavía la definición de
-> terminado: faltan correr el recorrido completo y las pruebas de integración contra los
-> contenedores.
+> **Avance al 22 de octubre** (en `2do-parcial-gpo-10am`): los 26 servicios, con la
+> biblioteca común, Redis, Docker y las migraciones 026 a 030. Las pruebas del monolito, el
+> motor y los servicios pasan en un solo `pytest`, con la base de pruebas rehecha después de
+> la 029 (`prepara_base_pruebas.py`). La consola ya tiene el panel de salud, Swagger, el
+> probador y el recorrido de aceptación, y las pruebas de integración corren contra los
+> contenedores (`python infra/pruebas_integracion.py`, 100 pruebas). Ningún servicio cumple
+> todavía la definición de terminado: falta correr el recorrido completo en el navegador, y a
+> los cuatro de identidad, los ejemplos de su contrato.
 > Las casillas de escenarios y vigilancia las marcó quien hizo esos servicios; las demás se
 > revisaron contra el código.
 
@@ -527,10 +528,8 @@ está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
       `simulador` y `notificaciones`). La 029 es de `corridas`, `simulador`, `resultados` y
       `notificaciones`, y la 030 de `estado-servicios`, que solo se conecta. Los permisos
       están escritos a mano, no generados desde una tabla.*
-- [ ] Prueba de roles: `regiones` **no puede** escribir en `scenarios`, y `aprobacion` no
-      puede cambiar el contenido de una versión
-      *Avance (19 oct): comprobado a mano en el PostgreSQL del compose; falta como prueba
-      automática (bloque O2).*
+- [x] Prueba de roles: `regiones` **no puede** escribir en `scenarios`, y `aprobacion` no
+      puede cambiar el contenido de una versión (`test_compose_roles_bd.py`, en O2)
 - [x] CORS cerrado: solo el origen de la consola
 - [x] Pruebas negativas de token:
   - [x] `alg: none`;
@@ -588,19 +587,20 @@ El monolito no consume los servicios, pero comparte la base con ellos.
 - [x] El motor y las pruebas actuales siguen pasando
 
 ### O2. Integración · Integrante 6
-- [ ] Un compose de pruebas sobre `simulador_epidemico_pruebas` y un Redis aparte, nunca sobre
+
+Se corren con `python infra/pruebas_integracion.py` (`microservicios/pruebas_integracion/
+contenedores/`). Las sesiones se abren directo en el Redis de pruebas, sin captcha; el inicio
+de sesión lo prueban las de `auth`.
+
+- [x] Un compose de pruebas sobre `simulador_epidemico_pruebas` y un Redis aparte, nunca sobre
       los de la demostración
-- [ ] El flujo completo por HTTP: login → escenario → intervenciones → aprobación → corrida →
+- [x] El flujo completo por HTTP: login → escenario → intervenciones → aprobación → corrida →
       resultados → comparación
-- [ ] Llamadas entre servicios en XML: `escenarios-xml` → `escenarios`, y `estado-servicios` →
+- [x] Llamadas entre servicios en XML: `escenarios-xml` → `escenarios`, y `estado-servicios` →
       `/health`
-      *Avance (21 oct): `estado-servicios` ya sondea en XML. Probado a mano contra los
-      contenedores: un servicio detenido sale `caido`, con Redis detenido los 26 salen
-      `degradado` por Redis, y al volver Redis todo regresa sin reiniciar servicios. Falta
-      como prueba automática.*
-- [ ] Revocación entre servicios: logout en `sesiones` y el token rechazado en `escenarios`
-- [ ] La cola: dos `simulador` y diez corridas; cada corrida se ejecuta una sola vez
-- [ ] Redis apagado y encendido a mitad de la prueba
+- [x] Revocación entre servicios: logout en `sesiones` y el token rechazado en `escenarios`
+- [x] La cola: dos `simulador` y diez corridas; cada corrida se ejecuta una sola vez
+- [x] Redis apagado y encendido a mitad de la prueba
 - [ ] El recorrido de la consola exportado como evidencia
       *Avance (22 oct): la consola descarga el resumen (**Descargar resumen**); falta correr
       el recorrido completo y guardarlo en `evidencias/`.*
@@ -654,8 +654,8 @@ cumplido.
 
 Verificaciones extra:
 - [x] Un token con `alg: none`, vencido o de otra audiencia es rechazado
-- [ ] El rol de base de un servicio no puede escribir en las tablas de otro
-- [ ] Misma semilla y misma versión dan el mismo resultado, ahora por la API
+- [x] El rol de base de un servicio no puede escribir en las tablas de otro
+- [x] Misma semilla y misma versión dan el mismo resultado, ahora por la API
 - [ ] Ningún `.env`, token ni contraseña está en el repositorio, en las imágenes ni en las
       evidencias
 

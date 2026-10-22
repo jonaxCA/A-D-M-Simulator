@@ -53,7 +53,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
-      POSTGRES_DB: simulador_epidemico
+      POSTGRES_DB: ${POSTGRES_DB:-simulador_epidemico}
       EPIDEMIA_APP_PASSWORD: ${EPIDEMIA_APP_PASSWORD:-}
       DB_PASSWORD_APROBACION: ${DB_PASSWORD_APROBACION:-}
       DB_PASSWORD_AUTH: ${DB_PASSWORD_AUTH:-}
@@ -90,7 +90,7 @@ services:
     healthcheck:
       # Por TCP: mientras corre la carga inicial, PostgreSQL solo escucha en su socket local,
       # así que sale healthy hasta que la base está completa.
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d simulador_epidemico"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d \"$$POSTGRES_DB\""]
       interval: 5s
       timeout: 3s
       retries: 60
@@ -117,7 +117,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_AUTH:-postgresql://svc_auth:${DB_PASSWORD_AUTH:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_AUTH:-postgresql://svc_auth:${DB_PASSWORD_AUTH:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -135,7 +135,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_SESIONES:-postgresql://svc_sesiones:${DB_PASSWORD_SESIONES:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_SESIONES:-postgresql://svc_sesiones:${DB_PASSWORD_SESIONES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -153,7 +153,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_USUARIOS:-postgresql://svc_usuarios:${DB_PASSWORD_USUARIOS:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_USUARIOS:-postgresql://svc_usuarios:${DB_PASSWORD_USUARIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -171,7 +171,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_ROLES:-postgresql://svc_roles:${DB_PASSWORD_ROLES:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_ROLES:-postgresql://svc_roles:${DB_PASSWORD_ROLES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -191,7 +191,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_ENFERMEDADES:-postgresql://svc_enfermedades:${DB_PASSWORD_ENFERMEDADES:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_ENFERMEDADES:-postgresql://svc_enfermedades:${DB_PASSWORD_ENFERMEDADES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -209,7 +209,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_PARAMETROS:-postgresql://svc_parametros:${DB_PASSWORD_PARAMETROS:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_PARAMETROS:-postgresql://svc_parametros:${DB_PASSWORD_PARAMETROS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -227,7 +227,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_REGIONES:-postgresql://svc_regiones:${DB_PASSWORD_REGIONES:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_REGIONES:-postgresql://svc_regiones:${DB_PASSWORD_REGIONES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -245,7 +245,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_POBLACION:-postgresql://svc_poblacion:${DB_PASSWORD_POBLACION:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_POBLACION:-postgresql://svc_poblacion:${DB_PASSWORD_POBLACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -263,7 +263,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_TIPOS_INTERVENCION:-postgresql://svc_tipos_intervencion:${DB_PASSWORD_TIPOS_INTERVENCION:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_TIPOS_INTERVENCION:-postgresql://svc_tipos_intervencion:${DB_PASSWORD_TIPOS_INTERVENCION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -283,7 +283,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_CASOS:-postgresql://svc_casos:${DB_PASSWORD_CASOS:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_CASOS:-postgresql://svc_casos:${DB_PASSWORD_CASOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -301,7 +301,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_SINCRONIZACION:-postgresql://svc_sincronizacion:${DB_PASSWORD_SINCRONIZACION:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_SINCRONIZACION:-postgresql://svc_sincronizacion:${DB_PASSWORD_SINCRONIZACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       SYNC_LOTE_TTL_SECONDS: ${SYNC_LOTE_TTL_SECONDS:-604800}
       SERVICIO_CASOS_URL: http://casos:8000
     depends_on:
@@ -325,7 +325,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_VALIDACION:-postgresql://svc_validacion:${DB_PASSWORD_VALIDACION:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_VALIDACION:-postgresql://svc_validacion:${DB_PASSWORD_VALIDACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -343,7 +343,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_ESCENARIOS:-postgresql://svc_escenarios:${DB_PASSWORD_ESCENARIOS:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_ESCENARIOS:-postgresql://svc_escenarios:${DB_PASSWORD_ESCENARIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       SERVICIO_VALIDACION_URL: http://validacion:8000
     depends_on:
       postgres:
@@ -364,7 +364,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_INTERVENCIONES:-postgresql://svc_intervenciones:${DB_PASSWORD_INTERVENCIONES:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_INTERVENCIONES:-postgresql://svc_intervenciones:${DB_PASSWORD_INTERVENCIONES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -382,7 +382,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_APROBACION:-postgresql://svc_aprobacion:${DB_PASSWORD_APROBACION:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_APROBACION:-postgresql://svc_aprobacion:${DB_PASSWORD_APROBACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       SERVICIO_VALIDACION_URL: http://validacion:8000
       # Best-effort: si notificaciones no está arriba (perfil plataforma), la aprobación se
       # hace igual y solo queda un aviso en el log.
@@ -406,7 +406,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_ESCENARIOS_XML:-postgresql://svc_escenarios_xml:${DB_PASSWORD_ESCENARIOS_XML:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_ESCENARIOS_XML:-postgresql://svc_escenarios_xml:${DB_PASSWORD_ESCENARIOS_XML:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       SERVICIO_VALIDACION_URL: http://validacion:8000
       SERVICIO_ESCENARIOS_URL: http://escenarios:8000
       SERVICIO_INTERVENCIONES_URL: http://intervenciones:8000
@@ -435,7 +435,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_CORRIDAS:-postgresql://svc_corridas:${DB_PASSWORD_CORRIDAS:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_CORRIDAS:-postgresql://svc_corridas:${DB_PASSWORD_CORRIDAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -453,7 +453,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_SIMULADOR:-postgresql://svc_simulador:${DB_PASSWORD_SIMULADOR:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_SIMULADOR:-postgresql://svc_simulador:${DB_PASSWORD_SIMULADOR:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       # Avisa al terminar o fallar una corrida. Best-effort: si notificaciones no está arriba
       # (perfil plataforma), la corrida termina igual y solo queda un aviso en el log.
       SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
@@ -474,7 +474,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_RESULTADOS:-postgresql://svc_resultados:${DB_PASSWORD_RESULTADOS:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_RESULTADOS:-postgresql://svc_resultados:${DB_PASSWORD_RESULTADOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -492,7 +492,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_COMPARACION:-postgresql://svc_comparacion:${DB_PASSWORD_COMPARACION:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_COMPARACION:-postgresql://svc_comparacion:${DB_PASSWORD_COMPARACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -510,7 +510,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_PARETO:-postgresql://svc_pareto:${DB_PASSWORD_PARETO:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_PARETO:-postgresql://svc_pareto:${DB_PASSWORD_PARETO:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -530,7 +530,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_INDICADORES:-postgresql://svc_indicadores:${DB_PASSWORD_INDICADORES:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_INDICADORES:-postgresql://svc_indicadores:${DB_PASSWORD_INDICADORES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -548,7 +548,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_SERIES:-postgresql://svc_series:${DB_PASSWORD_SERIES:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_SERIES:-postgresql://svc_series:${DB_PASSWORD_SERIES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -566,7 +566,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_ZONAS:-postgresql://svc_zonas:${DB_PASSWORD_ZONAS:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_ZONAS:-postgresql://svc_zonas:${DB_PASSWORD_ZONAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -586,7 +586,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_NOTIFICACIONES:-postgresql://svc_notificaciones:${DB_PASSWORD_NOTIFICACIONES:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_NOTIFICACIONES:-postgresql://svc_notificaciones:${DB_PASSWORD_NOTIFICACIONES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -607,7 +607,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
-      DATABASE_URL: ${DATABASE_URL_ESTADO_SERVICIOS:-postgresql://svc_estado_servicios:${DB_PASSWORD_ESTADO_SERVICIOS:-}@postgres:5432/simulador_epidemico}
+      DATABASE_URL: ${DATABASE_URL_ESTADO_SERVICIOS:-postgresql://svc_estado_servicios:${DB_PASSWORD_ESTADO_SERVICIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       URL_SONDEO: "http://{servicio}:8000"
       URL_PUBLICA: ${URL_PUBLICA:-}
     depends_on:

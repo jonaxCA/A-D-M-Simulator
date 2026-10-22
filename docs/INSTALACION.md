@@ -557,6 +557,20 @@ export PYTHONPATH="$PWD:$PWD/microservicios/comun"
 python -m pytest microservicios -q
 ```
 
+Las de integración (`microservicios/pruebas_integracion/contenedores/`) corren contra los
+contenedores, y ahí se saltan. Se corren con:
+
+```bash
+python infra/pruebas_integracion.py
+```
+
+El script levanta desde cero un compose aparte (proyecto `epidemia-pruebas`, con un segundo
+`simulador`), sobre la base `simulador_epidemico_pruebas` y con sus propios volúmenes de
+PostgreSQL y Redis: nunca toca los de la demostración. Corre las pruebas y lo borra
+(`--conservar` lo deja arriba). Sus contraseñas, aleatorias, quedan en `infra/.env.pruebas`, que
+no se sube. Publica los mismos puertos que el compose de la demostración, así que ese tiene que
+estar abajo; el script lo revisa antes de empezar.
+
 ---
 
 ## Problemas comunes

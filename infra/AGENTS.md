@@ -37,6 +37,11 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
      `DATABASE_URL`, como los demás, y su rol en una migración.
 8. Las pruebas de integración usan su propio compose, sobre `simulador_epidemico_pruebas` y
    un Redis aparte. Nunca sobre la base de la demostración.
+   - Lo arma `pruebas_integracion.py`: proyecto `epidemia-pruebas` (otros volúmenes),
+     `POSTGRES_DB` en `.env.pruebas` y `docker-compose.pruebas.yml`, que solo agrega lo que
+     necesitan las pruebas (un segundo `simulador`).
+   - Por eso la base del compose sale de `POSTGRES_DB`: si agregas un servicio, su
+     `DATABASE_URL` termina en `/${POSTGRES_DB:-simulador_epidemico}` como los demás.
 9. Cada servicio tiene un perfil de dominio (`identidad`, `catalogos`, `vigilancia`,
    `escenarios`, `simulacion`, `analitica`, `plataforma`), para que nadie tenga que
    levantar los 28 contenedores en una máquina con poca memoria.
