@@ -114,7 +114,7 @@ entregables):
 - [x] Migraciones de esta etapa reservadas: 026 en adelante (regla de `datos/AGENTS.md`)
 
 ### Estructura acordada
-- [ ] `microservicios/comun/` (paquete `epidemia_comun`), `microservicios/<servicio>/` para
+- [x] `microservicios/comun/` (paquete `epidemia_comun`), `microservicios/<servicio>/` para
       los 26 y `microservicios/consola/`
 - [x] `infra/docker/` con la imagen base y `infra/docker-compose.yml`
 - [x] `docs/contratos/<servicio>/` con `openapi.json`, ejemplos y, si aplica, su `.xsd`
@@ -552,12 +552,12 @@ está en [`microservicios/comun/README.md`](../microservicios/comun/README.md).
       `/openapi.json`. Una prueba lo compara
       *Avance (21 oct): 26 de 26. La prueba que los compara con lo servido cubre catálogos;
       los de identidad no tienen ejemplos JSON ni XML.*
-- [ ] XSD de los recursos principales:
-  - [ ] escenario completo;
+- [x] XSD de los recursos principales:
+  - [x] escenario completo;
   - [x] resultado de una corrida;
   - [x] enfermedad con sus parámetros;
-  - [ ] caso;
-  - [ ] lote de sincronización;
+  - [x] caso;
+  - [x] lote de sincronización;
   - [x] el error (`problem+xml`).
 - [ ] Prueba de contrato: cada ejemplo XML valida contra su XSD, y cada respuesta JSON contra
       su esquema del OpenAPI
@@ -582,7 +582,9 @@ El monolito no consume los servicios, pero comparte la base con ellos.
 
 ### O1. Unitarias · cada responsable las de sus servicios
 - [x] La biblioteca común: formatos, errores, tokens, Redis y el cliente entre servicios
-- [ ] Cada servicio: validaciones, reglas y permisos, con la base y Redis simulados
+- [x] Cada servicio: validaciones, reglas y permisos, con la base y Redis simulados
+      *Los públicos (`regiones`, `tipos-intervencion`, `indicadores` y `estado-servicios`) no
+      tienen permisos que probar.*
 - [x] El motor y las pruebas actuales siguen pasando
 
 ### O2. Integración · Integrante 6
@@ -609,7 +611,7 @@ El monolito no consume los servicios, pero comparte la base con ellos.
 
 - [x] `docs/arquitectura/arquitectura_v2.md`: lo que sí se construyó, a partir del catálogo,
       con un diagrama de servicios, Redis y PostgreSQL
-- [ ] Revisar que cada servicio tenga su README (es parte de la definición de terminado)
+- [x] Revisar que cada servicio tenga su README (es parte de la definición de terminado)
 - [ ] Actualizar `AGENTS.md`, `microservicios/AGENTS.md` y `docs/decisiones.md`
 - [ ] Carpeta `evidencias/`:
   - [x] resultado de las pruebas;
