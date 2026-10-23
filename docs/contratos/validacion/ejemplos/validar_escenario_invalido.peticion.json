@@ -1,0 +1,20 @@
+{
+  "name": "Brote de influenza en Monterrey",
+  "description": "Escenario base",
+  "disease_id": 1,
+  "region_id": 2,
+  "estratificar": true,
+  "initial_infected": 0,
+  "horizon_days": 60,
+  "notes": "Primera versión",
+  "interventions": [
+    {
+      "code": "CIERRE_ESCUELAS",
+      "start_day": 5,
+      "end_day": 40,
+      "coverage": 0.8,
+      "compliance": 0.7,
+      "params": {}
+    }
+  ]
+}

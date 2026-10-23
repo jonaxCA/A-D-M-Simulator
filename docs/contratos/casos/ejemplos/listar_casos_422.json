@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Unprocessable Entity",
+  "status": 422,
+  "detail": "per_page no puede ser mayor que 100.",
+  "codigo": "DATOS_INVALIDOS",
+  "instance": "/api/v1/cases"
+}

@@ -1,6 +1,6 @@
 > **Estado: Vigente (visión del sistema final)** · convertido el 2026-09-25
-> Describe el simulador que se entrega al final del semestre, no el avance actual.
-> En este avance:
+> 
+> En este avance (no la visión final):
 > - El motor es un SEIR por grupos de edad, sin agentes. Las secciones 2.1, 2.2 y 2.5 son
 >   trabajo futuro; de 2.4 no hay asintomáticos ni duraciones variables.
 > - Aplican: capas de contacto (2.3), intervenciones (2.6) y frontera de eficiencia (2.10).

@@ -1,0 +1,382 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - notificaciones",
+    "version": "0.1.0",
+    "description": "Avisos para las apps. Cada persona lee y marca como leídos solo los suyos. Los crean simulador (RUN_FINISHED, RUN_FAILED) y aprobacion (SCENARIO_APPROVED) por una ruta interna, con token de servicio."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5261"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token del servicio auth, con sesión activa en Redis."
+      },
+      "tokenServicio": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token de servicio (audiencia epidemia-interno), de epidemia_comun.seguridad.token_servicio(). El de una persona se rechaza con 401."
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/notifications": {
+      "get": {
+        "summary": "Mis notificaciones",
+        "operationId": "listar_notificaciones",
+        "description": "Las más recientes de quien consulta (cualquier rol) y cuántas tiene sin leer.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "unread",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "true: solo las no leídas"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 2,
+                  "no_leidas": 1,
+                  "notificaciones": [
+                    {
+                      "id": 7,
+                      "user_id": 5,
+                      "type": "RUN_FINISHED",
+                      "title": "La corrida SIM-00042 terminó",
+                      "body": "Brote de influenza en Monterrey, versión 2.",
+                      "payload": {
+                        "run_id": 42,
+                        "status": "completado",
+                        "scenario_id": 3,
+                        "scenario_version_id": 11
+                      },
+                      "read_at": null,
+                      "created_at": "2026-10-20T15:02:00+00:00"
+                    },
+                    {
+                      "id": 6,
+                      "user_id": 5,
+                      "type": "SCENARIO_APPROVED",
+                      "title": "Versión 2 aprobada",
+                      "body": "Se aprobó la versión 2 del escenario «Brote de influenza en Monterrey».",
+                      "payload": {
+                        "scenario_id": 3,
+                        "version_id": 11,
+                        "version_number": 2
+                      },
+                      "read_at": "2026-10-20T14:30:00+00:00",
+                      "created_at": "2026-10-20T14:10:00+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "bandeja"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<bandeja><total tipo=\"numero\">2</total><no_leidas tipo=\"numero\">1</no_leidas><notificaciones><notificacion><id tipo=\"numero\">7</id><user_id tipo=\"numero\">5</user_id><type>RUN_FINISHED</type><title>La corrida SIM-00042 terminó</title><body>Brote de influenza en Monterrey, versión 2.</body><payload><run_id tipo=\"numero\">42</run_id><status>completado</status><scenario_id tipo=\"numero\">3</scenario_id><scenario_version_id tipo=\"numero\">11</scenario_version_id></payload><read_at nil=\"true\" /><created_at>2026-10-20T15:02:00+00:00</created_at></notificacion><notificacion><id tipo=\"numero\">6</id><user_id tipo=\"numero\">5</user_id><type>SCENARIO_APPROVED</type><title>Versión 2 aprobada</title><body>Se aprobó la versión 2 del escenario «Brote de influenza en Monterrey».</body><payload><scenario_id tipo=\"numero\">3</scenario_id><version_id tipo=\"numero\">11</version_id><version_number tipo=\"numero\">2</version_number></payload><read_at>2026-10-20T14:30:00+00:00</read_at><created_at>2026-10-20T14:10:00+00:00</created_at></notificacion></notificaciones></bandeja>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "422": {
+            "description": "unread o limit inválidos"
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear una notificación (interna)",
+        "operationId": "crear_notificacion",
+        "description": "Solo con token de servicio: la usan simulador y aprobacion. La bitácora registra qué servicio la creó.",
+        "security": [
+          {
+            "tokenServicio": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "user_id",
+                  "type",
+                  "title"
+                ],
+                "properties": {
+                  "user_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Destinatario"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "RUN_FINISHED",
+                      "RUN_FAILED",
+                      "THRESHOLD_EXCEEDED",
+                      "ASSIGNMENT",
+                      "SCENARIO_PUBLISHED",
+                      "SCENARIO_APPROVED",
+                      "SYSTEM"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "body": {
+                    "type": "string"
+                  },
+                  "payload": {
+                    "type": "object",
+                    "description": "Ids para llegar al recurso (run_id, scenario_id...)"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "user_id": 5,
+                "type": "RUN_FINISHED",
+                "title": "La corrida SIM-00042 terminó",
+                "body": "Brote de influenza en Monterrey, versión 2.",
+                "payload": {
+                  "run_id": 42,
+                  "status": "completado",
+                  "scenario_id": 3,
+                  "scenario_version_id": 11
+                }
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "user_id",
+                  "type",
+                  "title"
+                ],
+                "properties": {
+                  "user_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Destinatario"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "RUN_FINISHED",
+                      "RUN_FAILED",
+                      "THRESHOLD_EXCEEDED",
+                      "ASSIGNMENT",
+                      "SCENARIO_PUBLISHED",
+                      "SCENARIO_APPROVED",
+                      "SYSTEM"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "body": {
+                    "type": "string"
+                  },
+                  "payload": {
+                    "type": "object",
+                    "description": "Ids para llegar al recurso (run_id, scenario_id...)"
+                  }
+                },
+                "additionalProperties": false,
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><user_id tipo=\"numero\">5</user_id><type>RUN_FINISHED</type><title>La corrida SIM-00042 terminó</title><body>Brote de influenza en Monterrey, versión 2.</body><payload><run_id tipo=\"numero\">42</run_id><status>completado</status><scenario_id tipo=\"numero\">3</scenario_id><scenario_version_id tipo=\"numero\">11</scenario_version_id></payload></solicitud>\n"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 8,
+                  "user_id": 5,
+                  "type": "RUN_FINISHED"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "notificacion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<notificacion><id tipo=\"numero\">8</id><user_id tipo=\"numero\">5</user_id><type>RUN_FINISHED</type></notificacion>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "JSON o XML ilegible"
+          },
+          "401": {
+            "description": "Falta el token de servicio o es de una persona"
+          },
+          "404": {
+            "description": "No existe el destinatario"
+          },
+          "415": {
+            "description": "Content-Type no soportado"
+          },
+          "422": {
+            "description": "Campos desconocidos, tipo fuera de la lista o título vacío"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/{notificacion_id}/read": {
+      "post": {
+        "summary": "Marcar como leída",
+        "operationId": "marcar_leida",
+        "description": "Solo una notificación propia; marcar una ya leída no cambia nada.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notificacion_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la notificación"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 7,
+                  "user_id": 5,
+                  "type": "RUN_FINISHED",
+                  "title": "La corrida SIM-00042 terminó",
+                  "body": "Brote de influenza en Monterrey, versión 2.",
+                  "payload": {
+                    "run_id": 42,
+                    "status": "completado",
+                    "scenario_id": 3,
+                    "scenario_version_id": 11
+                  },
+                  "read_at": "2026-10-20T15:05:00+00:00",
+                  "created_at": "2026-10-20T15:02:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "notificacion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<notificacion><id tipo=\"numero\">7</id><user_id tipo=\"numero\">5</user_id><type>RUN_FINISHED</type><title>La corrida SIM-00042 terminó</title><body>Brote de influenza en Monterrey, versión 2.</body><payload><run_id tipo=\"numero\">42</run_id><status>completado</status><scenario_id tipo=\"numero\">3</scenario_id><scenario_version_id tipo=\"numero\">11</scenario_version_id></payload><read_at>2026-10-20T15:05:00+00:00</read_at><created_at>2026-10-20T15:02:00+00:00</created_at></notificacion>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "404": {
+            "description": "No existe o es de otra persona"
+          },
+          "422": {
+            "description": "Id inválido"
+          }
+        }
+      }
+    }
+  }
+}

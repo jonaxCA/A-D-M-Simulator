@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<escenario><name>Brote de influenza en Monterrey</name><description>Escenario base.</description><disease_id tipo="numero">3</disease_id><region_id tipo="numero">5</region_id><population_size tipo="numero">1142994</population_size><horizon_days tipo="numero">90</horizon_days><initial_infected tipo="numero">50</initial_infected><stratify tipo="booleano">false</stratify><notes nil="true" /></escenario>

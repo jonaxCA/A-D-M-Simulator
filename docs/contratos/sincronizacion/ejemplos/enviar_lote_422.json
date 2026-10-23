@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Unprocessable Entity",
+  "status": 422,
+  "detail": "Cada caso necesita su local_uuid.",
+  "codigo": "DATOS_INVALIDOS",
+  "instance": "/api/v1/sync/cases"
+}

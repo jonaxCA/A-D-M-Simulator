@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo="numero">422</status><detail>batch_id debe ser un UUID válido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/sync/batches/0b6f5a53-1d1f-4f52-8a0a-5d0a4a0e9c11</instance></problem>

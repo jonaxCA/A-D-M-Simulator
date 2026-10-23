@@ -1,13 +1,24 @@
-import hashlib
+import time
 from functools import wraps
+from uuid import uuid4
 
 import jwt
 
 from .errores import ErrorAPI
+from .llaves import huella, revocado, sesion
 
 
 def identificador_sesion(sid):
-    return hashlib.sha256(str(sid).encode("utf-8")).hexdigest()
+    return huella(str(sid))
+
+
+def token_servicio(ajustes, nombre, duracion=60):
+    # Para las llamadas sin persona detrás. Su audiencia es la interna: solo lo
+    # aceptan las rutas con @solo_servicios.
+    ahora = int(time.time())
+    claims = {"iss": ajustes["JWT_ISSUER"], "aud": ajustes["JWT_AUDIENCE_INTERNA"], "sub": nombre,
+              "jti": str(uuid4()), "iat": ahora, "nbf": ahora, "exp": ahora + duracion}
+    return jwt.encode(claims, ajustes["JWT_SECRET_KEY"], algorithm="HS256")
 
 
 def verificar_token(token, ajustes, redis_client, roles=(), interno=False):
@@ -25,9 +36,9 @@ def verificar_token(token, ajustes, redis_client, roles=(), interno=False):
     if not interno and not payload.get("sid"):
         raise ErrorAPI(401, "TOKEN_INVALIDO", "Token sin sesión.")
     try:
-        if redis_client.exists("jwt:revoked:" + str(payload["jti"])):
+        if redis_client.exists(revocado(payload["jti"])):
             raise ErrorAPI(401, "TOKEN_REVOCADO", "La sesión fue revocada.")
-        if not interno and not redis_client.exists("session:" + identificador_sesion(payload["sid"])):
+        if not interno and not redis_client.exists(sesion(identificador_sesion(payload["sid"]))):
             raise ErrorAPI(401, "TOKEN_REVOCADO", "La sesión ya no está activa.")
         if interno:
             redis_client.ping()

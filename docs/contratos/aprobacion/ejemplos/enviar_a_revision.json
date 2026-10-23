@@ -1,0 +1,9 @@
+{
+  "scenario_id": 3,
+  "version_id": 11,
+  "version_number": 2,
+  "status": "en_revision",
+  "avisos": [
+    "Parámetro infeccioso_dias sin fuente documentada."
+  ]
+}

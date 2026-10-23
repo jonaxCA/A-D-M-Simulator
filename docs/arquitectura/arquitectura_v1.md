@@ -1,4 +1,4 @@
-> **Estado: Vigente, con excepciones** · convertido el 2026-09-25
+> **Estado: Obsoleto** · convertido el 2026-09-25
 > Vale para los principios, las fronteras de datos y la forma final del sistema.
 > Quedó desactualizado en:
 > - 3.1: en este avance, escenarios, versiones, aprobación y comparación se construyen en la web.

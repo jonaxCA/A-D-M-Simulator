@@ -1,0 +1,657 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - estado-servicios",
+    "version": "0.1.0",
+    "description": "Directorio de los 26 servicios y sondeo de su salud. Sondea el `/health` de cada uno en XML cada pocos segundos y guarda el último estado y un historial corto en Redis. Sus rutas son públicas: las apps y la consola le piden la URL de `auth` antes de iniciar sesión."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5262"
+    }
+  ],
+  "paths": {
+    "/api/v1/services": {
+      "get": {
+        "summary": "Directorio de servicios",
+        "operationId": "directorio_servicios",
+        "description": "Nombre, perfil del compose (`dominio`), puerto, URL, Swagger (`docs`) y contrato (`openapi`) de los 26, en el orden del catálogo. `version` es la del último sondeo; `null` si no se ha sondeado o no respondió. No sondea.",
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "servicios": [
+                    {
+                      "nombre": "auth",
+                      "dominio": "identidad",
+                      "puerto": 5201,
+                      "url": "http://localhost:5201",
+                      "docs": "http://localhost:5201/docs",
+                      "openapi": "http://localhost:5201/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "sesiones",
+                      "dominio": "identidad",
+                      "puerto": 5202,
+                      "url": "http://localhost:5202",
+                      "docs": "http://localhost:5202/docs",
+                      "openapi": "http://localhost:5202/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "usuarios",
+                      "dominio": "identidad",
+                      "puerto": 5203,
+                      "url": "http://localhost:5203",
+                      "docs": "http://localhost:5203/docs",
+                      "openapi": "http://localhost:5203/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "roles",
+                      "dominio": "identidad",
+                      "puerto": 5204,
+                      "url": "http://localhost:5204",
+                      "docs": "http://localhost:5204/docs",
+                      "openapi": "http://localhost:5204/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "enfermedades",
+                      "dominio": "catalogos",
+                      "puerto": 5211,
+                      "url": "http://localhost:5211",
+                      "docs": "http://localhost:5211/docs",
+                      "openapi": "http://localhost:5211/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "parametros",
+                      "dominio": "catalogos",
+                      "puerto": 5212,
+                      "url": "http://localhost:5212",
+                      "docs": "http://localhost:5212/docs",
+                      "openapi": "http://localhost:5212/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "regiones",
+                      "dominio": "catalogos",
+                      "puerto": 5213,
+                      "url": "http://localhost:5213",
+                      "docs": "http://localhost:5213/docs",
+                      "openapi": "http://localhost:5213/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "poblacion",
+                      "dominio": "catalogos",
+                      "puerto": 5214,
+                      "url": "http://localhost:5214",
+                      "docs": "http://localhost:5214/docs",
+                      "openapi": "http://localhost:5214/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "tipos-intervencion",
+                      "dominio": "catalogos",
+                      "puerto": 5215,
+                      "url": "http://localhost:5215",
+                      "docs": "http://localhost:5215/docs",
+                      "openapi": "http://localhost:5215/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "casos",
+                      "dominio": "vigilancia",
+                      "puerto": 5221,
+                      "url": "http://localhost:5221",
+                      "docs": "http://localhost:5221/docs",
+                      "openapi": "http://localhost:5221/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "sincronizacion",
+                      "dominio": "vigilancia",
+                      "puerto": 5222,
+                      "url": "http://localhost:5222",
+                      "docs": "http://localhost:5222/docs",
+                      "openapi": "http://localhost:5222/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "escenarios",
+                      "dominio": "escenarios",
+                      "puerto": 5231,
+                      "url": "http://localhost:5231",
+                      "docs": "http://localhost:5231/docs",
+                      "openapi": "http://localhost:5231/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "intervenciones",
+                      "dominio": "escenarios",
+                      "puerto": 5232,
+                      "url": "http://localhost:5232",
+                      "docs": "http://localhost:5232/docs",
+                      "openapi": "http://localhost:5232/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "aprobacion",
+                      "dominio": "escenarios",
+                      "puerto": 5233,
+                      "url": "http://localhost:5233",
+                      "docs": "http://localhost:5233/docs",
+                      "openapi": "http://localhost:5233/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "validacion",
+                      "dominio": "escenarios",
+                      "puerto": 5234,
+                      "url": "http://localhost:5234",
+                      "docs": "http://localhost:5234/docs",
+                      "openapi": "http://localhost:5234/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "escenarios-xml",
+                      "dominio": "escenarios",
+                      "puerto": 5235,
+                      "url": "http://localhost:5235",
+                      "docs": "http://localhost:5235/docs",
+                      "openapi": "http://localhost:5235/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "corridas",
+                      "dominio": "simulacion",
+                      "puerto": 5241,
+                      "url": "http://localhost:5241",
+                      "docs": "http://localhost:5241/docs",
+                      "openapi": "http://localhost:5241/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "simulador",
+                      "dominio": "simulacion",
+                      "puerto": 5242,
+                      "url": "http://localhost:5242",
+                      "docs": "http://localhost:5242/docs",
+                      "openapi": "http://localhost:5242/openapi.json",
+                      "version": null
+                    },
+                    {
+                      "nombre": "resultados",
+                      "dominio": "simulacion",
+                      "puerto": 5243,
+                      "url": "http://localhost:5243",
+                      "docs": "http://localhost:5243/docs",
+                      "openapi": "http://localhost:5243/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "comparacion",
+                      "dominio": "simulacion",
+                      "puerto": 5244,
+                      "url": "http://localhost:5244",
+                      "docs": "http://localhost:5244/docs",
+                      "openapi": "http://localhost:5244/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "pareto",
+                      "dominio": "simulacion",
+                      "puerto": 5245,
+                      "url": "http://localhost:5245",
+                      "docs": "http://localhost:5245/docs",
+                      "openapi": "http://localhost:5245/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "indicadores",
+                      "dominio": "analitica",
+                      "puerto": 5251,
+                      "url": "http://localhost:5251",
+                      "docs": "http://localhost:5251/docs",
+                      "openapi": "http://localhost:5251/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "series",
+                      "dominio": "analitica",
+                      "puerto": 5252,
+                      "url": "http://localhost:5252",
+                      "docs": "http://localhost:5252/docs",
+                      "openapi": "http://localhost:5252/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "zonas",
+                      "dominio": "analitica",
+                      "puerto": 5253,
+                      "url": "http://localhost:5253",
+                      "docs": "http://localhost:5253/docs",
+                      "openapi": "http://localhost:5253/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "notificaciones",
+                      "dominio": "plataforma",
+                      "puerto": 5261,
+                      "url": "http://localhost:5261",
+                      "docs": "http://localhost:5261/docs",
+                      "openapi": "http://localhost:5261/openapi.json",
+                      "version": "0.1.0"
+                    },
+                    {
+                      "nombre": "estado-servicios",
+                      "dominio": "plataforma",
+                      "puerto": 5262,
+                      "url": "http://localhost:5262",
+                      "docs": "http://localhost:5262/docs",
+                      "openapi": "http://localhost:5262/openapi.json",
+                      "version": "0.1.0"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "directorio"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<directorio><servicios><servicio><nombre>auth</nombre><dominio>identidad</dominio><puerto tipo=\"numero\">5201</puerto><url>http://localhost:5201</url><docs>http://localhost:5201/docs</docs><openapi>http://localhost:5201/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>sesiones</nombre><dominio>identidad</dominio><puerto tipo=\"numero\">5202</puerto><url>http://localhost:5202</url><docs>http://localhost:5202/docs</docs><openapi>http://localhost:5202/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>usuarios</nombre><dominio>identidad</dominio><puerto tipo=\"numero\">5203</puerto><url>http://localhost:5203</url><docs>http://localhost:5203/docs</docs><openapi>http://localhost:5203/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>roles</nombre><dominio>identidad</dominio><puerto tipo=\"numero\">5204</puerto><url>http://localhost:5204</url><docs>http://localhost:5204/docs</docs><openapi>http://localhost:5204/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>enfermedades</nombre><dominio>catalogos</dominio><puerto tipo=\"numero\">5211</puerto><url>http://localhost:5211</url><docs>http://localhost:5211/docs</docs><openapi>http://localhost:5211/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>parametros</nombre><dominio>catalogos</dominio><puerto tipo=\"numero\">5212</puerto><url>http://localhost:5212</url><docs>http://localhost:5212/docs</docs><openapi>http://localhost:5212/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>regiones</nombre><dominio>catalogos</dominio><puerto tipo=\"numero\">5213</puerto><url>http://localhost:5213</url><docs>http://localhost:5213/docs</docs><openapi>http://localhost:5213/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>poblacion</nombre><dominio>catalogos</dominio><puerto tipo=\"numero\">5214</puerto><url>http://localhost:5214</url><docs>http://localhost:5214/docs</docs><openapi>http://localhost:5214/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>tipos-intervencion</nombre><dominio>catalogos</dominio><puerto tipo=\"numero\">5215</puerto><url>http://localhost:5215</url><docs>http://localhost:5215/docs</docs><openapi>http://localhost:5215/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>casos</nombre><dominio>vigilancia</dominio><puerto tipo=\"numero\">5221</puerto><url>http://localhost:5221</url><docs>http://localhost:5221/docs</docs><openapi>http://localhost:5221/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>sincronizacion</nombre><dominio>vigilancia</dominio><puerto tipo=\"numero\">5222</puerto><url>http://localhost:5222</url><docs>http://localhost:5222/docs</docs><openapi>http://localhost:5222/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>escenarios</nombre><dominio>escenarios</dominio><puerto tipo=\"numero\">5231</puerto><url>http://localhost:5231</url><docs>http://localhost:5231/docs</docs><openapi>http://localhost:5231/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>intervenciones</nombre><dominio>escenarios</dominio><puerto tipo=\"numero\">5232</puerto><url>http://localhost:5232</url><docs>http://localhost:5232/docs</docs><openapi>http://localhost:5232/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>aprobacion</nombre><dominio>escenarios</dominio><puerto tipo=\"numero\">5233</puerto><url>http://localhost:5233</url><docs>http://localhost:5233/docs</docs><openapi>http://localhost:5233/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>validacion</nombre><dominio>escenarios</dominio><puerto tipo=\"numero\">5234</puerto><url>http://localhost:5234</url><docs>http://localhost:5234/docs</docs><openapi>http://localhost:5234/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>escenarios-xml</nombre><dominio>escenarios</dominio><puerto tipo=\"numero\">5235</puerto><url>http://localhost:5235</url><docs>http://localhost:5235/docs</docs><openapi>http://localhost:5235/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>corridas</nombre><dominio>simulacion</dominio><puerto tipo=\"numero\">5241</puerto><url>http://localhost:5241</url><docs>http://localhost:5241/docs</docs><openapi>http://localhost:5241/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>simulador</nombre><dominio>simulacion</dominio><puerto tipo=\"numero\">5242</puerto><url>http://localhost:5242</url><docs>http://localhost:5242/docs</docs><openapi>http://localhost:5242/openapi.json</openapi><version nil=\"true\" /></servicio><servicio><nombre>resultados</nombre><dominio>simulacion</dominio><puerto tipo=\"numero\">5243</puerto><url>http://localhost:5243</url><docs>http://localhost:5243/docs</docs><openapi>http://localhost:5243/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>comparacion</nombre><dominio>simulacion</dominio><puerto tipo=\"numero\">5244</puerto><url>http://localhost:5244</url><docs>http://localhost:5244/docs</docs><openapi>http://localhost:5244/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>pareto</nombre><dominio>simulacion</dominio><puerto tipo=\"numero\">5245</puerto><url>http://localhost:5245</url><docs>http://localhost:5245/docs</docs><openapi>http://localhost:5245/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>indicadores</nombre><dominio>analitica</dominio><puerto tipo=\"numero\">5251</puerto><url>http://localhost:5251</url><docs>http://localhost:5251/docs</docs><openapi>http://localhost:5251/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>series</nombre><dominio>analitica</dominio><puerto tipo=\"numero\">5252</puerto><url>http://localhost:5252</url><docs>http://localhost:5252/docs</docs><openapi>http://localhost:5252/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>zonas</nombre><dominio>analitica</dominio><puerto tipo=\"numero\">5253</puerto><url>http://localhost:5253</url><docs>http://localhost:5253/docs</docs><openapi>http://localhost:5253/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>notificaciones</nombre><dominio>plataforma</dominio><puerto tipo=\"numero\">5261</puerto><url>http://localhost:5261</url><docs>http://localhost:5261/docs</docs><openapi>http://localhost:5261/openapi.json</openapi><version>0.1.0</version></servicio><servicio><nombre>estado-servicios</nombre><dominio>plataforma</dominio><puerto tipo=\"numero\">5262</puerto><url>http://localhost:5262</url><docs>http://localhost:5262/docs</docs><openapi>http://localhost:5262/openapi.json</openapi><version>0.1.0</version></servicio></servicios></directorio>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          }
+        }
+      }
+    },
+    "/api/v1/services/health": {
+      "get": {
+        "summary": "Salud de los 26 servicios",
+        "operationId": "salud_servicios",
+        "description": "El último sondeo de cada uno, guardado en Redis. Lo que no está ahí (venció, Redis está caído o el sondeo no ha corrido) se sondea en ese momento, así que responde aunque Redis esté caído. Por servicio: `estado` (`ok`, `degradado` o `caido`), `causas` (`postgresql`, `redis` o `proceso`), `detalle` cuando está caído (`sin_conexion`, `tiempo_agotado` o `respuesta_invalida`), `version`, `latencia_ms` y `revisado` (ISO 8601, UTC). `resumen` cuenta cuántos hay en cada estado.",
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "resumen": {
+                    "ok": 24,
+                    "degradado": 1,
+                    "caido": 1
+                  },
+                  "servicios": [
+                    {
+                      "nombre": "auth",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 3.1,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "sesiones",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 5.9,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "usuarios",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 4.3,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "roles",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 7.1,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "enfermedades",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 5.5,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "parametros",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 3.9,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "regiones",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 6.7,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "poblacion",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 5.1,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "tipos-intervencion",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 3.5,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "casos",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 6.3,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "sincronizacion",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 4.7,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "escenarios",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 3.1,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "intervenciones",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 5.9,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "aprobacion",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 4.3,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "validacion",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 7.1,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "escenarios-xml",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 5.5,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "corridas",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 3.9,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "simulador",
+                      "estado": "caido",
+                      "causas": [
+                        "proceso"
+                      ],
+                      "detalle": "sin_conexion",
+                      "version": null,
+                      "latencia_ms": null,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "resultados",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 5.1,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "comparacion",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 3.5,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "pareto",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 6.3,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "indicadores",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 4.7,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "series",
+                      "estado": "degradado",
+                      "causas": [
+                        "postgresql"
+                      ],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 3.1,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "zonas",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 5.9,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "notificaciones",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 4.3,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "estado-servicios",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 7.1,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "estado_servicios"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<estado_servicios><resumen><ok tipo=\"numero\">24</ok><degradado tipo=\"numero\">1</degradado><caido tipo=\"numero\">1</caido></resumen><servicios><servicio><nombre>auth</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>sesiones</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>usuarios</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>roles</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">7.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>enfermedades</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.5</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>parametros</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>regiones</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">6.7</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>poblacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>tipos-intervencion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.5</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>casos</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">6.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>sincronizacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.7</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>escenarios</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>intervenciones</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>aprobacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>validacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">7.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>escenarios-xml</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.5</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>corridas</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>simulador</nombre><estado>caido</estado><causas><causa>proceso</causa></causas><detalle>sin_conexion</detalle><version nil=\"true\" /><latencia_ms nil=\"true\" /><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>resultados</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>comparacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.5</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>pareto</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">6.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>indicadores</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.7</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>series</nombre><estado>degradado</estado><causas><causa>postgresql</causa></causas><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>zonas</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>notificaciones</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>estado-servicios</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">7.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio></servicios></estado_servicios>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          }
+        }
+      }
+    },
+    "/api/v1/services/{nombre}/history": {
+      "get": {
+        "summary": "Historial de salud de un servicio",
+        "operationId": "historial_servicio",
+        "description": "Sus últimos sondeos, del más reciente al más viejo (hasta 30). Por servicio: `estado` (`ok`, `degradado` o `caido`), `causas` (`postgresql`, `redis` o `proceso`), `detalle` cuando está caído (`sin_conexion`, `tiempo_agotado` o `respuesta_invalida`), `version`, `latencia_ms` y `revisado` (ISO 8601, UTC).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "nombre",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "series",
+            "description": "Nombre del servicio, como en el directorio"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "servicio": "series",
+                  "sondeos": [
+                    {
+                      "nombre": "series",
+                      "estado": "degradado",
+                      "causas": [
+                        "postgresql"
+                      ],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 3.1,
+                      "revisado": "2026-10-20T18:30:05+00:00"
+                    },
+                    {
+                      "nombre": "series",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 4.8,
+                      "revisado": "2026-10-20T18:29:55+00:00"
+                    },
+                    {
+                      "nombre": "series",
+                      "estado": "ok",
+                      "causas": [],
+                      "detalle": null,
+                      "version": "0.1.0",
+                      "latencia_ms": 5.2,
+                      "revisado": "2026-10-20T18:29:45+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "historial"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<historial><servicio>series</servicio><sondeos><sondeo><nombre>series</nombre><estado>degradado</estado><causas><causa>postgresql</causa></causas><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></sondeo><sondeo><nombre>series</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.8</latencia_ms><revisado>2026-10-20T18:29:55+00:00</revisado></sondeo><sondeo><nombre>series</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.2</latencia_ms><revisado>2026-10-20T18:29:45+00:00</revisado></sondeo></sondeos></historial>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "No existe ese servicio"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          }
+        }
+      }
+    }
+  }
+}

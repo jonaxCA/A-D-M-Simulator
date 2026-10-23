@@ -31,6 +31,8 @@ def crear_app(nombre, contrato, registrar_rutas=None):
             respuesta.headers["Vary"] = "Origin"
             respuesta.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-Correlation-ID"
             respuesta.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            # Sin esto, el navegador no deja que la consola lea el X-Correlation-ID.
+            respuesta.headers["Access-Control-Expose-Headers"] = "X-Correlation-ID"
         usuario = getattr(g, "usuario", {}).get("sub", "-")
         app.logger.info("%s %s %s %.1fms usuario=%s id=%s", request.method,
                         request.path, respuesta.status_code, ms, usuario,

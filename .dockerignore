@@ -11,3 +11,6 @@
 venv/
 **/*.sqlite
 **/*.log
+# Ninguna imagen los usa; sin ellos cada build le manda menos a Docker.
+evidencias/
+datos/

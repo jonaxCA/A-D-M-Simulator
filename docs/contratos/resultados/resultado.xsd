@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- El resultado de una corrida completada (raíz <resultado>), de
+     GET /api/v1/runs/{id}/results del servicio resultados. Las rutas .../curves y
+     .../indicators regresan partes de este mismo documento (<serie> y <resumen>).
+     PostgreSQL guarda resumen y serie en jsonb, que no conserva el orden de las
+     claves: por eso los campos van en xs:all. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:include schemaLocation="../comun/tipos.xsd"/>
+
+  <!-- El valor de un parámetro en la trazabilidad: un número, o un objeto
+       (letalidad por grupo de edad, capas de contacto, población sin edad). -->
+  <xs:complexType name="ValorLibre" mixed="true">
+    <xs:sequence>
+      <xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:anyAttribute processContents="skip"/>
+  </xs:complexType>
+
+  <xs:complexType name="Corrida">
+    <xs:all>
+      <xs:element name="id" type="Entero"/>
+      <xs:element name="scenario_version_id" type="Entero"/>
+      <xs:element name="scenario_id" type="Entero"/>
+      <xs:element name="version_number" type="Entero"/>
+      <xs:element name="scenario_name" type="xs:string"/>
+      <xs:element name="disease_name" type="xs:string"/>
+      <xs:element name="region_name" type="xs:string"/>
+      <xs:element name="seed" type="Entero"/>
+      <xs:element name="population_size" type="Entero"/>
+      <xs:element name="horizon_days" type="Entero"/>
+      <xs:element name="finished_at" type="xs:dateTime"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="GrupoEdad">
+    <xs:all>
+      <xs:element name="grupo" type="xs:string"/>
+      <xs:element name="poblacion" type="Entero"/>
+      <xs:element name="casos" type="Entero"/>
+      <xs:element name="fallecimientos" type="Entero"/>
+      <xs:element name="vacunados_protegidos" type="Entero"/>
+      <xs:element name="dosis_aplicadas" type="Entero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Resumen">
+    <xs:all>
+      <xs:element name="casos_acumulados" type="Entero"/>
+      <xs:element name="casos_activos_final" type="Entero"/>
+      <xs:element name="pico_casos_activos" type="Entero"/>
+      <xs:element name="dia_pico" type="Entero"/>
+      <xs:element name="pico_nuevos_casos" type="Entero"/>
+      <xs:element name="dia_pico_nuevos_casos" type="Entero"/>
+      <xs:element name="hospitalizaciones" type="Entero"/>
+      <xs:element name="pico_hospitalizados" type="Entero"/>
+      <xs:element name="dia_pico_hospitalizados" type="Entero"/>
+      <xs:element name="fallecimientos" type="Entero"/>
+      <xs:element name="tasa_ataque" type="Numero"/>
+      <xs:element name="vacunados_protegidos" type="Entero"/>
+      <xs:element name="dosis_aplicadas" type="Entero"/>
+      <xs:element name="desglose_por_grupo">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="grupo_edad" type="GrupoEdad" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- Un día de la simulación. -->
+  <xs:complexType name="Punto">
+    <xs:all>
+      <xs:element name="dia" type="Entero"/>
+      <xs:element name="S" type="Entero"/>
+      <xs:element name="E" type="Entero"/>
+      <xs:element name="I" type="Entero"/>
+      <xs:element name="R" type="Entero"/>
+      <xs:element name="H" type="Entero"/>
+      <xs:element name="D" type="Entero"/>
+      <xs:element name="V" type="Entero"/>
+      <xs:element name="casos_activos" type="Entero"/>
+      <xs:element name="nuevos_casos" type="Entero"/>
+      <xs:element name="nuevas_hospitalizaciones" type="Entero"/>
+      <xs:element name="nuevas_defunciones" type="Entero"/>
+      <xs:element name="dosis_aplicadas" type="Entero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Serie">
+    <xs:sequence>
+      <xs:element name="punto" type="Punto" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Parametro">
+    <xs:all>
+      <xs:element name="parametro" type="xs:string"/>
+      <xs:element name="valor" type="ValorLibre"/>
+      <xs:element name="fuente" type="TextoONulo"/>
+      <xs:element name="estado" type="xs:string"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:element name="resultado">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="aviso" type="xs:string"/>
+        <xs:element name="simplificaciones">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="simplificacion" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="corrida" type="Corrida"/>
+        <xs:element name="engine_version" type="xs:string"/>
+        <xs:element name="scenario_checksum" type="TextoONulo"/>
+        <xs:element name="resumen" type="Resumen"/>
+        <xs:element name="serie" type="Serie"/>
+        <xs:element name="trazabilidad">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="parametro" type="Parametro" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

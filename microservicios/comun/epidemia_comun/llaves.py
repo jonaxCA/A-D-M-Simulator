@@ -29,6 +29,10 @@ def revocado(jti):
     return f"jwt:revoked:{jti}"
 
 
+def captcha(captcha_id):
+    return f"captcha:{captcha_id}"
+
+
 def candado_corrida(version):
     return f"lock:corrida:{version}"
 
@@ -43,6 +47,10 @@ def cache(servicio, clave):
 
 def lote(lote_id):
     return f"sync:lote:{lote_id}"
+
+
+def candado_lote(lote_id):
+    return f"sync:lote:{lote_id}:candado"
 
 
 def salud(servicio):

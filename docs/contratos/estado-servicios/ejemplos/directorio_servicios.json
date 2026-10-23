@@ -1,0 +1,238 @@
+{
+  "servicios": [
+    {
+      "nombre": "auth",
+      "dominio": "identidad",
+      "puerto": 5201,
+      "url": "http://localhost:5201",
+      "docs": "http://localhost:5201/docs",
+      "openapi": "http://localhost:5201/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "sesiones",
+      "dominio": "identidad",
+      "puerto": 5202,
+      "url": "http://localhost:5202",
+      "docs": "http://localhost:5202/docs",
+      "openapi": "http://localhost:5202/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "usuarios",
+      "dominio": "identidad",
+      "puerto": 5203,
+      "url": "http://localhost:5203",
+      "docs": "http://localhost:5203/docs",
+      "openapi": "http://localhost:5203/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "roles",
+      "dominio": "identidad",
+      "puerto": 5204,
+      "url": "http://localhost:5204",
+      "docs": "http://localhost:5204/docs",
+      "openapi": "http://localhost:5204/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "enfermedades",
+      "dominio": "catalogos",
+      "puerto": 5211,
+      "url": "http://localhost:5211",
+      "docs": "http://localhost:5211/docs",
+      "openapi": "http://localhost:5211/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "parametros",
+      "dominio": "catalogos",
+      "puerto": 5212,
+      "url": "http://localhost:5212",
+      "docs": "http://localhost:5212/docs",
+      "openapi": "http://localhost:5212/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "regiones",
+      "dominio": "catalogos",
+      "puerto": 5213,
+      "url": "http://localhost:5213",
+      "docs": "http://localhost:5213/docs",
+      "openapi": "http://localhost:5213/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "poblacion",
+      "dominio": "catalogos",
+      "puerto": 5214,
+      "url": "http://localhost:5214",
+      "docs": "http://localhost:5214/docs",
+      "openapi": "http://localhost:5214/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "tipos-intervencion",
+      "dominio": "catalogos",
+      "puerto": 5215,
+      "url": "http://localhost:5215",
+      "docs": "http://localhost:5215/docs",
+      "openapi": "http://localhost:5215/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "casos",
+      "dominio": "vigilancia",
+      "puerto": 5221,
+      "url": "http://localhost:5221",
+      "docs": "http://localhost:5221/docs",
+      "openapi": "http://localhost:5221/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "sincronizacion",
+      "dominio": "vigilancia",
+      "puerto": 5222,
+      "url": "http://localhost:5222",
+      "docs": "http://localhost:5222/docs",
+      "openapi": "http://localhost:5222/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "escenarios",
+      "dominio": "escenarios",
+      "puerto": 5231,
+      "url": "http://localhost:5231",
+      "docs": "http://localhost:5231/docs",
+      "openapi": "http://localhost:5231/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "intervenciones",
+      "dominio": "escenarios",
+      "puerto": 5232,
+      "url": "http://localhost:5232",
+      "docs": "http://localhost:5232/docs",
+      "openapi": "http://localhost:5232/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "aprobacion",
+      "dominio": "escenarios",
+      "puerto": 5233,
+      "url": "http://localhost:5233",
+      "docs": "http://localhost:5233/docs",
+      "openapi": "http://localhost:5233/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "validacion",
+      "dominio": "escenarios",
+      "puerto": 5234,
+      "url": "http://localhost:5234",
+      "docs": "http://localhost:5234/docs",
+      "openapi": "http://localhost:5234/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "escenarios-xml",
+      "dominio": "escenarios",
+      "puerto": 5235,
+      "url": "http://localhost:5235",
+      "docs": "http://localhost:5235/docs",
+      "openapi": "http://localhost:5235/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "corridas",
+      "dominio": "simulacion",
+      "puerto": 5241,
+      "url": "http://localhost:5241",
+      "docs": "http://localhost:5241/docs",
+      "openapi": "http://localhost:5241/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "simulador",
+      "dominio": "simulacion",
+      "puerto": 5242,
+      "url": "http://localhost:5242",
+      "docs": "http://localhost:5242/docs",
+      "openapi": "http://localhost:5242/openapi.json",
+      "version": null
+    },
+    {
+      "nombre": "resultados",
+      "dominio": "simulacion",
+      "puerto": 5243,
+      "url": "http://localhost:5243",
+      "docs": "http://localhost:5243/docs",
+      "openapi": "http://localhost:5243/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "comparacion",
+      "dominio": "simulacion",
+      "puerto": 5244,
+      "url": "http://localhost:5244",
+      "docs": "http://localhost:5244/docs",
+      "openapi": "http://localhost:5244/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "pareto",
+      "dominio": "simulacion",
+      "puerto": 5245,
+      "url": "http://localhost:5245",
+      "docs": "http://localhost:5245/docs",
+      "openapi": "http://localhost:5245/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "indicadores",
+      "dominio": "analitica",
+      "puerto": 5251,
+      "url": "http://localhost:5251",
+      "docs": "http://localhost:5251/docs",
+      "openapi": "http://localhost:5251/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "series",
+      "dominio": "analitica",
+      "puerto": 5252,
+      "url": "http://localhost:5252",
+      "docs": "http://localhost:5252/docs",
+      "openapi": "http://localhost:5252/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "zonas",
+      "dominio": "analitica",
+      "puerto": 5253,
+      "url": "http://localhost:5253",
+      "docs": "http://localhost:5253/docs",
+      "openapi": "http://localhost:5253/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "notificaciones",
+      "dominio": "plataforma",
+      "puerto": 5261,
+      "url": "http://localhost:5261",
+      "docs": "http://localhost:5261/docs",
+      "openapi": "http://localhost:5261/openapi.json",
+      "version": "0.1.0"
+    },
+    {
+      "nombre": "estado-servicios",
+      "dominio": "plataforma",
+      "puerto": 5262,
+      "url": "http://localhost:5262",
+      "docs": "http://localhost:5262/docs",
+      "openapi": "http://localhost:5262/openapi.json",
+      "version": "0.1.0"
+    }
+  ]
+}

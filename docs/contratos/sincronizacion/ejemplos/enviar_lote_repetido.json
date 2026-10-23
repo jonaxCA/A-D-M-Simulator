@@ -1,0 +1,28 @@
+{
+  "batch_id": "0b6f5a53-1d1f-4f52-8a0a-5d0a4a0e9c11",
+  "device_id": 3,
+  "recibido_en": "2026-10-12T10:00:00+00:00",
+  "total": 2,
+  "creados": 1,
+  "duplicados": 0,
+  "rechazados": 1,
+  "resultados": [
+    {
+      "indice": 0,
+      "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+      "resultado": "creado",
+      "case_id": 41,
+      "errores": []
+    },
+    {
+      "indice": 1,
+      "local_uuid": "8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77",
+      "resultado": "rechazado",
+      "case_id": null,
+      "errores": [
+        "Ese municipio no está en el catálogo de Nuevo León."
+      ]
+    }
+  ],
+  "repetido": true
+}

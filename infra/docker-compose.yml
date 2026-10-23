@@ -1,5 +1,21 @@
 name: epidemia
 
+# Parte común de los servicios. Cada uno se construye con la raíz del repositorio como
+# contexto y su propio Dockerfile; el HEALTHCHECK a /health sale del Dockerfile.
+# Las contraseñas y JWT_SECRET_KEY van vacías por defecto para que `up redis` no las exija;
+# el servicio que arranca sin ellas falla con un mensaje claro. Las llena
+# `python infra/genera_env.py`.
+x-servicio-base: &servicio-base
+  restart: unless-stopped
+
+# Todos los Dockerfile parten de epidemia/base (infra/docker/base.Dockerfile). Con
+# additional_contexts el compose construye primero el servicio base y nunca la busca en
+# Docker Hub.
+x-construye: &construye
+  context: ..
+  additional_contexts:
+    epidemia/base: service:base
+
 services:
   redis:
     image: redis:7.4-alpine
@@ -30,5 +46,589 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # PostgreSQL con la base de la demostración. La primera vez (volumen vacío) la carga
+  # postgres/10-inicializa.sh: dump, semillas, permisos del monolito y la contraseña de cada
+  # rol svc_*. Solo en 127.0.0.1, para el monolito y psql; los servicios lo ven como postgres.
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_DB: ${POSTGRES_DB:-simulador_epidemico}
+      EPIDEMIA_APP_PASSWORD: ${EPIDEMIA_APP_PASSWORD:-}
+      DB_PASSWORD_APROBACION: ${DB_PASSWORD_APROBACION:-}
+      DB_PASSWORD_AUTH: ${DB_PASSWORD_AUTH:-}
+      DB_PASSWORD_CASOS: ${DB_PASSWORD_CASOS:-}
+      DB_PASSWORD_COMPARACION: ${DB_PASSWORD_COMPARACION:-}
+      DB_PASSWORD_CORRIDAS: ${DB_PASSWORD_CORRIDAS:-}
+      DB_PASSWORD_ENFERMEDADES: ${DB_PASSWORD_ENFERMEDADES:-}
+      DB_PASSWORD_ESCENARIOS: ${DB_PASSWORD_ESCENARIOS:-}
+      DB_PASSWORD_ESCENARIOS_XML: ${DB_PASSWORD_ESCENARIOS_XML:-}
+      DB_PASSWORD_ESTADO_SERVICIOS: ${DB_PASSWORD_ESTADO_SERVICIOS:-}
+      DB_PASSWORD_INDICADORES: ${DB_PASSWORD_INDICADORES:-}
+      DB_PASSWORD_INTERVENCIONES: ${DB_PASSWORD_INTERVENCIONES:-}
+      DB_PASSWORD_NOTIFICACIONES: ${DB_PASSWORD_NOTIFICACIONES:-}
+      DB_PASSWORD_PARAMETROS: ${DB_PASSWORD_PARAMETROS:-}
+      DB_PASSWORD_PARETO: ${DB_PASSWORD_PARETO:-}
+      DB_PASSWORD_POBLACION: ${DB_PASSWORD_POBLACION:-}
+      DB_PASSWORD_REGIONES: ${DB_PASSWORD_REGIONES:-}
+      DB_PASSWORD_RESULTADOS: ${DB_PASSWORD_RESULTADOS:-}
+      DB_PASSWORD_ROLES: ${DB_PASSWORD_ROLES:-}
+      DB_PASSWORD_SERIES: ${DB_PASSWORD_SERIES:-}
+      DB_PASSWORD_SESIONES: ${DB_PASSWORD_SESIONES:-}
+      DB_PASSWORD_SIMULADOR: ${DB_PASSWORD_SIMULADOR:-}
+      DB_PASSWORD_SINCRONIZACION: ${DB_PASSWORD_SINCRONIZACION:-}
+      DB_PASSWORD_TIPOS_INTERVENCION: ${DB_PASSWORD_TIPOS_INTERVENCION:-}
+      DB_PASSWORD_USUARIOS: ${DB_PASSWORD_USUARIOS:-}
+      DB_PASSWORD_VALIDACION: ${DB_PASSWORD_VALIDACION:-}
+      DB_PASSWORD_ZONAS: ${DB_PASSWORD_ZONAS:-}
+    ports:
+      - "127.0.0.1:${POSTGRES_PUERTO_LOCAL:-5433}:5432"
+    volumes:
+      - postgres-datos:/var/lib/postgresql/data
+      - ../datos/postgres:/datos:ro
+      - ./postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # Por TCP: mientras corre la carga inicial, PostgreSQL solo escucha en su socket local,
+      # así que sale healthy hasta que la base está completa.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+    restart: unless-stopped
+
+  base:
+    image: epidemia/base
+    build:
+      context: ..
+      dockerfile: infra/docker/base.Dockerfile
+    deploy:
+      replicas: 0
+
+  # --- Identidad (perfil identidad) ---------------------------------------------------------
+  auth:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/auth/Dockerfile
+    profiles: [identidad]
+    ports:
+      - "5201:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_AUTH:-postgresql://svc_auth:${DB_PASSWORD_AUTH:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  sesiones:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/sesiones/Dockerfile
+    profiles: [identidad]
+    ports:
+      - "5202:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_SESIONES:-postgresql://svc_sesiones:${DB_PASSWORD_SESIONES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  usuarios:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/usuarios/Dockerfile
+    profiles: [identidad]
+    ports:
+      - "5203:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_USUARIOS:-postgresql://svc_usuarios:${DB_PASSWORD_USUARIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  roles:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/roles/Dockerfile
+    profiles: [identidad]
+    ports:
+      - "5204:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_ROLES:-postgresql://svc_roles:${DB_PASSWORD_ROLES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # --- Catálogos (perfil catalogos) ---------------------------------------------------------
+  enfermedades:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/enfermedades/Dockerfile
+    profiles: [catalogos]
+    ports:
+      - "5211:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_ENFERMEDADES:-postgresql://svc_enfermedades:${DB_PASSWORD_ENFERMEDADES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  parametros:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/parametros/Dockerfile
+    profiles: [catalogos]
+    ports:
+      - "5212:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_PARAMETROS:-postgresql://svc_parametros:${DB_PASSWORD_PARAMETROS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  regiones:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/regiones/Dockerfile
+    profiles: [catalogos]
+    ports:
+      - "5213:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_REGIONES:-postgresql://svc_regiones:${DB_PASSWORD_REGIONES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  poblacion:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/poblacion/Dockerfile
+    profiles: [catalogos]
+    ports:
+      - "5214:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_POBLACION:-postgresql://svc_poblacion:${DB_PASSWORD_POBLACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  tipos-intervencion:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/tipos_intervencion/Dockerfile
+    profiles: [catalogos]
+    ports:
+      - "5215:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_TIPOS_INTERVENCION:-postgresql://svc_tipos_intervencion:${DB_PASSWORD_TIPOS_INTERVENCION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # --- Vigilancia (perfil vigilancia) -------------------------------------------------------
+  casos:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/casos/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5221:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_CASOS:-postgresql://svc_casos:${DB_PASSWORD_CASOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  sincronizacion:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/sincronizacion/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5222:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_SINCRONIZACION:-postgresql://svc_sincronizacion:${DB_PASSWORD_SINCRONIZACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SYNC_LOTE_TTL_SECONDS: ${SYNC_LOTE_TTL_SECONDS:-604800}
+      SERVICIO_CASOS_URL: http://casos:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      casos:
+        condition: service_healthy
+
+  # --- Escenarios (perfil escenarios) -------------------------------------------------------
+  validacion:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/validacion/Dockerfile
+    profiles: [escenarios]
+    ports:
+      - "5234:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_VALIDACION:-postgresql://svc_validacion:${DB_PASSWORD_VALIDACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  escenarios:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/escenarios/Dockerfile
+    profiles: [escenarios]
+    ports:
+      - "5231:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_ESCENARIOS:-postgresql://svc_escenarios:${DB_PASSWORD_ESCENARIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SERVICIO_VALIDACION_URL: http://validacion:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      validacion:
+        condition: service_healthy
+  intervenciones:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/intervenciones/Dockerfile
+    profiles: [escenarios]
+    ports:
+      - "5232:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_INTERVENCIONES:-postgresql://svc_intervenciones:${DB_PASSWORD_INTERVENCIONES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  aprobacion:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/aprobacion/Dockerfile
+    profiles: [escenarios]
+    ports:
+      - "5233:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_APROBACION:-postgresql://svc_aprobacion:${DB_PASSWORD_APROBACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SERVICIO_VALIDACION_URL: http://validacion:8000
+      # Best-effort: si notificaciones no está arriba (perfil plataforma), la aprobación se
+      # hace igual y solo queda un aviso en el log.
+      SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      validacion:
+        condition: service_healthy
+  escenarios-xml:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/escenarios_xml/Dockerfile
+    profiles: [escenarios]
+    ports:
+      - "5235:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_ESCENARIOS_XML:-postgresql://svc_escenarios_xml:${DB_PASSWORD_ESCENARIOS_XML:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SERVICIO_VALIDACION_URL: http://validacion:8000
+      SERVICIO_ESCENARIOS_URL: http://escenarios:8000
+      SERVICIO_INTERVENCIONES_URL: http://intervenciones:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      validacion:
+        condition: service_healthy
+      escenarios:
+        condition: service_healthy
+      intervenciones:
+        condition: service_healthy
+
+  # --- Simulación (perfil simulacion) -------------------------------------------------------
+  corridas:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/corridas/Dockerfile
+    profiles: [simulacion]
+    ports:
+      - "5241:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_CORRIDAS:-postgresql://svc_corridas:${DB_PASSWORD_CORRIDAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  simulador:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/simulador/Dockerfile
+    profiles: [simulacion]
+    ports:
+      - "5242:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_SIMULADOR:-postgresql://svc_simulador:${DB_PASSWORD_SIMULADOR:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # Avisa al terminar o fallar una corrida. Best-effort: si notificaciones no está arriba
+      # (perfil plataforma), la corrida termina igual y solo queda un aviso en el log.
+      SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  resultados:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/resultados/Dockerfile
+    profiles: [simulacion]
+    ports:
+      - "5243:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_RESULTADOS:-postgresql://svc_resultados:${DB_PASSWORD_RESULTADOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  comparacion:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/comparacion/Dockerfile
+    profiles: [simulacion]
+    ports:
+      - "5244:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_COMPARACION:-postgresql://svc_comparacion:${DB_PASSWORD_COMPARACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  pareto:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/pareto/Dockerfile
+    profiles: [simulacion]
+    ports:
+      - "5245:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_PARETO:-postgresql://svc_pareto:${DB_PASSWORD_PARETO:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # --- Analítica (perfil analitica) ---------------------------------------------------------
+  indicadores:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/indicadores/Dockerfile
+    profiles: [analitica]
+    ports:
+      - "5251:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_INDICADORES:-postgresql://svc_indicadores:${DB_PASSWORD_INDICADORES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  series:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/series/Dockerfile
+    profiles: [analitica]
+    ports:
+      - "5252:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_SERIES:-postgresql://svc_series:${DB_PASSWORD_SERIES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  zonas:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/zonas/Dockerfile
+    profiles: [analitica]
+    ports:
+      - "5253:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_ZONAS:-postgresql://svc_zonas:${DB_PASSWORD_ZONAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # --- Plataforma (perfil plataforma) -------------------------------------------------------
+  notificaciones:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/notificaciones/Dockerfile
+    profiles: [plataforma]
+    ports:
+      - "5261:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_NOTIFICACIONES:-postgresql://svc_notificaciones:${DB_PASSWORD_NOTIFICACIONES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  # Sondea el /health de los 26 por la red interna y no depende de ellos: el que no está
+  # arriba aparece caído. URL_PUBLICA es la que da su directorio a las apps y a la consola
+  # (ver infra/.env.example).
+  estado-servicios:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/estado_servicios/Dockerfile
+    profiles: [plataforma]
+    ports:
+      - "5262:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_ESTADO_SERVICIOS:-postgresql://svc_estado_servicios:${DB_PASSWORD_ESTADO_SERVICIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      URL_SONDEO: "http://{servicio}:8000"
+      URL_PUBLICA: ${URL_PUBLICA:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  # La consola es una página: el navegador llama a cada servicio con la URL que da el
+  # directorio de estado-servicios, y cada servicio solo abre CORS para CONSOLE_ORIGIN.
+  # Ábrela en esa misma dirección (por omisión, http://localhost:5260).
+  consola:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/consola/Dockerfile
+    profiles: [plataforma]
+    ports:
+      - "5260:8000"
+    environment:
+      URL_DIRECTORIO: ${URL_DIRECTORIO:-http://localhost:5262}
+
 volumes:
   redis-datos:
+  postgres-datos:

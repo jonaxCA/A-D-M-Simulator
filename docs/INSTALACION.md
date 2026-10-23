@@ -447,29 +447,58 @@ done
 - Para apagarlos: `kill %1 %2 …` (o `pkill -f waitress-serve`), y
   `docker rm -f epidemia-pg` y `docker compose -f infra/docker-compose.yml stop redis`.
 
-### 3. Alternativa: un servicio en su contenedor
+### 3. Alternativa: los servicios en contenedores
 
-Cada servicio tiene su `Dockerfile` (`python:3.12-slim`, usuario sin privilegios, `waitress`
-en el puerto 8000 y `HEALTHCHECK` a `/health`). El contexto es la raíz del repositorio,
-porque copia `backend_web/`, `procesamiento/` y `microservicios/comun/`. Las evidencias no
-usaron este camino.
-
-| Servicio | Puerto | Servicio | Puerto |
-|---|---|---|---|
-| `auth` | 5201 | `regiones` | 5213 |
-| `sesiones` | 5202 | `poblacion` | 5214 |
-| `usuarios` | 5203 | `tipos-intervencion` | 5215 |
-| `roles` | 5204 | `indicadores` | 5251 |
-| `enfermedades` | 5211 | `series` | 5252 |
-| `parametros` | 5212 | `zonas` | 5253 |
+Todos los `Dockerfile` parten de la imagen `epidemia/base` (`infra/docker/base.Dockerfile`):
+Python 3.12, las dependencias y el código que comparten (`backend_web/`, `procesamiento/` y
+`microservicios/comun/`), con usuario sin privilegios. Cada servicio solo agrega su carpeta y
+su contrato, arranca `waitress` en el puerto 8000 y tiene `HEALTHCHECK` a `/health`. El compose
+construye la base antes que los servicios, y cada dominio es un perfil. Desde cero:
 
 ```bash
+python infra/genera_env.py                    # crea infra/.env y llena las contraseñas vacías
+docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait
+docker compose -f infra/docker-compose.yml ps # todo debe salir "healthy"
+```
+
+`genera_env.py` no imprime ninguna contraseña ni cambia las que ya tienen valor. Para levantar
+solo un dominio, cambia `'*'` por su perfil (`--profile catalogos`); sin `--profile` solo
+arrancan PostgreSQL y Redis.
+
+| Perfil | Servicios |
+|---|---|
+| `identidad` | `auth`, `sesiones`, `usuarios`, `roles` |
+| `catalogos` | `enfermedades`, `parametros`, `regiones`, `poblacion`, `tipos-intervencion` |
+| `vigilancia` | `casos`, `sincronizacion` |
+| `escenarios` | `escenarios`, `intervenciones`, `aprobacion`, `validacion`, `escenarios-xml` |
+| `simulacion` | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto` |
+| `analitica` | `indicadores`, `series`, `zonas` |
+| `plataforma` | `notificaciones`, `estado-servicios`, `consola` |
+
+**La base.** El compose trae su propio PostgreSQL 16. La primera vez, con el volumen vacío,
+`infra/postgres/10-inicializa.sh` carga el dump (con todas las migraciones), las dos semillas y
+los permisos de `epidemia_app`, y pone la contraseña de cada rol `svc_*` desde
+`DB_PASSWORD_<SERVICIO>`. No toca la base de tu máquina. Queda en `127.0.0.1:5433`, así que el
+monolito también puede usarla:
+
+```
+DATABASE_URL=postgresql://epidemia_app:<EPIDEMIA_APP_PASSWORD de infra/.env>@127.0.0.1:5433/simulador_epidemico
+```
+
+Cada servicio se conecta con su rol. Para apuntar uno a otra base, define su
+`DATABASE_URL_<SERVICIO>` completo (ver `infra/.env.example`). Una migración nueva entra en un
+volumen ya cargado corriéndola con `psql` contra el puerto 5433; `down -v` borra la base y la
+vuelve a cargar desde cero en el siguiente `up`.
+
+Con todo arriba (los 26 servicios, PostgreSQL y Redis) son unos 1,100 MiB: de 32 a 51 MiB por
+servicio, 83 MiB PostgreSQL y 6 MiB Redis (medido el 21 de octubre).
+
+Un servicio suelto, sin compose, necesita antes la imagen base:
+
+```bash
+docker build -f infra/docker/base.Dockerfile -t epidemia/base .
 docker build -f microservicios/regiones/Dockerfile -t epidemia/regiones .
-docker run --rm -p 5213:8000 --add-host=host.docker.internal:host-gateway \
-  -e DATABASE_URL="postgresql://svc_regiones:<contraseña del rol>@host.docker.internal:5433/simulador_epidemico" \
-  -e REDIS_URL="redis://:<REDIS_PASSWORD>@host.docker.internal:6380/0" \
-  -e JWT_SECRET_KEY="<la misma cadena de los demás>" \
-  epidemia/regiones
+docker run --rm -p 5213:8000 --add-host=host.docker.internal:host-gateway   -e DATABASE_URL="postgresql://svc_regiones:<contraseña del rol>@host.docker.internal:5433/simulador_epidemico"   -e REDIS_URL="redis://:<REDIS_PASSWORD>@host.docker.internal:6380/0"   -e JWT_SECRET_KEY="<la misma cadena de los demás>"   epidemia/regiones
 ```
 
 La carpeta de `tipos-intervencion` es `microservicios/tipos_intervencion/`.
@@ -481,6 +510,14 @@ for p in 5201 5202 5203 5204 5211 5212 5213 5214 5215 5251 5252 5253; do
   curl -s "http://127.0.0.1:$p/health?format=json"; echo
 done
 # cada uno: {"servicio": "...", "estado": "ok", "postgresql": true, "redis": true}
+```
+
+Con `estado-servicios` arriba, una sola consulta trae la salud de los 26 (los que no están
+arriba salen `caido`), y su directorio da la URL de cada uno:
+
+```bash
+curl -s "http://127.0.0.1:5262/api/v1/services/health?format=json"
+curl -s "http://127.0.0.1:5262/api/v1/services?format=json"
 ```
 
 Para las rutas con candado, inicia sesión con `auth`:
@@ -500,6 +537,15 @@ Swagger queda en `http://localhost:<puerto>/docs`. Ábrelo con `localhost`, no c
 bloquea "Try it out". Pega el `access_token` en **Authorize** (sin `Bearer`). Para ver XML,
 deja `format` vacío y elige `application/xml` en **Media type**; para JSON, `format=json`.
 
+**La consola de pruebas** queda en `http://localhost:5260` (perfil `plataforma`). Ábrela con
+`localhost`, no con `127.0.0.1`: cada servicio abre CORS solo para `CONSOLE_ORIGIN`, que en el
+compose es `http://localhost:5260`. Tiene el panel de salud de los 26, el inicio de sesión
+(con captcha), Swagger de cada servicio con el token ya puesto y un probador que también
+exporta la petición como `curl`. La pestaña **Recorrido** tiene los pasos del guion de
+aceptación listos para correr en orden. El token vive solo en la memoria de la página:
+recargarla cierra la sesión de la consola. Swagger UI se descarga de unpkg.com la primera vez que abres
+su pestaña. Detalles en `microservicios/consola/README.md`.
+
 ### 5. Pruebas de los microservicios
 
 No necesitan Docker ni base: usan fakeredis y la base simulada.
@@ -510,6 +556,20 @@ pip install -r backend_web/requerimientos.txt -r procesamiento/requerimientos.tx
 export PYTHONPATH="$PWD:$PWD/microservicios/comun"
 python -m pytest microservicios -q
 ```
+
+Las de integración (`microservicios/pruebas_integracion/contenedores/`) corren contra los
+contenedores, y ahí se saltan. Se corren con:
+
+```bash
+python infra/pruebas_integracion.py
+```
+
+El script levanta desde cero un compose aparte (proyecto `epidemia-pruebas`, con un segundo
+`simulador`), sobre la base `simulador_epidemico_pruebas` y con sus propios volúmenes de
+PostgreSQL y Redis: nunca toca los de la demostración. Corre las pruebas y lo borra
+(`--conservar` lo deja arriba). Sus contraseñas, aleatorias, quedan en `infra/.env.pruebas`, que
+no se sube. Publica los mismos puertos que el compose de la demostración, así que ese tiene que
+estar abajo; el script lo revisa antes de empezar.
 
 ---
 
@@ -663,11 +723,17 @@ costo y frontera de Pareto para comparar escenarios. No depende de Flask ni de l
 base, y no trae valores epidemiológicos ni costos por defecto: cada parámetro debe
 venir con su fuente o marcado como supuesto.
 
+Desde la raíz del repositorio:
+
 ```bash
-cd procesamiento
-python -m motor                              # ejemplo A/B/C/D con frontera de Pareto
-python -m unittest discover -s tests -t .    # pruebas del motor
+python -m procesamiento.motor               # ejemplo A/B/C/D con frontera de Pareto
+python -m pytest procesamiento/tests        # pruebas del motor
 ```
+
+El motor se importa siempre como `procesamiento.motor`, también en las pruebas y en los
+microservicios. `import motor` solo funciona dentro de `procesamiento/` y carga una segunda
+copia, con otras clases de excepción: un `except EscenarioInvalido` de un lado no atrapa lo
+que lanza el otro.
 
 Los números del ejemplo son **supuestos ilustrativos**, no datos de Nuevo León.
 

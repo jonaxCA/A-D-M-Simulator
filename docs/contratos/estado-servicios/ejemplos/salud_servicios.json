@@ -1,0 +1,247 @@
+{
+  "resumen": {
+    "ok": 24,
+    "degradado": 1,
+    "caido": 1
+  },
+  "servicios": [
+    {
+      "nombre": "auth",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 3.1,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "sesiones",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 5.9,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "usuarios",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 4.3,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "roles",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 7.1,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "enfermedades",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 5.5,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "parametros",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 3.9,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "regiones",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 6.7,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "poblacion",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 5.1,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "tipos-intervencion",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 3.5,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "casos",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 6.3,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "sincronizacion",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 4.7,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "escenarios",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 3.1,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "intervenciones",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 5.9,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "aprobacion",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 4.3,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "validacion",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 7.1,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "escenarios-xml",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 5.5,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "corridas",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 3.9,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "simulador",
+      "estado": "caido",
+      "causas": [
+        "proceso"
+      ],
+      "detalle": "sin_conexion",
+      "version": null,
+      "latencia_ms": null,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "resultados",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 5.1,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "comparacion",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 3.5,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "pareto",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 6.3,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "indicadores",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 4.7,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "series",
+      "estado": "degradado",
+      "causas": [
+        "postgresql"
+      ],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 3.1,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "zonas",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 5.9,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "notificaciones",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 4.3,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "estado-servicios",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 7.1,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "batch_id": "0b6f5a53-1d1f-4f52-8a0a-5d0a4a0e9c11",
+  "device_id": 3,
+  "cases": [
+    {
+      "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+      "disease_id": 1,
+      "region_id": 10,
+      "report_date": "2026-10-01",
+      "onset_date": "2026-09-28",
+      "age": 34,
+      "sex": "F",
+      "latitude": 25.6866,
+      "longitude": -100.3161,
+      "test_result": "positivo",
+      "severity": "leve"
+    },
+    {
+      "local_uuid": "8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77",
+      "disease_id": 1,
+      "region_id": 999,
+      "report_date": "2026-10-02"
+    }
+  ]
+}

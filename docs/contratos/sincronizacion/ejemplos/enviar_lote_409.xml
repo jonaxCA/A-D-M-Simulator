@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<problem><type>about:blank</type><title>Conflict</title><status tipo="numero">409</status><detail>Ese lote ya se está procesando; intenta de nuevo.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/sync/cases</instance></problem>

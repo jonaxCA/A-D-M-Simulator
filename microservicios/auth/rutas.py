@@ -5,7 +5,7 @@ import uuid
 import jwt
 from flask import current_app, request
 
-from epidemia_comun import sesiones
+from epidemia_comun import llaves, sesiones
 from epidemia_comun.errores import ErrorAPI, respuesta_error
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.redis_compartido import RedisNoDisponible, requerido
@@ -18,10 +18,6 @@ ACCESS_TTL = 20 * 60
 # Lo mismo que la cookie del monolito; renovar no alarga la sesión.
 SESION_TTL = 8 * 60 * 60
 CAPTCHA_TTL = 300
-
-
-def llave_captcha(captcha_id):
-    return "captcha:" + captcha_id
 
 
 def _contexto(user_id):
@@ -40,7 +36,7 @@ def nuevo_captcha():
     a, b = secrets.randbelow(9) + 1, secrets.randbelow(9) + 1
     captcha_id = secrets.token_urlsafe(16)
     requerido("captcha_crear",
-              lambda r: r.set(llave_captcha(captcha_id), str(a + b), ex=CAPTCHA_TTL))
+              lambda r: r.set(llaves.captcha(captcha_id), str(a + b), ex=CAPTCHA_TTL))
     return {"captcha_id": captcha_id, "pregunta": "%d + %d" % (a, b),
             "expira": int(time.time()) + CAPTCHA_TTL}
 
@@ -49,8 +45,8 @@ def captcha_valido(captcha_id, respuesta):
     # Se borra al leerlo: cada captcha sirve para un solo intento.
     def operar(r):
         p = r.pipeline()
-        p.get(llave_captcha(captcha_id))
-        p.delete(llave_captcha(captcha_id))
+        p.get(llaves.captcha(captcha_id))
+        p.delete(llaves.captcha(captcha_id))
         return p.execute()[0]
 
     esperada = requerido("captcha_usar", operar)

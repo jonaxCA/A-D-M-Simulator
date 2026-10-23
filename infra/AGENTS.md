@@ -11,6 +11,11 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
 1. Todos los servicios parten de la imagen `epidemia/base` (`docker/base.Dockerfile`), con
    usuario no root. Una dependencia se agrega en la base, no en el `Dockerfile` de un
    servicio.
+   - El compose la construye primero: es el servicio `base`, con cero réplicas, y cada
+     servicio la pide con `additional_contexts` (`epidemia/base: service:base`). Así nunca
+     se busca en Docker Hub. No la publiques ahí.
+   - El `Dockerfile` de un servicio solo copia su carpeta y su contrato. Úsalo igual que los
+     demás, o el que genera `nuevo_servicio.py`.
 2. Cada servicio escucha en 8000 dentro de su contenedor y publica el puerto del catálogo
    (`docs/arquitectura/microservicios.md`). No inventes puertos.
 3. Cada servicio tiene `HEALTHCHECK` a `/health`, y sus dependencias van con
@@ -23,10 +28,20 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
    `noeviction`, para que no se expulsen sesiones ni revocaciones. Se publica solo en
    `127.0.0.1:6380`, para no chocar con Memurai. No le quites nada de eso; los servicios lo
    alcanzan como `redis:6379`.
-7. La base se inicializa con el dump, las semillas y las migraciones desde la 026, en ese
-   orden, igual que el Paso 2 de `docs/INSTALACION.md`.
+7. La base se inicializa con `postgres/10-inicializa.sh`, solo con el volumen vacío: el dump
+   (que trae todas las migraciones), las semillas y los permisos del monolito, igual que los
+   pasos 1 a 3 de `docs/INSTALACION.md`, y la contraseña de cada rol `svc_*`.
+   - Las contraseñas se leen del entorno con `\getenv`; nunca las pases por la línea de
+     comandos de `psql`.
+   - Un servicio nuevo necesita su `DB_PASSWORD_<SERVICIO>` en `postgres` y en su
+     `DATABASE_URL`, como los demás, y su rol en una migración.
 8. Las pruebas de integración usan su propio compose, sobre `simulador_epidemico_pruebas` y
    un Redis aparte. Nunca sobre la base de la demostración.
+   - Lo arma `pruebas_integracion.py`: proyecto `epidemia-pruebas` (otros volúmenes),
+     `POSTGRES_DB` en `.env.pruebas` y `docker-compose.pruebas.yml`, que solo agrega lo que
+     necesitan las pruebas (un segundo `simulador`).
+   - Por eso la base del compose sale de `POSTGRES_DB`: si agregas un servicio, su
+     `DATABASE_URL` termina en `/${POSTGRES_DB:-simulador_epidemico}` como los demás.
 9. Cada servicio tiene un perfil de dominio (`identidad`, `catalogos`, `vigilancia`,
    `escenarios`, `simulacion`, `analitica`, `plataforma`), para que nadie tenga que
    levantar los 28 contenedores en una máquina con poca memoria.
