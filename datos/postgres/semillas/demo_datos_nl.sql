@@ -84,16 +84,21 @@ ON CONFLICT (code) DO NOTHING;
 -- quien construye el escenario no sea quien lo autoriza (ver migracion 013).
 --   analista:      alex.cavazos   (rol ANALISTA)
 --   epidemiologa:  diana.flores   (rol EPIDEMIOLOGO)
---   password de ambos:  Epidemia2026!   (documentada tambien en README.md)
+-- La capturista es la cuenta de la app movil: captura casos y sincroniza
+-- lotes (servicios casos y sincronizacion); la web no le muestra escenarios.
+--   capturista:    karla.trevino  (rol CAPTURISTA)
+--   password de las tres:  Epidemia2026!   (documentada tambien en README.md)
 -- Mas abajo se le pone contrasena tambien a 'admin', que 010 crea con un
 -- marcador invalido a proposito.
 -- SOLO para el entorno local -- no usar este patron en un ambiente real.
 -- ---------------------------------------------------------------------------
 INSERT INTO users (username, email, password_hash, full_name, is_active)
-VALUES ('diana.flores', 'diana.flores@salud.nl.gob.mx', '$2b$12$KG2fXQLsEUcdBKZnRcyxOeZHSLcRciuzm2uW1vZCB/F7sR5PTSJZO',
+VALUES ('diana.flores', 'diana.flores@salud.nl.gob.mx', '$2b$12$5B4Q.4AvSCvRuh0owOryw.MzfZZkI6bXwFtzWobe4MZxUBuwoCWoq',
         'Diana Flores', TRUE),
-       ('alex.cavazos', 'alex.cavazos@salud.nl.gob.mx', '$2b$12$Qig7pP6lE2Qfmy7n1Bd0ruVnB2HYR.hMXOX0RUd.d51lkhfpiruum',
-        'Alex Cavazos', TRUE)
+       ('alex.cavazos', 'alex.cavazos@salud.nl.gob.mx', '$2b$12$1dWhF6l/JSUcHDwIBAo/N.yuvNRfKjxt6YeRS6UERbrkffdCbTPmS',
+        'Alex Cavazos', TRUE),
+       ('karla.trevino', 'karla.trevino@salud.nl.gob.mx', '$2b$12$0a.3jGJXhlhvG4iNiYp0MO8zO9CoUWIIpTM9328Ol8Yg2o/y7RvaS',
+        'Karla Treviño', TRUE)
 ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash;
 
 INSERT INTO user_roles (user_id, role_id)
@@ -106,6 +111,11 @@ SELECT u.id, r.id FROM users u CROSS JOIN roles r
 WHERE u.username = 'alex.cavazos' AND r.code = 'ANALISTA'
 ON CONFLICT DO NOTHING;
 
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id FROM users u CROSS JOIN roles r
+WHERE u.username = 'karla.trevino' AND r.code = 'CAPTURISTA'
+ON CONFLICT DO NOTHING;
+
 -- Cuenta de administracion. 010_datos_iniciales.sql la crea con el marcador
 -- invalido REEMPLAZAR_ANTES_DE_DESPLEGAR justamente para que el esquema nunca
 -- viaje con una contrasena por defecto que funcione. Aqui se le pone una real
@@ -113,7 +123,7 @@ ON CONFLICT DO NOTHING;
 -- sin este archivo, sigue sin poder entrar con esa cuenta.
 --   usuario:   admin
 --   password:  Admin2026!
-UPDATE users SET password_hash = '$2b$12$f2zg5oG41Qs53eR852nVQOnMG006ePsDWuyjjQixAxbTjrOgYIs0a' WHERE username = 'admin';
+UPDATE users SET password_hash = '$2b$12$kbWSzf2vq56pMAMToZCwuOlY8NztSZ9.2SeJyUlvU.eOXFvtAFfTe' WHERE username = 'admin';
 
 -- Red de seguridad: 010 ya le asigna el rol; esto solo cubre una base donde se
 -- haya perdido la asignacion.

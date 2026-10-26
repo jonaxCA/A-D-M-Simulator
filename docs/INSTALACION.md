@@ -276,6 +276,7 @@ cada una lo explica, y se pueden re-ejecutar con la misma semilla.
 |---|---|---|---|
 | `alex.cavazos` | `Epidemia2026!` | ANALISTA | Vigilancia, mapa, monitoreo y captura de casos |
 | `diana.flores` | `Epidemia2026!` | EPIDEMIOLOGO | Lo mismo por ahora |
+| `karla.trevino` | `Epidemia2026!` | CAPTURISTA | La cuenta de la app móvil: captura casos y sincroniza lotes (servicios `casos` y `sincronizacion`). En la web, tablero, mapa, monitoreo y captura de casos; sin escenarios ni simulaciones |
 | `admin` | `Admin2026!` | ADMINISTRADOR | Además, **Usuarios** y **Auditoría** |
 
 > Los dos primeros son personas distintas a propósito: la migración `013`
@@ -284,7 +285,11 @@ cada una lo explica, y se pueden re-ejecutar con la misma semilla.
 > enviar a revisión, aprobar) son parte del siguiente avance, así que hoy ambos
 > usuarios ven lo mismo en la interfaz.
 
-> Las tres contraseñas las pone `datos/postgres/semillas/demo_datos_nl.sql`, así que con los
+> Si tu base se cargó antes de que existiera `karla.trevino`, créala como `admin` en
+> **Usuarios** con el rol CAPTURISTA. No vuelvas a cargar `demo_datos_nl.sql` sobre una base
+> en uso: empieza vaciando casos, escenarios y corridas.
+
+> Las cuatro contraseñas las pone `datos/postgres/semillas/demo_datos_nl.sql`, así que con los
 > tres comandos del Paso 2 ya puedes entrar con cualquiera. No hay archivos
 > extra que correr.
 >
