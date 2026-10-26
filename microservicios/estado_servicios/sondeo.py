@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -64,9 +65,22 @@ def intervalo():
         return INTERVALO
 
 
-def url_publica(nombre):
-    # La que usan las apps y la consola desde fuera de Docker.
-    plantilla = os.environ.get("URL_PUBLICA") or "http://localhost:{puerto}"
+HOST_VALIDO = re.compile(r"^(\[[0-9A-Fa-f:.]+\]|[A-Za-z0-9.-]+)$")
+
+
+def host_de(cabecera):
+    """El host con que llegó la petición, sin el puerto («[::1]» conserva los corchetes).
+    Lo que no parezca un nombre o una IP se descarta."""
+    host = (cabecera or "").strip()
+    host = host[:host.find("]") + 1] if host.startswith("[") else host.rsplit(":", 1)[0]
+    return host if HOST_VALIDO.match(host) else None
+
+
+def url_publica(nombre, host=None):
+    # La que usan las apps y la consola desde fuera de Docker. Si URL_PUBLICA no está, sale del
+    # host con que preguntaron: el emulador de Android llega por 10.0.2.2 y un celular por la IP
+    # de la PC, y cada uno recibe direcciones que puede alcanzar.
+    plantilla = os.environ.get("URL_PUBLICA") or "http://%s:{puerto}" % (host or "localhost")
     return plantilla.format(servicio=nombre, puerto=SERVICIOS[nombre][1])
 
 

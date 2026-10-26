@@ -64,12 +64,18 @@ Además:
 
 | Variable          | Por defecto                 | Qué es |
 |-------------------|-----------------------------|--------|
-| `URL_PUBLICA`     | `http://localhost:{puerto}` | La URL que da el directorio a las apps y a la consola |
+| `URL_PUBLICA`     | `http://{host}:{puerto}`    | La URL que da el directorio a las apps y a la consola |
 | `URL_SONDEO`      | `http://127.0.0.1:{puerto}` | Dónde sondea; en el compose, `http://{servicio}:8000` |
 | `SONDEO_SEGUNDOS` | `10`                        | Cada cuánto sondea |
 
 En las dos URL, `{puerto}` se cambia por el puerto de cada servicio y `{servicio}`
 por su nombre.
+
+Sin `URL_PUBLICA`, el directorio arma cada URL con el host al que llegó la petición:
+la consola en `localhost` recibe `http://localhost:5201`, el emulador de Android (que ve la
+PC como `10.0.2.2`) recibe `http://10.0.2.2:5201` y un celular en la misma red recibe la IP
+de la PC. Un host que no es un nombre ni una IP se cambia por `localhost`. Con
+`URL_PUBLICA` fijada, manda ella: sirve si las apps entran por otra dirección.
 
 Su rol de PostgreSQL, `svc_estado_servicios` (migración 030), solo puede conectarse.
 

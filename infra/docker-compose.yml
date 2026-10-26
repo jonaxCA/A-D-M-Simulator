@@ -593,8 +593,8 @@ services:
       redis:
         condition: service_healthy
   # Sondea el /health de los 26 por la red interna y no depende de ellos: el que no está
-  # arriba aparece caído. URL_PUBLICA es la que da su directorio a las apps y a la consola
-  # (ver infra/.env.example).
+  # arriba aparece caído. Su directorio da a cada cliente las URL con el host por el que
+  # llegó, salvo que URL_PUBLICA diga otra cosa (ver infra/.env.example).
   estado-servicios:
     <<: *servicio-base
     build:

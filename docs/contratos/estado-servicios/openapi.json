@@ -15,7 +15,7 @@
       "get": {
         "summary": "Directorio de servicios",
         "operationId": "directorio_servicios",
-        "description": "Nombre, perfil del compose (`dominio`), puerto, URL, Swagger (`docs`) y contrato (`openapi`) de los 26, en el orden del catálogo. `version` es la del último sondeo; `null` si no se ha sondeado o no respondió. No sondea.",
+        "description": "Nombre, perfil del compose (`dominio`), puerto, URL, Swagger (`docs`) y contrato (`openapi`) de los 26, en el orden del catálogo. Cada URL lleva el host al que llegó la petición (la consola recibe `localhost`, el emulador de Android `10.0.2.2` y un celular la IP de la PC), salvo que `URL_PUBLICA` esté fijada. `version` es la del último sondeo; `null` si no se ha sondeado o no respondió. No sondea.",
         "responses": {
           "200": {
             "description": "Operación correcta",

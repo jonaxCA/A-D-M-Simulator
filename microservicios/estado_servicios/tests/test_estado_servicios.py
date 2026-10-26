@@ -84,6 +84,23 @@ def test_directorio_con_otra_url_publica(cliente, monkeypatch):
     assert sondeo.url_publica("auth") == "http://localhost:5201"
 
 
+@pytest.mark.parametrize("host,esperada", [
+    ("10.0.2.2:5262", "http://10.0.2.2:5201"),            # emulador de Android
+    ("192.168.1.20:5262", "http://192.168.1.20:5201"),    # celular en la misma red que la PC
+    ("[::1]:5262", "http://[::1]:5201"),
+    ("<script>:5262", "http://localhost:5201"),           # lo que no es un host se descarta
+])
+def test_sin_url_publica_el_directorio_usa_el_host_de_la_peticion(cliente, host, esperada):
+    auth = cliente.get("/api/v1/services?format=json", headers={"Host": host}).get_json()["servicios"][0]
+    assert (auth["url"], auth["docs"]) == (esperada, esperada + "/docs")
+
+
+def test_url_publica_manda_sobre_el_host_de_la_peticion(cliente, monkeypatch):
+    monkeypatch.setenv("URL_PUBLICA", "http://epidemia.local:{puerto}")
+    auth = cliente.get("/api/v1/services?format=json", headers={"Host": "10.0.2.2:5262"}).get_json()["servicios"][0]
+    assert auth["url"] == "http://epidemia.local:5201"
+
+
 def test_directorio_en_xml_por_omision(cliente):
     r = cliente.get("/api/v1/services")
     assert r.mimetype == "application/xml"
