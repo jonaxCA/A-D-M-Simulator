@@ -1,0 +1,34 @@
+{
+  "servicio": "series",
+  "sondeos": [
+    {
+      "nombre": "series",
+      "estado": "degradado",
+      "causas": [
+        "postgresql"
+      ],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 3.1,
+      "revisado": "2026-10-20T18:30:05+00:00"
+    },
+    {
+      "nombre": "series",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 4.8,
+      "revisado": "2026-10-20T18:29:55+00:00"
+    },
+    {
+      "nombre": "series",
+      "estado": "ok",
+      "causas": [],
+      "detalle": null,
+      "version": "0.1.0",
+      "latencia_ms": 5.2,
+      "revisado": "2026-10-20T18:29:45+00:00"
+    }
+  ]
+}

@@ -19,11 +19,11 @@ Ademas comprueba que el corpus pase por cada `errores.append` y
 prueba le pide el caso que la ejercite.
 
 Si un cambio de resultados es intencional, va con un nuevo ENGINE_VERSION y se
-regenera el archivo (desde procesamiento/):
-    python -m tests.test_caracterizacion_motor --regenerar
+regenera el archivo (desde la raiz del repositorio):
+    python -m procesamiento.tests.test_caracterizacion_motor --regenerar
 
 Ejecutar:
-    cd procesamiento && python -m unittest tests.test_caracterizacion_motor -v
+    python -m pytest procesamiento/tests/test_caracterizacion_motor.py -v
 """
 import ast
 import hashlib
@@ -32,9 +32,10 @@ import pathlib
 import sys
 import unittest
 
-from motor import parametros, simular
-from motor.parametros import EscenarioInvalido, resolver
-from tests.corpus_resolver import INVALIDOS, VALIDOS
+from procesamiento.motor import parametros, simular
+from procesamiento.motor.parametros import EscenarioInvalido, resolver
+
+from .corpus_resolver import INVALIDOS, VALIDOS
 
 SNAPSHOT = pathlib.Path(__file__).with_name("snapshot_resolver.json")
 SEMILLA = 20261004

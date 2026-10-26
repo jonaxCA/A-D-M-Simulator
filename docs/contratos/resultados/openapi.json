@@ -1,0 +1,546 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - resultados",
+    "version": "0.1.0",
+    "description": "Curvas e indicadores de una corrida completada, tal como los guardó el simulador. Solo lectura. El XML de /results valida contra docs/contratos/resultados/resultado.xsd."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5243"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token del servicio auth, con sesión activa en Redis."
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/runs/{run_id}/results": {
+      "get": {
+        "summary": "Resultado completo de una corrida",
+        "operationId": "consultar_resultado",
+        "description": "La corrida, el resumen de indicadores (con el desglose por grupo de edad), la serie diaria, la trazabilidad de los parámetros y las simplificaciones del modelo. Siempre incluye aviso: los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR. Se guarda 300 s en la caché de Redis.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de una corrida completada"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+                  "simplificaciones": [
+                    "Mezcla homogenea entre grupos de edad; la edad solo modifica hospitalizacion, letalidad y vacunacion.",
+                    "Duraciones geometricas en pasos de un dia; solo se usa la media de cada distribucion.",
+                    "Los hospitalizados no transmiten.",
+                    "La vacuna se aplica sin conocer el estado inmunologico de la persona.",
+                    "Las intervenciones sobre una capa reducen sus contactos en reduccion x cobertura x cumplimiento.",
+                    "El modelo es de contagio directo persona a persona: dengue, zika y malaria (transmitidas por vector) se aproximan con el mismo SEIR, sin compartimentos de mosquito, sin estacionalidad ni dinamica del vector; su R0 y demas parametros equivalentes van marcados como supuesto (ver migracion 025) y los resultados deben leerse como orden de magnitud, no como pronostico."
+                  ],
+                  "corrida": {
+                    "id": 42,
+                    "scenario_version_id": 11,
+                    "scenario_id": 3,
+                    "version_number": 2,
+                    "scenario_name": "Brote de influenza en Monterrey",
+                    "disease_name": "Influenza",
+                    "region_name": "Monterrey",
+                    "seed": 982314,
+                    "population_size": 200000,
+                    "horizon_days": 5,
+                    "finished_at": "2026-10-20T15:02:00+00:00"
+                  },
+                  "engine_version": "python-ref-0.1",
+                  "scenario_checksum": "de8417bf8d7ff3a4e59ef77e663f55dfcc37f5fb510644e60d4497f9b971ea39",
+                  "resumen": {
+                    "casos_acumulados": 95,
+                    "casos_activos_final": 57,
+                    "pico_casos_activos": 57,
+                    "dia_pico": 5,
+                    "pico_nuevos_casos": 14,
+                    "dia_pico_nuevos_casos": 5,
+                    "hospitalizaciones": 0,
+                    "pico_hospitalizados": 0,
+                    "dia_pico_hospitalizados": 0,
+                    "fallecimientos": 0,
+                    "tasa_ataque": 0.000475,
+                    "vacunados_protegidos": 0,
+                    "dosis_aplicadas": 0,
+                    "desglose_por_grupo": [
+                      {
+                        "grupo": "0-19",
+                        "poblacion": 60000,
+                        "casos": 25,
+                        "fallecimientos": 0,
+                        "vacunados_protegidos": 0,
+                        "dosis_aplicadas": 0
+                      },
+                      {
+                        "grupo": "20-59",
+                        "poblacion": 110000,
+                        "casos": 55,
+                        "fallecimientos": 0,
+                        "vacunados_protegidos": 0,
+                        "dosis_aplicadas": 0
+                      },
+                      {
+                        "grupo": "60+",
+                        "poblacion": 30000,
+                        "casos": 15,
+                        "fallecimientos": 0,
+                        "vacunados_protegidos": 0,
+                        "dosis_aplicadas": 0
+                      }
+                    ]
+                  },
+                  "serie": [
+                    {
+                      "dia": 0,
+                      "S": 199950,
+                      "E": 0,
+                      "I": 50,
+                      "R": 0,
+                      "H": 0,
+                      "D": 0,
+                      "V": 0,
+                      "casos_activos": 50,
+                      "nuevos_casos": 0,
+                      "nuevas_hospitalizaciones": 0,
+                      "nuevas_defunciones": 0,
+                      "dosis_aplicadas": 0
+                    },
+                    {
+                      "dia": 1,
+                      "S": 199942,
+                      "E": 8,
+                      "I": 37,
+                      "R": 13,
+                      "H": 0,
+                      "D": 0,
+                      "V": 0,
+                      "casos_activos": 45,
+                      "nuevos_casos": 8,
+                      "nuevas_hospitalizaciones": 0,
+                      "nuevas_defunciones": 0,
+                      "dosis_aplicadas": 0
+                    },
+                    {
+                      "dia": 2,
+                      "S": 199934,
+                      "E": 12,
+                      "I": 31,
+                      "R": 23,
+                      "H": 0,
+                      "D": 0,
+                      "V": 0,
+                      "casos_activos": 43,
+                      "nuevos_casos": 8,
+                      "nuevas_hospitalizaciones": 0,
+                      "nuevas_defunciones": 0,
+                      "dosis_aplicadas": 0
+                    },
+                    {
+                      "dia": 3,
+                      "S": 199928,
+                      "E": 14,
+                      "I": 31,
+                      "R": 27,
+                      "H": 0,
+                      "D": 0,
+                      "V": 0,
+                      "casos_activos": 45,
+                      "nuevos_casos": 6,
+                      "nuevas_hospitalizaciones": 0,
+                      "nuevas_defunciones": 0,
+                      "dosis_aplicadas": 0
+                    },
+                    {
+                      "dia": 4,
+                      "S": 199919,
+                      "E": 17,
+                      "I": 31,
+                      "R": 33,
+                      "H": 0,
+                      "D": 0,
+                      "V": 0,
+                      "casos_activos": 48,
+                      "nuevos_casos": 9,
+                      "nuevas_hospitalizaciones": 0,
+                      "nuevas_defunciones": 0,
+                      "dosis_aplicadas": 0
+                    },
+                    {
+                      "dia": 5,
+                      "S": 199905,
+                      "E": 26,
+                      "I": 31,
+                      "R": 38,
+                      "H": 0,
+                      "D": 0,
+                      "V": 0,
+                      "casos_activos": 57,
+                      "nuevos_casos": 14,
+                      "nuevas_hospitalizaciones": 0,
+                      "nuevas_defunciones": 0,
+                      "dosis_aplicadas": 0
+                    }
+                  ],
+                  "trazabilidad": [
+                    {
+                      "parametro": "r0",
+                      "valor": 1.8,
+                      "fuente": "prueba",
+                      "estado": "supuesto"
+                    },
+                    {
+                      "parametro": "incubacion_dias",
+                      "valor": 2.0,
+                      "fuente": null,
+                      "estado": "sin_fuente"
+                    },
+                    {
+                      "parametro": "infeccioso_dias",
+                      "valor": 5.0,
+                      "fuente": null,
+                      "estado": "sin_fuente"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "resultado"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<resultado><aviso>Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.</aviso><simplificaciones><simplificacion>Mezcla homogenea entre grupos de edad; la edad solo modifica hospitalizacion, letalidad y vacunacion.</simplificacion><simplificacion>Duraciones geometricas en pasos de un dia; solo se usa la media de cada distribucion.</simplificacion><simplificacion>Los hospitalizados no transmiten.</simplificacion><simplificacion>La vacuna se aplica sin conocer el estado inmunologico de la persona.</simplificacion><simplificacion>Las intervenciones sobre una capa reducen sus contactos en reduccion x cobertura x cumplimiento.</simplificacion><simplificacion>El modelo es de contagio directo persona a persona: dengue, zika y malaria (transmitidas por vector) se aproximan con el mismo SEIR, sin compartimentos de mosquito, sin estacionalidad ni dinamica del vector; su R0 y demas parametros equivalentes van marcados como supuesto (ver migracion 025) y los resultados deben leerse como orden de magnitud, no como pronostico.</simplificacion></simplificaciones><corrida><id tipo=\"numero\">42</id><scenario_version_id tipo=\"numero\">11</scenario_version_id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Brote de influenza en Monterrey</scenario_name><disease_name>Influenza</disease_name><region_name>Monterrey</region_name><seed tipo=\"numero\">982314</seed><population_size tipo=\"numero\">200000</population_size><horizon_days tipo=\"numero\">5</horizon_days><finished_at>2026-10-20T15:02:00+00:00</finished_at></corrida><engine_version>python-ref-0.1</engine_version><scenario_checksum>de8417bf8d7ff3a4e59ef77e663f55dfcc37f5fb510644e60d4497f9b971ea39</scenario_checksum><resumen><casos_acumulados tipo=\"numero\">95</casos_acumulados><casos_activos_final tipo=\"numero\">57</casos_activos_final><pico_casos_activos tipo=\"numero\">57</pico_casos_activos><dia_pico tipo=\"numero\">5</dia_pico><pico_nuevos_casos tipo=\"numero\">14</pico_nuevos_casos><dia_pico_nuevos_casos tipo=\"numero\">5</dia_pico_nuevos_casos><hospitalizaciones tipo=\"numero\">0</hospitalizaciones><pico_hospitalizados tipo=\"numero\">0</pico_hospitalizados><dia_pico_hospitalizados tipo=\"numero\">0</dia_pico_hospitalizados><fallecimientos tipo=\"numero\">0</fallecimientos><tasa_ataque tipo=\"numero\">0.000475</tasa_ataque><vacunados_protegidos tipo=\"numero\">0</vacunados_protegidos><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas><desglose_por_grupo><grupo_edad><grupo>0-19</grupo><poblacion tipo=\"numero\">60000</poblacion><casos tipo=\"numero\">25</casos><fallecimientos tipo=\"numero\">0</fallecimientos><vacunados_protegidos tipo=\"numero\">0</vacunados_protegidos><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></grupo_edad><grupo_edad><grupo>20-59</grupo><poblacion tipo=\"numero\">110000</poblacion><casos tipo=\"numero\">55</casos><fallecimientos tipo=\"numero\">0</fallecimientos><vacunados_protegidos tipo=\"numero\">0</vacunados_protegidos><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></grupo_edad><grupo_edad><grupo>60+</grupo><poblacion tipo=\"numero\">30000</poblacion><casos tipo=\"numero\">15</casos><fallecimientos tipo=\"numero\">0</fallecimientos><vacunados_protegidos tipo=\"numero\">0</vacunados_protegidos><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></grupo_edad></desglose_por_grupo></resumen><serie><punto><dia tipo=\"numero\">0</dia><S tipo=\"numero\">199950</S><E tipo=\"numero\">0</E><I tipo=\"numero\">50</I><R tipo=\"numero\">0</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">50</casos_activos><nuevos_casos tipo=\"numero\">0</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">1</dia><S tipo=\"numero\">199942</S><E tipo=\"numero\">8</E><I tipo=\"numero\">37</I><R tipo=\"numero\">13</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">45</casos_activos><nuevos_casos tipo=\"numero\">8</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">2</dia><S tipo=\"numero\">199934</S><E tipo=\"numero\">12</E><I tipo=\"numero\">31</I><R tipo=\"numero\">23</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">43</casos_activos><nuevos_casos tipo=\"numero\">8</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">3</dia><S tipo=\"numero\">199928</S><E tipo=\"numero\">14</E><I tipo=\"numero\">31</I><R tipo=\"numero\">27</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">45</casos_activos><nuevos_casos tipo=\"numero\">6</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">4</dia><S tipo=\"numero\">199919</S><E tipo=\"numero\">17</E><I tipo=\"numero\">31</I><R tipo=\"numero\">33</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">48</casos_activos><nuevos_casos tipo=\"numero\">9</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">5</dia><S tipo=\"numero\">199905</S><E tipo=\"numero\">26</E><I tipo=\"numero\">31</I><R tipo=\"numero\">38</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">57</casos_activos><nuevos_casos tipo=\"numero\">14</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto></serie><trazabilidad><parametro><parametro>r0</parametro><valor tipo=\"numero\">1.8</valor><fuente>prueba</fuente><estado>supuesto</estado></parametro><parametro><parametro>incubacion_dias</parametro><valor tipo=\"numero\">2.0</valor><fuente nil=\"true\" /><estado>sin_fuente</estado></parametro><parametro><parametro>infeccioso_dias</parametro><valor tipo=\"numero\">5.0</valor><fuente nil=\"true\" /><estado>sin_fuente</estado></parametro></trazabilidad></resultado>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "404": {
+            "description": "No existe la corrida o no tiene resultados guardados"
+          },
+          "409": {
+            "description": "La corrida no está completada"
+          },
+          "422": {
+            "description": "Id inválido"
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/curves": {
+      "get": {
+        "summary": "Serie diaria de una corrida",
+        "operationId": "consultar_curvas",
+        "description": "Un punto por día con S, E, I, R, H, D, V, casos activos y los nuevos casos, hospitalizaciones, defunciones y dosis. Siempre incluye aviso: los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR. Se guarda 300 s en la caché de Redis.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de una corrida completada"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+                  "run_id": 42,
+                  "serie": [
+                    {
+                      "dia": 0,
+                      "S": 199950,
+                      "E": 0,
+                      "I": 50,
+                      "R": 0,
+                      "H": 0,
+                      "D": 0,
+                      "V": 0,
+                      "casos_activos": 50,
+                      "nuevos_casos": 0,
+                      "nuevas_hospitalizaciones": 0,
+                      "nuevas_defunciones": 0,
+                      "dosis_aplicadas": 0
+                    },
+                    {
+                      "dia": 1,
+                      "S": 199942,
+                      "E": 8,
+                      "I": 37,
+                      "R": 13,
+                      "H": 0,
+                      "D": 0,
+                      "V": 0,
+                      "casos_activos": 45,
+                      "nuevos_casos": 8,
+                      "nuevas_hospitalizaciones": 0,
+                      "nuevas_defunciones": 0,
+                      "dosis_aplicadas": 0
+                    },
+                    {
+                      "dia": 2,
+                      "S": 199934,
+                      "E": 12,
+                      "I": 31,
+                      "R": 23,
+                      "H": 0,
+                      "D": 0,
+                      "V": 0,
+                      "casos_activos": 43,
+                      "nuevos_casos": 8,
+                      "nuevas_hospitalizaciones": 0,
+                      "nuevas_defunciones": 0,
+                      "dosis_aplicadas": 0
+                    },
+                    {
+                      "dia": 3,
+                      "S": 199928,
+                      "E": 14,
+                      "I": 31,
+                      "R": 27,
+                      "H": 0,
+                      "D": 0,
+                      "V": 0,
+                      "casos_activos": 45,
+                      "nuevos_casos": 6,
+                      "nuevas_hospitalizaciones": 0,
+                      "nuevas_defunciones": 0,
+                      "dosis_aplicadas": 0
+                    },
+                    {
+                      "dia": 4,
+                      "S": 199919,
+                      "E": 17,
+                      "I": 31,
+                      "R": 33,
+                      "H": 0,
+                      "D": 0,
+                      "V": 0,
+                      "casos_activos": 48,
+                      "nuevos_casos": 9,
+                      "nuevas_hospitalizaciones": 0,
+                      "nuevas_defunciones": 0,
+                      "dosis_aplicadas": 0
+                    },
+                    {
+                      "dia": 5,
+                      "S": 199905,
+                      "E": 26,
+                      "I": 31,
+                      "R": 38,
+                      "H": 0,
+                      "D": 0,
+                      "V": 0,
+                      "casos_activos": 57,
+                      "nuevos_casos": 14,
+                      "nuevas_hospitalizaciones": 0,
+                      "nuevas_defunciones": 0,
+                      "dosis_aplicadas": 0
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "curvas"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<curvas><aviso>Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.</aviso><run_id tipo=\"numero\">42</run_id><serie><punto><dia tipo=\"numero\">0</dia><S tipo=\"numero\">199950</S><E tipo=\"numero\">0</E><I tipo=\"numero\">50</I><R tipo=\"numero\">0</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">50</casos_activos><nuevos_casos tipo=\"numero\">0</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">1</dia><S tipo=\"numero\">199942</S><E tipo=\"numero\">8</E><I tipo=\"numero\">37</I><R tipo=\"numero\">13</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">45</casos_activos><nuevos_casos tipo=\"numero\">8</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">2</dia><S tipo=\"numero\">199934</S><E tipo=\"numero\">12</E><I tipo=\"numero\">31</I><R tipo=\"numero\">23</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">43</casos_activos><nuevos_casos tipo=\"numero\">8</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">3</dia><S tipo=\"numero\">199928</S><E tipo=\"numero\">14</E><I tipo=\"numero\">31</I><R tipo=\"numero\">27</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">45</casos_activos><nuevos_casos tipo=\"numero\">6</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">4</dia><S tipo=\"numero\">199919</S><E tipo=\"numero\">17</E><I tipo=\"numero\">31</I><R tipo=\"numero\">33</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">48</casos_activos><nuevos_casos tipo=\"numero\">9</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">5</dia><S tipo=\"numero\">199905</S><E tipo=\"numero\">26</E><I tipo=\"numero\">31</I><R tipo=\"numero\">38</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">57</casos_activos><nuevos_casos tipo=\"numero\">14</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto></serie></curvas>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "404": {
+            "description": "No existe la corrida o no tiene resultados guardados"
+          },
+          "409": {
+            "description": "La corrida no está completada"
+          },
+          "422": {
+            "description": "Id inválido"
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/indicators": {
+      "get": {
+        "summary": "Indicadores de una corrida",
+        "operationId": "consultar_indicadores",
+        "description": "Casos acumulados, picos, hospitalizaciones, fallecimientos, tasa de ataque y el desglose por grupo de edad. Siempre incluye aviso: los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR. Se guarda 300 s en la caché de Redis.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de una corrida completada"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+                  "run_id": 42,
+                  "resumen": {
+                    "casos_acumulados": 95,
+                    "casos_activos_final": 57,
+                    "pico_casos_activos": 57,
+                    "dia_pico": 5,
+                    "pico_nuevos_casos": 14,
+                    "dia_pico_nuevos_casos": 5,
+                    "hospitalizaciones": 0,
+                    "pico_hospitalizados": 0,
+                    "dia_pico_hospitalizados": 0,
+                    "fallecimientos": 0,
+                    "tasa_ataque": 0.000475,
+                    "vacunados_protegidos": 0,
+                    "dosis_aplicadas": 0,
+                    "desglose_por_grupo": [
+                      {
+                        "grupo": "0-19",
+                        "poblacion": 60000,
+                        "casos": 25,
+                        "fallecimientos": 0,
+                        "vacunados_protegidos": 0,
+                        "dosis_aplicadas": 0
+                      },
+                      {
+                        "grupo": "20-59",
+                        "poblacion": 110000,
+                        "casos": 55,
+                        "fallecimientos": 0,
+                        "vacunados_protegidos": 0,
+                        "dosis_aplicadas": 0
+                      },
+                      {
+                        "grupo": "60+",
+                        "poblacion": 30000,
+                        "casos": 15,
+                        "fallecimientos": 0,
+                        "vacunados_protegidos": 0,
+                        "dosis_aplicadas": 0
+                      }
+                    ]
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "indicadores"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<indicadores><aviso>Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.</aviso><run_id tipo=\"numero\">42</run_id><resumen><casos_acumulados tipo=\"numero\">95</casos_acumulados><casos_activos_final tipo=\"numero\">57</casos_activos_final><pico_casos_activos tipo=\"numero\">57</pico_casos_activos><dia_pico tipo=\"numero\">5</dia_pico><pico_nuevos_casos tipo=\"numero\">14</pico_nuevos_casos><dia_pico_nuevos_casos tipo=\"numero\">5</dia_pico_nuevos_casos><hospitalizaciones tipo=\"numero\">0</hospitalizaciones><pico_hospitalizados tipo=\"numero\">0</pico_hospitalizados><dia_pico_hospitalizados tipo=\"numero\">0</dia_pico_hospitalizados><fallecimientos tipo=\"numero\">0</fallecimientos><tasa_ataque tipo=\"numero\">0.000475</tasa_ataque><vacunados_protegidos tipo=\"numero\">0</vacunados_protegidos><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas><desglose_por_grupo><grupo_edad><grupo>0-19</grupo><poblacion tipo=\"numero\">60000</poblacion><casos tipo=\"numero\">25</casos><fallecimientos tipo=\"numero\">0</fallecimientos><vacunados_protegidos tipo=\"numero\">0</vacunados_protegidos><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></grupo_edad><grupo_edad><grupo>20-59</grupo><poblacion tipo=\"numero\">110000</poblacion><casos tipo=\"numero\">55</casos><fallecimientos tipo=\"numero\">0</fallecimientos><vacunados_protegidos tipo=\"numero\">0</vacunados_protegidos><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></grupo_edad><grupo_edad><grupo>60+</grupo><poblacion tipo=\"numero\">30000</poblacion><casos tipo=\"numero\">15</casos><fallecimientos tipo=\"numero\">0</fallecimientos><vacunados_protegidos tipo=\"numero\">0</vacunados_protegidos><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></grupo_edad></desglose_por_grupo></resumen></indicadores>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "404": {
+            "description": "No existe la corrida o no tiene resultados guardados"
+          },
+          "409": {
+            "description": "La corrida no está completada"
+          },
+          "422": {
+            "description": "Id inválido"
+          }
+        }
+      }
+    }
+  }
+}

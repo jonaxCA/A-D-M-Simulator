@@ -42,6 +42,7 @@
           {
             "in": "query",
             "name": "q",
+            "description": "Busca por nombre o código de la enfermedad: los que contienen el texto, sin distinguir mayúsculas. Vacío o ausente, regresa todas.",
             "schema": {
               "type": "string"
             }

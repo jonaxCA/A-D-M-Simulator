@@ -1,0 +1,11 @@
+# Solo para las pruebas de integración: se suma al compose principal en su propio proyecto,
+# con sus propios volúmenes (lo arma python infra/pruebas_integracion.py).
+#
+# Un segundo simulador, sin puerto publicado, para probar que dos trabajadores no toman la
+# misma corrida.
+services:
+  simulador-2:
+    extends:
+      file: docker-compose.yml
+      service: simulador
+    ports: !reset []

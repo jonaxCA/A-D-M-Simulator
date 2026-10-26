@@ -1,5 +1,6 @@
 # **Simulador de respuesta a epidemias**
 
+**Estado: Obsoleto**. Requiere ajustes a funcionalidades y resolucion de ambiguedades.
 **Documento de proyecto — v1** Prácticas de investigación \+ Integración de Aplicaciones Computacionales
 
 ## **1\. Resumen ejecutivo**

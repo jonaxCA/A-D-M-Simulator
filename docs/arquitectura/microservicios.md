@@ -67,37 +67,58 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 | #  | Servicio         | Hace una cosa                                                 | Rutas principales                                                   | Escribe                           | Lee                   | Llama a                        | Puerto |
 |----|------------------|---------------------------------------------------------------|---------------------------------------------------------------------|-----------------------------------|-----------------------|--------------------------------|--------|
 | 10 | `casos`          | Registra y consulta casos                                     | `POST /api/v1/cases`, `GET /api/v1/cases`, `GET /api/v1/cases/{id}` | `cases`                           | `diseases`, `regions` | —                              | 5221   |
-| 11 | `sincronizacion` | Recibe lotes de casos capturados sin conexión en la app móvil | `POST /api/v1/sync/cases`, `GET /api/v1/sync/batches/{id}`          | — (los casos los escribe `casos`) | —                     | `casos`, uno por caso, en JSON | 5222   |
+| 11 | `sincronizacion` | Recibe lotes de casos capturados sin conexión en la app móvil | `POST /api/v1/sync/cases`, `GET /api/v1/sync/batches/{id}`          | — (los casos los escribe `casos`) | —                     | `casos`, uno por caso, en JSON; reenvía el token de la persona | 5222   |
 
 - `sincronizacion` usa Redis para que el mismo lote enviado dos veces no duplique casos
-  (`sync:lote:<id>`). Regresa el resultado de cada caso: creado, duplicado o rechazado con su
-  error.
+  (`sync:lote:<id>`, 7 días). Regresa el resultado de cada caso: creado (201 de `casos`),
+  duplicado (200 con `duplicado: true`) o rechazado con su error. Un candado por lote
+  (`sync:lote:<id>:candado`, 300 s) evita que dos peticiones lo procesen a la vez; no escribe
+  tablas, solo deja un `SYNC` por lote en la bitácora.
 
 ## Escenarios
 
 | #  | Servicio         | Hace una cosa                                                       | Rutas principales                                                                                                                               | Escribe                                                      | Lee                                                        | Llama a                                                                         | Puerto |
 |----|------------------|---------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|------------------------------------------------------------|---------------------------------------------------------------------------------|--------|
-| 12 | `escenarios`     | Alta, versiones nuevas, historial y duplicado                       | `GET/POST /api/v1/scenarios`, `GET /api/v1/scenarios/{id}`, `GET/POST /api/v1/scenarios/{id}/versions`, `POST /api/v1/scenarios/{id}/duplicate` | `scenarios`, `scenario_versions` (alta y contenido)          | `diseases`, `regions`, `region_age_groups`                 | `validacion`                                                                    | 5231   |
-| 13 | `intervenciones` | Intervenciones de una versión en borrador                           | `GET/POST /api/v1/versions/{id}/interventions`, `DELETE .../{iid}`, `POST .../{iid}/move`, `PUT .../{iid}/cost`                                 | `scenario_interventions`                                     | `scenario_versions`, `intervention_types`                  | —                                                                               | 5232   |
-| 14 | `aprobacion`     | Envío a revisión, aprobación y rechazo                              | `POST /api/v1/scenarios/{id}/submit`, `POST /api/v1/scenarios/{id}/review`, `GET /api/v1/reviews/pending`                                       | `scenario_versions` (solo las columnas de estado y revisión) | `scenarios`, `scenario_interventions`                      | `validacion`; `notificaciones` al aprobar                                       | 5233   |
-| 15 | `validacion`     | Revisa un escenario contra el motor; no guarda nada                 | `POST /api/v1/validate`, `GET /api/v1/versions/{id}/validation`                                                                                 | —                                                            | `scenario_versions`, `diseases`                            | —                                                                               | 5234   |
-| 16 | `escenarios-xml` | Exporta e importa escenarios completos en XML, validados contra XSD | `GET /api/v1/scenarios/{id}/export`, `POST /api/v1/scenarios/import`, `GET /api/v1/schemas/scenario.xsd`                                        | —                                                            | `scenarios`, `scenario_versions`, `scenario_interventions` | `validacion`; `escenarios` (le manda el escenario **en XML**); `intervenciones` | 5235   |
+| 12 | `escenarios`     | Alta, versiones nuevas, historial y duplicado                       | `GET/POST /api/v1/scenarios`, `GET /api/v1/scenarios/{id}`, `GET/POST /api/v1/scenarios/{id}/versions`, `POST /api/v1/scenarios/{id}/duplicate` | `scenarios`, `scenario_versions`, `scenario_interventions` (solo al duplicar o versionar: copia las de la versión origen) | `diseases`, `regions`, `region_age_groups`, `intervention_types`, `users` (`id`, `full_name`) | `validacion` (JSON, antes de guardar) | 5231   |
+| 13 | `intervenciones` | Intervenciones de una versión en borrador                           | `GET/POST /api/v1/versions/{id}/interventions`, `DELETE .../{iid}`, `POST .../{iid}/move`, `PUT .../{iid}/cost`                                 | `scenario_interventions`; `intervention_types` (solo `unit_cost`, `cost_source`, `cost_is_assumption`, desde `PUT .../cost`) | `scenarios`, `scenario_versions`, `intervention_types` | — | 5232   |
+| 14 | `aprobacion`     | Envío a revisión, aprobación y rechazo                              | `POST /api/v1/scenarios/{id}/submit`, `POST /api/v1/scenarios/{id}/review`, `GET /api/v1/reviews/pending`                                       | `scenario_versions` (solo `status`, `submitted_at`, `disease_params`, `reviewed_by`, `reviewed_at`, `review_comment`) | `scenarios`, `scenario_interventions`, `diseases`, `intervention_types`, `regions`, `users` (`id`, `full_name`) | `validacion` (`GET /api/v1/versions/{id}/validation`); `notificaciones` al aprobar, best-effort: si no responde solo se anota en el log | 5233   |
+| 15 | `validacion`     | Revisa un escenario contra el motor; no guarda nada                 | `POST /api/v1/validate`, `GET /api/v1/versions/{id}/validation`                                                                                 | —                                                            | `scenarios`, `scenario_versions`, `scenario_interventions`, `intervention_types`, `diseases`, `regions`, `region_age_groups`, `users` (`id`, `full_name`) | —                                                                               | 5234   |
+| 16 | `escenarios-xml` | Exporta e importa escenarios completos en XML, validados contra XSD | `GET /api/v1/scenarios/{id}/export`, `POST /api/v1/scenarios/import`, `GET /api/v1/schemas/scenario.xsd`                                        | —                                                            | `scenarios`, `scenario_versions`, `scenario_interventions`, `diseases`, `regions`, `intervention_types` | `validacion` (JSON); `escenarios` (le manda el escenario **en XML**); `intervenciones` (JSON) | 5235   |
+
+- `intervenciones` guarda el costo en `intervention_types`, como el monolito: cambiarlo desde
+  una intervención cambia el de todas las de ese tipo (conflicto abierto con el catálogo de
+  `tipos-intervencion`, que es de solo lectura).
+- `escenarios` y `escenarios-xml`: el reparto por edad no viaja entre servicios; `escenarios`
+  lo toma del censo de la región cuando `stratify` es verdadero, y `validacion` rechaza un XML
+  cuyo reparto no coincide. `escenario.xsd` es público (`GET /api/v1/schemas/scenario.xsd`) y
+  el export solo existe en XML. Las intervenciones no guardan región destino.
+- `aprobacion` → `notificaciones`: con token de servicio (`token_servicio()`), porque la ruta
+  que crea avisos es interna. Es best-effort: si falla, la aprobación se mantiene.
 
 ## Simulación
 
-| #  | Servicio      | Hace una cosa                                                   | Rutas principales                                                                                                           | Escribe                                                      | Lee                                     | Llama a                                                 | Puerto |
-|----|---------------|-----------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|-----------------------------------------|---------------------------------------------------------|--------|
-| 17 | `corridas`    | Lanza, cancela y consulta corridas                              | `POST /api/v1/runs` (202), `GET /api/v1/runs`, `GET /api/v1/runs/{id}` (estado y progreso), `POST /api/v1/runs/{id}/cancel` | `simulation_batches`, `simulation_runs` (alta y cancelación) | `scenario_versions`                     | Redis: encola la corrida y toma el candado              | 5241   |
-| 18 | `simulador`   | Proceso trabajador: toma corridas de la cola y ejecuta el motor | `GET /api/v1/worker/status` (más `/health`)                                                                                 | `simulation_runs` (estado), `simulation_results`             | escenarios y enfermedades               | Redis (progreso); `notificaciones` al terminar o fallar | 5242   |
-| 19 | `resultados`  | Curvas e indicadores de una corrida                             | `GET /api/v1/runs/{id}/results`, `.../curves`, `.../indicators`                                                             | —                                                            | `simulation_results`, `simulation_runs` | Redis (caché)                                           | 5243   |
-| 20 | `comparacion` | Compara corridas lado a lado                                    | `GET /api/v1/comparisons?runs=a,b,c`                                                                                        | —                                                            | `simulation_runs`, `simulation_results` | —                                                       | 5244   |
-| 21 | `pareto`      | Costo contra impacto y frontera de Pareto                       | `GET /api/v1/pareto?runs=a,b,c`                                                                                             | —                                                            | `scenario_interventions` (costos)       | `resultados` (indicadores, en JSON)                     | 5245   |
+| #  | Servicio      | Hace una cosa                                                   | Rutas principales                                                                                                           | Escribe                                                                                           | Lee                                                                                                                                                                 | Llama a                                                                                            | Puerto |
+|----|---------------|-----------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|--------|
+| 17 | `corridas`    | Lanza, cancela y consulta corridas                              | `POST /api/v1/runs` (202), `GET /api/v1/runs`, `GET /api/v1/runs/{id}` (estado y progreso), `POST /api/v1/runs/{id}/cancel` | `simulation_batches`, `simulation_runs` (alta y cancelación)                                      | `simulation_batches`, `simulation_runs`, `scenario_versions`, `scenarios`, `diseases`, `regions`, `users` (`id`, `username`, `full_name`)                           | Redis: encola la corrida (`{"id", "forzar_error"}` en JSON) y toma el candado                      | 5241   |
+| 18 | `simulador`   | Proceso trabajador: toma corridas de la cola y ejecuta el motor | `GET /api/v1/worker/status` (más `/health`)                                                                                 | `simulation_runs` (estado), `simulation_results`; `simulation_batches` (estado, el de su corrida) | `simulation_runs`, `scenario_versions`, `scenarios`, `scenario_interventions`, `intervention_types`, `diseases`, `regions`, `users` (`id`, `username`, `full_name`) | Redis (cola y progreso); `notificaciones` al terminar o fallar, con token de servicio, best-effort | 5242   |
+| 19 | `resultados`  | Curvas e indicadores de una corrida                             | `GET /api/v1/runs/{id}/results`, `.../curves`, `.../indicators`                                                             | —                                                                                                 | `simulation_results`, `simulation_runs`, `scenario_versions`, `scenarios`, `diseases`, `regions`, `users` (`id`, `username`, `full_name`)                           | Redis (caché, 300 s)                                                                               | 5243   |
+| 20 | `comparacion` | Compara corridas lado a lado                                    | `GET /api/v1/comparisons?runs=a,b,c`                                                                                        | —                                                                                                 | `simulation_runs`, `simulation_results`, `scenario_versions`, `scenarios`                                                                                           | —                                                                                                  | 5244   |
+| 21 | `pareto`      | Costo contra impacto y frontera de Pareto                       | `GET /api/v1/pareto?runs=a,b,c`                                                                                             | —                                                                                                 | `simulation_runs`, `simulation_results`, `scenario_versions`, `scenarios`, `scenario_interventions`, `intervention_types` (costos), `diseases`, `regions`, `users`  | — (ver nota)                                                                                       | 5245   |
 
 - Excepción a "un dueño por tabla": `simulation_runs.status` lo cambian `corridas` (para
   cancelar una encolada) y `simulador` (para ejecutarla). Las dos usan la transición
-  condicionada de hoy (`WHERE status = ...`), así que no se pisan.
-- Al arrancar, `simulador` cierra como fallidas las corridas que quedaron a medias (hoy es
-  `recupera_corridas_interrumpidas`).
+  condicionada de hoy (`WHERE status = ...`), así que no se pisan. Las dos llevan también el
+  lote (`simulation_batches.status` y `finished_at`) al estado de su corrida, en la misma
+  transacción (`_sincroniza_lote`).
+- Al arrancar, `simulador` cierra como fallidas las corridas que quedaron en `ejecutando`
+  (`recupera_corridas_interrumpidas(estados=("ejecutando",))`). Las de `encolado` siguen
+  esperando en la cola.
+- `forzar_error` viaja en la cola junto al id: no tiene columna en PostgreSQL.
+- `pareto` lee los resultados directo de la base y no llama a `resultados`: reusa
+  `construir_comparacion_costo_impacto()`, el cálculo de la pantalla Comparación del
+  monolito, que también arma el escenario de cada versión y lee los costos. Se decidió así
+  el 17 de octubre porque `resultados` no existía; cuando exista, se puede volver a pedirle
+  el resumen de cada corrida.
 
 ## Analítica
 
@@ -112,12 +133,17 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 | #  | Servicio           | Hace una cosa                                  | Rutas principales                                                                                                              | Escribe         | Lee | Llama a                                  | Puerto |
 |----|--------------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|-----------------|-----|------------------------------------------|--------|
 | 25 | `notificaciones`   | Avisos para las apps                           | `GET /api/v1/notifications`, `POST /api/v1/notifications/{id}/read`, `POST /api/v1/notifications` (solo con token de servicio) | `notifications` | —   | —                                        | 5261   |
-| 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/{nombre}/history`                                 | —               | —   | El `/health` de los otros 25, **en XML** | 5262   |
+| 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/{nombre}/history`                                 | —               | —   | El `/health` de los 26, incluido el suyo, **en XML** | 5262   |
 | —  | `consola`          | Página tipo Swagger/Postman para probar los 26 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
 
+- La `consola` es una página: el navegador llama a cada servicio con la URL que da el
+  directorio, y cada servicio abre CORS solo para `CONSOLE_ORIGIN` (en el compose,
+  `http://localhost:5260`). Su servidor solo entrega la página: no tiene base ni Redis.
 - `estado-servicios` también es el directorio: las apps y la consola le preguntan la URL de
   cada servicio en vez de tenerlas escritas a mano. No hay pasarela; es la única forma de
-  encontrarlos.
+  encontrarlos. Sus tres rutas son públicas, porque la URL de `auth` se necesita antes de
+  iniciar sesión. Su rol de PostgreSQL solo se conecta, para su propio `/health` (migración
+  030).
 
 ---
 
@@ -135,10 +161,10 @@ app escritorio ───┤  token Bearer   │
 
    corridas ──cola Redis──► simulador ──► notificaciones
                                │
-                     resultados ◄── pareto
+                  base de datos ◄── pareto   (directo, sin resultados)
    sincronizacion ──JSON (un caso a la vez)──► casos
 
-   estado-servicios ──XML──► /health de los 25 restantes
+   estado-servicios ──XML──► /health de los 26
 ```
 
 Las llamadas entre servicios llevan el **token de la persona** y el `X-Correlation-ID`.
@@ -159,18 +185,22 @@ guarda su huella (SHA-256).
 | `refresh:<h(rt)>`           | Huella del `sid` de su sesión                                                     | Lo que le quede a la sesión                                        | `auth`, `sesiones`                             | `sesiones` |
 | `refresh:usado:<h(rt)>`     | Huella del `sid` de un *refresh* ya rotado, para detectar si alguien lo reutiliza | Lo que le quede a la sesión                                        | `sesiones`                                     | `sesiones` |
 | `jwt:revoked:<jti>`         | `1`                                                                               | Lo que le quede al token, más 60 s                                 | `sesiones`                                     | `sesiones` |
-| `queue:simulaciones`        | Lista de ids de corrida                                                           | **Sin TTL**: la vacía el `simulador`, y lo que manda es PostgreSQL | `corridas`                                     | `cola`     |
+| `captcha:<id>`              | La respuesta esperada de un captcha de inicio de sesión                           | 5 min; se borra al usarlo, así que sirve para un solo intento      | `auth`                                         | —          |
+| `queue:simulaciones`        | Lista de corridas por ejecutar: `{"id", "forzar_error"}` en JSON                  | **Sin TTL**: la vacía el `simulador`, y lo que manda es PostgreSQL | `corridas`                                     | `cola`     |
 | `lock:corrida:<version>`    | Marca de la petición que lo tomó                                                  | Unos segundos                                                      | `corridas`                                     | `candados` |
-| `job:<id>:progress`         | Avance de una corrida                                                             | Lo fija el `simulador`                                             | `simulador`                                    | —          |
-| `cache:<servicio>:<clave>`  | La respuesta, en JSON                                                             | Corto; lo fija cada servicio                                       | `resultados`, `indicadores`, `series`, `zonas` | `cache`    |
-| `sync:lote:<id>`            | Resultado de un lote ya recibido                                                  | Lo fija `sincronizacion`                                           | `sincronizacion`                               | —          |
-| `health:<servicio>`         | Última salud de un servicio                                                       | Lo fija `estado-servicios`                                         | `estado-servicios`                             | —          |
-| `health:history:<servicio>` | Lista corta de sondeos                                                            | Lo fija `estado-servicios`                                         | `estado-servicios`                             | —          |
+| `job:<id>:progress`         | Avance de una corrida (10, 30, 90 y 100)                                          | 24 h (86400 s), desde el último avance                             | `simulador`                                    | —          |
+| `cache:<servicio>:<clave>`  | La respuesta, en JSON                                                             | Corto; lo fija cada servicio (`resultados`: 300 s)                 | `resultados`, `indicadores`, `series`, `zonas` | `cache`    |
+| `sync:lote:<id>`            | Resultado de un lote ya recibido                                                  | 7 días (`SYNC_LOTE_TTL_SECONDS`, por defecto 604800)               | `sincronizacion`                               | —          |
+| `sync:lote:<id>:candado`    | Marca de la petición que está procesando ese lote                                 | 300 s                                                              | `sincronizacion`                               | `candados` |
+| `health:<servicio>`         | Último sondeo de un servicio, en JSON                                             | Tres intervalos de sondeo: 30 s con `SONDEO_SEGUNDOS` en 10        | `estado-servicios`                             | —          |
+| `health:history:<servicio>` | Lista con los últimos 30 sondeos, del más reciente al más viejo                   | Una hora desde el último sondeo                                    | `estado-servicios`                             | —          |
 
-- Todas las rutas protegidas leen `session:` y `jwt:revoked:` desde `@requiere_token`, con
-  `sesiones.verificar()`.
+- Todas las rutas protegidas leen `session:` y `jwt:revoked:` desde `@requiere_token`
+  (`seguridad.py`), con la misma regla que `sesiones.verificar()`.
 - Las llaves sin módulo se escriben con `requerido()` u `opcional()` de `redis_compartido`,
   siempre con `ex=`. Quien implemente el servicio anota aquí el TTL que eligió.
+- Toda llave sale de `llaves.py`, también en la biblioteca. Una prueba busca llaves armadas a
+  mano (`"captcha:" + x` o `f"captcha:{x}"`) fuera de ese archivo.
 
 ## Opcionales (si sobra tiempo o las apps los piden)
 

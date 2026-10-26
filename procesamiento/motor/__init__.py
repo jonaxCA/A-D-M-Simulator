@@ -12,7 +12,7 @@ Asi, cuando el motor pase a ser un worker o microservicio, se mueve tal cual.
 
 Uso minimo:
 
-    from motor import simular
+    from procesamiento.motor import simular
     resultado = simular(escenario, semilla=982314)
     resultado["resumen"]["fallecimientos"]
 """

@@ -1,9 +1,9 @@
 """Corre los escenarios de ejemplo, los compara y calcula la frontera de Pareto.
 
-    python -m motor                          # semilla 982314, impacto = fallecimientos
-    python -m motor --semilla 7
-    python -m motor --metrica hospitalizaciones
-    python -m motor --json                   # salida completa en JSON
+    python -m procesamiento.motor              # semilla 982314, impacto = fallecimientos
+    python -m procesamiento.motor --semilla 7
+    python -m procesamiento.motor --metrica hospitalizaciones
+    python -m procesamiento.motor --json       # salida completa en JSON
 
 La distribucion por edad SI es real: la del Censo 2020 de INEGI para Nuevo Leon
 (datos/censo/nl_estructura_edad_2020.tsv). El tamanio de la poblacion, los
@@ -82,7 +82,7 @@ ESCENARIOS = {
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="python -m motor", description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(prog="python -m procesamiento.motor", description=__doc__.splitlines()[0])
     ap.add_argument("--semilla", type=int, default=982314)
     ap.add_argument("--metrica", choices=METRICAS_IMPACTO, default="fallecimientos")
     ap.add_argument("--json", action="store_true", help="imprime la salida completa en JSON")

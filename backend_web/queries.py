@@ -3389,7 +3389,8 @@ def listar_versiones_escenario():
     )
 
 
-def crear_corrida(version_id, seed, user_id, engine_version):
+def crear_corrida(version_id, seed, user_id, engine_version, *, contexto=None,
+                  forzar_error=False):
     """Encola una corrida: un lote de una sola replica (motor python-ref, una
     corrida a la vez -- ver 014_simulacion_resultados.sql) y su run.
 
@@ -3397,6 +3398,9 @@ def crear_corrida(version_id, seed, user_id, engine_version):
     un mensaje claro. El trigger fn_version_aprobada (014) es la ULTIMA linea
     de defensa: si por cualquier otra via (un script, psql a mano) se
     intentara encolar sobre una version no aprobada, la base lo rechaza igual.
+
+    Con `contexto` (el microservicio corridas) el RUN 'encolado' se audita en
+    la misma transaccion; sin el (el monolito) lo audita quien llama.
 
     Devuelve (run_id, batch_id, error).
     """
@@ -3435,6 +3439,12 @@ def crear_corrida(version_id, seed, user_id, engine_version):
                     (batch_id, version_id, seed, engine_version, user_id),
                 )
                 run_id = cur.fetchone()[0]
+                if contexto is not None:
+                    log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
+                              data_after={"estado": "encolado", "seed": seed,
+                                          "scenario_version_id": version_id,
+                                          "forzar_error": forzar_error},
+                              cur=cur)
             conn.commit()
         return run_id, batch_id, None
     except psycopg2.Error as exc:
@@ -3705,20 +3715,58 @@ def marcar_run_fallido(run_id, mensaje):
     )) == 1
 
 
-def marca_corridas_interrumpidas(mensaje, run_ids=None):
+def cancelar_run(run_id, *, contexto):
+    """encolado -> cancelado, auditado con CANCEL en la misma transaccion.
+
+    Solo se cancela lo que nadie ha empezado: el WHERE status = 'encolado' es
+    la misma transicion condicionada que usa el trabajador al tomarla, asi que
+    los dos no se pisan. started_at recibe la hora del cierre, igual que en
+    marcar_run_fallido (ck_simulation_runs_inicio). Devuelve True si hubo
+    transicion.
+    """
+    with get_conn() as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE simulation_runs
+                    SET status = 'cancelado', finished_at = now(),
+                        started_at = COALESCE(started_at, now())
+                    WHERE id = %s AND status = 'encolado'
+                    RETURNING id
+                    """,
+                    (run_id,),
+                )
+                if not cur.fetchone():
+                    conn.rollback()
+                    return False
+                _sincroniza_lote(cur, [run_id])
+                log_audit(contexto, "CANCEL", "simulation_run", entity_id=str(run_id),
+                          data_before={"estado": "encolado"},
+                          data_after={"estado": "cancelado"}, cur=cur)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return True
+
+
+def marca_corridas_interrumpidas(mensaje, run_ids=None, estados=("encolado", "ejecutando")):
     """encolado/ejecutando -> fallido para las corridas cuyo hilo ya no existe.
 
     Solo tiene sentido al arrancar el servidor (backend_web.simulaciones.
     recupera_corridas_interrumpidas): las corridas viven en hilos del proceso,
     asi que cualquier corrida no terminada que encuentre un proceso recien
     iniciado era de uno que ya murio. `run_ids` acota el barrido; lo usan las
-    pruebas para no tocar corridas ajenas a ellas.
+    pruebas para no tocar corridas ajenas a ellas. `estados` lo acota el
+    microservicio simulador a 'ejecutando': sus corridas encoladas siguen
+    esperando en la cola de Redis.
 
     Devuelve las filas cerradas (id, requested_by, seed) para auditarlas.
     Las que seguian encoladas reciben started_at = finished_at, por la misma
     razon que en marcar_run_fallido.
     """
-    filtro, params = "", [mensaje]
+    filtro, params = "", [mensaje, list(estados)]
     if run_ids is not None:
         filtro = "AND id = ANY(%s)"
         params.append(list(run_ids))
@@ -3729,7 +3777,7 @@ def marca_corridas_interrumpidas(mensaje, run_ids=None):
                 UPDATE simulation_runs
                 SET status = 'fallido', error_message = %s, finished_at = now(),
                     started_at = COALESCE(started_at, now())
-                WHERE status IN ('encolado', 'ejecutando') {filtro}
+                WHERE status IN ('encolado', 'ejecutando') AND status = ANY(%s) {filtro}
                 RETURNING id, requested_by, seed
                 """,
                 tuple(params),

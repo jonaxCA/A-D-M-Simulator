@@ -4,6 +4,12 @@
 
 El formato de entrada del motor está en el docstring de `motor/parametros.py`.
 
+- Se importa siempre como `procesamiento.motor`, también en `tests/` y en los
+  microservicios. `import motor` carga una segunda copia con otras clases de excepción;
+  `backend_web/tests/test_integridad.py` lo revisa.
+- Todo se corre desde la raíz: `python -m pytest procesamiento/tests` y
+  `python -m procesamiento.motor`.
+
 - No renombres los campos de la salida (`resumen`, `serie`, …). Las columnas generadas de
   `simulation_results` (migración 014) leen esos nombres: un cambio no da error, deja
   columnas vacías.

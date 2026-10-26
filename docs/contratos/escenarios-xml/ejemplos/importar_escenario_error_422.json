@@ -1,0 +1,14 @@
+{
+  "type": "about:blank",
+  "title": "Unprocessable Entity",
+  "status": 422,
+  "detail": "El XML no cumple el esquema scenario.xsd (1 falla). /escenario/version/intervenciones/intervencion[1]/cobertura: value must be <= 1",
+  "codigo": "DATOS_INVALIDOS",
+  "instance": "/api/v1/scenarios/import",
+  "errores": [
+    {
+      "ruta": "/escenario/version/intervenciones/intervencion[1]/cobertura",
+      "mensaje": "value must be <= 1"
+    }
+  ]
+}

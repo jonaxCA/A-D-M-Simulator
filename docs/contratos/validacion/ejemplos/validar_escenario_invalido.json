@@ -1,0 +1,7 @@
+{
+  "valido": false,
+  "errores": [
+    "Los infectados iniciales no pueden superar la población."
+  ],
+  "avisos": []
+}

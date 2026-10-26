@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Falta Authorization: Bearer.",
+  "codigo": "TOKEN_AUSENTE",
+  "instance": "/api/v1/cases/1"
+}

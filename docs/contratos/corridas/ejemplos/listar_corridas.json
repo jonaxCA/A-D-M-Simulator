@@ -1,0 +1,31 @@
+{
+  "total": 2,
+  "corridas": [
+    {
+      "id": 43,
+      "status": "ejecutando",
+      "seed": 982314,
+      "queued_at": "2026-10-20T15:03:00+00:00",
+      "started_at": "2026-10-20T15:03:00+00:00",
+      "finished_at": null,
+      "error_message": null,
+      "scenario_id": 3,
+      "version_number": 2,
+      "scenario_name": "Brote de influenza en Monterrey",
+      "requested_by_username": "ana"
+    },
+    {
+      "id": 41,
+      "status": "fallido",
+      "seed": 7,
+      "queued_at": "2026-10-20T14:00:00+00:00",
+      "started_at": "2026-10-20T14:00:00+00:00",
+      "finished_at": "2026-10-20T14:00:00+00:00",
+      "error_message": "Error forzado de prueba: se solicito explicitamente desde la pantalla de simulaciones (opcion visible solo para ADMINISTRADOR). Demuestra el camino encolado -> ejecutando -> fallido sin depender de que un escenario real este incompleto.",
+      "scenario_id": 3,
+      "version_number": 2,
+      "scenario_name": "Brote de influenza en Monterrey",
+      "requested_by_username": "ana"
+    }
+  ]
+}

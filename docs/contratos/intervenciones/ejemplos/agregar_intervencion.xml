@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<intervencion><id tipo="numero">78</id><code>VACUNACION</code><name>Vacunación</name><target_layer>poblacion</target_layer><start_day tipo="numero">20</start_day><end_day nil="true" /><coverage tipo="numero">0.6</coverage><compliance nil="true" /><params><eficacia tipo="numero">0.7</eficacia></params><order_index tipo="numero">1</order_index></intervencion>

@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Unprocessable Entity",
+  "status": 422,
+  "detail": "El sexo no es un valor del catálogo. La fecha de reporte no puede estar en el futuro.",
+  "codigo": "DATOS_INVALIDOS",
+  "instance": "/api/v1/cases"
+}

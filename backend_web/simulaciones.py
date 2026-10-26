@@ -189,7 +189,7 @@ def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
 # ---------------------------------------------------------------------------
 # Corrida en segundo plano
 # ---------------------------------------------------------------------------
-def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
+def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None):
     """Cuerpo del hilo que corre una simulation_run ya encolada.
 
     Cada paso usa su propia conexion a PostgreSQL (backend_web.db.get_conn
@@ -200,11 +200,17 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
 
     `demora_seg` deja visible la transicion encolado -> ejecutando en la
     pantalla de detalle (que hace polling cada segundo); en pruebas se pasa 0.
+
+    `al_avanzar(porcentaje)` recibe el avance de cada etapa; el microservicio
+    simulador lo escribe en Redis. Devuelve el estado en que esta llamada dejo
+    la corrida ('completado' o 'fallido'), o None si no la llego a cerrar
+    (no existia, otro proceso la tomo o la cerro antes).
     """
     run = queries.get_run(run_id)
     if not run:
-        return
+        return None
     contexto = Contexto.sin_peticion(run["requested_by"])
+    avanza = al_avanzar or (lambda porcentaje: None)
 
     try:
         if not queries.marcar_run_ejecutando(run_id):
@@ -222,10 +228,11 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
                               "estado 'encolado' (rowcount 0)",
                 },
             )
-            return
+            return None
         log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
                   data_after={"estado": "ejecutando", "seed": run["seed"],
                               "engine_version": run["engine_version"]})
+        avanza(10)
 
         if demora_seg:
             time.sleep(demora_seg)
@@ -241,8 +248,10 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
         )
         if errores:
             raise ValueError("; ".join(errores))
+        avanza(30)
 
         resultado = simular(escenario, run["seed"])
+        avanza(90)
         if not queries.guardar_resultado_run(run_id, resultado):
             # Alguien cerro la corrida mientras el motor trabajaba (otro
             # proceso que arranco y la dio por interrumpida). Su estado
@@ -251,25 +260,28 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5):
             logging.getLogger(__name__).warning(
                 "La corrida %s termino en el motor, pero ya no estaba en "
                 "'ejecutando'; el resultado se descarto.", run_id)
-            return
+            return None
         log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
                   data_after={
                       "estado": "completado", "seed": run["seed"],
                       "engine_version": resultado["engine_version"],
                       "indicadores": resultado["resumen"],
                   })
+        avanza(100)
+        return "completado"
 
     except EscenarioInvalido as exc:
         mensaje = "; ".join(exc.errores)
-        _marca_fallido_y_audita(run, mensaje)
+        cerrada = _marca_fallido_y_audita(run, mensaje)
     except (ValueError, ErrorMotor) as exc:
-        _marca_fallido_y_audita(run, str(exc))
+        cerrada = _marca_fallido_y_audita(run, str(exc))
     except Exception as exc:  # pragma: no cover - red de seguridad del hilo
         # Cualquier otra falla (conexion caida, bug del motor, etc.) tiene que
         # quedar en error_message y en la bitacora, no perderse en el hilo:
         # un hilo que muere en silencio deja la corrida en 'ejecutando' para
         # siempre, sin explicacion.
-        _marca_fallido_y_audita(run, f"Error inesperado del motor: {exc}")
+        cerrada = _marca_fallido_y_audita(run, f"Error inesperado del motor: {exc}")
+    return "fallido" if cerrada else None
 
 
 def _marca_fallido_y_audita(run, mensaje):
@@ -279,6 +291,8 @@ def _marca_fallido_y_audita(run, mensaje):
     log_audit() lanzaran (conexion caida, etc.), se atrapa y se deja
     constancia en el logger de la app en vez de perder el hilo en silencio
     sin que quede ningun rastro de que la corrida se quedo sin cerrar.
+
+    Devuelve True si esta llamada la dejo en 'fallido'.
     """
     mensaje = (mensaje or "Error desconocido en la simulacion.")[:2000]
     try:
@@ -288,14 +302,14 @@ def _marca_fallido_y_audita(run, mensaje):
             "No se pudo marcar la corrida %s como fallida (mensaje original: %s)",
             run["id"], mensaje,
         )
-        return
+        return False
 
     if not cambio:
         # rowcount == 0: la corrida ya estaba en un estado terminal
         # (completado/fallido/cancelado). No hubo transicion real a
         # 'fallido' -- auditarla como si hubiera ocurrido seria mentir en la
         # bitacora.
-        return
+        return False
 
     try:
         log_audit(Contexto.sin_peticion(run["requested_by"]), "RUN", "simulation_run",
@@ -306,6 +320,7 @@ def _marca_fallido_y_audita(run, mensaje):
             "La corrida %s se marco 'fallido' en DB pero no se pudo registrar "
             "la auditoria (mensaje: %s)", run["id"], mensaje,
         )
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -318,7 +333,7 @@ MENSAJE_INTERRUMPIDA = (
 )
 
 
-def recupera_corridas_interrumpidas():
+def recupera_corridas_interrumpidas(estados=("encolado", "ejecutando")):
     """Cierra como 'fallido' las corridas que un proceso anterior dejo a medias.
 
     _marca_fallido_y_audita protege contra cualquier error DENTRO del hilo,
@@ -335,9 +350,12 @@ def recupera_corridas_interrumpidas():
     de los otros; ese caso lo resuelve la cola con worker del documento de
     arquitectura, no este barrido.
 
+    El microservicio simulador pasa estados=('ejecutando',): con la cola de
+    Redis, una corrida encolada no se perdio, solo sigue esperando.
+
     Devuelve cuantas corridas cerro.
     """
-    filas = queries.marca_corridas_interrumpidas(MENSAJE_INTERRUMPIDA)
+    filas = queries.marca_corridas_interrumpidas(MENSAJE_INTERRUMPIDA, estados=estados)
     for fila in filas:
         try:
             log_audit(Contexto.sin_peticion(fila["requested_by"]), "RUN", "simulation_run",

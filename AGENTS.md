@@ -53,11 +53,13 @@ En este no crees código en `frontend_movil/` ni en `frontend_desktop/`.
 ## Comandos
 
 - Sitio: `python -m frontend_web.run`.
-- Microservicios: `docker compose -f infra/docker-compose.yml up --build`. Por ahora solo
-  levanta Redis, y necesita `infra/.env` (copia `infra/.env.example`). Los servicios llegan con
-  el bloque J del checklist.
+- Microservicios: `python infra/genera_env.py` (crea `infra/.env` con las contraseñas) y
+  `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait`. Levanta
+  PostgreSQL con la base de la demostración, Redis y los servicios.
 - Pruebas de los microservicios y de la biblioteca común:
   `python -m pytest microservicios`.
+- Pruebas del motor: `python -m pytest procesamiento/tests`. Se corren desde la raíz, igual
+  que todo lo demás.
 - Verificar que el dump coincide con las migraciones: `python datos/scripts/verifica_migraciones.py`.
 - Las pruebas corren contra `<base>_pruebas`, nunca contra la de la demostración. Se crea con
   `python datos/scripts/prepara_base_pruebas.py` (ver `docs/INSTALACION.md`).
@@ -74,7 +76,10 @@ Cada una tiene su número en `docs/decisiones.md`:
 - Política para corregir datos en migraciones aplicadas (D7).
 - Cuántas réplicas usa una comparación y cómo se resumen (D8; se revisa en el tercer
   parcial).
-- Si una versión guarda una copia de los parámetros de la enfermedad al enviarse a revisión.
+
+D5 ya se tomó: una versión es una fotografía. Guarda su población por grupo de edad y congela
+los parámetros de la enfermedad al enviarse a revisión (migraciones 023 y 024). Para una
+versión que ya salió de borrador, usa sus parámetros congelados, no los del catálogo.
 
 Las de los microservicios (formato, entregas, rutas, pasarela, pruebas, XSD y migraciones)
 ya están tomadas: son D9 a D16, resumidas en `microservicios/AGENTS.md`. Cuando se tome una

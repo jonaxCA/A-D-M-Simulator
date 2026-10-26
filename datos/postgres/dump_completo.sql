@@ -20,6 +20,10 @@ SET client_encoding = 'UTF8';
 --                                                       024_version_congela_parametros.sql
 --                                                       025_parametros_enfermedades_restantes.sql
 --                                                       026_roles_por_servicio.sql
+--                                                       027_roles_servicios_escenarios_casos.sql
+--                                                       028_roles_comparacion_pareto.sql
+--                                                       029_roles_simulacion_notificaciones.sql
+--                                                       030_rol_estado_servicios.sql
 --
 -- Cada bloque original conserva su propio BEGIN/COMMIT y su propio INSERT en
 -- schema_migrations, asi que este archivo se comporta exactamente igual que
@@ -3435,7 +3439,7 @@ $$;
 -- auth: attempt_login lee la cuenta y sus roles, y actualiza intentos fallidos,
 -- bloqueo y último acceso en users. Audita LOGIN y LOGIN_FAILED.
 GRANT SELECT ON users, roles, user_roles TO svc_auth;
-GRANT UPDATE (failed_attempts, last_login_at) ON users TO svc_auth
+GRANT UPDATE (failed_attempts, last_login_at) ON users TO svc_auth;
 GRANT INSERT ON audit_log TO svc_auth;
 
 -- sesiones: vive en Redis; solo audita LOGOUT.
@@ -3552,6 +3556,352 @@ COMMENT ON ROLE svc_zonas IS 'Microservicio zonas (5253): solo lectura.';
 
 INSERT INTO schema_migrations (version, description)
 VALUES ('026', 'Seguridad: un rol de PostgreSQL por microservicio del grupo 14:00')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+-- =============================================================================
+-- 027_roles_servicios_escenarios_casos.sql
+-- Un rol de PostgreSQL por microservicio de escenarios y de captura de casos
+-- (escenarios, intervenciones, validacion, aprobacion, escenarios-xml, casos y
+-- sincronizacion). Sigue el patrón de la 026.
+--
+-- Cada servicio se conecta con su propio rol y solo puede escribir lo que el
+-- catálogo (docs/arquitectura/microservicios.md) dice que escribe. Lee únicamente
+-- las tablas que consultan sus rutas y las funciones de backend_web que llaman.
+--
+-- - Los roles nacen con LOGIN y sin contraseña. La contraseña se fija fuera del
+--   repositorio: ALTER ROLE svc_escenarios PASSWORD '...'; y el servicio la recibe
+--   en su DATABASE_URL (ver infra/.env.example).
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida revoca y vuelve a otorgar exactamente lo de abajo.
+-- - SELECT ... FOR UPDATE exige UPDATE en alguna columna; por eso quien bloquea
+--   filas tiene UPDATE de las columnas que escribe y nada más.
+-- - Las llaves foráneas (cases.device_id, scenario_versions.created_by, etc.) las
+--   revisa PostgreSQL con los permisos del dueño de la tabla, así que no piden
+--   SELECT sobre devices ni users.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+DECLARE
+    r TEXT;
+BEGIN
+    FOREACH r IN ARRAY ARRAY[
+        'svc_escenarios', 'svc_intervenciones', 'svc_validacion', 'svc_aprobacion',
+        'svc_escenarios_xml', 'svc_casos', 'svc_sincronizacion'
+    ]
+    LOOP
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+            EXECUTE format('CREATE ROLE %I LOGIN', r);
+        END IF;
+        EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', r);
+        EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', r);
+        EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', r);
+    END LOOP;
+END;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- Escenarios
+-- -----------------------------------------------------------------------------
+-- escenarios: alta (scenarios + versión 1), versión siguiente (apaga is_current de
+-- la anterior) y duplicado, que copia las intervenciones de la versión origen.
+-- Lee los catálogos para validar y el nombre de quien arma cada versión.
+GRANT SELECT ON scenarios, scenario_versions, scenario_interventions, intervention_types,
+                diseases, regions, region_age_groups TO svc_escenarios;
+GRANT SELECT (id, full_name) ON users TO svc_escenarios;
+GRANT INSERT ON scenarios, scenario_versions, scenario_interventions TO svc_escenarios;
+GRANT UPDATE (is_current) ON scenario_versions TO svc_escenarios;
+GRANT INSERT ON audit_log TO svc_escenarios;
+
+-- intervenciones: dueño de scenario_interventions (alta, baja, orden). El costo
+-- unitario vive en el tipo de intervención (como en el monolito): solo esas tres
+-- columnas de intervention_types.
+GRANT SELECT ON scenarios, scenario_versions, intervention_types TO svc_intervenciones;
+GRANT SELECT, INSERT, UPDATE, DELETE ON scenario_interventions TO svc_intervenciones;
+GRANT UPDATE (unit_cost, cost_source, cost_is_assumption) ON intervention_types TO svc_intervenciones;
+GRANT INSERT ON audit_log TO svc_intervenciones;
+
+-- validacion: solo lectura. No guarda nada ni audita.
+GRANT SELECT ON scenarios, scenario_versions, scenario_interventions, intervention_types,
+                diseases, regions, region_age_groups TO svc_validacion;
+GRANT SELECT (id, full_name) ON users TO svc_validacion;
+
+-- aprobacion: pasa la versión a revisión (congela diseases.default_params en
+-- disease_params) y la aprueba o rechaza. Lee el escenario completo para la bandeja.
+GRANT SELECT ON scenarios, scenario_versions, scenario_interventions, intervention_types,
+                diseases, regions TO svc_aprobacion;
+GRANT SELECT (id, full_name) ON users TO svc_aprobacion;
+GRANT UPDATE (status, submitted_at, disease_params, reviewed_by, reviewed_at, review_comment)
+    ON scenario_versions TO svc_aprobacion;
+GRANT INSERT ON audit_log TO svc_aprobacion;
+
+-- escenarios-xml: solo lee para exportar y resolver códigos; audita EXPORT.
+-- Importar no escribe tablas: llama a escenarios e intervenciones.
+GRANT SELECT ON scenarios, scenario_versions, scenario_interventions, intervention_types,
+                diseases, regions TO svc_escenarios_xml;
+GRANT INSERT ON audit_log TO svc_escenarios_xml;
+
+-- -----------------------------------------------------------------------------
+-- Captura de casos
+-- -----------------------------------------------------------------------------
+-- casos: dueño de cases. Lee diseases y regions para los catálogos de captura y
+-- para armar la respuesta.
+GRANT SELECT, INSERT ON cases TO svc_casos;
+GRANT SELECT ON diseases, regions TO svc_casos;
+GRANT INSERT ON audit_log TO svc_casos;
+
+-- sincronizacion: el lote vive en Redis y los casos los escribe casos por HTTP;
+-- solo audita el SYNC de cada lote.
+GRANT INSERT ON audit_log TO svc_sincronizacion;
+
+-- -----------------------------------------------------------------------------
+-- Secuencias de las tablas donde se inserta
+-- -----------------------------------------------------------------------------
+DO $$
+DECLARE
+    par TEXT[];
+    secuencia TEXT;
+BEGIN
+    FOREACH par SLICE 1 IN ARRAY ARRAY[
+        ['svc_escenarios', 'audit_log'], ['svc_escenarios', 'scenarios'],
+        ['svc_escenarios', 'scenario_versions'], ['svc_escenarios', 'scenario_interventions'],
+        ['svc_intervenciones', 'audit_log'], ['svc_intervenciones', 'scenario_interventions'],
+        ['svc_aprobacion', 'audit_log'],
+        ['svc_escenarios_xml', 'audit_log'],
+        ['svc_casos', 'audit_log'], ['svc_casos', 'cases'],
+        ['svc_sincronizacion', 'audit_log']
+    ]
+    LOOP
+        secuencia := NULL;
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema = 'public' AND table_name = par[2] AND column_name = 'id') THEN
+            secuencia := pg_get_serial_sequence('public.' || par[2], 'id');
+        END IF;
+        IF secuencia IS NOT NULL THEN
+            EXECUTE format('GRANT USAGE ON SEQUENCE %s TO %I', secuencia, par[1]);
+        END IF;
+    END LOOP;
+END;
+$$;
+
+COMMENT ON ROLE svc_escenarios IS 'Microservicio escenarios: scenarios, scenario_versions y copia de intervenciones al duplicar.';
+COMMENT ON ROLE svc_intervenciones IS 'Microservicio intervenciones: scenario_interventions y las columnas de costo de intervention_types.';
+COMMENT ON ROLE svc_validacion IS 'Microservicio validacion: solo lectura.';
+COMMENT ON ROLE svc_aprobacion IS 'Microservicio aprobacion: estado y revision de scenario_versions.';
+COMMENT ON ROLE svc_escenarios_xml IS 'Microservicio escenarios-xml: solo lectura y bitacora de EXPORT.';
+COMMENT ON ROLE svc_casos IS 'Microservicio casos: duenio de cases.';
+COMMENT ON ROLE svc_sincronizacion IS 'Microservicio sincronizacion: lotes en Redis; solo inserta en audit_log.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('027', 'Seguridad: un rol de PostgreSQL por microservicio de escenarios y casos')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+-- =============================================================================
+-- 028_roles_comparacion_pareto.sql
+-- Un rol de PostgreSQL para los microservicios comparacion y pareto (bloque L).
+-- Sigue el patrón de la 026 y la 027.
+--
+-- Los dos son de solo lectura: no escriben nada, ni siquiera en audit_log.
+-- - Los roles nacen con LOGIN y sin contraseña. En el compose la fija
+--   infra/postgres/10-inicializa.sh; fuera de él: ALTER ROLE svc_pareto PASSWORD '...';
+--   y el servicio la recibe en su DATABASE_URL (ver infra/.env.example).
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida revoca y vuelve a otorgar exactamente lo de abajo.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+DECLARE
+    r TEXT;
+BEGIN
+    FOREACH r IN ARRAY ARRAY['svc_comparacion', 'svc_pareto']
+    LOOP
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+            EXECUTE format('CREATE ROLE %I LOGIN', r);
+        END IF;
+        EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', r);
+        EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', r);
+        EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', r);
+    END LOOP;
+END;
+$$;
+
+-- comparacion: queries.get_corridas_para_comparar().
+GRANT SELECT ON simulation_runs, simulation_results, scenario_versions, scenarios TO svc_comparacion;
+
+-- pareto: simulaciones.construir_comparacion_costo_impacto(), que arma el escenario de
+-- cada versión (get_run, get_version_simulacion y get_escenario_detalle), lee los costos
+-- de intervention_types y el resultado guardado de cada corrida. De users, solo el nombre
+-- de quien la creó, la posee o la revisó.
+GRANT SELECT ON simulation_runs, simulation_results, scenario_versions, scenarios,
+                scenario_interventions, intervention_types, diseases, regions TO svc_pareto;
+GRANT SELECT (id, username, full_name) ON users TO svc_pareto;
+
+COMMENT ON ROLE svc_comparacion IS 'Microservicio comparacion (5244): solo lectura de corridas y resultados.';
+COMMENT ON ROLE svc_pareto IS 'Microservicio pareto (5245): solo lectura; costo contra impacto de corridas completadas.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('028', 'Seguridad: roles de PostgreSQL de comparacion y pareto')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 029_roles_simulacion_notificaciones.sql
+-- Un rol de PostgreSQL para los microservicios corridas, simulador, resultados y
+-- notificaciones (bloque L), y el tipo de aviso SCENARIO_APPROVED. Sigue el patrón
+-- de la 026 a la 028.
+--
+-- - Los roles nacen con LOGIN y sin contraseña. En el compose la fija
+--   infra/postgres/10-inicializa.sh; fuera de él: ALTER ROLE svc_corridas PASSWORD '...';
+--   y el servicio la recibe en su DATABASE_URL (ver infra/.env.example).
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida revoca y vuelve a otorgar exactamente lo de abajo.
+-- - simulation_runs.status lo cambian corridas (cancelar una encolada) y simulador
+--   (ejecutarla), las dos con la transición condicionada (WHERE status = ...). Las
+--   dos llevan simulation_batches al estado de su corrida (_sincroniza_lote).
+-- - Las llaves foráneas las revisa PostgreSQL con los permisos del dueño de la
+--   tabla; el trigger fn_version_aprobada (014), con los de quien inserta: por eso
+--   corridas lee scenario_versions.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+DECLARE
+    r TEXT;
+BEGIN
+    FOREACH r IN ARRAY ARRAY['svc_corridas', 'svc_simulador', 'svc_resultados', 'svc_notificaciones']
+    LOOP
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+            EXECUTE format('CREATE ROLE %I LOGIN', r);
+        END IF;
+        EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', r);
+        EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', r);
+        EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', r);
+    END LOOP;
+END;
+$$;
+
+-- corridas: crear_corrida (lote y corrida, auditados), cancelar_run, get_run y
+-- get_runs_recientes. De users, solo el nombre de quien pidió la corrida.
+GRANT SELECT ON simulation_batches, simulation_runs, scenario_versions, scenarios,
+                diseases, regions TO svc_corridas;
+GRANT SELECT (id, username, full_name) ON users TO svc_corridas;
+GRANT INSERT ON simulation_batches, simulation_runs TO svc_corridas;
+GRANT UPDATE (status, started_at, finished_at) ON simulation_runs TO svc_corridas;
+GRANT UPDATE (status, finished_at) ON simulation_batches TO svc_corridas;
+GRANT INSERT ON audit_log TO svc_corridas;
+
+-- simulador: simulaciones.ejecutar_run y recupera_corridas_interrumpidas. Arma la
+-- entrada del motor desde la versión aprobada (get_version_simulacion y
+-- get_escenario_detalle), guarda el resultado y cierra la corrida.
+GRANT SELECT ON simulation_batches, simulation_runs, scenario_versions, scenarios,
+                scenario_interventions, intervention_types, diseases, regions TO svc_simulador;
+GRANT SELECT (id, username, full_name) ON users TO svc_simulador;
+GRANT UPDATE (status, progress, started_at, finished_at, error_message)
+    ON simulation_runs TO svc_simulador;
+GRANT UPDATE (status, finished_at) ON simulation_batches TO svc_simulador;
+GRANT INSERT ON simulation_results TO svc_simulador;
+GRANT INSERT ON audit_log TO svc_simulador;
+
+-- resultados: solo lectura (get_run y get_resultado_run). No escribe, ni en audit_log.
+GRANT SELECT ON simulation_runs, simulation_results, scenario_versions, scenarios,
+                diseases, regions TO svc_resultados;
+GRANT SELECT (id, username, full_name) ON users TO svc_resultados;
+
+-- notificaciones: dueño de notifications. Marcar como leída solo toca read_at.
+GRANT SELECT, INSERT ON notifications TO svc_notificaciones;
+GRANT UPDATE (read_at) ON notifications TO svc_notificaciones;
+GRANT INSERT ON audit_log TO svc_notificaciones;
+
+-- -----------------------------------------------------------------------------
+-- Secuencias de las tablas donde se inserta (simulation_results no tiene: su
+-- llave es run_id)
+-- -----------------------------------------------------------------------------
+DO $$
+DECLARE
+    par TEXT[];
+    secuencia TEXT;
+BEGIN
+    FOREACH par SLICE 1 IN ARRAY ARRAY[
+        ['svc_corridas', 'audit_log'], ['svc_corridas', 'simulation_batches'],
+        ['svc_corridas', 'simulation_runs'],
+        ['svc_simulador', 'audit_log'],
+        ['svc_notificaciones', 'audit_log'], ['svc_notificaciones', 'notifications']
+    ]
+    LOOP
+        secuencia := pg_get_serial_sequence('public.' || par[2], 'id');
+        IF secuencia IS NOT NULL THEN
+            EXECUTE format('GRANT USAGE ON SEQUENCE %s TO %I', secuencia, par[1]);
+        END IF;
+    END LOOP;
+END;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- notifications.type: el aviso de versión aprobada
+-- -----------------------------------------------------------------------------
+-- aprobacion avisa a quien armó la versión cuando se aprueba. SCENARIO_PUBLISHED
+-- es otra cosa (publicar al sitio público, permiso scenarios.publish).
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS ck_notifications_type;
+ALTER TABLE notifications ADD CONSTRAINT ck_notifications_type CHECK (type IN
+    ('RUN_FINISHED', 'RUN_FAILED', 'THRESHOLD_EXCEEDED', 'ASSIGNMENT',
+     'SCENARIO_PUBLISHED', 'SCENARIO_APPROVED', 'SYSTEM'));
+
+COMMENT ON COLUMN notifications.type IS
+    'Tipo: RUN_FINISHED, RUN_FAILED, THRESHOLD_EXCEEDED, ASSIGNMENT, SCENARIO_PUBLISHED, SCENARIO_APPROVED o SYSTEM.';
+
+COMMENT ON ROLE svc_corridas IS 'Microservicio corridas (5241): alta y cancelacion de corridas.';
+COMMENT ON ROLE svc_simulador IS 'Microservicio simulador (5242): ejecuta corridas y guarda resultados.';
+COMMENT ON ROLE svc_resultados IS 'Microservicio resultados (5243): solo lectura de corridas y resultados.';
+COMMENT ON ROLE svc_notificaciones IS 'Microservicio notificaciones (5261): duenio de notifications.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('029', 'Seguridad: roles de corridas, simulador, resultados y notificaciones; aviso SCENARIO_APPROVED')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+-- =============================================================================
+-- 030_rol_estado_servicios.sql
+-- Un rol de PostgreSQL para el microservicio estado-servicios (bloque L).
+-- Sigue el patrón de la 026 a la 029.
+--
+-- No lee ni escribe ninguna tabla: sondea el /health de los demás servicios y guarda lo
+-- que ve en Redis. Solo se conecta para su propio /health, que hace SELECT 1, y para eso
+-- basta el CONNECT que PUBLIC tiene sobre la base. Por eso no recibe ningún GRANT.
+-- - El rol nace con LOGIN y sin contraseña. En el compose la fija
+--   infra/postgres/10-inicializa.sh; fuera de él: ALTER ROLE svc_estado_servicios PASSWORD '...';
+--   y el servicio la recibe en su DATABASE_URL (ver infra/.env.example).
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida le revoca lo que alguien le hubiera dado a mano.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_estado_servicios') THEN
+        CREATE ROLE svc_estado_servicios LOGIN;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM svc_estado_servicios;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM svc_estado_servicios;
+
+COMMENT ON ROLE svc_estado_servicios IS 'Microservicio estado-servicios (5262): solo se conecta; no lee ni escribe tablas.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('030', 'Seguridad: rol de PostgreSQL de estado-servicios')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;

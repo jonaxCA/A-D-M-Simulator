@@ -1,0 +1,1072 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - casos",
+    "version": "0.1.0",
+    "description": "Registra y consulta casos epidemiológicos (tabla cases). Reutiliza valida_caso del monolito. XML por defecto y JSON con ?format=json o Accept: application/json; los cuerpos se aceptan en los dos formatos. Roles: crear = CAPTURISTA y ADMINISTRADOR; consultar = los cuatro roles (matriz de permisos cases.create / cases.read). Los ejemplos están en docs/contratos/casos/ejemplos; el XSD del recurso, en caso.xsd."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5221"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token del servicio auth, con sesión activa en Redis."
+      }
+    },
+    "schemas": {
+      "Caso": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "readOnly": true
+          },
+          "local_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Llave de deduplicación; la genera el dispositivo."
+          },
+          "device_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "devices.id del dispositivo de captura."
+          },
+          "reported_by": {
+            "type": "integer",
+            "readOnly": true,
+            "description": "Sale del token."
+          },
+          "disease_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "enfermedad": {
+            "type": "string",
+            "readOnly": true
+          },
+          "region_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Municipio de Nuevo León del catálogo."
+          },
+          "municipio": {
+            "type": "string",
+            "readOnly": true
+          },
+          "age": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 120,
+            "nullable": true
+          },
+          "sex": {
+            "type": "string",
+            "enum": [
+              "M",
+              "F",
+              "O"
+            ],
+            "nullable": true
+          },
+          "onset_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "No puede ser posterior a report_date."
+          },
+          "report_date": {
+            "type": "string",
+            "format": "date",
+            "description": "No puede estar en el futuro."
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90,
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "nullable": true,
+            "description": "Latitud y longitud van juntas o ninguna."
+          },
+          "test_result": {
+            "type": "string",
+            "enum": [
+              "positivo",
+              "negativo",
+              "pendiente",
+              "sin_prueba"
+            ],
+            "nullable": true
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "asintomatico",
+              "leve",
+              "grave",
+              "fallecido"
+            ],
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pendiente",
+              "validado",
+              "duplicado",
+              "descartado"
+            ],
+            "readOnly": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "synced_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true,
+            "description": "Se fija cuando el caso llega con device_id."
+          },
+          "duplicado": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Solo en POST: true si el local_uuid ya existía."
+          }
+        },
+        "required": [
+          "id",
+          "local_uuid",
+          "disease_id",
+          "region_id",
+          "report_date",
+          "status"
+        ]
+      },
+      "CasoEntrada": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "local_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Llave de deduplicación; la genera el dispositivo."
+          },
+          "device_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "devices.id del dispositivo de captura."
+          },
+          "disease_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "region_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Municipio de Nuevo León del catálogo."
+          },
+          "age": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 120,
+            "nullable": true
+          },
+          "sex": {
+            "type": "string",
+            "enum": [
+              "M",
+              "F",
+              "O"
+            ],
+            "nullable": true
+          },
+          "onset_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "No puede ser posterior a report_date."
+          },
+          "report_date": {
+            "type": "string",
+            "format": "date",
+            "description": "No puede estar en el futuro."
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90,
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "nullable": true,
+            "description": "Latitud y longitud van juntas o ninguna."
+          },
+          "test_result": {
+            "type": "string",
+            "enum": [
+              "positivo",
+              "negativo",
+              "pendiente",
+              "sin_prueba"
+            ],
+            "nullable": true
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "asintomatico",
+              "leve",
+              "grave",
+              "fallecido"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "disease_id",
+          "region_id",
+          "report_date"
+        ]
+      },
+      "ListaCasos": {
+        "type": "object",
+        "properties": {
+          "casos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Caso"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "pagina": {
+            "type": "integer"
+          },
+          "por_pagina": {
+            "type": "integer"
+          },
+          "paginas": {
+            "type": "integer"
+          }
+        }
+      },
+      "Problema": {
+        "type": "object",
+        "description": "Error RFC 7807 de la biblioteca común.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "about:blank"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "codigo": {
+            "type": "string",
+            "description": "Código de la tabla de errores común.",
+            "example": "DATOS_INVALIDOS"
+          },
+          "instance": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "codigo",
+          "instance"
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/cases": {
+      "post": {
+        "summary": "Registrar un caso",
+        "operationId": "crear_caso",
+        "tags": [
+          "casos"
+        ],
+        "description": "Valida con las reglas del monolito (catálogo vigente de enfermedades y municipios, fechas, rangos, coordenadas completas) e inserta con status pendiente; reported_by sale del token y queda un CREATE en audit_log en la misma transacción. Si local_uuid ya existe regresa 200 con el caso existente y duplicado=true (sin validar ni escribir); si no se manda, el servicio genera uno. Roles: CAPTURISTA, ADMINISTRADOR.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Caso a registrar. Obligatorios: disease_id, region_id, report_date.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CasoEntrada"
+              },
+              "example": {
+                "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+                "device_id": 3,
+                "disease_id": 1,
+                "region_id": 10,
+                "report_date": "2026-10-01",
+                "onset_date": "2026-09-28",
+                "age": 34,
+                "sex": "F",
+                "latitude": 25.6866,
+                "longitude": -100.3161,
+                "test_result": "positivo",
+                "severity": "leve"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "caso"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><disease_id tipo=\"numero\">1</disease_id><region_id tipo=\"numero\">10</region_id><report_date>2026-10-01</report_date><onset_date>2026-09-28</onset_date><age tipo=\"numero\">34</age><sex>F</sex><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity></caso>\n"
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Caso nuevo creado (status pendiente). duplicado=false.",
+            "headers": {
+              "X-Correlation-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Caso"
+                },
+                "example": {
+                  "id": 1,
+                  "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+                  "device_id": 3,
+                  "reported_by": 7,
+                  "disease_id": 1,
+                  "enfermedad": "COVID-19",
+                  "region_id": 10,
+                  "municipio": "Monterrey",
+                  "age": 34,
+                  "sex": "F",
+                  "onset_date": "2026-09-28",
+                  "report_date": "2026-10-01",
+                  "latitude": 25.6866,
+                  "longitude": -100.3161,
+                  "test_result": "positivo",
+                  "severity": "leve",
+                  "status": "pendiente",
+                  "created_at": "2026-10-12T10:00:00+00:00",
+                  "synced_at": "2026-10-12T10:00:00+00:00",
+                  "duplicado": false
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><duplicado tipo=\"booleano\">false</duplicado></caso>\n"
+              }
+            }
+          },
+          "200": {
+            "description": "Ya existía un caso con ese local_uuid: se regresa el existente, sin validar ni escribir, con duplicado=true. Hace idempotentes los reintentos de la sincronización.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Caso"
+                },
+                "example": {
+                  "id": 1,
+                  "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+                  "device_id": 3,
+                  "reported_by": 7,
+                  "disease_id": 1,
+                  "enfermedad": "COVID-19",
+                  "region_id": 10,
+                  "municipio": "Monterrey",
+                  "age": 34,
+                  "sex": "F",
+                  "onset_date": "2026-09-28",
+                  "report_date": "2026-10-01",
+                  "latitude": 25.6866,
+                  "longitude": -100.3161,
+                  "test_result": "positivo",
+                  "severity": "leve",
+                  "status": "pendiente",
+                  "created_at": "2026-10-12T10:00:00+00:00",
+                  "synced_at": "2026-10-12T10:00:00+00:00",
+                  "duplicado": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><duplicado tipo=\"booleano\">true</duplicado></caso>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "El sexo no es un valor del catálogo. La fecha de reporte no puede estar en el futuro.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/cases"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>El sexo no es un valor del catálogo. La fecha de reporte no puede estar en el futuro.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/cases</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/cases"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/cases</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/cases"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/cases</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "Redis no está disponible.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/cases"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>Redis no está disponible.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/cases</instance></problem>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo JSON/XML ilegible, o ?format desconocido (DATOS_INVALIDOS)."
+          }
+        }
+      },
+      "get": {
+        "summary": "Listar casos",
+        "operationId": "listar_casos",
+        "tags": [
+          "casos"
+        ],
+        "description": "Consulta paginada con filtros combinables (AND). Roles: CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por enfermedad."
+          },
+          {
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por municipio."
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pendiente",
+                "validado",
+                "duplicado",
+                "descartado"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "sex",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "M",
+                "F",
+                "O"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "report_date desde (incluida)."
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "report_date hasta (incluida). from no puede ser posterior a to."
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de casos, del reporte más reciente al más antiguo. total cuenta todos los que cumplen los filtros.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListaCasos"
+                },
+                "example": {
+                  "casos": [
+                    {
+                      "id": 2,
+                      "local_uuid": "8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77",
+                      "device_id": 3,
+                      "reported_by": 7,
+                      "disease_id": 1,
+                      "enfermedad": "COVID-19",
+                      "region_id": 10,
+                      "municipio": "Monterrey",
+                      "age": 34,
+                      "sex": "F",
+                      "onset_date": "2026-09-28",
+                      "report_date": "2026-10-01",
+                      "latitude": 25.6866,
+                      "longitude": -100.3161,
+                      "test_result": "positivo",
+                      "severity": "leve",
+                      "status": "pendiente",
+                      "created_at": "2026-10-12T10:00:00+00:00",
+                      "synced_at": "2026-10-12T10:00:00+00:00"
+                    },
+                    {
+                      "id": 1,
+                      "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+                      "device_id": 3,
+                      "reported_by": 7,
+                      "disease_id": 1,
+                      "enfermedad": "COVID-19",
+                      "region_id": 10,
+                      "municipio": "Monterrey",
+                      "age": 34,
+                      "sex": "F",
+                      "onset_date": "2026-09-28",
+                      "report_date": "2026-10-01",
+                      "latitude": 25.6866,
+                      "longitude": -100.3161,
+                      "test_result": "positivo",
+                      "severity": "leve",
+                      "status": "pendiente",
+                      "created_at": "2026-10-12T10:00:00+00:00",
+                      "synced_at": "2026-10-12T10:00:00+00:00"
+                    }
+                  ],
+                  "total": 41,
+                  "pagina": 1,
+                  "por_pagina": 2,
+                  "paginas": 21
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "lista_casos"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<lista_casos><casos><item><id tipo=\"numero\">2</id><local_uuid>8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at></item><item><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at></item></casos><total tipo=\"numero\">41</total><pagina tipo=\"numero\">1</pagina><por_pagina tipo=\"numero\">2</por_pagina><paginas tipo=\"numero\">21</paginas></lista_casos>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "per_page no puede ser mayor que 100.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/cases"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>per_page no puede ser mayor que 100.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/cases</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/cases"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/cases</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/cases"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/cases</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "Redis no está disponible.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/cases"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>Redis no está disponible.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/cases</instance></problem>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo JSON/XML ilegible, o ?format desconocido (DATOS_INVALIDOS)."
+          }
+        }
+      }
+    },
+    "/api/v1/cases/{case_id}": {
+      "get": {
+        "summary": "Consultar un caso",
+        "operationId": "consultar_caso",
+        "tags": [
+          "casos"
+        ],
+        "description": "Roles: CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El caso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Caso"
+                },
+                "example": {
+                  "id": 1,
+                  "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+                  "device_id": 3,
+                  "reported_by": 7,
+                  "disease_id": 1,
+                  "enfermedad": "COVID-19",
+                  "region_id": 10,
+                  "municipio": "Monterrey",
+                  "age": 34,
+                  "sex": "F",
+                  "onset_date": "2026-09-28",
+                  "report_date": "2026-10-01",
+                  "latitude": 25.6866,
+                  "longitude": -100.3161,
+                  "test_result": "positivo",
+                  "severity": "leve",
+                  "status": "pendiente",
+                  "created_at": "2026-10-12T10:00:00+00:00",
+                  "synced_at": "2026-10-12T10:00:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at></caso>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el caso.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/cases/1"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el caso.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/cases/1</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/cases/1"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/cases/1</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/cases/1"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/cases/1</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "Redis no está disponible.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/cases/1"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>Redis no está disponible.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/cases/1</instance></problem>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo JSON/XML ilegible, o ?format desconocido (DATOS_INVALIDOS)."
+          }
+        }
+      }
+    }
+  }
+}

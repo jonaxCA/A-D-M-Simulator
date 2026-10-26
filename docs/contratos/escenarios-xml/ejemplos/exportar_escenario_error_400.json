@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "El export es un documento y solo existe en XML (application/xml).",
+  "codigo": "DATOS_INVALIDOS",
+  "instance": "/api/v1/scenarios/5/export"
+}

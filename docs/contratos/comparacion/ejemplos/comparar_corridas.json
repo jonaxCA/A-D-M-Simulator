@@ -1,0 +1,89 @@
+{
+  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+  "corridas": [
+    {
+      "id": 12,
+      "scenario_id": 3,
+      "version_number": 1,
+      "scenario_name": "Ola Influenza ZMM - sin intervencion",
+      "serie": [
+        {
+          "dia": 0,
+          "S": 499900,
+          "E": 0,
+          "I": 100,
+          "R": 0,
+          "H": 0,
+          "D": 0,
+          "V": 0,
+          "casos_activos": 100,
+          "nuevos_casos": 0,
+          "nuevas_hospitalizaciones": 0,
+          "nuevas_defunciones": 0,
+          "dosis_aplicadas": 0
+        },
+        {
+          "dia": 1,
+          "S": 499879,
+          "E": 21,
+          "I": 86,
+          "R": 14,
+          "H": 0,
+          "D": 0,
+          "V": 0,
+          "casos_activos": 107,
+          "nuevos_casos": 21,
+          "nuevas_hospitalizaciones": 0,
+          "nuevas_defunciones": 0,
+          "dosis_aplicadas": 0
+        }
+      ],
+      "fallecimientos": 100,
+      "pico_casos_activos": 56052,
+      "dia_pico": 98,
+      "tasa_ataque": 0.650094
+    },
+    {
+      "id": 15,
+      "scenario_id": 3,
+      "version_number": 2,
+      "scenario_name": "Ola Influenza ZMM - con vacunacion",
+      "serie": [
+        {
+          "dia": 0,
+          "S": 499900,
+          "E": 0,
+          "I": 100,
+          "R": 0,
+          "H": 0,
+          "D": 0,
+          "V": 0,
+          "casos_activos": 100,
+          "nuevos_casos": 0,
+          "nuevas_hospitalizaciones": 0,
+          "nuevas_defunciones": 0,
+          "dosis_aplicadas": 0
+        },
+        {
+          "dia": 1,
+          "S": 499879,
+          "E": 21,
+          "I": 86,
+          "R": 14,
+          "H": 0,
+          "D": 0,
+          "V": 0,
+          "casos_activos": 107,
+          "nuevos_casos": 21,
+          "nuevas_hospitalizaciones": 0,
+          "nuevas_defunciones": 0,
+          "dosis_aplicadas": 0
+        }
+      ],
+      "fallecimientos": 51,
+      "pico_casos_activos": 46880,
+      "dia_pico": 111,
+      "tasa_ataque": 0.478136
+    }
+  ]
+}

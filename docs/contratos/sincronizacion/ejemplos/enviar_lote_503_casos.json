@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Service Unavailable",
+  "status": 503,
+  "detail": "El servicio no respondió.",
+  "codigo": "SERVICIO_NO_DISPONIBLE",
+  "instance": "/api/v1/sync/cases"
+}

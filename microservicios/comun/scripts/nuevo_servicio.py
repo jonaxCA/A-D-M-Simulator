@@ -31,6 +31,11 @@ def crear_archivos(raiz_repo, nombre, puerto):
     (carpeta / "Dockerfile").write_text(
         "FROM epidemia/base\n"
         f"COPY microservicios/{nombre}/ /app/microservicios/{nombre}/\n"
+        f"COPY docs/contratos/{nombre}/ /app/docs/contratos/{nombre}/\n"
+        "USER epidemia\n"
+        "HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD python -c "
+        "\"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health?format=json',"
+        "timeout=3)\" || exit 1\n"
         f"CMD [\"waitress-serve\", \"--listen=0.0.0.0:8000\", \"microservicios.{nombre}.app:app\"]\n",
         encoding="utf-8")
     (carpeta / "README.md").write_text(

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Lote de sincronización (puerto 5222). Raíz lote: petición de POST /api/v1/sync/cases.
+     Raíz resultado_lote: respuesta de POST /api/v1/sync/cases y de GET /api/v1/sync/batches/{id}.
+     El servicio también acepta lote_id como alias de batch_id; el XSD solo declara batch_id. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+  <xs:attributeGroup name="Marcas">
+    <xs:annotation><xs:documentation>Atributos que agrega la biblioteca común al generar XML: tipo (numero, booleano) y nil="true" para un valor nulo. Son opcionales: un cliente puede enviar el XML sin ellos.</xs:documentation></xs:annotation>
+    <xs:attribute name="tipo" type="xs:string" use="optional"/>
+    <xs:attribute name="nil" type="xs:boolean" use="optional"/>
+  </xs:attributeGroup>
+  <xs:simpleType name="Vacio"><xs:restriction base="xs:string"><xs:maxLength value="0"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Uuid"><xs:restriction base="xs:string"><xs:pattern value="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="EnteroPositivo"><xs:restriction base="xs:long"><xs:minInclusive value="1"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="EdadValida"><xs:restriction base="xs:integer"><xs:minInclusive value="0"/><xs:maxInclusive value="120"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="LatitudValida"><xs:restriction base="xs:decimal"><xs:minInclusive value="-90"/><xs:maxInclusive value="90"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="LongitudValida"><xs:restriction base="xs:decimal"><xs:minInclusive value="-180"/><xs:maxInclusive value="180"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="SexoValido"><xs:restriction base="xs:string"><xs:enumeration value="M"/><xs:enumeration value="F"/><xs:enumeration value="O"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="ResultadoValido"><xs:restriction base="xs:string"><xs:enumeration value="positivo"/><xs:enumeration value="negativo"/><xs:enumeration value="pendiente"/><xs:enumeration value="sin_prueba"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="SeveridadValida"><xs:restriction base="xs:string"><xs:enumeration value="asintomatico"/><xs:enumeration value="leve"/><xs:enumeration value="grave"/><xs:enumeration value="fallecido"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="EstadoValido"><xs:restriction base="xs:string"><xs:enumeration value="pendiente"/><xs:enumeration value="validado"/><xs:enumeration value="duplicado"/><xs:enumeration value="descartado"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="ResultadoCasoValido"><xs:restriction base="xs:string"><xs:enumeration value="creado"/><xs:enumeration value="duplicado"/><xs:enumeration value="rechazado"/></xs:restriction></xs:simpleType>
+  <xs:complexType name="TUuid"><xs:simpleContent><xs:extension base="Uuid"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:simpleType name="TUuidNuloS"><xs:union memberTypes="Uuid Vacio"/></xs:simpleType>
+  <xs:complexType name="TUuidNulo"><xs:simpleContent><xs:extension base="TUuidNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TEntero"><xs:simpleContent><xs:extension base="xs:long"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:simpleType name="TEnteroNuloS"><xs:union memberTypes="xs:long Vacio"/></xs:simpleType>
+  <xs:complexType name="TEnteroNulo"><xs:simpleContent><xs:extension base="TEnteroNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TPositivo"><xs:simpleContent><xs:extension base="EnteroPositivo"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:simpleType name="TPositivoNuloS"><xs:union memberTypes="EnteroPositivo Vacio"/></xs:simpleType>
+  <xs:complexType name="TPositivoNulo"><xs:simpleContent><xs:extension base="TPositivoNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:simpleType name="TEdadNuloS"><xs:union memberTypes="EdadValida Vacio"/></xs:simpleType>
+  <xs:complexType name="TEdadNulo"><xs:simpleContent><xs:extension base="TEdadNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:simpleType name="TLatitudNuloS"><xs:union memberTypes="LatitudValida Vacio"/></xs:simpleType>
+  <xs:complexType name="TLatitudNulo"><xs:simpleContent><xs:extension base="TLatitudNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:simpleType name="TLongitudNuloS"><xs:union memberTypes="LongitudValida Vacio"/></xs:simpleType>
+  <xs:complexType name="TLongitudNulo"><xs:simpleContent><xs:extension base="TLongitudNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:simpleType name="TSexoNuloS"><xs:union memberTypes="SexoValido Vacio"/></xs:simpleType>
+  <xs:complexType name="TSexoNulo"><xs:simpleContent><xs:extension base="TSexoNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:simpleType name="TResultadoNuloS"><xs:union memberTypes="ResultadoValido Vacio"/></xs:simpleType>
+  <xs:complexType name="TResultadoNulo"><xs:simpleContent><xs:extension base="TResultadoNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:simpleType name="TSeveridadNuloS"><xs:union memberTypes="SeveridadValida Vacio"/></xs:simpleType>
+  <xs:complexType name="TSeveridadNulo"><xs:simpleContent><xs:extension base="TSeveridadNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TEstado"><xs:simpleContent><xs:extension base="EstadoValido"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TResultadoCaso"><xs:simpleContent><xs:extension base="ResultadoCasoValido"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TFecha"><xs:simpleContent><xs:extension base="xs:date"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:simpleType name="TFechaNuloS"><xs:union memberTypes="xs:date Vacio"/></xs:simpleType>
+  <xs:complexType name="TFechaNulo"><xs:simpleContent><xs:extension base="TFechaNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TFechaHora"><xs:simpleContent><xs:extension base="xs:dateTime"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:simpleType name="TFechaHoraNuloS"><xs:union memberTypes="xs:dateTime Vacio"/></xs:simpleType>
+  <xs:complexType name="TFechaHoraNulo"><xs:simpleContent><xs:extension base="TFechaHoraNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TTexto"><xs:simpleContent><xs:extension base="xs:string"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TBooleano"><xs:simpleContent><xs:extension base="xs:boolean"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="CasoDeLote">
+    <xs:annotation><xs:documentation>Mismos campos que la petición de casos; local_uuid es obligatorio para poder deduplicar.</xs:documentation></xs:annotation>
+    <xs:all>
+      <xs:element name="local_uuid" type="TUuid"/>
+      <xs:element name="device_id" type="TPositivoNulo" minOccurs="0"/>
+      <xs:element name="disease_id" type="TPositivo"/>
+      <xs:element name="region_id" type="TPositivo"/>
+      <xs:element name="report_date" type="TFecha"/>
+      <xs:element name="onset_date" type="TFechaNulo" minOccurs="0"/>
+      <xs:element name="age" type="TEdadNulo" minOccurs="0"/>
+      <xs:element name="sex" type="TSexoNulo" minOccurs="0"/>
+      <xs:element name="latitude" type="TLatitudNulo" minOccurs="0"/>
+      <xs:element name="longitude" type="TLongitudNulo" minOccurs="0"/>
+      <xs:element name="test_result" type="TResultadoNulo" minOccurs="0"/>
+      <xs:element name="severity" type="TSeveridadNulo" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+  <xs:element name="lote">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="batch_id" type="TUuid"/>
+        <xs:element name="device_id" type="TPositivoNulo" minOccurs="0"/>
+        <xs:element name="cases">
+          <xs:complexType><xs:sequence><xs:element name="item" type="CasoDeLote" minOccurs="1" maxOccurs="100"/></xs:sequence></xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+  <xs:complexType name="ResultadoCaso">
+    <xs:all>
+      <xs:element name="indice" type="TEntero"/>
+      <xs:element name="local_uuid" type="TUuid"/>
+      <xs:element name="resultado" type="TResultadoCaso"/>
+      <xs:element name="case_id" type="TEnteroNulo"/>
+      <xs:element name="errores">
+        <xs:complexType><xs:sequence><xs:element name="item" type="TTexto" minOccurs="0" maxOccurs="unbounded"/></xs:sequence></xs:complexType>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+  <xs:element name="resultado_lote">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="batch_id" type="TUuid"/>
+        <xs:element name="device_id" type="TEnteroNulo"/>
+        <xs:element name="recibido_en" type="TFechaHora"/>
+        <xs:element name="total" type="TEntero"/>
+        <xs:element name="creados" type="TEntero"/>
+        <xs:element name="duplicados" type="TEntero"/>
+        <xs:element name="rechazados" type="TEntero"/>
+        <xs:element name="resultados">
+          <xs:complexType><xs:sequence><xs:element name="item" type="ResultadoCaso" minOccurs="0" maxOccurs="unbounded"/></xs:sequence></xs:complexType>
+        </xs:element>
+        <xs:element name="repetido" type="TBooleano"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

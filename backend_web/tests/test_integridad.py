@@ -175,6 +175,25 @@ class MotorUnaSolaVezTests(unittest.TestCase):
         self.assertIs(queries.EscenarioInvalido, parametros.EscenarioInvalido)
         self.assertIs(queries.resolver, parametros.resolver)
 
+    def test_nadie_importa_el_motor_como_motor(self):
+        # `import motor` solo funciona dentro de procesamiento/ y carga una segunda
+        # copia del motor. Vale también para las pruebas y los microservicios.
+        culpables = []
+        for carpeta in CARPETAS + ("microservicios",):
+            for ruta in sorted((RAIZ / carpeta).rglob("*.py")):
+                if "__pycache__" in ruta.parts:
+                    continue
+                for nodo in ast.walk(ast.parse(ruta.read_text(encoding="utf-8"))):
+                    if isinstance(nodo, ast.Import):
+                        nombres = [alias.name for alias in nodo.names]
+                    elif isinstance(nodo, ast.ImportFrom) and nodo.level == 0:
+                        nombres = [nodo.module or ""]
+                    else:
+                        continue
+                    if any(n == "motor" or n.startswith("motor.") for n in nombres):
+                        culpables.append(f"{ruta.relative_to(RAIZ).as_posix()}:{nodo.lineno}")
+        self.assertEqual(culpables, [])
+
 
 if __name__ == "__main__":
     unittest.main()

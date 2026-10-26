@@ -1,6 +1,6 @@
 """Pruebas del motor de referencia.
 
-    python -m unittest discover -s tests -t . -v
+    python -m pytest procesamiento/tests -v
 
 Las comparaciones entre escenarios promedian varias semillas para no depender
 de la suerte de una sola corrida estocastica.
@@ -10,7 +10,7 @@ import copy
 import json
 import unittest
 
-from motor import ENGINE_VERSION, EscenarioInvalido, simular, validar_escenario
+from procesamiento.motor import ENGINE_VERSION, EscenarioInvalido, simular, validar_escenario
 
 SEMILLAS = range(1, 7)
 

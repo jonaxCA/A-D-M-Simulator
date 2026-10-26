@@ -28,6 +28,7 @@
           {
             "in": "query",
             "name": "q",
+            "description": "Busca por nombre o clave del municipio: los que contienen el texto, sin distinguir mayúsculas. Vacío o ausente, regresa los 51.",
             "schema": {
               "type": "string"
             }

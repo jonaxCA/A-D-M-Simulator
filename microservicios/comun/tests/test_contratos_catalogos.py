@@ -7,7 +7,12 @@ import pytest
 from epidemia_comun.formatos import a_xml
 
 RAIZ = Path(__file__).resolve().parents[3]
-SERVICIOS = ["enfermedades", "parametros", "regiones", "poblacion"]
+SERVICIOS = ["enfermedades", "parametros", "regiones", "poblacion",
+             "escenarios", "intervenciones", "validacion", "aprobacion", "casos", "sincronizacion"]
+# escenarios-xml: la carpeta del contrato lleva guion y el paquete guion bajo; su export es un
+# documento solo XML, así que no entra en la prueba de ejemplos JSON+XML (la suya vive en
+# escenarios_xml/tests).
+CARPETA = {"escenarios_xml": "escenarios-xml"}
 # a_xml usa "0-19" como etiqueta; este ejemplo muestra la forma válida (ver MANUAL_TECNICO §12).
 NO_GENERABLES = {"consultar_grupos_de_edad"}
 
@@ -39,3 +44,9 @@ def test_openapi_servido_es_el_del_repo(crear_cliente, servicio):
     r = crear_cliente(servicio).get("/openapi.json")
     assert r.status_code == 200
     assert r.data == (RAIZ / "docs/contratos" / servicio / "openapi.json").read_bytes()
+
+
+def test_openapi_servido_de_escenarios_xml_es_el_del_repo(crear_cliente):
+    r = crear_cliente("escenarios_xml").get("/openapi.json")
+    assert r.status_code == 200
+    assert r.data == (RAIZ / "docs/contratos" / CARPETA["escenarios_xml"] / "openapi.json").read_bytes()

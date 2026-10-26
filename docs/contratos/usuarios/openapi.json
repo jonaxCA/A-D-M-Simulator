@@ -34,6 +34,7 @@
           {
             "in": "query",
             "name": "q",
+            "description": "Busca por nombre completo, correo o nombre de usuario: los que contienen el texto, sin distinguir mayúsculas. Vacío o ausente, regresa todos.",
             "schema": {
               "type": "string"
             }

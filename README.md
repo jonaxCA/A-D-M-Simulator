@@ -55,6 +55,8 @@ Abre <http://localhost:5000/>. Falta crear el rol `epidemia_app` y darle permiso
 
 ## Pruebas del motor
 
+Desde la raíz del repositorio:
+
 ```bash
-cd procesamiento && python -m unittest discover -s tests -t .
+python -m pytest procesamiento/tests
 ```

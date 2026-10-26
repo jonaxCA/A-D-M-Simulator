@@ -1,0 +1,12 @@
+{
+  "user_id": 5,
+  "type": "RUN_FINISHED",
+  "title": "La corrida SIM-00042 terminó",
+  "body": "Brote de influenza en Monterrey, versión 2.",
+  "payload": {
+    "run_id": 42,
+    "status": "completado",
+    "scenario_id": 3,
+    "scenario_version_id": 11
+  }
+}
