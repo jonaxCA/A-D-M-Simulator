@@ -1,6 +1,6 @@
 # App móvil: cómo conectarla a los servicios
 
-La app se construye en el tercer parcial (D10 de `docs/decisiones.md`) y habla JSON con los
+La app se entrega en el tercer parcial (D10 de `docs/decisiones.md`) y habla JSON con los
 microservicios. Esta guía es lo que necesita para conectarse desde el primer día: dónde están
 los servicios, cómo dejar pasar HTTP en desarrollo, con qué cuenta entrar y cómo renovar la
 sesión sin cerrarla por accidente. Los contratos de cada servicio están en `docs/contratos/` y

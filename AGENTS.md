@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> **Estado: Vigente** · 2026-10-12
+> **Estado: Vigente** · 2026-10-28
 > Si algo aquí choca con lo que pide la persona en la sesión, pregunta antes de actuar.
 
 ## Contexto
@@ -30,7 +30,8 @@ MongoDB, Google Cloud Storage, nginx, CUDA/Numba/FLAME GPU, ABM, calibración, I
 visualización 3D, límites de consumo y un modelo económico sofisticado.
 
 Las apps de escritorio y móvil se entregan en el tercer parcial (D10 de `docs/decisiones.md`).
-En este no crees código en `frontend_movil/` ni en `frontend_desktop/`.
+La móvil ya se empezó: su código va en `frontend_movil/`; lee antes su `README.md`. En
+`frontend_desktop/` todavía no crees código.
 
 ## Reglas
 
