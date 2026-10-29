@@ -15,13 +15,14 @@ VERSION_APROBADA, VERSION_BORRADOR = 11, 12
 
 
 class Base:
-    """Las corridas de una base simulada, con las reglas de crear_corrida y cancelar_run."""
+    """Las corridas de una base simulada, con las reglas de crear_corrida y cancelar_run.
+    `motores` guarda el motor y la versión con que se creó cada corrida."""
 
     def __init__(self):
-        self.corridas, self.creadas, self.canceladas = {}, [], []
+        self.corridas, self.creadas, self.canceladas, self.motores = {}, [], [], {}
 
-    def crear_corrida(self, version_id, seed, user_id, engine_version, *, contexto=None,
-                      forzar_error=False):
+    def crear_corrida(self, version_id, seed, user_id, engine_version, *, engine="python-ref",
+                      contexto=None, forzar_error=False):
         if version_id not in (VERSION_APROBADA, VERSION_BORRADOR):
             return None, None, "La versión de escenario no existe."
         if version_id == VERSION_BORRADOR:
@@ -29,11 +30,17 @@ class Base:
                                 "ejecutar simulaciones sobre versiones aprobadas.")
         run_id = 40 + len(self.creadas)
         self.creadas.append((version_id, seed, user_id, contexto.user_id, forzar_error))
+        self.motores[run_id] = (engine, engine_version)
         self.corridas[run_id] = corrida(run_id, "encolado")
         return run_id, 90 + len(self.creadas), None
 
     def get_run(self, run_id):
         return dict(self.corridas[run_id]) if run_id in self.corridas else None
+
+    def get_motor_run(self, run_id):
+        if run_id not in self.corridas:
+            return None
+        return self.motores.get(run_id, ("python-ref",))[0]
 
     def cancelar_run(self, run_id, *, contexto):
         if self.corridas.get(run_id, {}).get("status") != "encolado":
@@ -58,7 +65,7 @@ def corrida(run_id, status, progress=0):
 @pytest.fixture
 def base(monkeypatch):
     b = Base()
-    for nombre in ("crear_corrida", "get_run", "cancelar_run"):
+    for nombre in ("crear_corrida", "get_run", "cancelar_run", "get_motor_run"):
         monkeypatch.setattr(queries, nombre, getattr(b, nombre))
     monkeypatch.setattr(queries, "get_runs_recientes",
                         lambda limit=20: [{"id": i, "status": "completado"} for i in range(limit)])
@@ -74,9 +81,10 @@ def lanzar(cliente, cabeceras, cuerpo):
     return cliente.post("/api/v1/runs?format=json", json=cuerpo, headers=cabeceras)
 
 
-def en_cola(redis_falso):
+def en_cola(redis_falso, motor="python-ref"):
     # LPUSH y BRPOP: el que se toma primero está al final de la lista.
-    return [json.loads(x) for x in reversed(redis_falso.lrange(llaves.COLA_SIMULACIONES, 0, -1))]
+    llave = llaves.cola_simulaciones(motor)
+    return [json.loads(x) for x in reversed(redis_falso.lrange(llave, 0, -1))]
 
 
 # ---- lanzar --------------------------------------------------------------------------
@@ -96,11 +104,32 @@ def test_lanzar_responde_202_y_encola(cliente, token, base, redis_falso, rol):
     r = lanzar(cliente, token((rol,)), {"scenario_version_id": VERSION_APROBADA, "seed": 0})
     assert r.status_code == 202
     assert r.get_json() == {"id": 40, "batch_id": 91, "scenario_version_id": 11, "seed": 0,
-                            "forzar_error": False, "status": "encolado"}
+                            "engine": "python-ref", "forzar_error": False, "status": "encolado"}
     assert base.creadas == [(11, 0, 7, 7, False)]
+    assert base.motores == {40: ("python-ref", "python-ref-0.1")}
     assert en_cola(redis_falso) == [{"id": 40, "forzar_error": False}]
     # El candado se suelta al terminar.
     assert redis_falso.get(llaves.candado_corrida(11)) is None
+
+
+def test_un_motor_no_habilitado_es_422(cliente, token, base, redis_falso, monkeypatch):
+    monkeypatch.delenv("MOTORES_HABILITADOS", raising=False)
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "cuda"})
+    assert r.status_code == 422 and r.get_json()["detail"] == "engine debe ser uno de: python-ref."
+    assert base.creadas == [] and en_cola(redis_falso, "cuda") == []
+
+
+def test_un_motor_habilitado_va_a_su_propia_cola(cliente, token, base, redis_falso, monkeypatch):
+    monkeypatch.setenv("MOTORES_HABILITADOS", " cuda ,gpu")
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "cuda"})
+    assert r.status_code == 202 and r.get_json()["engine"] == "cuda"
+    # La versión de cuda no la sabe corridas: la pone su simulador.
+    assert base.motores == {40: ("cuda", None)}
+    assert en_cola(redis_falso, "cuda") == [{"id": 40, "forzar_error": False}]
+    assert en_cola(redis_falso) == []
+    # Un nombre que la base no acepta no se habilita aunque venga en la variable.
+    assert rutas.motores_habilitados() == ["python-ref", "cuda"]
+    assert lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "gpu"}).status_code == 422
 
 
 def test_semilla_aleatoria_si_no_llega(cliente, token, base):
@@ -118,9 +147,11 @@ def test_forzar_error_solo_para_administrador(cliente, token, base, redis_falso)
 def test_acepta_xml(cliente, token, base):
     r = cliente.post("/api/v1/runs", headers={**token(), "Content-Type": "application/xml"},
                      data=b"<solicitud><scenario_version_id>11</scenario_version_id>"
-                          b"<seed>5</seed><forzar_error>false</forzar_error></solicitud>")
+                          b"<seed>5</seed><engine>python-ref</engine>"
+                          b"<forzar_error>false</forzar_error></solicitud>")
     assert r.status_code == 202 and r.mimetype == "application/xml"
     assert ET.fromstring(r.data).findtext("seed") == "5"
+    assert ET.fromstring(r.data).findtext("engine") == "python-ref"
 
 
 @pytest.mark.parametrize("cuerpo", [{}, {"scenario_version_id": "x"}, {"scenario_version_id": 0},
@@ -128,6 +159,8 @@ def test_acepta_xml(cliente, token, base):
                                     {"scenario_version_id": 11, "seed": 2**31},
                                     {"scenario_version_id": 11, "seed": 1.5},
                                     {"scenario_version_id": 11, "seed": True},
+                                    {"scenario_version_id": 11, "engine": 5},
+                                    {"scenario_version_id": 11, "engine": "Python-Ref"},
                                     {"scenario_version_id": 11, "forzar_error": "si"}])
 def test_cuerpo_invalido_es_422(cliente, token, base, cuerpo):
     r = lanzar(cliente, token(), cuerpo)
@@ -208,6 +241,12 @@ def test_consultar_en_xml_por_omision(cliente, token, base):
     r = cliente.get("/api/v1/runs/40", headers=token())
     assert r.mimetype == "application/xml"
     assert ET.fromstring(r.data).findtext("status") == "encolado"
+
+
+def test_consultar_dice_el_motor(cliente, token, base):
+    base.corridas[40] = corrida(40, "encolado")
+    base.motores[40] = ("cuda", None)
+    assert cliente.get("/api/v1/runs/40?format=json", headers=token()).get_json()["engine"] == "cuda"
 
 
 def test_corrida_inexistente_es_404(cliente, token):

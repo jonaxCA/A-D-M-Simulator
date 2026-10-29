@@ -37,7 +37,22 @@ class CorridasDelServicioTests(ConCorridasDePrueba):
         self.assertEqual(len(filas), 1)
         self.assertEqual(filas[0]["user_id"], self.user_id)
         self.assertEqual(filas[0]["data_after"]["estado"], "encolado")
+        self.assertEqual(filas[0]["data_after"]["engine"], "python-ref")
         self.assertTrue(filas[0]["data_after"]["forzar_error"])
+
+    def test_el_motor_queda_en_el_lote(self):
+        por_omision = self._encola_auditada(404)
+        run_id, batch_id, error = queries.crear_corrida(
+            self.version_id, 405, self.user_id, None, engine="cuda",
+            contexto=Contexto(self.user_id, "10.0.0.5", "pruebas"))
+        self.assertIsNone(error, error)
+        self._batches_creados.append(batch_id)
+        self.assertEqual(queries.get_motor_run(por_omision), "python-ref")
+        self.assertEqual(queries.get_motor_run(run_id), "cuda")
+        self.assertIsNone(queries.get_motor_run(-1))
+        recientes = {r["id"]: r["engine"] for r in queries.get_runs_recientes(100)}
+        self.assertEqual((recientes[por_omision], recientes[run_id]), ("python-ref", "cuda"))
+        self.assertEqual(_bitacora(run_id, "RUN")[0]["data_after"]["engine"], "cuda")
 
     def test_cancelar_una_encolada(self):
         run_id = self._encola_auditada(402)

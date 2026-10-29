@@ -1,2 +1,2 @@
 <?xml version='1.0' encoding='utf-8'?>
-<trabajador><trabajador>simulador-1</trabajador><activo tipo="booleano">true</activo><corrida_actual tipo="numero">44</corrida_actual><procesadas tipo="numero">3</procesadas><ultima><id tipo="numero">43</id><status>completado</status></ultima><pendientes tipo="numero">1</pendientes></trabajador>
+<trabajador><trabajador>simulador-1</trabajador><motor>python-ref</motor><activo tipo="booleano">true</activo><corrida_actual tipo="numero">44</corrida_actual><procesadas tipo="numero">3</procesadas><ultima><id tipo="numero">43</id><status>completado</status></ultima><pendientes tipo="numero">1</pendientes></trabajador>

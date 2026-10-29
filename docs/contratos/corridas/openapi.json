@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - corridas",
     "version": "0.1.0",
-    "description": "Lanza, consulta y cancela corridas. Lanzar crea la corrida en PostgreSQL (encolado) y la mete en la cola de Redis; la ejecuta el servicio simulador. Solo se simula una versión aprobada."
+    "description": "Lanza, consulta y cancela corridas. Lanzar crea la corrida en PostgreSQL (encolado) y la mete en la cola de Redis; la ejecuta el simulador de su motor, que la toma de queue:simulaciones:<engine>. Solo se simula una versión aprobada."
   },
   "servers": [
     {
@@ -25,7 +25,7 @@
       "post": {
         "summary": "Lanzar una corrida",
         "operationId": "lanzar_corrida",
-        "description": "ANALISTA y ADMINISTRADOR, como la pantalla Simulaciones del monolito. Responde 202 con el id: el avance se sigue con GET /api/v1/runs/{run_id}. Un candado en Redis por versión evita que un doble clic lance dos corridas.",
+        "description": "ANALISTA y ADMINISTRADOR, como la pantalla Simulaciones del monolito. Responde 202 con el id: el avance se sigue con GET /api/v1/runs/{run_id}. Un candado en Redis por versión evita que un doble clic lance dos corridas. La corrida va a la cola de su motor (queue:simulaciones:<engine>), de donde la toma el simulador de ese motor.",
         "security": [
           {
             "bearerAuth": []
@@ -52,6 +52,16 @@
                     "maximum": 2147483647,
                     "description": "Opcional; sin ella se elige una al azar"
                   },
+                  "engine": {
+                    "type": "string",
+                    "enum": [
+                      "python-ref",
+                      "numba",
+                      "cuda"
+                    ],
+                    "default": "python-ref",
+                    "description": "Motor de simulación. python-ref siempre se acepta; numba y cuda, solo si el despliegue tiene su simulador (MOTORES_HABILITADOS). Otro valor es 422."
+                  },
                   "forzar_error": {
                     "type": "boolean",
                     "default": false,
@@ -61,7 +71,8 @@
               },
               "example": {
                 "scenario_version_id": 11,
-                "seed": 982314
+                "seed": 982314,
+                "engine": "python-ref"
               }
             },
             "application/xml": {
@@ -82,6 +93,16 @@
                     "maximum": 2147483647,
                     "description": "Opcional; sin ella se elige una al azar"
                   },
+                  "engine": {
+                    "type": "string",
+                    "enum": [
+                      "python-ref",
+                      "numba",
+                      "cuda"
+                    ],
+                    "default": "python-ref",
+                    "description": "Motor de simulación. python-ref siempre se acepta; numba y cuda, solo si el despliegue tiene su simulador (MOTORES_HABILITADOS). Otro valor es 422."
+                  },
                   "forzar_error": {
                     "type": "boolean",
                     "default": false,
@@ -94,7 +115,7 @@
               },
               "examples": {
                 "peticion": {
-                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed></solicitud>\n"
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed><engine>python-ref</engine></solicitud>\n"
                 }
               }
             }
@@ -113,6 +134,7 @@
                   "batch_id": 44,
                   "scenario_version_id": 11,
                   "seed": 982314,
+                  "engine": "python-ref",
                   "forzar_error": false,
                   "status": "encolado"
                 }
@@ -126,7 +148,7 @@
                 },
                 "examples": {
                   "respuesta": {
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<corrida><id tipo=\"numero\">44</id><batch_id tipo=\"numero\">44</batch_id><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed><forzar_error tipo=\"booleano\">false</forzar_error><status>encolado</status></corrida>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<corrida><id tipo=\"numero\">44</id><batch_id tipo=\"numero\">44</batch_id><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed><engine>python-ref</engine><forzar_error tipo=\"booleano\">false</forzar_error><status>encolado</status></corrida>\n"
                   }
                 }
               }
@@ -154,14 +176,14 @@
             "description": "Content-Type no soportado"
           },
           "422": {
-            "description": "scenario_version_id, seed o forzar_error inválidos"
+            "description": "scenario_version_id, seed, engine o forzar_error inválidos; engine también si su motor no está habilitado"
           }
         }
       },
       "get": {
         "summary": "Corridas recientes",
         "operationId": "listar_corridas",
-        "description": "Las más recientes de cualquier escenario, como la lista de la pantalla Simulaciones. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
+        "description": "Las más recientes de cualquier escenario, como la lista de la pantalla Simulaciones, con el motor (engine) de cada una. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
         "parameters": [
           {
             "in": "query",
@@ -195,6 +217,7 @@
                       "id": 43,
                       "status": "ejecutando",
                       "seed": 982314,
+                      "engine": "python-ref",
                       "queued_at": "2026-10-20T15:03:00+00:00",
                       "started_at": "2026-10-20T15:03:00+00:00",
                       "finished_at": null,
@@ -208,6 +231,7 @@
                       "id": 41,
                       "status": "fallido",
                       "seed": 7,
+                      "engine": "python-ref",
                       "queued_at": "2026-10-20T14:00:00+00:00",
                       "started_at": "2026-10-20T14:00:00+00:00",
                       "finished_at": "2026-10-20T14:00:00+00:00",
@@ -229,7 +253,7 @@
                 },
                 "examples": {
                   "respuesta": {
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<listado><total tipo=\"numero\">2</total><corridas><corrida><id tipo=\"numero\">43</id><status>ejecutando</status><seed tipo=\"numero\">982314</seed><queued_at>2026-10-20T15:03:00+00:00</queued_at><started_at>2026-10-20T15:03:00+00:00</started_at><finished_at nil=\"true\" /><error_message nil=\"true\" /><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Brote de influenza en Monterrey</scenario_name><requested_by_username>ana</requested_by_username></corrida><corrida><id tipo=\"numero\">41</id><status>fallido</status><seed tipo=\"numero\">7</seed><queued_at>2026-10-20T14:00:00+00:00</queued_at><started_at>2026-10-20T14:00:00+00:00</started_at><finished_at>2026-10-20T14:00:00+00:00</finished_at><error_message>Error forzado de prueba: se solicito explicitamente desde la pantalla de simulaciones (opcion visible solo para ADMINISTRADOR). Demuestra el camino encolado -&gt; ejecutando -&gt; fallido sin depender de que un escenario real este incompleto.</error_message><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Brote de influenza en Monterrey</scenario_name><requested_by_username>ana</requested_by_username></corrida></corridas></listado>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<listado><total tipo=\"numero\">2</total><corridas><corrida><id tipo=\"numero\">43</id><status>ejecutando</status><seed tipo=\"numero\">982314</seed><engine>python-ref</engine><queued_at>2026-10-20T15:03:00+00:00</queued_at><started_at>2026-10-20T15:03:00+00:00</started_at><finished_at nil=\"true\" /><error_message nil=\"true\" /><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Brote de influenza en Monterrey</scenario_name><requested_by_username>ana</requested_by_username></corrida><corrida><id tipo=\"numero\">41</id><status>fallido</status><seed tipo=\"numero\">7</seed><engine>python-ref</engine><queued_at>2026-10-20T14:00:00+00:00</queued_at><started_at>2026-10-20T14:00:00+00:00</started_at><finished_at>2026-10-20T14:00:00+00:00</finished_at><error_message>Error forzado de prueba: se solicito explicitamente desde la pantalla de simulaciones (opcion visible solo para ADMINISTRADOR). Demuestra el camino encolado -&gt; ejecutando -&gt; fallido sin depender de que un escenario real este incompleto.</error_message><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Brote de influenza en Monterrey</scenario_name><requested_by_username>ana</requested_by_username></corrida></corridas></listado>\n"
                   }
                 }
               }
@@ -254,7 +278,7 @@
       "get": {
         "summary": "Estado y avance de una corrida",
         "operationId": "consultar_corrida",
-        "description": "progress sale de Redis (job:<id>:progress, lo escribe el simulador) mientras la corrida no termina, y de PostgreSQL después. terminal es true en completado, fallido y cancelado. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
+        "description": "progress sale de Redis (job:<id>:progress, lo escribe el simulador) mientras la corrida no termina, y de PostgreSQL después. engine es el motor de su lote. engine_version es la de python-ref desde que se encola; con otro motor llega en null, porque corridas no la conoce. terminal es true en completado, fallido y cancelado. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
         "parameters": [
           {
             "in": "path",
@@ -306,6 +330,7 @@
                   "region_name": "Monterrey",
                   "requested_by_username": "ana",
                   "requested_by_nombre": "Ana Analista",
+                  "engine": "python-ref",
                   "terminal": false
                 }
               },
@@ -318,7 +343,7 @@
                 },
                 "examples": {
                   "respuesta": {
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<corrida><id tipo=\"numero\">43</id><batch_id tipo=\"numero\">43</batch_id><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed><status>ejecutando</status><progress tipo=\"numero\">30</progress><engine_version>python-ref-0.1</engine_version><queued_at>2026-10-20T15:00:00+00:00</queued_at><started_at>2026-10-20T15:03:00+00:00</started_at><finished_at nil=\"true\" /><error_message nil=\"true\" /><requested_by tipo=\"numero\">5</requested_by><version_number tipo=\"numero\">2</version_number><scenario_id tipo=\"numero\">3</scenario_id><version_status>aprobado</version_status><population_size tipo=\"numero\">200000</population_size><horizon_days tipo=\"numero\">5</horizon_days><initial_infected tipo=\"numero\">100</initial_infected><scenario_name>Brote de influenza en Monterrey</scenario_name><disease_id tipo=\"numero\">1</disease_id><disease_name>Influenza</disease_name><region_id tipo=\"numero\">9</region_id><region_name>Monterrey</region_name><requested_by_username>ana</requested_by_username><requested_by_nombre>Ana Analista</requested_by_nombre><terminal tipo=\"booleano\">false</terminal></corrida>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<corrida><id tipo=\"numero\">43</id><batch_id tipo=\"numero\">43</batch_id><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed><status>ejecutando</status><progress tipo=\"numero\">30</progress><engine_version>python-ref-0.1</engine_version><queued_at>2026-10-20T15:00:00+00:00</queued_at><started_at>2026-10-20T15:03:00+00:00</started_at><finished_at nil=\"true\" /><error_message nil=\"true\" /><requested_by tipo=\"numero\">5</requested_by><version_number tipo=\"numero\">2</version_number><scenario_id tipo=\"numero\">3</scenario_id><version_status>aprobado</version_status><population_size tipo=\"numero\">200000</population_size><horizon_days tipo=\"numero\">5</horizon_days><initial_infected tipo=\"numero\">100</initial_infected><scenario_name>Brote de influenza en Monterrey</scenario_name><disease_id tipo=\"numero\">1</disease_id><disease_name>Influenza</disease_name><region_id tipo=\"numero\">9</region_id><region_name>Monterrey</region_name><requested_by_username>ana</requested_by_username><requested_by_nombre>Ana Analista</requested_by_nombre><engine>python-ref</engine><terminal tipo=\"booleano\">false</terminal></corrida>\n"
                   }
                 }
               }

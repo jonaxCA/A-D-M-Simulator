@@ -124,10 +124,11 @@ filas = cache.obtener("zonas", f"pagina={pagina}&ambito={ambito}", 60,
 # corridas: un doble clic no lanza dos corridas de la misma versión.
 with candados.candado(llaves.candado_corrida(version_id), ttl=10):
     corrida_id = crear_corrida(version_id)  # revisa en PostgreSQL y hace commit
-    cola.encolar(llaves.COLA_SIMULACIONES, json.dumps({"id": corrida_id, "forzar_error": False}))
+    cola.encolar(llaves.cola_simulaciones(motor),
+                 json.dumps({"id": corrida_id, "forzar_error": False}))
 
 # simulador: tomar() regresa el texto encolado, o None si no llegó nada.
-pedido = cola.tomar(llaves.COLA_SIMULACIONES)
+pedido = cola.tomar(llaves.cola_simulaciones("python-ref"))
 opcional("progreso", lambda r: r.set(llaves.progreso(corrida_id), 40, ex=86400))
 ```
 
@@ -139,8 +140,8 @@ Notas:
   siga abierta.
 - **Caché.** Conserva `Decimal`, `date` y `datetime`; una tupla regresa como lista. No hay
   invalidación: el monolito escribe directo en la base, así que lo viejo lo limita el TTL.
-- **Cola.** Es la única llave sin TTL. Lo que manda es PostgreSQL: si la cola se pierde, se
-  vuelve a llenar con las corridas en `encolado`.
+- **Colas.** Hay una por motor de simulación, y son las únicas llaves sin TTL. Lo que manda es
+  PostgreSQL: si la cola se pierde, se vuelve a llenar con las corridas en `encolado`.
 - **Llaves nuevas.** Van en `llaves.py` y en la tabla del catálogo
   (`docs/arquitectura/microservicios.md`); `test_llaves` revisa que coincidan.
 

@@ -3389,10 +3389,11 @@ def listar_versiones_escenario():
     )
 
 
-def crear_corrida(version_id, seed, user_id, engine_version, *, contexto=None,
-                  forzar_error=False):
-    """Encola una corrida: un lote de una sola replica (motor python-ref, una
-    corrida a la vez -- ver 014_simulacion_resultados.sql) y su run.
+def crear_corrida(version_id, seed, user_id, engine_version, *, engine="python-ref",
+                  contexto=None, forzar_error=False):
+    """Encola una corrida: un lote de una sola replica (una corrida a la vez --
+    ver 014_simulacion_resultados.sql) y su run. `engine` queda en el lote: el
+    monolito siempre usa python-ref; el microservicio corridas deja elegirlo.
 
     Valida que la version este aprobada ANTES del INSERT, para poder devolver
     un mensaje claro. El trigger fn_version_aprobada (014) es la ULTIMA linea
@@ -3422,10 +3423,10 @@ def crear_corrida(version_id, seed, user_id, engine_version, *, contexto=None,
                     """
                     INSERT INTO simulation_batches
                         (scenario_version_id, requested_by, replicas, engine, status)
-                    VALUES (%s, %s, 1, 'python-ref', 'encolado')
+                    VALUES (%s, %s, 1, %s, 'encolado')
                     RETURNING id
                     """,
-                    (version_id, user_id),
+                    (version_id, user_id, engine),
                 )
                 batch_id = cur.fetchone()[0]
                 cur.execute(
@@ -3443,7 +3444,7 @@ def crear_corrida(version_id, seed, user_id, engine_version, *, contexto=None,
                     log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
                               data_after={"estado": "encolado", "seed": seed,
                                           "scenario_version_id": version_id,
-                                          "forzar_error": forzar_error},
+                                          "engine": engine, "forzar_error": forzar_error},
                               cur=cur)
             conn.commit()
         return run_id, batch_id, None
@@ -3484,10 +3485,11 @@ def get_runs_recientes(limit=20):
     de simulaciones."""
     return query(
         """
-        SELECT r.id, r.status, r.seed, r.queued_at, r.started_at, r.finished_at,
+        SELECT r.id, r.status, r.seed, b.engine, r.queued_at, r.started_at, r.finished_at,
                r.error_message, sv.scenario_id, sv.version_number,
                s.name AS scenario_name, u.username AS requested_by_username
         FROM simulation_runs r
+        LEFT JOIN simulation_batches b ON b.id = r.batch_id
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
         JOIN scenarios s ON s.id = sv.scenario_id
         JOIN users u     ON u.id = r.requested_by
@@ -3496,6 +3498,21 @@ def get_runs_recientes(limit=20):
         """,
         (limit,),
     )
+
+
+def get_motor_run(run_id):
+    """El motor del lote de una corrida. Va aparte de get_run porque el rol de
+    resultados, que tambien usa get_run, no lee simulation_batches (029)."""
+    fila = query(
+        """
+        SELECT b.engine FROM simulation_runs r
+        JOIN simulation_batches b ON b.id = r.batch_id
+        WHERE r.id = %s
+        """,
+        (run_id,),
+        one=True,
+    )
+    return fila["engine"] if fila else None
 
 
 def get_runs_completados_para_comparar(limit=50):
