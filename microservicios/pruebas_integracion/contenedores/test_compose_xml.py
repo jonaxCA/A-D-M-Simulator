@@ -2,7 +2,7 @@
 estado-servicios lee en XML el /health de los 26."""
 import re
 
-from .conftest import INTERVENCIONES
+from .conftest import INTERVENCIONES, espera
 
 
 def test_importar_crea_el_escenario_en_escenarios(api, analista, crea_escenario):
@@ -27,6 +27,11 @@ def test_importar_un_xml_que_no_cumple_el_xsd_es_422(api, analista):
 
 
 def test_estado_servicios_lee_la_salud_de_los_26(api):
-    datos = api("estado-servicios", "GET", "/api/v1/services/health").json()
-    assert datos["resumen"] == {"ok": 26, "degradado": 0, "caido": 0}
+    # La ronda de sondeo que empezó con Redis apagado (test_compose_redis) tarda unos 4 s y puede
+    # guardar «degradado» cuando Redis ya volvió; la ronda siguiente, 10 s después, lo corrige.
+    def los_26_bien():
+        datos = api("estado-servicios", "GET", "/api/v1/services/health").json()
+        return datos if datos["resumen"] == {"ok": 26, "degradado": 0, "caido": 0} else None
+
+    datos = espera(los_26_bien, 60, "Los 26 no están en ok.", cada=3)
     assert all(s["version"] for s in datos["servicios"])
