@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - corridas",
     "version": "0.1.0",
-    "description": "Lanza, consulta y cancela corridas. Lanzar crea la corrida en PostgreSQL (encolado) y la mete en la cola de Redis; la ejecuta el simulador de su motor, que la toma de queue:simulaciones:<engine>. Solo se simula una versión aprobada."
+    "description": "Lanza, consulta y cancela corridas. Lanzar crea la corrida en PostgreSQL (encolado) y la mete en la cola de Redis; la ejecuta el simulador de su motor, que la toma de queue:simulaciones:<engine>. Solo se simula una versión aprobada. Sus respuestas XML validan contra docs/contratos/corridas/corrida.xsd."
   },
   "servers": [
     {

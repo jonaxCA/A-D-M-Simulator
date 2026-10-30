@@ -1,12 +1,16 @@
 import logging
 from contextlib import contextmanager
+from pathlib import Path
 
 import jwt
 import pytest
+import xmlschema
 
 from backend_web import queries
 from epidemia_comun.errores import ErrorAPI
 from microservicios.aprobacion import rutas
+
+XSD = Path(__file__).resolve().parents[3] / "docs/contratos/aprobacion/aprobacion.xsd"
 
 AUTOR = 5      # quien armó el escenario
 TOKEN_ID = 7   # el "sub" que firma el fixture token()
@@ -339,6 +343,19 @@ def test_bandeja_en_xml_por_defecto(cliente, token, monkeypatch):
     monkeypatch.setattr(queries, "get_pendientes_revision", lambda: PENDIENTES)
     r = cliente.get("/api/v1/reviews/pending", headers=token(roles=("EPIDEMIOLOGO",)))
     assert r.mimetype == "application/xml" and b"<bandeja>" in r.data and b"<item>" in r.data
+
+
+def test_las_respuestas_xml_validan_contra_el_xsd(cliente, mundo, dueno, revisor, token, monkeypatch):
+    monkeypatch.setattr(queries, "get_pendientes_revision", lambda: PENDIENTES)
+    xsd = xmlschema.XMLSchema(str(XSD))
+    respuestas = [
+        enviar(cliente, dueno, formato="xml"),
+        cliente.post("/api/v1/scenarios/3/review", json={"decision": "aprobar"}, headers=revisor),
+        cliente.get("/api/v1/reviews/pending", headers=token(roles=("EPIDEMIOLOGO",))),
+    ]
+    for r in respuestas:
+        assert r.status_code == 200 and r.mimetype == "application/xml", r.data
+        xsd.validate(r.data.decode("utf-8"))
 
 
 def test_bandeja_401_403(cliente, token):

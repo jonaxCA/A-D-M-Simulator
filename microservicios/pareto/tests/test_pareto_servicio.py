@@ -2,10 +2,12 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
+import xmlschema
 
 from backend_web import simulaciones
 from microservicios.pareto import rutas
-from procesamiento.motor import AVISO_SIMULACION, METRICAS_IMPACTO
+from procesamiento.motor import AVISO_SIMULACION, METRICAS_IMPACTO, comparar, simular
+from procesamiento.tests.test_motor import escenario
 
 RAIZ = Path(__file__).resolve().parents[3]
 
@@ -81,6 +83,29 @@ def test_xml_por_omision(cliente, token):
     assert [f.findtext("id") for f in raiz.findall("filas/fila")] == ["12", "15"]
     assert [c.text for c in raiz.findall("frontera/corrida")] == ["12"]
     assert [c.text for c in raiz.findall("filas/fila/dominado_por/corrida")] == ["12"]
+
+
+# El servicio no pide escenario base (base vacío); con base salen además impacto_evitado,
+# costo_adicional y costo_por_unidad_evitada. El XSD acepta las dos formas.
+@pytest.mark.parametrize("base", [None, 12])
+def test_la_salida_real_del_motor_valida_contra_el_xsd(cliente, token, monkeypatch, base):
+    cierre = {"tipo": "CIERRE_ESCUELAS", "dia_inicio": 7, "dia_fin": 60, "params": {"reduccion": 1.0}}
+    vacuna = {"tipo": "VACUNACION", "dia_inicio": 10, "cobertura": 0.7,
+              "params": {"eficacia": 0.9, "dosis_diarias": 2000, "prioridad": "edad_desc",
+                         "edad_minima": 60}}
+    entradas = []
+    for id_, intervenciones in ((12, []), (15, [cierre, vacuna])):
+        esc = escenario(intervenciones=intervenciones)
+        entradas.append({"id": id_, "nombre": "SIM-%05d - Escenario" % id_, "escenario": esc,
+                         "resultado": simular(esc, 982314)})
+    costos = {"CIERRE_ESCUELAS": {"valor": 10.0, "fuente": "prueba", "supuesto": False},
+              "VACUNACION": {"valor": 300.0, "supuesto": True}}
+    real = comparar(entradas, costos, base=base)
+    monkeypatch.setattr(simulaciones, "construir_comparacion_costo_impacto",
+                        lambda run_ids, metrica="fallecimientos": (real, []))
+    r = cliente.get("/api/v1/pareto?runs=12,15", headers=token())
+    assert r.status_code == 200
+    xmlschema.XMLSchema(str(RAIZ / "docs/contratos/pareto/pareto.xsd")).validate(r.data.decode("utf-8"))
 
 
 @pytest.mark.parametrize("runs", [None, "", "12", "12,12", "12,abc", "12,0",

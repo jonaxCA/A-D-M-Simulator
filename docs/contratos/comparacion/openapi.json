@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - comparacion",
     "version": "0.1.0",
-    "description": "Compara corridas completadas lado a lado: indicadores y serie diaria de cada una. Muestra opciones; no recomienda un escenario."
+    "description": "Compara corridas completadas lado a lado: indicadores y serie diaria de cada una. Muestra opciones; no recomienda un escenario. Sus respuestas XML validan contra docs/contratos/comparacion/comparacion.xsd."
   },
   "servers": [
     {

@@ -6,7 +6,7 @@ de ese motor. Solo se simula una versión aprobada.
 
 Puerto externo: 5241; puerto interno en Docker: 8000. Contrato en
 `docs/contratos/corridas/openapi.json`, con un ejemplo JSON y uno XML por ruta en
-`ejemplos/`.
+`ejemplos/`. Las respuestas XML validan contra `docs/contratos/corridas/corrida.xsd`.
 
 ## Rutas
 

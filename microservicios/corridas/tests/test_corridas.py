@@ -4,6 +4,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
+import xmlschema
 
 from backend_web import queries
 from epidemia_comun import llaves
@@ -277,3 +278,25 @@ def test_epidemiologo_no_cancela(cliente, token, base):
 def test_contrato_servido_es_el_del_repo(cliente):
     r = cliente.get("/openapi.json")
     assert r.data == (RAIZ / "docs/contratos/corridas/openapi.json").read_bytes()
+
+
+def test_las_respuestas_xml_validan_contra_el_xsd(cliente, token, base, monkeypatch):
+    # Las columnas de get_runs_recientes; una corrida sin lote no tiene motor.
+    reciente = {"id": 43, "status": "fallido", "seed": 7, "engine": "python-ref",
+                "queued_at": datetime(2026, 10, 20, 15, tzinfo=timezone.utc),
+                "started_at": datetime(2026, 10, 20, 15, 1, tzinfo=timezone.utc),
+                "finished_at": datetime(2026, 10, 20, 15, 2, tzinfo=timezone.utc),
+                "error_message": "Error forzado de prueba.", "scenario_id": 3,
+                "version_number": 2, "scenario_name": "Ola Influenza ZMM",
+                "requested_by_username": "alex.cavazos"}
+    sin_lote = dict(reciente, id=41, status="encolado", engine=None, started_at=None,
+                    finished_at=None, error_message=None)
+    monkeypatch.setattr(queries, "get_runs_recientes", lambda limit=20: [reciente, sin_lote])
+    respuestas = [cliente.post("/api/v1/runs", json={"scenario_version_id": 11}, headers=token()),
+                  cliente.get("/api/v1/runs/40", headers=token()),
+                  cliente.post("/api/v1/runs/40/cancel", headers=token()),
+                  cliente.get("/api/v1/runs", headers=token())]
+    xsd = xmlschema.XMLSchema(str(RAIZ / "docs/contratos/corridas/corrida.xsd"))
+    for r in respuestas:
+        assert r.status_code in (200, 202) and r.mimetype == "application/xml", r.data
+        xsd.validate(r.data.decode("utf-8"))

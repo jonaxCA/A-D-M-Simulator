@@ -3,10 +3,12 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
+import xmlschema
 
 from backend_web import queries
 from microservicios.comparacion import rutas
-from procesamiento.motor import AVISO_SIMULACION
+from procesamiento.motor import AVISO_SIMULACION, simular
+from procesamiento.tests.test_motor import escenario
 
 RAIZ = Path(__file__).resolve().parents[3]
 
@@ -69,6 +71,16 @@ def test_xml_por_omision(cliente, token):
     corridas = raiz.findall("corridas/corrida")
     assert [c.findtext("id") for c in corridas] == ["12", "15"]
     assert [p.findtext("casos_activos") for p in corridas[0].findall("serie/punto")] == ["100", "120"]
+
+
+def test_xml_con_la_serie_real_del_motor_valida_contra_el_xsd(cliente, token, monkeypatch):
+    serie = simular(escenario(dias=5), 1)["serie"]
+    for corrida_ in COMPLETADAS.values():
+        monkeypatch.setitem(corrida_, "serie", serie)
+    r = cliente.get("/api/v1/comparisons?runs=12,15", headers=token())
+    assert r.status_code == 200
+    xmlschema.XMLSchema(str(RAIZ / "docs/contratos/comparacion/comparacion.xsd")).validate(
+        r.data.decode("utf-8"))
 
 
 @pytest.mark.parametrize("runs", [None, "", "12", "12,12", "12,abc", "12,0", "12,-3", "12,,15",

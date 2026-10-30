@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Las respuestas del servicio aprobacion (puerto 5233).
+       POST /api/v1/scenarios/{id}/submit   raíz <envio>: la versión quedó en_revision, con los
+                                            avisos del servicio validacion
+       POST /api/v1/scenarios/{id}/review   raíz <revision>: aprobado o rechazado
+       GET  /api/v1/reviews/pending         raíz <bandeja>: las versiones en revisión
+     El cuerpo de .../review (raíz <solicitud>) lo valida el servicio. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:include schemaLocation="../comun/tipos.xsd"/>
+
+  <xs:simpleType name="estadoVersion">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="borrador"/>
+      <xs:enumeration value="en_revision"/>
+      <xs:enumeration value="aprobado"/>
+      <xs:enumeration value="rechazado"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="decision">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="aprobar"/>
+      <xs:enumeration value="rechazar"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:element name="envio">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="scenario_id" type="Entero"/>
+        <xs:element name="version_id" type="Entero"/>
+        <xs:element name="version_number" type="Entero"/>
+        <xs:element name="status" type="estadoVersion"/>
+        <xs:element name="avisos">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="aviso" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="revision">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="scenario_id" type="Entero"/>
+        <xs:element name="version_id" type="Entero"/>
+        <xs:element name="version_number" type="Entero"/>
+        <xs:element name="status" type="estadoVersion"/>
+        <xs:element name="decision" type="decision"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Una versión que espera revisión (get_pendientes_revision). -->
+  <xs:complexType name="Pendiente">
+    <xs:all>
+      <xs:element name="scenario_id" type="Entero"/>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="version_number" type="Entero"/>
+      <xs:element name="submitted_at" type="FechaHoraONulo"/>
+      <xs:element name="population_size" type="Entero"/>
+      <xs:element name="horizon_days" type="Entero"/>
+      <xs:element name="created_by" type="Entero"/>
+      <xs:element name="enfermedad" type="xs:string"/>
+      <xs:element name="region" type="xs:string"/>
+      <xs:element name="autor" type="xs:string"/>
+      <xs:element name="n_intervenciones" type="Entero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:element name="bandeja">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="total" type="Entero"/>
+        <xs:element name="pendientes">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="item" type="Pendiente" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

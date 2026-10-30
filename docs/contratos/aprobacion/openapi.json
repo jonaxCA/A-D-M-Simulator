@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - aprobacion",
     "version": "0.1.0",
-    "description": "Flujo de aprobación de escenarios: envío a revisión (pasando por validacion), aprobación y rechazo. Escribe solo las columnas de estado y revisión de scenario_versions. Ejemplos en docs/contratos/aprobacion/ejemplos."
+    "description": "Flujo de aprobación de escenarios: envío a revisión (pasando por validacion), aprobación y rechazo. Escribe solo las columnas de estado y revisión de scenario_versions. Ejemplos en docs/contratos/aprobacion/ejemplos. Sus respuestas XML validan contra docs/contratos/aprobacion/aprobacion.xsd."
   },
   "servers": [
     {

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- La respuesta del servicio comparacion (puerto 5244): GET /api/v1/comparisons?runs=...,
+     raíz <comparacion>. Cada corrida trae su serie diaria completa y los indicadores que
+     simulation_results saca de su resumen. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:include schemaLocation="../comun/tipos.xsd"/>
+  <xs:include schemaLocation="../comun/serie.xsd"/>
+
+  <xs:complexType name="CorridaComparada">
+    <xs:all>
+      <xs:element name="id" type="Entero"/>
+      <xs:element name="scenario_id" type="Entero"/>
+      <xs:element name="version_number" type="Entero"/>
+      <xs:element name="scenario_name" type="xs:string"/>
+      <xs:element name="serie" type="Serie"/>
+      <xs:element name="fallecimientos" type="Entero"/>
+      <xs:element name="pico_casos_activos" type="Entero"/>
+      <xs:element name="dia_pico" type="Entero"/>
+      <xs:element name="tasa_ataque" type="Numero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:element name="comparacion">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="aviso" type="xs:string"/>
+        <xs:element name="corridas">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="corrida" type="CorridaComparada" minOccurs="2" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

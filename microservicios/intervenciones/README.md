@@ -1,7 +1,8 @@
 # EPIDEMIA - Servicio intervenciones
 
 Puerto externo: 5232; puerto interno en Docker: 8000. Contrato:
-`docs/contratos/intervenciones/openapi.json` (ejemplos JSON y XML por ruta en `ejemplos/`).
+`docs/contratos/intervenciones/openapi.json` (ejemplos JSON y XML por ruta en `ejemplos/`). Las
+respuestas XML validan contra `docs/contratos/intervenciones/intervencion.xsd`.
 
 ## Qué hace
 

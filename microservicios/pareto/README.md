@@ -4,7 +4,8 @@ Costo contra impacto de varias corridas completadas y su frontera de Pareto. Sol
 lectura. Muestra opciones y costos; no recomienda un escenario.
 
 Puerto externo: 5245; puerto interno en Docker: 8000. Contrato en
-`docs/contratos/pareto/openapi.json`.
+`docs/contratos/pareto/openapi.json`. Su respuesta XML valida contra
+`docs/contratos/pareto/pareto.xsd`.
 
 ## Ruta
 

@@ -376,7 +376,10 @@ El contenedor (`infra/docker-compose.yml`) usa Redis 7.4 con contraseña, AOF y
   `docs/contratos/<servicio>/ejemplos/`.
 - XSD (D15), validados con `xmlschema`: `docs/contratos/comun/problem.xsd` (el error de cualquier
   servicio, con los tipos compartidos de `comun/tipos.xsd`), `enfermedades/enfermedad.xsd` y
-  `parametros/parametros.xsd`.
+  `parametros/parametros.xsd`. Para la app de escritorio, también las respuestas de
+  `corridas/corrida.xsd`, `intervenciones/intervencion.xsd`, `aprobacion/aprobacion.xsd`,
+  `comparacion/comparacion.xsd` y `pareto/pareto.xsd`; la serie diaria de una corrida está
+  en `comun/serie.xsd`, que comparten `resultado.xsd` y `comparacion.xsd`.
 - `docs/contratos/postman/` tiene una colección de Postman (también para `newman`) de
   `tipos-intervencion`, `indicadores`, `series` y `zonas`, con su guía.
 - En las rutas con candado, pega el token en **Authorize**. Abre Swagger con `localhost`, no
