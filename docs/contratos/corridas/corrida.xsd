@@ -97,6 +97,7 @@
       <xs:element name="started_at" type="FechaHoraONulo"/>
       <xs:element name="finished_at" type="FechaHoraONulo"/>
       <xs:element name="error_message" type="TextoONulo"/>
+      <xs:element name="scenario_version_id" type="Entero"/>
       <xs:element name="scenario_id" type="Entero"/>
       <xs:element name="version_number" type="Entero"/>
       <xs:element name="scenario_name" type="xs:string"/>

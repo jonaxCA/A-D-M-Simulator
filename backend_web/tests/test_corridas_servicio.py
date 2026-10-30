@@ -6,10 +6,12 @@ ejecutar_run informe su avance y diga como dejo la corrida.
 Ejecutar:
     python -m unittest backend_web.tests.test_corridas_servicio -v
 """
+from datetime import date
+
 from backend_web import queries, simulaciones
 from backend_web.contexto import Contexto
 from backend_web.db import query
-from backend_web.tests.base import ConCorridasDePrueba
+from backend_web.tests.base import ConCorridasDePrueba, escribe
 
 
 def _bitacora(run_id, accion):
@@ -53,6 +55,36 @@ class CorridasDelServicioTests(ConCorridasDePrueba):
         recientes = {r["id"]: r["engine"] for r in queries.get_runs_recientes(100)}
         self.assertEqual((recientes[por_omision], recientes[run_id]), ("python-ref", "cuda"))
         self.assertEqual(_bitacora(run_id, "RUN")[0]["data_after"]["engine"], "cuda")
+
+    def test_los_filtros_de_la_lista(self):
+        python_ref = self._encola_auditada(406)
+        cuda, batch_id, error = queries.crear_corrida(
+            self.version_id, 407, self.user_id, None, engine="cuda",
+            contexto=Contexto(self.user_id, "10.0.0.5", "pruebas"))
+        self.assertIsNone(error, error)
+        self._batches_creados.append(batch_id)
+        # Las 21:00 del 20 de octubre en Monterrey ya son el 21 en UTC: el filtro cuenta el
+        # día de Monterrey.
+        for run_id in (python_ref, cuda):
+            escribe("UPDATE simulation_runs SET queued_at = '2026-10-21 03:00:00+00' WHERE id = %s",
+                    (run_id,))
+        escenario = query("SELECT scenario_id FROM scenario_versions WHERE id = %s",
+                          (self.version_id,), one=True)["scenario_id"]
+        nuestras = {python_ref, cuda}
+
+        def encontradas(**filtros):
+            return nuestras & {r["id"] for r in queries.get_runs_recientes(100, **filtros)}
+
+        dia = date(2026, 10, 20)
+        self.assertEqual(encontradas(scenario_id=escenario, scenario_version_id=self.version_id,
+                                     status="encolado", desde=dia, hasta=dia), nuestras)
+        self.assertEqual(encontradas(engine="cuda", desde=dia, hasta=dia), {cuda})
+        self.assertEqual(encontradas(status="completado", desde=dia, hasta=dia), set())
+        self.assertEqual(encontradas(desde=date(2026, 10, 21), hasta=date(2026, 10, 21)), set())
+        self.assertEqual(encontradas(hasta=date(2026, 10, 19)), set())
+        fila = next(r for r in queries.get_runs_recientes(100, engine="cuda", desde=dia, hasta=dia)
+                    if r["id"] == cuda)
+        self.assertEqual(fila["scenario_version_id"], self.version_id)
 
     def test_cancelar_una_encolada(self):
         run_id = self._encola_auditada(402)

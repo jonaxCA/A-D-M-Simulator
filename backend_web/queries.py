@@ -3480,23 +3480,47 @@ def get_run(run_id):
     )
 
 
-def get_runs_recientes(limit=20):
+# Los filtros de fecha de las corridas son dias de Nuevo Leon, no de UTC.
+ZONA_HORARIA = "America/Monterrey"
+
+
+def get_runs_recientes(limit=20, *, scenario_id=None, scenario_version_id=None, status=None,
+                       engine=None, desde=None, hasta=None):
     """Ultimas corridas de cualquier escenario, para la lista de la pantalla
-    de simulaciones."""
+    de simulaciones. Los filtros los usa el microservicio corridas: `desde` y
+    `hasta` son fechas (date) del encolado en ZONA_HORARIA, las dos incluidas.
+    Una corrida sin lote no tiene motor y no sale al filtrar por `engine`."""
+    condiciones, params = [], []
+    for columna, valor in (("sv.scenario_id", scenario_id),
+                           ("r.scenario_version_id", scenario_version_id),
+                           ("r.status", status), ("b.engine", engine)):
+        if valor is not None:
+            condiciones.append(f"{columna} = %s")
+            params.append(valor)
+    if desde is not None:
+        condiciones.append("r.queued_at >= %s::timestamp AT TIME ZONE %s")
+        params += [desde, ZONA_HORARIA]
+    if hasta is not None:
+        condiciones.append("r.queued_at < (%s::date + 1)::timestamp AT TIME ZONE %s")
+        params += [hasta, ZONA_HORARIA]
+
+    where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
+    params.append(limit)
     return query(
-        """
+        f"""
         SELECT r.id, r.status, r.seed, b.engine, r.queued_at, r.started_at, r.finished_at,
-               r.error_message, sv.scenario_id, sv.version_number,
+               r.error_message, r.scenario_version_id, sv.scenario_id, sv.version_number,
                s.name AS scenario_name, u.username AS requested_by_username
         FROM simulation_runs r
         LEFT JOIN simulation_batches b ON b.id = r.batch_id
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
         JOIN scenarios s ON s.id = sv.scenario_id
         JOIN users u     ON u.id = r.requested_by
+        {where}
         ORDER BY r.queued_at DESC
         LIMIT %s
         """,
-        (limit,),
+        tuple(params),
     )
 
 

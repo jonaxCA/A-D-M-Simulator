@@ -18,7 +18,7 @@ from epidemia_comun.errores import ErrorAPI, respuesta_error
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.redis_compartido import RedisNoDisponible, opcional
 from epidemia_comun.seguridad import requiere_token
-from epidemia_comun.validaciones import diccionario, entero_positivo
+from epidemia_comun.validaciones import diccionario, entero_positivo, fecha
 
 log = logging.getLogger("corridas")
 
@@ -32,6 +32,7 @@ SEMILLA_MAX = 2**31 - 1
 LIMITE, LIMITE_MAX = 20, 100
 CANDADO_TTL = 10
 TERMINALES = ("completado", "fallido", "cancelado")
+ESTADOS = ("encolado", "ejecutando") + TERMINALES
 # Los que acepta la base (ck_simulation_batches_engine, migración 014). python-ref siempre;
 # los demás solo si MOTORES_HABILITADOS los nombra: sin un simulador de ese motor desplegado,
 # la corrida se quedaría encolada para siempre.
@@ -51,6 +52,28 @@ def _motor(valor):
     if valor not in habilitados:
         raise ErrorAPI(422, "DATOS_INVALIDOS", "engine debe ser uno de: %s." % ", ".join(habilitados))
     return valor
+
+
+def _filtros():
+    """Los filtros de la lista. engine acepta los tres motores, habilitados o no: una corrida
+    vieja de un motor que hoy está apagado se sigue pudiendo buscar."""
+    filtros = {}
+    for nombre in ("scenario_id", "scenario_version_id"):
+        if nombre in request.args:
+            filtros[nombre] = entero_positivo(request.args[nombre], nombre)
+    for nombre, validos in (("status", ESTADOS), ("engine", MOTORES)):
+        valor = request.args.get(nombre)
+        if valor is not None:
+            if valor not in validos:
+                raise ErrorAPI(422, "DATOS_INVALIDOS",
+                               "%s debe ser uno de: %s." % (nombre, ", ".join(validos)))
+            filtros[nombre] = valor
+    for nombre, clave in (("from", "desde"), ("to", "hasta")):
+        if nombre in request.args:
+            filtros[clave] = fecha(request.args[nombre], nombre)
+    if filtros.get("desde") and filtros.get("hasta") and filtros["desde"] > filtros["hasta"]:
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "from no puede ser posterior a to.")
+    return filtros
 
 
 def _semilla(valor):
@@ -135,7 +158,7 @@ def registrar(app):
         limite = LIMITE if limite is None else entero_positivo(limite, "limit")
         if limite > LIMITE_MAX:
             raise ErrorAPI(422, "DATOS_INVALIDOS", "limit no puede pasar de %d." % LIMITE_MAX)
-        filas = queries.get_runs_recientes(limite)
+        filas = queries.get_runs_recientes(limite, **_filtros())
         return responder({"total": len(filas), "corridas": filas}, "listado")
 
     @app.get("/api/v1/runs/<run_id>")

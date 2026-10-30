@@ -13,7 +13,7 @@ Puerto externo: 5241; puerto interno en Docker: 8000. Contrato en
 | Método | Ruta | Roles | Qué hace |
 |--------|------|-------|----------|
 | POST | `/api/v1/runs` | ANALISTA, ADMINISTRADOR | Cuerpo `{scenario_version_id, seed?, engine?, forzar_error?}`. Responde **202** con `id`, `batch_id`, `seed`, `engine` y `status: encolado` |
-| GET | `/api/v1/runs?limit=20` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Las corridas más recientes, con su `engine` (`limit` de 1 a 100) |
+| GET | `/api/v1/runs?limit=20` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Las corridas más recientes, con su `engine` y su `scenario_version_id` (`limit` de 1 a 100). Filtros opcionales: `scenario_id`, `scenario_version_id`, `status`, `engine`, `from` y `to` |
 | GET | `/api/v1/runs/{run_id}` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Estado, `progress`, `engine` y `terminal` |
 | POST | `/api/v1/runs/{run_id}/cancel` | ANALISTA, ADMINISTRADOR | Cancela una corrida que sigue `encolado` |
 
@@ -30,10 +30,15 @@ en la matriz de permisos (migración 010). CAPTURISTA recibe 403 en todas.
   en el monolito. La corrida termina en `fallido` y sirve para probar ese camino.
 - Mientras la corrida no termina, `progress` sale de Redis (`job:<id>:progress`, lo escribe el
   `simulador`); después, de PostgreSQL.
+- Los filtros de la lista se combinan. `from` y `to` son días `AAAA-MM-DD` de cuando se encoló
+  la corrida, en hora de Monterrey (`America/Monterrey`), los dos incluidos: una corrida de las
+  21:00 del 20 de octubre sale con `from=2026-10-20`, aunque en UTC ya sea el 21. `engine`
+  acepta los tres motores, habilitados o no; una corrida sin lote no tiene motor y no sale con
+  ese filtro.
 
 | Caso | Respuesta |
 |------|-----------|
-| Cuerpo o `limit` inválidos, o un `engine` no habilitado | 422 `DATOS_INVALIDOS` |
+| Cuerpo, `limit` o un filtro inválidos, `from` posterior a `to`, o lanzar con un `engine` no habilitado | 422 `DATOS_INVALIDOS` |
 | No existe la versión o la corrida | 404 `NO_ENCONTRADO` |
 | Versión no aprobada, o ya se está lanzando una corrida de la misma versión | 409 `CONFLICTO` |
 | Cancelar una corrida que ya empezó o terminó | 409 `CONFLICTO` |

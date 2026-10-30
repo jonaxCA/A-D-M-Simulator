@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -68,8 +68,13 @@ def base(monkeypatch):
     b = Base()
     for nombre in ("crear_corrida", "get_run", "cancelar_run", "get_motor_run"):
         monkeypatch.setattr(queries, nombre, getattr(b, nombre))
-    monkeypatch.setattr(queries, "get_runs_recientes",
-                        lambda limit=20: [{"id": i, "status": "completado"} for i in range(limit)])
+    b.filtros = []
+
+    def recientes(limit=20, **filtros):
+        b.filtros.append(filtros)
+        return [{"id": i, "status": "completado"} for i in range(limit)]
+
+    monkeypatch.setattr(queries, "get_runs_recientes", recientes)
     return b
 
 
@@ -204,14 +209,39 @@ def test_redis_caido_es_503_sin_crear_nada(cliente, token, base, apagar_redis):
 
 # ---- consultar ------------------------------------------------------------------------
 
-def test_lista_con_limite(cliente, token):
+def test_lista_con_limite(cliente, token, base):
     r = cliente.get("/api/v1/runs?limit=3&format=json", headers=token(("EPIDEMIOLOGO",)))
     assert r.status_code == 200 and r.get_json()["total"] == 3
+    assert base.filtros == [{}]
+
+
+def test_lista_con_todos_los_filtros(cliente, token, base):
+    r = cliente.get("/api/v1/runs?format=json&scenario_id=3&scenario_version_id=11&status=fallido"
+                    "&engine=cuda&from=2026-10-01&to=2026-10-20", headers=token())
+    assert r.status_code == 200
+    # cuda no está habilitado para lanzar, pero sus corridas se pueden buscar.
+    assert base.filtros == [{"scenario_id": 3, "scenario_version_id": 11, "status": "fallido",
+                             "engine": "cuda", "desde": date(2026, 10, 1),
+                             "hasta": date(2026, 10, 20)}]
+
+
+def test_un_solo_dia(cliente, token, base):
+    cliente.get("/api/v1/runs?from=2026-10-20&to=2026-10-20", headers=token())
+    assert base.filtros == [{"desde": date(2026, 10, 20), "hasta": date(2026, 10, 20)}]
 
 
 @pytest.mark.parametrize("limite", ["0", "x", str(rutas.LIMITE_MAX + 1)])
 def test_limite_invalido_es_422(cliente, token, limite):
     assert cliente.get("/api/v1/runs?limit=" + limite, headers=token()).status_code == 422
+
+
+@pytest.mark.parametrize("filtro", ["scenario_id=0", "scenario_version_id=x", "status=pausado",
+                                    "status=", "engine=gpu", "from=20-10-2026", "to=2026-13-01",
+                                    "from=2026-10-21&to=2026-10-20"])
+def test_filtro_invalido_es_422_sin_consultar(cliente, token, base, filtro):
+    r = cliente.get("/api/v1/runs?format=json&" + filtro, headers=token())
+    assert r.status_code == 422 and r.get_json()["codigo"] == "DATOS_INVALIDOS"
+    assert base.filtros == []
 
 
 def test_capturista_no_ve_corridas(cliente, token):
@@ -286,8 +316,8 @@ def test_las_respuestas_xml_validan_contra_el_xsd(cliente, token, base, monkeypa
                 "queued_at": datetime(2026, 10, 20, 15, tzinfo=timezone.utc),
                 "started_at": datetime(2026, 10, 20, 15, 1, tzinfo=timezone.utc),
                 "finished_at": datetime(2026, 10, 20, 15, 2, tzinfo=timezone.utc),
-                "error_message": "Error forzado de prueba.", "scenario_id": 3,
-                "version_number": 2, "scenario_name": "Ola Influenza ZMM",
+                "error_message": "Error forzado de prueba.", "scenario_version_id": 11,
+                "scenario_id": 3, "version_number": 2, "scenario_name": "Ola Influenza ZMM",
                 "requested_by_username": "alex.cavazos"}
     sin_lote = dict(reciente, id=41, status="encolado", engine=None, started_at=None,
                     finished_at=None, error_message=None)
