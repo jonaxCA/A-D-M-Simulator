@@ -1,7 +1,7 @@
 {
   "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
   "metrica": "fallecimientos",
-  "base": 12,
+  "base": null,
   "filas": [
     {
       "id": 12,
@@ -14,10 +14,7 @@
       "dias": 120,
       "poblacion": 500000,
       "dominado": false,
-      "dominado_por": [],
-      "impacto_evitado": null,
-      "costo_adicional": null,
-      "costo_por_unidad_evitada": null
+      "dominado_por": []
     },
     {
       "id": 13,
@@ -41,10 +38,7 @@
       "dias": 120,
       "poblacion": 500000,
       "dominado": false,
-      "dominado_por": [],
-      "impacto_evitado": 33,
-      "costo_adicional": 292500000.0,
-      "costo_por_unidad_evitada": 8863636.36
+      "dominado_por": []
     },
     {
       "id": 14,
@@ -68,10 +62,7 @@
       "dias": 120,
       "poblacion": 500000,
       "dominado": false,
-      "dominado_por": [],
-      "impacto_evitado": 29,
-      "costo_adicional": 15879200.0,
-      "costo_por_unidad_evitada": 547558.62
+      "dominado_por": []
     },
     {
       "id": 15,
@@ -105,10 +96,7 @@
       "dias": 120,
       "poblacion": 500000,
       "dominado": false,
-      "dominado_por": [],
-      "impacto_evitado": 49,
-      "costo_adicional": 308379200.0,
-      "costo_por_unidad_evitada": 6293453.06
+      "dominado_por": []
     }
   ],
   "frontera": [

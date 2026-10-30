@@ -18,8 +18,8 @@ def fila(id_, costo, impacto, dominado_por=()):
             "dominado_por": list(dominado_por)}
 
 
-# Lo que regresa el monolito para cualquier par de corridas completadas.
-COMPARACION = {"base": 12, "filas": [fila(12, 0, 100), fila(15, 5000.0, 120, [12])],
+# Lo que regresa el monolito para cualquier par de corridas completadas. No pide base.
+COMPARACION = {"base": None, "filas": [fila(12, 0, 100), fila(15, 5000.0, 120, [12])],
                "frontera": [12], "trazabilidad_costos": [], "modelo_costo": "unitario x dosis",
                "avisos": []}
 
@@ -63,7 +63,7 @@ def test_compara_con_la_metrica_por_omision(cliente, token, llamadas, rol):
     assert llamadas == [([15, 12], "fallecimientos")]
     datos = r.get_json()
     assert datos["aviso"] == AVISO_SIMULACION
-    assert datos["frontera"] == [12] and datos["base"] == 12
+    assert datos["frontera"] == [12] and datos["base"] is None
     assert [f["dominado_por"] for f in datos["filas"]] == [[], [12]]
 
 
