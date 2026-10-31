@@ -23,7 +23,7 @@ FIJOS = {"POSTGRES_DB": "simulador_epidemico_pruebas", "REDIS_PUERTO_LOCAL": "63
 COMPOSE = ["docker", "compose", "-p", PROYECTO, "-f", str(AQUI / "docker-compose.yml"),
            "-f", str(AQUI / "docker-compose.pruebas.yml"), "--env-file", str(ENTORNO), "--profile", "*"]
 # Los del catálogo, la consola y los locales de PostgreSQL y Redis de este compose.
-PUERTOS = [5201, 5202, 5203, 5204, 5211, 5212, 5213, 5214, 5215, 5221, 5222, 5231, 5232, 5233,
+PUERTOS = [5201, 5202, 5203, 5204, 5211, 5212, 5213, 5214, 5215, 5221, 5222, 5223, 5231, 5232, 5233,
            5234, 5235, 5241, 5242, 5243, 5244, 5245, 5251, 5252, 5253, 5260, 5261, 5262, 6382, 5435]
 
 

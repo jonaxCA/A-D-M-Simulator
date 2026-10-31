@@ -28,7 +28,7 @@ SINGULARES = {"regiones": "region", "enfermedades": "enfermedad",
               "tendencia": "punto", "serie": "punto",
               "filas": "fila", "frontera": "corrida", "dominado_por": "corrida",
               "desglose_costo": "intervencion", "trazabilidad_costos": "costo",
-              "avisos": "aviso", "notificaciones": "notificacion",
+              "avisos": "aviso", "notificaciones": "notificacion", "dispositivos": "dispositivo",
               "desglose_por_grupo": "grupo_edad", "trazabilidad": "parametro",
               "simplificaciones": "simplificacion", "servicios": "servicio",
               "causas": "causa", "sondeos": "sondeo"}

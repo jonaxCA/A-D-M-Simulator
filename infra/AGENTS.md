@@ -3,7 +3,7 @@
 > **Estado: Vigente** · 2026-10-12 · Complementa `microservicios/AGENTS.md`. Las tareas son
 > el bloque J del checklist (`docs/CHECKLIST_SEGUNDO_PARCIAL.md`).
 
-Aquí viven la imagen base de Docker y el `docker-compose.yml` que levanta los 26
+Aquí viven la imagen base de Docker y el `docker-compose.yml` que levanta los 27
 microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservicio.**
 
 ## Reglas
@@ -45,5 +45,5 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
 9. Cada servicio tiene un perfil de dominio (`identidad`, `catalogos`, `vigilancia`,
    `escenarios`, `simulacion`, `analitica`, `plataforma`), para que nadie tenga que
    levantar los 28 contenedores en una máquina con poca memoria.
-10. Si cambias el compose, `docker compose up` desde cero tiene que dejar los 26
+10. Si cambias el compose, `docker compose up` desde cero tiene que dejar los 27
     *healthchecks* en verde. Si no, no está terminado.

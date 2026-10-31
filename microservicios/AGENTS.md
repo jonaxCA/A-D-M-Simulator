@@ -5,7 +5,7 @@
 
 ## Qué hay aquí
 
-Son 26 microservicios Flask pequeños, cada uno con una sola tarea, más una consola web para
+Son 27 microservicios Flask pequeños, cada uno con una sola tarea, más una consola web para
 probarlos. Los usan **solo** las apps de escritorio (XML) y móvil (JSON), que llegan en el
 tercer parcial; en este, la consola hace sus veces. El sistema web (el monolito) sigue
 hablando directo con PostgreSQL y no los llama.
@@ -22,7 +22,7 @@ hablando directo con PostgreSQL y no los llama.
 microservicios/
   comun/        paquete epidemia_comun: lo que todos los servicios repiten
   <servicio>/   uno por servicio del catálogo: app.py, rutas.py, Dockerfile, README.md, tests/
-  consola/      página tipo Swagger/Postman para probar los 26
+  consola/      página tipo Swagger/Postman para probar los 27
 infra/          imagen base de Docker y docker-compose.yml
 docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
 ```
@@ -134,7 +134,7 @@ Ya existen:
 - Reconstruir un servicio sin tocar los demás:
   `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --no-deps <servicio>`
 - Salud: `curl "http://localhost:<puerto>/health?format=json"`
-- Salud de los 26 y directorio: `curl "http://localhost:5262/api/v1/services/health?format=json"`
+- Salud de los 27 y directorio: `curl "http://localhost:5262/api/v1/services/health?format=json"`
   y `/api/v1/services` (`estado-servicios`)
 - Swagger: `http://localhost:<puerto>/docs`
 - Consola de pruebas: `http://localhost:5260`. Ábrela con `localhost`: los servicios solo abren

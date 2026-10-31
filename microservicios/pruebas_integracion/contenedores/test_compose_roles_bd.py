@@ -5,6 +5,8 @@ Las sentencias no tocan ninguna fila (WHERE false), pero PostgreSQL revisa el pe
 import pytest
 from psycopg2 import errors
 
+from microservicios.estado_servicios.sondeo import SERVICIOS
+
 NEGADAS = [
     ("regiones", "INSERT INTO scenarios (name) SELECT 'x' WHERE false"),
     ("aprobacion", "UPDATE scenario_versions SET population_size = population_size WHERE false"),
@@ -15,12 +17,18 @@ NEGADAS = [
     ("notificaciones", "UPDATE notifications SET title = title WHERE false"),
     ("pareto", "SELECT password_hash FROM users LIMIT 1"),
     ("estado-servicios", "SELECT 1 FROM users LIMIT 1"),
+    ("dispositivos", "DELETE FROM devices WHERE false"),
+    ("dispositivos", "UPDATE devices SET user_id = user_id WHERE false"),
+    ("casos", "UPDATE devices SET is_revoked = is_revoked WHERE false"),
+    ("casos", "SELECT push_token FROM devices LIMIT 1"),
 ]
 PERMITIDAS = [
     ("aprobacion", "UPDATE scenario_versions SET status = status WHERE false"),
     ("casos", "INSERT INTO cases (local_uuid) SELECT NULL WHERE false"),
     ("notificaciones", "UPDATE notifications SET read_at = read_at WHERE false"),
     ("pareto", "SELECT full_name FROM users LIMIT 1"),
+    ("dispositivos", "UPDATE devices SET is_revoked = is_revoked, last_seen_at = now() WHERE false"),
+    ("casos", "SELECT user_id, is_revoked FROM devices LIMIT 1"),
 ]
 
 
@@ -50,5 +58,5 @@ def test_un_rol_por_servicio_y_ninguno_privilegiado(base):
     with conexion.cursor() as cur:
         cur.execute("SELECT count(*), count(*) FILTER (WHERE rolsuper OR rolcreaterole OR rolcreatedb "
                     "OR rolbypassrls) FROM pg_roles WHERE starts_with(rolname, 'svc_')")
-        assert cur.fetchone() == (26, 0)
+        assert cur.fetchone() == (len(SERVICIOS), 0)
     conexion.close()

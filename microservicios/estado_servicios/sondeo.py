@@ -19,7 +19,7 @@ from epidemia_comun.redis_compartido import opcional
 
 log = logging.getLogger(__name__)
 
-# Los 26 del catálogo (docs/arquitectura/microservicios.md), en su orden, con su perfil del
+# Los del catálogo (docs/arquitectura/microservicios.md), en su orden, con su perfil del
 # compose y su puerto. Una prueba revisa que coincidan con el catálogo y con el compose.
 SERVICIOS = {
     "auth": ("identidad", 5201),
@@ -33,6 +33,7 @@ SERVICIOS = {
     "tipos-intervencion": ("catalogos", 5215),
     "casos": ("vigilancia", 5221),
     "sincronizacion": ("vigilancia", 5222),
+    "dispositivos": ("vigilancia", 5223),
     "escenarios": ("escenarios", 5231),
     "intervenciones": ("escenarios", 5232),
     "aprobacion": ("escenarios", 5233),

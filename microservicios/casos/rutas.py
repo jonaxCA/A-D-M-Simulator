@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import psycopg2
 from flask import g, request
 
-from backend_web import queries
+from backend_web import dispositivos, queries
 from backend_web.audit import log_audit
 from backend_web.db import get_conn
 from epidemia_comun.errores import ErrorAPI
@@ -132,6 +132,16 @@ def registrar(app):
             if previo:
                 previo["duplicado"] = True
                 return responder(previo, "caso", estado=200)
+
+        # Un dispositivo revocado no captura aunque el token siga vigente (comentario de devices).
+        if device_id is not None:
+            estado = dispositivos.estado_para_captura(device_id, g.contexto.user_id)
+            if estado == "ajeno":
+                raise ErrorAPI(422, "DATOS_INVALIDOS",
+                               "device_id no es un dispositivo registrado de esta cuenta.")
+            if estado == "revocado":
+                raise ErrorAPI(409, "CONFLICTO",
+                               "El dispositivo está revocado: ya no puede capturar ni sincronizar casos.")
 
         datos, errores = queries.valida_caso(
             entrada, queries.get_enfermedades_para_captura(), queries.get_municipios_catalogo())

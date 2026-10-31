@@ -1,5 +1,6 @@
 """Contrato, rutas y Dockerfile de tipos-intervencion, indicadores, series, zonas, comparacion,
-pareto, corridas, resultados, notificaciones y estado-servicios (simulador tiene los suyos)."""
+pareto, corridas, resultados, notificaciones, estado-servicios y dispositivos (simulador tiene
+los suyos)."""
 import ast
 import json
 import re
@@ -21,6 +22,7 @@ SERVICIOS = [
     ("resultados", "resultados", 5243, False),
     ("notificaciones", "notificaciones", 5261, False),
     ("estado-servicios", "estado_servicios", 5262, True),
+    ("dispositivos", "dispositivos", 5223, False),
 ]
 
 

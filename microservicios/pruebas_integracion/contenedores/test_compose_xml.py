@@ -1,6 +1,8 @@
 """Llamadas entre servicios en XML: escenarios-xml le manda el escenario en XML a escenarios, y
-estado-servicios lee en XML el /health de los 26."""
+estado-servicios lee en XML el /health de todos."""
 import re
+
+from microservicios.estado_servicios.sondeo import SERVICIOS
 
 from .conftest import INTERVENCIONES, espera
 
@@ -26,12 +28,12 @@ def test_importar_un_xml_que_no_cumple_el_xsd_es_422(api, analista):
     assert r.status_code == 422 and r.json()["errores"]
 
 
-def test_estado_servicios_lee_la_salud_de_los_26(api):
+def test_estado_servicios_lee_la_salud_de_todos(api):
     # La ronda de sondeo que empezó con Redis apagado (test_compose_redis) tarda unos 4 s y puede
     # guardar «degradado» cuando Redis ya volvió; la ronda siguiente, 10 s después, lo corrige.
-    def los_26_bien():
+    def todos_bien():
         datos = api("estado-servicios", "GET", "/api/v1/services/health").json()
-        return datos if datos["resumen"] == {"ok": 26, "degradado": 0, "caido": 0} else None
+        return datos if datos["resumen"] == {"ok": len(SERVICIOS), "degradado": 0, "caido": 0} else None
 
-    datos = espera(los_26_bien, 60, "Los 26 no están en ok.", cada=3)
+    datos = espera(todos_bien, 60, "No están todos en ok.", cada=3)
     assert all(s["version"] for s in datos["servicios"])

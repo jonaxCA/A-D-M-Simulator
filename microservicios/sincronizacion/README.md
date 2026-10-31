@@ -20,6 +20,8 @@ con el token de quien sincroniza). No escribe tablas de casos.
 
 `lote_id` es alias de `batch_id`. Entre 1 y 100 casos; cada uno necesita `local_uuid` (si
 falta, todo el lote es 422). `device_id` del lote se aplica a los casos que no traigan el suyo.
+Lo revisa `casos` en cada caso: con un dispositivo ajeno o revocado, esos casos salen
+`rechazado` en `resultados[]`, con el motivo.
 En XML: `<lote><batch_id/><device_id/><cases><item>...</item></cases></lote>`; la respuesta
 tiene raíz `resultado_lote`. XSD: `docs/contratos/sincronizacion/lote.xsd`.
 

@@ -84,8 +84,8 @@ La semilla de demostración trae una cuenta CAPTURISTA, el rol de la app:
 |---------|------------|-----|
 | `karla.trevino` | `Epidemia2026!` | CAPTURISTA |
 
-Con ese rol la app registra y consulta casos (`casos`) y envía y consulta sus lotes
-(`sincronizacion`). Es una cuenta de demostración: solo sirve en el entorno local.
+Con ese rol la app registra su teléfono (`dispositivos`), registra y consulta casos (`casos`)
+y envía y consulta sus lotes (`sincronizacion`). Es una cuenta de demostración: solo sirve en el entorno local.
 
 El inicio de sesión lleva captcha, que la app muestra y la persona contesta:
 
@@ -151,10 +151,31 @@ sea `TOKEN_EXPIRADO`.
   resultado guardado (`repetido: true`) y no crea nada dos veces. Ese resultado se guarda 7 días.
 - El lote responde 200 aunque haya casos rechazados: revisa `resultados[]`, que dice por cada
   caso si se creó, era duplicado o se rechazó y por qué.
-- No mandes `device_id` todavía: debe ser un dispositivo registrado en la tabla `devices`, y el
-  servicio que los registra (`dispositivos`) no existe aún.
+- El `device_id` de cada caso (o del lote) es el `id` que regresa `dispositivos` al registrar el
+  teléfono (sección 6). Sin `device_id` el caso también se acepta, pero no queda ligado al
+  teléfono y llega sin `synced_at`.
 
-## 6. Avisos
+## 6. Registrar el teléfono
+
+El servicio `dispositivos` (puerto 5223) lleva los teléfonos de cada cuenta, para poder
+revocar uno perdido sin tocar la cuenta.
+
+1. Al instalarse, la app genera un `device_uid` (por ejemplo, un UUID) y lo guarda: es el mismo
+   mientras la app siga instalada. De 8 a 128 letras, números o `. _ : -`.
+2. Después de cada inicio de sesión, `POST /api/v1/devices` con `{"device_uid": "...",
+   "platform": "android", "model": "...", "app_version": "..."}`. La primera vez responde 201;
+   las siguientes, 200, y actualiza la versión y la última conexión. La respuesta trae el `id`:
+   ese es el `device_id` de los casos.
+3. Si responde 409, ese `device_uid` es de otra cuenta o está revocado: genera uno nuevo y vuelve
+   a registrarte.
+
+Desde que alguien revoca el teléfono (`POST /api/v1/devices/{id}/revoke`, la misma persona o
+ADMINISTRADOR), `casos` responde 409 `CONFLICTO` a sus casos, también dentro de un lote, aunque
+el token siga vigente. La app debe dejar de capturar y pedir que se vuelva a iniciar sesión. Lo
+que ya había sincronizado se queda. `push_token` se puede mandar al registrar, pero todavía no
+hay notificaciones push.
+
+## 7. Avisos
 
 `GET /api/v1/notifications?unread=true` (en `notificaciones`) devuelve los avisos de la cuenta, y
 `POST /api/v1/notifications/{id}/read` los marca como leídos. No hay notificaciones push: la app
@@ -164,7 +185,6 @@ consulta cada cierto tiempo.
 
 | Necesidad de la app | Estado |
 |---------------------|--------|
-| Registrar el dispositivo (`device_id`) | Falta el servicio `dispositivos` |
 | Fotos del caso | Falta el servicio `evidencias` (la tabla `case_attachments` ya existe) |
 | QR de lotes de vacuna | Falta el servicio `vacunas` |
 | Editar un caso | `casos` solo registra y consulta |

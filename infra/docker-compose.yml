@@ -58,6 +58,7 @@ services:
       DB_PASSWORD_APROBACION: ${DB_PASSWORD_APROBACION:-}
       DB_PASSWORD_AUTH: ${DB_PASSWORD_AUTH:-}
       DB_PASSWORD_CASOS: ${DB_PASSWORD_CASOS:-}
+      DB_PASSWORD_DISPOSITIVOS: ${DB_PASSWORD_DISPOSITIVOS:-}
       DB_PASSWORD_COMPARACION: ${DB_PASSWORD_COMPARACION:-}
       DB_PASSWORD_CORRIDAS: ${DB_PASSWORD_CORRIDAS:-}
       DB_PASSWORD_ENFERMEDADES: ${DB_PASSWORD_ENFERMEDADES:-}
@@ -310,6 +311,24 @@ services:
       redis:
         condition: service_healthy
       casos:
+        condition: service_healthy
+  dispositivos:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/dispositivos/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5223:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_DISPOSITIVOS:-postgresql://svc_dispositivos:${DB_PASSWORD_DISPOSITIVOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   # --- Escenarios (perfil escenarios) -------------------------------------------------------

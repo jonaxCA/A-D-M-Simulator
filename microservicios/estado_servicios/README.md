@@ -1,8 +1,8 @@
 # EPIDEMIA - Servicio estado-servicios
 
-Directorio de los 26 servicios y sondeo de su salud. No hay pasarela (D13): las apps y
+Directorio de los 27 servicios y sondeo de su salud. No hay pasarela (D13): las apps y
 la consola le piden aquí la URL de cada servicio. Cada pocos segundos sondea el
-`/health` de los 26, incluido el suyo, **en XML**, y guarda en Redis el último estado
+`/health` de los 27, incluido el suyo, **en XML**, y guarda en Redis el último estado
 y un historial corto. No lee ni escribe tablas.
 
 Puerto externo: 5262; puerto interno en Docker: 8000. Contrato en
@@ -37,7 +37,7 @@ con Redis caído es 503 `SERVICIO_NO_DISPONIBLE`.
 
 ## Sondeo y Redis
 
-- Un hilo sondea a los 26 a la vez cada `SONDEO_SEGUNDOS` (10 por defecto), con 5 s
+- Un hilo sondea a los 27 a la vez cada `SONDEO_SEGUNDOS` (10 por defecto), con 5 s
   de espera cada uno: en Docker Desktop, el nombre de un contenedor detenido tarda unos
   4 s en no resolverse, así que con Redis caído cada `/health` tarda eso en responder
   503, y con menos espera saldría `caido` en vez de `degradado`.
@@ -50,10 +50,10 @@ con Redis caído es 503 `SERVICIO_NO_DISPONIBLE`.
   borra una hora después del último sondeo.
 - `/services/health` sondea en ese momento lo que no encuentra en Redis: si venció,
   si Redis está caído o si el hilo no ha corrido. Por eso responde aunque Redis
-  esté caído; en ese caso cada consulta sondea a los 26 y tarda unos 8 s (los 4 s
+  esté caído; en ese caso cada consulta sondea a los 27 y tarda unos 8 s (los 4 s
   de no encontrar a Redis, más el sondeo).
 
-Los 26 están en `SERVICIOS` de `sondeo.py`, con su perfil y su puerto. Una prueba
+Los 27 están en `SERVICIOS` de `sondeo.py`, con su perfil y su puerto. Una prueba
 revisa que coincidan con el catálogo y con el compose. Un servicio nuevo del
 catálogo se agrega ahí.
 

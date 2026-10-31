@@ -141,7 +141,7 @@ def test_salud_con_la_causa_de_cada_falla(cliente, red):
     assert vistos["corridas"] == ("caido", ["proceso"], "sin_conexion")
     assert vistos["zonas"] == ("caido", ["proceso"], "respuesta_invalida")
     assert vistos["pareto"] == ("caido", ["proceso"], "respuesta_invalida")
-    assert datos["resumen"] == {"ok": 20, "degradado": 2, "caido": 4}
+    assert datos["resumen"] == {"ok": len(sondeo.SERVICIOS) - 6, "degradado": 2, "caido": 4}
     assert por_nombre["auth"]["version"] == "0.1.0" and por_nombre["auth"]["latencia_ms"] >= 0
     assert por_nombre["casos"]["latencia_ms"] is None
     assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00:00", por_nombre["auth"]["revisado"])
@@ -149,7 +149,8 @@ def test_salud_con_la_causa_de_cada_falla(cliente, red):
 
 def test_un_503_sin_causa_conocida_es_degradado(cliente, red):
     red["respuestas"]["zonas"] = lambda n: respuesta(503, salud(n).content)
-    zonas = cliente.get("/api/v1/services/health?format=json").get_json()["servicios"][23]
+    servicios = cliente.get("/api/v1/services/health?format=json").get_json()["servicios"]
+    zonas = next(s for s in servicios if s["nombre"] == "zonas")
     assert (zonas["nombre"], zonas["estado"], zonas["causas"]) == ("zonas", "degradado", [])
 
 
@@ -168,14 +169,15 @@ def test_salud_en_xml(cliente, red):
 
 
 def test_salud_guardada_en_redis_no_se_vuelve_a_sondear(cliente, red, redis_falso):
+    total = len(sondeo.SERVICIOS)
     cliente.get("/api/v1/services/health")
-    assert len(red["pedidas"]) == 26
+    assert len(red["pedidas"]) == total
     assert 0 < redis_falso.ttl("health:auth") <= 3 * sondeo.INTERVALO
     cliente.get("/api/v1/services/health")
-    assert len(red["pedidas"]) == 26
+    assert len(red["pedidas"]) == total
     redis_falso.delete("health:zonas")
     cliente.get("/api/v1/services/health")
-    assert [p[0] for p in red["pedidas"][26:]] == ["zonas"]
+    assert [p[0] for p in red["pedidas"][total:]] == ["zonas"]
 
 
 def test_con_redis_caido_la_salud_se_sondea_en_vivo(cliente, red, apagar_redis, monkeypatch):
@@ -184,9 +186,9 @@ def test_con_redis_caido_la_salud_se_sondea_en_vivo(cliente, red, apagar_redis, 
     monkeypatch.setattr(sondeo, "guardar", guardados.append)
     r = cliente.get("/api/v1/services/health?format=json")
     assert r.status_code == 200
-    assert r.get_json()["resumen"]["ok"] == 26
+    assert r.get_json()["resumen"]["ok"] == len(sondeo.SERVICIOS)
     cliente.get("/api/v1/services/health")
-    assert len(red["pedidas"]) == 52
+    assert len(red["pedidas"]) == 2 * len(sondeo.SERVICIOS)
     # ni intenta guardar: con Redis caído solo sumaría otra espera
     assert guardados == []
     assert cliente.get("/api/v1/services?format=json").status_code == 200
@@ -261,7 +263,7 @@ def test_intervalo_invalido_usa_el_de_omision(monkeypatch):
 
 # ------------------------------------------- el directorio contra el catálogo y el compose
 
-def test_los_26_del_catalogo_con_su_puerto():
+def test_los_del_catalogo_con_su_puerto():
     texto = (RAIZ / "docs/arquitectura/microservicios.md").read_text(encoding="utf-8")
     catalogo = {m.group(1): int(m.group(2))
                 for m in re.finditer(r"^\| \d+ +\| `([a-z-]+)` .*\| (\d{4}) +\|$", texto, re.M)}
@@ -273,7 +275,7 @@ def test_cada_servicio_del_compose_con_su_puerto_y_perfil():
     vistos = {m.group(1): (m.group(2), int(m.group(3))) for m in re.finditer(
         r"^  ([a-z-]+):\n(?:    .*\n)*?    profiles: \[([a-z]+)\]\n    ports:\n      - \"(\d+):8000\"",
         compose, re.M)}
-    # La consola está en el compose, pero no es uno de los 26: no tiene /health de servicio.
+    # La consola está en el compose, pero no es un servicio del catálogo: no tiene /health de servicio.
     vistos.pop("consola")
     assert vistos and all(sondeo.SERVICIOS[n] == v for n, v in vistos.items())
 

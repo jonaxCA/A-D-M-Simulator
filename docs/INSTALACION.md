@@ -276,7 +276,7 @@ cada una lo explica, y se pueden re-ejecutar con la misma semilla.
 |---|---|---|---|
 | `alex.cavazos` | `Epidemia2026!` | ANALISTA | Vigilancia, mapa, monitoreo y captura de casos |
 | `diana.flores` | `Epidemia2026!` | EPIDEMIOLOGO | Lo mismo por ahora |
-| `karla.trevino` | `Epidemia2026!` | CAPTURISTA | La cuenta de la app móvil: captura casos y sincroniza lotes (servicios `casos` y `sincronizacion`). En la web, tablero, mapa, monitoreo y captura de casos; sin escenarios ni simulaciones |
+| `karla.trevino` | `Epidemia2026!` | CAPTURISTA | La cuenta de la app móvil: registra su teléfono, captura casos y sincroniza lotes (servicios `dispositivos`, `casos` y `sincronizacion`). En la web, tablero, mapa, monitoreo y captura de casos; sin escenarios ni simulaciones |
 | `admin` | `Admin2026!` | ADMINISTRADOR | Además, **Usuarios** y **Auditoría** |
 
 > Los dos primeros son personas distintas a propósito: la migración `013`
@@ -493,7 +493,10 @@ DATABASE_URL=postgresql://epidemia_app:<EPIDEMIA_APP_PASSWORD de infra/.env>@127
 Cada servicio se conecta con su rol. Para apuntar uno a otra base, define su
 `DATABASE_URL_<SERVICIO>` completo (ver `infra/.env.example`). Una migración nueva entra en un
 volumen ya cargado corriéndola con `psql` contra el puerto 5433; `down -v` borra la base y la
-vuelve a cargar desde cero en el siguiente `up`.
+vuelve a cargar desde cero en el siguiente `up`. Si la migración crea el rol de un servicio
+nuevo (la 031, de `dispositivos`), corre antes `python infra/genera_env.py`, que agrega su
+`DB_PASSWORD_<SERVICIO>` a `infra/.env`, y ponle esa contraseña con
+`ALTER ROLE svc_<servicio> PASSWORD '...'`: `10-inicializa.sh` solo las pone la primera vez.
 
 Con todo arriba (los 26 servicios, PostgreSQL y Redis) son unos 1,100 MiB: de 32 a 51 MiB por
 servicio, 83 MiB PostgreSQL y 6 MiB Redis (medido el 21 de octubre).
@@ -517,7 +520,7 @@ done
 # cada uno: {"servicio": "...", "estado": "ok", "postgresql": true, "redis": true}
 ```
 
-Con `estado-servicios` arriba, una sola consulta trae la salud de los 26 (los que no están
+Con `estado-servicios` arriba, una sola consulta trae la salud de los 27 (los que no están
 arriba salen `caido`), y su directorio da la URL de cada uno:
 
 ```bash
@@ -544,7 +547,7 @@ deja `format` vacío y elige `application/xml` en **Media type**; para JSON, `fo
 
 **La consola de pruebas** queda en `http://localhost:5260` (perfil `plataforma`). Ábrela con
 `localhost`, no con `127.0.0.1`: cada servicio abre CORS solo para `CONSOLE_ORIGIN`, que en el
-compose es `http://localhost:5260`. Tiene el panel de salud de los 26, el inicio de sesión
+compose es `http://localhost:5260`. Tiene el panel de salud de los 27, el inicio de sesión
 (con captcha), Swagger de cada servicio con el token ya puesto y un probador que también
 exporta la petición como `curl`. La pestaña **Recorrido** tiene los pasos del guion de
 aceptación listos para correr en orden. El token vive solo en la memoria de la página:

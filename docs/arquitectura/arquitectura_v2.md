@@ -2,7 +2,7 @@
 
 > **Estado: vigente** 2026-10-13 · Este documento es un acta de lo construido en  `microservicios/`,
 > no el plan del sistema completo.
-> El plan de 26 servicios está en [`microservicios.md`](microservicios.md); el
+> El plan de 27 servicios está en [`microservicios.md`](microservicios.md); el
 > sistema final (a actualizar), en [`arquitectura_v1.md`](arquitectura_v1.md). Si este documento y el
 > código no coinciden, manda el código.
 

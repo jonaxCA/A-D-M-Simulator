@@ -51,7 +51,7 @@ Abre <http://localhost:5000/>. Falta crear el rol `epidemia_app` y darle permiso
 
 - **Manual técnico del grupo 14:00:** [docs/MANUAL_TECNICO.md](docs/MANUAL_TECNICO.md).
 - Arquitectura de lo construido: [docs/arquitectura/arquitectura_v2.md](docs/arquitectura/arquitectura_v2.md).
-- Catálogo completo de los 26 servicios: [docs/arquitectura/microservicios.md](docs/arquitectura/microservicios.md).
+- Catálogo completo de los 27 servicios: [docs/arquitectura/microservicios.md](docs/arquitectura/microservicios.md).
 
 ## Pruebas del motor
 

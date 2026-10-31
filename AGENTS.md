@@ -13,7 +13,7 @@ cambios pequeños, legibles y fáciles de revisar.
 
 - **Sistema web:** el monolito Flask sigue conectado directo a PostgreSQL y **no llama a los
   microservicios**.
-- **Microservicios:** 26 servicios Flask pequeños en `microservicios/`, cada uno en su
+- **Microservicios:** 27 servicios Flask pequeños en `microservicios/`, cada uno en su
   contenedor de Docker, con Redis y JWT. Son para las apps de escritorio (XML) y móvil
   (JSON), que se entregan en el tercer parcial; mientras tanto, la consola de pruebas hace
   sus veces.

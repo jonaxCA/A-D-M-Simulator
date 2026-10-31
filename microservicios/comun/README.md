@@ -1,6 +1,6 @@
 # epidemia_comun
 
-Código que repiten los 26 microservicios: formatos, errores, tokens, `/health` y la
+Código que repiten los 27 microservicios: formatos, errores, tokens, `/health` y la
 plantilla (bloque A), y **Redis** (bloque K).
 **No es todavía un despliegue ni una prueba de aceptación completa.**
 
