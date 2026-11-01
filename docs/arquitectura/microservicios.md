@@ -1,6 +1,6 @@
 # EPIDEMIA — Catálogo de microservicios (propuesta)
 
-Son **27 microservicios** pequeños, cada uno con una sola tarea, más una **consola** web para
+Son **28 microservicios** pequeños, cada uno con una sola tarea, más una **consola** web para
 probarlos. Los usan **solo las apps de escritorio (XML) y móvil (JSON)**. El sistema web, que
 es el monolito, sigue hablando directo con PostgreSQL y no los consume.
 
@@ -32,7 +32,7 @@ específicas. Sin MongoDB, Cloud Storage ni nginx.
 |------------|-----------|
 | Identidad  | 5201–5204 |
 | Catálogos  | 5211–5215 |
-| Vigilancia | 5221–5223 |
+| Vigilancia | 5221–5224 |
 | Escenarios | 5231–5235 |
 | Simulación | 5241–5245 |
 | Analítica  | 5251–5253 |
@@ -64,11 +64,12 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 
 ## Vigilancia
 
-| #  | Servicio         | Hace una cosa                                                 | Rutas principales                                                                                             | Escribe                                                 | Lee                                                              | Llama a                                                        | Puerto |
-|----|------------------|---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|------------------------------------------------------------------|----------------------------------------------------------------|--------|
-| 10 | `casos`          | Registra y consulta casos                                     | `POST /api/v1/cases`, `GET /api/v1/cases`, `GET /api/v1/cases/{id}`                                           | `cases`                                                 | `diseases`, `regions`, `devices` (`id`, `user_id`, `is_revoked`) | —                                                              | 5221   |
-| 11 | `sincronizacion` | Recibe lotes de casos capturados sin conexión en la app móvil | `POST /api/v1/sync/cases`, `GET /api/v1/sync/batches/{id}`                                                    | — (los casos los escribe `casos`)                       | —                                                                | `casos`, uno por caso, en JSON; reenvía el token de la persona | 5222   |
-| 27 | `dispositivos`   | Registra, consulta y revoca los dispositivos de las apps      | `POST /api/v1/devices`, `GET /api/v1/devices`, `GET /api/v1/devices/{id}`, `POST /api/v1/devices/{id}/revoke` | `devices` (alta, versión, última conexión y revocación) | —                                                                | —                                                              | 5223   |
+| #  | Servicio         | Hace una cosa                                                 | Rutas principales                                                                                                        | Escribe                                                 | Lee                                                              | Llama a                                                        | Puerto |
+|----|------------------|---------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|------------------------------------------------------------------|----------------------------------------------------------------|--------|
+| 10 | `casos`          | Registra y consulta casos                                     | `POST /api/v1/cases`, `GET /api/v1/cases`, `GET /api/v1/cases/{id}`                                                      | `cases`                                                 | `diseases`, `regions`, `devices` (`id`, `user_id`, `is_revoked`) | —                                                              | 5221   |
+| 11 | `sincronizacion` | Recibe lotes de casos capturados sin conexión en la app móvil | `POST /api/v1/sync/cases`, `GET /api/v1/sync/batches/{id}`                                                               | — (los casos los escribe `casos`)                       | —                                                                | `casos`, uno por caso, en JSON; reenvía el token de la persona | 5222   |
+| 27 | `dispositivos`   | Registra, consulta y revoca los dispositivos de las apps      | `POST /api/v1/devices`, `GET /api/v1/devices`, `GET /api/v1/devices/{id}`, `POST /api/v1/devices/{id}/revoke`            | `devices` (alta, versión, última conexión y revocación) | —                                                                | —                                                              | 5223   |
+| 28 | `evidencias`     | Fotos y PDF de los casos, en un volumen de Docker             | `POST/GET /api/v1/cases/{id}/attachments`, `GET/DELETE /api/v1/attachments/{id}`, `GET /api/v1/attachments/{id}/content` | `case_attachments`; los archivos, en su volumen         | `cases` (`id`, `reported_by`)                                    | —                                                              | 5224   |
 
 - `sincronizacion` usa Redis para que el mismo lote enviado dos veces no duplique casos
   (`sync:lote:<id>`, 7 días). Regresa el resultado de cada caso: creado (201 de `casos`),
@@ -81,6 +82,11 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 - `casos` lee `devices` para no aceptar un caso de un dispositivo que no existe o es de otra
   cuenta (422) o que está revocado (409), aunque el token siga vigente. Los casos que llegan
   por `sincronizacion` pasan por la misma revisión: salen rechazados en el resultado del lote.
+- `evidencias` guarda fotos (JPEG, PNG, WebP) y PDF de hasta 20 MB en su volumen de Docker, en
+  lugar de Cloud Storage; la base guarda ruta, tipo, tamaño y huella SHA-256. El tipo sale del
+  contenido. Las sube quien reportó el caso o ADMINISTRADOR, las ven los cuatro roles que leen
+  casos (siempre con token) y solo ADMINISTRADOR las borra. La misma foto subida dos veces al
+  mismo caso no se duplica, así que la app puede reintentar.
 
 ## Escenarios
 
@@ -146,7 +152,7 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 |----|--------------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|-----------------|-----|------------------------------------------|--------|
 | 25 | `notificaciones`   | Avisos para las apps                           | `GET /api/v1/notifications`, `POST /api/v1/notifications/{id}/read`, `POST /api/v1/notifications` (solo con token de servicio) | `notifications` | —   | —                                        | 5261   |
 | 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/{nombre}/history`                                 | —               | —   | El `/health` de los 26, incluido el suyo, **en XML** | 5262   |
-| —  | `consola`          | Página tipo Swagger/Postman para probar los 27 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
+| —  | `consola`          | Página tipo Swagger/Postman para probar los 28 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
 
 - La `consola` es una página: el navegador llama a cada servicio con la URL que da el
   directorio, y cada servicio abre CORS solo para `CONSOLE_ORIGIN` (en el compose,
@@ -176,7 +182,7 @@ app escritorio ───┤  token Bearer   │
                   base de datos ◄── pareto   (directo, sin resultados)
    sincronizacion ──JSON (un caso a la vez)──► casos
 
-   estado-servicios ──XML──► /health de los 27
+   estado-servicios ──XML──► /health de los 28
 ```
 
 Las llamadas entre servicios llevan el **token de la persona** y el `X-Correlation-ID`.
@@ -219,6 +225,5 @@ guarda su huella (SHA-256).
 | Servicio        | Hace una cosa                                                        | Tabla que ya existe |
 |-----------------|----------------------------------------------------------------------|---------------------|
 | `recuperacion`  | Restablecer contraseña; el envío del correo queda fuera de alcance   | `password_resets`   |
-| `evidencias`    | Adjuntos de casos en un volumen de Docker, en lugar de Cloud Storage | `case_attachments`  |
 | `vacunas`       | Lotes de vacunas escaneados y el consumo de dosis                    | `vaccine_lots`      |
 | `configuracion` | Ajustes del sistema que leen las apps                                | `system_settings`   |

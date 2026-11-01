@@ -21,6 +21,8 @@ NEGADAS = [
     ("dispositivos", "UPDATE devices SET user_id = user_id WHERE false"),
     ("casos", "UPDATE devices SET is_revoked = is_revoked WHERE false"),
     ("casos", "SELECT push_token FROM devices LIMIT 1"),
+    ("evidencias", "UPDATE case_attachments SET privacy = privacy WHERE false"),
+    ("evidencias", "SELECT age FROM cases LIMIT 1"),
 ]
 PERMITIDAS = [
     ("aprobacion", "UPDATE scenario_versions SET status = status WHERE false"),
@@ -29,6 +31,8 @@ PERMITIDAS = [
     ("pareto", "SELECT full_name FROM users LIMIT 1"),
     ("dispositivos", "UPDATE devices SET is_revoked = is_revoked, last_seen_at = now() WHERE false"),
     ("casos", "SELECT user_id, is_revoked FROM devices LIMIT 1"),
+    ("evidencias", "DELETE FROM case_attachments WHERE false"),
+    ("evidencias", "SELECT reported_by FROM cases LIMIT 1"),
 ]
 
 

@@ -84,8 +84,8 @@ La semilla de demostración trae una cuenta CAPTURISTA, el rol de la app:
 |---------|------------|-----|
 | `karla.trevino` | `Epidemia2026!` | CAPTURISTA |
 
-Con ese rol la app registra su teléfono (`dispositivos`), registra y consulta casos (`casos`)
-y envía y consulta sus lotes (`sincronizacion`). Es una cuenta de demostración: solo sirve en el entorno local.
+Con ese rol la app registra su teléfono (`dispositivos`), registra y consulta casos (`casos`),
+sube sus fotos (`evidencias`) y envía y consulta sus lotes (`sincronizacion`). Es una cuenta de demostración: solo sirve en el entorno local.
 
 El inicio de sesión lleva captcha, que la app muestra y la persona contesta:
 
@@ -175,7 +175,22 @@ el token siga vigente. La app debe dejar de capturar y pedir que se vuelva a ini
 que ya había sincronizado se queda. `push_token` se puede mandar al registrar, pero todavía no
 hay notificaciones push.
 
-## 7. Avisos
+## 7. Fotos de los casos
+
+El servicio `evidencias` (puerto 5224) guarda fotos (JPEG, PNG o WebP) y PDF de hasta 20 MB.
+
+- Se suben a `POST /api/v1/cases/{case_id}/attachments` con el archivo **tal cual en el cuerpo**,
+  no como formulario: con OkHttp, `file.asRequestBody("image/jpeg".toMediaType())`. Responde 201
+  con su `id`, tamaño y huella SHA-256.
+- Solo a los casos que reportó la misma cuenta. Un caso capturado sin conexión no tiene `id`
+  hasta que se sincroniza: guarda sus fotos y súbelas con el `case_id` que regresa el lote.
+- Subir otra vez la misma foto al mismo caso responde 200 con la que ya estaba: reintentar una
+  subida que se cortó no la duplica.
+- `GET /api/v1/attachments/{id}/content` regresa el archivo, siempre con token.
+- Reduce las fotos antes de subirlas (por ejemplo, a 1600 px por lado): una foto de cámara de
+  varios MB tarda en subir con datos móviles.
+
+## 8. Avisos
 
 `GET /api/v1/notifications?unread=true` (en `notificaciones`) devuelve los avisos de la cuenta, y
 `POST /api/v1/notifications/{id}/read` los marca como leídos. No hay notificaciones push: la app
@@ -185,7 +200,6 @@ consulta cada cierto tiempo.
 
 | Necesidad de la app | Estado |
 |---------------------|--------|
-| Fotos del caso | Falta el servicio `evidencias` (la tabla `case_attachments` ya existe) |
 | QR de lotes de vacuna | Falta el servicio `vacunas` |
 | Editar un caso | `casos` solo registra y consulta |
 | Notificaciones push | Solo consulta; no hay envío |

@@ -31,6 +31,7 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `029_roles_simulacion_notificaciones.sql` | Los roles de `corridas`, `simulador`, `resultados` y `notificaciones`, y el tipo de aviso `SCENARIO_APPROVED` en `notifications` |
 | `030_rol_estado_servicios.sql` | El rol de `estado-servicios`, que solo se conecta: no lee ni escribe tablas |
 | `031_rol_dispositivos.sql` | El rol de `dispositivos`, dueño de `devices`, y la lectura de `devices` (dueño y revocado) que necesita `casos` |
+| `032_rol_evidencias.sql` | El rol de `evidencias`, dueño de `case_attachments` (sin UPDATE: una evidencia se sube o se borra) |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.
