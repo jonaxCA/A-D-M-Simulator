@@ -35,6 +35,7 @@ SERVICIOS = {
     "sincronizacion": ("vigilancia", 5222),
     "dispositivos": ("vigilancia", 5223),
     "evidencias": ("vigilancia", 5224),
+    "vacunas": ("vigilancia", 5225),
     "escenarios": ("escenarios", 5231),
     "intervenciones": ("escenarios", 5232),
     "aprobacion": ("escenarios", 5233),

@@ -85,7 +85,8 @@ La semilla de demostración trae una cuenta CAPTURISTA, el rol de la app:
 | `karla.trevino` | `Epidemia2026!` | CAPTURISTA |
 
 Con ese rol la app registra su teléfono (`dispositivos`), registra y consulta casos (`casos`),
-sube sus fotos (`evidencias`) y envía y consulta sus lotes (`sincronizacion`). Es una cuenta de demostración: solo sirve en el entorno local.
+sube sus fotos (`evidencias`), escanea lotes de vacuna (`vacunas`) y envía y consulta sus
+lotes de casos (`sincronizacion`). Es una cuenta de demostración: solo sirve en el entorno local.
 
 El inicio de sesión lleva captcha, que la app muestra y la persona contesta:
 
@@ -190,7 +191,23 @@ El servicio `evidencias` (puerto 5224) guarda fotos (JPEG, PNG o WebP) y PDF de 
 - Reduce las fotos antes de subirlas (por ejemplo, a 1600 px por lado): una foto de cámara de
   varios MB tarda en subir con datos móviles.
 
-## 8. Avisos
+## 8. Lotes de vacuna (QR)
+
+El servicio `vacunas` (puerto 5225) lleva los lotes que la app lee por QR o código de barras
+(ML Kit) y las dosis que se les aplican.
+
+1. Escanea el código y búscalo: `GET /api/v1/vaccine-lots?lot_code=<código>`.
+2. Si `total` es 0, pide los datos y regístralo con `POST /api/v1/vaccine-lots`
+   (`lot_code`, `disease_id`, `doses_total` y, si los hay, `manufacturer`, `region_id` y
+   `expires_on`). Un reintento con los mismos datos responde 200; con otros, 409: alguien ya lo
+   registró distinto, así que consúltalo.
+3. Al vacunar, `POST /api/v1/vaccine-lots/{id}/doses` con `{"doses": 1}`. Si no quedan dosis
+   o el lote caducó, responde 409 y no descuenta nada: muestra el `detail`.
+
+Aplicar dosis necesita conexión: el servidor es quien garantiza que nunca se apliquen más dosis
+de las que trae el lote.
+
+## 9. Avisos
 
 `GET /api/v1/notifications?unread=true` (en `notificaciones`) devuelve los avisos de la cuenta, y
 `POST /api/v1/notifications/{id}/read` los marca como leídos. No hay notificaciones push: la app
@@ -200,6 +217,5 @@ consulta cada cierto tiempo.
 
 | Necesidad de la app | Estado |
 |---------------------|--------|
-| QR de lotes de vacuna | Falta el servicio `vacunas` |
 | Editar un caso | `casos` solo registra y consulta |
 | Notificaciones push | Solo consulta; no hay envío |

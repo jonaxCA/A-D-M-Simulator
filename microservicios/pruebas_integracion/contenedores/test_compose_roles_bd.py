@@ -23,6 +23,9 @@ NEGADAS = [
     ("casos", "SELECT push_token FROM devices LIMIT 1"),
     ("evidencias", "UPDATE case_attachments SET privacy = privacy WHERE false"),
     ("evidencias", "SELECT age FROM cases LIMIT 1"),
+    ("vacunas", "UPDATE vaccine_lots SET doses_total = doses_total WHERE false"),
+    ("vacunas", "DELETE FROM vaccine_lots WHERE false"),
+    ("vacunas", "UPDATE cases SET vaccine_lot_id = NULL WHERE false"),
 ]
 PERMITIDAS = [
     ("aprobacion", "UPDATE scenario_versions SET status = status WHERE false"),
@@ -33,6 +36,8 @@ PERMITIDAS = [
     ("casos", "SELECT user_id, is_revoked FROM devices LIMIT 1"),
     ("evidencias", "DELETE FROM case_attachments WHERE false"),
     ("evidencias", "SELECT reported_by FROM cases LIMIT 1"),
+    ("vacunas", "UPDATE vaccine_lots SET doses_used = doses_used WHERE false"),
+    ("vacunas", "SELECT d.name, r.name FROM diseases d, regions r LIMIT 1"),
 ]
 
 

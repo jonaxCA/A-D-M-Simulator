@@ -1,5 +1,5 @@
 """Contrato, rutas y Dockerfile de tipos-intervencion, indicadores, series, zonas, comparacion,
-pareto, corridas, resultados, notificaciones, estado-servicios, dispositivos y evidencias
+pareto, corridas, resultados, notificaciones, estado-servicios, dispositivos, evidencias y vacunas
 (simulador tiene los suyos). Una operación con "x-binario" regresa un archivo tal cual: no lleva
 JSON ni XML ni ejemplos."""
 import ast
@@ -25,6 +25,7 @@ SERVICIOS = [
     ("estado-servicios", "estado_servicios", 5262, True),
     ("dispositivos", "dispositivos", 5223, False),
     ("evidencias", "evidencias", 5224, False),
+    ("vacunas", "vacunas", 5225, False),
 ]
 
 

@@ -1,0 +1,37 @@
+{
+  "total": 2,
+  "lotes": [
+    {
+      "id": 5,
+      "lot_code": "FL3239-2026",
+      "manufacturer": "Sanofi Pasteur",
+      "disease_id": 1,
+      "disease_name": "Influenza A",
+      "region_id": 39,
+      "region_name": "Monterrey",
+      "doses_total": 500,
+      "doses_used": 12,
+      "doses_remaining": 488,
+      "expires_on": "2027-03-31",
+      "vencido": false,
+      "scanned_by": 4,
+      "scanned_at": "2026-11-01T18:10:00+00:00"
+    },
+    {
+      "id": 4,
+      "lot_code": "EW0153",
+      "manufacturer": "Pfizer",
+      "disease_id": 1,
+      "disease_name": "Influenza A",
+      "region_id": 39,
+      "region_name": "Monterrey",
+      "doses_total": 200,
+      "doses_used": 200,
+      "doses_remaining": 0,
+      "expires_on": "2026-10-15",
+      "vencido": true,
+      "scanned_by": 4,
+      "scanned_at": "2026-09-20T15:30:00+00:00"
+    }
+  ]
+}
