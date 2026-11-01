@@ -1,3 +1,5 @@
+Estado: revisar. Reglas sacadas del plan del primer parcial.
+
 # **Reglas de negocio.**
 
 #### Roles y permisos

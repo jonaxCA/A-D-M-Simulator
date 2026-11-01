@@ -1,3 +1,5 @@
+Estado: revisar. Permisos sacados del plan del primer parcial.
+
 ### Matriz de permisos por operación
 
 | Operación                           | Admin | Epid. | Analista | Capturista | Fuente                  |

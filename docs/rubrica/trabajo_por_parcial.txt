@@ -1,3 +1,5 @@
+Estado: Vigente, pero no es una rubrica absoluta.
+
 Debido a la complejidad de las soluciones, el trabajo deberá organizarse mediante entregas incrementales. Cada parcial deberá producir un incremento funcional del sistema. No será suficiente entregar únicamente documentos, diagramas, interfaces estáticas o código incompleto. Al terminar cada etapa, el equipo deberá demostrar una versión ejecutable del proyecto y presentar evidencia de:
  
     Funcionamiento.
@@ -43,21 +45,6 @@ Análisis del problema: El equipo deberá investigar y describir:
     Restricciones legales, éticas o de privacidad.
     Beneficios esperados.
  
-El problema deberá analizarse desde una perspectiva real y no solamente desde el punto de vista de programación. Por ejemplo, si el sistema administra seguimiento terapéutico, el equipo deberá considerar:
- 
-    Cómo se registra un paciente.
-    Cómo se asigna un terapeuta.
-    Cómo se agenda una sesión.
-    Qué datos se capturan antes, durante y después de la sesión.
-    Cómo se registran objetivos terapéuticos.
-    Cómo se aplican instrumentos.
-    Cómo se almacenan resultados.
-    Cómo se mide la evolución.
-    Qué información puede consultar cada perfil.
-    Qué información debe permanecer restringida.
-    Qué situaciones deberían producir una alerta.
-    Qué actividades pueden ser automatizadas.
-    Qué decisiones deben permanecer bajo responsabilidad humana.
  
 Identificación de actores y perfiles: El equipo deberá definir todos los perfiles que utilizarán la plataforma. Para cada perfil se deberán especificar:
  
@@ -68,22 +55,6 @@ Identificación de actores y perfiles: El equipo deberá definir todos los perfi
     Restricciones.
     Nivel de autorización.
     Componentes que utiliza.
- 
-Ejemplos:
- 
-    Administrador general.
-    Administrador de empresa.
-    Supervisor.
-    Operador.
-    Especialista.
-    Cliente.
-    Paciente.
-    Médico.
-    Terapeuta.
-    Conductor.
-    Productor.
-    Auditor.
-    Personal de soporte.
  
 Requerimientos: El equipo deberá elaborar:
  
@@ -280,17 +251,6 @@ Desarrollo del módulo de microservicios: Se deberán desarrollar los microservi
     Registro de actividad.
     Endpoint de salud.
     Documentación OpenAPI.
- 
-Ejemplo de organización:
- 
-    Microservicio de autenticación.
-    Microservicio de usuarios.
-    Microservicio de catálogos.
-    Microservicio del proceso principal.
-    Microservicio de documentos.
-    Microservicio de notificaciones.
-    Microservicio de consultas.
-    Microservicio de algoritmos.
  
 Contratos de servicios: Antes de desarrollar las aplicaciones cliente (que se construirán en el tercer parcial), el equipo deberá definir los contratos de integración y validarlos en este parcial mediante Swagger y herramientas de prueba de APIs. Para JSON se deberá especificar:
  
@@ -508,23 +468,7 @@ El equipo deberá demostrar qué ocurre cuando:
     Una petición excede el tiempo máximo.
  
  
-Algoritmos complejos: Cada proyecto deberá implementar al menos un algoritmo complejo relacionado con el problema. No será suficiente utilizar una consulta SQL o una fórmula simple. Ejemplos:
- 
-    Optimización de rutas.
-    Matching multicriterio.
-    Detección de anomalías.
-    Clasificación.
-    Agrupamiento.
-    Pronóstico.
-    Recomendación.
-    Análisis de series de tiempo.
-    Detección de duplicados.
-    Resolución de conflictos.
-    Cálculo de similitud.
-    Procesamiento de grafos.
-    Priorización.
-    Motor de reglas.
- 
+Algoritmos complejos: Cada proyecto deberá implementar al menos un algoritmo complejo relacionado con el problema. No será suficiente utilizar una consulta SQL o una fórmula simple.
  
 El equipo deberá documentar:
  
