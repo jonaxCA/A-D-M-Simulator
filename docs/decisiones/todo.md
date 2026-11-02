@@ -1,9 +1,7 @@
-Decisiones por registrar o confirmar:
+Decisiones por confirmar con el equipo (ya están registradas, ver `decisiones.md`):
 
-1. Migraciones SQL numeradas en lugar de Alembic.
-2. Una sola instancia de PostgreSQL con un rol por servicio: cada servicio lee todo y escribe solo sus tablas.
-3. Redis sin datos autoritativos: PostgreSQL es la fuente de verdad.
-4. Migración gradual del monolito con fachada en la web, módulo por módulo.
-5. XML por defecto y JSON con ?format=json o Accept: application/json.
-6. Rutas en inglés y nombres de servicios en español.
-7. FLAME GPU para el motor acelerado, con el motor de referencia en Python como respaldo.
+- D17 a D20: estaban en esta lista y ya tienen archivo con estado «Por confirmar».
+- D25: nginx está decidido; falta confirmar la entrada con prefijo por servicio.
+- Las del antiguo punto 5 y 6 ya eran D9, D11 y D12.
+- El antiguo punto 7 (FLAME GPU con el motor de Python como respaldo) quedó en D23.
+- Recuperar o redefinir las opciones de la «Corrección 1, 2 y 4» de D1 a D4 (no están en el repositorio).
