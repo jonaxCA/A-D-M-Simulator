@@ -1,0 +1,176 @@
+> **Estado: Borrador** · 2026-11-01
+
+# Inventario de brechas para la arquitectura v3
+
+Compara lo que pide `docs/rubrica/trabajo_por_parcial.txt` (tercer parcial y entrega final) con lo que documenta `arquitectura_v2.md`, `microservicios.md` y `decisiones/decisiones.md`, y con lo que hay en el código al 2026-11-01.
+
+Tipos de brecha:
+
+- **Falta:** se pide y no existe.
+- **Contradicción:** dos fuentes no coinciden, o el documento dice una cosa y el código hace otra.
+- **Ambigüedad:** nadie lo ha decidido.
+- **Verificar:** no se pudo confirmar leyendo el código; alguien tiene que probarlo.
+- **Pospuesto:** se sabe qué hacer, pero se hace después de validar la v3.
+
+Primero se termina el documento de arquitectura. El código se toca después, con el plan de implementación (§11).
+
+## 1. Fallas de estructura
+
+| #  | Problema                                                                                                                                                                                                                                                                                     | Evidencia                                            | Tipo                                                                                                    |
+|----|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| E1 | `docker-compose.yml` declara `usuarios`, `validacion` y `zonas`, pero sus carpetas no existen en `microservicios/`. Con `--profile '*'` la construcción falla. Sí tienen contrato en `docs/contratos/`.                                                                                      | `infra/docker-compose.yml`; `ls microservicios/`     | Pospuesto: la v3 decide si siguen en el catálogo; el arreglo del código va en el plan de implementación |
+| E2 | `escenarios` y `aprobacion` llaman a `validacion`, que no existe.                                                                                                                                                                                                                            | `microservicios.md`, filas 12 y 14                   | Pospuesto, igual que E1                                                                                 |
+| E3 | Las decisiones D1 a D4 remiten a "Corrección 1, 2, 4" y a "opción A o B", pero esos documentos no están en el repositorio. No se puede decidir sin las opciones.                                                                                                                             | `decisiones/decisiones.md`                           | Ambigüedad                                                                                              |
+| E4 | `decisiones.md` es solo una tabla de tareas: no tiene contexto, opciones ni consecuencias (no sigue `plantilla_ADR.md`). `decisiones/todo.md` tiene siete decisiones más sin registrar.                                                                                                      | `decisiones/`                                        | Falta                                                                                                   |
+| E5 | Los requerimientos funcionales, la trazabilidad y el contexto general están marcados como **Obsoleto**, y la matriz de permisos y las reglas de negocio como "revisar". La v3 no tiene una base de requerimientos vigente.                                                                   | Encabezados de `requerimentos/`                      | Falta                                                                                                   |
+| E6 | El `AGENTS.md` de la raíz está marcado como Obsoleto y sigue prohibiendo código en `frontend_movil/` y `frontend_desktop/`. `docs/AGENTS.md` dice que la v2 está vigente.                                                                                                                    | `AGENTS.md`, `docs/AGENTS.md`                        | Pospuesto: se actualiza cuando la v3 esté validada                                                      |
+| E7 | La v2, `AGENTS.md` y `microservicios/AGENTS.md` dejan fuera de alcance MongoDB, Cloud Storage, los límites de consumo, nginx y el ABM. Por decisión del profesor, todo lo no implementado pasó al tercer parcial, y el equipo decidió usar nginx y hacer el ABM. La v3 tiene que incluirlos. | `arquitectura_v2.md` §9.1 y §8; §9 de este documento | Contradicción                                                                                           |
+
+## 2. Aplicaciones cliente
+
+| #  | Requisito de la rúbrica                                                                 | Documentado                                                                         | Implementado                               | Tipo       |
+|----|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|--------------------------------------------|------------|
+| C1 | App Android funcional, solo JSON, que consuma ≥ 4 microservicios                        | `rf-i-app-android.md` (obsoleto), §3.2 de la v2                                     | `frontend_movil/` solo tiene `AGENTS.md`   | Falta      |
+| C2 | Android: ≥ 2 capacidades del dispositivo (cámara, QR, GPS, sincronización…)             | `todo.md` propone `dispositivos`, `evidencias` y `vacunas`; no están en el catálogo | No                                         | Ambigüedad |
+| C3 | Android: token seguro, renovación, indicador de conexión, borrado local de credenciales | Sin especificar                                                                     | No                                         | Falta      |
+| C4 | App de escritorio, solo XML con validación XSD, que consuma ≥ 4 microservicios          | `rf-h-app-escritorio.md` (obsoleto), §3.3 de la v2                                  | `frontend_desktop/` solo tiene `AGENTS.md` | Falta      |
+| C5 | La de escritorio atiende **un proceso distinto** al de la móvil y no copia la web       | Depende de D4, abierta                                                              | —                                          | Ambigüedad |
+| C6 | Escritorio: tabla de resultados, búsqueda, filtros y exportación                        | Sin especificar                                                                     | No                                         | Falta      |
+| C7 | Tecnología de cada app (lenguaje, framework, cómo se instala)                           | Verificar §3.2 y §3.3 de la v2                                                      | —                                          | Ambigüedad |
+| C8 | Menú por rol en ambas apps                                                              | La matriz de permisos está en "revisar" y D1 sigue abierta                          | —                                          | Ambigüedad |
+
+## 3. Integración completa
+
+| #  | Requisito de la rúbrica                                                                                                   | Documentado                                                      | Implementado                                                                               | Tipo      |
+|----|---------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|--------------------------------------------------------------------------------------------|-----------|
+| I1 | ≥ 3 procesos de principio a fin: usuario, app, microservicios, Redis, BD, bucket, auditoría, notificación y visualización | No hay una lista de los tres procesos; ver la propuesta en §10.1 | Hay piezas sueltas (casos → sincronización, escenario → aprobación → corrida → resultados) | Falta     |
+| I2 | La web "sigue funcionando de manera independiente" y va directo a PostgreSQL                                              | Confirmado por el profesor (§9.1 de la v2)                       | Sí                                                                                         | —         |
+| I3 | "Todos los componentes deberán consultar Redis durante la autenticación"                                                  | Sin documentar para la web                                       | `backend_web/auth.py` no usa Redis                                                         | Verificar |
+
+## 4. Datos
+
+| #   | Requisito de la rúbrica                                                | Documentado                                                                              | Implementado                                                          | Tipo                                             |
+|-----|------------------------------------------------------------------------|------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|--------------------------------------------------|
+| D-1 | MongoDB con inserción, consulta, actualización, agregación e índices   | §9.1 de la v2 propone el historial de `estado-servicios` y los lotes de `sincronizacion` | Ninguna referencia a `pymongo` en el código; no hay contenedor        | Falta (pasó al tercer parcial)                   |
+| D-2 | Diseño de MongoDB: colecciones, índices, versionamiento, crecimiento   | No                                                                                       | —                                                                     | Falta                                            |
+| D-3 | Cloud Storage para fotos y evidencias, sin archivos grandes en la base | Fuera de alcance en la v2                                                                | No (existe la tabla `case_attachments`; verificar qué guarda)         | Falta                                            |
+| D-4 | URLs firmadas para archivos privados                                   | No                                                                                       | No                                                                    | Falta                                            |
+| D-5 | Carga de archivos en la web                                            | Verificar                                                                                | Ningún `request.files` en el código                                   | Falta (pasó al tercer parcial)                   |
+| D-6 | Conjunto de datos de alto volumen y mediciones con y sin Redis         | No                                                                                       | `gen_demo_data.py` genera datos de demostración; verificar el volumen | Falta; la cifra se confirma con el profesor (§9) |
+
+## 5. Seguridad
+
+| #  | Requisito de la rúbrica                    | Documentado                                        | Implementado                    | Tipo                                                                                |
+|----|--------------------------------------------|----------------------------------------------------|---------------------------------|-------------------------------------------------------------------------------------|
+| S1 | Acceso, *refresh*, revocación y expiración | Sí (`auth`, `sesiones`)                            | Sí, con pruebas de revocación   | —                                                                                   |
+| S2 | Rate limiting                              | §9.1 de la v2 propone `ratelimit:<usuario>:<ruta>` | No hay código                   | Falta (pasó al tercer parcial)                                                      |
+| S3 | Registro de intentos fallidos              | Sí                                                 | `auth` audita `LOGIN_FAILED`    | —                                                                                   |
+| S4 | Validación de archivos                     | No                                                 | No (no hay carga de archivos)   | Falta                                                                               |
+| S5 | Secretos protegidos en GCP                 | No                                                 | `genera_env.py` solo para local | Falta                                                                               |
+| S6 | HTTPS en Compute Engine                    | Se usará nginx (§9)                                | No                              | Ambigüedad: falta decidir cómo entra el tráfico y de dónde sale el certificado (N7) |
+
+## 6. Nube, monitoreo y fallos
+
+| #  | Requisito de la rúbrica                                                                              | Documentado                                                                                                                     | Implementado                                                                                           | Tipo                                       |
+|----|------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|--------------------------------------------|
+| N1 | Despliegue en Compute Engine con firewall y puertos controlados                                      | Pendiente en la v2                                                                                                              | No                                                                                                     | Falta                                      |
+| N2 | Diagrama de distribución en la nube: web, servicios, PostgreSQL, MongoDB, Redis, archivos, monitoreo | No                                                                                                                              | —                                                                                                      | Falta                                      |
+| N3 | Health check con proceso, PostgreSQL, MongoDB, Redis, bucket, tiempo de respuesta y versión          | La v2 reconoce que hay una sola ruta                                                                                            | `/health` en `comun/fabrica.py` revisa Redis, PostgreSQL y la versión; faltan MongoDB, bucket y tiempo | Falta (parcial)                            |
+| N4 | Panel central: estado, errores, historial, servicios degradados, dependencias caídas                 | `estado-servicios`                                                                                                              | Tiene historial (en Redis) y consola; verificar el conteo de errores y las dependencias                | Verificar                                  |
+| N5 | Demostrar la caída de un servicio, Redis, MongoDB, PostgreSQL, el bucket y un *timeout*              | No hay plan de pruebas de fallos                                                                                                | Hay `test_redis_caido.py`                                                                              | Falta (parcial)                            |
+| N6 | Logs centralizados en la nube                                                                        | No                                                                                                                              | No                                                                                                     | Falta                                      |
+| N7 | Entrada por nginx                                                                                    | La v1 lo tenía; la v2 lo retiró con D13 ("sin pasarela": las apps piden a `estado-servicios` el `host:puerto` de cada servicio) | No                                                                                                     | Contradicción con D13; ver §9, respuesta 3 |
+
+## 7. Algoritmo y rendimiento
+
+| #  | Requisito de la rúbrica                                                                     | Documentado                                                                                                                                                               | Implementado                                                                               | Tipo                                      |
+|----|---------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|-------------------------------------------|
+| A1 | ≥ 1 algoritmo complejo ("no basta una fórmula simple")                                      | El SEIR cumple, pero el equipo decidió hacer el ABM (§9). La v2 lo deja fuera de alcance y `decisiones/todo.md` #7 propone FLAME GPU con el motor de Python como respaldo | SEIR estocástico por edad (`modelo.py`) y frontera de Pareto (`pareto.py`); no hay agentes | Falta; las decisiones del ABM están en §8 |
+| A2 | Ficha del algoritmo: entradas, salidas, complejidad, pseudocódigo, métricas, tiempos        | No                                                                                                                                                                        | Hay pruebas en `procesamiento/tests`                                                       | Falta                                     |
+| A3 | Réplicas de una comparación y cómo se resumen                                               | D8 abierta; con un ABM estocástico ya no es opcional                                                                                                                      | —                                                                                          | Ambigüedad                                |
+| A4 | Pruebas con Locust por perfil (consulta, registro, móvil, escritorio, procesos automáticos) | Pendiente                                                                                                                                                                 | No                                                                                         | Falta                                     |
+| A5 | Métricas: usuarios concurrentes, peticiones por segundo, p95, p99, errores, saturación      | No                                                                                                                                                                        | No                                                                                         | Falta                                     |
+| A6 | Fuente y serie histórica para calibrar el ABM                                               | Pregunta abierta en §9.2 de la v2; la calibración está fuera de alcance en `AGENTS.md`                                                                                    | No                                                                                         | Ambigüedad                                |
+
+## 8. Decisiones abiertas que bloquean la v3
+
+| Decisión                      | Qué bloquea                                                                                                                       |
+|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| D1 · Permisos y auditoría     | Menús por rol en las tres apps (C8) y la matriz de permisos                                                                       |
+| D2 · Papel del SEIR           | Con el ABM decidido, falta definir si el SEIR queda como respaldo o referencia (ver D23) o se retira |
+| D3 · Unidad de costo          | Pareto, la comparación y los reportes de escritorio                                                                               |
+| D4 · Web contra escritorio    | El proceso de la app de escritorio (C5)                                                                                           |
+| D6 · Población del escenario  | Con el ABM se vuelve crítica: ¿un agente por habitante o un factor de escala? Define el tamaño de la simulación                   |
+| D8 · Réplicas                 | La comparación y su tiempo de ejecución (A3)                                                                                      |
+| D13 · Sin pasarela            | Se revisa porque vuelve nginx (N7, §9)                                                                                            |
+| D23 · Tecnología del ABM      | Python con NumPy/Numba en CPU o FLAME GPU 2 en GPU. Si es GPU: ¿hay GPU disponible en GCP y quién la paga?                        |
+| D24 · Calibración del ABM     | De dónde salen los parámetros de contacto y transmisión de los agentes, con su fuente (regla 8) (A6)                              |
+| D26 · Certificado HTTPS       | Si hay dominio, Let's Encrypt; si no, un certificado autofirmado                                                                  |
+| D27 · Servicios de la móvil   | Si entran `dispositivos`, `evidencias` y `vacunas` (C2)                                                                           |
+| D28 · Uso de MongoDB          | Qué colecciones existen (D-1)                                                                                                     |
+
+## 9. Respuestas a las preguntas del profesor y del equipo (2026-11-01)
+
+1. **¿Cuentan MongoDB y los límites de consumo si se entregan ahora?** Sí. Por decisión del profesor, MongoDB y todo lo que no se implementó en el segundo parcial pasó al tercero. Conviene registrarlo como decisión en `decisiones/decisiones.md`.
+2. **¿Cumple el SEIR como algoritmo complejo?** Sí, pero el equipo quiere implementar el modelo basado en agentes (ABM). Eso abre las decisiones nuevas de §8 (tecnología, GPU, calibración) y vuelve críticas D2, D6 y D8.
+3. **¿Se puede usar nginx para HTTPS?** Sí, se usará nginx. Una sola entrada con prefijo por servicio. nginx escucha en 443 y enruta por el nombre del servicio: `https://<dominio>/aprobacion/api/v1/scenarios/7/submit` → `aprobacion:8000/api/v1/scenarios/7/submit`. Solo quedan abiertos los puertos 80 (redirige a 443) y 443, y los servicios no se exponen. Las rutas de D11 no cambian, y `estado-servicios` sigue siendo el directorio: devuelve `https://<dominio>/<servicio>` en vez de `host:puerto`. Así D13 solo se ajusta. No sirve enrutar por la ruta de la API, porque varios servicios comparten prefijo (`/api/v1/scenarios/...` lo atienden `escenarios`, `aprobacion` y `escenarios-xml`). Los límites de consumo siguen en Redis (S2). `limit_req` de nginx puede ser una capa extra, no la única.
+4. **¿Qué volumen de datos es "alto"?** Depende del proyecto de cada grupo. Se confirma con el profesor cuando el sistema completo esté diseñado. Para llegar con una cifra, la v3 debe proponer un volumen objetivo; las series diarias por corrida del ABM son buenas candidatas.
+
+**Siguiente pregunta al profesor, ya con la v3:** el volumen objetivo y, si el ABM va en GPU, si hay créditos de GCP para ella.
+
+## 10. Cómo ordenar las funcionalidades
+
+Hay que empezar por los procesos y no por los componentes. Lo que hace cada app, el simulador y cada almacén se *deduce* de los procesos; no se inventa por separado. Así no quedan funciones huérfanas ni servicios que nadie usa.
+
+### 10.1 Escribir los procesos paso a paso
+
+Cada proceso es una tabla con un renglón por paso:
+
+| Paso | Quién (rol) | Dónde (app) | Qué hace | Servicio | Formato | Escribe en | Lee de | Archivo en GCS | Auditoría | Notifica a |
+|------|-------------|-------------|----------|----------|---------|------------|--------|----------------|-----------|------------|
+
+Propuesta de los tres procesos, sacada del catálogo actual. **Está por validar:**
+
+- **P1 · Captura en campo (Android, JSON).** Una persona en campo registra un caso con GPS y foto, aunque no tenga conexión, y sincroniza después. Servicios: `auth`, `sesiones`, `casos`, `sincronizacion`, `regiones`, `enfermedades` y uno de archivos o `evidencias` (nuevo). Usa la cámara, el GPS, el almacenamiento local y la sincronización. Escribe el caso en PostgreSQL, la foto en GCS y el lote crudo en MongoDB. El resultado se ve en el tablero web. Opcional: el QR de lotes de `vacunas`.
+- **P2 · Diseño y aprobación de escenarios (escritorio, XML).** Se arma un escenario con sus intervenciones y costos, se importa o exporta en XML validado con XSD y se envía a revisión; quien revisa lo aprueba y se notifica. Servicios: `escenarios`, `intervenciones`, `validacion`, `escenarios-xml`, `aprobacion` y `notificaciones`. Depende de D1 y D4.
+- **P3 · Simulación y comparación (escritorio o web, más el simulador).** Se lanza un lote de corridas, que entra a la cola de Redis; el ABM las ejecuta, los resultados se guardan, se comparan con Pareto y se exporta un reporte a GCS con URL firmada. Servicios: `corridas`, `simulador`, `resultados`, `comparacion` y `pareto`. Depende de D2, D3, D6 y D8.
+
+Los tres pasan por Redis (la sesión) y por la auditoría. Repartidos entre seis personas, tocan dos por proceso.
+
+### 10.2 Sacar las tres matrices de los procesos
+
+Ya escritos los procesos, se leen por columnas:
+
+- **Matriz de componentes:** función × web, Android, escritorio y simulador. Responde qué hace cada app. Se coteja con las listas de la rúbrica para Android y para escritorio.
+- **Inventario de datos:** dato · quién lo crea · quién lo lee · almacén · por qué ahí · vida (TTL o retención) · volumen esperado. Responde qué va a cada base y a GCS.
+- **Mapa de servicios:** servicio × proceso. Un servicio que ningún proceso usa es candidato a recorte; un paso sin servicio pide uno nuevo. Aquí se decide E1.
+
+### 10.3 Criterios para decidir dónde va cada dato
+
+| Almacén    | Va ahí si…                                                                   | Candidatos (de la v2 y del catálogo)                                                                    |
+|------------|------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| PostgreSQL | Pide integridad, relaciones o transacciones, o es la fuente de verdad        | Usuarios, roles, casos, escenarios y versiones, estado de las corridas, auditoría                       |
+| MongoDB    | Es semiestructurado o de alta frecuencia, o se agrega más de lo que se edita | Series diarias de las corridas del ABM, lotes crudos de sincronización, historial de `estado-servicios` |
+| Redis      | Es temporal, tiene TTL y se puede reconstruir                                | Sesiones, tokens revocados, caché, contadores de límites, candados, cola y progreso de corridas         |
+| GCS        | Es un archivo binario o grande                                               | Fotos y evidencias, reportes y exportaciones, XML de intercambio, salidas crudas del simulador          |
+
+De cada archivo en GCS, la base guarda solo los metadatos que lista la rúbrica: identificador, ruta, tipo, tamaño, propietario, fecha, hash, nivel de privacidad, estado y metadatos.
+
+### 10.4 El simulador, en su propia ficha
+
+Primero se cierran la tecnología del ABM, D6, D8 y D2. Luego se llena la ficha con los campos de la rúbrica: problema, entradas, salidas, variables, restricciones, complejidad, pseudocódigo, casos de prueba, métricas, limitaciones y tiempo de ejecución. Se agrega el flujo `corridas` → cola de Redis → `simulador` → motor → almacenes. El ABM también resuelve el requisito de grandes volúmenes: sus series alimentan MongoDB y las pruebas de rendimiento.
+
+### 10.5 Cierre: pasar la rúbrica por las matrices
+
+Cada punto de la rúbrica (Android, escritorio, integración, seguridad, nube, monitoreo) tiene que caer en alguna celda o aparecer de forma explícita en "fuera de alcance". Lo que no cae en ningún lado es una brecha nueva.
+
+## 11. Orden de trabajo
+
+1. Mandar las preguntas pendientes y cerrar D1, D2, D3, D4, D6, D8, D13 y las nuevas de §8, en formato ADR (E3, E4).
+2. Escribir y validar en equipo los tres procesos (§10.1).
+3. Sacar las matrices y el inventario de datos (§10.2 y §10.3).
+4. Llenar la ficha del simulador (§10.4).
+5. Escribir la v3 a partir de la v2, con un apartado por cliente, el diagrama de despliegue en GCP con nginx y el diseño de MongoDB y de GCS.
+6. Validar la v3 contra la rúbrica (§10.5) y confirmar el volumen con el profesor.
+7. Escribir el plan de implementación, con E1 y E2 como primeras tareas.
+8. Actualizar `AGENTS.md` y los de cada carpeta, y marcar la v2 como Obsoleta (E6).
