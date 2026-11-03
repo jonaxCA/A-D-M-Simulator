@@ -22,7 +22,7 @@ Primero se termina el documento de arquitectura. El código se toca después, co
 | E2 | `escenarios` y `aprobacion` llaman a `validacion`, que no existe.                                                                                                                                                                                                                            | `microservicios.md`, filas 12 y 14                   | Pospuesto, igual que E1                                                                                 |
 | E3 | Las decisiones D1 a D4 remiten a "Corrección 1, 2, 4" y a "opción A o B", pero esos documentos no están en el repositorio. No se puede decidir sin las opciones.                                                                                                                             | `decisiones/decisiones.md`                           | Ambigüedad                                                                                              |
 | E4 | `decisiones.md` es solo una tabla de tareas: no tiene contexto, opciones ni consecuencias (no sigue `plantilla_ADR.md`). `decisiones/todo.md` tiene siete decisiones más sin registrar.                                                                                                      | `decisiones/`                                        | Falta                                                                                                   |
-| E5 | Los requerimientos funcionales, la trazabilidad y el contexto general están marcados como **Obsoleto**, y la matriz de permisos y las reglas de negocio como "revisar". La v3 no tiene una base de requerimientos vigente.                                                                   | Encabezados de `requerimentos/`                      | Falta                                                                                                   |
+| E5 | Los requerimientos funcionales, la trazabilidad y el contexto general están marcados como **Obsoleto**, y la matriz de permisos y las reglas de negocio como "revisar". La v3 no tiene una base de requerimientos vigente.                                                                   | Encabezados de `requerimentos/`                      | Falta; se resuelve con §10.0, §10.1 y §10.6                                                             |
 | E6 | El `AGENTS.md` de la raíz está marcado como Obsoleto y sigue prohibiendo código en `frontend_movil/` y `frontend_desktop/`. `docs/AGENTS.md` dice que la v2 está vigente.                                                                                                                    | `AGENTS.md`, `docs/AGENTS.md`                        | Pospuesto: se actualiza cuando la v3 esté validada                                                      |
 | E7 | La v2, `AGENTS.md` y `microservicios/AGENTS.md` dejan fuera de alcance MongoDB, Cloud Storage, los límites de consumo, nginx y el ABM. Por decisión del profesor, todo lo no implementado pasó al tercer parcial, y el equipo decidió usar nginx y hacer el ABM. La v3 tiene que incluirlos. | `arquitectura_v2.md` §9.1 y §8; §9 de este documento | Contradicción                                                                                           |
 
@@ -122,12 +122,22 @@ Primero se termina el documento de arquitectura. El código se toca después, co
 
 Hay que empezar por los procesos y no por los componentes. Lo que hace cada app, el simulador y cada almacén se *deduce* de los procesos; no se inventa por separado. Así no quedan funciones huérfanas ni servicios que nadie usa.
 
+No todo sale de los procesos. El inicio de sesión, los catálogos, la administración de usuarios, el monitoreo y el sitio público son **funciones de soporte**: van como renglones propios en la matriz de componentes (§10.2), sin proceso.
+
+Los requerimientos se trabajan en tres momentos. Antes son insumo (§10.0), durante salen de los procesos (§10.1) y después se redactan y se trazan (§10.6). No se reescriben antes de tener los procesos, porque se escribirían dos veces.
+
+### 10.0 Insumos
+
+- **Rúbrica:** los requisitos de la materia. No son los del producto, pero hay que cumplirlos.
+- **Roles (D1) y reglas de negocio** (`requerimentos/reglas-negocio.md`, en revisión): quién hace cada paso y con qué restricciones.
+- **Los `rf-*.md` y `rnf-*.md` obsoletos:** materia prima. Se consultan al escribir cada proceso; no se actualizan antes.
+
 ### 10.1 Escribir los procesos paso a paso
 
 Cada proceso es una tabla con un renglón por paso:
 
-| Paso | Quién (rol) | Dónde (app) | Qué hace | Servicio | Formato | Escribe en | Lee de | Archivo en GCS | Auditoría | Notifica a |
-|------|-------------|-------------|----------|----------|---------|------------|--------|----------------|-----------|------------|
+| Paso | Quién (rol) | Dónde (app) | Qué hace | RF | Servicio | Formato | Escribe en | Lee de | Archivo en GCS | Auditoría | Notifica a |
+|------|-------------|-------------|----------|----|----------|---------|------------|--------|----------------|-----------|------------|
 
 Propuesta de los tres procesos, sacada del catálogo actual. **Está por validar:**
 
@@ -137,13 +147,34 @@ Propuesta de los tres procesos, sacada del catálogo actual. **Está por validar
 
 Los tres pasan por Redis (la sesión) y por la auditoría. Repartidos entre seis personas, tocan dos por proceso.
 
+**Requerimientos funcionales.** Cada paso es un requerimiento funcional candidato, y la columna **RF** lo anota. Al escribir cada proceso se abren los módulos que le corresponden:
+
+| Módulo                                                                               | Dónde entra                            |
+|--------------------------------------------------------------------------------------|----------------------------------------|
+| C (vigilancia), I (Android)                                                          | P1 · Captura en campo                  |
+| D (escenarios), H (escritorio)                                                       | P2 · Diseño y aprobación de escenarios |
+| E (simulación), F (resultados)                                                       | P3 · Simulación y comparación          |
+| G (tablero web)                                                                      | La visualización de P1 y P3            |
+| A (autenticación), B (catálogos), J (publicación), K (monitoreo), L (administración) | Funciones de soporte                   |
+
+Con cada RF viejo se hace una de cuatro cosas:
+
+- Si encaja en un paso, se conserva con su ID (por ejemplo, RF-C03) para no romper la trazabilidad.
+- Si cambió, se corrige.
+- Si no encaja en ningún paso, va a funciones de soporte o a "fuera de alcance".
+- Si un paso no tiene RF, se crea uno nuevo con el prefijo de su módulo.
+
+**Requerimientos no funcionales.** Se adjuntan al paso como restricciones: p95 de un servicio, tamaño máximo de una foto, TTL de una sesión. Salen de la rúbrica (seguridad, Locust, health checks) y del inventario de datos (volumen y retención). Los que valen para todo un componente, como los logs o la disponibilidad, se anotan una sola vez en ese componente.
+
 ### 10.2 Sacar las tres matrices de los procesos
 
 Ya escritos los procesos, se leen por columnas:
 
-- **Matriz de componentes:** función × web, Android, escritorio y simulador. Responde qué hace cada app. Se coteja con las listas de la rúbrica para Android y para escritorio.
+- **Matriz de componentes:** función × web, Android, escritorio y simulador, con un renglón por paso de proceso y uno por función de soporte. Responde qué hace cada app. Se coteja con las listas de la rúbrica para Android y para escritorio.
 - **Inventario de datos:** dato · quién lo crea · quién lo lee · almacén · por qué ahí · vida (TTL o retención) · volumen esperado. Responde qué va a cada base y a GCS.
 - **Mapa de servicios:** servicio × proceso. Un servicio que ningún proceso usa es candidato a recorte; un paso sin servicio pide uno nuevo. Aquí se decide E1.
+
+Entre las tres sale la clasificación por componente que la rúbrica pide para los requerimientos: web, microservicios, móvil, escritorio, bases de datos, infraestructura, seguridad y monitoreo.
 
 ### 10.3 Criterios para decidir dónde va cada dato
 
@@ -164,13 +195,22 @@ Primero se cierran la tecnología del ABM, D6, D8 y D2. Luego se llena la ficha 
 
 Cada punto de la rúbrica (Android, escritorio, integración, seguridad, nube, monitoreo) tiene que caer en alguna celda o aparecer de forma explícita en "fuera de alcance". Lo que no cae en ningún lado es una brecha nueva.
 
+### 10.6 Después de validar la v3: redactar y trazar
+
+- **`rf-*.md` y `rnf-*.md`:** se reescriben a partir de las tablas, que ya tienen todo, y se les quita la marca de Obsoleto.
+- **Historias de usuario y criterios de aceptación** (`historias-usuario.md`, pendiente en `docs/todo.md`): la historia es el paso visto desde quien lo hace. Las columnas *Escribe en*, *Auditoría* y *Notifica a* son su criterio de aceptación.
+- **Casos de uso principales:** son los tres procesos.
+- **Matriz de permisos y reglas de negocio:** se cierran con D1 y con la columna *Quién* de los procesos.
+- **Matriz de trazabilidad** (`trazabilidad.md`): va al último porque necesita todo lo anterior. Cada renglón une RF, proceso, componente, servicio y prueba.
+
 ## 11. Orden de trabajo
 
 1. Mandar las preguntas pendientes y cerrar D1, D2, D3, D4, D6, D8, D13 y las nuevas de §8, en formato ADR (E3, E4).
-2. Escribir y validar en equipo los tres procesos (§10.1).
+2. Escribir y validar en equipo los tres procesos con su columna RF (§10.0 y §10.1).
 3. Sacar las matrices y el inventario de datos (§10.2 y §10.3).
 4. Llenar la ficha del simulador (§10.4).
 5. Escribir la v3 a partir de la v2, con un apartado por cliente, el diagrama de despliegue en GCP con nginx y el diseño de MongoDB y de GCS.
 6. Validar la v3 contra la rúbrica (§10.5) y confirmar el volumen con el profesor.
-7. Escribir el plan de implementación, con E1 y E2 como primeras tareas.
-8. Actualizar `AGENTS.md` y los de cada carpeta, y marcar la v2 como Obsoleta (E6).
+7. Redactar los requerimientos, las historias de usuario y la trazabilidad (§10.6).
+8. Escribir el plan de implementación con las tareas que salen de los RF, empezando por E1 y E2.
+9. Actualizar `AGENTS.md` y los de cada carpeta, y marcar la v2 como Obsoleta (E6).
