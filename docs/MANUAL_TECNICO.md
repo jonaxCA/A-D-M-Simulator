@@ -198,10 +198,11 @@ Redis no responde.
 
 #### `usuarios` · 5203
 
-Todas las rutas: ADMINISTRADOR.
+Todas las rutas: ADMINISTRADOR, salvo `/users/me`, que es de cualquier rol.
 
 | Método | Ruta | Entrada | Salida |
 |---|---|---|---|
+| GET | `/api/v1/users/me` | — | la cuenta del token y sus `roles` (el perfil) |
 | GET | `/api/v1/users` | `q`, `role_id`, `status` (activo, pendiente, inactivo) | `total`, `usuarios` |
 | GET | `/api/v1/users/{id}` | — | la cuenta y sus `roles` |
 | POST | `/api/v1/users` | `username`, `email`, `full_name`, `password`, `is_active` | la cuenta (201) |

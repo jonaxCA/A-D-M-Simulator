@@ -64,6 +64,13 @@ def _duplicado(exc):
     return "Ya existe un usuario con esos datos."
 
 
+def _cuenta(user_id):
+    fila = queries.get_usuario(user_id)
+    if fila is None:
+        raise ErrorAPI(404, "NO_ENCONTRADO", "No existe el usuario.")
+    return responder({**fila, "roles": get_user_roles(user_id)}, "usuario")
+
+
 def registrar(app):
     @app.errorhandler(RedisNoDisponible)
     def redis_caido(exc):
@@ -81,13 +88,16 @@ def registrar(app):
             rol_id=entero_positivo(rol, "role_id") if rol else None, estado=estado)
         return responder({"total": len(datos), "usuarios": datos}, "catalogo_usuarios")
 
+    # El perfil: cualquier cuenta consulta la suya, sin ser ADMINISTRADOR.
+    @app.get("/api/v1/users/me")
+    @requiere_token()
+    def perfil():
+        return _cuenta(g.contexto.user_id)
+
     @app.get("/api/v1/users/<int:user_id>")
     @requiere_token(roles=ADMIN)
     def detalle(user_id):
-        fila = queries.get_usuario(user_id)
-        if fila is None:
-            raise ErrorAPI(404, "NO_ENCONTRADO", "No existe el usuario.")
-        return responder({**fila, "roles": get_user_roles(user_id)}, "usuario")
+        return _cuenta(user_id)
 
     # El rol se asigna después, en el servicio roles (dueño de user_roles).
     @app.post("/api/v1/users")
