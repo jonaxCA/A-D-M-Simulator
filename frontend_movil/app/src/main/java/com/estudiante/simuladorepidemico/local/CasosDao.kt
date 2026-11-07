@@ -51,7 +51,51 @@ abstract class CasosDao {
     abstract suspend fun soltar(lote: String)
 
     @Query("DELETE FROM casos WHERE localUuid = :localUuid AND estado = 'RECHAZADO'")
-    abstract suspend fun descartar(localUuid: String)
+    abstract suspend fun descartar(localUuid: String): Int
+
+    @Insert
+    abstract suspend fun insertarFotos(fotos: List<FotoLocal>)
+
+    @Query("SELECT id FROM fotos WHERE caso = :caso")
+    abstract suspend fun fotosDelCaso(caso: String): List<String>
+
+    // Solo de casos ya enviados: evidencias necesita su case_id.
+    @Query(
+        """SELECT fotos.id AS id, casos.caseId AS caseId FROM fotos JOIN casos ON casos.localUuid = fotos.caso
+           WHERE casos.cuenta = :cuenta AND casos.estado = 'ENVIADO' AND casos.caseId IS NOT NULL
+             AND fotos.estado = 'PENDIENTE'
+           ORDER BY fotos.tomadaEn, fotos.id"""
+    )
+    abstract suspend fun fotosPorSubir(cuenta: Long): List<FotoPorSubir>
+
+    @Query("UPDATE fotos SET estado = 'SUBIDA', evidencia = :evidencia, error = NULL WHERE id = :id")
+    abstract suspend fun marcarFotoSubida(id: String, evidencia: Long)
+
+    @Query("UPDATE fotos SET estado = 'RECHAZADA', error = :error WHERE id = :id")
+    abstract suspend fun marcarFotoRechazada(id: String, error: String)
+
+    @Query(
+        """SELECT caso, COUNT(*) AS total, SUM(fotos.estado = 'SUBIDA') AS subidas,
+                  SUM(fotos.estado = 'RECHAZADA') AS rechazadas
+           FROM fotos JOIN casos ON casos.localUuid = fotos.caso
+           WHERE casos.cuenta = :cuenta GROUP BY caso"""
+    )
+    abstract fun conteoDeFotos(cuenta: Long): Flow<List<ConteoFotos>>
+
+    // El caso y sus fotos entran juntos: nunca queda una foto sin caso.
+    @Transaction
+    open suspend fun capturar(caso: CasoLocal, fotos: List<FotoLocal>) {
+        insertar(caso)
+        insertarFotos(fotos)
+    }
+
+    // Devuelve las fotos que se fueron con el caso, para borrar sus archivos. Las filas las borra
+    // la llave foránea.
+    @Transaction
+    open suspend fun descartarConFotos(localUuid: String): List<String> {
+        val fotos = fotosDelCaso(localUuid)
+        return if (descartar(localUuid) > 0) fotos else emptyList()
+    }
 
     // El lote que quedó sin respuesta, con los mismos casos, o uno nuevo con los pendientes más
     // viejos. null si no hay nada que mandar.

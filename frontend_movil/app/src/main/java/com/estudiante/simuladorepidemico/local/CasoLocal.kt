@@ -1,6 +1,7 @@
 package com.estudiante.simuladorepidemico.local
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -31,3 +32,28 @@ data class CasoLocal(
 )
 
 data class Lote(val id: String, val casos: List<CasoLocal>)
+
+enum class EstadoFoto { PENDIENTE, SUBIDA, RECHAZADA }
+
+// Una foto de un caso; el archivo es fotos/<id>.jpg (FotosEnDisco). Se sube a evidencias cuando el
+// caso ya tiene case_id, y entonces el archivo se borra del teléfono. Si se descarta el caso, la
+// foto se va con él.
+@Entity(
+    tableName = "fotos",
+    foreignKeys = [
+        ForeignKey(entity = CasoLocal::class, parentColumns = ["localUuid"], childColumns = ["caso"], onDelete = ForeignKey.CASCADE),
+    ],
+    indices = [Index("caso")],
+)
+data class FotoLocal(
+    @PrimaryKey val id: String,
+    val caso: String,
+    val tomadaEn: Long,
+    val estado: EstadoFoto = EstadoFoto.PENDIENTE,
+    val evidencia: Long? = null,
+    val error: String? = null,
+)
+
+data class FotoPorSubir(val id: String, val caseId: Long)
+
+data class ConteoFotos(val caso: String, val total: Int, val subidas: Int, val rechazadas: Int)

@@ -3,6 +3,7 @@ package com.estudiante.simuladorepidemico
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import com.estudiante.simuladorepidemico.local.Fotos
 import com.estudiante.simuladorepidemico.red.Tokens
 import com.estudiante.simuladorepidemico.red.json
 import com.estudiante.simuladorepidemico.sesion.Cifrador
@@ -57,9 +58,10 @@ fun contenedorDePrueba(
     casos: CasosDaoFalso = CasosDaoFalso(),
     catalogo: CatalogoDaoFalso = CatalogoDaoFalso(),
     ubicador: Ubicador = Ubicador { Lectura.SinSenal },
+    fotos: Fotos = fotosDePrueba(),
     programarEnvio: () -> Unit = {},
 ) = Contenedor(
-    datosTemporales(), CifradorDePrueba(), servidor.url, telefonoDePrueba, casos, catalogo, programarEnvio, ubicador,
+    datosTemporales(), CifradorDePrueba(), servidor.url, telefonoDePrueba, casos, catalogo, programarEnvio, ubicador, fotos,
 )
 
 // Los servicios que usan red y sesion, en un solo MockWebServer que el directorio anuncia.
@@ -94,6 +96,15 @@ class ServidorFalso : Dispatcher() {
     // Los catálogos: `enfermedades` se pagina como el servicio.
     @Volatile var enfermedades: List<Pair<Long, String>> = listOf(1L to "Dengue", 2L to "Influenza")
     @Volatile var municipios: List<Pair<Long, String>> = listOf(10L to "Monterrey", 11L to "Apodaca")
+
+    // evidencias: responde 201 con un id nuevo, o `evidencia` si está puesto.
+    @Volatile var evidencia: MockResponse? = null
+    private val siguienteEvidencia = AtomicLong(12)
+
+    // Las subidas a evidencias: el case_id de la ruta y el pedido.
+    fun subidas(): List<Pair<Long, RecordedRequest>> = pedidos.mapNotNull { pedido ->
+        SUBIDA.matchEntire(pedido.path.orEmpty().substringBefore('?'))?.let { it.groupValues[1].toLong() to pedido }
+    }
 
     init {
         servidor.dispatcher = this
@@ -170,6 +181,12 @@ class ServidorFalso : Dispatcher() {
 
     override fun dispatch(request: RecordedRequest): MockResponse {
         pedidos += request
+        SUBIDA.matchEntire(request.path.orEmpty().substringBefore('?'))?.let { ruta ->
+            return evidencia ?: respuesta(
+                201,
+                """{"id":${siguienteEvidencia.getAndIncrement()},"case_id":${ruta.groupValues[1]},"mime_type":"image/jpeg","size_bytes":${request.bodySize}}""",
+            )
+        }
         return when (request.path?.substringBefore('?')) {
             "/api/v1/sync/cases" -> sincronizar(request)
             "/api/v1/diseases" -> paginaEnfermedades(request)
@@ -198,12 +215,16 @@ class ServidorFalso : Dispatcher() {
 
     private fun directorio(): String {
         val base = url.trimEnd('/')
-        return listOf("auth", "sesiones", "usuarios", "dispositivos", "sincronizacion", "enfermedades", "regiones").joinToString(",", "{\"servicios\":[", "]}") {
+        return listOf(
+            "auth", "sesiones", "usuarios", "dispositivos", "sincronizacion", "enfermedades", "regiones", "evidencias",
+        ).joinToString(",", "{\"servicios\":[", "]}") {
             "{\"nombre\":\"$it\",\"dominio\":\"prueba\",\"puerto\":1,\"url\":\"$base\"}"
         }
     }
 
     companion object {
+        private val SUBIDA = Regex("/api/v1/cases/(\\d+)/attachments")
+
         const val PERFIL = """{"id":12,"username":"capturista1","email":"c@ejemplo.mx","full_name":"Carla Captura","is_active":true,"last_login_at":null,"created_at":"2026-09-01T10:00:00-06:00","role_id":4,"roles":["CAPTURISTA"]}"""
 
         fun respuesta(estado: Int, cuerpo: String): MockResponse = MockResponse()

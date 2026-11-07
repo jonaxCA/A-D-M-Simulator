@@ -30,6 +30,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Para "Tomar foto": la app de cámara escribe la foto en fotos/camara/ con un permiso
+             de una sola vez. Sin permiso CAMERA: la toma la app de cámara, no esta. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fotos"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/rutas_fotos" />
+        </provider>
     </application>
 
 </manifest>

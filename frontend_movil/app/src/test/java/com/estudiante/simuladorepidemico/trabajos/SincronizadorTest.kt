@@ -5,6 +5,8 @@ import com.estudiante.simuladorepidemico.ServidorFalso
 import com.estudiante.simuladorepidemico.casoDePrueba
 import com.estudiante.simuladorepidemico.contenedorDePrueba
 import com.estudiante.simuladorepidemico.local.EstadoCaso
+import com.estudiante.simuladorepidemico.local.EstadoFoto
+import com.estudiante.simuladorepidemico.local.FotoLocal
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.double
@@ -178,5 +180,72 @@ class SincronizadorTest {
 
         assertTrue(servidor.pedidosA("/api/v1/sync/cases").isEmpty())
         assertEquals(EstadoCaso.PENDIENTE, casos.caso(uuid(1)).estado)
+    }
+    // Un caso con dos fotos, ya guardadas como las deja el formulario.
+    private fun capturarConFotos(uuid: String, vararg contenidos: String): List<String> = runBlocking {
+        val ids = contenidos.mapIndexed { i, contenido ->
+            val id = "foto-$uuid-$i"
+            contenedor.fotos.archivo(id).apply { parentFile!!.mkdirs() }.writeText(contenido)
+            id
+        }
+        casos.capturar(casoDePrueba(uuid), ids.mapIndexed { i, id -> FotoLocal(id, uuid, tomadaEn = i.toLong()) })
+        ids
+    }
+
+    @Test
+    fun las_fotos_se_suben_cuando_el_caso_ya_tiene_case_id_y_se_borran_del_telefono() {
+        entrar()
+        val (a, b) = capturarConFotos(uuid(1), "foto a", "foto b")
+        servidor.lote = ServidorFalso.problema(503, "SERVICIO_NO_DISPONIBLE")
+
+        // Sin case_id no hay a dónde subirlas.
+        assertEquals(Envio.REINTENTAR, enviar())
+        assertTrue(servidor.subidas().isEmpty())
+        servidor.lote = null
+        assertEquals(Envio.LISTO, enviar())
+
+        val subidas = servidor.subidas()
+        assertEquals(listOf(41L, 41L), subidas.map { it.first })
+        assertEquals(listOf("foto a", "foto b"), subidas.map { it.second.body.readUtf8() })
+        assertEquals("image/jpeg", subidas[0].second.getHeader("Content-Type"))
+        assertEquals("Bearer a1", subidas[0].second.getHeader("Authorization"))
+        assertEquals(EstadoFoto.SUBIDA to 12L, casos.foto(a).let { it.estado to it.evidencia })
+        assertEquals(13L, casos.foto(b).evidencia)
+        assertFalse(contenedor.fotos.archivo(a).exists() || contenedor.fotos.archivo(b).exists())
+        // La siguiente corrida ya no las vuelve a subir.
+        assertEquals(Envio.LISTO, enviar())
+        assertEquals(2, servidor.subidas().size)
+    }
+
+    @Test
+    fun una_foto_sin_respuesta_se_reintenta_y_una_rechazada_queda_con_su_motivo() {
+        entrar()
+        val (foto) = capturarConFotos(uuid(1), "foto a")
+        servidor.evidencia = ServidorFalso.problema(503, "SERVICIO_NO_DISPONIBLE")
+
+        assertEquals(Envio.REINTENTAR, enviar())
+        assertEquals(EstadoFoto.PENDIENTE, casos.foto(foto).estado)
+        assertTrue(contenedor.fotos.archivo(foto).exists())
+        // El caso sí se envió: no se vuelve a mandar en otro lote.
+        assertEquals(EstadoCaso.ENVIADO, casos.caso(uuid(1)).estado)
+
+        servidor.evidencia = ServidorFalso.problema(422, "DATOS_INVALIDOS")
+        assertEquals(Envio.LISTO, enviar())
+
+        assertEquals(EstadoFoto.RECHAZADA to "Detalle de DATOS_INVALIDOS.", casos.foto(foto).let { it.estado to it.error })
+        assertFalse(contenedor.fotos.archivo(foto).exists())
+        assertEquals(1, servidor.lotesEnviados().size)
+    }
+
+    @Test
+    fun una_foto_cuyo_archivo_ya_no_esta_queda_rechazada() {
+        entrar()
+        val (foto) = capturarConFotos(uuid(1), "foto a")
+        contenedor.fotos.archivo(foto).delete()
+
+        assertEquals(Envio.LISTO, enviar())
+
+        assertEquals(EstadoFoto.RECHAZADA, casos.foto(foto).estado)
+        assertTrue(servidor.subidas().isEmpty())
     }
 }

@@ -44,6 +44,12 @@ android {
         compose = true
         buildConfig = true
     }
+    // MigracionTest arma la versión vieja de epidemia.db con el esquema que Room exportó.
+    sourceSets {
+        getByName("androidTest") {
+            assets.directories.add("$projectDir/schemas")
+        }
+    }
 }
 
 // Room deja en schemas/ el esquema de cada versión de epidemia.db: con él se escriben y se prueban

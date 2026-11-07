@@ -3,6 +3,7 @@ package com.estudiante.simuladorepidemico.red
 import com.estudiante.simuladorepidemico.red.api.AuthApi
 import com.estudiante.simuladorepidemico.red.api.DispositivosApi
 import com.estudiante.simuladorepidemico.red.api.EnfermedadesApi
+import com.estudiante.simuladorepidemico.red.api.EvidenciasApi
 import com.estudiante.simuladorepidemico.red.api.RegionesApi
 import com.estudiante.simuladorepidemico.red.api.SesionesApi
 import com.estudiante.simuladorepidemico.red.api.SincronizacionApi
@@ -24,6 +25,7 @@ class Apis(
     suspend fun usuarios(): UsuariosApi = crear("usuarios", conToken)
     suspend fun dispositivos(): DispositivosApi = crear("dispositivos", conToken)
     suspend fun sincronizacion(): SincronizacionApi = crear("sincronizacion", conToken)
+    suspend fun evidencias(): EvidenciasApi = crear("evidencias", conToken)
     suspend fun enfermedades(): EnfermedadesApi = crear("enfermedades", sinToken)
     suspend fun regiones(): RegionesApi = crear("regiones", sinToken)
 

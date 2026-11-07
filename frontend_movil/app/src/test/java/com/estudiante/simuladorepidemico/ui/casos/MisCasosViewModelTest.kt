@@ -5,8 +5,10 @@ import com.estudiante.simuladorepidemico.CatalogoDaoFalso
 import com.estudiante.simuladorepidemico.ServidorFalso
 import com.estudiante.simuladorepidemico.casoDePrueba
 import com.estudiante.simuladorepidemico.contenedorDePrueba
+import com.estudiante.simuladorepidemico.local.ConteoFotos
 import com.estudiante.simuladorepidemico.local.Enfermedad
 import com.estudiante.simuladorepidemico.local.EstadoCaso
+import com.estudiante.simuladorepidemico.local.FotoLocal
 import com.estudiante.simuladorepidemico.local.Municipio
 import com.estudiante.simuladorepidemico.tokens
 import kotlinx.coroutines.Dispatchers
@@ -54,7 +56,7 @@ class MisCasosViewModelTest {
 
     @Test
     fun solo_los_de_la_cuenta_con_sus_nombres_y_el_mas_nuevo_arriba() {
-        val modelo = MisCasosViewModel(contenedor.sesion, casos, catalogo, contenedor.programarEnvio)
+        val modelo = MisCasosViewModel(contenedor.sesion, casos, catalogo, contenedor.fotos, contenedor.programarEnvio)
 
         val filas = modelo.esperaFilas { it.isNotEmpty() }
 
@@ -66,7 +68,7 @@ class MisCasosViewModelTest {
 
     @Test
     fun descartar_quita_solo_un_rechazado_y_enviar_ahora_pide_el_envio() = runBlocking<Unit> {
-        val modelo = MisCasosViewModel(contenedor.sesion, casos, catalogo, contenedor.programarEnvio)
+        val modelo = MisCasosViewModel(contenedor.sesion, casos, catalogo, contenedor.fotos, contenedor.programarEnvio)
 
         modelo.descartar(casos.caso("b"))
         modelo.descartar(casos.caso("a"))
@@ -74,5 +76,28 @@ class MisCasosViewModelTest {
 
         assertEquals(listOf("a", "c"), casos.filas.value.map { it.localUuid })
         assertEquals(1, envios)
+    }
+
+    @Test
+    fun cada_caso_dice_como_van_sus_fotos_y_descartarlo_las_borra() = runBlocking<Unit> {
+        casos.insertarFotos(listOf(FotoLocal("f1", "b", 0), FotoLocal("f2", "b", 1)))
+        casos.marcarFotoRechazada("f2", "Mal.")
+        contenedor.fotos.archivo("f1").apply { parentFile!!.mkdirs() }.writeText("foto")
+        val modelo = MisCasosViewModel(contenedor.sesion, casos, catalogo, contenedor.fotos, contenedor.programarEnvio)
+
+        val filas = modelo.esperaFilas { lista -> lista.any { it.fotos != null } }
+        assertEquals("1 foto por subir · 1 foto rechazada", textoDeFotos(filas.single { it.caso.localUuid == "b" }.fotos!!))
+        assertEquals(null, filas.single { it.caso.localUuid == "a" }.fotos)
+
+        modelo.descartar(casos.caso("b"))
+
+        assertEquals(emptyList<FotoLocal>(), casos.fotos.value)
+        assertEquals(false, contenedor.fotos.archivo("f1").exists())
+    }
+
+    @Test
+    fun el_texto_de_las_fotos() {
+        assertEquals("2 fotos subidas", textoDeFotos(ConteoFotos("a", 2, 2, 0)))
+        assertEquals("1 foto subida · 2 fotos por subir", textoDeFotos(ConteoFotos("a", 3, 1, 0)))
     }
 }

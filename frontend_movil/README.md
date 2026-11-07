@@ -29,8 +29,8 @@ Dónde va cada cosa dentro de `app/src/main/java/com/estudiante/simuladorepidemi
 | `red/` | OkHttp, Retrofit, el directorio de servicios (sección 1), el `Authenticator` que renueva (sección 4) y una interfaz por servicio en `red/api/` |
 | `sesion/` | Tokens, cifrados con una llave del Keystore y guardados en DataStore, y el registro del teléfono en `dispositivos` (`Telefono.kt`, sección 6) |
 | `ubicacion/` | La lectura del GPS para un caso (`Ubicador`), con Google Play services |
-| `local/` | Room (`epidemia.db`): los casos capturados y los catálogos de enfermedades y municipios (sección 5). Después, las fotos por subir. El esquema de cada versión queda en `app/schemas/` |
-| `trabajos/` | El `Sincronizador`, que manda los casos en lotes, y `TrabajoSincronizar`, que WorkManager corre cuando hay red. Después, subir fotos y consultar avisos |
+| `local/` | Room (`epidemia.db`): los casos capturados, sus fotos por subir y los catálogos de enfermedades y municipios (secciones 5 y 7), y los archivos de las fotos (`Fotos.kt`). El esquema de cada versión queda en `app/schemas/` |
+| `trabajos/` | El `Sincronizador`, que manda los casos en lotes y sube sus fotos, y `TrabajoSincronizar`, que WorkManager corre cuando hay red. Después, consultar avisos |
 | `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio`, `casos` (Capturar caso y Mis casos), `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde y pide el permiso de red local. `ui/Formato.kt` da formato a fechas, roles y los valores de un caso |
 
 `app/src/debug/` lleva lo que solo vale en desarrollo, como el permiso de HTTP sin cifrar
@@ -259,6 +259,22 @@ El servicio `evidencias` (puerto 5224) guarda fotos (JPEG, PNG o WebP) y PDF de 
 - `GET /api/v1/attachments/{id}/content` regresa el archivo, siempre con token.
 - Reduce las fotos antes de subirlas (por ejemplo, a 1600 px por lado): una foto de cámara de
   varios MB tarda en subir con datos móviles.
+
+### Cómo lo hace la app
+
+- En Capturar caso, "Tomar foto" abre la app de cámara del teléfono y "De la galería", el
+  selector de fotos del sistema. Ninguno de los dos pide permisos: la cámara escribe en un archivo
+  de la app con un permiso de una sola vez (`FileProvider`, `res/xml/rutas_fotos.xml`). Hasta
+  cinco fotos por caso.
+- Cada foto se reduce a 1600 px por lado, se endereza según su EXIF y se guarda como JPEG nuevo,
+  sin EXIF: así no viaja la ubicación GPS que algunas cámaras guardan en el archivo. La foto
+  completa de la cámara se borra en cuanto se reduce.
+- Los archivos viven en `filesDir/fotos`, fuera de los respaldos. Las fotos entran a
+  `epidemia.db` con el caso, en la misma transacción; salir del formulario sin guardar las borra.
+- El `Sincronizador` las sube después de mandar los lotes, solo las de casos que ya tienen
+  `case_id`. Una subida que falla por red se reintenta; una que evidencias rechaza (403, 404, 413
+  o 422) queda con su motivo. Subida o rechazada, el archivo se borra del teléfono. Mis casos dice
+  cuántas van subidas, por subir o rechazadas; descartar un caso rechazado borra sus fotos.
 
 ## 8. Lotes de vacuna (QR)
 

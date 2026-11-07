@@ -124,6 +124,13 @@ data class RespuestaLote(
     val repetido: Boolean = false,
 )
 
+@Serializable
+data class Evidencia(
+    val id: Long,
+    @SerialName("case_id") val caso: Long,
+    @SerialName("size_bytes") val tamano: Long = 0,
+)
+
 // RFC 7807, como lo arma epidemia_comun.errores.
 @Serializable
 data class Problema(val status: Int = 0, val detail: String = "", val codigo: String = "")

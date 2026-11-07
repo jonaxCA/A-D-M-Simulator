@@ -1,16 +1,24 @@
 package com.estudiante.simuladorepidemico.ui.casos
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,11 +29,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
@@ -55,9 +66,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -68,6 +86,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import com.estudiante.simuladorepidemico.local.Enfermedad
 import com.estudiante.simuladorepidemico.local.Municipio
 import com.estudiante.simuladorepidemico.ui.RESULTADOS_DE_PRUEBA
@@ -75,6 +94,10 @@ import com.estudiante.simuladorepidemico.ui.SEVERIDADES
 import com.estudiante.simuladorepidemico.ui.SEXOS
 import com.estudiante.simuladorepidemico.ui.fecha
 import com.estudiante.simuladorepidemico.ui.tema.TemaEpidemia
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -96,6 +119,11 @@ class AccionesCaptura(
     val ubicar: () -> Unit = {},
     val quitarUbicacion: () -> Unit = {},
     val abrirAjustes: () -> Unit = {},
+    val tomarFoto: () -> Unit = {},
+    val elegirFoto: () -> Unit = {},
+    val quitarFoto: (String) -> Unit = {},
+    // El archivo de una foto, para su miniatura; null en las pruebas, que no tienen archivos.
+    val archivoDeFoto: (String) -> File? = { null },
 )
 
 private const val PRECISA = Manifest.permission.ACCESS_FINE_LOCATION
@@ -114,6 +142,19 @@ fun PantallaCaptura(modelo: CapturaViewModel, alVolver: () -> Unit) {
             dados[PRECISA] == true -> modelo.ubicar(precisa = true)
             dados[APROXIMADA] == true -> modelo.ubicar(precisa = false)
             else -> modelo.sinPermisoDeUbicacion()
+        }
+    }
+    // La app de cámara escribe en un archivo nuestro (FileProvider); sin permiso CAMERA. La ruta
+    // sobrevive si Android cierra esta pantalla mientras la cámara está abierta.
+    var enCamara by rememberSaveable { mutableStateOf<String?>(null) }
+    val tomarFoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { tomada ->
+        val archivo = enCamara?.let(::File) ?: return@rememberLauncherForActivityResult
+        enCamara = null
+        if (tomada && archivo.length() > 0) modelo.agregarDeCamara(archivo) else archivo.delete()
+    }
+    val elegirFoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            modelo.agregarFoto({ contexto.contentResolver.openInputStream(uri) ?: throw IOException("No se pudo abrir la foto.") })
         }
     }
     FormularioCaso(
@@ -144,6 +185,20 @@ fun PantallaCaptura(modelo: CapturaViewModel, alVolver: () -> Unit) {
                     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", contexto.packageName, null))
                 )
             },
+            tomarFoto = {
+                val archivo = modelo.archivoParaLaCamara()
+                enCamara = archivo.path
+                try {
+                    tomarFoto.launch(FileProvider.getUriForFile(contexto, "${contexto.packageName}.fotos", archivo))
+                } catch (e: ActivityNotFoundException) {
+                    enCamara = null
+                    archivo.delete()
+                    modelo.errorDeFoto("Este teléfono no tiene app de cámara. Elige la foto de la galería.")
+                }
+            },
+            elegirFoto = { elegirFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            quitarFoto = modelo::quitarFoto,
+            archivoDeFoto = modelo::archivoDeFoto,
         ),
     )
 }
@@ -237,6 +292,7 @@ fun FormularioCaso(estado: EstadoCaptura, hoy: LocalDate, acciones: AccionesCapt
                 alQuitar = { acciones.elegirSeveridad(null) },
             )
             SeccionUbicacion(estado, acciones)
+            SeccionFotos(estado, acciones)
             if (estado.errores.isNotEmpty()) {
                 Text(
                     estado.errores.joinToString("\n"),
@@ -296,6 +352,75 @@ private fun SeccionUbicacion(estado: EstadoCaptura, acciones: AccionesCaptura) {
             TextButton(onClick = acciones.abrirAjustes) { Text("Abrir ajustes") }
         }
     }
+}
+
+@Composable
+private fun SeccionFotos(estado: EstadoCaptura, acciones: AccionesCaptura) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Fotos (opcional)", style = MaterialTheme.typography.labelLarge)
+        if (estado.fotos.isNotEmpty()) {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                estado.fotos.forEachIndexed { i, id ->
+                    Miniatura(acciones.archivoDeFoto(id), "Foto ${i + 1}") { acciones.quitarFoto(id) }
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = acciones.tomarFoto, enabled = estado.caben, modifier = Modifier.weight(1f)) {
+                Text("Tomar foto")
+            }
+            OutlinedButton(onClick = acciones.elegirFoto, enabled = estado.caben, modifier = Modifier.weight(1f)) {
+                Text("De la galería")
+            }
+        }
+        Text(
+            if (estado.agregandoFoto) "Preparando la foto…"
+            else "${estado.fotos.size} de $MAXIMO_DE_FOTOS. Se suben cuando el caso ya está en el servidor, " +
+                "reducidas y sin la ubicación que guarda la cámara en el archivo.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        estado.errorFoto?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+    }
+}
+
+@Composable
+private fun Miniatura(archivo: File?, descripcion: String, alQuitar: () -> Unit) {
+    val imagen by produceState<ImageBitmap?>(null, archivo) {
+        value = archivo?.let { withContext(Dispatchers.IO) { miniatura(it, 256)?.asImageBitmap() } }
+    }
+    Box(Modifier.size(88.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) {
+        imagen?.let {
+            Image(it, contentDescription = descripcion, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
+        }
+        IconButton(
+            onClick = alQuitar,
+            modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).size(32.dp)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), CircleShape),
+        ) {
+            Icon(Icons.Filled.Close, contentDescription = "Quitar ${descripcion.lowercase()}", modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+// Para la miniatura basta una versión chica: no se decodifica la foto entera.
+private fun miniatura(archivo: File, lado: Int): Bitmap? {
+    val limites = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(archivo.path, limites)
+    if (limites.outWidth <= 0) return null
+    var muestra = 1
+    while (maxOf(limites.outWidth, limites.outHeight) / (muestra * 2) >= lado) muestra *= 2
+    return BitmapFactory.decodeFile(archivo.path, BitmapFactory.Options().apply { inSampleSize = muestra })
 }
 
 @Composable

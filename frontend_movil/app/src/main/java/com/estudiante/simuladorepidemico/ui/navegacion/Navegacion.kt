@@ -76,7 +76,7 @@ fun Navegacion(contenedor: Contenedor) {
                 viewModel {
                     CapturaViewModel(
                         contenedor.sesion, contenedor.casos, contenedor.catalogo, contenedor.catalogos,
-                        contenedor.programarEnvio, contenedor.ubicador,
+                        contenedor.programarEnvio, contenedor.ubicador, contenedor.fotos,
                     )
                 },
                 alVolver = { nav.popBackStack() },
@@ -85,7 +85,9 @@ fun Navegacion(contenedor: Contenedor) {
         composable<MisCasos> {
             PantallaMisCasos(
                 viewModel {
-                    MisCasosViewModel(contenedor.sesion, contenedor.casos, contenedor.catalogo, contenedor.programarEnvio)
+                    MisCasosViewModel(
+                        contenedor.sesion, contenedor.casos, contenedor.catalogo, contenedor.fotos, contenedor.programarEnvio,
+                    )
                 },
                 alVolver = { nav.popBackStack() },
             )

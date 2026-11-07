@@ -10,6 +10,8 @@ import com.estudiante.simuladorepidemico.local.CasosDao
 import com.estudiante.simuladorepidemico.local.CatalogoDao
 import com.estudiante.simuladorepidemico.local.Catalogos
 import com.estudiante.simuladorepidemico.local.Enfermedad
+import com.estudiante.simuladorepidemico.local.FotoLocal
+import com.estudiante.simuladorepidemico.local.Fotos
 import com.estudiante.simuladorepidemico.local.Municipio
 import com.estudiante.simuladorepidemico.red.mensajeDeError
 import com.estudiante.simuladorepidemico.sesion.Sesion
@@ -19,6 +21,8 @@ import com.estudiante.simuladorepidemico.ubicacion.Ubicador
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.InputStream
 import java.time.LocalDate
 import java.util.UUID
 
@@ -42,10 +46,19 @@ data class EstadoCaptura(
     val ubicando: Boolean = false,
     val errorUbicacion: String? = null,
     val sinPermisoDeUbicacion: Boolean = false,
+    val fotos: List<String> = emptyList(),
+    val agregandoFoto: Boolean = false,
+    val errorFoto: String? = null,
 ) {
     val sinCatalogos: Boolean
         get() = enfermedades.isEmpty() || municipios.isEmpty()
+
+    val caben: Boolean
+        get() = fotos.size < MAXIMO_DE_FOTOS && !agregandoFoto
 }
+
+// Por caso. Cada una se reduce a unos cientos de KB, pero con datos móviles cinco ya pesan.
+const val MAXIMO_DE_FOTOS = 5
 
 // Las mismas reglas que casos (backend_web/queries.py, valida_caso): lo que pase aquí no se rechaza
 // después por los datos, salvo que el catálogo cambie mientras tanto.
@@ -67,6 +80,7 @@ class CapturaViewModel(
     private val catalogos: Catalogos,
     private val programarEnvio: () -> Unit,
     private val ubicador: Ubicador,
+    private val fotos: Fotos,
     private val hoy: () -> LocalDate = { LocalDate.now() },
     private val ahora: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
@@ -74,6 +88,8 @@ class CapturaViewModel(
         private set
 
     init {
+        // Un solo formulario a la vez: lo que haya en borradores es de uno que no se guardó.
+        fotos.limpiarBorradores()
         viewModelScope.launch {
             combine(catalogo.enfermedades(), catalogo.municipios(), ::Pair).collect { (enfermedades, municipios) ->
                 estado = estado.copy(enfermedades = enfermedades, municipios = municipios)
@@ -128,6 +144,49 @@ class CapturaViewModel(
 
     fun quitarUbicacion() = cambiar { copy(ubicacion = null, errorUbicacion = null) }
 
+    // Donde la app de cámara deja la foto completa. agregarDeCamara la reduce y la borra.
+    fun archivoParaLaCamara(): File = fotos.paraLaCamara()
+
+    fun archivoDeFoto(id: String): File = fotos.vista(id)
+
+    // La foto completa de la cámara no se queda: puede traer la ubicación en su EXIF.
+    fun agregarDeCamara(archivo: File) = agregarFoto({ archivo.inputStream() }, alTerminar = { archivo.delete() })
+
+    // `abrir` lee la foto (de la galería, o el archivo de la cámara); se reduce y queda como borrador.
+    fun agregarFoto(abrir: () -> InputStream, alTerminar: () -> Unit = {}) {
+        if (!estado.caben) {
+            alTerminar()
+            return
+        }
+        estado = estado.copy(agregandoFoto = true, errorFoto = null)
+        viewModelScope.launch {
+            try {
+                val id = fotos.importar(abrir)
+                estado = estado.copy(agregandoFoto = false, fotos = estado.fotos + id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                estado = estado.copy(agregandoFoto = false, errorFoto = "No se pudo leer la foto. Intenta con otra.")
+            } finally {
+                alTerminar()
+            }
+        }
+    }
+
+    fun errorDeFoto(mensaje: String) {
+        estado = estado.copy(errorFoto = mensaje)
+    }
+
+    fun quitarFoto(id: String) {
+        fotos.borrar(listOf(id))
+        estado = estado.copy(fotos = estado.fotos - id)
+    }
+
+    // Salir sin guardar no deja fotos en el teléfono.
+    override fun onCleared() {
+        fotos.borrar(estado.fotos)
+    }
+
     fun descargarCatalogos() {
         if (estado.descargando) return
         estado = estado.copy(descargando = true, errorCatalogos = null)
@@ -159,29 +218,39 @@ class CapturaViewModel(
                 estado = estado.copy(guardando = false, errores = listOf("La sesión se cerró: vuelve a iniciar sesión."))
                 return@launch
             }
-            casos.insertar(
-                CasoLocal(
-                    localUuid = UUID.randomUUID().toString(),
-                    cuenta = cuenta,
-                    enfermedad = datos.enfermedad!!,
-                    municipio = datos.municipio!!,
-                    fechaReporte = datos.fechaReporte.toString(),
-                    inicioSintomas = datos.inicioSintomas?.toString(),
-                    edad = datos.edad.toIntOrNull(),
-                    sexo = datos.sexo,
-                    resultadoPrueba = datos.resultadoPrueba,
-                    severidad = datos.severidad,
-                    latitud = datos.ubicacion?.latitud,
-                    longitud = datos.ubicacion?.longitud,
-                    capturadoEn = ahora(),
-                )
+            val caso = CasoLocal(
+                localUuid = UUID.randomUUID().toString(),
+                cuenta = cuenta,
+                enfermedad = datos.enfermedad!!,
+                municipio = datos.municipio!!,
+                fechaReporte = datos.fechaReporte.toString(),
+                inicioSintomas = datos.inicioSintomas?.toString(),
+                edad = datos.edad.toIntOrNull(),
+                sexo = datos.sexo,
+                resultadoPrueba = datos.resultadoPrueba,
+                severidad = datos.severidad,
+                latitud = datos.ubicacion?.latitud,
+                longitud = datos.ubicacion?.longitud,
+                capturadoEn = ahora(),
             )
+            // tomadaEn sigue el orden en que se agregaron.
+            val filas = datos.fotos.mapIndexed { i, id -> FotoLocal(id, caso.localUuid, tomadaEn = caso.capturadoEn + i) }
+            try {
+                fotos.confirmar(datos.fotos)
+                casos.capturar(caso, filas)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                estado = estado.copy(guardando = false, errores = listOf("No se pudo guardar el caso en el teléfono."))
+                return@launch
+            }
             programarEnvio()
             // Se quedan la enfermedad, el municipio y la fecha: en campo se capturan varios casos
-            // seguidos de lo mismo. La ubicación es de cada caso: se vuelve a tomar.
+            // seguidos de lo mismo. La ubicación y las fotos son de cada caso.
             estado = estado.copy(
                 guardando = false, inicioSintomas = null, edad = "", sexo = null, resultadoPrueba = null,
-                severidad = null, ubicacion = null, errorUbicacion = null, guardados = estado.guardados + 1,
+                severidad = null, ubicacion = null, errorUbicacion = null, fotos = emptyList(), errorFoto = null,
+                guardados = estado.guardados + 1,
             )
         }
     }

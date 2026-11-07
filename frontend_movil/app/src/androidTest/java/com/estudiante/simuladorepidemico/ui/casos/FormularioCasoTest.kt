@@ -1,6 +1,7 @@
 package com.estudiante.simuladorepidemico.ui.casos
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -39,9 +40,32 @@ class FormularioCasoTest {
                     ubicar = { acciones += "ubicar" },
                     quitarUbicacion = { acciones += "quitar" },
                     abrirAjustes = { acciones += "ajustes" },
+                    tomarFoto = { acciones += "tomar" },
+                    elegirFoto = { acciones += "galeria" },
+                    quitarFoto = { acciones += "quitar $it" },
                 ),
             )
         }
+    }
+
+    @Test
+    fun las_fotos_se_toman_o_se_eligen_y_se_quitan() {
+        mostrar(conCatalogos.copy(fotos = listOf("f1", "f2")))
+
+        regla.onNodeWithText("2 de 5", substring = true).performScrollTo().assertIsDisplayed()
+        regla.onNodeWithContentDescription("Quitar foto 2").performScrollTo().performClick()
+        regla.onNodeWithText("Tomar foto").performScrollTo().performClick()
+        regla.onNodeWithText("De la galería").performClick()
+
+        assertEquals(listOf("quitar f2", "tomar", "galeria"), acciones)
+    }
+
+    @Test
+    fun con_cinco_fotos_ya_no_deja_agregar() {
+        mostrar(conCatalogos.copy(fotos = List(MAXIMO_DE_FOTOS) { "f$it" }))
+
+        regla.onNodeWithText("Tomar foto").performScrollTo().assertIsNotEnabled()
+        regla.onNodeWithText("De la galería").assertIsNotEnabled()
     }
 
     private val conCatalogos = EstadoCaptura(

@@ -74,4 +74,38 @@ class CasosDaoTest {
 
         assertEquals(listOf("a"), dao.deLaCuenta(12).first().map { it.localUuid })
     }
+
+    @Test
+    fun las_fotos_por_subir_son_de_casos_ya_enviados_de_la_cuenta() = runBlocking {
+        dao.capturar(caso("enviado"), listOf(FotoLocal("f2", "enviado", tomadaEn = 2), FotoLocal("f1", "enviado", tomadaEn = 1)))
+        dao.capturar(caso("pendiente", capturadoEn = 2), listOf(FotoLocal("f3", "pendiente", tomadaEn = 3)))
+        dao.capturar(caso("ajeno", cuenta = 13), listOf(FotoLocal("f4", "ajeno", tomadaEn = 4)))
+        val lote = dao.siguienteLote(12, "L1", maximo = 1)!!
+        dao.aplicar(lote.id, mapOf("enviado" to 41L), emptyMap())
+        dao.siguienteLote(13, "L2")!!.let { dao.aplicar(it.id, mapOf("ajeno" to 42L), emptyMap()) }
+
+        assertEquals(listOf(FotoPorSubir("f1", 41), FotoPorSubir("f2", 41)), dao.fotosPorSubir(12))
+
+        dao.marcarFotoSubida("f1", 12)
+        dao.marcarFotoRechazada("f2", "Mal.")
+        assertEquals(emptyList<FotoPorSubir>(), dao.fotosPorSubir(12))
+        assertEquals(
+            setOf(ConteoFotos("enviado", 2, 1, 1), ConteoFotos("pendiente", 1, 0, 0)),
+            dao.conteoDeFotos(12).first().toSet(),
+        )
+    }
+
+    @Test
+    fun descartar_un_caso_se_lleva_sus_fotos() = runBlocking {
+        dao.capturar(caso("a"), listOf(FotoLocal("f1", "a", tomadaEn = 1), FotoLocal("f2", "a", tomadaEn = 2)))
+        dao.aplicar(dao.siguienteLote(12, "L1")!!.id, emptyMap(), mapOf("a" to "Mal."))
+
+        assertEquals(setOf("f1", "f2"), dao.descartarConFotos("a").toSet())
+
+        assertEquals(emptyList<String>(), dao.fotosDelCaso("a"))
+        // Uno que no estaba rechazado no se descarta.
+        dao.capturar(caso("b"), listOf(FotoLocal("f3", "b", tomadaEn = 3)))
+        assertEquals(emptyList<String>(), dao.descartarConFotos("b"))
+        assertEquals(listOf("f3"), dao.fotosDelCaso("b"))
+    }
 }

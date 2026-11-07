@@ -29,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.estudiante.simuladorepidemico.local.CasoLocal
+import com.estudiante.simuladorepidemico.local.ConteoFotos
 import com.estudiante.simuladorepidemico.local.EstadoCaso
 import com.estudiante.simuladorepidemico.ui.fecha
 import com.estudiante.simuladorepidemico.ui.tema.TemaEpidemia
@@ -103,11 +104,25 @@ private fun FilaDeCaso(fila: FilaCaso, alDescartar: (CasoLocal) -> Unit) {
             EstadoCaso.RECHAZADO -> "Rechazado" to MaterialTheme.colorScheme.error
         }
         Text(estado, style = MaterialTheme.typography.labelLarge, color = color)
+        fila.fotos?.let {
+            Text(textoDeFotos(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         if (caso.estado == EstadoCaso.RECHAZADO) {
             caso.error?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             TextButton(onClick = { alDescartar(caso) }) { Text("Descartar") }
         }
     }
+}
+
+// "2 fotos subidas", "1 de 2 fotos por subir", "1 foto rechazada"...
+fun textoDeFotos(conteo: ConteoFotos): String {
+    fun fotos(n: Int) = if (n == 1) "1 foto" else "$n fotos"
+    val porSubir = conteo.total - conteo.subidas - conteo.rechazadas
+    return listOfNotNull(
+        fotos(conteo.subidas).takeIf { conteo.subidas > 0 }?.let { it + if (conteo.subidas == 1) " subida" else " subidas" },
+        fotos(porSubir).takeIf { porSubir > 0 }?.let { "$it por subir" },
+        fotos(conteo.rechazadas).takeIf { conteo.rechazadas > 0 }?.let { it + if (conteo.rechazadas == 1) " rechazada" else " rechazadas" },
+    ).joinToString(" · ")
 }
 
 @Preview(showBackground = true)

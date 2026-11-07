@@ -1,5 +1,9 @@
 package com.estudiante.simuladorepidemico.ui.casos
 
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.estudiante.simuladorepidemico.CasosDaoFalso
 import com.estudiante.simuladorepidemico.CatalogoDaoFalso
 import com.estudiante.simuladorepidemico.ServidorFalso
@@ -59,7 +63,7 @@ class CapturaViewModelTest {
     }
 
     private fun modelo() = CapturaViewModel(
-        contenedor.sesion, casos, catalogo, contenedor.catalogos, contenedor.programarEnvio, ubicador,
+        contenedor.sesion, casos, catalogo, contenedor.catalogos, contenedor.programarEnvio, ubicador, contenedor.fotos,
         hoy = { hoy }, ahora = { 1_000L },
     )
 
@@ -223,5 +227,80 @@ class CapturaViewModelTest {
         val estado = modelo.espera { !it.descargando }
         assertEquals("No se pudo conectar con los servicios. Revisa tu conexión.", estado.errorCatalogos)
         assertFalse(estado.descargando)
+    }
+
+    @Test
+    fun las_fotos_se_guardan_con_el_caso() {
+        val modelo = modelo()
+        modelo.espera { !it.sinCatalogos }
+        modelo.elegirEnfermedad(1)
+        modelo.elegirMunicipio(10)
+        // Una a la vez: mientras una se prepara, los botones no responden.
+        modelo.agregarFoto({ "foto a".byteInputStream() })
+        modelo.espera { it.fotos.size == 1 }
+        modelo.agregarFoto({ "foto b".byteInputStream() })
+        val (a, b) = modelo.espera { it.fotos.size == 2 }.fotos
+        assertEquals("foto a", modelo.archivoDeFoto(a).readText())
+
+        modelo.guardar()
+
+        modelo.espera { it.guardados == 1 }
+        val caso = casos.filas.value.single()
+        assertEquals(listOf(a to caso.localUuid, b to caso.localUuid), casos.fotos.value.map { it.id to it.caso })
+        assertEquals("foto b", contenedor.fotos.archivo(b).readText())
+        assertTrue(modelo.estado.fotos.isEmpty())
+    }
+
+    @Test
+    fun la_foto_de_la_camara_no_se_queda_completa() {
+        val modelo = modelo()
+        val completa = modelo.archivoParaLaCamara().apply { writeText("12 MB con GPS") }
+
+        modelo.agregarDeCamara(completa)
+
+        modelo.espera { it.fotos.size == 1 }
+        assertFalse(completa.exists())
+    }
+
+    @Test
+    fun hasta_cinco_fotos_y_quitar_una_borra_su_archivo() {
+        val modelo = modelo()
+        repeat(MAXIMO_DE_FOTOS) { n ->
+            modelo.agregarFoto({ "foto $n".byteInputStream() })
+            modelo.espera { it.fotos.size == n + 1 }
+        }
+        val estado = modelo.estado
+        assertFalse(estado.caben)
+        modelo.agregarFoto({ "la sexta".byteInputStream() })
+        assertEquals(MAXIMO_DE_FOTOS, modelo.espera { !it.agregandoFoto }.fotos.size)
+        val primera = estado.fotos.first()
+        val archivo = modelo.archivoDeFoto(primera)
+        modelo.quitarFoto(primera)
+
+        assertFalse(archivo.exists())
+        assertEquals(4, modelo.estado.fotos.size)
+        assertTrue(modelo.estado.caben)
+    }
+
+    @Test
+    fun una_imagen_que_no_se_puede_leer_lo_dice() {
+        val modelo = modelo()
+
+        modelo.agregarFoto({ throw java.io.IOException("roto") })
+
+        assertEquals("No se pudo leer la foto. Intenta con otra.", modelo.espera { !it.agregandoFoto }.errorFoto)
+        assertTrue(modelo.estado.fotos.isEmpty())
+    }
+
+    @Test
+    fun salir_sin_guardar_no_deja_fotos() {
+        val almacen = ViewModelStore()
+        val modelo = ViewModelProvider.create(almacen, viewModelFactory { initializer { modelo() } })[CapturaViewModel::class]
+        modelo.agregarFoto({ "foto".byteInputStream() })
+        val archivo = modelo.archivoDeFoto(modelo.espera { it.fotos.size == 1 }.fotos.single())
+
+        almacen.clear()
+
+        assertFalse(archivo.exists())
     }
 }
