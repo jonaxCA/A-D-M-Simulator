@@ -8,6 +8,7 @@ import com.estudiante.simuladorepidemico.local.BaseLocal
 import com.estudiante.simuladorepidemico.sesion.CifradorKeystore
 import com.estudiante.simuladorepidemico.sesion.esteTelefono
 import com.estudiante.simuladorepidemico.trabajos.TrabajoSincronizar
+import com.estudiante.simuladorepidemico.ubicacion.UbicadorFused
 
 // Fuera de los respaldos (res/xml): la llave del Keystore y los device_uid no viajan con ellos.
 private val Context.datosSesion by preferencesDataStore(name = "sesion")
@@ -23,6 +24,7 @@ class EpidemiaApp : Application() {
             casos = base.casos(),
             catalogo = base.catalogo(),
             programarEnvio = { TrabajoSincronizar.programar(this) },
+            ubicador = UbicadorFused(this),
         )
     }
 }

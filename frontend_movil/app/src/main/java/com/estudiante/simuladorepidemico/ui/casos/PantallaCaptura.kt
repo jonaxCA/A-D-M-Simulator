@@ -1,15 +1,25 @@
 package com.estudiante.simuladorepidemico.ui.casos
 
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -30,6 +41,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
@@ -46,6 +58,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -54,6 +67,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.estudiante.simuladorepidemico.local.Enfermedad
 import com.estudiante.simuladorepidemico.local.Municipio
 import com.estudiante.simuladorepidemico.ui.RESULTADOS_DE_PRUEBA
@@ -64,6 +78,8 @@ import com.estudiante.simuladorepidemico.ui.tema.TemaEpidemia
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import java.util.Locale
+import kotlin.math.roundToInt
 
 class AccionesCaptura(
     val volver: () -> Unit = {},
@@ -77,10 +93,29 @@ class AccionesCaptura(
     val elegirSeveridad: (String?) -> Unit = {},
     val guardar: () -> Unit = {},
     val descargarCatalogos: () -> Unit = {},
+    val ubicar: () -> Unit = {},
+    val quitarUbicacion: () -> Unit = {},
+    val abrirAjustes: () -> Unit = {},
 )
+
+private const val PRECISA = Manifest.permission.ACCESS_FINE_LOCATION
+private const val APROXIMADA = Manifest.permission.ACCESS_COARSE_LOCATION
+
+private fun tiene(contexto: Context, permiso: String) =
+    ContextCompat.checkSelfPermission(contexto, permiso) == PackageManager.PERMISSION_GRANTED
 
 @Composable
 fun PantallaCaptura(modelo: CapturaViewModel, alVolver: () -> Unit) {
+    val contexto = LocalContext.current
+    // El permiso se pide al tocar "Agregar mi ubicación", no al abrir la pantalla: la ubicación es
+    // opcional. Con solo la aproximada también sirve.
+    val pedirPermiso = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { dados ->
+        when {
+            dados[PRECISA] == true -> modelo.ubicar(precisa = true)
+            dados[APROXIMADA] == true -> modelo.ubicar(precisa = false)
+            else -> modelo.sinPermisoDeUbicacion()
+        }
+    }
     FormularioCaso(
         estado = modelo.estado,
         hoy = LocalDate.now(),
@@ -96,6 +131,19 @@ fun PantallaCaptura(modelo: CapturaViewModel, alVolver: () -> Unit) {
             elegirSeveridad = modelo::elegirSeveridad,
             guardar = modelo::guardar,
             descargarCatalogos = modelo::descargarCatalogos,
+            ubicar = {
+                when {
+                    tiene(contexto, PRECISA) -> modelo.ubicar(precisa = true)
+                    tiene(contexto, APROXIMADA) -> modelo.ubicar(precisa = false)
+                    else -> pedirPermiso.launch(arrayOf(PRECISA, APROXIMADA))
+                }
+            },
+            quitarUbicacion = modelo::quitarUbicacion,
+            abrirAjustes = {
+                contexto.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", contexto.packageName, null))
+                )
+            },
         ),
     )
 }
@@ -188,6 +236,7 @@ fun FormularioCaso(estado: EstadoCaptura, hoy: LocalDate, acciones: AccionesCapt
                 alElegir = acciones.elegirSeveridad,
                 alQuitar = { acciones.elegirSeveridad(null) },
             )
+            SeccionUbicacion(estado, acciones)
             if (estado.errores.isNotEmpty()) {
                 Text(
                     estado.errores.joinToString("\n"),
@@ -204,6 +253,47 @@ fun FormularioCaso(estado: EstadoCaptura, hoy: LocalDate, acciones: AccionesCapt
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+// Sin red funciona con el GPS: puede tardar, sobre todo bajo techo.
+@Composable
+private fun SeccionUbicacion(estado: EstadoCaptura, acciones: AccionesCaptura) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Ubicación (opcional)", style = MaterialTheme.typography.labelLarge)
+        val ubicacion = estado.ubicacion
+        if (ubicacion != null) {
+            Text("%.6f, %.6f".format(Locale.ROOT, ubicacion.latitud, ubicacion.longitud), style = MaterialTheme.typography.bodyLarge)
+            ubicacion.precisionMetros?.let {
+                Text(
+                    "Precisión: ± %d m".format(it.roundToInt()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = acciones.quitarUbicacion) { Text("Quitar ubicación") }
+            return@Column
+        }
+        OutlinedButton(onClick = acciones.ubicar, enabled = !estado.ubicando, modifier = Modifier.fillMaxWidth()) {
+            if (estado.ubicando) {
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            } else {
+                Icon(Icons.Filled.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(if (estado.ubicando) "Buscando señal…" else "Agregar mi ubicación")
+        }
+        estado.errorUbicacion?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        if (estado.sinPermisoDeUbicacion) {
+            TextButton(onClick = acciones.abrirAjustes) { Text("Abrir ajustes") }
         }
     }
 }

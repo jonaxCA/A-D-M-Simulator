@@ -8,6 +8,10 @@ import com.estudiante.simuladorepidemico.local.Enfermedad
 import com.estudiante.simuladorepidemico.local.EstadoCaso
 import com.estudiante.simuladorepidemico.local.Municipio
 import com.estudiante.simuladorepidemico.tokens
+import com.estudiante.simuladorepidemico.ubicacion.Lectura
+import com.estudiante.simuladorepidemico.ubicacion.Ubicacion
+import com.estudiante.simuladorepidemico.ubicacion.Ubicador
+import com.estudiante.simuladorepidemico.ubicacion.aSeisDecimales
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -34,6 +38,14 @@ class CapturaViewModelTest {
     private var envios = 0
     private val contenedor = contenedorDePrueba(servidor, casos, catalogo) { envios++ }
 
+    // Lo que "lee" el GPS en cada prueba, y con qué precisión se pidió.
+    private var lectura: Lectura = Lectura.Lista(Ubicacion(25.686613, -100.316116, 12f))
+    private val pedidas = mutableListOf<Boolean>()
+    private val ubicador = Ubicador { precisa ->
+        pedidas += precisa
+        lectura
+    }
+
     @Before
     fun principal() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -47,9 +59,66 @@ class CapturaViewModelTest {
     }
 
     private fun modelo() = CapturaViewModel(
-        contenedor.sesion, casos, catalogo, contenedor.catalogos, contenedor.programarEnvio,
+        contenedor.sesion, casos, catalogo, contenedor.catalogos, contenedor.programarEnvio, ubicador,
         hoy = { hoy }, ahora = { 1_000L },
     )
+
+    @Test
+    fun la_ubicacion_se_guarda_con_el_caso_y_no_pasa_al_siguiente() {
+        val modelo = modelo()
+        modelo.espera { !it.sinCatalogos }
+        modelo.elegirEnfermedad(1)
+        modelo.elegirMunicipio(10)
+
+        modelo.ubicar(precisa = true)
+        assertEquals(Ubicacion(25.686613, -100.316116, 12f), modelo.espera { !it.ubicando }.ubicacion)
+        modelo.guardar()
+
+        val estado = modelo.espera { it.guardados == 1 }
+        assertEquals(25.686613 to -100.316116, casos.filas.value.single().let { it.latitud to it.longitud })
+        assertNull(estado.ubicacion)
+        assertEquals(listOf(true), pedidas)
+    }
+
+    @Test
+    fun sin_gps_o_sin_permiso_lo_dice_y_el_caso_se_guarda_sin_ubicacion() {
+        val modelo = modelo()
+
+        lectura = Lectura.Apagada
+        modelo.ubicar(precisa = false)
+        assertEquals(
+            "La ubicación del teléfono está apagada. Actívala y vuelve a intentarlo.",
+            modelo.espera { !it.ubicando }.errorUbicacion,
+        )
+        lectura = Lectura.SinSenal
+        modelo.ubicar(precisa = false)
+        assertEquals(
+            "No llegó la señal del GPS. Intenta de nuevo, de preferencia a cielo abierto.",
+            modelo.espera { !it.ubicando }.errorUbicacion,
+        )
+        modelo.sinPermisoDeUbicacion()
+        assertTrue(modelo.estado.sinPermisoDeUbicacion)
+        assertEquals("Sin permiso de ubicación: el caso se guarda sin ella.", modelo.estado.errorUbicacion)
+        assertNull(modelo.estado.ubicacion)
+        assertEquals(listOf(false, false), pedidas)
+    }
+
+    @Test
+    fun quitar_la_ubicacion() {
+        val modelo = modelo()
+        modelo.ubicar(precisa = true)
+        modelo.espera { it.ubicacion != null }
+
+        modelo.quitarUbicacion()
+
+        assertNull(modelo.estado.ubicacion)
+    }
+
+    @Test
+    fun seis_decimales_como_en_la_base() {
+        assertEquals(25.686613, aSeisDecimales(25.6866134999), 0.0)
+        assertEquals(-100.316117, aSeisDecimales(-100.3161166), 0.0)
+    }
 
     private fun CapturaViewModel.espera(condicion: (EstadoCaptura) -> Boolean): EstadoCaptura = runBlocking {
         withTimeout(5_000) {

@@ -28,6 +28,7 @@ Dónde va cada cosa dentro de `app/src/main/java/com/estudiante/simuladorepidemi
 | (raíz) | `MainActivity` (la única Activity), `EpidemiaApp` y `Contenedor`: las dependencias se arman a mano, sin Hilt |
 | `red/` | OkHttp, Retrofit, el directorio de servicios (sección 1), el `Authenticator` que renueva (sección 4) y una interfaz por servicio en `red/api/` |
 | `sesion/` | Tokens, cifrados con una llave del Keystore y guardados en DataStore, y el registro del teléfono en `dispositivos` (`Telefono.kt`, sección 6) |
+| `ubicacion/` | La lectura del GPS para un caso (`Ubicador`), con Google Play services |
 | `local/` | Room (`epidemia.db`): los casos capturados y los catálogos de enfermedades y municipios (sección 5). Después, las fotos por subir. El esquema de cada versión queda en `app/schemas/` |
 | `trabajos/` | El `Sincronizador`, que manda los casos en lotes, y `TrabajoSincronizar`, que WorkManager corre cuando hay red. Después, subir fotos y consultar avisos |
 | `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio`, `casos` (Capturar caso y Mis casos), `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde y pide el permiso de red local. `ui/Formato.kt` da formato a fechas, roles y los valores de un caso |
@@ -191,6 +192,11 @@ La app lo hace en `red/Renovador.kt`, un `Authenticator` de OkHttp sincronizado,
   cuenta de la sesión, con las mismas reglas que `casos`: fechas hasta hoy, el inicio de
   síntomas antes del reporte y la edad de 0 a 120. Los catálogos se bajan al llegar al inicio
   con conexión; si el teléfono nunca los tuvo, la captura ofrece descargarlos.
+- La ubicación es opcional y de cada caso. "Agregar mi ubicación" pide el permiso en ese momento
+  (sirve el preciso o el aproximado) y lee el GPS, que funciona sin red; la pantalla muestra
+  las coordenadas y su precisión. Van con seis decimales, como las guarda `cases`
+  (`NUMERIC(9,6)`), y al guardar se limpian: el siguiente caso toma la suya
+  (`ubicacion/Ubicador.kt`, con Google Play services).
 - `TrabajoSincronizar` (WorkManager, `trabajos/`) manda lo pendiente en cuanto hay red, aunque
   la app esté cerrada: después de guardar un caso, al llegar al inicio y con "Enviar ahora" en
   Mis casos. Si falla, WorkManager lo reintenta cada vez más espaciado, con el mismo lote.

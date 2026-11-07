@@ -76,7 +76,7 @@ fun Navegacion(contenedor: Contenedor) {
                 viewModel {
                     CapturaViewModel(
                         contenedor.sesion, contenedor.casos, contenedor.catalogo, contenedor.catalogos,
-                        contenedor.programarEnvio,
+                        contenedor.programarEnvio, contenedor.ubicador,
                     )
                 },
                 alVolver = { nav.popBackStack() },

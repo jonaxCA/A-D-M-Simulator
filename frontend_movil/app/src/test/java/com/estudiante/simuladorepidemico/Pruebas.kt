@@ -7,6 +7,8 @@ import com.estudiante.simuladorepidemico.red.Tokens
 import com.estudiante.simuladorepidemico.red.json
 import com.estudiante.simuladorepidemico.sesion.Cifrador
 import com.estudiante.simuladorepidemico.sesion.DescripcionTelefono
+import com.estudiante.simuladorepidemico.ubicacion.Lectura
+import com.estudiante.simuladorepidemico.ubicacion.Ubicador
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -54,8 +56,11 @@ fun contenedorDePrueba(
     servidor: ServidorFalso,
     casos: CasosDaoFalso = CasosDaoFalso(),
     catalogo: CatalogoDaoFalso = CatalogoDaoFalso(),
+    ubicador: Ubicador = Ubicador { Lectura.SinSenal },
     programarEnvio: () -> Unit = {},
-) = Contenedor(datosTemporales(), CifradorDePrueba(), servidor.url, telefonoDePrueba, casos, catalogo, programarEnvio)
+) = Contenedor(
+    datosTemporales(), CifradorDePrueba(), servidor.url, telefonoDePrueba, casos, catalogo, programarEnvio, ubicador,
+)
 
 // Los servicios que usan red y sesion, en un solo MockWebServer que el directorio anuncia.
 class ServidorFalso : Dispatcher() {

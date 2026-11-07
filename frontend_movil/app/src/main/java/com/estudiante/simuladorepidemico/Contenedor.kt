@@ -19,6 +19,7 @@ import com.estudiante.simuladorepidemico.sesion.DescripcionTelefono
 import com.estudiante.simuladorepidemico.sesion.Sesion
 import com.estudiante.simuladorepidemico.sesion.Telefono
 import com.estudiante.simuladorepidemico.trabajos.Sincronizador
+import com.estudiante.simuladorepidemico.ubicacion.Ubicador
 
 // Las dependencias de la app, armadas a mano. `programarEnvio` pide que se manden los casos
 // pendientes en cuanto haya red (WorkManager en la app; en las pruebas, nada o un contador).
@@ -30,6 +31,7 @@ class Contenedor(
     val casos: CasosDao,
     val catalogo: CatalogoDao,
     val programarEnvio: () -> Unit,
+    val ubicador: Ubicador,
 ) {
     val almacen = AlmacenSesion(datos, cifrador)
     private val sinToken = clienteBase()

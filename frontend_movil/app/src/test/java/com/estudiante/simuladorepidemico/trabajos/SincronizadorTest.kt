@@ -7,6 +7,7 @@ import com.estudiante.simuladorepidemico.contenedorDePrueba
 import com.estudiante.simuladorepidemico.local.EstadoCaso
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.double
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -43,7 +44,12 @@ class SincronizadorTest {
     fun manda_los_pendientes_de_la_cuenta_en_un_lote_con_el_telefono() {
         entrar()
         runBlocking {
-            casos.insertar(casoDePrueba(uuid(1)).copy(edad = 34, sexo = "F", severidad = "leve", inicioSintomas = "2026-11-03"))
+            casos.insertar(
+                casoDePrueba(uuid(1)).copy(
+                    edad = 34, sexo = "F", severidad = "leve", inicioSintomas = "2026-11-03",
+                    latitud = 25.686613, longitud = -100.316116,
+                )
+            )
         }
         capturar(uuid(2))
         capturar(uuid(3), cuenta = 13)
@@ -59,6 +65,7 @@ class SincronizadorTest {
         assertEquals("F", primero["sex"]!!.jsonPrimitive.content)
         assertEquals("2026-11-03", primero["onset_date"]!!.jsonPrimitive.content)
         assertEquals("2026-11-05", primero["report_date"]!!.jsonPrimitive.content)
+        assertEquals(25.686613 to -100.316116, primero["latitude"]!!.jsonPrimitive.double to primero["longitude"]!!.jsonPrimitive.double)
         // Lo que no se capturó no viaja, ni como null.
         assertFalse("age" in enviados[1] || "latitude" in enviados[1])
         assertEquals(EstadoCaso.ENVIADO to 41L, casos.caso(uuid(1)).let { it.estado to it.caseId })

@@ -5,6 +5,10 @@
     <!-- Android 17: sin este permiso no hay conexión a direcciones de la red local, que es
          donde corren los servicios (la PC con el compose, o 10.0.2.2 desde el emulador). -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <!-- La ubicación de un caso, solo mientras se captura. Se piden los dos: desde Android 12 la
+         persona puede dar solo la aproximada. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
         android:name=".EpidemiaApp"

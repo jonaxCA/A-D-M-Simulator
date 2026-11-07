@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.estudiante.simuladorepidemico.local.Enfermedad
 import com.estudiante.simuladorepidemico.local.Municipio
 import com.estudiante.simuladorepidemico.ui.tema.TemaEpidemia
+import com.estudiante.simuladorepidemico.ubicacion.Ubicacion
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -35,9 +36,41 @@ class FormularioCasoTest {
                     elegirSexo = { acciones += "sexo $it" },
                     guardar = { acciones += "guardar" },
                     descargarCatalogos = { acciones += "descargar" },
+                    ubicar = { acciones += "ubicar" },
+                    quitarUbicacion = { acciones += "quitar" },
+                    abrirAjustes = { acciones += "ajustes" },
                 ),
             )
         }
+    }
+
+    private val conCatalogos = EstadoCaptura(
+        fechaReporte = hoy,
+        enfermedades = listOf(Enfermedad(1, "Dengue")),
+        municipios = listOf(Municipio(10, "Monterrey")),
+    )
+
+    @Test
+    fun la_ubicacion_muestra_las_coordenadas_y_su_precision() {
+        mostrar(conCatalogos.copy(ubicacion = Ubicacion(25.686613, -100.316116, 12.4f)))
+
+        regla.onNodeWithText("25.686613, -100.316116").performScrollTo().assertIsDisplayed()
+        regla.onNodeWithText("Precisión: ± 12 m").assertIsDisplayed()
+        regla.onNodeWithText("Agregar mi ubicación").assertDoesNotExist()
+        regla.onNodeWithText("Quitar ubicación").performClick()
+
+        assertEquals(listOf("quitar"), acciones)
+    }
+
+    @Test
+    fun sin_permiso_de_ubicacion_ofrece_los_ajustes() {
+        mostrar(conCatalogos.copy(sinPermisoDeUbicacion = true, errorUbicacion = "Sin permiso de ubicación: el caso se guarda sin ella."))
+
+        regla.onNodeWithText("Sin permiso de ubicación: el caso se guarda sin ella.").performScrollTo().assertIsDisplayed()
+        regla.onNodeWithText("Agregar mi ubicación").performClick()
+        regla.onNodeWithText("Abrir ajustes").performScrollTo().performClick()
+
+        assertEquals(listOf("ubicar", "ajustes"), acciones)
     }
 
     @Test

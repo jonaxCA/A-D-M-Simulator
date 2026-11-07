@@ -13,6 +13,9 @@ import com.estudiante.simuladorepidemico.local.Enfermedad
 import com.estudiante.simuladorepidemico.local.Municipio
 import com.estudiante.simuladorepidemico.red.mensajeDeError
 import com.estudiante.simuladorepidemico.sesion.Sesion
+import com.estudiante.simuladorepidemico.ubicacion.Lectura
+import com.estudiante.simuladorepidemico.ubicacion.Ubicacion
+import com.estudiante.simuladorepidemico.ubicacion.Ubicador
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -35,6 +38,10 @@ data class EstadoCaptura(
     val guardados: Int = 0,
     val descargando: Boolean = false,
     val errorCatalogos: String? = null,
+    val ubicacion: Ubicacion? = null,
+    val ubicando: Boolean = false,
+    val errorUbicacion: String? = null,
+    val sinPermisoDeUbicacion: Boolean = false,
 ) {
     val sinCatalogos: Boolean
         get() = enfermedades.isEmpty() || municipios.isEmpty()
@@ -59,6 +66,7 @@ class CapturaViewModel(
     catalogo: CatalogoDao,
     private val catalogos: Catalogos,
     private val programarEnvio: () -> Unit,
+    private val ubicador: Ubicador,
     private val hoy: () -> LocalDate = { LocalDate.now() },
     private val ahora: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
@@ -87,6 +95,38 @@ class CapturaViewModel(
     private fun cambiar(cambio: EstadoCaptura.() -> EstadoCaptura) {
         estado = estado.cambio().copy(errores = emptyList())
     }
+
+    // La pantalla ya pidió el permiso; `precisa` dice si se dio el fino o solo el aproximado.
+    fun ubicar(precisa: Boolean) {
+        if (estado.ubicando) return
+        estado = estado.copy(ubicando = true, errorUbicacion = null, sinPermisoDeUbicacion = false)
+        viewModelScope.launch {
+            val lectura = try {
+                ubicador.leer(precisa)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: SecurityException) {
+                // Quitaron el permiso desde Ajustes entre que se pidió y se leyó.
+                estado = estado.copy(ubicando = false, sinPermisoDeUbicacion = true, errorUbicacion = SIN_PERMISO)
+                return@launch
+            }
+            estado = when (lectura) {
+                is Lectura.Lista -> estado.copy(ubicando = false, ubicacion = lectura.ubicacion)
+                Lectura.Apagada -> estado.copy(
+                    ubicando = false, errorUbicacion = "La ubicación del teléfono está apagada. Actívala y vuelve a intentarlo.",
+                )
+                Lectura.SinSenal -> estado.copy(
+                    ubicando = false, errorUbicacion = "No llegó la señal del GPS. Intenta de nuevo, de preferencia a cielo abierto.",
+                )
+            }
+        }
+    }
+
+    fun sinPermisoDeUbicacion() {
+        estado = estado.copy(sinPermisoDeUbicacion = true, errorUbicacion = SIN_PERMISO)
+    }
+
+    fun quitarUbicacion() = cambiar { copy(ubicacion = null, errorUbicacion = null) }
 
     fun descargarCatalogos() {
         if (estado.descargando) return
@@ -131,16 +171,22 @@ class CapturaViewModel(
                     sexo = datos.sexo,
                     resultadoPrueba = datos.resultadoPrueba,
                     severidad = datos.severidad,
+                    latitud = datos.ubicacion?.latitud,
+                    longitud = datos.ubicacion?.longitud,
                     capturadoEn = ahora(),
                 )
             )
             programarEnvio()
             // Se quedan la enfermedad, el municipio y la fecha: en campo se capturan varios casos
-            // seguidos de lo mismo.
+            // seguidos de lo mismo. La ubicación es de cada caso: se vuelve a tomar.
             estado = estado.copy(
                 guardando = false, inicioSintomas = null, edad = "", sexo = null, resultadoPrueba = null,
-                severidad = null, guardados = estado.guardados + 1,
+                severidad = null, ubicacion = null, errorUbicacion = null, guardados = estado.guardados + 1,
             )
         }
+    }
+
+    private companion object {
+        const val SIN_PERMISO = "Sin permiso de ubicación: el caso se guarda sin ella."
     }
 }
