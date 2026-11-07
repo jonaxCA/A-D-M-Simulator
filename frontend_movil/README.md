@@ -171,7 +171,13 @@ La app lo hace en `red/Renovador.kt`, un `Authenticator` de OkHttp sincronizado,
 - Conserva el `batch_id` hasta que el lote responda 200: reenviar el mismo lote regresa el
   resultado guardado (`repetido: true`) y no crea nada dos veces. Ese resultado se guarda 7 días.
 - El lote responde 200 aunque haya casos rechazados: revisa `resultados[]`, que dice por cada
-  caso si se creó, era duplicado o se rechazó y por qué.
+  caso si se creó, era duplicado o se rechazó y por qué. En un rechazado, `codigo` dice qué
+  hacer: `DATOS_INVALIDOS`, el caso hay que corregirlo; `CONFLICTO`, el teléfono está revocado
+  (sale en todos los casos del lote) y los casos no tienen nada malo: no los marques como
+  rechazados, pide volver a iniciar sesión (sección 6) y mándalos en un lote nuevo.
+- Un lote que ya respondió 200 no se reenvía: los casos que se corrijan o se vuelvan a mandar
+  van en un lote nuevo, con otro `batch_id`. Con el mismo, el servidor regresa el resultado
+  guardado aunque el contenido cambie.
 - El `device_id` de cada caso (o del lote) es el `id` que regresa `dispositivos` al registrar el
   teléfono (sección 6). Sin `device_id` el caso también se acepta, pero no queda ligado al
   teléfono y llega sin `synced_at`.

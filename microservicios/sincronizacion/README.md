@@ -28,10 +28,16 @@ tiene raíz `resultado_lote`. XSD: `docs/contratos/sincronizacion/lote.xsd`.
 ## Respuesta
 
 `batch_id`, `device_id`, `recibido_en`, `total`, `creados`, `duplicados`, `rechazados`,
-`repetido` y `resultados[]` con `indice`, `local_uuid`, `resultado`, `case_id`, `errores[]`.
+`repetido` y `resultados[]` con `indice`, `local_uuid`, `resultado`, `case_id`, `codigo`,
+`errores[]`.
 
-- `creado`: casos respondió 201. `duplicado`: 200 (ese `local_uuid` ya existía).
-- `rechazado`: casos respondió 400/409/415/422; `errores` trae su mensaje.
+- `creado`: casos respondió 201. `duplicado`: 200 (ese `local_uuid` ya existía). En los dos,
+  `codigo` es `null`.
+- `rechazado`: casos respondió 400/409/413/415/422; `errores` trae su mensaje y `codigo`, el de
+  casos. `CONFLICTO` es un dispositivo revocado y sale en todos los casos del lote: la app deja
+  de sincronizar con ese teléfono en lugar de marcar los casos como mal capturados.
+  `DATOS_INVALIDOS` es un caso que hay que corregir. Los lotes guardados antes de que existiera
+  `codigo` no lo traen.
 - El lote responde 200 aunque haya rechazos; el cliente revisa cada caso.
 
 ## Idempotencia, candado y fallas

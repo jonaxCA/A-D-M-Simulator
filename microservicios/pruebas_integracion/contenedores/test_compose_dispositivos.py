@@ -39,6 +39,12 @@ def test_un_telefono_revocado_ya_no_captura(api, sesion, catalogo):
     assert r.status_code == 200, r.text
     [resultado] = r.json()["resultados"]
     assert resultado["resultado"] == "rechazado" and "revocado" in resultado["errores"][0]
+    # La app lo distingue de un caso con datos malos por el codigo, no por el mensaje.
+    assert resultado["codigo"] == "CONFLICTO"
+    r = api("sincronizacion", "POST", "/api/v1/sync/cases", karla["access"],
+            json={"batch_id": str(uuid.uuid4()), "cases": [dict(caso(), region_id=999999)]})
+    [resultado] = r.json()["resultados"]
+    assert (resultado["resultado"], resultado["codigo"]) == ("rechazado", "DATOS_INVALIDOS"), r.text
     # Un teléfono revocado no se vuelve a registrar con el mismo identificador.
     r = api("dispositivos", "POST", "/api/v1/devices", karla["access"], json={"device_uid": uid})
     assert r.status_code == 409, r.text

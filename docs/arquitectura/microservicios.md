@@ -82,7 +82,8 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
   para siempre. `last_seen_at` se actualiza cuando la app vuelve a registrarse, no en cada caso.
 - `casos` lee `devices` para no aceptar un caso de un dispositivo que no existe o es de otra
   cuenta (422) o que está revocado (409), aunque el token siga vigente. Los casos que llegan
-  por `sincronizacion` pasan por la misma revisión: salen rechazados en el resultado del lote.
+  por `sincronizacion` pasan por la misma revisión: salen rechazados en el resultado del lote,
+  con `codigo` `CONFLICTO`, que los distingue de un caso con datos malos (`DATOS_INVALIDOS`).
 - `evidencias` guarda fotos (JPEG, PNG, WebP) y PDF de hasta 20 MB en su volumen de Docker, en
   lugar de Cloud Storage; la base guarda ruta, tipo, tamaño y huella SHA-256. El tipo sale del
   contenido. Las sube quien reportó el caso o ADMINISTRADOR, las ven los cuatro roles que leen
