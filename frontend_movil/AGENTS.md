@@ -10,4 +10,7 @@ y sus contratos en `docs/contratos/`.
 - Toda librería y versión nueva va en `gradle/libs.versions.toml`. Ahí `kotlin` fija la versión
   de Kotlin: AGP 9 compila Kotlin por su cuenta, así que no apliques `kotlin-android` en `app`.
 - Tokens y contraseñas nunca en texto plano ni en el código.
+- Si cambian las tablas de `epidemia.db`, sube la versión de `BaseLocal` con su migración: los
+  teléfonos tienen casos sin enviar que no se pueden perder. El esquema que Room deja en
+  `app/schemas/` va al repositorio.
 - Antes de dar algo por terminado, `./gradlew assembleDebug testDebugUnitTest` pasa.

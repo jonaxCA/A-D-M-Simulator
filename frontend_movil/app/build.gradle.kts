@@ -46,6 +46,12 @@ android {
     }
 }
 
+// Room deja en schemas/ el esquema de cada versión de epidemia.db: con él se escriben y se prueban
+// las migraciones cuando cambie.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

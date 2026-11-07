@@ -2,6 +2,7 @@ package com.estudiante.simuladorepidemico.ui.perfil
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -48,6 +49,22 @@ class FichaPerfilTest {
         regla.onNodeWithContentDescription("Volver").performClick()
 
         assertEquals(listOf("cerrar", "volver"), acciones)
+    }
+
+    @Test
+    fun con_casos_sin_enviar_avisa_antes_de_cerrar_la_sesion() {
+        mostrar(EstadoPerfil(cargando = false, perfil = carla, dispositivo = 3, porEnviar = 2))
+
+        regla.onNodeWithText("Cerrar sesión").performScrollTo().performClick()
+        regla.onNodeWithText("2 casos sin enviar").assertIsDisplayed()
+        regla.onNodeWithText("Cancelar").performClick()
+        regla.onNodeWithText("2 casos sin enviar").assertDoesNotExist()
+        assertEquals(emptyList<String>(), acciones)
+
+        regla.onNodeWithText("Cerrar sesión").performClick()
+        regla.onAllNodesWithText("Cerrar sesión")[1].performClick()
+
+        assertEquals(listOf("cerrar"), acciones)
     }
 
     @Test

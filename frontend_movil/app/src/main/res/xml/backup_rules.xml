@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 11 o anterior. La sesión no se respalda: su llave del Keystore no viaja con ella. -->
+<!-- Android 11 o anterior. La sesión no se respalda: su llave del Keystore no viaja con ella.
+     Los casos capturados tampoco: llevan datos de salud. -->
 <full-backup-content>
     <exclude domain="file" path="datastore/sesion.preferences_pb" />
+    <exclude domain="database" path="epidemia.db" />
+    <exclude domain="database" path="epidemia.db-wal" />
+    <exclude domain="database" path="epidemia.db-shm" />
 </full-backup-content>

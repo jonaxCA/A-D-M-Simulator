@@ -5,10 +5,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.estudiante.simuladorepidemico.local.CasosDao
 import com.estudiante.simuladorepidemico.red.Perfil
 import com.estudiante.simuladorepidemico.red.mensajeDeError
 import com.estudiante.simuladorepidemico.sesion.Sesion
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 data class EstadoPerfil(
@@ -20,16 +25,25 @@ data class EstadoPerfil(
     val dispositivo: Long? = null,
     val registrando: Boolean = false,
     val errorTelefono: String? = null,
+    val porEnviar: Int = 0,
 )
 
 // Si la sesión ya no sirve (revocada o vencida, o el teléfono revocado al reintentar su
 // registro), se borra y la navegación regresa sola al login.
-class PerfilViewModel(private val sesion: Sesion) : ViewModel() {
+@OptIn(ExperimentalCoroutinesApi::class)
+class PerfilViewModel(private val sesion: Sesion, casos: CasosDao) : ViewModel() {
     var estado by mutableStateOf(EstadoPerfil())
         private set
 
     init {
         cargar()
+        // Para avisar antes de cerrar sesión: lo pendiente se queda, pero solo se envía cuando esta
+        // cuenta vuelva a entrar.
+        viewModelScope.launch {
+            flow { emit(sesion.cuenta()) }
+                .flatMapLatest { cuenta -> if (cuenta == null) flowOf(0) else casos.porEnviar(cuenta) }
+                .collect { estado = estado.copy(porEnviar = it) }
+        }
     }
 
     fun cargar() {

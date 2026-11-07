@@ -28,15 +28,15 @@ Dónde va cada cosa dentro de `app/src/main/java/com/estudiante/simuladorepidemi
 | (raíz) | `MainActivity` (la única Activity), `EpidemiaApp` y `Contenedor`: las dependencias se arman a mano, sin Hilt |
 | `red/` | OkHttp, Retrofit, el directorio de servicios (sección 1), el `Authenticator` que renueva (sección 4) y una interfaz por servicio en `red/api/` |
 | `sesion/` | Tokens, cifrados con una llave del Keystore y guardados en DataStore, y el registro del teléfono en `dispositivos` (`Telefono.kt`, sección 6) |
-| `local/` | Room: casos y fotos capturados sin conexión y lotes por enviar |
-| `trabajos/` | WorkManager: enviar lotes, subir fotos y consultar avisos |
-| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio` (provisional), `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde y pide el permiso de red local. `ui/Formato.kt` da formato a fechas y roles |
+| `local/` | Room (`epidemia.db`): los casos capturados y los catálogos de enfermedades y municipios (sección 5). Después, las fotos por subir. El esquema de cada versión queda en `app/schemas/` |
+| `trabajos/` | El `Sincronizador`, que manda los casos en lotes, y `TrabajoSincronizar`, que WorkManager corre cuando hay red. Después, subir fotos y consultar avisos |
+| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio`, `casos` (Capturar caso y Mis casos), `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde y pide el permiso de red local. `ui/Formato.kt` da formato a fechas, roles y los valores de un caso |
 
 `app/src/debug/` lleva lo que solo vale en desarrollo, como el permiso de HTTP sin cifrar
 (sección 2).
 
 Las pruebas unitarias (`app/src/test/`) corren en la PC contra un MockWebServer. Las de
-`app/src/androidTest/` (el Keystore, el formulario de login y Mi perfil) necesitan un emulador:
+`app/src/androidTest/` (el Keystore, las consultas de Room y las pantallas) necesitan un emulador:
 `./gradlew connectedDebugAndroidTest`. Dale al emulador 3 GB de RAM o más (Device Manager >
 editar > RAM): con 2 GB, Android 17 mata el proceso de la prueba por falta de memoria y Gradle
 solo dice "Process crashed".
@@ -181,6 +181,30 @@ La app lo hace en `red/Renovador.kt`, un `Authenticator` de OkHttp sincronizado,
 - El `device_id` de cada caso (o del lote) es el `id` que regresa `dispositivos` al registrar el
   teléfono (sección 6). Sin `device_id` el caso también se acepta, pero no queda ligado al
   teléfono y llega sin `synced_at`.
+- Para el formulario sin conexión, los catálogos son públicos:
+  `GET /api/v1/diseases?status=activa&size=100` (en `enfermedades`, paginado) y
+  `GET /api/v1/regions` (en `regiones`, los 51 municipios). Son los mismos que acepta `casos`.
+
+### Cómo lo hace la app
+
+- **Capturar caso** guarda el caso en `epidemia.db` (Room, `local/`) con su `local_uuid` y la
+  cuenta de la sesión, con las mismas reglas que `casos`: fechas hasta hoy, el inicio de
+  síntomas antes del reporte y la edad de 0 a 120. Los catálogos se bajan al llegar al inicio
+  con conexión; si el teléfono nunca los tuvo, la captura ofrece descargarlos.
+- `TrabajoSincronizar` (WorkManager, `trabajos/`) manda lo pendiente en cuanto hay red, aunque
+  la app esté cerrada: después de guardar un caso, al llegar al inicio y con "Enviar ahora" en
+  Mis casos. Si falla, WorkManager lo reintenta cada vez más espaciado, con el mismo lote.
+- Cada caso es de la cuenta que lo capturó y solo se manda con una sesión suya. El `device_id`
+  va en el lote: el de la sesión al momento de enviar. Si el teléfono no quedó registrado al
+  iniciar sesión, se registra antes de enviar.
+- Un caso enviado se queda en el teléfono como comprobante (enfermedad, municipio, fecha y
+  `case_id`); la edad, el sexo, el resultado, la severidad y la ubicación se borran. Un
+  rechazado por datos se queda con su motivo hasta que se descarte. Con el teléfono revocado,
+  los casos vuelven a pendientes y la app cierra la sesión.
+- Cerrar sesión no borra lo pendiente: Mi perfil avisa cuántos casos faltan, y se envían cuando
+  esa cuenta vuelva a entrar. Otra cuenta en el mismo teléfono no los ve.
+- `epidemia.db` no entra en los respaldos ni pasa a otro teléfono (`res/xml/`): lleva datos de
+  salud.
 
 ## 6. Registrar el teléfono
 

@@ -11,7 +11,11 @@ import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.io.IOException
 
-val json = Json { ignoreUnknownKeys = true }
+// explicitNulls = false: un campo opcional en null no se manda, en lugar de mandarlo como null.
+val json = Json {
+    ignoreUnknownKeys = true
+    explicitNulls = false
+}
 
 // Los servicios responden XML si no se les pide JSON.
 fun clienteBase(): OkHttpClient = OkHttpClient.Builder()

@@ -10,8 +10,11 @@ import com.estudiante.simuladorepidemico.sesion.DescripcionTelefono
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -47,8 +50,12 @@ fun tokens(access: String, refresh: String) = Tokens(access, refresh, 1200, 1_80
 
 val telefonoDePrueba = DescripcionTelefono("Pixel de prueba", "0.1.0")
 
-fun contenedorDePrueba(servidor: ServidorFalso) =
-    Contenedor(datosTemporales(), CifradorDePrueba(), servidor.url, telefonoDePrueba)
+fun contenedorDePrueba(
+    servidor: ServidorFalso,
+    casos: CasosDaoFalso = CasosDaoFalso(),
+    catalogo: CatalogoDaoFalso = CatalogoDaoFalso(),
+    programarEnvio: () -> Unit = {},
+) = Contenedor(datosTemporales(), CifradorDePrueba(), servidor.url, telefonoDePrueba, casos, catalogo, programarEnvio)
 
 // Los servicios que usan red y sesion, en un solo MockWebServer que el directorio anuncia.
 class ServidorFalso : Dispatcher() {
@@ -69,6 +76,19 @@ class ServidorFalso : Dispatcher() {
     val revocados: MutableSet<String> = ConcurrentHashMap.newKeySet()
     @Volatile var dispositivos: MockResponse? = null
     private val siguienteId = AtomicLong(3)
+
+    // sincronizacion, como el servicio: crea una vez por local_uuid, rechaza el municipio 999 y
+    // guarda el resultado de cada batch_id. Con `telefonoRevocado`, lo nuevo sale CONFLICTO; con
+    // `lote` puesto, responde eso.
+    val casosCreados = ConcurrentHashMap<String, Long>()
+    private val siguienteCaso = AtomicLong(41)
+    private val lotesGuardados = ConcurrentHashMap<String, String>()
+    @Volatile var telefonoRevocado = false
+    @Volatile var lote: MockResponse? = null
+
+    // Los catálogos: `enfermedades` se pagina como el servicio.
+    @Volatile var enfermedades: List<Pair<Long, String>> = listOf(1L to "Dengue", 2L to "Influenza")
+    @Volatile var municipios: List<Pair<Long, String>> = listOf(10L to "Monterrey", 11L to "Apodaca")
 
     init {
         servidor.dispatcher = this
@@ -101,9 +121,56 @@ class ServidorFalso : Dispatcher() {
         )
     }
 
+    // Los lotes que llegaron a sincronizacion, ya leídos.
+    fun lotesEnviados(): List<JsonObject> =
+        pedidosA("/api/v1/sync/cases").map { json.parseToJsonElement(it.body.clone().readUtf8()).jsonObject }
+
+    private fun sincronizar(pedido: RecordedRequest): MockResponse {
+        lote?.let { return it }
+        val cuerpo = json.parseToJsonElement(pedido.body.clone().readUtf8()).jsonObject
+        val id = cuerpo["batch_id"]!!.jsonPrimitive.content
+        lotesGuardados[id]?.let { return respuesta(200, it.replace("\"repetido\":false", "\"repetido\":true")) }
+        val resultados = cuerpo["cases"]!!.jsonArray.mapIndexed { indice, elemento ->
+            val caso = elemento.jsonObject
+            val uuid = caso["local_uuid"]!!.jsonPrimitive.content
+            fun rechazado(codigo: String, error: String) =
+                """{"indice":$indice,"local_uuid":"$uuid","resultado":"rechazado","case_id":null,"codigo":"$codigo","errores":["$error"]}"""
+            when {
+                telefonoRevocado && !casosCreados.containsKey(uuid) ->
+                    rechazado("CONFLICTO", "El dispositivo está revocado: ya no puede capturar ni sincronizar casos.")
+                caso["region_id"]!!.jsonPrimitive.long == 999L ->
+                    rechazado("DATOS_INVALIDOS", "Ese municipio no está en el catálogo de Nuevo León.")
+                else -> {
+                    var nuevo = false
+                    val caseId = casosCreados.computeIfAbsent(uuid) { nuevo = true; siguienteCaso.getAndIncrement() }
+                    val resultado = if (nuevo) "creado" else "duplicado"
+                    """{"indice":$indice,"local_uuid":"$uuid","resultado":"$resultado","case_id":$caseId,"codigo":null,"errores":[]}"""
+                }
+            }
+        }
+        val texto = """{"batch_id":"$id","device_id":${cuerpo["device_id"]},"resultados":[${resultados.joinToString(",")}],"repetido":false}"""
+        lotesGuardados[id] = texto
+        return respuesta(200, texto)
+    }
+
+    private fun paginaEnfermedades(pedido: RecordedRequest): MockResponse {
+        val pagina = pedido.requestUrl!!.queryParameter("page")!!.toInt()
+        val tamano = pedido.requestUrl!!.queryParameter("size")!!.toInt()
+        val lista = enfermedades.drop((pagina - 1) * tamano).take(tamano)
+        val paginas = (enfermedades.size + tamano - 1) / tamano
+        return respuesta(200, lista.joinToString(",", "{\"enfermedades\":[", "],\"total\":${enfermedades.size},\"pagina\":$pagina,\"paginas\":$paginas}") {
+            "{\"id\":${it.first},\"code\":\"E${it.first}\",\"nombre\":\"${it.second}\",\"activa\":true}"
+        })
+    }
+
     override fun dispatch(request: RecordedRequest): MockResponse {
         pedidos += request
         return when (request.path?.substringBefore('?')) {
+            "/api/v1/sync/cases" -> sincronizar(request)
+            "/api/v1/diseases" -> paginaEnfermedades(request)
+            "/api/v1/regions" -> respuesta(200, municipios.joinToString(",", "{\"municipios\":[", "],\"total\":${municipios.size}}") {
+                "{\"id\":${it.first},\"code\":\"M${it.first}\",\"nombre\":\"${it.second}\",\"poblacion\":1}"
+            })
             "/api/v1/services" -> respuesta(200, directorio())
             "/api/v1/auth/captcha" -> respuesta(200, """{"captcha_id":"c1","pregunta":"3 + 5","expira":1}""")
             "/api/v1/auth/login" -> login
@@ -126,7 +193,7 @@ class ServidorFalso : Dispatcher() {
 
     private fun directorio(): String {
         val base = url.trimEnd('/')
-        return listOf("auth", "sesiones", "usuarios", "dispositivos").joinToString(",", "{\"servicios\":[", "]}") {
+        return listOf("auth", "sesiones", "usuarios", "dispositivos", "sincronizacion", "enfermedades", "regiones").joinToString(",", "{\"servicios\":[", "]}") {
             "{\"nombre\":\"$it\",\"dominio\":\"prueba\",\"puerto\":1,\"url\":\"$base\"}"
         }
     }

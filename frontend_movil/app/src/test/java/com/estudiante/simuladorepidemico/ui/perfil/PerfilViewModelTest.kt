@@ -1,6 +1,7 @@
 package com.estudiante.simuladorepidemico.ui.perfil
 
 import com.estudiante.simuladorepidemico.ServidorFalso
+import com.estudiante.simuladorepidemico.casoDePrueba
 import com.estudiante.simuladorepidemico.contenedorDePrueba
 import com.estudiante.simuladorepidemico.tokens
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +47,7 @@ class PerfilViewModelTest {
 
     @Test
     fun carga_la_cuenta_del_token_y_cuando_vence_la_sesion() {
-        val estado = PerfilViewModel(contenedor.sesion).espera { !it.cargando }
+        val estado = PerfilViewModel(contenedor.sesion, contenedor.casos).espera { !it.cargando }
 
         assertEquals("Carla Captura", estado.perfil?.nombre)
         assertEquals(listOf("CAPTURISTA"), estado.perfil?.roles)
@@ -58,7 +59,7 @@ class PerfilViewModelTest {
 
     @Test
     fun registra_el_telefono_que_no_quedo_registrado() {
-        val modelo = PerfilViewModel(contenedor.sesion)
+        val modelo = PerfilViewModel(contenedor.sesion, contenedor.casos)
         modelo.espera { !it.cargando }
 
         modelo.registrarTelefono()
@@ -74,7 +75,7 @@ class PerfilViewModelTest {
     @Test
     fun si_no_se_puede_registrar_lo_dice() {
         servidor.dispositivos = ServidorFalso.problema(503, "SERVICIO_NO_DISPONIBLE")
-        val modelo = PerfilViewModel(contenedor.sesion)
+        val modelo = PerfilViewModel(contenedor.sesion, contenedor.casos)
         modelo.espera { !it.cargando }
 
         modelo.registrarTelefono()
@@ -88,7 +89,7 @@ class PerfilViewModelTest {
     @Test
     fun sin_red_lo_dice_y_reintenta() {
         servidor.apagar()
-        val modelo = PerfilViewModel(contenedor.sesion)
+        val modelo = PerfilViewModel(contenedor.sesion, contenedor.casos)
 
         val estado = modelo.espera { !it.cargando }
 
@@ -99,8 +100,22 @@ class PerfilViewModelTest {
     }
 
     @Test
+    fun cuenta_los_casos_sin_enviar_de_la_cuenta_para_avisar_al_salir() {
+        runBlocking {
+            contenedor.almacen.abrir(tokens("nuevo", "r1"), cuenta = 12)
+            contenedor.casos.insertar(casoDePrueba("a"))
+            contenedor.casos.insertar(casoDePrueba("b"))
+            contenedor.casos.insertar(casoDePrueba("c", cuenta = 13))
+        }
+
+        val estado = PerfilViewModel(contenedor.sesion, contenedor.casos).espera { it.porEnviar > 0 }
+
+        assertEquals(2, estado.porEnviar)
+    }
+
+    @Test
     fun cerrar_sesion_avisa_al_servidor_y_borra_la_sesion() {
-        val modelo = PerfilViewModel(contenedor.sesion)
+        val modelo = PerfilViewModel(contenedor.sesion, contenedor.casos)
         modelo.espera { !it.cargando }
 
         modelo.cerrarSesion()

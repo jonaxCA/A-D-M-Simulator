@@ -16,6 +16,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.estudiante.simuladorepidemico.Contenedor
+import com.estudiante.simuladorepidemico.ui.casos.CapturaViewModel
+import com.estudiante.simuladorepidemico.ui.casos.MisCasosViewModel
+import com.estudiante.simuladorepidemico.ui.casos.PantallaCaptura
+import com.estudiante.simuladorepidemico.ui.casos.PantallaMisCasos
+import com.estudiante.simuladorepidemico.ui.inicio.InicioViewModel
 import com.estudiante.simuladorepidemico.ui.inicio.PantallaInicio
 import com.estudiante.simuladorepidemico.ui.login.LoginViewModel
 import com.estudiante.simuladorepidemico.ui.login.PantallaLogin
@@ -31,6 +36,12 @@ object Inicio
 
 @Serializable
 object MiPerfil
+
+@Serializable
+object Captura
+
+@Serializable
+object MisCasos
 
 @Composable
 fun Navegacion(contenedor: Contenedor) {
@@ -50,9 +61,40 @@ fun Navegacion(contenedor: Contenedor) {
         composable<Login> {
             PantallaLogin(viewModel { LoginViewModel(contenedor.sesion) }, alQuedarDentro = { soloEn(Inicio) })
         }
-        composable<Inicio> { PantallaInicio(alAbrirPerfil = { nav.navigate(MiPerfil) }) }
+        composable<Inicio> {
+            PantallaInicio(
+                viewModel {
+                    InicioViewModel(contenedor.sesion, contenedor.casos, contenedor.catalogos, contenedor.programarEnvio)
+                },
+                alCapturar = { nav.navigate(Captura) },
+                alVerCasos = { nav.navigate(MisCasos) },
+                alAbrirPerfil = { nav.navigate(MiPerfil) },
+            )
+        }
+        composable<Captura> {
+            PantallaCaptura(
+                viewModel {
+                    CapturaViewModel(
+                        contenedor.sesion, contenedor.casos, contenedor.catalogo, contenedor.catalogos,
+                        contenedor.programarEnvio,
+                    )
+                },
+                alVolver = { nav.popBackStack() },
+            )
+        }
+        composable<MisCasos> {
+            PantallaMisCasos(
+                viewModel {
+                    MisCasosViewModel(contenedor.sesion, contenedor.casos, contenedor.catalogo, contenedor.programarEnvio)
+                },
+                alVolver = { nav.popBackStack() },
+            )
+        }
         composable<MiPerfil> {
-            PantallaPerfil(viewModel { PerfilViewModel(contenedor.sesion) }, alVolver = { nav.popBackStack() })
+            PantallaPerfil(
+                viewModel { PerfilViewModel(contenedor.sesion, contenedor.casos) },
+                alVolver = { nav.popBackStack() },
+            )
         }
     }
 

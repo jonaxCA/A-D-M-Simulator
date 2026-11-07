@@ -33,6 +33,9 @@ class Sesion(
         }
     }
 
+    // La cuenta de la sesión, sin red. null si no hay sesión.
+    suspend fun cuenta(): Long? = almacen.cuenta()
+
     // El id de este teléfono en dispositivos (el device_id de los casos), o null si en esta
     // sesión no se ha podido registrar.
     suspend fun dispositivo(): Long? = almacen.dispositivo()
