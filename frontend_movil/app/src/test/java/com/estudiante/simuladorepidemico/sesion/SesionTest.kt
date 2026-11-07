@@ -1,9 +1,7 @@
 package com.estudiante.simuladorepidemico.sesion
 
-import com.estudiante.simuladorepidemico.CifradorDePrueba
-import com.estudiante.simuladorepidemico.Contenedor
 import com.estudiante.simuladorepidemico.ServidorFalso
-import com.estudiante.simuladorepidemico.datosTemporales
+import com.estudiante.simuladorepidemico.contenedorDePrueba
 import com.estudiante.simuladorepidemico.red.Perfil
 import com.estudiante.simuladorepidemico.red.json
 import com.estudiante.simuladorepidemico.red.problema
@@ -23,7 +21,7 @@ import retrofit2.HttpException
 
 class SesionTest {
     private val servidor = ServidorFalso()
-    private val contenedor = Contenedor(datosTemporales(), CifradorDePrueba(), servidor.url)
+    private val contenedor = contenedorDePrueba(servidor)
     private val sesion = contenedor.sesion
 
     @After

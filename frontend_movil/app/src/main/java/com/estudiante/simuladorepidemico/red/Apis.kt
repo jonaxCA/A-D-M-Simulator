@@ -1,6 +1,7 @@
 package com.estudiante.simuladorepidemico.red
 
 import com.estudiante.simuladorepidemico.red.api.AuthApi
+import com.estudiante.simuladorepidemico.red.api.DispositivosApi
 import com.estudiante.simuladorepidemico.red.api.SesionesApi
 import com.estudiante.simuladorepidemico.red.api.UsuariosApi
 import kotlinx.coroutines.Dispatchers
@@ -18,6 +19,7 @@ class Apis(
     suspend fun auth(): AuthApi = crear("auth", sinToken)
     suspend fun sesiones(): SesionesApi = crear("sesiones", conToken)
     suspend fun usuarios(): UsuariosApi = crear("usuarios", conToken)
+    suspend fun dispositivos(): DispositivosApi = crear("dispositivos", conToken)
 
     private suspend inline fun <reified T : Any> crear(servicio: String, cliente: OkHttpClient): T {
         creadas[servicio]?.let { return it as T }

@@ -1,9 +1,7 @@
 package com.estudiante.simuladorepidemico.ui.perfil
 
-import com.estudiante.simuladorepidemico.CifradorDePrueba
-import com.estudiante.simuladorepidemico.Contenedor
 import com.estudiante.simuladorepidemico.ServidorFalso
-import com.estudiante.simuladorepidemico.datosTemporales
+import com.estudiante.simuladorepidemico.contenedorDePrueba
 import com.estudiante.simuladorepidemico.tokens
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -18,13 +16,14 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PerfilViewModelTest {
     private val servidor = ServidorFalso()
-    private val contenedor = Contenedor(datosTemporales(), CifradorDePrueba(), servidor.url)
+    private val contenedor = contenedorDePrueba(servidor)
 
     @Before
     fun principal() {
@@ -53,7 +52,37 @@ class PerfilViewModelTest {
         assertEquals(listOf("CAPTURISTA"), estado.perfil?.roles)
         assertEquals(1_800_000_000L, estado.vence)
         assertNull(estado.error)
+        assertNull(estado.dispositivo)
         assertEquals("Bearer nuevo", servidor.pedidosA("/api/v1/users/me").single().getHeader("Authorization"))
+    }
+
+    @Test
+    fun registra_el_telefono_que_no_quedo_registrado() {
+        val modelo = PerfilViewModel(contenedor.sesion)
+        modelo.espera { !it.cargando }
+
+        modelo.registrarTelefono()
+        modelo.registrarTelefono()
+
+        val estado = modelo.espera { !it.registrando }
+        assertEquals(3L, estado.dispositivo)
+        assertNull(estado.errorTelefono)
+        assertEquals(1, servidor.pedidosA("/api/v1/devices").size)
+        assertEquals(3L, runBlocking { contenedor.sesion.dispositivo() })
+    }
+
+    @Test
+    fun si_no_se_puede_registrar_lo_dice() {
+        servidor.dispositivos = ServidorFalso.problema(503, "SERVICIO_NO_DISPONIBLE")
+        val modelo = PerfilViewModel(contenedor.sesion)
+        modelo.espera { !it.cargando }
+
+        modelo.registrarTelefono()
+
+        val estado = modelo.espera { !it.registrando }
+        assertNull(estado.dispositivo)
+        assertEquals("Detalle de SERVICIO_NO_DISPONIBLE.", estado.errorTelefono)
+        assertTrue(runBlocking { contenedor.sesion.activa.first() })
     }
 
     @Test

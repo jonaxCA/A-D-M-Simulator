@@ -20,13 +20,44 @@ data class PedidoLogin(
     @SerialName("captcha_respuesta") val captchaRespuesta: String,
 )
 
-// El login y el refresh responden lo mismo; el login trae además la cuenta, que se ignora.
+// Lo que responde el refresh, y lo que se guarda cifrado.
 @Serializable
 data class Tokens(
     @SerialName("access_token") val access: String,
     @SerialName("refresh_token") val refresh: String,
     @SerialName("expires_in") val expiraEn: Long,
     @SerialName("sesion_expira") val sesionExpira: Long,
+)
+
+// El login responde los mismos tokens y además la cuenta, de la que basta el id.
+@Serializable
+data class Login(
+    @SerialName("access_token") val access: String,
+    @SerialName("refresh_token") val refresh: String,
+    @SerialName("expires_in") val expiraEn: Long,
+    @SerialName("sesion_expira") val sesionExpira: Long,
+    val usuario: Cuenta,
+) {
+    val tokens: Tokens
+        get() = Tokens(access, refresh, expiraEn, sesionExpira)
+}
+
+@Serializable
+data class Cuenta(val id: Long)
+
+@Serializable
+data class PedidoDispositivo(
+    @SerialName("device_uid") val uid: String,
+    val platform: String,
+    val model: String,
+    @SerialName("app_version") val appVersion: String,
+)
+
+@Serializable
+data class Dispositivo(
+    val id: Long,
+    @SerialName("device_uid") val uid: String,
+    @SerialName("is_revoked") val revocado: Boolean = false,
 )
 
 @Serializable

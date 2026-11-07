@@ -27,27 +27,38 @@ class FichaPerfilTest {
                 estado = estado,
                 alVolver = { acciones += "volver" },
                 alReintentar = { acciones += "reintentar" },
+                alRegistrarTelefono = { acciones += "registrar" },
                 alCerrarSesion = { acciones += "cerrar" },
             )
         }
     }
 
+    private val carla = Perfil(12, "capturista1", "Carla Captura", null, null, listOf("CAPTURISTA"))
+
     @Test
     fun muestra_la_cuenta_y_cierra_la_sesion() {
-        mostrar(
-            EstadoPerfil(
-                cargando = false,
-                perfil = Perfil(12, "capturista1", "Carla Captura", null, null, listOf("CAPTURISTA")),
-            )
-        )
+        mostrar(EstadoPerfil(cargando = false, perfil = carla, dispositivo = 3))
 
         regla.onNodeWithText("Carla Captura").assertIsDisplayed()
         regla.onNodeWithText("Capturista de campo").assertIsDisplayed()
         regla.onNodeWithText("Sin correo").assertIsDisplayed()
+        regla.onNodeWithText("Registrado como dispositivo 3").performScrollTo().assertIsDisplayed()
+        regla.onNodeWithText("Registrar este teléfono").assertDoesNotExist()
         regla.onNodeWithText("Cerrar sesión").performScrollTo().performClick()
         regla.onNodeWithContentDescription("Volver").performClick()
 
         assertEquals(listOf("cerrar", "volver"), acciones)
+    }
+
+    @Test
+    fun sin_registro_del_telefono_deja_registrarlo() {
+        mostrar(EstadoPerfil(cargando = false, perfil = carla, errorTelefono = "Detalle del error."))
+
+        regla.onNodeWithText("Sin registrar").performScrollTo().assertIsDisplayed()
+        regla.onNodeWithText("Detalle del error.").assertIsDisplayed()
+        regla.onNodeWithText("Registrar este teléfono").performScrollTo().performClick()
+
+        assertEquals(listOf("registrar"), acciones)
     }
 
     @Test

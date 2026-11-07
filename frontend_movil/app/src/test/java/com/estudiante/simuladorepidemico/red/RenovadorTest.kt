@@ -1,9 +1,7 @@
 package com.estudiante.simuladorepidemico.red
 
-import com.estudiante.simuladorepidemico.CifradorDePrueba
-import com.estudiante.simuladorepidemico.Contenedor
 import com.estudiante.simuladorepidemico.ServidorFalso
-import com.estudiante.simuladorepidemico.datosTemporales
+import com.estudiante.simuladorepidemico.contenedorDePrueba
 import com.estudiante.simuladorepidemico.tokens
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -21,7 +19,7 @@ import java.util.concurrent.TimeUnit
 
 class RenovadorTest {
     private val servidor = ServidorFalso()
-    private val contenedor = Contenedor(datosTemporales(), CifradorDePrueba(), servidor.url)
+    private val contenedor = contenedorDePrueba(servidor)
 
     @After
     fun apagar() = servidor.apagar()

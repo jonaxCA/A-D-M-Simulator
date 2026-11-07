@@ -12,10 +12,17 @@ import com.estudiante.simuladorepidemico.red.clienteConToken
 import com.estudiante.simuladorepidemico.red.retrofit
 import com.estudiante.simuladorepidemico.sesion.AlmacenSesion
 import com.estudiante.simuladorepidemico.sesion.Cifrador
+import com.estudiante.simuladorepidemico.sesion.DescripcionTelefono
 import com.estudiante.simuladorepidemico.sesion.Sesion
+import com.estudiante.simuladorepidemico.sesion.Telefono
 
 // Las dependencias de la app, armadas a mano.
-class Contenedor(datos: DataStore<Preferences>, cifrador: Cifrador, directorioUrl: String) {
+class Contenedor(
+    datos: DataStore<Preferences>,
+    cifrador: Cifrador,
+    directorioUrl: String,
+    telefono: DescripcionTelefono,
+) {
     val almacen = AlmacenSesion(datos, cifrador)
     private val sinToken = clienteBase()
     private val directorio = Directorio(
@@ -25,5 +32,5 @@ class Contenedor(datos: DataStore<Preferences>, cifrador: Cifrador, directorioUr
         retrofit(directorio.url("sesiones"), sinToken).create(SesionesApi::class.java)
     }
     val apis = Apis(directorio, clienteConToken(sinToken, almacen, renovador), sinToken)
-    val sesion = Sesion(apis, almacen)
+    val sesion = Sesion(apis, almacen, Telefono(datos, apis, telefono))
 }

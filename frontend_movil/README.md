@@ -27,16 +27,16 @@ Dónde va cada cosa dentro de `app/src/main/java/com/estudiante/simuladorepidemi
 |---------|-----------|
 | (raíz) | `MainActivity` (la única Activity), `EpidemiaApp` y `Contenedor`: las dependencias se arman a mano, sin Hilt |
 | `red/` | OkHttp, Retrofit, el directorio de servicios (sección 1), el `Authenticator` que renueva (sección 4) y una interfaz por servicio en `red/api/` |
-| `sesion/` | Tokens, cifrados con una llave del Keystore y guardados en DataStore, y el `device_uid` |
+| `sesion/` | Tokens, cifrados con una llave del Keystore y guardados en DataStore, y el registro del teléfono en `dispositivos` (`Telefono.kt`, sección 6) |
 | `local/` | Room: casos y fotos capturados sin conexión y lotes por enviar |
 | `trabajos/` | WorkManager: enviar lotes, subir fotos y consultar avisos |
-| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio` (provisional), `perfil` y `navegacion`, que decide entre login e inicio según haya sesión y pide el permiso de red local. `ui/Formato.kt` da formato a fechas y roles |
+| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio` (provisional), `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde y pide el permiso de red local. `ui/Formato.kt` da formato a fechas y roles |
 
 `app/src/debug/` lleva lo que solo vale en desarrollo, como el permiso de HTTP sin cifrar
 (sección 2).
 
 Las pruebas unitarias (`app/src/test/`) corren en la PC contra un MockWebServer. Las de
-`app/src/androidTest/` (el Keystore y el formulario de login) necesitan un emulador:
+`app/src/androidTest/` (el Keystore, el formulario de login y Mi perfil) necesitan un emulador:
 `./gradlew connectedDebugAndroidTest`. Dale al emulador 3 GB de RAM o más (Device Manager >
 editar > RAM): con 2 GB, Android 17 mata el proceso de la prueba por falta de memoria y Gradle
 solo dice "Process crashed".
@@ -181,14 +181,27 @@ La app lo hace en `red/Renovador.kt`, un `Authenticator` de OkHttp sincronizado,
 El servicio `dispositivos` (puerto 5223) lleva los teléfonos de cada cuenta, para poder
 revocar uno perdido sin tocar la cuenta.
 
-1. Al instalarse, la app genera un `device_uid` (por ejemplo, un UUID) y lo guarda: es el mismo
-   mientras la app siga instalada. De 8 a 128 letras, números o `. _ : -`.
+1. La app genera un `device_uid` (un UUID) y lo guarda: es el mismo mientras la app siga
+   instalada. De 8 a 128 letras, números o `. _ : -`. Un `device_uid` no puede ser de dos
+   cuentas, así que la app guarda uno por cuenta: en un teléfono compartido, cada quien tiene su
+   registro, en lugar de uno nuevo cada vez que cambia quien entra.
 2. Después de cada inicio de sesión, `POST /api/v1/devices` con `{"device_uid": "...",
    "platform": "android", "model": "...", "app_version": "..."}`. La primera vez responde 201;
    las siguientes, 200, y actualiza la versión y la última conexión. La respuesta trae el `id`:
    ese es el `device_id` de los casos.
 3. Si responde 409, ese `device_uid` es de otra cuenta o está revocado: genera uno nuevo y vuelve
    a registrarte.
+
+La app lo hace en `sesion/Telefono.kt`, antes de pasar del login al inicio. Con la sesión guarda
+el `id` del teléfono y el de la cuenta (`usuario.id` del login), y los dos se borran al cerrarla o
+al perderla. La cuenta se necesita sin red: los casos capturados sin conexión son de quien los
+capturó y solo se mandan con una sesión suya, porque `reported_by` sale del token.
+
+Si `dispositivos` no responde, la sesión se abre igual, sin `id`, y "Mi perfil" ofrece registrar
+el teléfono. En ese reintento la sesión ya estaba abierta, así que un 409 no se resuelve con otro
+`device_uid`: quiere decir que revocaron el teléfono, y la app cierra la sesión. Solo quien vuelva
+a entrar con su contraseña lo registra de nuevo. "Mi perfil" también muestra el número de
+dispositivo, que es el que ADMINISTRADOR revoca si el teléfono se pierde.
 
 Desde que alguien revoca el teléfono (`POST /api/v1/devices/{id}/revoke`, la misma persona o
 ADMINISTRADOR), `casos` responde 409 `CONFLICTO` a sus casos, también dentro de un lote, aunque

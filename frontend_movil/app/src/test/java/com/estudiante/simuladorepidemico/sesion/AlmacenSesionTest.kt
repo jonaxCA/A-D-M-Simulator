@@ -46,4 +46,38 @@ class AlmacenSesionTest {
         assertFalse(almacen.activa.first())
         assertNull(AlmacenSesion(datos, cifrador).tokens())
     }
+
+    // También cuando el Renovador la borra por un token revocado: el id es de esa cuenta.
+    @Test
+    fun el_id_del_telefono_vive_y_muere_con_la_sesion() = runBlocking<Unit> {
+        val almacen = AlmacenSesion(datos, cifrador)
+        almacen.guardarDispositivo(3)
+        assertNull(almacen.dispositivo())
+
+        almacen.guardar(tokens("a1", "r1"))
+        almacen.guardarDispositivo(3)
+        assertEquals(3L, AlmacenSesion(datos, cifrador).dispositivo())
+
+        almacen.borrar()
+        assertNull(almacen.dispositivo())
+    }
+
+    @Test
+    fun abrir_guarda_la_cuenta_y_renovar_no_la_toca() = runBlocking<Unit> {
+        val almacen = AlmacenSesion(datos, cifrador)
+        almacen.abrir(tokens("a1", "r1"), cuenta = 12)
+        almacen.guardarDispositivo(3)
+
+        almacen.guardar(tokens("a2", "r2"))
+        assertEquals(12L, AlmacenSesion(datos, cifrador).cuenta())
+        assertEquals(3L, almacen.dispositivo())
+
+        // Otra sesión no hereda el teléfono de la anterior.
+        almacen.abrir(tokens("b1", "s1"), cuenta = 13)
+        assertEquals(13L, almacen.cuenta())
+        assertNull(almacen.dispositivo())
+
+        almacen.borrar()
+        assertNull(almacen.cuenta())
+    }
 }

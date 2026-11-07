@@ -19,13 +19,16 @@ data class EstadoLogin(
     val cargandoCaptcha: Boolean = false,
     val entrando: Boolean = false,
     val error: String? = null,
+    val dentro: Boolean = false,
 ) {
     val listo: Boolean
         get() = usuario.isNotBlank() && password.isNotEmpty() && respuesta.isNotEmpty() &&
-            pregunta != null && !cargandoCaptcha && !entrando
+            pregunta != null && !cargandoCaptcha && !entrando && !dentro
 }
 
-// Al entrar no navega: la pantalla cambia sola cuando Sesion.activa pasa a true.
+// `dentro` avisa a la pantalla que ya puede pasar al inicio: cuando el login y el registro del
+// teléfono terminaron. Si la navegación siguiera a Sesion.activa, cambiaría de pantalla en
+// cuanto se guardan los tokens y cancelaría el registro a la mitad.
 // El estado es mutableStateOf y no un StateFlow: un TextField necesita que su valor cambie en
 // el momento; con un StateFlow llega un cuadro tarde y al escribir rápido se pierden letras.
 class LoginViewModel(private val sesion: Sesion) : ViewModel() {
@@ -75,7 +78,7 @@ class LoginViewModel(private val sesion: Sesion) : ViewModel() {
         viewModelScope.launch {
             try {
                 sesion.iniciar(datos.usuario.trim(), datos.password, usado, datos.respuesta)
-                estado = estado.copy(password = "", respuesta = "", entrando = false)
+                estado = estado.copy(password = "", respuesta = "", entrando = false, dentro = true)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

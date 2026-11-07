@@ -20,10 +20,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.estudiante.simuladorepidemico.red.Perfil
@@ -38,6 +42,7 @@ fun PantallaPerfil(modelo: PerfilViewModel, alVolver: () -> Unit) {
         estado = modelo.estado,
         alVolver = alVolver,
         alReintentar = modelo::cargar,
+        alRegistrarTelefono = modelo::registrarTelefono,
         alCerrarSesion = modelo::cerrarSesion,
     )
 }
@@ -48,6 +53,7 @@ fun FichaPerfil(
     estado: EstadoPerfil,
     alVolver: () -> Unit,
     alReintentar: () -> Unit,
+    alRegistrarTelefono: () -> Unit,
     alCerrarSesion: () -> Unit,
 ) {
     Scaffold(
@@ -97,6 +103,7 @@ fun FichaPerfil(
                 estado.vence?.let {
                     Dato("La sesión vence", momento(it), "Después hay que volver a iniciar sesión.")
                 }
+                FilaTelefono(estado, alRegistrarTelefono)
                 HorizontalDivider()
                 OutlinedButton(
                     onClick = alCerrarSesion,
@@ -106,6 +113,30 @@ fun FichaPerfil(
                     Text("Cerrar sesión")
                 }
             }
+        }
+    }
+}
+
+// El número es el id en dispositivos: con él, ADMINISTRADOR sabe cuál revocar si se pierde.
+@Composable
+private fun FilaTelefono(estado: EstadoPerfil, alRegistrar: () -> Unit) {
+    val id = estado.dispositivo
+    if (id != null) {
+        Dato("Este teléfono", "Registrado como dispositivo $id")
+        return
+    }
+    Column {
+        Dato("Este teléfono", "Sin registrar", "Hasta registrarlo, los casos no quedan ligados a este teléfono.")
+        estado.errorTelefono?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        TextButton(onClick = alRegistrar, enabled = !estado.registrando) {
+            Text(if (estado.registrando) "Registrando…" else "Registrar este teléfono")
         }
     }
 }
@@ -131,9 +162,11 @@ private fun VistaPerfil() {
                 perfil = Perfil(12, "capturista1", "Carla Captura", "capturista1@ejemplo.mx",
                     "2026-11-06T09:30:00-06:00", listOf("CAPTURISTA")),
                 vence = 1_794_000_000,
+                dispositivo = 3,
             ),
             alVolver = {},
             alReintentar = {},
+            alRegistrarTelefono = {},
             alCerrarSesion = {},
         )
     }

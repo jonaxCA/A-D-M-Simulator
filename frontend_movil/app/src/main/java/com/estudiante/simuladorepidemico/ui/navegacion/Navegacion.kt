@@ -42,20 +42,23 @@ fun Navegacion(contenedor: Contenedor) {
     val nav = rememberNavController()
     val primera = remember { if (conSesion) Inicio else Login }
 
+    // Al cambiar de sesión se vacía la pila: con "atrás" no se regresa al login ni a una pantalla
+    // sin sesión.
+    fun soloEn(destino: Any) = nav.navigate(destino) { popUpTo(nav.graph.id) { inclusive = true } }
+
     NavHost(navController = nav, startDestination = primera) {
-        composable<Login> { PantallaLogin(viewModel { LoginViewModel(contenedor.sesion) }) }
+        composable<Login> {
+            PantallaLogin(viewModel { LoginViewModel(contenedor.sesion) }, alQuedarDentro = { soloEn(Inicio) })
+        }
         composable<Inicio> { PantallaInicio(alAbrirPerfil = { nav.navigate(MiPerfil) }) }
         composable<MiPerfil> {
             PantallaPerfil(viewModel { PerfilViewModel(contenedor.sesion) }, alVolver = { nav.popBackStack() })
         }
     }
 
-    // Iniciar, cerrar o perder la sesión (revocada o vencida) cambia de pantalla y vacía la pila:
-    // con "atrás" no se regresa al login ni a una pantalla sin sesión.
+    // Cerrar o perder la sesión (revocada o vencida) regresa al login desde cualquier pantalla.
+    // Al iniciarla, el login pasa al inicio por su cuenta, cuando también registró el teléfono.
     LaunchedEffect(conSesion) {
-        val destino: Any = if (conSesion) Inicio else Login
-        if (nav.currentDestination?.hasRoute(destino::class) != true) {
-            nav.navigate(destino) { popUpTo(nav.graph.id) { inclusive = true } }
-        }
+        if (!conSesion && nav.currentDestination?.hasRoute(Login::class) != true) soloEn(Login)
     }
 }

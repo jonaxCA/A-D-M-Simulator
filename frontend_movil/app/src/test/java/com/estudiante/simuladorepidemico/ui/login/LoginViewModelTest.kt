@@ -1,9 +1,7 @@
 package com.estudiante.simuladorepidemico.ui.login
 
-import com.estudiante.simuladorepidemico.CifradorDePrueba
-import com.estudiante.simuladorepidemico.Contenedor
 import com.estudiante.simuladorepidemico.ServidorFalso
-import com.estudiante.simuladorepidemico.datosTemporales
+import com.estudiante.simuladorepidemico.contenedorDePrueba
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -24,7 +22,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
     private val servidor = ServidorFalso()
-    private val contenedor = Contenedor(datosTemporales(), CifradorDePrueba(), servidor.url)
+    private val contenedor = contenedorDePrueba(servidor)
 
     @Before
     fun principal() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -60,14 +58,17 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun entrar_inicia_la_sesion_con_el_captcha_y_olvida_la_contrasena() {
+    fun entrar_inicia_la_sesion_registra_el_telefono_y_olvida_la_contrasena() {
         val modelo = LoginViewModel(contenedor.sesion)
         llenar(modelo)
 
         modelo.entrar()
 
-        assertTrue(runBlocking { withTimeout(5_000) { contenedor.sesion.activa.first { it } } })
-        val estado = modelo.espera { !it.entrando }
+        val estado = modelo.espera { it.dentro }
+        assertTrue(runBlocking { contenedor.sesion.activa.first() })
+        assertEquals(3L, runBlocking { contenedor.sesion.dispositivo() })
+        assertFalse(estado.entrando)
+        assertFalse(estado.listo)
         assertEquals("", estado.password)
         assertNull(estado.error)
         val cuerpo = servidor.pedidosA("/api/v1/auth/login").single().body.readUtf8()
@@ -88,6 +89,7 @@ class LoginViewModelTest {
         assertEquals("", estado.respuesta)
         assertEquals("karla", estado.usuario.trim())
         assertEquals(2, servidor.pedidosA("/api/v1/auth/captcha").size)
+        assertFalse(estado.dentro)
         assertFalse(runBlocking { contenedor.sesion.activa.first() })
     }
 
