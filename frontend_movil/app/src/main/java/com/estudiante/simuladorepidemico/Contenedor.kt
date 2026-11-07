@@ -1,0 +1,29 @@
+package com.estudiante.simuladorepidemico
+
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import com.estudiante.simuladorepidemico.red.Apis
+import com.estudiante.simuladorepidemico.red.Directorio
+import com.estudiante.simuladorepidemico.red.Renovador
+import com.estudiante.simuladorepidemico.red.api.EstadoServiciosApi
+import com.estudiante.simuladorepidemico.red.api.SesionesApi
+import com.estudiante.simuladorepidemico.red.clienteBase
+import com.estudiante.simuladorepidemico.red.clienteConToken
+import com.estudiante.simuladorepidemico.red.retrofit
+import com.estudiante.simuladorepidemico.sesion.AlmacenSesion
+import com.estudiante.simuladorepidemico.sesion.Cifrador
+import com.estudiante.simuladorepidemico.sesion.Sesion
+
+// Las dependencias de la app, armadas a mano.
+class Contenedor(datos: DataStore<Preferences>, cifrador: Cifrador, directorioUrl: String) {
+    val almacen = AlmacenSesion(datos, cifrador)
+    private val sinToken = clienteBase()
+    private val directorio = Directorio(
+        retrofit(directorioUrl.trimEnd('/') + "/", sinToken).create(EstadoServiciosApi::class.java)
+    )
+    private val renovador = Renovador(almacen) {
+        retrofit(directorio.url("sesiones"), sinToken).create(SesionesApi::class.java)
+    }
+    val apis = Apis(directorio, clienteConToken(sinToken, almacen, renovador), sinToken)
+    val sesion = Sesion(apis, almacen)
+}

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solo en debug: los servicios corren sin TLS en la PC y su IP cambia según la red, así que se
+     permite HTTP a cualquier host. La versión de release no trae este archivo: solo HTTPS. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

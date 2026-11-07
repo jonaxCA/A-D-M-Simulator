@@ -6,6 +6,41 @@ los servicios, cómo dejar pasar HTTP en desarrollo, con qué cuenta entrar y c�
 sesión sin cerrarla por accidente. Los contratos de cada servicio están en `docs/contratos/` y
 el catálogo en `docs/arquitectura/microservicios.md`.
 
+## El proyecto
+
+Es un proyecto de Android Studio en esta misma carpeta: abre `frontend_movil/` con *File > Open*,
+no la raíz del repositorio. Kotlin con Jetpack Compose, un solo módulo `app` y el paquete
+`com.estudiante.simuladorepidemico`. Las versiones de todas las librerías están en
+`gradle/libs.versions.toml`.
+
+Gradle pide el JDK 25, que es el que trae Android Studio. Desde una consola, apunta `JAVA_HOME`
+a la carpeta `jbr` de Android Studio y corre:
+
+```bash
+cd frontend_movil
+./gradlew assembleDebug testDebugUnitTest
+```
+
+Dónde va cada cosa dentro de `app/src/main/java/com/estudiante/simuladorepidemico/`:
+
+| Paquete | Qué lleva |
+|---------|-----------|
+| (raíz) | `MainActivity` (la única Activity), `EpidemiaApp` y `Contenedor`: las dependencias se arman a mano, sin Hilt |
+| `red/` | OkHttp, Retrofit, el directorio de servicios (sección 1), el `Authenticator` que renueva (sección 4) y una interfaz por servicio en `red/api/` |
+| `sesion/` | Tokens, cifrados con una llave del Keystore y guardados en DataStore, y el `device_uid` |
+| `local/` | Room: casos y fotos capturados sin conexión y lotes por enviar |
+| `trabajos/` | WorkManager: enviar lotes, subir fotos y consultar avisos |
+| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio` (provisional), `perfil` y `navegacion`, que decide entre login e inicio según haya sesión y pide el permiso de red local. `ui/Formato.kt` da formato a fechas y roles |
+
+`app/src/debug/` lleva lo que solo vale en desarrollo, como el permiso de HTTP sin cifrar
+(sección 2).
+
+Las pruebas unitarias (`app/src/test/`) corren en la PC contra un MockWebServer. Las de
+`app/src/androidTest/` (el Keystore y el formulario de login) necesitan un emulador:
+`./gradlew connectedDebugAndroidTest`. Dale al emulador 3 GB de RAM o más (Device Manager >
+editar > RAM): con 2 GB, Android 17 mata el proceso de la prueba por falta de memoria y Gradle
+solo dice "Process crashed".
+
 Antes de probar, levanta el compose en la PC (`docs/INSTALACION.md`):
 
 ```bash
@@ -43,38 +78,37 @@ deje entrar los puertos de los servicios. En una consola de administrador:
 New-NetFirewallRule -DisplayName "EPIDEMIA servicios" -Direction Inbound -Protocol TCP -LocalPort 5201-5262 -Profile Private -Action Allow
 ```
 
+### Permiso de red local (Android 17)
+
+Desde Android 17, una app no se conecta a direcciones de la red local (`10.x`, `192.168.x`,
+`172.16-31.x`) sin el permiso `ACCESS_LOCAL_NETWORK`, y los servicios están justo ahí: en la PC,
+o en `10.0.2.2` desde el emulador. Sin el permiso, la conexión no falla al momento: se queda
+esperando hasta que se agota el tiempo, así que parece un problema de red.
+
+La app lo declara en el manifiesto y lo pide al abrirse (`ui/navegacion/PermisoRedLocal.kt`)
+antes de mostrar el login. El sistema lo presenta como permiso de dispositivos cercanos. Si se
+niega, la pantalla ofrece abrir los Ajustes de la app. En Android 16 o anterior no se pide.
+
 ## 2. HTTP sin cifrar en desarrollo
 
 Desde Android 9 la app no puede hacer peticiones `http://` salvo que lo permita su configuración
 de seguridad de red. Los servicios corren sin TLS en la PC, así que en desarrollo hay que
-permitirlo, y solo para las direcciones de la PC.
+permitirlo.
 
-Ponlo en el *source set* de debug, así la versión de release sigue sin permitir HTTP:
+Eso está en el *source set* de debug (`app/src/debug/AndroidManifest.xml` y
+`app/src/debug/res/xml/network_security_config.xml`), así que la versión de release sigue sin
+permitir HTTP. Como la IP de la PC cambia según la red y no acepta comodines, en debug se
+permite HTTP hacia cualquier dirección.
 
-`app/src/debug/res/xml/network_security_config.xml`
+La app empieza por el directorio, que por omisión busca en `http://10.0.2.2:5262/` (el
+emulador). Para un celular, agrega a tu `~/.gradle/gradle.properties`, que no está en el
+repositorio:
 
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <!-- El emulador ve a la PC en 10.0.2.2 -->
-        <domain includeSubdomains="false">10.0.2.2</domain>
-        <domain includeSubdomains="false">localhost</domain>
-        <!-- La IP de la PC en la red local, para probar en un celular -->
-        <domain includeSubdomains="false">192.168.1.20</domain>
-    </domain-config>
-</network-security-config>
+```properties
+epidemia.directorio=http://192.168.1.20:5262/
 ```
 
-`app/src/debug/AndroidManifest.xml`
-
-```xml
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:networkSecurityConfig="@xml/network_security_config" />
-</manifest>
-```
-
-Las IP no aceptan comodines: cambia `192.168.1.20` por la IP real de la PC.
+Cambia `192.168.1.20` por la IP de tu PC.
 
 ## 3. Cuenta de prueba e inicio de sesión
 
@@ -95,9 +129,13 @@ El inicio de sesión lleva captcha, que la app muestra y la persona contesta:
 3. La respuesta trae `access_token` (20 minutos, `expires_in`), `refresh_token` y la cuenta.
 
 Cada petición protegida lleva `Authorization: Bearer <access_token>`. Guarda el refresh cifrado
-(EncryptedSharedPreferences o Keystore), nunca en texto plano. La sesión dura 8 horas desde el
+(la app lo hace con una llave del Keystore, en `sesion/`), nunca en texto plano. La sesión dura 8 horas desde el
 inicio de sesión y renovarla no la alarga: después hay que volver a entrar. Para salir,
 `POST /api/v1/sessions/logout` (en `sesiones`) y borra lo guardado.
+
+Para la pantalla de perfil, `GET /api/v1/users/me` (en `usuarios`) devuelve la cuenta del token:
+nombre, usuario, correo, roles y último acceso. Sirve con cualquiera de los cuatro roles. La app
+lo muestra en "Mi perfil", con la hora a la que vence la sesión (`sesion_expira` del login).
 
 ## 4. Renovar el access: una sola renovación a la vez
 
@@ -116,31 +154,13 @@ renuevan con el mismo refresh; la segunda cierra la sesión. Para evitarlo:
   el refresh viejo guardado.
 - La llamada a `/sessions/refresh` no pasa por el mismo interceptor que renueva.
 
-Con OkHttp, la forma natural es un `Authenticator` sincronizado (esquema, no código probado):
+La app lo hace en `red/Renovador.kt`, un `Authenticator` de OkHttp sincronizado, y
+`RenovadorTest` lo prueba con cinco peticiones que vencen a la vez. Dos detalles más:
 
-```kotlin
-class Renovador(private val almacen: AlmacenSesion, private val sesiones: ApiSesiones) : Authenticator {
-    private val candado = Any()
-
-    override fun authenticate(route: Route?, response: Response): Request? {
-        if (response.priorResponse != null) return null          // ya se reintentó una vez
-        val usado = response.request.header("Authorization")?.removePrefix("Bearer ") ?: return null
-        synchronized(candado) {
-            val actual = almacen.access()
-            if (actual != null && actual != usado) {               // otra petición ya renovó
-                return response.request.newBuilder().header("Authorization", "Bearer $actual").build()
-            }
-            val par = sesiones.renovar(almacen.refresh() ?: return null)   // cliente sin este Authenticator
-                ?: run { almacen.borrar(); return null }                  // 401: a iniciar sesión
-            almacen.guardar(par.access, par.refresh)
-            return response.request.newBuilder().header("Authorization", "Bearer ${par.access}").build()
-        }
-    }
-}
-```
-
-`Authenticator` se llama con cualquier 401; antes de renovar, revisa que el `codigo` del cuerpo
-sea `TOKEN_EXPIRADO`.
+- La renovación es una llamada síncrona (`Call.execute()`), no `suspend`. Si se encolara en el
+  despachador de OkHttp mientras las peticiones vencidas lo ocupan, se quedaría esperando.
+- Si el 401 llegó con un access que ya no es el guardado (otra petición renovó, o se volvió a
+  iniciar sesión), reintenta con el guardado sin renovar ni borrar nada.
 
 ## 5. Captura sin conexión y sincronización
 

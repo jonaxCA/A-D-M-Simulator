@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 o anterior. La sesión no se respalda: su llave del Keystore no viaja con ella. -->
+<full-backup-content>
+    <exclude domain="file" path="datastore/sesion.preferences_pb" />
+</full-backup-content>
