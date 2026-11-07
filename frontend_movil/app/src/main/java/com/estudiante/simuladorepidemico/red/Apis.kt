@@ -8,6 +8,7 @@ import com.estudiante.simuladorepidemico.red.api.RegionesApi
 import com.estudiante.simuladorepidemico.red.api.SesionesApi
 import com.estudiante.simuladorepidemico.red.api.SincronizacionApi
 import com.estudiante.simuladorepidemico.red.api.UsuariosApi
+import com.estudiante.simuladorepidemico.red.api.VacunasApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -26,6 +27,7 @@ class Apis(
     suspend fun dispositivos(): DispositivosApi = crear("dispositivos", conToken)
     suspend fun sincronizacion(): SincronizacionApi = crear("sincronizacion", conToken)
     suspend fun evidencias(): EvidenciasApi = crear("evidencias", conToken)
+    suspend fun vacunas(): VacunasApi = crear("vacunas", conToken)
     suspend fun enfermedades(): EnfermedadesApi = crear("enfermedades", sinToken)
     suspend fun regiones(): RegionesApi = crear("regiones", sinToken)
 

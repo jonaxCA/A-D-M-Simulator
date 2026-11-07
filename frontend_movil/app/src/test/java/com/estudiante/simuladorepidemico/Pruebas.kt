@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -22,6 +23,7 @@ import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
+import okhttp3.mockwebserver.SocketPolicy
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
@@ -100,6 +102,48 @@ class ServidorFalso : Dispatcher() {
     // evidencias: responde 201 con un id nuevo, o `evidencia` si está puesto.
     @Volatile var evidencia: MockResponse? = null
     private val siguienteEvidencia = AtomicLong(12)
+
+    // vacunas, como el servicio: un lote por código; aplicar nunca pasa de las que quedan ni a uno
+    // caducado. Con `cortarDosis`, aplica y corta la conexión sin responder.
+    class LoteFalso(val id: Long, val codigo: String, val total: Int, var usadas: Int = 0, val vencido: Boolean = false)
+
+    val lotesVacuna = ConcurrentHashMap<String, LoteFalso>()
+    private val siguienteLote = AtomicLong(5)
+    @Volatile var cortarDosis = false
+
+    fun nuevoLote(codigo: String, total: Int, usadas: Int = 0, vencido: Boolean = false) =
+        LoteFalso(siguienteLote.getAndIncrement(), codigo, total, usadas, vencido).also { lotesVacuna[codigo] = it }
+
+    private fun json(lote: LoteFalso) =
+        """{"id":${lote.id},"lot_code":"${lote.codigo}","manufacturer":"Pfizer","disease_id":1,"disease_name":"Influenza A","region_id":null,"region_name":null,"doses_total":${lote.total},"doses_used":${lote.usadas},"doses_remaining":${lote.total - lote.usadas},"expires_on":"2027-03-31","vencido":${lote.vencido}}"""
+
+    private fun vacunas(pedido: RecordedRequest, ruta: String): MockResponse? {
+        fun porId(id: String) = lotesVacuna.values.firstOrNull { it.id == id.toLong() }
+        DOSIS.matchEntire(ruta)?.let { m ->
+            val lote = porId(m.groupValues[1]) ?: return problema(404, "NO_ENCONTRADO")
+            val dosis = json.parseToJsonElement(pedido.body.clone().readUtf8()).jsonObject["doses"]!!.jsonPrimitive.int
+            synchronized(lote) {
+                if (lote.vencido || lote.usadas + dosis > lote.total) return problema(409, "CONFLICTO")
+                lote.usadas += dosis
+            }
+            return if (cortarDosis) MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
+            else respuesta(200, json(lote))
+        }
+        UN_LOTE.matchEntire(ruta)?.let { m ->
+            return porId(m.groupValues[1])?.let { respuesta(200, json(it)) } ?: problema(404, "NO_ENCONTRADO")
+        }
+        if (ruta != "/api/v1/vaccine-lots") return null
+        if (pedido.method == "GET") {
+            val codigo = pedido.requestUrl!!.queryParameter("lot_code")
+            val lista = lotesVacuna.values.filter { codigo == null || it.codigo == codigo }
+            return respuesta(200, lista.joinToString(",", "{\"total\":${lista.size},\"lotes\":[", "]}") { json(it) })
+        }
+        val cuerpo = json.parseToJsonElement(pedido.body.clone().readUtf8()).jsonObject
+        val codigo = cuerpo["lot_code"]!!.jsonPrimitive.content
+        val total = cuerpo["doses_total"]!!.jsonPrimitive.int
+        lotesVacuna[codigo]?.let { ya -> return if (ya.total == total) respuesta(200, json(ya)) else problema(409, "CONFLICTO") }
+        return respuesta(201, json(nuevoLote(codigo, total)))
+    }
 
     // Las subidas a evidencias: el case_id de la ruta y el pedido.
     fun subidas(): List<Pair<Long, RecordedRequest>> = pedidos.mapNotNull { pedido ->
@@ -181,6 +225,7 @@ class ServidorFalso : Dispatcher() {
 
     override fun dispatch(request: RecordedRequest): MockResponse {
         pedidos += request
+        vacunas(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
         SUBIDA.matchEntire(request.path.orEmpty().substringBefore('?'))?.let { ruta ->
             return evidencia ?: respuesta(
                 201,
@@ -217,6 +262,7 @@ class ServidorFalso : Dispatcher() {
         val base = url.trimEnd('/')
         return listOf(
             "auth", "sesiones", "usuarios", "dispositivos", "sincronizacion", "enfermedades", "regiones", "evidencias",
+            "vacunas",
         ).joinToString(",", "{\"servicios\":[", "]}") {
             "{\"nombre\":\"$it\",\"dominio\":\"prueba\",\"puerto\":1,\"url\":\"$base\"}"
         }
@@ -224,6 +270,8 @@ class ServidorFalso : Dispatcher() {
 
     companion object {
         private val SUBIDA = Regex("/api/v1/cases/(\\d+)/attachments")
+        private val UN_LOTE = Regex("/api/v1/vaccine-lots/(\\d+)")
+        private val DOSIS = Regex("/api/v1/vaccine-lots/(\\d+)/doses")
 
         const val PERFIL = """{"id":12,"username":"capturista1","email":"c@ejemplo.mx","full_name":"Carla Captura","is_active":true,"last_login_at":null,"created_at":"2026-09-01T10:00:00-06:00","role_id":4,"roles":["CAPTURISTA"]}"""
 

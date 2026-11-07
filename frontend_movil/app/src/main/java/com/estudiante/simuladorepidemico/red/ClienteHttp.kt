@@ -18,7 +18,13 @@ val json = Json {
 }
 
 // Los servicios responden XML si no se les pide JSON.
+// Sin los reintentos silenciosos de OkHttp: si la respuesta se corta en una conexión reusada,
+// OkHttp vuelve a mandar el POST, y hay dos que no aguantan llegar dos veces. Aplicar dosis
+// descontaría de más (VacunasViewModelTest lo prueba) y un refresh reusado cierra la sesión entera
+// (README, sección 4). Lo que sí se puede reintentar lo reintenta la app sabiendo que no duplica
+// (el mismo lote, la misma foto).
 fun clienteBase(): OkHttpClient = OkHttpClient.Builder()
+    .retryOnConnectionFailure(false)
     .addInterceptor { cadena ->
         cadena.proceed(cadena.request().newBuilder().header("Accept", "application/json").build())
     }

@@ -31,7 +31,7 @@ Dónde va cada cosa dentro de `app/src/main/java/com/estudiante/simuladorepidemi
 | `ubicacion/` | La lectura del GPS para un caso (`Ubicador`), con Google Play services |
 | `local/` | Room (`epidemia.db`): los casos capturados, sus fotos por subir y los catálogos de enfermedades y municipios (secciones 5 y 7), y los archivos de las fotos (`Fotos.kt`). El esquema de cada versión queda en `app/schemas/` |
 | `trabajos/` | El `Sincronizador`, que manda los casos en lotes y sube sus fotos, y `TrabajoSincronizar`, que WorkManager corre cuando hay red. Después, consultar avisos |
-| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio`, `casos` (Capturar caso y Mis casos), `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde y pide el permiso de red local. `ui/Formato.kt` da formato a fechas, roles y los valores de un caso |
+| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio`, `casos` (Capturar caso y Mis casos, con sus fotos), `vacunas` (lectura del QR, registro del lote y aplicación de dosis), `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde y pide el permiso de red local. `ui/Formato.kt` da formato a fechas, roles y los valores de un caso, y `ui/Campos.kt` tiene los campos que comparten los formularios |
 
 `app/src/debug/` lleva lo que solo vale en desarrollo, como el permiso de HTTP sin cifrar
 (sección 2).
@@ -263,9 +263,10 @@ El servicio `evidencias` (puerto 5224) guarda fotos (JPEG, PNG o WebP) y PDF de 
 ### Cómo lo hace la app
 
 - En Capturar caso, "Tomar foto" abre la app de cámara del teléfono y "De la galería", el
-  selector de fotos del sistema. Ninguno de los dos pide permisos: la cámara escribe en un archivo
-  de la app con un permiso de una sola vez (`FileProvider`, `res/xml/rutas_fotos.xml`). Hasta
-  cinco fotos por caso.
+  selector de fotos del sistema. La cámara escribe en un archivo de la app con un permiso de una
+  sola vez (`FileProvider`, `res/xml/rutas_fotos.xml`). Como el manifiesto declara `CAMERA` (para
+  los QR de la sección 8), Android exige ese permiso también para abrir la app de cámara: se pide
+  antes de la primera foto. La galería no pide nada. Hasta cinco fotos por caso.
 - Cada foto se reduce a 1600 px por lado, se endereza según su EXIF y se guarda como JPEG nuevo,
   sin EXIF: así no viaja la ubicación GPS que algunas cámaras guardan en el archivo. La foto
   completa de la cámara se borra en cuanto se reduce.
@@ -291,6 +292,23 @@ El servicio `vacunas` (puerto 5225) lleva los lotes que la app lee por QR o cód
 
 Aplicar dosis necesita conexión: el servidor es quien garantiza que nunca se apliquen más dosis
 de las que trae el lote.
+
+### Cómo lo hace la app
+
+- "Lotes de vacuna", en el inicio, abre la cámara trasera (CameraX) y ML Kit lee QR, Data Matrix,
+  Code 128, Code 39 y EAN-13 con el modelo dentro de la app (`ui/vacunas/Escaner.kt`). El permiso
+  de cámara se pide al entrar; sin él, o si la cámara no lee la etiqueta, el código se escribe a
+  mano. Antes de buscarlo, la app revisa que sea como lo pide `vacunas`: de 1 a 60 caracteres
+  visibles, sin espacios.
+- Si el lote existe, muestra la enfermedad, el fabricante, el municipio, cuántas dosis quedan y
+  la caducidad, y deja aplicar de 1 hasta las que quedan (máximo 1,000 por vez). Un lote caducado
+  o sin dosis no ofrece aplicar. Si no existe, pide los datos de la caja y lo registra; si
+  alguien lo registró distinto mientras tanto (409), muestra el suyo.
+- Aplicar dosis no se reintenta: si la respuesta no llega, no se sabe si el servidor ya las
+  descontó, así que la app lo dice y vuelve a consultar el lote. Por lo mismo, el cliente HTTP de
+  la app no reintenta solo (`retryOnConnectionFailure(false)` en `red/ClienteHttp.kt`): OkHttp
+  volvía a mandar el POST cuando la respuesta se cortaba en una conexión reusada.
+- Sin red, la pantalla lo dice: consultar lotes y aplicar dosis necesita conexión.
 
 ## 9. Avisos
 

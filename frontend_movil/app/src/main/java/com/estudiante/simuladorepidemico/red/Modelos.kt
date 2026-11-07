@@ -131,6 +131,38 @@ data class Evidencia(
     @SerialName("size_bytes") val tamano: Long = 0,
 )
 
+@Serializable
+data class LoteVacuna(
+    val id: Long,
+    @SerialName("lot_code") val codigo: String,
+    @SerialName("manufacturer") val fabricante: String? = null,
+    @SerialName("disease_id") val enfermedad: Long,
+    @SerialName("disease_name") val nombreEnfermedad: String? = null,
+    @SerialName("region_id") val municipio: Long? = null,
+    @SerialName("region_name") val nombreMunicipio: String? = null,
+    @SerialName("doses_total") val dosisTotales: Int,
+    @SerialName("doses_used") val dosisUsadas: Int,
+    @SerialName("doses_remaining") val dosisRestantes: Int,
+    @SerialName("expires_on") val caducidad: String? = null,
+    val vencido: Boolean = false,
+)
+
+@Serializable
+data class ListaLotesVacuna(val total: Int, val lotes: List<LoteVacuna>)
+
+@Serializable
+data class PedidoLoteVacuna(
+    @SerialName("lot_code") val codigo: String,
+    @SerialName("disease_id") val enfermedad: Long,
+    @SerialName("doses_total") val dosisTotales: Int,
+    @SerialName("manufacturer") val fabricante: String? = null,
+    @SerialName("region_id") val municipio: Long? = null,
+    @SerialName("expires_on") val caducidad: String? = null,
+)
+
+@Serializable
+data class PedidoDosis(val doses: Int)
+
 // RFC 7807, como lo arma epidemia_comun.errores.
 @Serializable
 data class Problema(val status: Int = 0, val detail: String = "", val codigo: String = "")

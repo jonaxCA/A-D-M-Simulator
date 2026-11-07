@@ -15,8 +15,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,17 +35,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,13 +46,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -89,18 +78,17 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.estudiante.simuladorepidemico.local.Enfermedad
 import com.estudiante.simuladorepidemico.local.Municipio
+import com.estudiante.simuladorepidemico.ui.CampoFecha
 import com.estudiante.simuladorepidemico.ui.RESULTADOS_DE_PRUEBA
 import com.estudiante.simuladorepidemico.ui.SEVERIDADES
 import com.estudiante.simuladorepidemico.ui.SEXOS
-import com.estudiante.simuladorepidemico.ui.fecha
+import com.estudiante.simuladorepidemico.ui.Selector
 import com.estudiante.simuladorepidemico.ui.tema.TemaEpidemia
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -144,13 +132,30 @@ fun PantallaCaptura(modelo: CapturaViewModel, alVolver: () -> Unit) {
             else -> modelo.sinPermisoDeUbicacion()
         }
     }
-    // La app de cámara escribe en un archivo nuestro (FileProvider); sin permiso CAMERA. La ruta
-    // sobrevive si Android cierra esta pantalla mientras la cámara está abierta.
+    // La app de cámara escribe en un archivo nuestro (FileProvider). La ruta sobrevive si Android
+    // cierra esta pantalla mientras la cámara está abierta.
     var enCamara by rememberSaveable { mutableStateOf<String?>(null) }
     val tomarFoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { tomada ->
         val archivo = enCamara?.let(::File) ?: return@rememberLauncherForActivityResult
         enCamara = null
         if (tomada && archivo.length() > 0) modelo.agregarDeCamara(archivo) else archivo.delete()
+    }
+    fun abrirCamara() {
+        val archivo = modelo.archivoParaLaCamara()
+        enCamara = archivo.path
+        try {
+            tomarFoto.launch(FileProvider.getUriForFile(contexto, "${contexto.packageName}.fotos", archivo))
+        } catch (e: ActivityNotFoundException) {
+            enCamara = null
+            archivo.delete()
+            modelo.errorDeFoto("Este teléfono no tiene app de cámara. Elige la foto de la galería.")
+        }
+    }
+    // El manifiesto declara CAMERA (para leer los QR de los lotes), y entonces Android no deja abrir
+    // la app de cámara sin ese permiso: se pide antes de la primera foto.
+    val pedirCamara = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { dado ->
+        if (dado) abrirCamara()
+        else modelo.errorDeFoto("Sin permiso de cámara. Elige la foto de la galería, o da el permiso en Ajustes.")
     }
     val elegirFoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
@@ -186,15 +191,7 @@ fun PantallaCaptura(modelo: CapturaViewModel, alVolver: () -> Unit) {
                 )
             },
             tomarFoto = {
-                val archivo = modelo.archivoParaLaCamara()
-                enCamara = archivo.path
-                try {
-                    tomarFoto.launch(FileProvider.getUriForFile(contexto, "${contexto.packageName}.fotos", archivo))
-                } catch (e: ActivityNotFoundException) {
-                    enCamara = null
-                    archivo.delete()
-                    modelo.errorDeFoto("Este teléfono no tiene app de cámara. Elige la foto de la galería.")
-                }
+                if (tiene(contexto, Manifest.permission.CAMERA)) abrirCamara() else pedirCamara.launch(Manifest.permission.CAMERA)
             },
             elegirFoto = { elegirFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             quitarFoto = modelo::quitarFoto,
@@ -248,10 +245,10 @@ fun FormularioCaso(estado: EstadoCaptura, hoy: LocalDate, acciones: AccionesCapt
                 elegido = estado.municipio,
                 alElegir = acciones.elegirMunicipio,
             )
-            CampoFecha("Fecha de reporte", estado.fechaReporte, hoy, acciones.cambiarFechaReporte)
+            CampoFecha("Fecha de reporte", estado.fechaReporte, acciones.cambiarFechaReporte, inicial = hoy, hasta = hoy)
             CampoFecha(
-                "Inicio de síntomas (opcional)", estado.inicioSintomas, hoy, acciones.cambiarInicioSintomas,
-                alQuitar = { acciones.cambiarInicioSintomas(null) },
+                "Inicio de síntomas (opcional)", estado.inicioSintomas, acciones.cambiarInicioSintomas,
+                inicial = hoy, hasta = hoy, alQuitar = { acciones.cambiarInicioSintomas(null) },
             )
             val foco = LocalFocusManager.current
             OutlinedTextField(
@@ -437,100 +434,6 @@ private fun SinCatalogos(estado: EstadoCaptura, alDescargar: () -> Unit) {
         Text(if (estado.descargando) "Descargando…" else "Descargar catálogos")
     }
 }
-
-// Con alQuitar, la primera opción deja el campo sin valor.
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun <T> Selector(
-    etiqueta: String,
-    opciones: List<Pair<T, String>>,
-    elegido: T?,
-    alElegir: (T) -> Unit,
-    alQuitar: (() -> Unit)? = null,
-) {
-    var abierto by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = abierto, onExpandedChange = { abierto = it }) {
-        OutlinedTextField(
-            value = opciones.firstOrNull { it.first == elegido }?.second ?: "",
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(etiqueta) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = abierto) },
-            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-        )
-        ExposedDropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
-            if (alQuitar != null) {
-                DropdownMenuItem(text = { Text("Sin especificar") }, onClick = { alQuitar(); abierto = false })
-            }
-            opciones.forEach { (valor, nombre) ->
-                DropdownMenuItem(text = { Text(nombre) }, onClick = { alElegir(valor); abierto = false })
-            }
-        }
-    }
-}
-
-// Solo fechas hasta hoy: casos rechaza las futuras.
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CampoFecha(
-    etiqueta: String,
-    dia: LocalDate?,
-    hoy: LocalDate,
-    alElegir: (LocalDate) -> Unit,
-    alQuitar: (() -> Unit)? = null,
-) {
-    var abierto by remember { mutableStateOf(false) }
-    // El campo es de solo lectura: tocarlo abre el calendario. Con lector de pantalla, el botón
-    // del calendario hace lo mismo y el campo se sigue leyendo.
-    val toques = remember { MutableInteractionSource() }
-    LaunchedEffect(toques) {
-        toques.interactions.collect { if (it is PressInteraction.Release) abierto = true }
-    }
-    OutlinedTextField(
-        value = dia?.let { fecha(it) } ?: "",
-        onValueChange = {},
-        readOnly = true,
-        label = { Text(etiqueta) },
-        trailingIcon = {
-            IconButton(onClick = { abierto = true }) {
-                Icon(Icons.Filled.DateRange, contentDescription = "Elegir ${etiqueta.lowercase()}")
-            }
-        },
-        interactionSource = toques,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    if (!abierto) return
-    val limite = hoy.enMilisegundos()
-    val calendario = rememberDatePickerState(
-        initialSelectedDateMillis = (dia ?: hoy).enMilisegundos(),
-        selectableDates = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= limite
-        },
-    )
-    DatePickerDialog(
-        onDismissRequest = { abierto = false },
-        confirmButton = {
-            TextButton(onClick = {
-                calendario.selectedDateMillis?.let { alElegir(it.enDia()) }
-                abierto = false
-            }) { Text("Aceptar") }
-        },
-        dismissButton = {
-            Row {
-                if (alQuitar != null && dia != null) {
-                    TextButton(onClick = { alQuitar(); abierto = false }) { Text("Quitar") }
-                }
-                TextButton(onClick = { abierto = false }) { Text("Cancelar") }
-            }
-        },
-    ) {
-        DatePicker(state = calendario)
-    }
-}
-
-// El calendario de Material trabaja en milisegundos UTC a medianoche.
-private fun LocalDate.enMilisegundos() = atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-private fun Long.enDia(): LocalDate = Instant.ofEpochMilli(this).atOffset(ZoneOffset.UTC).toLocalDate()
 
 @Preview(showBackground = true)
 @Composable

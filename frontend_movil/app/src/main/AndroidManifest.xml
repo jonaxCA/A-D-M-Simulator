@@ -9,6 +9,11 @@
          persona puede dar solo la aproximada. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Para leer el QR o el código de barras de un lote de vacuna. Al declararlo, Android también
+         lo exige para abrir la app de cámara ("Tomar foto"): la app lo pide antes. Sin cámara la
+         app se instala igual: el código se puede escribir y la foto, elegir de la galería. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
     <application
         android:name=".EpidemiaApp"
@@ -31,7 +36,7 @@
             </intent-filter>
         </activity>
         <!-- Para "Tomar foto": la app de cámara escribe la foto en fotos/camara/ con un permiso
-             de una sola vez. Sin permiso CAMERA: la toma la app de cámara, no esta. -->
+             de una sola vez. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fotos"

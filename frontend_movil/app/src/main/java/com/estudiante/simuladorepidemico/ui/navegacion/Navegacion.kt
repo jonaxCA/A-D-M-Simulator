@@ -26,6 +26,8 @@ import com.estudiante.simuladorepidemico.ui.login.LoginViewModel
 import com.estudiante.simuladorepidemico.ui.login.PantallaLogin
 import com.estudiante.simuladorepidemico.ui.perfil.PantallaPerfil
 import com.estudiante.simuladorepidemico.ui.perfil.PerfilViewModel
+import com.estudiante.simuladorepidemico.ui.vacunas.PantallaVacunas
+import com.estudiante.simuladorepidemico.ui.vacunas.VacunasViewModel
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -42,6 +44,9 @@ object Captura
 
 @Serializable
 object MisCasos
+
+@Serializable
+object Vacunas
 
 @Composable
 fun Navegacion(contenedor: Contenedor) {
@@ -68,6 +73,7 @@ fun Navegacion(contenedor: Contenedor) {
                 },
                 alCapturar = { nav.navigate(Captura) },
                 alVerCasos = { nav.navigate(MisCasos) },
+                alVerLotes = { nav.navigate(Vacunas) },
                 alAbrirPerfil = { nav.navigate(MiPerfil) },
             )
         }
@@ -91,6 +97,9 @@ fun Navegacion(contenedor: Contenedor) {
                 },
                 alVolver = { nav.popBackStack() },
             )
+        }
+        composable<Vacunas> {
+            PantallaVacunas(viewModel { VacunasViewModel(contenedor.apis, contenedor.catalogo) }, alVolver = { nav.popBackStack() })
         }
         composable<MiPerfil> {
             PantallaPerfil(

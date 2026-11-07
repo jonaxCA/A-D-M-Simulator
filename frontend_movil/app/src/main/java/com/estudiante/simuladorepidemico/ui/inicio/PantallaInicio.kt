@@ -23,14 +23,21 @@ fun PantallaInicio(
     modelo: InicioViewModel,
     alCapturar: () -> Unit,
     alVerCasos: () -> Unit,
+    alVerLotes: () -> Unit,
     alAbrirPerfil: () -> Unit,
 ) {
     val porEnviar by modelo.porEnviar.collectAsStateWithLifecycle()
-    MenuInicio(porEnviar, alCapturar, alVerCasos, alAbrirPerfil)
+    MenuInicio(porEnviar, alCapturar, alVerCasos, alVerLotes, alAbrirPerfil)
 }
 
 @Composable
-fun MenuInicio(porEnviar: Int, alCapturar: () -> Unit, alVerCasos: () -> Unit, alAbrirPerfil: () -> Unit) {
+fun MenuInicio(
+    porEnviar: Int,
+    alCapturar: () -> Unit,
+    alVerCasos: () -> Unit,
+    alVerLotes: () -> Unit,
+    alAbrirPerfil: () -> Unit,
+) {
     Scaffold { relleno ->
         Column(
             modifier = Modifier.fillMaxSize().padding(relleno).padding(24.dp),
@@ -49,6 +56,7 @@ fun MenuInicio(porEnviar: Int, alCapturar: () -> Unit, alVerCasos: () -> Unit, a
             )
             Button(onClick = alCapturar, modifier = Modifier.fillMaxWidth()) { Text("Capturar caso") }
             OutlinedButton(onClick = alVerCasos, modifier = Modifier.fillMaxWidth()) { Text("Mis casos") }
+            OutlinedButton(onClick = alVerLotes, modifier = Modifier.fillMaxWidth()) { Text("Lotes de vacuna") }
             OutlinedButton(onClick = alAbrirPerfil, modifier = Modifier.fillMaxWidth()) { Text("Mi perfil") }
         }
     }
@@ -57,5 +65,5 @@ fun MenuInicio(porEnviar: Int, alCapturar: () -> Unit, alVerCasos: () -> Unit, a
 @Preview(showBackground = true)
 @Composable
 private fun VistaInicio() {
-    TemaEpidemia { MenuInicio(porEnviar = 3, alCapturar = {}, alVerCasos = {}, alAbrirPerfil = {}) }
+    TemaEpidemia { MenuInicio(porEnviar = 3, alCapturar = {}, alVerCasos = {}, alVerLotes = {}, alAbrirPerfil = {}) }
 }
