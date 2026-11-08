@@ -17,7 +17,7 @@
 1. No tomes como fuente un documento que en su encabezado diga **Obsoleto**.
 2. Si un documento contradice `decisiones/decisiones.md`, ganan las decisiones.
 3. El esquema de la base son las migraciones de `datos/postgres/migraciones/`, no estos documentos.
-4. Las decisiones abiertas (D1 a D8) no se implementan sin preguntar; marca su estado en `decisiones/decisiones.md` cuando se tomen.
+4. Las decisiones abiertas no se implementan sin preguntar; marca su estado en `decisiones/decisiones.md` cuando se tomen.
 7. Mantén los cambios pequeños y en español; no dupliques contenido entre carpetas, enlaza.
 
 ## Al editar

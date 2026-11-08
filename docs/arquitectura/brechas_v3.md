@@ -20,7 +20,7 @@ Primero se termina el documento de arquitectura. El código se toca después, co
 |----|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
 | E1 | `docker-compose.yml` declara `usuarios`, `validacion` y `zonas`, pero sus carpetas no existen en `microservicios/`. Con `--profile '*'` la construcción falla. Sí tienen contrato en `docs/contratos/`.                                                                                      | `infra/docker-compose.yml`; `ls microservicios/`     | Pospuesto: la v3 decide si siguen en el catálogo; el arreglo del código va en el plan de implementación |
 | E2 | `escenarios` y `aprobacion` llaman a `validacion`, que no existe.                                                                                                                                                                                                                            | `microservicios.md`, filas 12 y 14                   | Pospuesto, igual que E1                                                                                 |
-| E3 | Las decisiones D1 a D4 remiten a "Corrección 1, 2, 4" y a "opción A o B", pero esos documentos no están en el repositorio. No se puede decidir sin las opciones.                                                                                                                             | `decisiones/decisiones.md`                           | Ambigüedad                                                                                              |
+| E3 | Las decisiones D1 a D4 remiten a "Corrección 1, 2, 4" y a "opción A o B", pero ya se resolvió: las opciones están en `docs/propuesta_correcciones_primer_parcial.md`, secciones D1 a D3.                                                                                                                             | `decisiones/decisiones.md`                           | Ambigüedad                                                                                              |
 | E4 | `decisiones.md` es solo una tabla de tareas: no tiene contexto, opciones ni consecuencias (no sigue `plantilla_ADR.md`). `decisiones/todo.md` tiene siete decisiones más sin registrar.                                                                                                      | `decisiones/`                                        | Falta                                                                                                   |
 | E5 | Los requerimientos funcionales, la trazabilidad y el contexto general están marcados como **Obsoleto**, y la matriz de permisos y las reglas de negocio como "revisar". La v3 no tiene una base de requerimientos vigente.                                                                   | Encabezados de `requerimentos/`                      | Falta; se resuelve con §10.0, §10.1 y §10.6                                                             |
 | E6 | El `AGENTS.md` de la raíz está marcado como Obsoleto y sigue prohibiendo código en `frontend_movil/` y `frontend_desktop/`. `docs/AGENTS.md` dice que la v2 está vigente.                                                                                                                    | `AGENTS.md`, `docs/AGENTS.md`                        | Pospuesto: se actualiza cuando la v3 esté validada                                                      |
@@ -94,20 +94,20 @@ Primero se termina el documento de arquitectura. El código se toca después, co
 
 ## 8. Decisiones abiertas que bloquean la v3
 
-| Decisión                      | Qué bloquea                                                                                                                       |
-|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| D1 · Permisos y auditoría     | Menús por rol en las tres apps (C8) y la matriz de permisos                                                                       |
-| D2 · Papel del SEIR           | Con el ABM decidido, falta definir si el SEIR queda como respaldo o referencia (ver D23) o se retira |
-| D3 · Unidad de costo          | Pareto, la comparación y los reportes de escritorio                                                                               |
-| D4 · Web contra escritorio    | El proceso de la app de escritorio (C5)                                                                                           |
-| D6 · Población del escenario  | Con el ABM se vuelve crítica: ¿un agente por habitante o un factor de escala? Define el tamaño de la simulación                   |
-| D8 · Réplicas                 | La comparación y su tiempo de ejecución (A3)                                                                                      |
-| D13 · Sin pasarela            | Se revisa porque vuelve nginx (N7, §9)                                                                                            |
-| D23 · Tecnología del ABM      | Python con NumPy/Numba en CPU o FLAME GPU 2 en GPU. Si es GPU: ¿hay GPU disponible en GCP y quién la paga?                        |
-| D24 · Calibración del ABM     | De dónde salen los parámetros de contacto y transmisión de los agentes, con su fuente (regla 8) (A6)                              |
-| D26 · Certificado HTTPS       | Si hay dominio, Let's Encrypt; si no, un certificado autofirmado                                                                  |
-| D27 · Servicios de la móvil   | Si entran `dispositivos`, `evidencias` y `vacunas` (C2)                                                                           |
-| D28 · Uso de MongoDB          | Qué colecciones existen (D-1)                                                                                                     |
+| Decisión                     | Qué bloquea                                                                                                     |
+|------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| D1 · Permisos y auditoría    | Menús por rol en las tres apps (C8) y la matriz de permisos                                                     |
+| D2 · Papel del SEIR          | Con el ABM decidido, falta definir si el SEIR queda como respaldo o referencia (ver D23) o se retira            |
+| D3 · Unidad de costo         | Pareto, la comparación y los reportes de escritorio                                                             |
+| D4 · Web contra escritorio   | El proceso de la app de escritorio (C5)                                                                         |
+| D6 · Población del escenario | Con el ABM se vuelve crítica: ¿un agente por habitante o un factor de escala? Define el tamaño de la simulación |
+| D8 · Réplicas                | La comparación y su tiempo de ejecución (A3)                                                                    |
+| D13 · Sin pasarela           | Se revisa porque vuelve nginx (N7, §9)                                                                          |
+| D23 · Tecnología del ABM     | Python con NumPy/Numba en CPU o FLAME GPU 2 en GPU. Si es GPU: ¿hay GPU disponible en GCP y quién la paga?      |
+| D24 · Calibración del ABM    | De dónde salen los parámetros de contacto y transmisión de los agentes, con su fuente (regla 8) (A6)            |
+| D26 · Certificado HTTPS      | Si hay dominio, Let's Encrypt; si no, un certificado autofirmado                                                |
+| D27 · Servicios de la móvil  | Si entran `dispositivos`, `evidencias` y `vacunas` (C2)                                                         |
+| D28 · Uso de MongoDB         | Qué colecciones existen (D-1)                                                                                   |
 
 ## 9. Respuestas a las preguntas del profesor y del equipo (2026-11-01)
 
