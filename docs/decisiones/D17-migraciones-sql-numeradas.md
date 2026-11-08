@@ -1,6 +1,6 @@
 # D17 - Migraciones SQL numeradas en lugar de Alembic
 
-Fecha: 2026-09-24 (primera migración) · Estado: Por confirmar
+Fecha: 2026-09-24 (primera migración) · Estado: Aceptada (2026-11-08)
 
 ## Contexto
 La base se versiona con archivos SQL en `datos/postgres/migraciones/`. Cada uno registra su aplicación en `schema_migrations`. `decisiones/todo.md` la listaba como «por registrar o confirmar».
@@ -10,7 +10,7 @@ La base se versiona con archivos SQL en `datos/postgres/migraciones/`. Cada uno 
 - Opción B: Alembic.
 
 ## Decisión
-En uso: opción A. Falta que el equipo la confirme.
+Opción A.
 
 ## Consecuencias
 - Cualquiera lee el esquema sin conocer una herramienta.

@@ -1,6 +1,6 @@
 # D18 - Una sola instancia de PostgreSQL con un rol por servicio
 
-Fecha: 2026-09-24 (migración 009) · Estado: Por confirmar
+Fecha: 2026-09-24 (migración 009) · Estado: Aceptada (2026-11-08)
 
 ## Contexto
 Los servicios comparten una instancia de PostgreSQL. Sin separación de privilegios, cualquiera escribiría en cualquier tabla (migración 009).
@@ -10,7 +10,7 @@ Los servicios comparten una instancia de PostgreSQL. Sin separación de privileg
 - Opción B: una base por servicio.
 
 ## Decisión
-En uso: opción A. Cada servicio lee todo y escribe solo en las tablas de su dominio. Falta que el equipo la confirme.
+Opción A. Cada servicio lee todo y escribe solo en las tablas de su dominio.
 
 ## Consecuencias
 - La responsabilidad se vuelve un permiso de la base.
