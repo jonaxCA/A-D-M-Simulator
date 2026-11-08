@@ -13,4 +13,4 @@ Los servicios se llaman como en el catálogo (`docs/arquitectura/microservicios.
 
 ## Consecuencias
 - El nombre del servicio, el contenedor, y la carpeta deben coincidir con el catálogo.
-- Si D25 se aprueba, ese nombre también es el prefijo en la URL pública.
+- Con D25 aceptada, ese nombre también es el prefijo en la URL pública.

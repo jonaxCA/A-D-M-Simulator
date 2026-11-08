@@ -1,6 +1,6 @@
 # D25 - nginx como terminador TLS y entrada única
 
-Fecha: 2026-11-01 · Estado: Propuesta
+Fecha: 2026-11-01 · Estado: Aceptada (2026-11-08)
 
 ## Contexto
 La v2 retiró nginx (D13) y dejó abierto cómo proteger el tráfico en Compute Engine. La rúbrica pide HTTPS, firewall y puertos controlados. El equipo decidió usar nginx.
@@ -13,7 +13,7 @@ La v2 retiró nginx (D13) y dejó abierto cómo proteger el tráfico en Compute 
 No sirve enrutar por la ruta de la API, porque varios servicios comparten prefijo: `/api/v1/scenarios/...` lo atienden `escenarios`, `aprobacion` y `escenarios-xml`.
 
 ## Decisión
-El equipo decidió usar nginx como terminador TLS y proxy inverso, sin validar JWT ni tener lógica de negocio. La opción A es la recomendada. Falta que el equipo la confirme.
+Opción A. nginx es el terminador TLS y el proxy inverso, sin validar JWT ni tener lógica de negocio. Solo quedan abiertos el 80 (redirige al 443) y el 443.
 
 ## Consecuencias
 - Ajusta D13: `estado-servicios` devuelve `https://<dominio>/<servicio>`. Las rutas de D11 no cambian.
