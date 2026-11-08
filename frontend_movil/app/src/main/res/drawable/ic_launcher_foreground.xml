@@ -1,30 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Frente del ícono: el pin de un caso en campo con una partícula de virus. Lo genera herramientas/icono.py. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
     <path
         android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+        android:pathData="M54,81 L37.48,59.97 A21,21 0 1,1 70.52,59.97 Z" />
+    <path
+        android:fillColor="#E4572E"
+        android:pathData="M46.5,47 a7.5,7.5 0 1,0 15,0 a7.5,7.5 0 1,0 -15,0 Z M60.08,50.6 L63.78,52.13 L64.55,50.29 L60.85,48.75 Z M55.75,53.85 L57.29,57.55 L59.13,56.78 L57.6,53.08 Z M50.4,53.08 L48.87,56.78 L50.71,57.55 L52.25,53.85 Z M47.15,48.75 L43.45,50.29 L44.22,52.13 L47.92,50.6 Z M47.92,43.4 L44.22,41.87 L43.45,43.71 L47.15,45.25 Z M52.25,40.15 L50.71,36.45 L48.87,37.22 L50.4,40.92 Z M57.6,40.92 L59.13,37.22 L57.29,36.45 L55.75,40.15 Z M60.85,45.25 L64.55,43.71 L63.78,41.87 L60.08,43.4 Z M62.95,51.78 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M56.18,58.55 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M46.62,58.55 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M39.85,51.78 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M39.85,42.22 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M46.62,35.45 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M56.18,35.45 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M62.95,42.22 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z" />
 </vector>

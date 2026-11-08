@@ -37,6 +37,12 @@ Dónde va cada cosa dentro de `app/src/main/java/com/estudiante/simuladorepidemi
 `app/src/debug/` lleva lo que solo vale en desarrollo, como el permiso de HTTP sin cifrar
 (sección 2).
 
+El ícono es un pin de ubicación (un caso en campo) con una partícula de virus, sobre verde azulado.
+Lo genera `herramientas/icono.py` desde una sola geometría: los vectoriales del ícono adaptativo
+(`drawable/ic_launcher_*.xml`, con su capa monocroma para los íconos temáticos de Android 13) y los
+WebP de Android 7 (`mipmap-*dpi/`). Para cambiarlo, se edita el script y se corre
+`python herramientas/icono.py app/src/main/res` (necesita Pillow).
+
 Las pruebas unitarias (`app/src/test/`) corren en la PC contra un MockWebServer. Las de
 `app/src/androidTest/` (el Keystore, las consultas de Room y las pantallas) necesitan un emulador:
 `./gradlew connectedDebugAndroidTest`. Dale al emulador 3 GB de RAM o más (Device Manager >
