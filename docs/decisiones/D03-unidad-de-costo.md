@@ -1,6 +1,6 @@
 # D3 - Unidad de costo: personas-día, pesos o ambos por separado
 
-Fecha: — · Estado: Pendiente
+Fecha: 2026-11-08 · Estado: Aceptada
 
 ## Contexto
 Las intervenciones tienen costo unitario con fuente o marca de supuesto (`intervention_types.unit_cost`, `cost_source`, `cost_is_assumption`; regla 8 de `AGENTS.md`). Pareto y la comparación se calculan con esos costos. Falta decidir en qué unidad se expresan.
@@ -10,10 +10,17 @@ Las intervenciones tienen costo unitario con fuente o marca de supuesto (`interv
 - Opción B: pesos.
 - Opción C: ambos, por separado.
 
-Las opciones de la «Corrección 4» no están en el repositorio, así que no se pueden listar aquí. Hay que recuperarlas o definirlas de nuevo antes de decidir.
+Los argumentos de cada unidad (qué mide, qué datos faltan, cómo entra la vacuna) están en la sección D3 de [`propuesta_correcciones_primer_parcial.md`](../propuesta_correcciones_primer_parcial.md). Esa sección recomienda la opción C.
 
 ## Decisión
-Pendiente. Se registra aquí cuando se tome.
+Opción C: personas-día y pesos por separado.
+
+- La frontera de Pareto usa personas-día.
+- El costo directo en pesos aparece aparte, en la tabla comparativa, y no entra a la frontera.
 
 ## Consecuencias
-Afecta el esquema de costos, `pareto`, `comparacion`, los reportes de escritorio y la interpretación del aviso de que no es una predicción. Elegir pesos o ambos exige fuente para cada precio.
+Afecta el esquema de costos, `pareto`, `comparacion`, los reportes de escritorio y la interpretación del aviso de que no es una predicción.
+
+- Mostrar pesos exige fuente o marca de supuesto para cada precio (regla 8 de `AGENTS.md`).
+- La frontera no refleja el costo de vacunar en pesos. Cómo entra la vacunación queda abierto (ver [`todo.md`](todo.md)).
+- Los cambios de código y documentos que siguen de esta decisión están en [`todo.md`](todo.md), sección «Cambios pendientes por D3». No están implementados.
