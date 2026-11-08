@@ -2,6 +2,7 @@ package com.estudiante.simuladorepidemico
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import com.estudiante.simuladorepidemico.avisos.Avisos
 import com.estudiante.simuladorepidemico.local.CasosDao
 import com.estudiante.simuladorepidemico.local.CatalogoDao
 import com.estudiante.simuladorepidemico.local.Catalogos
@@ -23,7 +24,8 @@ import com.estudiante.simuladorepidemico.trabajos.Sincronizador
 import com.estudiante.simuladorepidemico.ubicacion.Ubicador
 
 // Las dependencias de la app, armadas a mano. `programarEnvio` pide que se manden los casos
-// pendientes en cuanto haya red (WorkManager en la app; en las pruebas, nada o un contador).
+// pendientes en cuanto haya red, y `programarAvisos`, la consulta periódica de avisos (WorkManager
+// en la app; en las pruebas, nada o un contador).
 class Contenedor(
     datos: DataStore<Preferences>,
     cifrador: Cifrador,
@@ -34,6 +36,7 @@ class Contenedor(
     val programarEnvio: () -> Unit,
     val ubicador: Ubicador,
     val fotos: Fotos,
+    val programarAvisos: () -> Unit,
 ) {
     val almacen = AlmacenSesion(datos, cifrador)
     private val sinToken = clienteBase()
@@ -47,4 +50,5 @@ class Contenedor(
     val sesion = Sesion(apis, almacen, Telefono(datos, apis, telefono))
     val catalogos = Catalogos(apis, catalogo)
     val sincronizador = Sincronizador(sesion, apis, casos, fotos)
+    val avisos = Avisos(apis, datos, sesion)
 }

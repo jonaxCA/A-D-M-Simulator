@@ -14,6 +14,8 @@
          app se instala igual: el código se puede escribir y la foto, elegir de la galería. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <!-- Android 13+: para la notificación de avisos nuevos. Se pide en la pantalla de avisos. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".EpidemiaApp"

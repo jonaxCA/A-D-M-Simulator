@@ -163,6 +163,27 @@ data class PedidoLoteVacuna(
 @Serializable
 data class PedidoDosis(val doses: Int)
 
+// El payload (los ids para llegar al recurso) no se usa en la app: se ignora.
+@Serializable
+data class Aviso(
+    val id: Long,
+    @SerialName("type") val tipo: String,
+    @SerialName("title") val titulo: String,
+    @SerialName("body") val cuerpo: String? = null,
+    @SerialName("read_at") val leidoEn: String? = null,
+    @SerialName("created_at") val creadoEn: String,
+) {
+    val leido: Boolean
+        get() = leidoEn != null
+}
+
+@Serializable
+data class ListaAvisos(
+    val total: Int,
+    @SerialName("no_leidas") val noLeidas: Int,
+    @SerialName("notificaciones") val avisos: List<Aviso>,
+)
+
 // RFC 7807, como lo arma epidemia_comun.errores.
 @Serializable
 data class Problema(val status: Int = 0, val detail: String = "", val codigo: String = "")

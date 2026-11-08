@@ -22,6 +22,19 @@ private val ROLES = mapOf(
 
 fun nombreDeRol(codigo: String): String = ROLES[codigo] ?: codigo
 
+// Los tipos de aviso (CHECK de notifications, migraciones 003 y 029).
+private val TIPOS_DE_AVISO = mapOf(
+    "RUN_FINISHED" to "Corrida terminada",
+    "RUN_FAILED" to "Corrida con error",
+    "THRESHOLD_EXCEEDED" to "Umbral superado",
+    "ASSIGNMENT" to "Asignación",
+    "SCENARIO_PUBLISHED" to "Escenario publicado",
+    "SCENARIO_APPROVED" to "Versión aprobada",
+    "SYSTEM" to "Aviso del sistema",
+)
+
+fun nombreDeAviso(tipo: String): String = TIPOS_DE_AVISO[tipo] ?: "Aviso"
+
 // Los valores que acepta casos (backend_web/queries.py), con su nombre.
 val SEXOS = listOf("F" to "Femenino", "M" to "Masculino", "O" to "Otro")
 val RESULTADOS_DE_PRUEBA = listOf(

@@ -61,9 +61,11 @@ fun contenedorDePrueba(
     catalogo: CatalogoDaoFalso = CatalogoDaoFalso(),
     ubicador: Ubicador = Ubicador { Lectura.SinSenal },
     fotos: Fotos = fotosDePrueba(),
+    programarAvisos: () -> Unit = {},
     programarEnvio: () -> Unit = {},
 ) = Contenedor(
     datosTemporales(), CifradorDePrueba(), servidor.url, telefonoDePrueba, casos, catalogo, programarEnvio, ubicador, fotos,
+    programarAvisos,
 )
 
 // Los servicios que usan red y sesion, en un solo MockWebServer que el directorio anuncia.
@@ -143,6 +145,34 @@ class ServidorFalso : Dispatcher() {
         val total = cuerpo["doses_total"]!!.jsonPrimitive.int
         lotesVacuna[codigo]?.let { ya -> return if (ya.total == total) respuesta(200, json(ya)) else problema(409, "CONFLICTO") }
         return respuesta(201, json(nuevoLote(codigo, total)))
+    }
+
+    // notificaciones: los avisos de la cuenta, del más nuevo al más viejo.
+    class AvisoFalso(val id: Long, val titulo: String, var leido: Boolean = false)
+
+    val avisosFalsos = CopyOnWriteArrayList<AvisoFalso>()
+
+    fun nuevoAviso(id: Long, titulo: String, leido: Boolean = false) = AvisoFalso(id, titulo, leido).also { avisosFalsos += it }
+
+    private fun json(aviso: AvisoFalso) =
+        """{"id":${aviso.id},"user_id":12,"type":"RUN_FINISHED","title":"${aviso.titulo}","body":"Cuerpo de ${aviso.id}.","payload":{"run_id":42},"read_at":${if (aviso.leido) "\"2026-11-07T15:05:00+00:00\"" else "null"},"created_at":"2026-11-07T15:02:00+00:00"}"""
+
+    private fun notificaciones(pedido: RecordedRequest, ruta: String): MockResponse? {
+        LEIDO.matchEntire(ruta)?.let { m ->
+            val aviso = avisosFalsos.firstOrNull { it.id == m.groupValues[1].toLong() } ?: return problema(404, "NO_ENCONTRADO")
+            aviso.leido = true
+            return respuesta(200, json(aviso))
+        }
+        if (ruta != "/api/v1/notifications") return null
+        val soloNoLeidos = pedido.requestUrl!!.queryParameter("unread") == "true"
+        val limite = pedido.requestUrl!!.queryParameter("limit")?.toInt() ?: 50
+        val lista = avisosFalsos.filter { !soloNoLeidos || !it.leido }.sortedByDescending { it.id }
+        return respuesta(
+            200,
+            lista.take(limite).joinToString(
+                ",", "{\"total\":${lista.size},\"no_leidas\":${avisosFalsos.count { !it.leido }},\"notificaciones\":[", "]}",
+            ) { json(it) },
+        )
     }
 
     // Las subidas a evidencias: el case_id de la ruta y el pedido.
@@ -226,6 +256,7 @@ class ServidorFalso : Dispatcher() {
     override fun dispatch(request: RecordedRequest): MockResponse {
         pedidos += request
         vacunas(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
+        notificaciones(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
         SUBIDA.matchEntire(request.path.orEmpty().substringBefore('?'))?.let { ruta ->
             return evidencia ?: respuesta(
                 201,
@@ -262,7 +293,7 @@ class ServidorFalso : Dispatcher() {
         val base = url.trimEnd('/')
         return listOf(
             "auth", "sesiones", "usuarios", "dispositivos", "sincronizacion", "enfermedades", "regiones", "evidencias",
-            "vacunas",
+            "vacunas", "notificaciones",
         ).joinToString(",", "{\"servicios\":[", "]}") {
             "{\"nombre\":\"$it\",\"dominio\":\"prueba\",\"puerto\":1,\"url\":\"$base\"}"
         }
@@ -272,6 +303,7 @@ class ServidorFalso : Dispatcher() {
         private val SUBIDA = Regex("/api/v1/cases/(\\d+)/attachments")
         private val UN_LOTE = Regex("/api/v1/vaccine-lots/(\\d+)")
         private val DOSIS = Regex("/api/v1/vaccine-lots/(\\d+)/doses")
+        private val LEIDO = Regex("/api/v1/notifications/(\\d+)/read")
 
         const val PERFIL = """{"id":12,"username":"capturista1","email":"c@ejemplo.mx","full_name":"Carla Captura","is_active":true,"last_login_at":null,"created_at":"2026-09-01T10:00:00-06:00","role_id":4,"roles":["CAPTURISTA"]}"""
 

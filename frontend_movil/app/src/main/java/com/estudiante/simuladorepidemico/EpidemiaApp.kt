@@ -8,6 +8,7 @@ import com.estudiante.simuladorepidemico.local.BaseLocal
 import com.estudiante.simuladorepidemico.local.Fotos
 import com.estudiante.simuladorepidemico.sesion.CifradorKeystore
 import com.estudiante.simuladorepidemico.sesion.esteTelefono
+import com.estudiante.simuladorepidemico.trabajos.TrabajoAvisos
 import com.estudiante.simuladorepidemico.trabajos.TrabajoSincronizar
 import com.estudiante.simuladorepidemico.ubicacion.UbicadorFused
 import java.io.File
@@ -32,6 +33,7 @@ class EpidemiaApp : Application() {
             programarEnvio = { TrabajoSincronizar.programar(this) },
             ubicador = UbicadorFused(this),
             fotos = Fotos(File(filesDir, CARPETA_FOTOS)),
+            programarAvisos = { TrabajoAvisos.programar(this) },
         )
     }
 }

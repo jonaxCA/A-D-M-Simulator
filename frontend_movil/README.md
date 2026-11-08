@@ -29,9 +29,10 @@ Dónde va cada cosa dentro de `app/src/main/java/com/estudiante/simuladorepidemi
 | `red/` | OkHttp, Retrofit, el directorio de servicios (sección 1), el `Authenticator` que renueva (sección 4) y una interfaz por servicio en `red/api/` |
 | `sesion/` | Tokens, cifrados con una llave del Keystore y guardados en DataStore, y el registro del teléfono en `dispositivos` (`Telefono.kt`, sección 6) |
 | `ubicacion/` | La lectura del GPS para un caso (`Ubicador`), con Google Play services |
+| `avisos/` | Los avisos de `notificaciones` (`Avisos`) y la notificación del teléfono (`Notificador`) |
 | `local/` | Room (`epidemia.db`): los casos capturados, sus fotos por subir y los catálogos de enfermedades y municipios (secciones 5 y 7), y los archivos de las fotos (`Fotos.kt`). El esquema de cada versión queda en `app/schemas/` |
-| `trabajos/` | El `Sincronizador`, que manda los casos en lotes y sube sus fotos, y `TrabajoSincronizar`, que WorkManager corre cuando hay red. Después, consultar avisos |
-| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio`, `casos` (Capturar caso y Mis casos, con sus fotos), `vacunas` (lectura del QR, registro del lote y aplicación de dosis), `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde y pide el permiso de red local. `ui/Formato.kt` da formato a fechas, roles y los valores de un caso, y `ui/Campos.kt` tiene los campos que comparten los formularios |
+| `trabajos/` | El `Sincronizador`, que manda los casos en lotes y sube sus fotos, y `TrabajoSincronizar`, que WorkManager corre cuando hay red; `TrabajoAvisos`, que consulta los avisos cada 15 minutos |
+| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio`, `casos` (Capturar caso y Mis casos, con sus fotos), `vacunas` (lectura del QR, registro del lote y aplicación de dosis), `avisos`, `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde y pide el permiso de red local. `ui/Formato.kt` da formato a fechas, roles y los valores de un caso, y `ui/Campos.kt` tiene los campos que comparten los formularios |
 
 `app/src/debug/` lleva lo que solo vale en desarrollo, como el permiso de HTTP sin cifrar
 (sección 2).
@@ -315,6 +316,20 @@ de las que trae el lote.
 `GET /api/v1/notifications?unread=true` (en `notificaciones`) devuelve los avisos de la cuenta, y
 `POST /api/v1/notifications/{id}/read` los marca como leídos. No hay notificaciones push: la app
 consulta cada cierto tiempo.
+
+### Cómo lo hace la app
+
+- "Avisos", en el inicio, dice cuántos hay sin leer y abre la lista de los últimos 50 de la
+  cuenta, del más nuevo al más viejo. Tocar uno sin leer lo marca como leído; "Marcar leídos" los
+  marca uno por uno, porque `notificaciones` no tiene una ruta para todos.
+- Sin push, `TrabajoAvisos` (WorkManager) consulta cada 15 minutos con red, lo menos que permite
+  WorkManager, y si llegaron avisos nuevos muestra una notificación del teléfono. Al tocarla, la
+  app abre los avisos. En la pantalla bloqueada no se ve el contenido, solo "Tienes avisos nuevos".
+- Para no avisar dos veces de lo mismo, la app guarda por cuenta el id más alto que ya se vio, en
+  la pantalla o en una notificación (`avisos/Avisos.kt`). Otra cuenta en el mismo teléfono lleva
+  el suyo.
+- El permiso de notificaciones (Android 13+) se pide desde la pantalla de avisos, no al abrir la
+  app. Sin él, o con las notificaciones apagadas en Ajustes, los avisos solo se ven en esa pantalla.
 
 ## Lo que todavía no existe del lado del servidor
 
