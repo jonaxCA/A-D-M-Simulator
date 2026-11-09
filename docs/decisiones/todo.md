@@ -3,7 +3,6 @@
 Nadie ha decidido estas (ver `decisiones.md`):
 
 - [D24](D24-calibracion-del-abm.md): calibración y parámetros de los agentes. Depende de D22.
-- [D27](D27-servicios-nuevos-para-la-movil.md): servicios nuevos para la app móvil.
 - [D28](D28-uso-de-mongodb.md): qué datos van a MongoDB. Depende de D21.
 - [D29](D29-volumen-de-datos.md): volumen de datos de alto volumen. Depende de D6, D8 y D28.
 
@@ -11,8 +10,26 @@ Nadie ha decidido estas (ver `decisiones.md`):
 
 - D17, D18 y D20 quedaron aceptadas el 2026-11-08 (ver `decisiones.md`). D19 (Redis sin datos autoritativos) sigue por confirmar.
 - D25 quedó aceptada el 2026-11-08 (ver `decisiones.md`). Sus cambios están en «Cambios pendientes por D25».
+- D27 quedó aceptada el 2026-11-08 con los tres servicios implementados en `desarrollo-movil`. Sus cambios están en «Cambios pendientes por D27».
 - Las del antiguo punto 5 y 6 ya eran D9, D11 y D12.
 - El antiguo punto 7 (FLAME GPU con el motor de Python como respaldo) quedó en D23.
+
+## Cambios pendientes por D27
+
+D27 quedó aceptada el 2026-11-08 (ver [`D27-servicios-nuevos-para-la-movil.md`](D27-servicios-nuevos-para-la-movil.md)). Los tres servicios ya están implementados, pero en la rama `desarrollo-movil`, no en esta. Sus cambios llegan al integrar esa rama.
+
+### Código
+
+- **Integración de `desarrollo-movil`:** trae `microservicios/dispositivos`, `evidencias` y `vacunas`, sus entradas en `infra/docker-compose.yml`, las migraciones 031 a 033 y sus pruebas.
+
+### Documentos
+
+- **Contratos:** `docs/contratos/dispositivos`, `evidencias` y `vacunas` existen en `desarrollo-movil` y llegan con la integración.
+- **Catálogo:** `docs/arquitectura/microservicios.md` ya lista los tres. No cambia.
+
+### Preguntas abiertas
+
+- ¿Se actualiza «hoy, el 031» en `propuesta_correcciones_primer_parcial.md` (línea 52)? Es la propuesta ya respondida; no la toqué.
 
 ## Cambios pendientes por D1
 
@@ -20,7 +37,7 @@ D1 quedó aceptada el 2026-11-07 (ver [`D01-permisos-y-auditoria.md`](D01-permis
 
 ### Código
 
-- **Migración 031** (siguiente número libre; no se edita la 010): crear `scenarios.approve`, darlo a EPIDEMIOLOGO y ADMINISTRADOR, y quitar `audit.read` al EPIDEMIOLOGO.
+- **Migración 034** (siguiente número libre; 031 a 033 son de D27 y no se edita la 010): crear `scenarios.approve`, darlo a EPIDEMIOLOGO y ADMINISTRADOR, y quitar `audit.read` al EPIDEMIOLOGO.
 - **Quitar la captura de casos de la web:** la ruta `/reportes/nuevo`, sus enlaces y su plantilla. `cases.create` sigue para el CAPTURISTA, en la app móvil y en la API.
 - **Candados por permiso** (propuesta, pasos 4 a 7): leer los permisos al iniciar sesión y guardarlos en el JWT (`perms`) en `backend_web/auth.py`; crear `requiere_permiso(codigo)` en `frontend_web/app/permisos.py`, que responde 403 y registra `PERMISSION_DENIED` con `log_audit`; cambiar el candado de cada ruta según la tabla de la propuesta; exponer `puede()` a las plantillas.
 - **Cuenta de prueba de CAPTURISTA** (propuesta, paso 8) en `datos/postgres/semillas/demo_datos_nl.sql`. Sirve para la API, no para la web.
@@ -66,7 +83,7 @@ D2 quedó aceptada el 2026-11-08 (ver [`D02-papel-del-seir.md`](D02-papel-del-se
 ### Código
 
 - **Nombre del motor:** cambiar `ENGINE_VERSION` de `python-ref-0.1` a `seir-ref-0.1` en `procesamiento/motor/modelo.py`.
-- **Migración de motores** (siguiente número libre). Hoy sería la 031, pero D1 también la reserva: si la de D1 va primero, esta es la 032. El CHECK de `simulation_batches.engine` (014) acepta `python-ref`, `numba` y `cuda`. Hay que cambiarlo a `seir-ref`, `abm-ref` y `abm-gpu`, y el orden dentro de la migración es: soltar el CHECK, convertir los valores, poner el CHECK nuevo y cambiar el DEFAULT.
+- **Migración de motores** (siguiente número libre). Hoy sería la 034, pero D1 también la reserva: si la de D1 va primero, esta es la 035. El CHECK de `simulation_batches.engine` (014) acepta `python-ref`, `numba` y `cuda`. Hay que cambiarlo a `seir-ref`, `abm-ref` y `abm-gpu`, y el orden dentro de la migración es: soltar el CHECK, convertir los valores, poner el CHECK nuevo y cambiar el DEFAULT.
 - **ABM en Python** como paquete aparte en `procesamiento/`, con la misma entrada y salida que el SEIR. Fuera del segundo parcial según `AGENTS.md` (el ABM está fuera de alcance) y D21: pasa al tercero, salvo que el equipo diga otra cosa.
 
 ### Documentos

@@ -22,7 +22,7 @@ Respuestas del equipo a las preguntas de la sección D1 de la propuesta, más la
 ## Consecuencias
 Bloquea el menú por rol de la web, de Android y de escritorio, la matriz de permisos y la sección de seguridad de la v3. Cualquier cambio de rol exige una migración nueva sobre `role_permissions`.
 
-- La migración 010 da `audit.read` al EPIDEMIOLOGO. Se quita con una migración nueva (031), no editando la 010. La 031 también crea `scenarios.approve`.
+- La migración 010 da `audit.read` al EPIDEMIOLOGO. Se quita con una migración nueva (034, porque la 031 a la 033 son de D27), no editando la 010. La 034 también crea `scenarios.approve`.
 - `catalogs.create` coincide con la migración 010.
 - La app móvil se entrega en el tercer parcial (D10). Hasta entonces el CAPTURISTA no tiene pantalla en el segundo parcial: su captura se prueba por la API o la consola de pruebas.
 - El paso 22 de la prueba de aceptación (auditoría del flujo completo) lo revisa el ADMINISTRADOR.

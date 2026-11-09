@@ -32,6 +32,6 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D24 | Calibración y parámetros de los agentes                                        | Pendiente     | D22         | [D24-calibracion-del-abm.md](D24-calibracion-del-abm.md)                               |
 | D25 | nginx como terminador TLS y entrada única                                      | Aceptada      | D13         | [D25-nginx-como-entrada.md](D25-nginx-como-entrada.md)                                 |
 | D26 | Certificado HTTPS                                                              | Aceptada      | D25         | [D26-certificado-https.md](D26-certificado-https.md)                                   |
-| D27 | Servicios nuevos para la app móvil                                             | Pendiente     | —           | [D27-servicios-nuevos-para-la-movil.md](D27-servicios-nuevos-para-la-movil.md)         |
+| D27 | Servicios nuevos para la app móvil                                             | Aceptada      | —           | [D27-servicios-nuevos-para-la-movil.md](D27-servicios-nuevos-para-la-movil.md)         |
 | D28 | Qué datos van a MongoDB                                                        | Pendiente     | D21         | [D28-uso-de-mongodb.md](D28-uso-de-mongodb.md)                                         |
 | D29 | Volumen de datos de alto volumen                                               | Pendiente     | D6, D8, D28 | [D29-volumen-de-datos.md](D29-volumen-de-datos.md)                                     |
