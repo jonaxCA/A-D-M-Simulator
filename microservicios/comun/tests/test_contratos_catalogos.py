@@ -13,7 +13,7 @@ SERVICIOS = ["enfermedades", "parametros", "regiones", "poblacion",
 # documento solo XML, así que no entra en la prueba de ejemplos JSON+XML (la suya vive en
 # escenarios_xml/tests).
 CARPETA = {"escenarios_xml": "escenarios-xml"}
-# a_xml usa "0-19" como etiqueta; este ejemplo muestra la forma válida (ver MANUAL_TECNICO §12).
+# a_xml usa "0-19" como etiqueta; este ejemplo muestra la forma válida.
 NO_GENERABLES = {"consultar_grupos_de_edad"}
 
 

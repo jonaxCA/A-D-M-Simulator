@@ -1,4 +1,4 @@
-La app móvil se entrega en el tercer parcial (D10 de `docs/decisiones.md`) y se construye aquí:
+La app móvil se entrega en el tercer parcial (D10 de `docs/decisiones/decisiones.md`) y se construye aquí:
 un proyecto de Android Studio en Kotlin con Jetpack Compose. Antes de escribir código, lee
 `README.md` de esta carpeta: los paquetes y lo que va en cada uno, cómo conectarla (directorio,
 HTTP en desarrollo, cuenta CAPTURISTA y renovación de la sesión) y qué falta del lado del

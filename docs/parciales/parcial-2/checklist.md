@@ -19,7 +19,7 @@ son las tareas.
 
 > Propuesta para repartir temprano. Cada bloque tiene un responsable y un revisor, y cada
 > casilla debería ser un issue, una rama y un Pull Request. Las decisiones de esta etapa
-> ya están tomadas: están en el bloque 0 y en `docs/decisiones.md`.
+> ya están tomadas: están en el bloque 0 y en `docs/decisiones/decisiones.md`.
 
 > **Avance al 22 de octubre** (en `2do-parcial-gpo-10am`): los 26 servicios, con la
 > biblioteca común, Redis, Docker y las migraciones 026 a 030. Las pruebas del monolito, el
@@ -97,7 +97,7 @@ entregables):
 - [x] Los `.env` nunca entran al repositorio; solo `.env.example` y `.env.shared.example`
 - [ ] El `.tar.gz` de entrega incluye la carpeta `.git`
 
-### Decidido (cada decisión queda anotada en `docs/decisiones.md`)
+### Decidido (cada decisión queda anotada en `docs/decisiones/decisiones.md`)
 - [x] Docker: un contenedor por microservicio (ya no es opcional)
 - [x] Los microservicios solo los usan las apps; el monolito no los consume
 - [x] El catálogo de `docs/arquitectura/microservicios.md` es la referencia. Si un servicio
@@ -612,7 +612,7 @@ de sesión lo prueban las de `auth`.
 - [x] `docs/arquitectura/arquitectura_v2.md`: lo que sí se construyó, a partir del catálogo,
       con un diagrama de servicios, Redis y PostgreSQL
 - [x] Revisar que cada servicio tenga su README (es parte de la definición de terminado)
-- [ ] Actualizar `AGENTS.md`, `microservicios/AGENTS.md` y `docs/decisiones.md`
+- [ ] Actualizar `AGENTS.md`, `microservicios/AGENTS.md` y `docs/decisiones/decisiones.md`
 - [ ] Carpeta `evidencias/`:
   - [x] resultado de las pruebas;
   - [ ] el recorrido de aceptación de la consola;

@@ -29,8 +29,8 @@ MongoDB, Google Cloud Storage, calibración, IA predictiva, visualización 3D, l
 y un modelo económico sofisticado.
 
 Las apps de escritorio y móvil se entregan en el tercer parcial (D10 de `docs/decisiones/decisiones.md`).
-La móvil ya se empezó: su código va en `frontend_movil/`; lee antes su `README.md`. En
-`frontend_desktop/` todavía no crees código.
+La móvil ya se empezó: su código va en `frontend_movil/`; lee antes su `README.md`. La de
+escritorio también puede empezar: su código va en `frontend_desktop/`; lee antes su `AGENTS.md`.
 
 ## Reglas
 

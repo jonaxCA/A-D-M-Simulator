@@ -1,11 +1,12 @@
 # AGENTS.md — datos
 
-> **Estado: Vigente** · 2026-10-07 · Complementa el `AGENTS.md` de la raíz.
+> **Estado: Vigente** · 2026-11-08 · Complementa el `AGENTS.md` de la raíz.
 
 ## Migraciones nuevas
 
 1. Confirma el número con la persona: hay números reservados. Las del segundo parcial van de
-   la 026 en adelante (D16 de `docs/decisiones.md`).
+   la 026 a la 030; las 031 a 033 son de los roles de D27, y la siguiente libre es la 034
+   (D16 en `docs/decisiones/decisiones.md`).
 2. Copia la estructura de la 017: encabezado, `BEGIN;` … `COMMIT;` y registro en `schema_migrations`.
 3. Hazla idempotente (`IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) y agrega `COMMENT ON` a todo lo nuevo.
 4. Copia el archivo tal cual al final de `postgres/dump_completo.sql` y actualiza el número de
