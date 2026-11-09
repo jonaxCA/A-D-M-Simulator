@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> **Estado: Vigente** · 2026-10-28
+> **Estado: Vigente** · 2026-11-08
 > Si algo aquí choca con lo que pide la persona en la sesión, pregunta antes de actuar.
 
 ## Contexto
@@ -9,27 +9,26 @@ Simulador de respuesta a epidemias (ver `README.md`). Proyecto universitario: se
 programan. Buena parte del código se generó con IA y el equipo no lo conoce a fondo. Prefiere
 cambios pequeños, legibles y fáciles de revisar.
 
-## Etapa actual: segundo parcial
+## Etapa actual: tercer parcial
 
 - **Sistema web:** el monolito Flask sigue conectado directo a PostgreSQL y **no llama a los
   microservicios**.
 - **Microservicios:** 29 servicios Flask pequeños en `microservicios/`, cada uno en su
   contenedor de Docker, con Redis y JWT. Son para las apps de escritorio (XML) y móvil
-  (JSON), que se entregan en el tercer parcial; mientras tanto, la consola de pruebas hace
-  sus veces.
+  (JSON). La móvil ya tiene código en `frontend_movil/`; la de escritorio aún no empieza.
   - Antes de tocar esa carpeta, lee `microservicios/AGENTS.md`.
-  - El catálogo de servicios está en `docs/arquitectura/microservicios.md` y las tareas en
-    `docs/CHECKLIST_SEGUNDO_PARCIAL.md`.
-- **Motor:** un SEIR de prueba, sin agentes. Los documentos de arquitectura y de contexto
-  describen el sistema final (ABM, MongoDB, Cloud Storage, nginx); no es lo que se construye
-  ahora.
+  - El catálogo de servicios está en `docs/arquitectura/microservicios.md` y las tareas del
+    segundo parcial en `docs/CHECKLIST_SEGUNDO_PARCIAL.md`.
+- **Motor:** el SEIR de referencia (`python-ref`, que pasa a `seir-ref`; D2). El modelo basado
+  en agentes (D22, con FLAME GPU 2 según D23) es parte de este parcial y todavía no tiene
+  código. MongoDB sigue sin decidirse (D28).
 
 ## Fuera de alcance
 
-MongoDB, Google Cloud Storage, nginx, CUDA/Numba/FLAME GPU, ABM, calibración, IA predictiva,
-visualización 3D, límites de consumo y un modelo económico sofisticado.
+MongoDB, Google Cloud Storage, calibración, IA predictiva, visualización 3D, límites de consumo
+y un modelo económico sofisticado.
 
-Las apps de escritorio y móvil se entregan en el tercer parcial (D10 de `docs/decisiones.md`).
+Las apps de escritorio y móvil se entregan en el tercer parcial (D10 de `docs/decisiones/decisiones.md`).
 La móvil ya se empezó: su código va en `frontend_movil/`; lee antes su `README.md`. En
 `frontend_desktop/` todavía no crees código.
 
@@ -67,29 +66,27 @@ La móvil ya se empezó: su código va en `frontend_movil/`; lee antes su `READM
 
 ## Decisiones abiertas: pregunta antes de implementar
 
-Cada una tiene su número en `docs/decisiones.md`:
+Cada una tiene su número en `docs/decisiones/decisiones.md`:
 
-- Quién captura casos, quién aprueba versiones y quién consulta la auditoría (D1).
-- El papel del SEIR (D2).
-- Unidad de costo: personas-día, pesos o ambos por separado (D3).
-- Qué parte del trabajo con escenarios queda en la web y qué en la app de escritorio (D4).
-- Si la población de un escenario son habitantes o agentes simulados (D6).
-- Política para corregir datos en migraciones aplicadas (D7).
-- Cuántas réplicas usa una comparación y cómo se resumen (D8; se revisa en el tercer
-  parcial).
+- Si la población de un escenario son habitantes o agentes simulados (D6, propuesta).
+- Cuántas réplicas usa una comparación y cómo se resumen (D8, propuesta).
+- Redis sin datos autoritativos (D19, por confirmar con el equipo).
+- Calibración y parámetros de los agentes (D24).
+- Qué datos van a MongoDB (D28).
+- Volumen de datos de alto volumen (D29).
 
 D5 ya se tomó: una versión es una fotografía. Guarda su población por grupo de edad y congela
 los parámetros de la enfermedad al enviarse a revisión (migraciones 023 y 024). Para una
 versión que ya salió de borrador, usa sus parámetros congelados, no los del catálogo.
 
-Las de los microservicios (formato, entregas, rutas, pasarela, pruebas, XSD y migraciones)
-ya están tomadas: son D9 a D16, resumidas en `microservicios/AGENTS.md`. Cuando se tome una
-de esta lista, se marca en `docs/decisiones.md` y se quita de aquí.
+Las demás decisiones ya registradas están tomadas (ver `docs/decisiones/decisiones.md`). Las de
+los microservicios, D9 a D16, están resumidas en `microservicios/AGENTS.md`. Cuando se tome una
+de esta lista, se marca en `docs/decisiones/decisiones.md` y se quita de aquí.
 
 ## Qué manda cuando dos fuentes se contradicen
 
 1. Lo que pida la persona en la sesión.
-2. `docs/decisiones.md`.
+2. `docs/decisiones/decisiones.md`.
 3. Este archivo.
 4. `docs/arquitectura/arquitectura_v1.md`.
 5. `docs/contexto/simulador.md`.
