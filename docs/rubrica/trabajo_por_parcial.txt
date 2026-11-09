@@ -1,0 +1,819 @@
+Estado: Vigente, pero no es una rubrica absoluta.
+
+Debido a la complejidad de las soluciones, el trabajo deberá organizarse mediante entregas incrementales. Cada parcial deberá producir un incremento funcional del sistema. No será suficiente entregar únicamente documentos, diagramas, interfaces estáticas o código incompleto. Al terminar cada etapa, el equipo deberá demostrar una versión ejecutable del proyecto y presentar evidencia de:
+ 
+    Funcionamiento.
+    Integración.
+    Seguridad.
+    Pruebas.
+    Despliegue.
+    Documentación.
+    Participación de todos los integrantes.
+ 
+Se propone trabajar con cuatro grandes etapas:
+ 
+    Primer parcial: análisis, arquitectura y producto mínimo funcional.
+    Segundo parcial: construcción de los microservicios y demás componentes distribuidos del backend.
+    Tercer parcial: aplicaciones cliente (móvil y de escritorio), integración completa, nube, seguridad y escalabilidad.
+    Entrega final: estabilización, pruebas, documentación y presentación integral.
+ 
+ 
+PRIMER PARCIAL
+Análisis, diseño arquitectónico y producto mínimo funcional: Durante el primer parcial, el equipo deberá comprender detalladamente el problema, delimitar el alcance y diseñar la arquitectura completa de la solución. También deberá construir una primera versión funcional del sistema web y establecer la infraestructura básica del proyecto. El objetivo principal es comprobar que el equipo entiende:
+ 
+    El negocio.
+    Los usuarios.
+    Los procesos.
+    Los datos.
+    Las reglas.
+    La arquitectura.
+    La distribución de responsabilidades entre componentes.
+ 
+Al finalizar el primer parcial, el sistema todavía no necesitará tener todas sus funciones, pero deberá existir una base técnica sólida y ejecutable.
+Actividades principales
+Análisis del problema: El equipo deberá investigar y describir:
+ 
+    Contexto del problema.
+    Organizaciones involucradas.
+    Usuarios principales.
+    Procesos actuales.
+    Problemas del proceso actual.
+    Información que debe capturarse.
+    Decisiones que debe apoyar el sistema.
+    Actividades que pueden automatizarse.
+    Riesgos del negocio.
+    Restricciones legales, éticas o de privacidad.
+    Beneficios esperados.
+ 
+ 
+Identificación de actores y perfiles: El equipo deberá definir todos los perfiles que utilizarán la plataforma. Para cada perfil se deberán especificar:
+ 
+    Responsabilidades.
+    Información que puede consultar.
+    Información que puede registrar.
+    Operaciones que puede ejecutar.
+    Restricciones.
+    Nivel de autorización.
+    Componentes que utiliza.
+ 
+Requerimientos: El equipo deberá elaborar:
+ 
+    Requerimientos funcionales.
+    Requerimientos no funcionales.
+    Historias de usuario.
+    Criterios de aceptación.
+    Reglas de negocio.
+    Casos de uso principales.
+    Matriz de trazabilidad.
+ 
+Los requerimientos deberán clasificarse por componente:
+ 
+    Sistema web.
+    Microservicios.
+    Aplicación móvil.
+    Aplicación de escritorio.
+    Bases de datos.
+    Infraestructura.
+    Seguridad.
+    Monitoreo.
+ 
+Diseño arquitectónico: Se deberá diseñar la arquitectura completa, aunque no todos los componentes estén implementados durante este parcial. La documentación deberá incluir:
+ 
+    Diagrama de contexto.
+    Diagrama de contenedores.
+    Diagrama de componentes.
+    Diagrama de despliegue.
+    Diagrama de red.
+    Diagrama de secuencia de los procesos principales.
+    Diagrama de comunicación entre aplicaciones.
+    Diagrama de autenticación.
+    Diagrama de almacenamiento de datos.
+ 
+El equipo deberá justificar:
+ 
+    Qué funciones pertenecen al sistema web.
+    Qué funciones se convierten en microservicios.
+    Qué datos se almacenan en PostgreSQL.
+    Qué datos se almacenan en MongoDB.
+    Qué información se almacena temporalmente en Redis.
+    Qué archivos se colocarán en buckets.
+    Qué componentes se ejecutarán en contenedores.
+    Qué componentes estarán desplegados en Compute Engine.
+    Qué procesos podrían utilizar un clúster.
+ 
+Diseño de las bases de datos
+PostgreSQL: El equipo deberá entregar:
+ 
+    Modelo conceptual.
+    Modelo lógico.
+    Modelo físico inicial.
+    Tablas principales.
+    Llaves primarias.
+    Llaves foráneas.
+    Restricciones.
+    Catálogos.
+    Datos de prueba.
+    Estrategia de auditoría.
+ 
+MongoDB: El equipo deberá definir:
+ 
+    Colecciones.
+    Estructura de documentos.
+    Documentos embebidos.
+    Referencias.
+    Índices.
+    Versionamiento.
+    Estrategia de crecimiento.
+    Justificación del uso de MongoDB.
+ 
+Redis: Se deberá definir:
+ 
+    Estructura de claves.
+    Tiempo de expiración.
+    Sesiones.
+    Lista de tokens revocados.
+    Caché de consultas.
+    Contadores.
+    Bloqueos distribuidos.
+    Datos temporales.
+ 
+Producto mínimo funcional del sistema web: El equipo deberá construir una primera versión del sistema web que incluya:
+ 
+    Página pública.
+    Registro de usuarios cuando corresponda.
+    Inicio de sesión.
+    Cierre de sesión.
+    JWT básico.
+    Roles iniciales.
+    Menú por perfil.
+    Panel principal.
+    Al menos dos catálogos funcionales.
+    Al menos un proceso principal de negocio.
+    Conexión con PostgreSQL.
+    Registro básico de auditoría.
+    Carga inicial de datos.
+    Interfaz responsive.
+ 
+No se aceptarán solamente maquetas. Las operaciones deberán guardar y consultar información real.
+Infraestructura inicial: El equipo deberá configurar:
+ 
+    Repositorio de código.
+    Estrategia de ramas.
+    Variables de entorno.
+    Archivo de dependencias.
+    Dockerfile inicial.
+    Docker Compose para desarrollo.
+    Contenedores de PostgreSQL, MongoDB y Redis.
+    Registro de incidencias.
+    Tablero de tareas.
+    Estándares de codificación.
+    Convenciones de nombres.
+ 
+Entregables del primer parcial
+ 
+    Documento de análisis del problema.
+    Requerimientos funcionales y no funcionales.
+    Historias de usuario.
+    Reglas de negocio.
+    Matriz de perfiles y permisos.
+    Diagramas de arquitectura.
+    Modelo de PostgreSQL.
+    Diseño de MongoDB.
+    Diseño de Redis.
+    Prototipos de interfaces.
+    Sistema web mínimo funcional.
+    Contenedores locales.
+    Repositorio organizado.
+    Plan de trabajo del semestre.
+    Demostración técnica.
+ 
+Demostración esperada: El equipo deberá demostrar:
+ 
+    Inicio de sesión.
+    Acceso diferenciado por perfil.
+    Operación de catálogos.
+    Ejecución de un proceso principal.
+    Almacenamiento en PostgreSQL.
+    Consulta de información.
+    Registro de auditoría.
+    Ejecución mediante contenedores.
+ 
+Criterio de logro del primer parcial: Al terminar esta etapa deberá quedar claro que el equipo tiene:
+ 
+    Un problema correctamente entendido.
+    Un alcance viable.
+    Una arquitectura coherente.
+    Bases de datos justificadas.
+    Un sistema web inicial funcionando.
+    Un plan realista para construir los demás componentes.
+ 
+ 
+SEGUNDO PARCIAL
+Construcción de microservicios y contratos de integración: Durante el segundo parcial, el equipo deberá transformar la solución inicial en una arquitectura distribuida. El énfasis estará en:
+ 
+    Microservicios.
+    Comunicación JSON y XML.
+    MongoDB.
+    Redis.
+    Seguridad entre componentes.
+    Contratos de integración.
+ 
+Al terminar esta etapa, el sistema web, los microservicios y las bases de datos (PostgreSQL, MongoDB y Redis) deberán existir y comunicarse correctamente. Las aplicaciones cliente (móvil Android y de escritorio) se desarrollarán en el tercer parcial, por lo que los microservicios y sus contratos deberán quedar listos y documentados para ser consumidos por ellas.
+Actividades principales
+Ampliación del sistema web: El sistema web deberá incorporar:
+ 
+    Más perfiles.
+    Más procesos de negocio.
+    Administración avanzada.
+    Consultas.
+    Filtros.
+    Paginación.
+    Reportes.
+    Gráficas con Highcharts.
+    Carga de archivos.
+    Historial de operaciones.
+    Notificaciones internas.
+    Validaciones de negocio.
+    Manejo de errores.
+ 
+El sistema web deberá seguir funcionando de manera independiente.
+Desarrollo del módulo de microservicios: Se deberán desarrollar los microservicios principales del proyecto. Como mínimo se recomienda implementar entre seis y diez microservicios, dependiendo del proyecto. Cada microservicio deberá tener:
+ 
+    Una responsabilidad claramente definida.
+    Su propio contenedor.
+    Rutas versionadas.
+    Validación de parámetros.
+    Autenticación.
+    Autorización.
+    Respuestas JSON.
+    Respuestas XML.
+    Manejo estandarizado de errores.
+    Registro de actividad.
+    Endpoint de salud.
+    Documentación OpenAPI.
+ 
+Contratos de servicios: Antes de desarrollar las aplicaciones cliente (que se construirán en el tercer parcial), el equipo deberá definir los contratos de integración y validarlos en este parcial mediante Swagger y herramientas de prueba de APIs. Para JSON se deberá especificar:
+ 
+    Estructura de solicitudes.
+    Estructura de respuestas.
+    Tipos de datos.
+    Campos obligatorios.
+    Campos opcionales.
+    Códigos HTTP.
+    Errores.
+    Paginación.
+    Versionamiento.
+ 
+Para XML se deberá especificar:
+ 
+    Elementos.
+    Atributos.
+    Jerarquía.
+    Tipos de datos.
+    Campos obligatorios.
+    Esquema XSD.
+    Mensajes de error.
+    Codificación.
+    Espacios de nombres cuando se requieran.
+ 
+Uso de MongoDB: Durante el segundo parcial deberá existir almacenamiento real en MongoDB. Dependiendo del proyecto, se deberán almacenar:
+ 
+    Eventos.
+    Transcripciones.
+    Lecturas.
+    Evidencias.
+    Documentos.
+    Historiales.
+    Resultados de algoritmos.
+    Información semiestructurada.
+    Datos de alta frecuencia.
+    Versiones.
+ 
+El sistema deberá demostrar operaciones de:
+ 
+    Inserción.
+    Consulta.
+    Actualización.
+    Agregación.
+    Indexación.
+    Filtrado.
+    Recuperación por identificadores relacionados.
+ 
+Implementación de Redis: Redis deberá utilizarse de manera funcional para:
+ 
+    Sesiones.
+    Tokens revocados.
+    Caché.
+    Contadores.
+    Límites de consumo.
+    Datos temporales.
+    Bloqueos cuando correspondan.
+ 
+Todos los componentes deberán consultar Redis durante el proceso de autenticación o autorización.
+Swagger y documentación de APIs: Todos los microservicios implementados deberán estar documentados. Swagger deberá mostrar:
+ 
+    Descripción del endpoint.
+    Método HTTP.
+    Parámetros.
+    Headers.
+    Autenticación.
+    Ejemplo JSON.
+    Ejemplo XML.
+    Respuestas exitosas.
+    Respuestas de error.
+    Códigos HTTP.
+ 
+Entregables del segundo parcial
+ 
+    Sistema web ampliado.
+    Módulo de microservicios funcional.
+    Contratos JSON.
+    Esquemas XML y XSD.
+    MongoDB en operación.
+    Redis en operación.
+    Autenticación con JWT.
+    Swagger.
+    Contenedores individuales.
+    Pruebas unitarias iniciales.
+    Pruebas de integración iniciales.
+    Manual técnico parcial.
+    Demostración integrada.
+ 
+Demostración esperada: El equipo deberá demostrar un mismo proceso ejecutado a través de distintos componentes. Ejemplo:
+ 
+    Un usuario registra información desde el sistema web, o se envía una petición JSON directamente a la API.
+    Un microservicio valida el JWT.
+    Redis valida que la sesión siga activa.
+    El microservicio procesa la operación.
+    PostgreSQL o MongoDB almacena los datos.
+    El sistema web muestra la información.
+    Una consulta a la API mediante XML devuelve la misma información, validada contra su XSD.
+    Swagger muestra el contrato utilizado.
+ 
+Criterio de logro del segundo parcial: Al terminar esta etapa deberán existir:
+ 
+    Sistema web.
+    Microservicios.
+    Comunicación JSON.
+    Comunicación XML.
+    Autenticación común.
+    Bases de datos integradas.
+    Documentación técnica de APIs.
+ 
+ 
+TERCER PARCIAL
+ 
+Aplicaciones cliente, integración avanzada, despliegue en GCP, algoritmos y pruebas de carga: El tercer parcial estará dedicado a desarrollar las aplicaciones cliente (móvil Android y de escritorio) y a convertir el conjunto de componentes en una plataforma robusta, desplegada en la nube y preparada para operar bajo condiciones cercanas a un ambiente real. El énfasis deberá colocarse en:
+ 
+ 
+    Aplicación móvil.
+    Aplicación de escritorio.
+    Despliegue.
+    Integración completa.
+    Seguridad.
+    Monitoreo.
+    Health checks.
+    Algoritmos.
+    Grandes volúmenes.
+    Pruebas de carga.
+    Recuperación ante fallos.
+ 
+ 
+ 
+Actividades principales
+Despliegue en Google Cloud Platform: El equipo deberá desplegar el backend en Google Cloud Platform. Como mínimo deberá utilizar:
+ 
+    Google Compute Engine.
+    Google Cloud Storage.
+    Reglas de firewall.
+    Direcciones y puertos controlados.
+    Variables de entorno.
+    Credenciales protegidas.
+    Certificado HTTPS cuando sea posible.
+    Registro de logs.
+ 
+ 
+Se deberá mostrar la distribución de:
+ 
+    Sistema web.
+    Microservicios.
+    PostgreSQL.
+    MongoDB.
+    Redis.
+    Archivos.
+    Monitoreo.
+ 
+ 
+La base de datos podrá instalarse en infraestructura administrada por el equipo o utilizar servicios compatibles en la nube, siempre que se justifique la decisión.
+ 
+Almacenamiento en buckets: El sistema deberá almacenar archivos en Google Cloud Storage. Dependiendo del proyecto:
+ 
+    Fotografías.
+    Audio.
+    Evidencias.
+    Estudios.
+    Certificados.
+    Documentos.
+    Reportes.
+    Archivos de intercambio.
+    Imágenes de productos.
+    Comprobantes.
+ 
+ 
+La base de datos no deberá almacenar directamente archivos grandes. Únicamente deberá conservar:
+ 
+    Identificador.
+    Ruta.
+    Tipo.
+    Tamaño.
+    Propietario.
+    Fecha.
+    Hash.
+    Nivel de privacidad.
+    Estado.
+    Metadatos.
+ 
+ 
+El equipo deberá implementar URLs firmadas para archivos privados.
+ 
+Health checks y monitoreo: Cada microservicio deberá implementar:
+ 
+    Estado del proceso.
+    Estado de PostgreSQL.
+    Estado de MongoDB.
+    Estado de Redis.
+    Estado del bucket.
+    Tiempo de respuesta.
+    Versión desplegada.
+ 
+ 
+Se deberá construir un panel central que muestre:
+ 
+    Estado actual.
+    Última verificación.
+    Tiempo de respuesta.
+    Número de errores.
+    Historial de disponibilidad.
+    Servicios degradados.
+    Dependencias caídas.
+ 
+ 
+El equipo deberá demostrar qué ocurre cuando:
+ 
+    Un microservicio se detiene.
+    Redis no responde.
+    MongoDB no responde.
+    PostgreSQL no responde.
+    El servicio de archivos no está disponible.
+    Una petición excede el tiempo máximo.
+ 
+ 
+Algoritmos complejos: Cada proyecto deberá implementar al menos un algoritmo complejo relacionado con el problema. No será suficiente utilizar una consulta SQL o una fórmula simple.
+ 
+El equipo deberá documentar:
+ 
+    Problema que resuelve.
+    Entradas.
+    Salidas.
+    Variables.
+    Restricciones.
+    Complejidad.
+    Pseudocódigo.
+    Casos de prueba.
+    Métricas.
+    Limitaciones.
+    Tiempo de ejecución.
+ 
+ 
+Procesamiento de grandes volúmenes: El equipo deberá generar o cargar un conjunto considerable de datos. Dependiendo del proyecto, podrá incluir:
+ 
+    Millones de lecturas.
+    Cientos de miles de eventos.
+    Miles de usuarios.
+    Miles de órdenes.
+    Miles de documentos.
+    Historiales extensos.
+    Series de tiempo.
+    Ubicaciones GPS.
+    Operaciones concurrentes.
+ 
+ 
+Se deberá medir:
+ 
+    Tiempo de inserción.
+    Tiempo de consulta.
+    Uso de índices.
+    Uso de caché.
+    Tiempo de procesamiento.
+    Consumo de recursos.
+    Comportamiento con y sin Redis.
+    Escalabilidad.
+ 
+ 
+Cuando el proyecto lo justifique, se podrá usar:
+ 
+    Google Kubernetes Engine.
+    Pub/Sub.
+    BigQuery.
+    Procesamiento distribuido.
+    Particionamiento.
+    Réplicas.
+    Colas de mensajes.
+ 
+ 
+ 
+Pruebas de carga con Locust: Locust deberá simular escenarios reales. Ejemplos de perfiles:
+ 
+    Usuarios consultando.
+    Usuarios registrando operaciones.
+    Aplicaciones móviles enviando datos.
+    Aplicaciones de escritorio solicitando reportes.
+    Sensores transmitiendo lecturas.
+    Conductores actualizando ubicación.
+    Administradores consultando paneles.
+    Procesos automáticos ejecutándose.
+ 
+ 
+Se deberá evaluar:
+ 
+    Número de usuarios concurrentes.
+    Peticiones por segundo.
+    Tiempo medio.
+    Percentil 95.
+    Percentil 99.
+    Errores.
+    Saturación.
+    Recuperación.
+    Endpoints más lentos.
+ 
+ 
+ 
+Seguridad avanzada: Se deberá completar:
+ 
+    JWT de acceso.
+    Refresh token.
+    Revocación.
+    Expiración.
+    Roles.
+    Permisos por recurso.
+    Rate limiting.
+    Protección de endpoints.
+    Validación de archivos.
+    Validación XML.
+    Validación JSON.
+    Registro de intentos fallidos.
+    Auditoría.
+    Secretos protegidos.
+    Manejo seguro de errores.
+ 
+ 
+ 
+Aplicación móvil Android: La aplicación móvil deberá ser funcional y consumir exclusivamente JSON. Durante este parcial deberá incluir:
+ 
+    Inicio de sesión.
+    Almacenamiento seguro del token.
+    Renovación de sesión.
+    Perfil del usuario.
+    Menú por rol.
+    Consulta de información.
+    Registro de información.
+    Actualización de información.
+    Consumo de al menos cuatro microservicios.
+    Manejo de errores.
+    Indicador de conexión.
+    Validación de formularios.
+    Cierre de sesión.
+    Eliminación local de credenciales.
+ 
+Dependiendo del proyecto, deberá incorporar al menos dos capacidades propias del dispositivo:
+ 
+    Cámara.
+    Código QR.
+    Código de barras.
+    GPS.
+    Notificaciones.
+    Almacenamiento local.
+    Sincronización.
+    Sensores.
+    Firma.
+    Archivos.
+ 
+Aplicación de escritorio: La aplicación de escritorio deberá consumir exclusivamente XML. Deberá incluir:
+ 
+    Inicio de sesión.
+    Validación del JWT.
+    Menú por perfil.
+    Consulta de datos.
+    Captura de datos.
+    Modificación de datos.
+    Consumo de al menos cuatro microservicios.
+    Validación mediante XSD.
+    Manejo de errores.
+    Tabla de resultados.
+    Búsqueda.
+    Filtros.
+    Exportación inicial.
+    Cierre de sesión.
+ 
+La aplicación deberá atender un proceso distinto al de la aplicación móvil. No se considerará adecuado que la aplicación de escritorio sea únicamente una copia de la aplicación web.
+ 
+ 
+ 
+Integración completa: El equipo deberá completar los flujos de principio a fin. Cada proyecto deberá tener al menos tres procesos integrales. Cada proceso deberá involucrar:
+ 
+    Un usuario.
+    Una aplicación cliente.
+    Uno o más microservicios.
+    Redis.
+    PostgreSQL o MongoDB.
+    Un archivo en bucket cuando corresponda.
+    Registro de auditoría.
+    Notificación.
+    Visualización de resultados.
+ 
+ 
+Entregables del tercer parcial
+ 
+    Plataforma desplegada en GCP.
+    Sistema web completo.
+    Microservicios desplegados.
+    Aplicación móvil Android funcional e integrada.
+    Aplicación de escritorio funcional e integrada.
+    Buckets configurados.
+    URLs firmadas.
+    Health checks.
+    Panel de monitoreo.
+    Algoritmo complejo.
+    Conjunto de datos de alto volumen.
+    Pruebas Locust.
+    Resultados de rendimiento.
+    Pruebas de fallos.
+    Evidencia de seguridad.
+    Documentación actualizada.
+    Demostración en la nube.
+ 
+ 
+ 
+Criterio de logro del tercer parcial: Al terminar esta etapa, el proyecto deberá encontrarse funcionalmente completo, incluyendo las aplicaciones móvil y de escritorio. La entrega final no deberá utilizarse para desarrollar módulos faltantes, sino para:
+ 
+    Corregir.
+    Optimizar.
+    Probar.
+    Documentar.
+    Preparar la presentación.
+ 
+ 
+ENTREGA FINAL
+ 
+Estabilización, validación y presentación profesional: La entrega final deberá presentar una plataforma terminada, estable, documentada y desplegada. El proyecto deberá demostrar que puede resolver el problema planteado, soportar distintos perfiles y continuar operando ante fallos parciales.
+ 
+Actividades principales
+ 
+Corrección de defectos: El equipo deberá resolver:
+ 
+    Errores funcionales.
+    Errores de integración.
+    Errores de autenticación.
+    Errores de autorización.
+    Problemas de rendimiento.
+    Consultas lentas.
+    Interfaces inconsistentes.
+    Problemas de sincronización.
+    Fallos de manejo de archivos.
+    Errores de validación.
+ 
+ 
+Pruebas finales: Se deberán completar:
+ 
+    Pruebas unitarias.
+    Pruebas de integración.
+    Pruebas de sistema.
+    Pruebas de regresión.
+    Pruebas de seguridad.
+    Pruebas de carga.
+    Pruebas de estrés.
+    Pruebas de recuperación.
+    Pruebas de usabilidad.
+    Pruebas de contratos.
+    Pruebas de roles.
+    Pruebas de archivos.
+    Pruebas de datos masivos.
+ 
+ 
+Documentación final: El expediente técnico deberá incluir:
+ 
+    Portada.
+    Resumen ejecutivo.
+    Descripción del problema.
+    Objetivos.
+    Alcance.
+    Usuarios.
+    Requerimientos.
+    Reglas de negocio.
+    Arquitectura.
+    Diagramas.
+    Modelo relacional.
+    Diseño MongoDB.
+    Diseño Redis.
+    Diseño de buckets.
+    Microservicios.
+    Contratos JSON.
+    Contratos XML.
+    Swagger.
+    Seguridad.
+    Algoritmos.
+    Infraestructura de GCP.
+    Contenedores.
+    Monitoreo.
+    Plan de pruebas.
+    Resultados de Locust.
+    Resultados de rendimiento.
+    Manual de instalación.
+    Manual técnico.
+    Manual de usuario.
+    Limitaciones.
+    Trabajo futuro.
+    Conclusiones.
+ 
+ 
+Video de demostración: El equipo deberá preparar un video breve donde se observe:
+ 
+    El problema.
+    La arquitectura.
+    El sistema web.
+    La aplicación móvil.
+    La aplicación de escritorio.
+    Los microservicios.
+    Swagger.
+    El monitoreo.
+    La nube.
+    El algoritmo.
+    Las pruebas de carga.
+    La integración.
+ 
+ 
+Presentación final: La presentación deberá centrarse en el funcionamiento integral del sistema. Se recomienda la siguiente estructura:
+ 
+    Problema.
+    Usuarios.
+    Solución propuesta.
+    Arquitectura.
+    Demostración del sistema web.
+    Demostración móvil.
+    Demostración de escritorio.
+    Microservicios.
+    Seguridad.
+    Datos.
+    Algoritmo.
+    Infraestructura.
+    Monitoreo.
+    Pruebas.
+    Resultados.
+    Conclusiones.
+ 
+ 
+Demostración de tolerancia a fallos: Durante la presentación se podrá solicitar al equipo:
+ 
+    Detener un microservicio.
+    Revocar un token.
+    Desactivar temporalmente Redis.
+    Provocar una respuesta inválida.
+    Consultar un archivo inexistente.
+    Simular una sobrecarga.
+    Mostrar un intento sin permisos.
+    Explicar un error en los logs.
+ 
+ 
+El equipo deberá demostrar que el sistema:
+ 
+    Detecta el problema.
+    Registra el error.
+    Informa de forma adecuada.
+    Evita corrupción de datos.
+    Se recupera al restablecer el servicio.
+ 
+ 
+ENTREGABLES FINALES
+ 
+    Código fuente completo.
+    Repositorios organizados.
+    Sistema desplegado en la nube y en ubiquitous.
+    Sistema web.
+    Microservicios.
+    Aplicación Android instalable.
+    Aplicación de escritorio instalable.
+    Bases de datos.
+    Scripts de inicialización.
+    Contenedores.
+    Swagger.
+    Pruebas Locust.
+    Documentación completa.
+    Manuales.
+    Video.
+    Presentación.
+    Evidencias de GCP.
+    Bitácora de participación.
+    Registro de incidencias.
+    Reflexión individual de cada integrante.
+ 
+
