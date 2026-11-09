@@ -1,7 +1,9 @@
 package com.estudiante.simuladorepidemico.ui.vacunas
 
+import androidx.annotation.OptIn
 import androidx.camera.compose.CameraXViewfinder
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.core.SurfaceRequest
@@ -44,7 +46,10 @@ fun lectorDeLotes(): BarcodeScanner = BarcodeScanning.getClient(
 )
 
 // La vista de la cámara trasera; cada código que lee va a `alLeer` (varias veces por segundo: quien
-// lo recibe decide si le hace caso). Quien la usa ya tiene el permiso de cámara.
+// lo recibe decide si le hace caso). Quien la usa ya tiene el permiso de cámara. `cuadro.image` es
+// API experimental de CameraX (ExperimentalGetImage); es la forma que documenta ML Kit de pasarle
+// el cuadro sin copiarlo.
+@OptIn(ExperimentalGetImage::class)
 @Composable
 fun VistaDeCamara(alLeer: (String) -> Unit, modifier: Modifier = Modifier) {
     val contexto = LocalContext.current

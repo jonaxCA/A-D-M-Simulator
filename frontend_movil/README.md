@@ -21,6 +21,14 @@ cd frontend_movil
 ./gradlew assembleDebug testDebugUnitTest
 ```
 
+En Windows usa ese JDK (JetBrains Runtime). Si Gradle no lo encuentra, descarga un JDK 25 de
+Adoptium, y con ese fallan las pruebas que usan DataStore (`AlmacenSesionTest`, `RenovadorTest`,
+`AvisosTest`…) con `Unable to rename … .preferences_pb.tmp`: en las pruebas JVM, DataStore cambia
+el archivo con `File.renameTo`, que en Windows, con ese JDK, no reemplaza uno existente (con el de
+Android Studio sí pasan). Gradle reutiliza un
+daemon que ya esté corriendo con otro JDK, así que después de cambiar `JAVA_HOME` corre
+`./gradlew --stop`.
+
 Dónde va cada cosa dentro de `app/src/main/java/com/estudiante/simuladorepidemico/`:
 
 | Paquete | Qué lleva |
@@ -35,7 +43,8 @@ Dónde va cada cosa dentro de `app/src/main/java/com/estudiante/simuladorepidemi
 | `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio`, `casos` (Capturar caso y Mis casos, con sus fotos), `vacunas` (lectura del QR, registro del lote y aplicación de dosis), `avisos`, `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde y pide el permiso de red local. `ui/Formato.kt` da formato a fechas, roles y los valores de un caso, y `ui/Campos.kt` tiene los campos que comparten los formularios |
 
 `app/src/debug/` lleva lo que solo vale en desarrollo, como el permiso de HTTP sin cifrar
-(sección 2).
+(sección 2). La raíz de Let's Encrypt que trae la app está en `app/src/main/res/raw/` (también
+sección 2).
 
 El ícono es un pin de ubicación (un caso en campo) con una partícula de virus, sobre verde azulado.
 Lo genera `herramientas/icono.py` desde una sola geometría: los vectoriales del ícono adaptativo
@@ -103,10 +112,18 @@ Desde Android 9 la app no puede hacer peticiones `http://` salvo que lo permita 
 de seguridad de red. Los servicios corren sin TLS en la PC, así que en desarrollo hay que
 permitirlo.
 
-Eso está en el *source set* de debug (`app/src/debug/AndroidManifest.xml` y
-`app/src/debug/res/xml/network_security_config.xml`), así que la versión de release sigue sin
-permitir HTTP. Como la IP de la PC cambia según la red y no acepta comodines, en debug se
-permite HTTP hacia cualquier dirección.
+La configuración de release (`app/src/main/res/xml/network_security_config.xml`) solo permite
+HTTPS. El *source set* de debug la reemplaza con la suya
+(`app/src/debug/res/xml/network_security_config.xml`), que además permite HTTP. Como la IP de
+la PC cambia según la red y no acepta comodines, en debug se permite HTTP hacia cualquier
+dirección.
+
+Las dos configuraciones confían en las raíces del sistema y en ISRG Root X1, la raíz de Let's
+Encrypt, que la app trae en `app/src/main/res/raw/isrg_root_x1.crt` (D26). Android la incluye de
+fábrica solo desde la 7.1.1 (API 25), y la app acepta desde la 7.0 (`minSdk 24`): sin ella, un
+teléfono con Android 7.0 rechazaría el certificado del servidor. `RaicesTlsTest` revisa la huella
+de la raíz y que las dos configuraciones la conserven. Si cambias la de debug, deja sus
+`trust-anchors`.
 
 La app empieza por el directorio, que por omisión busca en `http://10.0.2.2:5262/` (el
 emulador). Para un celular, agrega a tu `~/.gradle/gradle.properties`, que no está en el
