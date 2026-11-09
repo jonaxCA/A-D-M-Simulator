@@ -10,21 +10,21 @@ Nadie ha decidido estas (ver `decisiones.md`):
 
 - D17, D18 y D20 quedaron aceptadas el 2026-11-08 (ver `decisiones.md`). D19 (Redis sin datos autoritativos) sigue por confirmar.
 - D25 quedó aceptada el 2026-11-08 (ver `decisiones.md`). Sus cambios están en «Cambios pendientes por D25».
-- D27 quedó aceptada el 2026-11-08 con los tres servicios implementados en `desarrollo-movil`. Sus cambios están en «Cambios pendientes por D27».
+- D27 quedó aceptada el 2026-11-08 con los tres servicios implementados en `desarrollo-movil`, que ya está integrada en esta rama (ver «Cambios pendientes por D27»).
 - Las del antiguo punto 5 y 6 ya eran D9, D11 y D12.
 - El antiguo punto 7 (FLAME GPU con el motor de Python como respaldo) quedó en D23.
 
 ## Cambios pendientes por D27
 
-D27 quedó aceptada el 2026-11-08 (ver [`D27-servicios-nuevos-para-la-movil.md`](D27-servicios-nuevos-para-la-movil.md)). Los tres servicios ya están implementados, pero en la rama `desarrollo-movil`, no en esta. Sus cambios llegan al integrar esa rama.
+D27 quedó aceptada el 2026-11-08 (ver [`D27-servicios-nuevos-para-la-movil.md`](D27-servicios-nuevos-para-la-movil.md)). Los tres servicios se implementaron en la rama `desarrollo-movil`, que se integró en esta el 2026-11-08 (ba66738). Lo de abajo ya está hecho.
 
 ### Código
 
-- **Integración de `desarrollo-movil`:** trae `microservicios/dispositivos`, `evidencias` y `vacunas`, sus entradas en `infra/docker-compose.yml`, las migraciones 031 a 033 y sus pruebas.
+- **Hecho. Integración de `desarrollo-movil`:** trajo `microservicios/dispositivos`, `evidencias` y `vacunas`, sus entradas en `infra/docker-compose.yml`, las migraciones 031 a 033 y sus pruebas.
 
 ### Documentos
 
-- **Contratos:** `docs/contratos/dispositivos`, `evidencias` y `vacunas` existen en `desarrollo-movil` y llegan con la integración.
+- **Hecho. Contratos:** `docs/contratos/dispositivos`, `evidencias` y `vacunas` llegaron con la integración.
 - **Catálogo:** `docs/arquitectura/microservicios.md` ya lista los tres. No cambia.
 
 ### Preguntas abiertas
@@ -175,7 +175,7 @@ D6 está como propuesta: la opción D, un factor de escala que el analista ajust
 
 ## Cambios pendientes por D18 y D20
 
-D18 y D20 quedaron aceptadas el 2026-11-08 (ver [`D18-un-postgres-un-rol-por-servicio.md`](D18-un-postgres-un-rol-por-servicio.md) y [`D20-migracion-gradual-con-fachada.md`](D20-migracion-gradual-con-fachada.md)). D17 también quedó aceptada; no pide cambios. Estos cambios no están implementados.
+D18 y D20 quedaron aceptadas el 2026-11-08 (ver [`D18-un-postgres-un-rol-por-servicio.md`](D18-un-postgres-un-rol-por-servicio.md) y [`D20-web-directa-a-postgres.md`](D20-web-directa-a-postgres.md)). D17 también quedó aceptada; no pide cambios. Estos cambios no están implementados.
 
 ### Preguntas abiertas
 
@@ -213,7 +213,8 @@ D26 quedó aceptada el 2026-11-08 con la opción A: certificado de Let's Encrypt
 
 ### Apps
 
-- Android y escritorio no necesitan configuración: confían en Let's Encrypt. Probar la conexión desde cada una sin excepciones.
+- **Android:** la app trae ISRG Root X1 porque Android 7.0 (`minSdk 24`) no la incluye de fábrica (ver D26). Hecho en `frontend_movil/`; falta probarla contra el dominio real, de preferencia también en un Android 7.0.
+- **Escritorio:** `requests` confía en Let's Encrypt con las raíces de `certifi`. Probar la conexión sin excepciones.
 
 ### Preguntas abiertas
 

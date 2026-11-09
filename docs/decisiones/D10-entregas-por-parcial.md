@@ -12,5 +12,6 @@ No quedó registrado qué otras opciones se consideraron.
 El segundo parcial entrega los 26 servicios con sus contratos y la consola de pruebas hace de cliente. Las apps de escritorio y móvil se entregan en el tercero.
 
 ## Consecuencias
-- `frontend_movil/` y `frontend_desktop/` quedaron vacíos hasta ahora.
-- Con el tercer parcial en curso, la regla de `AGENTS.md` que prohíbe crear código en esas carpetas ya no aplica; se actualiza cuando la v3 esté validada.
+- La app móvil está en `frontend_movil/` desde el 2026-11-07. Se hizo en la rama `desarrollo-movil`, que ya está integrada en esta, y usa los servicios de D27.
+- La app de escritorio se está construyendo en la rama `feat/app-escritorio` (MVP del 2026-11-09). En esta rama, `frontend_desktop/` todavía solo tiene su `AGENTS.md` y su `CLAUDE.md`.
+- La regla de `AGENTS.md` que prohibía crear código en esas carpetas ya no aplica. El `AGENTS.md` de la raíz ya lo refleja para la móvil; falta para la de escritorio cuando se integre.

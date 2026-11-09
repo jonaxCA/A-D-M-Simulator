@@ -25,7 +25,7 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D17 | Migraciones SQL numeradas en lugar de Alembic                                  | Aceptada      | —           | [D17-migraciones-sql-numeradas.md](D17-migraciones-sql-numeradas.md)                   |
 | D18 | Una sola instancia de PostgreSQL con un rol por servicio                       | Aceptada      | —           | [D18-un-postgres-un-rol-por-servicio.md](D18-un-postgres-un-rol-por-servicio.md)       |
 | D19 | Redis sin datos autoritativos                                                  | Por confirmar | —           | [D19-redis-sin-datos-autoritativos.md](D19-redis-sin-datos-autoritativos.md)           |
-| D20 | Migración gradual del monolito con fachada en la web                           | Aceptada      | —           | [D20-migracion-gradual-con-fachada.md](D20-migracion-gradual-con-fachada.md)           |
+| D20 | La web sigue conectada directo a PostgreSQL, sin fachada hacia los servicios   | Aceptada      | —           | [D20-web-directa-a-postgres.md](D20-web-directa-a-postgres.md)                         |
 | D21 | Lo no implementado pasa al tercer parcial                                      | Aceptada      | —           | [D21-pendientes-pasan-al-tercer-parcial.md](D21-pendientes-pasan-al-tercer-parcial.md) |
 | D22 | Implementar el modelo basado en agentes (ABM)                                  | Aceptada      | D2          | [D22-modelo-basado-en-agentes.md](D22-modelo-basado-en-agentes.md)                     |
 | D23 | Tecnología del ABM: CPU o GPU                                                  | Aceptada      | D22         | [D23-tecnologia-del-abm.md](D23-tecnologia-del-abm.md)                                 |
