@@ -147,8 +147,8 @@ D8 está como propuesta (ver [`D08-replicas-de-una-comparacion.md`](D08-replicas
 
 ### Código y base de datos
 
-- **Escritorio, réplicas:** campo de réplicas por lote, configurable por el analista. Con menos de 30, pedir confirmación («¿seguro que quieres bajar de 30 réplicas?»). Se construye en el tercer parcial (D10).
-- **Escritorio, resumen:** por escenario, mostrar la media, la mediana y el intervalo entre percentiles 5 y 95. Se construye en el tercer parcial (D10).
+- **Escritorio, réplicas:** hecho en el MVP de `frontend_desktop`, del lado del cliente. La app lanza N corridas por versión (semillas 1..N; 30 por omisión, máximo 100 por el tope de `GET /runs`) y pide confirmación con menos de 30. Los servicios no cambiaron: cada réplica queda como un lote de una corrida.
+- **Escritorio, resumen:** hecho también en el cliente (`frontend_desktop/app/resumen.py`): media, mediana y percentiles 5 y 95 por escenario, sobre las semillas comunes a las versiones comparadas. La frontera se calcula sobre medianas. D8 sigue en propuesta. Si se confirma con lotes en el servidor, este cálculo pasa a `corridas`, `comparacion` y `pareto`.
 - **Tope:** la base ya tiene `max_replicas_por_lote` (200) y `replicas_por_defecto` (30) en `system_settings` (migración 010). Ningún código las lee hoy; hay que usarlas.
 - **Web:** no lanza corridas (D4). Solo muestra lo que se corrió.
 

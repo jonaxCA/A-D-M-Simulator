@@ -15,9 +15,11 @@ cambios pequeños, legibles y fáciles de revisar.
   microservicios**.
 - **Microservicios:** 29 servicios Flask pequeños en `microservicios/`, cada uno en su
   contenedor de Docker, con Redis y JWT. Son para las apps de escritorio (XML) y móvil
-  (JSON). La móvil ya tiene código en `frontend_movil/`; la de escritorio aún no empieza.
+  (JSON). La móvil ya tiene código en `frontend_movil/`.
   - Antes de tocar esa carpeta, lee `microservicios/AGENTS.md`.
   - El catálogo de servicios está en `docs/arquitectura/microservicios.md`.
+- **App de escritorio:** `frontend_desktop/`, en PySide6 y solo XML (MVP). Antes de tocarla, lee
+  su `AGENTS.md`.
 - **Motor:** el SEIR de referencia (`python-ref`, que pasa a `seir-ref`; D2). El modelo basado
   en agentes (D22, con FLAME GPU 2 según D23) es parte de este parcial y todavía no tiene
   código. MongoDB sigue sin decidirse (D28).
@@ -53,6 +55,8 @@ y un modelo económico sofisticado.
   PostgreSQL con la base de la demostración, Redis y los servicios.
 - Pruebas de los microservicios y de la biblioteca común:
   `python -m pytest microservicios`.
+- App de escritorio: `pip install -r frontend_desktop/requerimientos.txt` y
+  `python -m frontend_desktop.run`. Sus pruebas: `python -m pytest frontend_desktop`.
 - Pruebas del motor: `python -m pytest procesamiento/tests`. Se corren desde la raíz, igual
   que todo lo demás.
 - Verificar que el dump coincide con las migraciones: `python datos/scripts/verifica_migraciones.py`.

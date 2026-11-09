@@ -6,6 +6,7 @@
 - `contratos/`: contratos por servicio (OpenAPI, XSD, ejemplos) y colección de Postman. Tiene su propio `AGENTS.md`.
 - `decisiones/`: ADRs (`decisiones.md`), plantilla (`plantilla_ADR.md`) y pendientes.
 - `desarrollo/`: guías para desarrollar (por escribir).
+- `manuales/`: manuales de usuario de cada aplicación; las capturas van en `manuales/img/`.
 - `parciales/`: planes de desarrollo por parcial.
 - `requerimentos/`: requerimientos funcionales y no funcionales, reglas, matriz de permisos y trazabilidad. Obsoletos: piden actualización.
 - `rubrica/`: textos de la materia. No se edita.
