@@ -613,7 +613,7 @@ de sesión lo prueban las de `auth`.
       con un diagrama de servicios, Redis y PostgreSQL
 - [x] Revisar que cada servicio tenga su README (es parte de la definición de terminado)
 - [ ] Actualizar `AGENTS.md`, `microservicios/AGENTS.md` y `docs/decisiones/decisiones.md`
-- [ ] Carpeta `evidencias/`:
+- [ ] Carpeta `evidencias/` (se retiró el 2026-10-30, commit 86f9245; sigue en el historial de git):
   - [x] resultado de las pruebas;
   - [ ] el recorrido de aceptación de la consola;
   - [ ] capturas de Swagger y del panel de salud;

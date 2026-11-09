@@ -56,6 +56,6 @@ curl -H "Authorization: Bearer <access>" "http://127.0.0.1:5203/api/v1/users?for
 curl -X POST -H "Authorization: Bearer <access>" "http://127.0.0.1:5203/api/v1/users/9/deactivate?format=json"
 ```
 
-Pendiente: entrada en el compose (bloque J). Hoy cierra las sesiones con la biblioteca común,
+Corre en `infra/docker-compose.yml`. Hoy cierra las sesiones con la biblioteca común,
 sobre el mismo Redis; cuando exista el token de servicio (bloque L) puede hacerlo por HTTP con la
 ruta interna de `sesiones`.

@@ -60,4 +60,4 @@ curl -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:5245/api/v1/pareto?runs
 Como en `comparacion`, la base de la demostración no tiene resultados guardados:
 para probarlo con datos, ejecuta antes algunas corridas.
 
-Pendiente: su rol de PostgreSQL (migración 027) y la entrada en el compose (bloque J).
+Su rol de PostgreSQL lo crea la migración 028 y corre en `infra/docker-compose.yml`.

@@ -1,6 +1,6 @@
 # Arquitectura y stack tecnológico — v2
  
-La v2 reemplaza a la v1: el sistema web es un monolito que habla directo con PostgreSQL, y 26 microservicios pequeños (más una consola de pruebas) atienden solo a las apps de escritorio y móvil. Se basa en `docs/arquitectura/microservicios.md`, `docs/decisiones/decisiones.md` (D9 a D16) y `docs/CHECKLIST_SEGUNDO_PARCIAL.md` del repositorio A-D-M-Simulator, revisados el 23 de octubre de 2026.
+La v2 reemplaza a la v1: el sistema web es un monolito que habla directo con PostgreSQL, y 26 microservicios pequeños (más una consola de pruebas) atienden solo a las apps de escritorio y móvil. Se basa en `docs/arquitectura/microservicios.md`, `docs/decisiones/decisiones.md` (D9 a D16) y el checklist del segundo parcial (hoy `docs/parciales/parcial-2/checklist.md`) del repositorio A-D-M-Simulator, revisados el 23 de octubre de 2026.
  
 Si este documento y el catálogo `microservicios.md` no coinciden, manda el catálogo. Si el catálogo y el código no coinciden, manda el código.
  
@@ -301,7 +301,7 @@ FLAME GPU 2 tiene licencia AGPL-3.0: si el motor se ofrece como servicio en red,
  
 ## 7. Infraestructura y despliegue
  
-Todo corre en Docker con un solo `infra/docker-compose.yml`: un contenedor por microservicio, más la consola, PostgreSQL y Redis. Hoy el compose solo levanta Redis; el resto llega con el bloque J del checklist.
+Todo corre en Docker con un solo `infra/docker-compose.yml`: un contenedor por microservicio, más la consola, PostgreSQL y Redis. El compose ya levanta todo eso (bloque J del checklist).
  
 ### 7.1 Contenedores
  

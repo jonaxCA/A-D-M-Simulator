@@ -21,7 +21,7 @@ El servidor (`app.py`) solo entrega la página. Todo lo demás pasa en el navega
 | Salud    | Los 29 con su estado, causa, versión, latencia y la hora del sondeo, leídos de `GET /api/v1/services/health`. Se actualiza cada 10 s; un servicio caído sale en rojo |
 | Swagger  | El contrato del servicio elegido en Swagger UI. "Try it out" va a la URL del directorio y lleva el token de la sesión |
 | Probador | Servicio, operación, parámetros de ruta y de consulta, y cuerpo en JSON o XML (con el ejemplo del contrato). Muestra el código, el tiempo, las cabeceras (con el `X-Correlation-ID`) y el cuerpo con formato. **Copiar como curl** arma el comando de la petición |
-| Recorrido | Los 22 pasos del guion de aceptación, en orden, con lo que pide y responde cada uno y los ids que guarda para los siguientes. **Descargar resumen** baja un JSON para `evidencias/` |
+| Recorrido | Los 22 pasos del guion de aceptación, en orden, con lo que pide y responde cada uno y los ids que guarda para los siguientes. **Descargar resumen** baja un JSON para guardarlo como evidencia |
 
 **Sesión:** el captcha y el inicio de sesión los pide a `auth`, renovar a `sesiones`
 (`/refresh`) y cerrar también a `sesiones` (`/logout`). El *access* y el *refresh* viven
