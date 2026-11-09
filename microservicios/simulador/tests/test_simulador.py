@@ -109,7 +109,7 @@ def test_el_ciclo_sobrevive_a_redis_caido_y_a_un_pedido_ilegible(mundo, monkeypa
     entregas = [RedisNoDisponible("caído"), "no es json", json.dumps({"id": 42}), None]
 
     def tomar(llave):
-        assert llave == llaves.COLA_SIMULACIONES
+        assert llave == trabajador.COLA == "queue:simulaciones:python-ref"
         entrega = entregas.pop(0)
         if not entregas:
             detener.set()
@@ -143,11 +143,13 @@ def test_capturista_no_ve_el_estado(cliente, token):
 
 @pytest.mark.parametrize("rol", rutas.ROLES)
 def test_estado_con_pendientes(cliente, token, redis_falso, rol):
-    redis_falso.lpush(llaves.COLA_SIMULACIONES, json.dumps({"id": 1}), json.dumps({"id": 2}))
+    redis_falso.lpush(trabajador.COLA, json.dumps({"id": 1}), json.dumps({"id": 2}))
+    # Lo que espera en la cola de otro motor no es de este simulador.
+    redis_falso.lpush(llaves.cola_simulaciones("cuda"), json.dumps({"id": 3}))
     datos = cliente.get("/api/v1/worker/status?format=json", headers=token((rol,))).get_json()
-    assert datos["pendientes"] == 2
-    assert set(datos) == {"trabajador", "activo", "corrida_actual", "procesadas", "ultima",
-                          "pendientes"}
+    assert datos["pendientes"] == 2 and datos["motor"] == "python-ref"
+    assert set(datos) == {"trabajador", "motor", "activo", "corrida_actual", "procesadas",
+                          "ultima", "pendientes"}
 
 
 def test_estado_en_xml(cliente, token):

@@ -14,8 +14,10 @@ archivos, así que un contrato que no coincide con el servicio es un error del s
 - Un ejemplo de respuesta en JSON y otro en XML por ruta; en las rutas que reciben cuerpo,
   también un ejemplo de petición.
 - Un `.xsd` cuando el recurso viaja en XML como documento propio: escenario, resultado de
-  una corrida, enfermedad con sus parámetros, caso, lote de sincronización y el error
-  (`problem+xml`).
+  una corrida, enfermedad con sus parámetros, caso, lote de sincronización, el error
+  (`problem+xml`) y, para la app de escritorio, las respuestas de corridas, intervenciones,
+  aprobación, comparación y Pareto. Los tipos compartidos están en `comun/tipos.xsd` y la
+  serie diaria de una corrida, en `comun/serie.xsd`.
 
 ## Reglas
 

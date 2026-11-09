@@ -1,6 +1,6 @@
 # Arquitectura y stack tecnológico — v2
  
-La v2 reemplaza a la v1: el sistema web es un monolito que habla directo con PostgreSQL, y 26 microservicios pequeños (más una consola de pruebas) atienden solo a las apps de escritorio y móvil. Se basa en `docs/arquitectura/microservicios.md`, `docs/decisiones.md` (D9 a D16) y `docs/CHECKLIST_SEGUNDO_PARCIAL.md` del repositorio A-D-M-Simulator, revisados el 23 de octubre de 2026.
+La v2 reemplaza a la v1: el sistema web es un monolito que habla directo con PostgreSQL, y 26 microservicios pequeños (más una consola de pruebas) atienden solo a las apps de escritorio y móvil. Se basa en `docs/arquitectura/microservicios.md`, `docs/decisiones/decisiones.md` (D9 a D16) y `docs/CHECKLIST_SEGUNDO_PARCIAL.md` del repositorio A-D-M-Simulator, revisados el 23 de octubre de 2026.
  
 Si este documento y el catálogo `microservicios.md` no coinciden, manda el catálogo. Si el catálogo y el código no coinciden, manda el código.
  
@@ -406,7 +406,7 @@ Si el profesor confirma que MongoDB y los límites de consumo entran ya, los can
 - **Límites de consumo:** un contador por usuario y ruta en Redis (`ratelimit:<usuario>:<ruta>`), más permisivo en `casos` y `sincronizacion` y más estricto en `corridas`.
 ### 9.2 Decisiones abiertas del proyecto
  
-Cada una tiene su número en `docs/decisiones.md`.
+Cada una tiene su número en `docs/decisiones/decisiones.md`.
  
 - [ ] D1 · Quién captura casos, quién aprueba versiones y quién consulta la auditoría
 - [ ] D2 · El papel del SEIR (opción A o B de la corrección 2)

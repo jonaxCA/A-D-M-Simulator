@@ -4,6 +4,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
+import xmlschema
 
 from backend_web import queries
 from epidemia_comun.formatos import a_xml
@@ -16,7 +17,7 @@ TIPOS = [
     {"id": 1, "code": "CIERRE_ESCUELAS", "name": "Cierre de escuelas", "target_layer": "escuela",
      "param_schema": {"type": "object", "required": ["reduccion"], "properties": {
          "reduccion": {"type": "number", "minimum": 0, "maximum": 1}}}},
-    {"id": 2, "code": "VACUNACION", "name": "Vacunación", "target_layer": "poblacion",
+    {"id": 2, "code": "VACUNACION", "name": "Vacunación", "target_layer": "todas",
      "param_schema": {"type": "object", "properties": {
          "eficacia": {"type": "number", "minimum": 0, "maximum": 1},
          "grupos": {"type": "array"}}}},
@@ -57,7 +58,7 @@ def mundo(monkeypatch):
             m.filas.append({"id": 78, "start_day": datos["start_day"], "end_day": datos["end_day"],
                             "coverage": datos["coverage"], "compliance": datos["compliance"],
                             "params": datos["params"], "order_index": 1, "code": datos["code"],
-                            "name": "Vacunación", "target_layer": "poblacion"})
+                            "name": "Vacunación", "target_layer": "todas"})
         return m.resultado
     monkeypatch.setattr(queries, "agrega_intervencion", agrega)
 
@@ -347,6 +348,23 @@ def test_ejemplos_iguales_al_contrato_y_xml_generable():
 def test_openapi_servido_es_el_del_repo(cliente):
     r = cliente.get("/openapi.json")
     assert r.status_code == 200 and r.data == (CONTRATO / "openapi.json").read_bytes()
+
+
+def test_las_respuestas_xml_validan_contra_el_xsd(cliente, token, mundo):
+    xsd = xmlschema.XMLSchema(str(CONTRATO / "intervencion.xsd"))
+    respuestas = [
+        cliente.get(BASE, headers=token()),
+        cliente.post(BASE, headers=token(), data=a_xml(dict(NUEVA, end_day=None), "intervencion"),
+                     content_type="application/xml"),
+        cliente.post(BASE + "/77/move", headers=token(), data=a_xml({"direction": "bajar"}, "movimiento"),
+                     content_type="application/xml"),
+        cliente.delete(BASE + "/77", headers=token()),
+        cliente.put(BASE + "/77/cost", headers=token(("ADMINISTRADOR",)),
+                    data=a_xml(COSTO, "costo"), content_type="application/xml"),
+    ]
+    for r in respuestas:
+        assert r.status_code in (200, 201), r.data
+        xsd.validate(r.data.decode("utf-8"))
 
 
 def test_las_peticiones_de_ejemplo_se_aceptan(cliente, token, mundo):

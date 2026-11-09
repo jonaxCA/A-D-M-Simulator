@@ -24,8 +24,8 @@ class RedisCaido(unittest.TestCase):
             "revocar": lambda: sesiones.revocar("jti", 0),
             "verificar token": lambda: sesiones.verificar("sid", "jti"),
             "candado": lambda: candados.candado(llaves.candado_corrida(1), 30).__enter__(),
-            "encolar": lambda: cola.encolar(llaves.COLA_SIMULACIONES, 1),
-            "tomar": lambda: cola.tomar(llaves.COLA_SIMULACIONES),
+            "encolar": lambda: cola.encolar(llaves.cola_simulaciones("python-ref"), 1),
+            "tomar": lambda: cola.tomar(llaves.cola_simulaciones("python-ref")),
         }
         for nombre, operacion in operaciones.items():
             with self.subTest(nombre), self.assertRaises(redis_compartido.RedisNoDisponible):

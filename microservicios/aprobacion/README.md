@@ -2,7 +2,8 @@
 
 Puerto del catálogo: **5233** (8000 dentro del contenedor). Contrato:
 `docs/contratos/aprobacion/openapi.json` (idéntico al de `/openapi.json`) y ejemplos JSON/XML en
-`docs/contratos/aprobacion/ejemplos/`.
+`docs/contratos/aprobacion/ejemplos/`. Las respuestas XML validan contra
+`docs/contratos/aprobacion/aprobacion.xsd`.
 
 ## Qué hace
 

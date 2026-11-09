@@ -1,4 +1,5 @@
 import math
+from datetime import date
 
 from .errores import ErrorAPI
 
@@ -19,6 +20,13 @@ def entero_positivo(valor, campo="id"):
     if numero < 1 or str(numero) != str(valor).strip():
         raise ErrorAPI(422, "DATOS_INVALIDOS", "El campo %s debe ser entero positivo." % campo)
     return numero
+
+
+def fecha(valor, campo):
+    try:
+        return date.fromisoformat(valor)
+    except (TypeError, ValueError):
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "%s debe ser una fecha AAAA-MM-DD." % campo)
 
 
 def corridas_a_comparar(texto, maximo):

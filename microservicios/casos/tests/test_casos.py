@@ -8,7 +8,7 @@ from xml.etree import ElementTree as ET
 import psycopg2
 import pytest
 
-from backend_web import queries
+from backend_web import dispositivos, queries
 from microservicios.casos import rutas
 
 ENFERMEDADES = [{"id": 1, "name": "COVID-19", "code": "SARS"}]
@@ -113,7 +113,19 @@ def base(monkeypatch):
     monkeypatch.setattr(rutas, "get_conn", get_conn)
     monkeypatch.setattr(queries, "get_enfermedades_para_captura", lambda: ENFERMEDADES)
     monkeypatch.setattr(queries, "get_municipios_catalogo", lambda: MUNICIPIOS)
+    simula_dispositivos(monkeypatch, falsa)
     return falsa
+
+
+def simula_dispositivos(monkeypatch, falsa):
+    """id -> (dueño, revocado). El 3 es de quien firma el token (sub 7)."""
+    falsa.dispositivos = {3: (7, False), 4: (7, True), 5: (8, False)}
+
+    def estado(device_id, user_id):
+        dueno, revocado = falsa.dispositivos.get(device_id, (None, False))
+        return "ajeno" if dueno != user_id else ("revocado" if revocado else "ok")
+
+    monkeypatch.setattr(dispositivos, "estado_para_captura", estado)
 
 
 @pytest.fixture
@@ -170,6 +182,24 @@ def test_crear_sin_local_uuid_lo_genera(cliente, captura):
 def test_synced_at_con_device_id(cliente, captura):
     r = cliente.post("/api/v1/cases?format=json", json=cuerpo(), headers=captura)
     assert r.get_json()["synced_at"] is not None
+
+
+@pytest.mark.parametrize("device_id,estado,codigo", [(99, 422, "DATOS_INVALIDOS"),
+                                                     (5, 422, "DATOS_INVALIDOS"),
+                                                     (4, 409, "CONFLICTO")])
+def test_dispositivo_inexistente_ajeno_o_revocado_no_captura(cliente, captura, base, bitacora,
+                                                             device_id, estado, codigo):
+    r = cliente.post("/api/v1/cases?format=json", json=cuerpo(device_id=device_id), headers=captura)
+    assert r.status_code == estado and r.get_json()["codigo"] == codigo
+    assert base.commits == 0 and bitacora == []
+
+
+def test_el_reintento_de_un_caso_ya_guardado_no_depende_del_dispositivo(cliente, captura, base):
+    assert cliente.post("/api/v1/cases?format=json", json=cuerpo(), headers=captura).status_code == 201
+    # Revocar el teléfono no deshace lo que ya había sincronizado.
+    base.dispositivos[3] = (7, True)
+    r = cliente.post("/api/v1/cases?format=json", json=cuerpo(), headers=captura)
+    assert r.status_code == 200 and r.get_json()["duplicado"] is True
 
 
 def test_xml_por_omision_en_la_respuesta(cliente, captura):

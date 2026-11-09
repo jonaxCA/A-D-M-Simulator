@@ -1,0 +1,445 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - evidencias",
+    "version": "0.1.0",
+    "description": "Fotos (JPEG, PNG o WebP) y PDF de los casos, hasta 20 MB cada uno (tabla case_attachments). El archivo vive en el volumen del servicio y la base guarda su ruta, tipo, tamaño y huella SHA-256. Las suben quien reportó el caso y ADMINISTRADOR; las ven los cuatro roles que leen casos, siempre con token (privacy es privado); solo ADMINISTRADOR las borra. Los datos de cada evidencia van en XML por defecto o JSON con ?format=json o Accept: application/json; el archivo, tal cual."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5224"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token del servicio auth, con sesión activa en Redis."
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/cases/{case_id}/attachments": {
+      "post": {
+        "summary": "Subir una evidencia",
+        "operationId": "subir_evidencia",
+        "description": "El archivo va tal cual en el cuerpo, no como formulario multipart. Su tipo lo decide el contenido, no el Content-Type ni la extensión. Subir la misma foto otra vez al mismo caso no la duplica: responde 200 con la que ya estaba, así que la app puede reintentar sin miedo. Solo quien reportó el caso o ADMINISTRADOR.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id del caso"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "application/pdf": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Guardada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 12,
+                  "case_id": 418,
+                  "mime_type": "image/jpeg",
+                  "size_bytes": 1843200,
+                  "sha256": "9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5",
+                  "privacy": "privado",
+                  "uploaded_by": 4,
+                  "uploaded_at": "2026-11-01T17:42:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "evidencia"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<evidencia><id tipo=\"numero\">12</id><case_id tipo=\"numero\">418</case_id><mime_type>image/jpeg</mime_type><size_bytes tipo=\"numero\">1843200</size_bytes><sha256>9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">4</uploaded_by><uploaded_at>2026-11-01T17:42:00+00:00</uploaded_at></evidencia>\n"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Esa foto ya estaba en el caso: regresa la que había"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "403": {
+            "description": "El rol no sube evidencias, o el caso lo reportó otra persona"
+          },
+          "404": {
+            "description": "No existe el caso"
+          },
+          "413": {
+            "description": "El archivo pasa de 20 MB"
+          },
+          "422": {
+            "description": "Vacío, de un tipo no permitido o enviado como formulario"
+          }
+        }
+      },
+      "get": {
+        "summary": "Evidencias de un caso",
+        "operationId": "listar_evidencias",
+        "description": "De la más vieja a la más nueva. Los cuatro roles.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id del caso"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "case_id": 418,
+                  "total": 2,
+                  "evidencias": [
+                    {
+                      "id": 12,
+                      "case_id": 418,
+                      "mime_type": "image/jpeg",
+                      "size_bytes": 1843200,
+                      "sha256": "9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5",
+                      "privacy": "privado",
+                      "uploaded_by": 4,
+                      "uploaded_at": "2026-11-01T17:42:00+00:00"
+                    },
+                    {
+                      "id": 13,
+                      "case_id": 418,
+                      "mime_type": "application/pdf",
+                      "size_bytes": 254310,
+                      "sha256": "1b3d5f7a9c1e3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3a5c7e9b1d3f5a7c9e1b3d",
+                      "privacy": "privado",
+                      "uploaded_by": 4,
+                      "uploaded_at": "2026-11-01T17:45:00+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "evidencias_caso"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<evidencias_caso><case_id tipo=\"numero\">418</case_id><total tipo=\"numero\">2</total><evidencias><evidencia><id tipo=\"numero\">12</id><case_id tipo=\"numero\">418</case_id><mime_type>image/jpeg</mime_type><size_bytes tipo=\"numero\">1843200</size_bytes><sha256>9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">4</uploaded_by><uploaded_at>2026-11-01T17:42:00+00:00</uploaded_at></evidencia><evidencia><id tipo=\"numero\">13</id><case_id tipo=\"numero\">418</case_id><mime_type>application/pdf</mime_type><size_bytes tipo=\"numero\">254310</size_bytes><sha256>1b3d5f7a9c1e3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3a5c7e9b1d3f5a7c9e1b3d</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">4</uploaded_by><uploaded_at>2026-11-01T17:45:00+00:00</uploaded_at></evidencia></evidencias></evidencias_caso>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "404": {
+            "description": "No existe el caso"
+          },
+          "422": {
+            "description": "Id inválido"
+          }
+        }
+      }
+    },
+    "/api/v1/attachments/{evidencia_id}": {
+      "get": {
+        "summary": "Datos de una evidencia",
+        "operationId": "consultar_evidencia",
+        "description": "Tipo, tamaño, huella y quién la subió. Los cuatro roles.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "evidencia_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la evidencia"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 12,
+                  "case_id": 418,
+                  "mime_type": "image/jpeg",
+                  "size_bytes": 1843200,
+                  "sha256": "9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5",
+                  "privacy": "privado",
+                  "uploaded_by": 4,
+                  "uploaded_at": "2026-11-01T17:42:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "evidencia"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<evidencia><id tipo=\"numero\">12</id><case_id tipo=\"numero\">418</case_id><mime_type>image/jpeg</mime_type><size_bytes tipo=\"numero\">1843200</size_bytes><sha256>9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">4</uploaded_by><uploaded_at>2026-11-01T17:42:00+00:00</uploaded_at></evidencia>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "404": {
+            "description": "No existe la evidencia"
+          },
+          "422": {
+            "description": "Id inválido"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Borrar una evidencia",
+        "operationId": "borrar_evidencia",
+        "description": "Solo ADMINISTRADOR, por ejemplo para una foto con datos personales subida por error. Borra el registro y el archivo; la bitácora conserva su huella.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "evidencia_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la evidencia"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Borrada: regresa lo que era",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 12,
+                  "case_id": 418,
+                  "mime_type": "image/jpeg",
+                  "size_bytes": 1843200,
+                  "sha256": "9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5",
+                  "privacy": "privado",
+                  "uploaded_by": 4,
+                  "uploaded_at": "2026-11-01T17:42:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "evidencia"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<evidencia><id tipo=\"numero\">12</id><case_id tipo=\"numero\">418</case_id><mime_type>image/jpeg</mime_type><size_bytes tipo=\"numero\">1843200</size_bytes><sha256>9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">4</uploaded_by><uploaded_at>2026-11-01T17:42:00+00:00</uploaded_at></evidencia>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "404": {
+            "description": "No existe la evidencia"
+          },
+          "422": {
+            "description": "Id inválido"
+          }
+        }
+      }
+    },
+    "/api/v1/attachments/{evidencia_id}/content": {
+      "get": {
+        "summary": "Descargar el archivo",
+        "operationId": "descargar_evidencia",
+        "x-binario": true,
+        "description": "El archivo tal cual, con su tipo, Content-Disposition inline y Cache-Control: private, no-store. ?format no aplica. Los cuatro roles.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "evidencia_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la evidencia"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El archivo",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "404": {
+            "description": "No existe la evidencia o su archivo ya no está"
+          },
+          "422": {
+            "description": "Id inválido"
+          }
+        }
+      }
+    }
+  }
+}

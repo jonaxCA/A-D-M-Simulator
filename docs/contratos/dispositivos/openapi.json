@@ -1,0 +1,457 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - dispositivos",
+    "version": "0.1.0",
+    "description": "Registra, consulta y revoca los dispositivos de las apps (tabla devices). Cada persona maneja los suyos; ADMINISTRADOR, los de todos. Un dispositivo revocado ya no captura: casos rechaza los casos que lo traen como device_id, también los que llegan por sincronizacion. XML por defecto y JSON con ?format=json o Accept: application/json; los cuerpos se aceptan en los dos formatos."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5223"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token del servicio auth, con sesión activa en Redis."
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/devices": {
+      "post": {
+        "summary": "Registrar el dispositivo",
+        "operationId": "registrar_dispositivo",
+        "description": "La app lo llama al iniciar sesión. Un device_uid nuevo se registra a nombre de quien inició sesión (201). Si ya era suyo, se actualizan model, app_version y push_token (los que vengan) y last_seen_at (200). Si es de otra cuenta o está revocado, 409. Los cuatro roles.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "device_uid"
+                ],
+                "properties": {
+                  "device_uid": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+                    "description": "Identificador que genera la app al instalarse (por ejemplo, un UUID). Es único: no se puede registrar en dos cuentas."
+                  },
+                  "platform": {
+                    "type": "string",
+                    "enum": [
+                      "android",
+                      "ios",
+                      "desktop"
+                    ],
+                    "default": "android",
+                    "description": "Solo cuenta al registrarlo; después no cambia."
+                  },
+                  "model": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "nullable": true
+                  },
+                  "app_version": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "nullable": true
+                  },
+                  "push_token": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "nullable": true,
+                    "description": "Token de notificaciones push. Se guarda, pero ninguna respuesta lo regresa: solo has_push_token."
+                  }
+                }
+              },
+              "example": {
+                "device_uid": "3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21",
+                "platform": "android",
+                "model": "Pixel 7",
+                "app_version": "0.1.0"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "device_uid"
+                ],
+                "properties": {
+                  "device_uid": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+                    "description": "Identificador que genera la app al instalarse (por ejemplo, un UUID). Es único: no se puede registrar en dos cuentas."
+                  },
+                  "platform": {
+                    "type": "string",
+                    "enum": [
+                      "android",
+                      "ios",
+                      "desktop"
+                    ],
+                    "default": "android",
+                    "description": "Solo cuenta al registrarlo; después no cambia."
+                  },
+                  "model": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "nullable": true
+                  },
+                  "app_version": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "nullable": true
+                  },
+                  "push_token": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "nullable": true,
+                    "description": "Token de notificaciones push. Se guarda, pero ninguna respuesta lo regresa: solo has_push_token."
+                  }
+                },
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><device_uid>3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21</device_uid><platform>android</platform><model>Pixel 7</model><app_version>0.1.0</app_version></solicitud>\n"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registrado a nombre de quien inició sesión",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "user_id": 7,
+                  "device_uid": "3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21",
+                  "platform": "android",
+                  "model": "Pixel 7",
+                  "app_version": "0.1.0",
+                  "is_revoked": false,
+                  "last_seen_at": "2026-10-31T16:20:00+00:00",
+                  "created_at": "2026-10-31T16:20:00+00:00",
+                  "has_push_token": false
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "dispositivo"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<dispositivo><id tipo=\"numero\">3</id><user_id tipo=\"numero\">7</user_id><device_uid>3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21</device_uid><platform>android</platform><model>Pixel 7</model><app_version>0.1.0</app_version><is_revoked tipo=\"booleano\">false</is_revoked><last_seen_at>2026-10-31T16:20:00+00:00</last_seen_at><created_at>2026-10-31T16:20:00+00:00</created_at><has_push_token tipo=\"booleano\">false</has_push_token></dispositivo>\n"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Ya era de esta cuenta: se actualizó"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "400": {
+            "description": "JSON o XML ilegible"
+          },
+          "409": {
+            "description": "El device_uid es de otra cuenta, está revocado o se está registrando en otra petición"
+          },
+          "415": {
+            "description": "Content-Type no soportado"
+          },
+          "422": {
+            "description": "device_uid, platform, model, app_version o push_token inválidos, o campos desconocidos"
+          }
+        }
+      },
+      "get": {
+        "summary": "Listar dispositivos",
+        "operationId": "listar_dispositivos",
+        "description": "Los de quien pregunta, del más reciente al más viejo. ADMINISTRADOR ve los de todos, o los de una cuenta con user_id. Los cuatro roles.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Solo ADMINISTRADOR puede pedir los de otra cuenta (si no, 403)."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 2,
+                  "dispositivos": [
+                    {
+                      "id": 3,
+                      "user_id": 7,
+                      "device_uid": "3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21",
+                      "platform": "android",
+                      "model": "Pixel 7",
+                      "app_version": "0.1.0",
+                      "is_revoked": false,
+                      "last_seen_at": "2026-10-31T16:20:00+00:00",
+                      "created_at": "2026-10-31T16:20:00+00:00",
+                      "has_push_token": false
+                    },
+                    {
+                      "id": 2,
+                      "user_id": 7,
+                      "device_uid": "9b1d7e40-2c6a-4f8e-b3d5-7a0e4c2f9d18",
+                      "platform": "android",
+                      "model": "Moto G54",
+                      "app_version": "0.0.9",
+                      "is_revoked": true,
+                      "last_seen_at": "2026-10-20T13:05:00+00:00",
+                      "created_at": "2026-10-12T09:40:00+00:00",
+                      "has_push_token": false
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "listado"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<listado><total tipo=\"numero\">2</total><dispositivos><dispositivo><id tipo=\"numero\">3</id><user_id tipo=\"numero\">7</user_id><device_uid>3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21</device_uid><platform>android</platform><model>Pixel 7</model><app_version>0.1.0</app_version><is_revoked tipo=\"booleano\">false</is_revoked><last_seen_at>2026-10-31T16:20:00+00:00</last_seen_at><created_at>2026-10-31T16:20:00+00:00</created_at><has_push_token tipo=\"booleano\">false</has_push_token></dispositivo><dispositivo><id tipo=\"numero\">2</id><user_id tipo=\"numero\">7</user_id><device_uid>9b1d7e40-2c6a-4f8e-b3d5-7a0e4c2f9d18</device_uid><platform>android</platform><model>Moto G54</model><app_version>0.0.9</app_version><is_revoked tipo=\"booleano\">true</is_revoked><last_seen_at>2026-10-20T13:05:00+00:00</last_seen_at><created_at>2026-10-12T09:40:00+00:00</created_at><has_push_token tipo=\"booleano\">false</has_push_token></dispositivo></dispositivos></listado>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "422": {
+            "description": "user_id o limit inválidos"
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{device_id}": {
+      "get": {
+        "summary": "Consultar un dispositivo",
+        "operationId": "consultar_dispositivo",
+        "description": "Uno propio; ADMINISTRADOR, cualquiera. El de otra persona es 404.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id del dispositivo"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "user_id": 7,
+                  "device_uid": "3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21",
+                  "platform": "android",
+                  "model": "Pixel 7",
+                  "app_version": "0.1.0",
+                  "is_revoked": false,
+                  "last_seen_at": "2026-10-31T16:20:00+00:00",
+                  "created_at": "2026-10-31T16:20:00+00:00",
+                  "has_push_token": false
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "dispositivo"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<dispositivo><id tipo=\"numero\">3</id><user_id tipo=\"numero\">7</user_id><device_uid>3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21</device_uid><platform>android</platform><model>Pixel 7</model><app_version>0.1.0</app_version><is_revoked tipo=\"booleano\">false</is_revoked><last_seen_at>2026-10-31T16:20:00+00:00</last_seen_at><created_at>2026-10-31T16:20:00+00:00</created_at><has_push_token tipo=\"booleano\">false</has_push_token></dispositivo>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "404": {
+            "description": "No existe o es de otra persona"
+          },
+          "422": {
+            "description": "Id inválido"
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{device_id}/revoke": {
+      "post": {
+        "summary": "Revocar un dispositivo",
+        "operationId": "revocar_dispositivo",
+        "description": "Para un teléfono perdido o robado: es para siempre y no se puede deshacer. Desde ese momento casos rechaza (409) los casos que lo traen como device_id, aunque el token siga vigente; los que ya se habían guardado se quedan. Uno propio; ADMINISTRADOR, cualquiera. Queda en la bitácora.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id del dispositivo"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "user_id": 7,
+                  "device_uid": "3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21",
+                  "platform": "android",
+                  "model": "Pixel 7",
+                  "app_version": "0.1.0",
+                  "is_revoked": true,
+                  "last_seen_at": "2026-10-31T16:20:00+00:00",
+                  "created_at": "2026-10-31T16:20:00+00:00",
+                  "has_push_token": false
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "dispositivo"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<dispositivo><id tipo=\"numero\">3</id><user_id tipo=\"numero\">7</user_id><device_uid>3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21</device_uid><platform>android</platform><model>Pixel 7</model><app_version>0.1.0</app_version><is_revoked tipo=\"booleano\">true</is_revoked><last_seen_at>2026-10-31T16:20:00+00:00</last_seen_at><created_at>2026-10-31T16:20:00+00:00</created_at><has_push_token tipo=\"booleano\">false</has_push_token></dispositivo>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          },
+          "404": {
+            "description": "No existe o es de otra persona"
+          },
+          "409": {
+            "description": "Ya estaba revocado"
+          },
+          "422": {
+            "description": "Id inválido"
+          }
+        }
+      }
+    }
+  }
+}

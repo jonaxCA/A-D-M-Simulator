@@ -1,6 +1,6 @@
 # EPIDEMIA — Catálogo de microservicios (propuesta)
 
-Son **26 microservicios** pequeños, cada uno con una sola tarea, más una **consola** web para
+Son **29 microservicios** pequeños, cada uno con una sola tarea, más una **consola** web para
 probarlos. Los usan **solo las apps de escritorio (XML) y móvil (JSON)**. El sistema web, que
 es el monolito, sigue hablando directo con PostgreSQL y no los consume.
 
@@ -32,7 +32,7 @@ específicas. Sin MongoDB, Cloud Storage ni nginx.
 |------------|-----------|
 | Identidad  | 5201–5204 |
 | Catálogos  | 5211–5215 |
-| Vigilancia | 5221–5222 |
+| Vigilancia | 5221–5225 |
 | Escenarios | 5231–5235 |
 | Simulación | 5241–5245 |
 | Analítica  | 5251–5253 |
@@ -49,7 +49,7 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 |---|------------|--------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------|----------------------------------------------------|-------------------------------------------------------|--------|
 | 1 | `auth`     | Inicia sesión y emite el *access* y el *refresh* | `POST /api/v1/auth/login`                                                                                                               | `users` (intentos fallidos, último acceso) | `users`, `roles`, `user_roles`                     | Redis (abre la sesión)                                | 5201   |
 | 2 | `sesiones` | Renueva, cierra y revoca sesiones                | `POST /api/v1/sessions/refresh`, `POST /api/v1/sessions/logout`, `GET /api/v1/sessions/current`, `DELETE /api/v1/sessions/user/{id}`    | —                                          | —                                                  | Redis                                                 | 5202   |
-| 3 | `usuarios` | Administra cuentas                               | `GET/POST /api/v1/users`, `GET/PUT /api/v1/users/{id}`, `POST /api/v1/users/{id}/activate` y `/deactivate`, `DELETE /api/v1/users/{id}` | `users`                                    | `user_roles` y las tablas que hacen de dependencia | `sesiones`, para cerrar las de una cuenta desactivada | 5203   |
+| 3 | `usuarios` | Administra cuentas y da a cada una su perfil     | `GET /api/v1/users/me` (cualquier rol), `GET/POST /api/v1/users`, `GET/PUT /api/v1/users/{id}`, `POST /api/v1/users/{id}/activate` y `/deactivate`, `DELETE /api/v1/users/{id}` | `users`                                    | `user_roles` y las tablas que hacen de dependencia | `sesiones`, para cerrar las de una cuenta desactivada | 5203   |
 | 4 | `roles`    | Consulta roles y permisos, y los asigna          | `GET /api/v1/roles`, `GET /api/v1/roles/{id}/permissions`, `PUT /api/v1/roles/assignments/{user_id}`                                    | `user_roles`                               | `roles`, `permissions`, `role_permissions`         | `sesiones`, para cerrar sesiones al quitar un rol     | 5204   |
 
 ## Catálogos
@@ -64,16 +64,36 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 
 ## Vigilancia
 
-| #  | Servicio         | Hace una cosa                                                 | Rutas principales                                                   | Escribe                           | Lee                   | Llama a                        | Puerto |
-|----|------------------|---------------------------------------------------------------|---------------------------------------------------------------------|-----------------------------------|-----------------------|--------------------------------|--------|
-| 10 | `casos`          | Registra y consulta casos                                     | `POST /api/v1/cases`, `GET /api/v1/cases`, `GET /api/v1/cases/{id}` | `cases`                           | `diseases`, `regions` | —                              | 5221   |
-| 11 | `sincronizacion` | Recibe lotes de casos capturados sin conexión en la app móvil | `POST /api/v1/sync/cases`, `GET /api/v1/sync/batches/{id}`          | — (los casos los escribe `casos`) | —                     | `casos`, uno por caso, en JSON; reenvía el token de la persona | 5222   |
+| #  | Servicio         | Hace una cosa                                                 | Rutas principales                                                                                                        | Escribe                                                 | Lee                                                              | Llama a                                                        | Puerto |
+|----|------------------|---------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|------------------------------------------------------------------|----------------------------------------------------------------|--------|
+| 10 | `casos`          | Registra y consulta casos                                     | `POST /api/v1/cases`, `GET /api/v1/cases`, `GET /api/v1/cases/{id}`                                                      | `cases`                                                 | `diseases`, `regions`, `devices` (`id`, `user_id`, `is_revoked`) | —                                                              | 5221   |
+| 11 | `sincronizacion` | Recibe lotes de casos capturados sin conexión en la app móvil | `POST /api/v1/sync/cases`, `GET /api/v1/sync/batches/{id}`                                                               | — (los casos los escribe `casos`)                       | —                                                                | `casos`, uno por caso, en JSON; reenvía el token de la persona | 5222   |
+| 27 | `dispositivos`   | Registra, consulta y revoca los dispositivos de las apps      | `POST /api/v1/devices`, `GET /api/v1/devices`, `GET /api/v1/devices/{id}`, `POST /api/v1/devices/{id}/revoke`            | `devices` (alta, versión, última conexión y revocación) | —                                                                | —                                                              | 5223   |
+| 28 | `evidencias`     | Fotos y PDF de los casos, en un volumen de Docker             | `POST/GET /api/v1/cases/{id}/attachments`, `GET/DELETE /api/v1/attachments/{id}`, `GET /api/v1/attachments/{id}/content` | `case_attachments`; los archivos, en su volumen         | `cases` (`id`, `reported_by`)                                    | —                                                              | 5224   |
+| 29 | `vacunas`        | Lotes de vacuna leídos por QR y las dosis que se les aplican  | `POST/GET /api/v1/vaccine-lots`, `GET /api/v1/vaccine-lots/{id}`, `POST /api/v1/vaccine-lots/{id}/doses`                 | `vaccine_lots` (alta y `doses_used`)                    | `diseases`, `regions` (`id`, `name`)                             | —                                                              | 5225   |
 
 - `sincronizacion` usa Redis para que el mismo lote enviado dos veces no duplique casos
   (`sync:lote:<id>`, 7 días). Regresa el resultado de cada caso: creado (201 de `casos`),
   duplicado (200 con `duplicado: true`) o rechazado con su error. Un candado por lote
   (`sync:lote:<id>:candado`, 300 s) evita que dos peticiones lo procesen a la vez; no escribe
   tablas, solo deja un `SYNC` por lote en la bitácora.
+- `dispositivos` registra el teléfono o la PC de quien inició sesión (el `device_uid` lo genera
+  la app) y lo revoca. Cada quien maneja los suyos; ADMINISTRADOR, los de todos. Revocar es
+  para siempre. `last_seen_at` se actualiza cuando la app vuelve a registrarse, no en cada caso.
+- `casos` lee `devices` para no aceptar un caso de un dispositivo que no existe o es de otra
+  cuenta (422) o que está revocado (409), aunque el token siga vigente. Los casos que llegan
+  por `sincronizacion` pasan por la misma revisión: salen rechazados en el resultado del lote,
+  con `codigo` `CONFLICTO`, que los distingue de un caso con datos malos (`DATOS_INVALIDOS`).
+- `evidencias` guarda fotos (JPEG, PNG, WebP) y PDF de hasta 20 MB en su volumen de Docker, en
+  lugar de Cloud Storage; la base guarda ruta, tipo, tamaño y huella SHA-256. El tipo sale del
+  contenido. Las sube quien reportó el caso o ADMINISTRADOR, las ven los cuatro roles que leen
+  casos (siempre con token) y solo ADMINISTRADOR las borra. La misma foto subida dos veces al
+  mismo caso no se duplica, así que la app puede reintentar.
+- `vacunas` registra los lotes que la app lee por QR o código de barras (`lot_code` es único)
+  y les descuenta las dosis aplicadas con un `UPDATE` condicionado: nunca más de las que quedan
+  ni a un lote caducado (en hora de Monterrey). Registran y aplican CAPTURISTA y ADMINISTRADOR;
+  consultan los cuatro roles. Ligar un caso a su lote (`cases.vaccine_lot_id`) es de `casos` y
+  todavía no se hace.
 
 ## Escenarios
 
@@ -99,8 +119,8 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 
 | #  | Servicio      | Hace una cosa                                                   | Rutas principales                                                                                                           | Escribe                                                                                           | Lee                                                                                                                                                                 | Llama a                                                                                            | Puerto |
 |----|---------------|-----------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|--------|
-| 17 | `corridas`    | Lanza, cancela y consulta corridas                              | `POST /api/v1/runs` (202), `GET /api/v1/runs`, `GET /api/v1/runs/{id}` (estado y progreso), `POST /api/v1/runs/{id}/cancel` | `simulation_batches`, `simulation_runs` (alta y cancelación)                                      | `simulation_batches`, `simulation_runs`, `scenario_versions`, `scenarios`, `diseases`, `regions`, `users` (`id`, `username`, `full_name`)                           | Redis: encola la corrida (`{"id", "forzar_error"}` en JSON) y toma el candado                      | 5241   |
-| 18 | `simulador`   | Proceso trabajador: toma corridas de la cola y ejecuta el motor | `GET /api/v1/worker/status` (más `/health`)                                                                                 | `simulation_runs` (estado), `simulation_results`; `simulation_batches` (estado, el de su corrida) | `simulation_runs`, `scenario_versions`, `scenarios`, `scenario_interventions`, `intervention_types`, `diseases`, `regions`, `users` (`id`, `username`, `full_name`) | Redis (cola y progreso); `notificaciones` al terminar o fallar, con token de servicio, best-effort | 5242   |
+| 17 | `corridas`    | Lanza, cancela y consulta corridas                              | `POST /api/v1/runs` (202), `GET /api/v1/runs`, `GET /api/v1/runs/{id}` (estado y progreso), `POST /api/v1/runs/{id}/cancel` | `simulation_batches`, `simulation_runs` (alta y cancelación)                                      | `simulation_batches`, `simulation_runs`, `scenario_versions`, `scenarios`, `diseases`, `regions`, `users` (`id`, `username`, `full_name`)                           | Redis: encola la corrida en la cola de su motor (`{"id", "forzar_error"}`) y toma el candado       | 5241   |
+| 18 | `simulador`   | Proceso trabajador: corre las corridas de la cola de python-ref | `GET /api/v1/worker/status` (más `/health`)                                                                                 | `simulation_runs` (estado), `simulation_results`; `simulation_batches` (estado, el de su corrida) | `simulation_runs`, `scenario_versions`, `scenarios`, `scenario_interventions`, `intervention_types`, `diseases`, `regions`, `users` (`id`, `username`, `full_name`) | Redis (cola y progreso); `notificaciones` al terminar o fallar, con token de servicio, best-effort | 5242   |
 | 19 | `resultados`  | Curvas e indicadores de una corrida                             | `GET /api/v1/runs/{id}/results`, `.../curves`, `.../indicators`                                                             | —                                                                                                 | `simulation_results`, `simulation_runs`, `scenario_versions`, `scenarios`, `diseases`, `regions`, `users` (`id`, `username`, `full_name`)                           | Redis (caché, 300 s)                                                                               | 5243   |
 | 20 | `comparacion` | Compara corridas lado a lado                                    | `GET /api/v1/comparisons?runs=a,b,c`                                                                                        | —                                                                                                 | `simulation_runs`, `simulation_results`, `scenario_versions`, `scenarios`                                                                                           | —                                                                                                  | 5244   |
 | 21 | `pareto`      | Costo contra impacto y frontera de Pareto                       | `GET /api/v1/pareto?runs=a,b,c`                                                                                             | —                                                                                                 | `simulation_runs`, `simulation_results`, `scenario_versions`, `scenarios`, `scenario_interventions`, `intervention_types` (costos), `diseases`, `regions`, `users`  | — (ver nota)                                                                                       | 5245   |
@@ -114,6 +134,11 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
   (`recupera_corridas_interrumpidas(estados=("ejecutando",))`). Las de `encolado` siguen
   esperando en la cola.
 - `forzar_error` viaja en la cola junto al id: no tiene columna en PostgreSQL.
+- Hay una cola por motor (`queue:simulaciones:<motor>`). `corridas` mete cada corrida en la
+  de su motor (`engine`, por omisión `python-ref`, guardado en `simulation_batches.engine`) y
+  cada `simulador` toma solo la suya, así que uno sin GPU nunca toma una corrida de `cuda`.
+  `corridas` acepta otro motor solo si `MOTORES_HABILITADOS` lo nombra; hoy solo existe el
+  simulador de `python-ref`.
 - `pareto` lee los resultados directo de la base y no llama a `resultados`: reusa
   `construir_comparacion_costo_impacto()`, el cálculo de la pantalla Comparación del
   monolito, que también arma el escenario de cada versión y lee los costos. Se decidió así
@@ -134,7 +159,7 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 |----|--------------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|-----------------|-----|------------------------------------------|--------|
 | 25 | `notificaciones`   | Avisos para las apps                           | `GET /api/v1/notifications`, `POST /api/v1/notifications/{id}/read`, `POST /api/v1/notifications` (solo con token de servicio) | `notifications` | —   | —                                        | 5261   |
 | 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/{nombre}/history`                                 | —               | —   | El `/health` de los 26, incluido el suyo, **en XML** | 5262   |
-| —  | `consola`          | Página tipo Swagger/Postman para probar los 26 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
+| —  | `consola`          | Página tipo Swagger/Postman para probar los 29 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
 
 - La `consola` es una página: el navegador llama a cada servicio con la URL que da el
   directorio, y cada servicio abre CORS solo para `CONSOLE_ORIGIN` (en el compose,
@@ -164,7 +189,7 @@ app escritorio ───┤  token Bearer   │
                   base de datos ◄── pareto   (directo, sin resultados)
    sincronizacion ──JSON (un caso a la vez)──► casos
 
-   estado-servicios ──XML──► /health de los 26
+   estado-servicios ──XML──► /health de los 29
 ```
 
 Las llamadas entre servicios llevan el **token de la persona** y el `X-Correlation-ID`.
@@ -175,25 +200,25 @@ aceptan las rutas marcadas como internas.
 ## Llaves de Redis por servicio
 
 Los nombres salen de `microservicios/comun/epidemia_comun/llaves.py`, y una prueba revisa que
-coincidan con esta tabla. Todas llevan TTL, salvo la cola. Del `sid` y del *refresh* solo se
+coincidan con esta tabla. Todas llevan TTL, salvo las colas. Del `sid` y del *refresh* solo se
 guarda su huella (SHA-256).
 
-| Llave                       | Qué guarda                                                                        | TTL                                                                | Escribe                                        | Módulo     |
-|-----------------------------|-----------------------------------------------------------------------------------|--------------------------------------------------------------------|------------------------------------------------|------------|
-| `session:<h(sid)>`          | Hash: usuario, roles, creada, expira y la huella del *refresh* vigente            | La sesión, contada desde el login; renovar no la alarga            | `auth`, `sesiones`                             | `sesiones` |
-| `user:<id>:sessions`        | Conjunto con las huellas de las sesiones de una cuenta                            | La sesión                                                          | `auth`, `sesiones`                             | `sesiones` |
-| `refresh:<h(rt)>`           | Huella del `sid` de su sesión                                                     | Lo que le quede a la sesión                                        | `auth`, `sesiones`                             | `sesiones` |
-| `refresh:usado:<h(rt)>`     | Huella del `sid` de un *refresh* ya rotado, para detectar si alguien lo reutiliza | Lo que le quede a la sesión                                        | `sesiones`                                     | `sesiones` |
-| `jwt:revoked:<jti>`         | `1`                                                                               | Lo que le quede al token, más 60 s                                 | `sesiones`                                     | `sesiones` |
-| `captcha:<id>`              | La respuesta esperada de un captcha de inicio de sesión                           | 5 min; se borra al usarlo, así que sirve para un solo intento      | `auth`                                         | —          |
-| `queue:simulaciones`        | Lista de corridas por ejecutar: `{"id", "forzar_error"}` en JSON                  | **Sin TTL**: la vacía el `simulador`, y lo que manda es PostgreSQL | `corridas`                                     | `cola`     |
-| `lock:corrida:<version>`    | Marca de la petición que lo tomó                                                  | Unos segundos                                                      | `corridas`                                     | `candados` |
-| `job:<id>:progress`         | Avance de una corrida (10, 30, 90 y 100)                                          | 24 h (86400 s), desde el último avance                             | `simulador`                                    | —          |
-| `cache:<servicio>:<clave>`  | La respuesta, en JSON                                                             | Corto; lo fija cada servicio (`resultados`: 300 s)                 | `resultados`, `indicadores`, `series`, `zonas` | `cache`    |
-| `sync:lote:<id>`            | Resultado de un lote ya recibido                                                  | 7 días (`SYNC_LOTE_TTL_SECONDS`, por defecto 604800)               | `sincronizacion`                               | —          |
-| `sync:lote:<id>:candado`    | Marca de la petición que está procesando ese lote                                 | 300 s                                                              | `sincronizacion`                               | `candados` |
-| `health:<servicio>`         | Último sondeo de un servicio, en JSON                                             | Tres intervalos de sondeo: 30 s con `SONDEO_SEGUNDOS` en 10        | `estado-servicios`                             | —          |
-| `health:history:<servicio>` | Lista con los últimos 30 sondeos, del más reciente al más viejo                   | Una hora desde el último sondeo                                    | `estado-servicios`                             | —          |
+| Llave                        | Qué guarda                                                                        | TTL                                                                | Escribe                                        | Módulo     |
+|------------------------------|-----------------------------------------------------------------------------------|--------------------------------------------------------------------|------------------------------------------------|------------|
+| `session:<h(sid)>`           | Hash: usuario, roles, creada, expira y la huella del *refresh* vigente            | La sesión, contada desde el login; renovar no la alarga            | `auth`, `sesiones`                             | `sesiones` |
+| `user:<id>:sessions`         | Conjunto con las huellas de las sesiones de una cuenta                            | La sesión                                                          | `auth`, `sesiones`                             | `sesiones` |
+| `refresh:<h(rt)>`            | Huella del `sid` de su sesión                                                     | Lo que le quede a la sesión                                        | `auth`, `sesiones`                             | `sesiones` |
+| `refresh:usado:<h(rt)>`      | Huella del `sid` de un *refresh* ya rotado, para detectar si alguien lo reutiliza | Lo que le quede a la sesión                                        | `sesiones`                                     | `sesiones` |
+| `jwt:revoked:<jti>`          | `1`                                                                               | Lo que le quede al token, más 60 s                                 | `sesiones`                                     | `sesiones` |
+| `captcha:<id>`               | La respuesta esperada de un captcha de inicio de sesión                           | 5 min; se borra al usarlo, así que sirve para un solo intento      | `auth`                                         | —          |
+| `queue:simulaciones:<motor>` | Corridas por ejecutar con ese motor: `{"id", "forzar_error"}` en JSON             | **Sin TTL**: la vacía el `simulador`, y lo que manda es PostgreSQL | `corridas`                                     | `cola`     |
+| `lock:corrida:<version>`     | Marca de la petición que lo tomó                                                  | Unos segundos                                                      | `corridas`                                     | `candados` |
+| `job:<id>:progress`          | Avance de una corrida (10, 30, 90 y 100)                                          | 24 h (86400 s), desde el último avance                             | `simulador`                                    | —          |
+| `cache:<servicio>:<clave>`   | La respuesta, en JSON                                                             | Corto; lo fija cada servicio (`resultados`: 300 s)                 | `resultados`, `indicadores`, `series`, `zonas` | `cache`    |
+| `sync:lote:<id>`             | Resultado de un lote ya recibido                                                  | 7 días (`SYNC_LOTE_TTL_SECONDS`, por defecto 604800)               | `sincronizacion`                               | —          |
+| `sync:lote:<id>:candado`     | Marca de la petición que está procesando ese lote                                 | 300 s                                                              | `sincronizacion`                               | `candados` |
+| `health:<servicio>`          | Último sondeo de un servicio, en JSON                                             | Tres intervalos de sondeo: 30 s con `SONDEO_SEGUNDOS` en 10        | `estado-servicios`                             | —          |
+| `health:history:<servicio>`  | Lista con los últimos 30 sondeos, del más reciente al más viejo                   | Una hora desde el último sondeo                                    | `estado-servicios`                             | —          |
 
 - Todas las rutas protegidas leen `session:` y `jwt:revoked:` desde `@requiere_token`
   (`seguridad.py`), con la misma regla que `sesiones.verificar()`.
@@ -207,7 +232,4 @@ guarda su huella (SHA-256).
 | Servicio        | Hace una cosa                                                        | Tabla que ya existe |
 |-----------------|----------------------------------------------------------------------|---------------------|
 | `recuperacion`  | Restablecer contraseña; el envío del correo queda fuera de alcance   | `password_resets`   |
-| `dispositivos`  | Registro y revocación de los dispositivos móviles                    | `devices`           |
-| `evidencias`    | Adjuntos de casos en un volumen de Docker, en lugar de Cloud Storage | `case_attachments`  |
-| `vacunas`       | Lotes de vacunas escaneados y el consumo de dosis                    | `vaccine_lots`      |
 | `configuracion` | Ajustes del sistema que leen las apps                                | `system_settings`   |

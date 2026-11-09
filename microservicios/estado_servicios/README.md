@@ -1,8 +1,8 @@
 # EPIDEMIA - Servicio estado-servicios
 
-Directorio de los 26 servicios y sondeo de su salud. No hay pasarela (D13): las apps y
+Directorio de los 29 servicios y sondeo de su salud. No hay pasarela (D13): las apps y
 la consola le piden aquí la URL de cada servicio. Cada pocos segundos sondea el
-`/health` de los 26, incluido el suyo, **en XML**, y guarda en Redis el último estado
+`/health` de los 29, incluido el suyo, **en XML**, y guarda en Redis el último estado
 y un historial corto. No lee ni escribe tablas.
 
 Puerto externo: 5262; puerto interno en Docker: 8000. Contrato en
@@ -37,7 +37,7 @@ con Redis caído es 503 `SERVICIO_NO_DISPONIBLE`.
 
 ## Sondeo y Redis
 
-- Un hilo sondea a los 26 a la vez cada `SONDEO_SEGUNDOS` (10 por defecto), con 5 s
+- Un hilo sondea a los 29 a la vez cada `SONDEO_SEGUNDOS` (10 por defecto), con 5 s
   de espera cada uno: en Docker Desktop, el nombre de un contenedor detenido tarda unos
   4 s en no resolverse, así que con Redis caído cada `/health` tarda eso en responder
   503, y con menos espera saldría `caido` en vez de `degradado`.
@@ -50,10 +50,10 @@ con Redis caído es 503 `SERVICIO_NO_DISPONIBLE`.
   borra una hora después del último sondeo.
 - `/services/health` sondea en ese momento lo que no encuentra en Redis: si venció,
   si Redis está caído o si el hilo no ha corrido. Por eso responde aunque Redis
-  esté caído; en ese caso cada consulta sondea a los 26 y tarda unos 8 s (los 4 s
+  esté caído; en ese caso cada consulta sondea a los 29 y tarda unos 8 s (los 4 s
   de no encontrar a Redis, más el sondeo).
 
-Los 26 están en `SERVICIOS` de `sondeo.py`, con su perfil y su puerto. Una prueba
+Los 29 están en `SERVICIOS` de `sondeo.py`, con su perfil y su puerto. Una prueba
 revisa que coincidan con el catálogo y con el compose. Un servicio nuevo del
 catálogo se agrega ahí.
 
@@ -64,12 +64,18 @@ Además:
 
 | Variable          | Por defecto                 | Qué es |
 |-------------------|-----------------------------|--------|
-| `URL_PUBLICA`     | `http://localhost:{puerto}` | La URL que da el directorio a las apps y a la consola |
+| `URL_PUBLICA`     | `http://{host}:{puerto}`    | La URL que da el directorio a las apps y a la consola |
 | `URL_SONDEO`      | `http://127.0.0.1:{puerto}` | Dónde sondea; en el compose, `http://{servicio}:8000` |
 | `SONDEO_SEGUNDOS` | `10`                        | Cada cuánto sondea |
 
 En las dos URL, `{puerto}` se cambia por el puerto de cada servicio y `{servicio}`
 por su nombre.
+
+Sin `URL_PUBLICA`, el directorio arma cada URL con el host al que llegó la petición:
+la consola en `localhost` recibe `http://localhost:5201`, el emulador de Android (que ve la
+PC como `10.0.2.2`) recibe `http://10.0.2.2:5201` y un celular en la misma red recibe la IP
+de la PC. Un host que no es un nombre ni una IP se cambia por `localhost`. Con
+`URL_PUBLICA` fijada, manda ella: sirve si las apps entran por otra dirección.
 
 Su rol de PostgreSQL, `svc_estado_servicios` (migración 030), solo puede conectarse.
 

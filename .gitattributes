@@ -1,1 +1,4 @@
 * text=auto eol=lf
+# Los .bat de Windows (gradlew.bat) necesitan CRLF: cmd falla con etiquetas en LF.
+*.bat text eol=crlf
+*.cmd text eol=crlf

@@ -58,6 +58,9 @@ services:
       DB_PASSWORD_APROBACION: ${DB_PASSWORD_APROBACION:-}
       DB_PASSWORD_AUTH: ${DB_PASSWORD_AUTH:-}
       DB_PASSWORD_CASOS: ${DB_PASSWORD_CASOS:-}
+      DB_PASSWORD_DISPOSITIVOS: ${DB_PASSWORD_DISPOSITIVOS:-}
+      DB_PASSWORD_EVIDENCIAS: ${DB_PASSWORD_EVIDENCIAS:-}
+      DB_PASSWORD_VACUNAS: ${DB_PASSWORD_VACUNAS:-}
       DB_PASSWORD_COMPARACION: ${DB_PASSWORD_COMPARACION:-}
       DB_PASSWORD_CORRIDAS: ${DB_PASSWORD_CORRIDAS:-}
       DB_PASSWORD_ENFERMEDADES: ${DB_PASSWORD_ENFERMEDADES:-}
@@ -311,6 +314,64 @@ services:
         condition: service_healthy
       casos:
         condition: service_healthy
+  dispositivos:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/dispositivos/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5223:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_DISPOSITIVOS:-postgresql://svc_dispositivos:${DB_PASSWORD_DISPOSITIVOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  # Los archivos de las evidencias viven en su volumen; la base solo guarda su ruta y su huella.
+  evidencias:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/evidencias/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5224:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_EVIDENCIAS:-postgresql://svc_evidencias:${DB_PASSWORD_EVIDENCIAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      EVIDENCIAS_DIR: /var/lib/epidemia/evidencias
+    volumes:
+      - evidencias-datos:/var/lib/epidemia/evidencias
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  vacunas:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/vacunas/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5225:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_VACUNAS:-postgresql://svc_vacunas:${DB_PASSWORD_VACUNAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   # --- Escenarios (perfil escenarios) -------------------------------------------------------
   validacion:
@@ -436,6 +497,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_CORRIDAS:-postgresql://svc_corridas:${DB_PASSWORD_CORRIDAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      MOTORES_HABILITADOS: ${MOTORES_HABILITADOS:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -593,8 +655,8 @@ services:
       redis:
         condition: service_healthy
   # Sondea el /health de los 26 por la red interna y no depende de ellos: el que no está
-  # arriba aparece caído. URL_PUBLICA es la que da su directorio a las apps y a la consola
-  # (ver infra/.env.example).
+  # arriba aparece caído. Su directorio da a cada cliente las URL con el host por el que
+  # llegó, salvo que URL_PUBLICA diga otra cosa (ver infra/.env.example).
   estado-servicios:
     <<: *servicio-base
     build:
@@ -632,3 +694,4 @@ services:
 volumes:
   redis-datos:
   postgres-datos:
+  evidencias-datos:

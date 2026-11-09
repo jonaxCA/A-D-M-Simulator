@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - simulador",
     "version": "0.1.0",
-    "description": "Proceso trabajador: toma corridas de la cola de Redis (queue:simulaciones), ejecuta el motor, guarda el resultado en PostgreSQL, publica el avance en job:<id>:progress y avisa a notificaciones al terminar o fallar. Su única ruta es el estado del trabajador."
+    "description": "Proceso trabajador: toma las corridas de python-ref de su cola de Redis (queue:simulaciones:python-ref), ejecuta el motor, guarda el resultado en PostgreSQL, publica el avance en job:<id>:progress y avisa a notificaciones al terminar o fallar. Su única ruta es el estado del trabajador."
   },
   "servers": [
     {
@@ -25,7 +25,7 @@
       "get": {
         "summary": "Estado del trabajador",
         "operationId": "estado_trabajador",
-        "description": "Nombre del contenedor, si el hilo trabajador sigue vivo, la corrida que está ejecutando, cuántas lleva, la última y cuántas esperan en la cola. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
+        "description": "Nombre del contenedor, el motor que ejecuta (motor), si el hilo trabajador sigue vivo, la corrida que está ejecutando, cuántas lleva, la última y cuántas esperan en la cola de su motor. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
         "security": [
           {
             "bearerAuth": []
@@ -41,6 +41,7 @@
                 },
                 "example": {
                   "trabajador": "simulador-1",
+                  "motor": "python-ref",
                   "activo": true,
                   "corrida_actual": 44,
                   "procesadas": 3,
@@ -60,7 +61,7 @@
                 },
                 "examples": {
                   "respuesta": {
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<trabajador><trabajador>simulador-1</trabajador><activo tipo=\"booleano\">true</activo><corrida_actual tipo=\"numero\">44</corrida_actual><procesadas tipo=\"numero\">3</procesadas><ultima><id tipo=\"numero\">43</id><status>completado</status></ultima><pendientes tipo=\"numero\">1</pendientes></trabajador>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<trabajador><trabajador>simulador-1</trabajador><motor>python-ref</motor><activo tipo=\"booleano\">true</activo><corrida_actual tipo=\"numero\">44</corrida_actual><procesadas tipo=\"numero\">3</procesadas><ultima><id tipo=\"numero\">43</id><status>completado</status></ultima><pendientes tipo=\"numero\">1</pendientes></trabajador>\n"
                   }
                 }
               }

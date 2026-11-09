@@ -8,10 +8,12 @@ Puerto externo: 5203; puerto interno en Docker: 8000. Contrato en
 
 ## Rutas
 
-Todas piden token con rol `ADMINISTRADOR`, como las pantallas de usuarios del monolito.
+Todas piden token con rol `ADMINISTRADOR`, como las pantallas de usuarios del monolito, salvo
+`/users/me`: ahí cualquier cuenta consulta la suya (el perfil de la app móvil).
 
 | Método | Ruta                                     | Qué hace |
 |--------|------------------------------------------|----------|
+| GET    | `/api/v1/users/me`                       | La cuenta del token, con los mismos campos que `/users/{id}`. Los cuatro roles |
 | GET    | `/api/v1/users`                          | Lista con filtros `q`, `role_id` y `status` (`activo`, `pendiente`, `inactivo`) |
 | POST   | `/api/v1/users`                          | Alta con `username`, `email`, `full_name`, `password` e `is_active` (opcional); responde 201 |
 | GET    | `/api/v1/users/{id}`                     | Una cuenta con su `role_id` y sus `roles` |

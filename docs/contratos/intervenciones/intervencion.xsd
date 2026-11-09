@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Las respuestas del servicio intervenciones (puerto 5232).
+       GET    /api/v1/versions/{vid}/interventions                 raíz <intervenciones_version>
+       POST   /api/v1/versions/{vid}/interventions                 raíz <intervencion>, completa
+       DELETE /api/v1/versions/{vid}/interventions/{id}            raíz <intervencion>: id y eliminada
+       POST   /api/v1/versions/{vid}/interventions/{id}/move       raíz <intervencion>: id, direction
+                                                                    y movida
+       PUT    /api/v1/versions/{vid}/interventions/{id}/cost       raíz <costo_intervencion>
+     Como <intervencion> tiene tres formas, solo id es obligatorio en la raíz; dentro de
+     <intervenciones_version> cada intervención va completa. Los cuerpos de las peticiones los
+     valida el servicio. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:include schemaLocation="../comun/tipos.xsd"/>
+
+  <xs:simpleType name="estadoVersion">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="borrador"/>
+      <xs:enumeration value="en_revision"/>
+      <xs:enumeration value="aprobado"/>
+      <xs:enumeration value="rechazado"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ck_intervention_types_layer (migración 004). -->
+  <xs:simpleType name="capa">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="hogar"/>
+      <xs:enumeration value="escuela"/>
+      <xs:enumeration value="trabajo"/>
+      <xs:enumeration value="comunidad"/>
+      <xs:enumeration value="todas"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="direccion">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="subir"/>
+      <xs:enumeration value="bajar"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Los parámetros dependen del tipo de intervención (su param_schema): cada uno es un
+       elemento con su valor, o con <item> por valor si es una lista. -->
+  <xs:complexType name="Parametros">
+    <xs:sequence>
+      <xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Intervencion">
+    <xs:all>
+      <xs:element name="id" type="Entero"/>
+      <xs:element name="code" type="xs:string"/>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="target_layer" type="capa"/>
+      <xs:element name="start_day" type="Entero"/>
+      <xs:element name="end_day" type="EnteroONulo"/>
+      <xs:element name="coverage" type="NumeroONulo"/>
+      <xs:element name="compliance" type="NumeroONulo"/>
+      <xs:element name="params" type="Parametros"/>
+      <xs:element name="order_index" type="Entero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:element name="intervenciones_version">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="version_id" type="Entero"/>
+        <xs:element name="scenario_id" type="Entero"/>
+        <xs:element name="version_number" type="Entero"/>
+        <xs:element name="status" type="estadoVersion"/>
+        <xs:element name="editable" type="Booleano"/>
+        <xs:element name="total" type="Entero"/>
+        <xs:element name="intervenciones">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="intervencion" type="Intervencion" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="intervencion">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="id" type="Entero"/>
+        <xs:element name="code" type="xs:string" minOccurs="0"/>
+        <xs:element name="name" type="xs:string" minOccurs="0"/>
+        <xs:element name="target_layer" type="capa" minOccurs="0"/>
+        <xs:element name="start_day" type="Entero" minOccurs="0"/>
+        <xs:element name="end_day" type="EnteroONulo" minOccurs="0"/>
+        <xs:element name="coverage" type="NumeroONulo" minOccurs="0"/>
+        <xs:element name="compliance" type="NumeroONulo" minOccurs="0"/>
+        <xs:element name="params" type="Parametros" minOccurs="0"/>
+        <xs:element name="order_index" type="Entero" minOccurs="0"/>
+        <xs:element name="eliminada" type="Booleano" minOccurs="0"/>
+        <xs:element name="direction" type="direccion" minOccurs="0"/>
+        <xs:element name="movida" type="Booleano" minOccurs="0"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- El costo vive en el tipo de intervención: intervention_type_id dice cuál cambió. -->
+  <xs:element name="costo_intervencion">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="id" type="Entero"/>
+        <xs:element name="intervention_type_id" type="Entero"/>
+        <xs:element name="unit_cost" type="NumeroONulo"/>
+        <xs:element name="cost_source" type="TextoONulo"/>
+        <xs:element name="cost_is_assumption" type="Booleano"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

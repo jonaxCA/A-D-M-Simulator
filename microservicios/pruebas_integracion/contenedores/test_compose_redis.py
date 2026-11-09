@@ -1,5 +1,7 @@
 """Redis apagado y encendido a mitad de la prueba: lo protegido responde 503, los catálogos siguen,
 y al volver Redis todo regresa con la misma sesión y sin reiniciar servicios."""
+from microservicios.estado_servicios.sondeo import SERVICIOS
+
 from .conftest import espera
 
 
@@ -15,5 +17,5 @@ def test_redis_apagado_y_encendido(api, sesion, compose):
         compose("start", "redis")
     espera(lambda: api("casos", "GET", "/api/v1/cases", admin["access"]).status_code == 200, 60,
            "casos no volvió a responder con la misma sesión.", cada=2)
-    espera(lambda: api("estado-servicios", "GET", "/api/v1/services/health").json()["resumen"]["ok"] == 26, 60,
-           "Los 26 no volvieron a ok.", cada=3)
+    espera(lambda: api("estado-servicios", "GET", "/api/v1/services/health").json()["resumen"]["ok"] == len(SERVICIOS),
+           60, "No volvieron todos a ok.", cada=3)

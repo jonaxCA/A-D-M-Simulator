@@ -1,5 +1,7 @@
 import json
 
+from flask import request
+
 from epidemia_comun import llaves
 from epidemia_comun.errores import ErrorAPI, respuesta_error
 from epidemia_comun.formatos import responder
@@ -20,9 +22,10 @@ def registrar(app):
     def directorio():
         nombres = list(sondeo.SERVICIOS)
         ultimos = sondeo.ultimos(nombres) or {}
+        host = sondeo.host_de(request.host)
         servicios = []
         for nombre, (dominio, puerto) in sondeo.SERVICIOS.items():
-            url = sondeo.url_publica(nombre)
+            url = sondeo.url_publica(nombre, host)
             servicios.append({"nombre": nombre, "dominio": dominio, "puerto": puerto, "url": url,
                               "docs": url + "/docs", "openapi": url + "/openapi.json",
                               "version": ultimos.get(nombre, {}).get("version")})

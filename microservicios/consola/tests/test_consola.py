@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from microservicios.consola import app as modulo
+from microservicios.estado_servicios.sondeo import SERVICIOS
 
 RAIZ = Path(__file__).resolve().parents[3]
 ESTATICO = RAIZ / "microservicios/consola/estatico"
@@ -88,10 +89,10 @@ def test_dockerfile():
     assert "HEALTHCHECK" in docker and "USER epidemia" in docker
 
 
-def test_compose_publica_la_consola_y_le_abre_cors_en_los_26():
+def test_compose_publica_la_consola_y_le_abre_cors_en_todos():
     compose = (RAIZ / "infra/docker-compose.yml").read_text(encoding="utf-8")
     assert re.search(r'^  consola:\n(?:    .*\n)*?    profiles: \[plataforma\]\n    ports:\n'
                      r'      - "5260:8000"', compose, re.M)
     servicios = compose.count("      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0\n")
-    assert servicios == 26
+    assert servicios == len(SERVICIOS)
     assert compose.count("      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}\n") == servicios

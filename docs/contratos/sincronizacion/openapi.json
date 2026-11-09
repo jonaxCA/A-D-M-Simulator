@@ -158,6 +158,11 @@
             "type": "integer",
             "nullable": true
           },
+          "codigo": {
+            "type": "string",
+            "nullable": true,
+            "description": "El codigo de casos cuando el caso sale rechazado; null si se creó o era duplicado. CONFLICTO: el dispositivo está revocado (sale en todos los casos del lote). DATOS_INVALIDOS: hay que corregir el caso. Los lotes guardados antes de este campo no lo traen."
+          },
           "errores": {
             "type": "array",
             "items": {
@@ -250,7 +255,7 @@
         "tags": [
           "sincronizacion"
         ],
-        "description": "Llama a POST /api/v1/cases de casos, un caso a la vez y sin reintentos. creado = casos respondió 201; duplicado = 200 (ya existía ese local_uuid); rechazado = 400/409/415/422 de casos, con sus errores. Si casos no responde, o responde 5xx, todo el lote es 503 y no se guarda (se puede reenviar: local_uuid evita duplicar lo ya creado, que saldrá como duplicado). Un candado por lote (409 si otra petición lo está procesando). Deja un SYNC en audit_log con los conteos. Roles: CAPTURISTA, ADMINISTRADOR. Máximo 100 casos.",
+        "description": "Llama a POST /api/v1/cases de casos, un caso a la vez y sin reintentos. creado = casos respondió 201; duplicado = 200 (ya existía ese local_uuid); rechazado = 400/409/415/422 de casos, con sus errores y su codigo (CONFLICTO si el dispositivo está revocado, DATOS_INVALIDOS si hay que corregir el caso). Si casos no responde, o responde 5xx, todo el lote es 503 y no se guarda (se puede reenviar: local_uuid evita duplicar lo ya creado, que saldrá como duplicado). Un candado por lote (409 si otra petición lo está procesando). Deja un SYNC en audit_log con los conteos. Roles: CAPTURISTA, ADMINISTRADOR. Máximo 100 casos.",
         "parameters": [
           {
             "in": "query",
@@ -341,6 +346,7 @@
                       "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
                       "resultado": "creado",
                       "case_id": 41,
+                      "codigo": null,
                       "errores": []
                     },
                     {
@@ -348,6 +354,7 @@
                       "local_uuid": "8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77",
                       "resultado": "rechazado",
                       "case_id": null,
+                      "codigo": "DATOS_INVALIDOS",
                       "errores": [
                         "Ese municipio no está en el catálogo de Nuevo León."
                       ]
@@ -363,7 +370,7 @@
                     "name": "resultado_lote"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<resultado_lote><batch_id>0b6f5a53-1d1f-4f52-8a0a-5d0a4a0e9c11</batch_id><device_id tipo=\"numero\">3</device_id><recibido_en>2026-10-12T10:00:00+00:00</recibido_en><total tipo=\"numero\">2</total><creados tipo=\"numero\">1</creados><duplicados tipo=\"numero\">0</duplicados><rechazados tipo=\"numero\">1</rechazados><resultados><item><indice tipo=\"numero\">0</indice><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><resultado>creado</resultado><case_id tipo=\"numero\">41</case_id><errores /></item><item><indice tipo=\"numero\">1</indice><local_uuid>8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77</local_uuid><resultado>rechazado</resultado><case_id nil=\"true\" /><errores><item>Ese municipio no está en el catálogo de Nuevo León.</item></errores></item></resultados><repetido tipo=\"booleano\">false</repetido></resultado_lote>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<resultado_lote><batch_id>0b6f5a53-1d1f-4f52-8a0a-5d0a4a0e9c11</batch_id><device_id tipo=\"numero\">3</device_id><recibido_en>2026-10-12T10:00:00+00:00</recibido_en><total tipo=\"numero\">2</total><creados tipo=\"numero\">1</creados><duplicados tipo=\"numero\">0</duplicados><rechazados tipo=\"numero\">1</rechazados><resultados><item><indice tipo=\"numero\">0</indice><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><resultado>creado</resultado><case_id tipo=\"numero\">41</case_id><codigo nil=\"true\" /><errores /></item><item><indice tipo=\"numero\">1</indice><local_uuid>8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77</local_uuid><resultado>rechazado</resultado><case_id nil=\"true\" /><codigo>DATOS_INVALIDOS</codigo><errores><item>Ese municipio no está en el catálogo de Nuevo León.</item></errores></item></resultados><repetido tipo=\"booleano\">false</repetido></resultado_lote>\n"
               }
             }
           },
@@ -570,6 +577,7 @@
                       "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
                       "resultado": "creado",
                       "case_id": 41,
+                      "codigo": null,
                       "errores": []
                     },
                     {
@@ -577,6 +585,7 @@
                       "local_uuid": "8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77",
                       "resultado": "rechazado",
                       "case_id": null,
+                      "codigo": "DATOS_INVALIDOS",
                       "errores": [
                         "Ese municipio no está en el catálogo de Nuevo León."
                       ]
@@ -592,7 +601,7 @@
                     "name": "resultado_lote"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<resultado_lote><batch_id>0b6f5a53-1d1f-4f52-8a0a-5d0a4a0e9c11</batch_id><device_id tipo=\"numero\">3</device_id><recibido_en>2026-10-12T10:00:00+00:00</recibido_en><total tipo=\"numero\">2</total><creados tipo=\"numero\">1</creados><duplicados tipo=\"numero\">0</duplicados><rechazados tipo=\"numero\">1</rechazados><resultados><item><indice tipo=\"numero\">0</indice><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><resultado>creado</resultado><case_id tipo=\"numero\">41</case_id><errores /></item><item><indice tipo=\"numero\">1</indice><local_uuid>8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77</local_uuid><resultado>rechazado</resultado><case_id nil=\"true\" /><errores><item>Ese municipio no está en el catálogo de Nuevo León.</item></errores></item></resultados><repetido tipo=\"booleano\">true</repetido></resultado_lote>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<resultado_lote><batch_id>0b6f5a53-1d1f-4f52-8a0a-5d0a4a0e9c11</batch_id><device_id tipo=\"numero\">3</device_id><recibido_en>2026-10-12T10:00:00+00:00</recibido_en><total tipo=\"numero\">2</total><creados tipo=\"numero\">1</creados><duplicados tipo=\"numero\">0</duplicados><rechazados tipo=\"numero\">1</rechazados><resultados><item><indice tipo=\"numero\">0</indice><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><resultado>creado</resultado><case_id tipo=\"numero\">41</case_id><codigo nil=\"true\" /><errores /></item><item><indice tipo=\"numero\">1</indice><local_uuid>8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77</local_uuid><resultado>rechazado</resultado><case_id nil=\"true\" /><codigo>DATOS_INVALIDOS</codigo><errores><item>Ese municipio no está en el catálogo de Nuevo León.</item></errores></item></resultados><repetido tipo=\"booleano\">true</repetido></resultado_lote>\n"
               }
             }
           },
