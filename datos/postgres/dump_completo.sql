@@ -24,6 +24,9 @@ SET client_encoding = 'UTF8';
 --                                                       028_roles_comparacion_pareto.sql
 --                                                       029_roles_simulacion_notificaciones.sql
 --                                                       030_rol_estado_servicios.sql
+--                                                       031_rol_dispositivos.sql
+--                                                       032_rol_evidencias.sql
+--                                                       033_rol_vacunas.sql
 --
 -- Cada bloque original conserva su propio BEGIN/COMMIT y su propio INSERT en
 -- schema_migrations, asi que este archivo se comporta exactamente igual que
@@ -3902,6 +3905,190 @@ COMMENT ON ROLE svc_estado_servicios IS 'Microservicio estado-servicios (5262): 
 
 INSERT INTO schema_migrations (version, description)
 VALUES ('030', 'Seguridad: rol de PostgreSQL de estado-servicios')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 031_rol_dispositivos.sql
+-- Un rol de PostgreSQL para el microservicio dispositivos (5223), dueño de devices, y la
+-- lectura de devices que necesita casos para no aceptar un caso de un dispositivo ajeno o
+-- revocado. Sigue el patrón de la 026 a la 030.
+--
+-- - El rol nace con LOGIN y sin contraseña. En el compose la fija
+--   infra/postgres/10-inicializa.sh; fuera de él: ALTER ROLE svc_dispositivos PASSWORD '...';
+--   y el servicio la recibe en su DATABASE_URL (ver infra/.env.example).
+-- - dispositivos registra, actualiza y revoca, pero nunca borra un dispositivo ni le cambia
+--   el dueño, el identificador o la plataforma: no tiene DELETE ni UPDATE sobre esas columnas.
+-- - casos solo lee id, user_id e is_revoked, lo que necesita para decidir si acepta un
+--   device_id. La 027 le revoca todo a svc_casos: si se vuelve a correr sola, hay que correr
+--   esta después (el dump las corre en orden).
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida revoca y vuelve a otorgar exactamente lo de abajo.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_dispositivos') THEN
+        CREATE ROLE svc_dispositivos LOGIN;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM svc_dispositivos;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM svc_dispositivos;
+GRANT USAGE ON SCHEMA public TO svc_dispositivos;
+
+-- dispositivos: dueño de devices.
+GRANT SELECT, INSERT ON devices TO svc_dispositivos;
+GRANT UPDATE (model, app_version, push_token, is_revoked, last_seen_at) ON devices TO svc_dispositivos;
+GRANT INSERT ON audit_log TO svc_dispositivos;
+
+DO $$
+DECLARE
+    tabla TEXT;
+    secuencia TEXT;
+BEGIN
+    FOREACH tabla IN ARRAY ARRAY['devices', 'audit_log']
+    LOOP
+        secuencia := pg_get_serial_sequence('public.' || tabla, 'id');
+        IF secuencia IS NOT NULL THEN
+            EXECUTE format('GRANT USAGE ON SEQUENCE %s TO svc_dispositivos', secuencia);
+        END IF;
+    END LOOP;
+END;
+$$;
+
+-- casos: de quién es un dispositivo y si está revocado.
+REVOKE ALL ON devices FROM svc_casos;
+GRANT SELECT (id, user_id, is_revoked) ON devices TO svc_casos;
+
+COMMENT ON ROLE svc_dispositivos IS 'Microservicio dispositivos (5223): duenio de devices.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('031', 'Seguridad: rol de dispositivos y lectura de devices para casos')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 032_rol_evidencias.sql
+-- Un rol de PostgreSQL para el microservicio evidencias (5224), dueño de
+-- case_attachments. Sigue el patrón de la 026 a la 031.
+--
+-- - El rol nace con LOGIN y sin contraseña. En el compose la fija
+--   infra/postgres/10-inicializa.sh; fuera de él: ALTER ROLE svc_evidencias PASSWORD '...';
+--   y el servicio la recibe en su DATABASE_URL (ver infra/.env.example).
+-- - El archivo vive en el volumen del servicio, no en la base: case_attachments guarda su
+--   ruta, tipo, tamaño y huella. Una evidencia no se edita: se sube o, solo ADMINISTRADOR,
+--   se borra. Por eso no recibe UPDATE.
+-- - De cases solo lee id y reported_by: si el caso existe y quién lo reportó, que es quien
+--   puede adjuntarle fotos (además de ADMINISTRADOR).
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida revoca y vuelve a otorgar exactamente lo de abajo.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_evidencias') THEN
+        CREATE ROLE svc_evidencias LOGIN;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM svc_evidencias;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM svc_evidencias;
+GRANT USAGE ON SCHEMA public TO svc_evidencias;
+
+GRANT SELECT, INSERT, DELETE ON case_attachments TO svc_evidencias;
+GRANT SELECT (id, reported_by) ON cases TO svc_evidencias;
+GRANT INSERT ON audit_log TO svc_evidencias;
+
+DO $$
+DECLARE
+    tabla TEXT;
+    secuencia TEXT;
+BEGIN
+    FOREACH tabla IN ARRAY ARRAY['case_attachments', 'audit_log']
+    LOOP
+        secuencia := pg_get_serial_sequence('public.' || tabla, 'id');
+        IF secuencia IS NOT NULL THEN
+            EXECUTE format('GRANT USAGE ON SEQUENCE %s TO svc_evidencias', secuencia);
+        END IF;
+    END LOOP;
+END;
+$$;
+
+COMMENT ON ROLE svc_evidencias IS 'Microservicio evidencias (5224): duenio de case_attachments.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('032', 'Seguridad: rol de PostgreSQL de evidencias')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 033_rol_vacunas.sql
+-- Un rol de PostgreSQL para el microservicio vacunas (5225), dueño de vaccine_lots: los
+-- lotes que la app móvil lee por QR o código de barras y las dosis que se les aplican.
+-- Sigue el patrón de la 026 a la 032.
+--
+-- - El rol nace con LOGIN y sin contraseña. En el compose la fija
+--   infra/postgres/10-inicializa.sh; fuera de él: ALTER ROLE svc_vacunas PASSWORD '...';
+--   y el servicio la recibe en su DATABASE_URL (ver infra/.env.example).
+-- - De un lote ya registrado solo cambia doses_used, al aplicar dosis; nunca lo borra. El
+--   tope lo garantiza ck_vaccine_lots_usadas (005), además del UPDATE condicionado.
+-- - Lee el nombre de la enfermedad y de la región para responder con ellos.
+-- - No liga dosis a casos: cases.vaccine_lot_id es de casos.
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida revoca y vuelve a otorgar exactamente lo de abajo.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_vacunas') THEN
+        CREATE ROLE svc_vacunas LOGIN;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM svc_vacunas;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM svc_vacunas;
+GRANT USAGE ON SCHEMA public TO svc_vacunas;
+
+GRANT SELECT, INSERT ON vaccine_lots TO svc_vacunas;
+GRANT UPDATE (doses_used) ON vaccine_lots TO svc_vacunas;
+GRANT SELECT (id, name) ON diseases, regions TO svc_vacunas;
+GRANT INSERT ON audit_log TO svc_vacunas;
+
+DO $$
+DECLARE
+    tabla TEXT;
+    secuencia TEXT;
+BEGIN
+    FOREACH tabla IN ARRAY ARRAY['vaccine_lots', 'audit_log']
+    LOOP
+        secuencia := pg_get_serial_sequence('public.' || tabla, 'id');
+        IF secuencia IS NOT NULL THEN
+            EXECUTE format('GRANT USAGE ON SEQUENCE %s TO svc_vacunas', secuencia);
+        END IF;
+    END LOOP;
+END;
+$$;
+
+COMMENT ON ROLE svc_vacunas IS 'Microservicio vacunas (5225): duenio de vaccine_lots.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('033', 'Seguridad: rol de PostgreSQL de vacunas')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;

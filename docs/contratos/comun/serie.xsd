@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- La serie diaria de una corrida, tal como la guarda simulation_results.serie. La usan
+     resultado.xsd (servicio resultados) y comparacion.xsd (servicio comparacion). Cada día es
+     un objeto jsonb, que no conserva el orden de las claves: por eso va en xs:all. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:include schemaLocation="tipos.xsd"/>
+
+  <!-- Un día de la simulación. -->
+  <xs:complexType name="Punto">
+    <xs:all>
+      <xs:element name="dia" type="Entero"/>
+      <xs:element name="S" type="Entero"/>
+      <xs:element name="E" type="Entero"/>
+      <xs:element name="I" type="Entero"/>
+      <xs:element name="R" type="Entero"/>
+      <xs:element name="H" type="Entero"/>
+      <xs:element name="D" type="Entero"/>
+      <xs:element name="V" type="Entero"/>
+      <xs:element name="casos_activos" type="Entero"/>
+      <xs:element name="nuevos_casos" type="Entero"/>
+      <xs:element name="nuevas_hospitalizaciones" type="Entero"/>
+      <xs:element name="nuevas_defunciones" type="Entero"/>
+      <xs:element name="dosis_aplicadas" type="Entero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Serie">
+    <xs:sequence>
+      <xs:element name="punto" type="Punto" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

@@ -17,7 +17,7 @@ RAIZ = AQUI.parents[2]
 ENTORNO = os.environ.get("EPIDEMIA_PRUEBAS_ENV")
 DIRECTORIO = "http://127.0.0.1:5262/api/v1/services?format=json"
 CUENTAS = {"analista": ("alex.cavazos", "ANALISTA"), "epidemiologo": ("diana.flores", "EPIDEMIOLOGO"),
-           "admin": ("admin", "ADMINISTRADOR")}
+           "admin": ("admin", "ADMINISTRADOR"), "capturista": ("karla.trevino", "CAPTURISTA")}
 INTERVENCIONES = [
     {"code": "VACUNACION", "start_day": 10, "end_day": None, "coverage": 0.5, "compliance": None,
      "params": {"eficacia": 0.7, "dosis_diarias": 2000}},

@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - usuarios",
     "version": "0.1.0",
-    "description": "Administra cuentas (solo ADMINISTRADOR). Escribe users; el rol se asigna en el servicio roles. Desactivar, eliminar o cambiar la contraseña cierra las sesiones de la cuenta."
+    "description": "Administra cuentas (solo ADMINISTRADOR); cada cuenta consulta su perfil en /users/me. Escribe users; el rol se asigna en el servicio roles. Desactivar, eliminar o cambiar la contraseña cierra las sesiones de la cuenta."
   },
   "servers": [
     {
@@ -239,6 +239,80 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me": {
+      "get": {
+        "summary": "Mi perfil",
+        "operationId": "consultar_perfil",
+        "description": "La cuenta del token, para cualquiera de los cuatro roles: lo que la app muestra como perfil. Mismos campos que consultar_usuario.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 12,
+                  "username": "capturista1",
+                  "email": "capturista1@ejemplo.mx",
+                  "full_name": "Carla Captura",
+                  "is_active": true,
+                  "last_login_at": "2026-11-06T09:30:00-06:00",
+                  "created_at": "2026-09-01T10:00:00-06:00",
+                  "role_id": 4,
+                  "roles": [
+                    "CAPTURISTA"
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "usuario"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">12</id><username>capturista1</username><email>capturista1@ejemplo.mx</email><full_name>Carla Captura</full_name><is_active tipo=\"booleano\">true</is_active><last_login_at>2026-11-06T09:30:00-06:00</last_login_at><created_at>2026-09-01T10:00:00-06:00</created_at><role_id tipo=\"numero\">4</role_id><roles><item>CAPTURISTA</item></roles></usuario>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "404": {
+            "description": "La cuenta del token ya no existe"
+          },
+          "503": {
+            "description": "Redis no disponible"
           }
         }
       }

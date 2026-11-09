@@ -2,7 +2,7 @@
 
 > **Estado: vigente** 2026-10-13 · Este documento es un acta de lo construido en  `microservicios/`,
 > no el plan del sistema completo.
-> El plan de 26 servicios está en [`microservicios.md`](microservicios.md); el
+> El plan de 29 servicios está en [`microservicios.md`](microservicios.md); el
 > sistema final (a actualizar), en [`arquitectura_v1.md`](arquitectura_v1.md). Si este documento y el
 > código no coinciden, manda el código.
 
@@ -81,7 +81,7 @@ sigue abierta y si el token fue revocado.
 |---|---|---|---|---|---|---|
 | `auth` | 5201 | `GET /api/v1/auth/captcha`, `POST /api/v1/auth/login` | Públicas | `users` (intentos, último acceso) | `users`, `roles`, `user_roles` | `captcha:<id>` (300 s), abre `session:`, `refresh:`, `user:<id>:sessions` |
 | `sesiones` | 5202 | `POST /api/v1/sessions/refresh`, `POST .../logout`, `GET .../current`, `DELETE .../user/{id}` | refresh público; logout y current con token; `user/{id}` solo token de servicio | — | — | `session:`, `refresh:`, `refresh:usado:`, `jwt:revoked:` |
-| `usuarios` | 5203 | `GET/POST /api/v1/users`, `GET/PUT/DELETE /api/v1/users/{id}`, `POST .../{id}/activate` y `/deactivate` | ADMINISTRADOR | `users` | `roles`, `user_roles`, tablas con FK a `users` | cierra `user:<id>:sessions` |
+| `usuarios` | 5203 | `GET/POST /api/v1/users`, `GET/PUT/DELETE /api/v1/users/{id}`, `POST .../{id}/activate` y `/deactivate`; `GET /api/v1/users/me` | ADMINISTRADOR; `/users/me`, cualquier rol | `users` | `roles`, `user_roles`, tablas con FK a `users` | cierra `user:<id>:sessions` |
 | `roles` | 5204 | `GET /api/v1/roles`, `GET /api/v1/roles/{id}/permissions`, `PUT /api/v1/roles/assignments/{user_id}` | ADMINISTRADOR | `user_roles` | `users`, `roles`, `permissions`, `role_permissions` | cierra `user:<id>:sessions` |
 | `enfermedades` | 5211 | `GET/POST /api/v1/diseases`, `GET/PUT /api/v1/diseases/{id}`, `POST .../activate` y `/deactivate` | GET público; escrituras EPIDEMIOLOGO o ADMINISTRADOR | `diseases` (no `default_params`) | `cases`, `regions` | — |
 | `parametros` | 5212 | `GET/PUT /api/v1/diseases/{id}/parameters`, `GET .../parameters/status` | GET público; PUT EPIDEMIOLOGO o ADMINISTRADOR | `diseases.default_params` | `diseases` | — |

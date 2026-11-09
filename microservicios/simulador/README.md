@@ -1,8 +1,11 @@
 # EPIDEMIA - Servicio simulador
 
-Proceso trabajador: toma corridas de la cola de Redis (`queue:simulaciones`), ejecuta el
-motor, guarda el resultado en PostgreSQL y avisa a `notificaciones` al terminar o fallar.
-Su única ruta propia es el estado del trabajador.
+Proceso trabajador: toma las corridas de `python-ref` de su cola de Redis
+(`queue:simulaciones:python-ref`), ejecuta el motor, guarda el resultado en PostgreSQL y avisa
+a `notificaciones` al terminar o fallar. Su única ruta propia es el estado del trabajador.
+
+Las corridas de otro motor (`numba`, `cuda`) van a su propia cola y no las toca: las tomará el
+simulador de ese motor, que todavía no existe.
 
 Puerto externo: 5242; puerto interno en Docker: 8000. Contrato en
 `docs/contratos/simulador/openapi.json`.
@@ -11,7 +14,7 @@ Puerto externo: 5242; puerto interno en Docker: 8000. Contrato en
 
 | Método | Ruta | Roles | Qué regresa |
 |--------|------|-------|-------------|
-| GET | `/api/v1/worker/status` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | `trabajador` (nombre del contenedor), `activo`, `corrida_actual`, `procesadas`, `ultima` y `pendientes` en la cola |
+| GET | `/api/v1/worker/status` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | `trabajador` (nombre del contenedor), `motor`, `activo`, `corrida_actual`, `procesadas`, `ultima` y `pendientes` en la cola de su motor |
 
 Más `/health`, `/docs` y `/openapi.json`, como todos.
 
@@ -50,6 +53,10 @@ tumba el hilo.
   volver a lanzar con la misma semilla.
 - **PostgreSQL caído al tomar una corrida.** La corrida sale de la cola y se queda
   `encolado` en la base. Se cancela desde `corridas` y se vuelve a lanzar.
+- **Corridas encoladas antes de la cola por motor.** Hasta octubre de 2026 la cola era
+  `queue:simulaciones`, sin motor. Si al actualizar quedó algo ahí, nadie lo toma: esas
+  corridas siguen `encolado`; se cancelan desde `corridas` y se vuelven a lanzar con la misma
+  semilla.
 
 ## Variables
 

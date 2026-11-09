@@ -198,10 +198,11 @@ Redis no responde.
 
 #### `usuarios` · 5203
 
-Todas las rutas: ADMINISTRADOR.
+Todas las rutas: ADMINISTRADOR, salvo `/users/me`, que es de cualquier rol.
 
 | Método | Ruta | Entrada | Salida |
 |---|---|---|---|
+| GET | `/api/v1/users/me` | — | la cuenta del token y sus `roles` (el perfil) |
 | GET | `/api/v1/users` | `q`, `role_id`, `status` (activo, pendiente, inactivo) | `total`, `usuarios` |
 | GET | `/api/v1/users/{id}` | — | la cuenta y sus `roles` |
 | POST | `/api/v1/users` | `username`, `email`, `full_name`, `password`, `is_active` | la cuenta (201) |
@@ -376,7 +377,10 @@ El contenedor (`infra/docker-compose.yml`) usa Redis 7.4 con contraseña, AOF y
   `docs/contratos/<servicio>/ejemplos/`.
 - XSD (D15), validados con `xmlschema`: `docs/contratos/comun/problem.xsd` (el error de cualquier
   servicio, con los tipos compartidos de `comun/tipos.xsd`), `enfermedades/enfermedad.xsd` y
-  `parametros/parametros.xsd`.
+  `parametros/parametros.xsd`. Para la app de escritorio, también las respuestas de
+  `corridas/corrida.xsd`, `intervenciones/intervencion.xsd`, `aprobacion/aprobacion.xsd`,
+  `comparacion/comparacion.xsd` y `pareto/pareto.xsd`; la serie diaria de una corrida está
+  en `comun/serie.xsd`, que comparten `resultado.xsd` y `comparacion.xsd`.
 - `docs/contratos/postman/` tiene una colección de Postman (también para `newman`) de
   `tipos-intervencion`, `indicadores`, `series` y `zonas`, con su guía.
 - En las rutas con candado, pega el token en **Authorize**. Abre Swagger con `localhost`, no

@@ -23,6 +23,11 @@ Obligatorios: `disease_id`, `region_id`, `report_date`. Opcionales: `local_uuid`
 `onset_date`, `age`, `sex` (M/F/O), `latitude` y `longitude` (juntas o ninguna),
 `test_result`, `severity`. Un campo desconocido es 422.
 
+`device_id`, si llega, tiene que ser un dispositivo registrado de quien captura (servicio
+`dispositivos`): uno que no existe o es de otra cuenta es 422, y uno revocado, 409
+`CONFLICTO`, aunque el token siga vigente. Esa revisión no corre en el reintento de un caso
+que ya existe: lo que se sincronizó antes de revocar el teléfono se queda.
+
 ## Idempotencia (`local_uuid`)
 
 - `local_uuid` nuevo (o ausente, y el servicio genera uno): **201**, `duplicado: false`.
@@ -34,7 +39,8 @@ Obligatorios: `disease_id`, `region_id`, `report_date`. Opcionales: `local_uuid`
 ## Variables y base de datos
 
 `JWT_SECRET_KEY`, `REDIS_URL`, `DATABASE_URL` (rol `svc_casos`: SELECT en `diseases`,
-`regions`, `cases`; INSERT en `cases` y `audit_log`; USO de `cases_id_seq`).
+`regions`, `cases` y, desde la migración 031, `id`, `user_id` e `is_revoked` de `devices`;
+INSERT en `cases` y `audit_log`; USO de `cases_id_seq`).
 
 ## Cómo probar
 

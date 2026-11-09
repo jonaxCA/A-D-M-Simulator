@@ -1,4 +1,4 @@
-"""Cada uno de los 26 contra su contenedor: salud en XML y en JSON, el contrato que sirve y sus
+"""Cada servicio del catálogo contra su contenedor: salud en XML y en JSON, el contrato que sirve y sus
 rutas GET sin 5xx. Es la prueba de integración de la definición de terminado de cada servicio."""
 import json
 import re

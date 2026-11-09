@@ -95,10 +95,27 @@ def test_lote_nuevo_resultado_por_caso(cliente, captura, casos, bitacora):
     assert (d["batch_id"], d["total"], d["creados"], d["duplicados"], d["rechazados"]) == (LOTE, 2, 1, 0, 1)
     assert d["repetido"] is False and "user_id" not in d
     assert d["resultados"][0] == {"indice": 0, "local_uuid": U1, "resultado": "creado",
-                                  "case_id": 100, "errores": []}
+                                  "case_id": 100, "codigo": None, "errores": []}
     assert d["resultados"][1]["resultado"] == "rechazado"
+    assert d["resultados"][1]["codigo"] == "DATOS_INVALIDOS"
     assert "sexo" in d["resultados"][1]["errores"][0].lower()
     assert len(casos.llamadas) == 2
+
+
+def test_telefono_revocado_se_distingue_de_datos_malos(cliente, captura, casos):
+    casos.respuesta_fija = Resp(409, {"status": 409, "codigo": "CONFLICTO", "detail":
+                                      "El dispositivo está revocado: ya no puede capturar ni sincronizar casos."})
+    d = enviar(cliente, captura).get_json()
+    assert [(r["resultado"], r["codigo"]) for r in d["resultados"]] == [("rechazado", "CONFLICTO")] * 2
+    assert d["rechazados"] == 2
+
+
+@pytest.mark.parametrize("estado, esperado", [(409, "CONFLICTO"), (422, "DATOS_INVALIDOS"),
+                                               (400, "DATOS_INVALIDOS"), (413, "DATOS_INVALIDOS")])
+def test_sin_codigo_de_casos_sale_del_estado(cliente, captura, casos, estado, esperado):
+    casos.respuesta_fija = Resp(estado, None)
+    d = enviar(cliente, captura).get_json()
+    assert {r["codigo"] for r in d["resultados"]} == {esperado}
 
 
 def test_llama_a_casos_en_json_con_token_y_device(cliente, captura, casos):
@@ -145,7 +162,7 @@ def test_caso_ya_existente_sale_duplicado(cliente, captura, casos):
     casos.creados[U1] = 55
     d = enviar(cliente, captura, lote(batch_id=str(uuid.uuid4()))).get_json()
     assert d["resultados"][0] == {"indice": 0, "local_uuid": U1, "resultado": "duplicado",
-                                  "case_id": 55, "errores": []}
+                                  "case_id": 55, "codigo": None, "errores": []}
     assert d["duplicados"] == 1
 
 
@@ -239,6 +256,7 @@ def test_cuerpo_xml_y_respuesta_xml(cliente, captura, casos):
     assert raiz.tag == "resultado_lote" and raiz.findtext("creados") == "1"
     item = raiz.find("resultados").find("item")
     assert item.findtext("resultado") == "creado" and item.find("errores") is not None
+    assert item.find("codigo").get("nil") == "true"
     assert casos.llamadas[0][4]["local_uuid"] == U1
 
 

@@ -1,5 +1,7 @@
 """Contrato, rutas y Dockerfile de tipos-intervencion, indicadores, series, zonas, comparacion,
-pareto, corridas, resultados, notificaciones y estado-servicios (simulador tiene los suyos)."""
+pareto, corridas, resultados, notificaciones, estado-servicios, dispositivos, evidencias y vacunas
+(simulador tiene los suyos). Una operación con "x-binario" regresa un archivo tal cual: no lleva
+JSON ni XML ni ejemplos."""
 import ast
 import json
 import re
@@ -21,6 +23,9 @@ SERVICIOS = [
     ("resultados", "resultados", 5243, False),
     ("notificaciones", "notificaciones", 5261, False),
     ("estado-servicios", "estado_servicios", 5262, True),
+    ("dispositivos", "dispositivos", 5223, False),
+    ("evidencias", "evidencias", 5224, False),
+    ("vacunas", "vacunas", 5225, False),
 ]
 
 
@@ -58,7 +63,8 @@ def test_contrato_igual_a_las_rutas(servicio, paquete, puerto, publico):
     for ruta, metodos in contrato["paths"].items():
         for metodo, item in metodos.items():
             contenido = exito(item)["content"]
-            assert {"application/json", "application/xml"} <= set(contenido)
+            if not item.get("x-binario"):
+                assert {"application/json", "application/xml"} <= set(contenido)
             en_contrato.add((ruta, metodo, item.get("security") == [{"bearerAuth": []}]))
     assert en_contrato == rutas_declaradas(paquete)
     assert all(not protegida for *_, protegida in en_contrato) is publico
@@ -85,6 +91,8 @@ def test_ejemplos_json_y_xml_por_ruta(servicio, paquete, puerto, publico):
     contrato = json.loads((carpeta / "openapi.json").read_text(encoding="utf-8"))
     for metodos in contrato["paths"].values():
         for item in metodos.values():
+            if item.get("x-binario"):
+                continue
             ejemplo = carpeta / "ejemplos" / item["operationId"]
             contenido = exito(item)["content"]
             en_json = json.loads(ejemplo.with_suffix(".json").read_text(encoding="utf-8"))

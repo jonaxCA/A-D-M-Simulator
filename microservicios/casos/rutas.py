@@ -1,17 +1,17 @@
 import math
 import uuid
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 import psycopg2
 from flask import g, request
 
-from backend_web import queries
+from backend_web import dispositivos, queries
 from backend_web.audit import log_audit
 from backend_web.db import get_conn
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.seguridad import requiere_token
-from epidemia_comun.validaciones import diccionario, entero_positivo
+from epidemia_comun.validaciones import diccionario, entero_positivo, fecha
 
 # Matriz de permisos (migración 010): cases.create = CAPTURISTA (+ ADMINISTRADOR, que
 # lo tiene todo); cases.read = los cuatro roles. El monolito deja capturar a cualquier
@@ -112,12 +112,7 @@ def _entero_de_consulta(nombre):
 
 def _fecha_de_consulta(nombre):
     crudo = request.args.get(nombre)
-    if crudo is None:
-        return None
-    try:
-        return date.fromisoformat(crudo)
-    except ValueError:
-        raise ErrorAPI(422, "DATOS_INVALIDOS", "%s debe ser una fecha AAAA-MM-DD." % nombre)
+    return None if crudo is None else fecha(crudo, nombre)
 
 
 def registrar(app):
@@ -137,6 +132,16 @@ def registrar(app):
             if previo:
                 previo["duplicado"] = True
                 return responder(previo, "caso", estado=200)
+
+        # Un dispositivo revocado no captura aunque el token siga vigente (comentario de devices).
+        if device_id is not None:
+            estado = dispositivos.estado_para_captura(device_id, g.contexto.user_id)
+            if estado == "ajeno":
+                raise ErrorAPI(422, "DATOS_INVALIDOS",
+                               "device_id no es un dispositivo registrado de esta cuenta.")
+            if estado == "revocado":
+                raise ErrorAPI(409, "CONFLICTO",
+                               "El dispositivo está revocado: ya no puede capturar ni sincronizar casos.")
 
         datos, errores = queries.valida_caso(
             entrada, queries.get_enfermedades_para_captura(), queries.get_municipios_catalogo())

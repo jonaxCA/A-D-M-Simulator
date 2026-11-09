@@ -144,6 +144,8 @@ def test_cambio_de_rol_y_baja_de_una_cuenta(servicios, base, bitacora):
     ana = bearer(iniciar_sesion(servicios, "ana", "clave-ana"))
     assert actual(servicios, ana).get_json()["roles"] == ["ANALISTA"]
     assert servicios["usuarios"].get("/api/v1/users/9?format=json", headers=ana).status_code == 403
+    perfil = servicios["usuarios"].get("/api/v1/users/me?format=json", headers=ana).get_json()
+    assert (perfil["id"], perfil["username"], perfil["roles"]) == (9, "ana", ["ANALISTA"])
 
     r = servicios["roles"].put("/api/v1/roles/assignments/9?format=json", headers=admin,
                                json={"role_id": 2})

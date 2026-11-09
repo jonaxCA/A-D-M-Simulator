@@ -60,14 +60,14 @@ class CodificacionDeclaradaTests(unittest.TestCase):
                          (POSTGRES / "semillas" / "nl_municipios_completos.sql").read_bytes())
 
     def test_la_semilla_de_demostracion_sale_igual_de_su_generador(self):
-        """Byte por byte salvo los tres hashes de contrasena, que cambian en
+        """Byte por byte salvo los cuatro hashes de contrasena, que cambian en
         cada corrida por la sal. Que cada hash sea de su contrasena lo prueban
         los inicios de sesion de las pruebas de rutas, que entran con estas
         cuentas a la base de pruebas cargada con esta semilla."""
         salida, en_salida = HASH_BCRYPT.subn(b"<hash>", _salida_del_generador("gen_demo_data.py"))
         archivo, en_archivo = HASH_BCRYPT.subn(
             b"<hash>", (POSTGRES / "semillas" / "demo_datos_nl.sql").read_bytes())
-        self.assertEqual((en_salida, en_archivo), (3, 3))
+        self.assertEqual((en_salida, en_archivo), (4, 4))
         self.assertEqual(salida, archivo)
 
 

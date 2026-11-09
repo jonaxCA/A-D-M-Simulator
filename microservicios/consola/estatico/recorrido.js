@@ -152,14 +152,14 @@
   const PASOS = [
     {n: "1", titulo: "Levantar todo desde cero",
      manual: "En la raíz del repositorio, crea infra/.env y levanta todo. En docker compose ps, " +
-       "los 26 servicios, la consola, PostgreSQL y Redis deben quedar healthy.",
+       "todos los servicios, la consola, PostgreSQL y Redis deben quedar healthy.",
      comandos: ["python infra/genera_env.py", `${COMPOSE} --profile '*' up -d --build --wait`, `${COMPOSE} ps`]},
 
-    {n: "2", titulo: "El panel de salud muestra los 26 en verde", async correr(h) {
+    {n: "2", titulo: "El panel de salud muestra todos en verde", async correr(h) {
       const r = await h.pide("estado-servicios", "GET", "/api/v1/services/health");
       h.estado(r, 200);
       const fuera = r.datos.servicios.filter((s) => s.estado !== "ok").map((s) => s.nombre);
-      h.espera(r.datos.servicios.length === 26 && !fuera.length, "los 26 están en ok",
+      h.espera(r.datos.servicios.length > 0 && !fuera.length, `los ${r.datos.servicios.length} están en ok`,
         `No están en ok: ${fuera.join(", ")}.`);
     }},
 
@@ -422,8 +422,9 @@
          return r.estado === 200;
        }, {cada: 2000, limite: 60000, falla: "casos no volvió a responder 200 en un minuto."});
        h.espera(true, "lo protegido vuelve, con la misma sesión");
-       await saludDeTodos(h, (d) => d.resumen.ok === 26, "Los 26 no volvieron a ok en un minuto.", 60000);
-       h.espera(true, "los 26 vuelven a ok en el panel");
+       await saludDeTodos(h, (d) => d.resumen.ok === d.servicios.length,
+         "No volvieron todos a ok en un minuto.", 60000);
+       h.espera(true, "todos vuelven a ok en el panel");
      }},
 
     {n: "20", titulo: "En el monolito: todo sigue funcionando contra la misma base",

@@ -1,4 +1,4 @@
-"""El proceso trabajador: toma corridas de la cola de Redis y las ejecuta.
+"""El proceso trabajador: toma corridas de la cola de Redis de python-ref y las ejecuta.
 
 La corrida la ejecuta simulaciones.ejecutar_run(), la misma del monolito: marca
 'ejecutando' con la transición condicionada (dos trabajadores no corren la
@@ -21,10 +21,14 @@ PROGRESO_TTL = 86400
 PAUSA_SIN_REDIS = 5
 AVISOS = {"completado": ("RUN_FINISHED", "La corrida %s terminó"),
           "fallido": ("RUN_FAILED", "La corrida %s falló")}
+# ejecutar_run corre el motor de procesamiento/motor; las corridas de otro motor van a otra
+# cola y las toma el simulador de ese motor.
+MOTOR = "python-ref"
+COLA = llaves.cola_simulaciones(MOTOR)
 
 # Lo que reporta /api/v1/worker/status. Solo lo escribe el hilo del trabajador.
-estado = {"trabajador": socket.gethostname(), "activo": False, "corrida_actual": None,
-          "procesadas": 0, "ultima": None}
+estado = {"trabajador": socket.gethostname(), "motor": MOTOR, "activo": False,
+          "corrida_actual": None, "procesadas": 0, "ultima": None}
 
 
 def recuperar():
@@ -87,7 +91,7 @@ def ciclo(ajustes, detener):
     try:
         while not detener.is_set():
             try:
-                crudo = cola.tomar(llaves.COLA_SIMULACIONES)
+                crudo = cola.tomar(COLA)
             except RedisNoDisponible:
                 detener.wait(PAUSA_SIN_REDIS)
                 continue

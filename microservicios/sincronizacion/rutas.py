@@ -105,11 +105,14 @@ def _resultado_de_caso(indice, local_uuid, respuesta):
     if estado in (200, 201):
         return {"indice": indice, "local_uuid": local_uuid,
                 "resultado": "creado" if estado == 201 else "duplicado",
-                "case_id": cuerpo.get("id"), "errores": []}
+                "case_id": cuerpo.get("id"), "codigo": None, "errores": []}
     detalle = cuerpo.get("detail") or "El servicio de casos rechazó el caso."
     if estado in (400, 409, 413, 415, 422):
+        # El codigo distingue un teléfono revocado (CONFLICTO, todo el lote) de datos que hay
+        # que corregir (DATOS_INVALIDOS): la app no tiene que leer el mensaje.
+        codigo = cuerpo.get("codigo") or ("CONFLICTO" if estado == 409 else "DATOS_INVALIDOS")
         return {"indice": indice, "local_uuid": local_uuid, "resultado": "rechazado",
-                "case_id": None, "errores": [detalle]}
+                "case_id": None, "codigo": codigo, "errores": [detalle]}
     # 401/403 (el token ya no sirve o no alcanza), 5xx u otra cosa: no es culpa del caso.
     codigo = cuerpo.get("codigo") or "TOKEN_INVALIDO"
     if estado in (401, 403):

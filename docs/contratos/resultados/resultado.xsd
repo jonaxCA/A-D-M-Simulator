@@ -7,6 +7,7 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
 
   <xs:include schemaLocation="../comun/tipos.xsd"/>
+  <xs:include schemaLocation="../comun/serie.xsd"/>
 
   <!-- El valor de un parámetro en la trazabilidad: un número, o un objeto
        (letalidad por grupo de edad, capas de contacto, población sin edad). -->
@@ -67,31 +68,6 @@
         </xs:complexType>
       </xs:element>
     </xs:all>
-  </xs:complexType>
-
-  <!-- Un día de la simulación. -->
-  <xs:complexType name="Punto">
-    <xs:all>
-      <xs:element name="dia" type="Entero"/>
-      <xs:element name="S" type="Entero"/>
-      <xs:element name="E" type="Entero"/>
-      <xs:element name="I" type="Entero"/>
-      <xs:element name="R" type="Entero"/>
-      <xs:element name="H" type="Entero"/>
-      <xs:element name="D" type="Entero"/>
-      <xs:element name="V" type="Entero"/>
-      <xs:element name="casos_activos" type="Entero"/>
-      <xs:element name="nuevos_casos" type="Entero"/>
-      <xs:element name="nuevas_hospitalizaciones" type="Entero"/>
-      <xs:element name="nuevas_defunciones" type="Entero"/>
-      <xs:element name="dosis_aplicadas" type="Entero"/>
-    </xs:all>
-  </xs:complexType>
-
-  <xs:complexType name="Serie">
-    <xs:sequence>
-      <xs:element name="punto" type="Punto" minOccurs="0" maxOccurs="unbounded"/>
-    </xs:sequence>
   </xs:complexType>
 
   <xs:complexType name="Parametro">

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- La respuesta del servicio pareto (puerto 5245): GET /api/v1/pareto?runs=...&metric=...,
+     raíz <pareto>. Es la salida de procesamiento.motor.pareto.comparar(): una fila por
+     corrida con su costo, su impacto y si otra la domina, y la frontera con los ids de las
+     no dominadas, de la más barata a la más cara.
+     impacto_evitado, costo_adicional y costo_por_unidad_evitada solo salen cuando hay
+     escenario base; hoy el servicio no lo pide, así que base llega vacío y esos tres no
+     vienen. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:include schemaLocation="../comun/tipos.xsd"/>
+
+  <!-- METRICAS_IMPACTO de procesamiento/motor/pareto.py. -->
+  <xs:simpleType name="metrica">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="fallecimientos"/>
+      <xs:enumeration value="hospitalizaciones"/>
+      <xs:enumeration value="casos_acumulados"/>
+      <xs:enumeration value="pico_casos_activos"/>
+      <xs:enumeration value="pico_hospitalizados"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- En qué se cuenta la cantidad de una intervención del desglose. -->
+  <xs:simpleType name="unidadCantidad">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="habitante_dia"/>
+      <xs:enumeration value="dosis"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- UNIDAD_COSTO: a qué se aplica el costo unitario. -->
+  <xs:simpleType name="unidadCosto">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="por_habitante_dia"/>
+      <xs:enumeration value="por_dosis"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="estadoTraza">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="con_fuente"/>
+      <xs:enumeration value="supuesto"/>
+      <xs:enumeration value="sin_fuente"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="Ids">
+    <xs:sequence>
+      <xs:element name="corrida" type="Entero" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Un renglón del costo de una corrida. La vacunación se cobra por dosis aplicadas y no
+       tiene dia_fin, dias_activos ni intensidad. -->
+  <xs:complexType name="CostoIntervencion">
+    <xs:all>
+      <xs:element name="tipo" type="xs:string"/>
+      <xs:element name="dia_inicio" type="Entero"/>
+      <xs:element name="dia_fin" type="EnteroONulo"/>
+      <xs:element name="dias_activos" type="EnteroONulo"/>
+      <xs:element name="intensidad" type="NumeroONulo"/>
+      <xs:element name="cantidad" type="Numero"/>
+      <xs:element name="unidad" type="unidadCantidad"/>
+      <xs:element name="costo" type="Numero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Fila">
+    <xs:all>
+      <xs:element name="id" type="Entero"/>
+      <xs:element name="nombre" type="xs:string"/>
+      <xs:element name="costo" type="Numero"/>
+      <xs:element name="impacto" type="Numero"/>
+      <xs:element name="desglose_costo">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="intervencion" type="CostoIntervencion" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="semilla" type="Entero"/>
+      <xs:element name="engine_version" type="xs:string"/>
+      <xs:element name="dias" type="Entero"/>
+      <xs:element name="poblacion" type="Entero"/>
+      <xs:element name="dominado" type="Booleano"/>
+      <xs:element name="dominado_por" type="Ids"/>
+      <xs:element name="impacto_evitado" type="NumeroONulo" minOccurs="0"/>
+      <xs:element name="costo_adicional" type="NumeroONulo" minOccurs="0"/>
+      <xs:element name="costo_por_unidad_evitada" type="NumeroONulo" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- El costo unitario que se usó para un tipo de intervención, con su fuente. -->
+  <xs:complexType name="CostoUnitario">
+    <xs:all>
+      <xs:element name="tipo" type="xs:string"/>
+      <xs:element name="valor" type="Numero"/>
+      <xs:element name="unidad" type="unidadCosto"/>
+      <xs:element name="fuente" type="TextoONulo"/>
+      <xs:element name="estado" type="estadoTraza"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:element name="pareto">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="aviso" type="xs:string"/>
+        <xs:element name="metrica" type="metrica"/>
+        <xs:element name="base" type="EnteroONulo"/>
+        <xs:element name="filas">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="fila" type="Fila" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="frontera" type="Ids"/>
+        <xs:element name="trazabilidad_costos">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="costo" type="CostoUnitario" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="modelo_costo" type="xs:string"/>
+        <xs:element name="avisos">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="aviso" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

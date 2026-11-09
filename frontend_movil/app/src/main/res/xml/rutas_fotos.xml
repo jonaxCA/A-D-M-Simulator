@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lo único que la app de cámara puede escribir: la foto recién tomada, antes de reducirla. -->
+<paths>
+    <files-path name="camara" path="fotos/camara/" />
+</paths>

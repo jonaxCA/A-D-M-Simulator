@@ -5,7 +5,8 @@ diaria, para la tabla comparativa y las curvas superpuestas. Solo lectura. Muest
 opciones; no recomienda un escenario.
 
 Puerto externo: 5244; puerto interno en Docker: 8000. Contrato en
-`docs/contratos/comparacion/openapi.json`.
+`docs/contratos/comparacion/openapi.json`. Su respuesta XML valida contra
+`docs/contratos/comparacion/comparacion.xsd`.
 
 ## Ruta
 
