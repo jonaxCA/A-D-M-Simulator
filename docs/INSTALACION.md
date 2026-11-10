@@ -379,7 +379,7 @@ python datos/scripts/prepara_base_pruebas.py
 ## Docker: microservicios del grupo 14:00
 
 Estos son los pasos exactos con que se levantaron los 12 servicios para las evidencias
-(`evidencias/servicios/`). PostgreSQL y Redis corren en contenedores; los servicios, con
+del segundo parcial (la carpeta `evidencias/` se retiró el 2026-10-30; sigue en el historial de git). PostgreSQL y Redis corren en contenedores; los servicios, con
 `waitress` en tu máquina, cada uno con su rol de la migración 026. Necesitas Docker Desktop
 (o Docker Engine en Linux), el cliente `psql` y el entorno de Python del paso 4 con las
 dependencias de abajo.

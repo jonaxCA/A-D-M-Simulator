@@ -64,7 +64,7 @@ def test_las_respuestas_se_pintan_como_texto(codigo, html):
 
 
 def test_el_recorrido_tiene_los_22_pasos_del_guion():
-    guion = (RAIZ / "docs/CHECKLIST_SEGUNDO_PARCIAL.md").read_text(encoding="utf-8")
+    guion = (RAIZ / "docs/parciales/parcial-2/checklist.md").read_text(encoding="utf-8")
     seccion = guion.split("## Prueba de aceptación", 1)[1].split("Verificaciones extra", 1)[0]
     del_guion = {int(n) for n in re.findall(r"^- \[[ x]\] (\d+)\. ", seccion, re.M)}
     assert del_guion == set(range(1, 23))

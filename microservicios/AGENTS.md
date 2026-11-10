@@ -13,7 +13,7 @@ hablando directo con PostgreSQL y no los llama.
 - [`docs/arquitectura/microservicios.md`](../docs/arquitectura/microservicios.md) es la
   referencia de cada servicio: su tarea, rutas, las tablas que escribe y lee, a quién llama,
   su puerto y sus llaves de Redis. Si algo de aquí choca con el catálogo, gana el catálogo.
-- [`docs/CHECKLIST_SEGUNDO_PARCIAL.md`](../docs/CHECKLIST_SEGUNDO_PARCIAL.md) tiene las
+- [`docs/parciales/parcial-2/checklist.md`](../docs/parciales/parcial-2/checklist.md) tiene las
   tareas, quién las tiene y la **definición de terminado** de un servicio.
 - `docs/arquitectura/arquitectura_v1.md` describe el sistema final, con MongoDB, Cloud
   Storage y nginx. No lo sigas donde contradiga al catálogo.

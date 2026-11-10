@@ -1,7 +1,7 @@
 # AGENTS.md — infra
 
 > **Estado: Vigente** · 2026-10-12 · Complementa `microservicios/AGENTS.md`. Las tareas son
-> el bloque J del checklist (`docs/CHECKLIST_SEGUNDO_PARCIAL.md`).
+> el bloque J del checklist (`docs/parciales/parcial-2/checklist.md`).
 
 Aquí viven la imagen base de Docker y el `docker-compose.yml` que levanta los 29
 microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservicio.**

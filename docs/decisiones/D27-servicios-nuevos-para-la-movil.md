@@ -11,10 +11,10 @@ Fecha: 2026-11-08 · Estado: Aceptada
 - Opción C: ninguno.
 
 ## Decisión
-Opción A: los tres servicios, `dispositivos`, `evidencias` y `vacunas`, tal como están implementados en la rama `desarrollo-movil`. Cada uno trae su contenedor en `infra/docker-compose.yml`, su rol de base (migraciones 031 a 033), su contrato en `docs/contratos/` y sus pruebas.
+Opción A: los tres servicios, `dispositivos`, `evidencias` y `vacunas`, tal como se implementaron en la rama `desarrollo-movil`, ya integrada en esta (2026-11-08). Cada uno trae su contenedor en `infra/docker-compose.yml`, su rol de base (migraciones 031 a 033), su contrato en `docs/contratos/` y sus pruebas.
 
 ## Consecuencias
 - El catálogo de `docs/arquitectura/microservicios.md` ya incluye los tres. No cambia.
-- Las migraciones 031 a 033 llegan con `desarrollo-movil`. Las siguientes libres empiezan en la 034.
+- Las migraciones 031 a 033 llegaron con `desarrollo-movil`. Las siguientes libres empiezan en la 034 (D1 la reserva; el cambio de motores sería la 035).
 - Fija el proceso P1. Un archivo en el bucket (D-3) exige al menos `evidencias`.
-- Los cambios que siguen están en [`todo.md`](todo.md), sección «Cambios pendientes por D27». No están fusionados: llegan al integrar `desarrollo-movil`.
+- Lo que pedía [`todo.md`](todo.md) («Cambios pendientes por D27») ya llegó con la integración: los tres servicios, sus entradas en el compose, las migraciones, los contratos y las pruebas.

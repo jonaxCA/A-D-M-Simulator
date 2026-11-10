@@ -1,6 +1,6 @@
 "use strict";
 
-// El recorrido de aceptación: los pasos del guion de docs/CHECKLIST_SEGUNDO_PARCIAL.md, listos
+// El recorrido de aceptación: los pasos del guion de docs/parciales/parcial-2/checklist.md, listos
 // para correr en orden. Cada paso recibe `h`, las herramientas de herramientas(): h.pide()
 // hace la petición y la anota, h.espera() revisa el resultado y h.guarda() deja un id para los
 // pasos siguientes. Los pasos de inicio de sesión los completa la persona: el captcha no se

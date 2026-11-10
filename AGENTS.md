@@ -15,22 +15,19 @@ cambios pequeños, legibles y fáciles de revisar.
   microservicios**.
 - **Microservicios:** 29 servicios Flask pequeños en `microservicios/`, cada uno en su
   contenedor de Docker, con Redis y JWT. Son para las apps de escritorio (XML) y móvil
-  (JSON). La móvil ya tiene código en `frontend_movil/`; la de escritorio aún no empieza.
+  (JSON). La móvil ya tiene código en `frontend_movil/`.
   - Antes de tocar esa carpeta, lee `microservicios/AGENTS.md`.
-  - El catálogo de servicios está en `docs/arquitectura/microservicios.md` y las tareas del
-    segundo parcial en `docs/CHECKLIST_SEGUNDO_PARCIAL.md`.
+  - El catálogo de servicios está en `docs/arquitectura/microservicios.md`.
+- **App de escritorio:** `frontend_desktop/`, en PySide6 y solo XML (MVP). Antes de tocarla, lee
+  su `AGENTS.md`.
 - **Motor:** el SEIR de referencia (`python-ref`, que pasa a `seir-ref`; D2). El modelo basado
   en agentes (D22, con FLAME GPU 2 según D23) es parte de este parcial y todavía no tiene
   código. MongoDB sigue sin decidirse (D28).
 
-## Fuera de alcance
+## Fuera de alcance (por ahora)
 
-MongoDB, Google Cloud Storage, calibración, IA predictiva, visualización 3D, límites de consumo
+Falta decidir si se implementaran: MongoDB, Google Cloud Storage, calibración, IA predictiva, visualización 3D, límites de consumo
 y un modelo económico sofisticado.
-
-Las apps de escritorio y móvil se entregan en el tercer parcial (D10 de `docs/decisiones/decisiones.md`).
-La móvil ya se empezó: su código va en `frontend_movil/`; lee antes su `README.md`. La de
-escritorio también puede empezar: su código va en `frontend_desktop/`; lee antes su `AGENTS.md`.
 
 ## Reglas
 
@@ -58,6 +55,8 @@ escritorio también puede empezar: su código va en `frontend_desktop/`; lee ant
   PostgreSQL con la base de la demostración, Redis y los servicios.
 - Pruebas de los microservicios y de la biblioteca común:
   `python -m pytest microservicios`.
+- App de escritorio: `pip install -r frontend_desktop/requerimientos.txt` y
+  `python -m frontend_desktop.run`. Sus pruebas: `python -m pytest frontend_desktop`.
 - Pruebas del motor: `python -m pytest procesamiento/tests`. Se corren desde la raíz, igual
   que todo lo demás.
 - Verificar que el dump coincide con las migraciones: `python datos/scripts/verifica_migraciones.py`.
@@ -75,12 +74,7 @@ Cada una tiene su número en `docs/decisiones/decisiones.md`:
 - Qué datos van a MongoDB (D28).
 - Volumen de datos de alto volumen (D29).
 
-D5 ya se tomó: una versión es una fotografía. Guarda su población por grupo de edad y congela
-los parámetros de la enfermedad al enviarse a revisión (migraciones 023 y 024). Para una
-versión que ya salió de borrador, usa sus parámetros congelados, no los del catálogo.
-
-Las demás decisiones ya registradas están tomadas (ver `docs/decisiones/decisiones.md`). Las de
-los microservicios, D9 a D16, están resumidas en `microservicios/AGENTS.md`. Cuando se tome una
+Las demás decisiones ya registradas están en `docs/decisiones/decisiones.md`. Cuando se tome una
 de esta lista, se marca en `docs/decisiones/decisiones.md` y se quita de aquí.
 
 ## Qué manda cuando dos fuentes se contradicen

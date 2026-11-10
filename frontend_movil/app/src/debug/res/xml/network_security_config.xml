@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Solo en debug: los servicios corren sin TLS en la PC y su IP cambia según la red, así que se
-     permite HTTP a cualquier host. La versión de release no trae este archivo: solo HTTPS. -->
-<network-security-config>
-    <base-config cleartextTrafficPermitted="true" />
+     permite HTTP a cualquier host. Reemplaza al de app/src/main/res/xml/ (que solo permite HTTPS),
+     así que repite sus raíces: las del sistema y la de Let's Encrypt (D26). -->
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <base-config cleartextTrafficPermitted="true" tools:ignore="InsecureBaseConfiguration">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/isrg_root_x1" />
+        </trust-anchors>
+    </base-config>
 </network-security-config>

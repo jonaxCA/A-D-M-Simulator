@@ -48,4 +48,4 @@ La base de la demostración tiene corridas completadas pero sin resultados guard
 así que ahí la comparación responde 404. Para probarla con datos, ejecuta antes
 algunas corridas.
 
-Pendiente: su rol de PostgreSQL (migración) y la entrada en el compose (bloque J).
+Su rol de PostgreSQL lo crea la migración 028 y corre en `infra/docker-compose.yml`.

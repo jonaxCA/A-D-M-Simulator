@@ -11,4 +11,4 @@
 Reutiliza `backend_web.queries.get_regiones_catalogo()` y `get_region_municipio()`.
 Solo lectura sobre `regions` y `region_age_groups`, no escribe ni necesita bitácora.
 
-**Pendiente:** la entrada en el compose (bloque J). Evidencia de funcionamiento en `evidencias/servicios/regiones/`.
+Corre en `infra/docker-compose.yml`.

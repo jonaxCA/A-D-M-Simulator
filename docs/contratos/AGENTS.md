@@ -1,7 +1,7 @@
 # AGENTS.md — docs/contratos
 
 > **Estado: Vigente** · 2026-10-12 · Complementa `microservicios/AGENTS.md`. Las tareas son
-> el bloque M del checklist (`docs/CHECKLIST_SEGUNDO_PARCIAL.md`).
+> el bloque M del checklist (`docs/parciales/parcial-2/checklist.md`).
 
 Aquí está el contrato de cada microservicio, en una carpeta por servicio:
 `docs/contratos/<servicio>/`. Las apps de escritorio y móvil se construyen a partir de estos

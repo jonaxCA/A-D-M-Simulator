@@ -217,7 +217,7 @@ Costo: las 120 corridas (30 por 4 escenarios) tardan cerca de un segundo con el 
 
 ## D20 · Partir `queries.py`
 
-Alimenta [D20](decisiones/D20-migracion-gradual-con-fachada.md) (corrección 3).
+Alimenta [D20](decisiones/D20-web-directa-a-postgres.md) (corrección 3).
 
 **Hoy.** `backend_web/queries.py` tiene 3,815 líneas y mezcla SQL, reglas de validación y textos de pantalla. Las rutas no tienen SQL, así que la capa de repositorio existe de hecho, pero no hay `repos/` ni `servicios.py`.
 
