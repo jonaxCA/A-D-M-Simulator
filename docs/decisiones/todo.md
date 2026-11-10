@@ -58,7 +58,7 @@ D1 quedó aceptada el 2026-11-07 (ver [`D01-permisos-y-auditoria.md`](D01-permis
 
 ## Cambios pendientes por D4
 
-D4 quedó aceptada el 2026-11-07 (ver [`D04-web-contra-escritorio.md`](D04-web-contra-escritorio.md)). Estos cambios no están implementados; se hacen cuando el equipo lo pida.
+D4 quedó aceptada el 2026-11-07 (ver [`D04-web-contra-escritorio.md`](D04-web-contra-escritorio.md)). La parte del escritorio ya está hecha. Los cambios de la web no están implementados; se hacen cuando el equipo lo pida.
 
 ### Código
 
@@ -66,11 +66,11 @@ D4 quedó aceptada el 2026-11-07 (ver [`D04-web-contra-escritorio.md`](D04-web-c
 - **Web, corridas:** quitar `/simulaciones/<id>/ejecutar` y `/simulaciones/corridas/<id>/reejecutar`. Lanzar una corrida pasa a escritorio.
 - **Web, consulta:** `/escenarios`, `/escenarios/<id>`, `/simulaciones` y `/simulaciones/corridas/<id>` se quedan en solo lectura. Revisar que sus plantillas no tengan botones de editar o lanzar.
 - **Web, comparación:** la vista `/comparacion` se queda como consulta. No se le agrega exportación ni impresión, porque van en escritorio.
-- **Escritorio:** no hay código en el segundo parcial (D10). `frontend_desktop/` solo tiene su `AGENTS.md`.
+- **Escritorio:** hecho en el MVP de `frontend_desktop/`. Crea escenarios y versiones, duplica, edita intervenciones y envía a revisión. También lanza lotes de corridas y compara los resultados, con exportación e impresión.
 
 ### Documentos
 
-- **Arquitectura v3:** escribir el reparto antes de construir las pantallas de escenarios. En `arquitectura/brechas_v3.md`, la fila C5 dice «Depende de D4, abierta»; hay que actualizarla.
+- **Arquitectura v3:** escribir el reparto. La fila C5 de `arquitectura/brechas_v3.md` ya se actualizó el 2026-11-09.
 
 ### Preguntas abiertas
 
@@ -147,8 +147,8 @@ D8 está como propuesta (ver [`D08-replicas-de-una-comparacion.md`](D08-replicas
 
 ### Código y base de datos
 
-- **Escritorio, réplicas:** campo de réplicas por lote, configurable por el analista. Con menos de 30, pedir confirmación («¿seguro que quieres bajar de 30 réplicas?»). Se construye en el tercer parcial (D10).
-- **Escritorio, resumen:** por escenario, mostrar la media, la mediana y el intervalo entre percentiles 5 y 95. Se construye en el tercer parcial (D10).
+- **Escritorio, réplicas:** hecho en el MVP de `frontend_desktop`, del lado del cliente. La app lanza N corridas por versión (semillas 1..N; 30 por omisión, máximo 100 por el tope de `GET /runs`) y pide confirmación con menos de 30. Los servicios no cambiaron: cada réplica queda como un lote de una corrida.
+- **Escritorio, resumen:** hecho también en el cliente (`frontend_desktop/app/resumen.py`): media, mediana y percentiles 5 y 95 por escenario, sobre las semillas comunes a las versiones comparadas. La frontera se calcula sobre medianas. D8 sigue en propuesta. Si se confirma con lotes en el servidor, este cálculo pasa a `corridas`, `comparacion` y `pareto`.
 - **Tope:** la base ya tiene `max_replicas_por_lote` (200) y `replicas_por_defecto` (30) en `system_settings` (migración 010). Ningún código las lee hoy; hay que usarlas.
 - **Web:** no lanza corridas (D4). Solo muestra lo que se corrió.
 
@@ -196,10 +196,6 @@ D25 quedó aceptada el 2026-11-08 con la opción A: nginx es la entrada única, 
 ### Documentos
 
 - **D26 (certificado HTTPS)** depende de D25 y ya puede avanzar. Sigue Pendiente hasta que se decida de dónde sale el certificado.
-
-### Preguntas abiertas
-
-- ¿nginx se implementa en el segundo parcial o en el tercero? `AGENTS.md` (su encabezado dice Obsoleto) lo pone fuera de alcance del segundo parcial, y D21 pasa lo no implementado al tercero. La rúbrica pide HTTPS, firewall y puertos controlados, así que puede hacer falta antes.
 
 ## Cambios pendientes por D26
 
