@@ -10,21 +10,21 @@ Nadie ha decidido estas (ver `decisiones.md`):
 
 - D17, D18 y D20 quedaron aceptadas el 2026-11-08 (ver `decisiones.md`). D19 (Redis sin datos autoritativos) sigue por confirmar.
 - D25 quedó aceptada el 2026-11-08 (ver `decisiones.md`). Sus cambios están en «Cambios pendientes por D25».
-- D27 quedó aceptada el 2026-11-08 con los tres servicios implementados en `desarrollo-movil`. Sus cambios están en «Cambios pendientes por D27».
+- D27 quedó aceptada el 2026-11-08. Sus tres servicios ya se integraron desde `desarrollo-movil` (ver «Cambios pendientes por D27»).
 - Las del antiguo punto 5 y 6 ya eran D9, D11 y D12.
 - El antiguo punto 7 (FLAME GPU con el motor de Python como respaldo) quedó en D23.
 
 ## Cambios pendientes por D27
 
-D27 quedó aceptada el 2026-11-08 (ver [`D27-servicios-nuevos-para-la-movil.md`](D27-servicios-nuevos-para-la-movil.md)). Los tres servicios ya están implementados, pero en la rama `desarrollo-movil`, no en esta. Sus cambios llegan al integrar esa rama.
+D27 quedó aceptada el 2026-11-08 (ver [`D27-servicios-nuevos-para-la-movil.md`](D27-servicios-nuevos-para-la-movil.md)). La rama `desarrollo-movil` ya se integró, así que los tres servicios están en esta rama.
 
 ### Código
 
-- **Integración de `desarrollo-movil`:** trae `microservicios/dispositivos`, `evidencias` y `vacunas`, sus entradas en `infra/docker-compose.yml`, las migraciones 031 a 033 y sus pruebas.
+- **Hecho:** `microservicios/dispositivos`, `evidencias` y `vacunas` ya están aquí, con sus entradas en `infra/docker-compose.yml`, las migraciones 031 a 033 y sus pruebas. La app móvil (`frontend_movil/`) los usa.
 
 ### Documentos
 
-- **Contratos:** `docs/contratos/dispositivos`, `evidencias` y `vacunas` existen en `desarrollo-movil` y llegan con la integración.
+- **Contratos:** hecho. `docs/contratos/dispositivos`, `evidencias` y `vacunas` ya están aquí.
 - **Catálogo:** `docs/arquitectura/microservicios.md` ya lista los tres. No cambia.
 
 ### Preguntas abiertas
@@ -58,7 +58,7 @@ D1 quedó aceptada el 2026-11-07 (ver [`D01-permisos-y-auditoria.md`](D01-permis
 
 ## Cambios pendientes por D4
 
-D4 quedó aceptada el 2026-11-07 (ver [`D04-web-contra-escritorio.md`](D04-web-contra-escritorio.md)). Estos cambios no están implementados; se hacen cuando el equipo lo pida.
+D4 quedó aceptada el 2026-11-07 (ver [`D04-web-contra-escritorio.md`](D04-web-contra-escritorio.md)). La parte del escritorio ya está hecha. Los cambios de la web no están implementados; se hacen cuando el equipo lo pida.
 
 ### Código
 
@@ -66,11 +66,11 @@ D4 quedó aceptada el 2026-11-07 (ver [`D04-web-contra-escritorio.md`](D04-web-c
 - **Web, corridas:** quitar `/simulaciones/<id>/ejecutar` y `/simulaciones/corridas/<id>/reejecutar`. Lanzar una corrida pasa a escritorio.
 - **Web, consulta:** `/escenarios`, `/escenarios/<id>`, `/simulaciones` y `/simulaciones/corridas/<id>` se quedan en solo lectura. Revisar que sus plantillas no tengan botones de editar o lanzar.
 - **Web, comparación:** la vista `/comparacion` se queda como consulta. No se le agrega exportación ni impresión, porque van en escritorio.
-- **Escritorio:** no hay código en el segundo parcial (D10). `frontend_desktop/` solo tiene su `AGENTS.md`.
+- **Escritorio:** hecho en el MVP de `frontend_desktop/`. Crea escenarios y versiones, duplica, edita intervenciones y envía a revisión. También lanza lotes de corridas y compara los resultados, con exportación e impresión.
 
 ### Documentos
 
-- **Arquitectura v3:** escribir el reparto antes de construir las pantallas de escenarios. En `arquitectura/brechas_v3.md`, la fila C5 dice «Depende de D4, abierta»; hay que actualizarla.
+- **Arquitectura v3:** escribir el reparto. La fila C5 de `arquitectura/brechas_v3.md` ya se actualizó el 2026-11-09.
 
 ### Preguntas abiertas
 
@@ -196,10 +196,6 @@ D25 quedó aceptada el 2026-11-08 con la opción A: nginx es la entrada única, 
 ### Documentos
 
 - **D26 (certificado HTTPS)** depende de D25 y ya puede avanzar. Sigue Pendiente hasta que se decida de dónde sale el certificado.
-
-### Preguntas abiertas
-
-- ¿nginx se implementa en el segundo parcial o en el tercero? `AGENTS.md` (su encabezado dice Obsoleto) lo pone fuera de alcance del segundo parcial, y D21 pasa lo no implementado al tercero. La rúbrica pide HTTPS, firewall y puertos controlados, así que puede hacer falta antes.
 
 ## Cambios pendientes por D26
 
