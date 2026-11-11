@@ -12,7 +12,8 @@ cambios pequeños, legibles y fáciles de revisar.
 ## Etapa actual: tercer parcial
 
 - **Sistema web:** el monolito Flask sigue conectado directo a PostgreSQL y **no llama a los
-  microservicios**.
+  microservicios**. Consulta escenarios y corridas y el epidemiólogo aprueba en ella; crear y
+  editar escenarios, enviarlos a revisión y lanzar corridas es de la app de escritorio (D4).
 - **Microservicios:** 29 servicios Flask pequeños en `microservicios/`, cada uno en su
   contenedor de Docker, con Redis y JWT. Son para las apps de escritorio (XML) y móvil
   (JSON). La móvil ya tiene código en `frontend_movil/`.

@@ -234,7 +234,7 @@ Orden de PRs: usuarios y auditoría, catálogo, casos y al final analítica. Con
 
 ## Preparaciones pendientes
 
-- **Cola de simulaciones.** El monolito corre cada corrida en un hilo (`routes.py`, línea 1117). Si el servidor se reinicia, la corrida queda a medias; `recupera_corridas_interrumpidas()` en `backend_web/simulaciones.py` atiende ese caso. Los servicios ya tienen cola (`microservicios/comun/epidemia_comun/cola.py`). Falta decidir si el monolito usa la tabla `simulation_runs` como cola o la de los servicios.
+- **Cola de simulaciones.** *Resuelto con D4 (2026-11-11): la web ya no lanza corridas; las lanza el escritorio por `corridas` y las ejecuta el simulador desde la cola.* El monolito corría cada corrida en un hilo (`routes.py`, línea 1117). Si el servidor se reinicia, la corrida queda a medias; `recupera_corridas_interrumpidas()` en `backend_web/simulaciones.py` atiende ese caso. Los servicios ya tienen cola (`microservicios/comun/epidemia_comun/cola.py`). Falta decidir si el monolito usa la tabla `simulation_runs` como cola o la de los servicios.
 - **`simulation_results` como tabla puente.** Sigue en la migración 014. Su plan de salida a MongoDB depende de D28 (qué datos van a MongoDB).
 - **`jti` en la sesión web.** Los servicios ya lo tienen (`epidemia_comun/sesiones.py`); `backend_web/auth.py` no. Solo hace falta si la web mantiene sesiones propias (ver D19).
 

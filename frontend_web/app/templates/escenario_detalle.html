@@ -11,21 +11,10 @@
   </div>
   <div class="page-actions">
     <a class="btn" href="{{ url_for('main.escenarios') }}">← Escenarios</a>
-    {% if puede_crear_escenarios and version %}
-    <a class="btn btn-primary"
-       href="{{ url_for('main.version_nueva', scenario_id=escenario.id) }}">+ Nueva versión</a>
-    {% endif %}
   </div>
 </div>
 
 {% include "_mensajes.html" %}
-
-
-{% if errores %}
-<div class="alert alert-error">
-  <ul>{% for e in errores %}<li>{{ e }}</li>{% endfor %}</ul>
-</div>
-{% endif %}
 
 {% if not version %}
 <div class="alert alert-error">Este escenario no tiene una versión vigente.</div>
@@ -102,8 +91,9 @@
 
 {% if version.status == 'rechazado' %}
 <div class="alert alert-error">
-  <strong>Esta versión fue rechazada.</strong> No se modifica: para atender el motivo hay que
-  crear una versión nueva, que nace en borrador con las intervenciones copiadas.
+  <strong>Esta versión fue rechazada.</strong> No se modifica: para atender el motivo, quien la
+  armó crea una versión nueva en la app de escritorio, que nace en borrador con las
+  intervenciones copiadas.
 </div>
 {% elif version.status == 'aprobado' %}
 <div class="alert alert-ok">
@@ -112,23 +102,10 @@
 </div>
 {% endif %}
 
-{% if version.is_current and version.status == 'borrador' and puede_crear_escenarios %}
-<div class="card form-card">
-  <div class="detalle-titulo">Enviar a revisión</div>
-  <form method="post" action="{{ url_for('main.version_enviar', scenario_id=escenario.id) }}">
-    <p class="field-hint">
-      Al enviarla deja de ser editable. Antes de aceptarla se vuelve a contrastar con el
-      motor: mandar a revisar algo que no se puede simular le hace perder el tiempo a quien
-      revisa.
-    </p>
-    <div class="page-actions">
-      <button type="submit" class="btn btn-primary"
-              {% if errores_motor %}disabled{% endif %}>Enviar a revisión</button>
-    </div>
-    {% if errores_motor %}
-    <p class="field-hint">Corrige primero lo que el motor rechaza.</p>
-    {% endif %}
-  </form>
+{% if version.is_current and version.status == 'borrador' %}
+<div class="alert alert-warn">
+  Esta versión está en borrador. Quien la armó la edita y la envía a revisión desde la app de
+  escritorio; al enviarla, aquí aparece para dictaminar.
 </div>
 {% endif %}
 
@@ -222,7 +199,6 @@
           <th>Cobertura</th>
           <th>Cumplimiento</th>
           <th>Parámetros</th>
-          {% if puede_editar %}<th>Acciones</th>{% endif %}
         </tr>
       </thead>
       <tbody>
@@ -239,30 +215,10 @@
               {% for k, v in i.params.items() %}<div class="detalle-texto">{{ k }}: {{ v }}</div>{% endfor %}
             {% else %}<span class="param-vacio">—</span>{% endif %}
           </td>
-          {% if puede_editar %}
-          <td>
-            <form class="form-inline" method="post"
-                  action="{{ url_for('main.intervencion_mover', scenario_id=escenario.id, intervencion_id=i.id) }}">
-              <input type="hidden" name="direccion" value="subir">
-              <button class="btn btn-mini" type="submit" title="Subir"
-                      {% if loop.first %}disabled{% endif %}>↑</button>
-            </form>
-            <form class="form-inline" method="post"
-                  action="{{ url_for('main.intervencion_mover', scenario_id=escenario.id, intervencion_id=i.id) }}">
-              <input type="hidden" name="direccion" value="bajar">
-              <button class="btn btn-mini" type="submit" title="Bajar"
-                      {% if loop.last %}disabled{% endif %}>↓</button>
-            </form>
-            <form class="form-inline" method="post"
-                  action="{{ url_for('main.intervencion_quitar', scenario_id=escenario.id, intervencion_id=i.id) }}">
-              <button class="btn btn-mini" type="submit">Quitar</button>
-            </form>
-          </td>
-          {% endif %}
         </tr>
         {% else %}
         <tr>
-          <td colspan="{{ 8 if puede_editar else 7 }}" class="tabla-vacia">
+          <td colspan="7" class="tabla-vacia">
             Esta versión todavía no tiene intervenciones: la corrida sería el escenario
             sin ninguna medida.
           </td>
@@ -272,121 +228,6 @@
     </table>
   </div>
 </div>
-
-{% if puede_editar %}
-<div class="card form-card">
-  <div class="detalle-titulo">Agregar intervención</div>
-  <form method="post"
-        action="{{ url_for('main.intervencion_agregar', scenario_id=escenario.id) }}">
-    <div class="field">
-      <label for="code">Tipo <span class="req">*</span></label>
-      <select id="code" name="code" required>
-        <option value="">Elige un tipo…</option>
-        {% for t in tipos %}
-        <option value="{{ t.code }}" {% if valores.get('code') == t.code %}selected{% endif %}>
-          {{ t.name }}{% if t.target_layer %} — capa {{ t.target_layer }}{% endif %}
-        </option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="field-row">
-      <div class="field">
-        <label for="start_day">Día de inicio <span class="req">*</span></label>
-        <input type="number" id="start_day" name="start_day" min="0"
-               max="{{ version.horizon_days }}" step="1" required
-               value="{{ valores.get('start_day') or '' }}">
-      </div>
-      <div class="field">
-        <label for="end_day">Día de fin</label>
-        <input type="number" id="end_day" name="end_day" min="0"
-               max="{{ version.horizon_days }}" step="1"
-               value="{{ valores.get('end_day') or '' }}">
-        <p class="field-hint">Vacío = hasta el final del horizonte ({{ version.horizon_days }}).</p>
-      </div>
-    </div>
-
-    <div class="field-row">
-      <div class="field">
-        <label for="coverage">Cobertura</label>
-        <input type="number" id="coverage" name="coverage" min="0" max="1" step="0.01"
-               value="{{ valores.get('coverage') or '' }}">
-        <p class="field-hint">0 a 1. Vacío = 1 (toda la población objetivo).</p>
-      </div>
-      <div class="field">
-        <label for="compliance">Cumplimiento</label>
-        <input type="number" id="compliance" name="compliance" min="0" max="1" step="0.01"
-               value="{{ valores.get('compliance') or '' }}">
-        <p class="field-hint">0 a 1. Vacío = 1.</p>
-      </div>
-    </div>
-
-    {# Un bloque de parámetros por tipo, generado desde su param_schema. Los
-       nombres llevan el código del tipo porque varios comparten el parámetro
-       «reduccion» y si no se mezclarían. Los bloques que no corresponden al tipo
-       elegido se deshabilitan: oculto no basta, un campo oculto sí se envía. #}
-    {% for t in tipos %}
-    <fieldset class="params-tipo" data-code="{{ t.code }}" hidden disabled>
-      <legend>Parámetros de {{ t.name }}</legend>
-      {% if t.description %}<p class="field-hint">{{ t.description }}</p>{% endif %}
-      {% for clave, spec in (t.param_schema.get('properties') or {}).items() %}
-      <div class="field">
-        <label for="p_{{ t.code }}_{{ clave }}">
-          {{ clave }}
-          {% if clave in (t.param_schema.get('required') or []) %}<span class="req">*</span>{% endif %}
-        </label>
-        {% if spec.get('enum') %}
-        <select id="p_{{ t.code }}_{{ clave }}" name="p_{{ t.code }}_{{ clave }}">
-          <option value="">—</option>
-          {% for opcion in spec.enum %}
-          <option value="{{ opcion }}"
-                  {% if valores.get('p_' ~ t.code ~ '_' ~ clave) == opcion %}selected{% endif %}>{{ opcion }}</option>
-          {% endfor %}
-        </select>
-        {% else %}
-        <input type="{{ 'number' if spec.get('type') in ('number', 'integer') else 'text' }}"
-               id="p_{{ t.code }}_{{ clave }}" name="p_{{ t.code }}_{{ clave }}"
-               {% if spec.get('minimum') is not none %}min="{{ spec.minimum }}"{% endif %}
-               {% if spec.get('maximum') is not none %}max="{{ spec.maximum }}"{% endif %}
-               step="{{ 1 if spec.get('type') == 'integer' else 'any' }}"
-               value="{{ valores.get('p_' ~ t.code ~ '_' ~ clave) or (spec.get('default') if spec.get('default') is not none else '') }}">
-        {% endif %}
-        <p class="field-hint">
-          {{ spec.get('type') or 'texto' }}
-          {%- if spec.get('minimum') is not none %} · mínimo {{ spec.minimum }}{% endif %}
-          {%- if spec.get('maximum') is not none %} · máximo {{ spec.maximum }}{% endif %}
-          {%- if spec.get('default') is not none %} · por omisión {{ spec.default }}{% endif %}
-        </p>
-      </div>
-      {% endfor %}
-    </fieldset>
-    {% endfor %}
-
-    <div class="page-actions">
-      <button type="submit" class="btn btn-primary">Agregar intervención</button>
-    </div>
-  </form>
-</div>
-
-<script>
-  (function () {
-    var select = document.getElementById('code');
-    var bloques = Array.prototype.slice.call(document.querySelectorAll('.params-tipo'));
-    if (!select) { return; }
-    function pinta() {
-      bloques.forEach(function (b) {
-        var toca = b.dataset.code === select.value;
-        b.hidden = !toca;
-        b.disabled = !toca;      // un fieldset deshabilitado no envía sus campos
-      });
-    }
-    select.addEventListener('change', pinta);
-    pinta();
-  })();
-</script>
-{% elif motivo_bloqueo %}
-<div class="alert alert-warn">{{ motivo_bloqueo }}</div>
-{% endif %}
 
 <div class="card table-card">
   <div class="detalle-titulo">Historial de versiones ({{ versiones|length }})</div>
@@ -438,39 +279,6 @@
     </table>
   </div>
 </div>
-
-{% if puede_crear_escenarios and version %}
-<div class="card form-card">
-  <div class="detalle-titulo">Duplicar</div>
-  <form method="post" action="{{ url_for('main.escenario_duplicar', scenario_id=escenario.id) }}">
-    <p class="field-hint">
-      Crea un escenario nuevo a partir de una versión de este, con sus intervenciones. La
-      copia es tuya y empieza en borrador: no hereda el estado de aprobación, porque nadie
-      la ha revisado. Este escenario no se toca.
-    </p>
-    <div class="field-row">
-      <div class="field">
-        <label for="dup_version">Versión de origen</label>
-        <select id="dup_version" name="version">
-          {% for v in versiones %}
-          <option value="{{ v.version_number }}" {% if v.is_current %}selected{% endif %}>
-            v{{ v.version_number }} — {{ v.status }}{% if v.is_current %} (vigente){% endif %}
-          </option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="field">
-        <label for="dup_name">Nombre del escenario nuevo <span class="req">*</span></label>
-        <input type="text" id="dup_name" name="name" maxlength="160" required
-               value="{{ escenario.name }} (copia)">
-      </div>
-    </div>
-    <div class="page-actions">
-      <button type="submit" class="btn">Duplicar</button>
-    </div>
-  </form>
-</div>
-{% endif %}
 
 {% endif %}
 {% endblock %}

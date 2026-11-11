@@ -8,19 +8,16 @@ Seguridad, del lado de las rutas:
   - El alta de una enfermedad solo fija parametros si quien la da de alta
     puede editarlos (EPIDEMIOLOGO / ADMINISTRADOR).
   - Sin JWT_SECRET_KEY la app no arranca.
-  - Una intervencion invalida no borra el historial de versiones.
 
 Ejecutar:
     python -m unittest frontend_web.tests.test_seguridad_rutas -v
 """
 import os
-import re
 import secrets
 import unittest
 from unittest.mock import patch
 
 from frontend_web.tests.base import AppTestCase
-from backend_web import queries
 from backend_web.auth import create_token, decode_token, hash_password
 from backend_web.db import query
 from backend_web.tests.base import escribe, requiere_base, token_de
@@ -234,54 +231,6 @@ class AltaEnfermedadTests(AppTestCase):
         self.assertNotIn('name="p_r0_valor"', analista)
         self.assertIn("epidemiólogo", analista)
         self.assertIn('name="p_r0_valor"', epidemiologo)
-
-
-# ---------------------------------------------------------------------------
-# 8. Historial tras una intervencion invalida
-# ---------------------------------------------------------------------------
-NOMBRE_HISTORIAL = "ZZZ historial tras error de captura"
-
-
-@requiere_base
-class HistorialTrasErrorTests(AppTestCase):
-    def setUp(self):
-        self._borra()
-        regiones = queries.get_regiones_para_escenario()
-        enfermedades = queries.get_enfermedades_para_escenario()
-        mty = next((r for r in regiones if r["code"] == "19039"), None)
-        enfermedad = next((e for e in enfermedades if e["simulable"]), None)
-        if not mty or not enfermedad:
-            self.skipTest("la base no tiene Monterrey o una enfermedad simulable")
-        self.token = token_de("alex.cavazos")
-        with self.app.test_client() as client:
-            client.set_cookie(COOKIE_NAME, self.token)
-            resp = client.post("/escenarios/nuevo", data={
-                "name": NOMBRE_HISTORIAL, "disease_id": str(enfermedad["id"]),
-                "region_id": str(mty["id"]), "population_size": "1000",
-                "initial_infected": "5", "horizon_days": "90", "notes": "v1"})
-        self.assertEqual(resp.status_code, 302, resp.data[:500])
-        self.sid = query("SELECT id FROM scenarios WHERE name = %s",
-                         (NOMBRE_HISTORIAL,), one=True)["id"]
-
-    def tearDown(self):
-        self._borra()
-
-    def _borra(self):
-        escribe("""DELETE FROM scenario_versions WHERE scenario_id IN
-                    (SELECT id FROM scenarios WHERE name = %s)""", (NOMBRE_HISTORIAL,))
-        escribe("DELETE FROM scenarios WHERE name = %s", (NOMBRE_HISTORIAL,))
-
-    def test_el_historial_sigue_ahi_cuando_la_intervencion_es_invalida(self):
-        with self.app.test_client() as client:
-            client.set_cookie(COOKIE_NAME, self.token)
-            antes = client.get(f"/escenarios/{self.sid}").data.decode("utf-8")
-            resp = client.post(f"/escenarios/{self.sid}/intervenciones",
-                               data={"tipo": "CUBREBOCAS", "start_day": "999"})
-        self.assertEqual(resp.status_code, 400)
-        despues = resp.data.decode("utf-8")
-        patron = r"Historial de versiones \((\d+)\)"
-        self.assertEqual(re.search(patron, antes).group(1), "1")
-        self.assertEqual(re.search(patron, despues).group(1), "1")
 
 
 if __name__ == "__main__":

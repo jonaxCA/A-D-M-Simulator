@@ -266,9 +266,8 @@ agrega al `.env` (o define en la terminal) lo que necesites:
 `FLASK_DEBUG=1` y `EPIDEMIA_HOST=0.0.0.0` juntos se rechazan: el depurador de
 Werkzeug ejecuta código Python desde el navegador y no debe quedar abierto a la red.
 
-Al arrancar, la app cierra como **FALLIDO** las corridas que un reinicio anterior
-dejó en *encolado* o *ejecutando* (su hilo murió con el proceso). El mensaje de
-cada una lo explica, y se pueden re-ejecutar con la misma semilla.
+La web no corre simulaciones (D4): consulta las corridas que lanza la app de escritorio y
+ejecuta el simulador. Por eso, al arrancar, ya no toca las corridas encoladas o en ejecución.
 
 ### Credenciales
 

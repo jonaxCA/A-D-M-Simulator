@@ -33,5 +33,6 @@ Define el proceso de la app de escritorio, sus cuatro microservicios mínimos y 
 - La web conserva aprobar o rechazar versiones, la vista de comparación y la consulta en solo lectura de escenarios, corridas y resultados. La comparación no exporta ni imprime.
 - Cuadra con D1: el analista, que usa la app de escritorio, crea y corre escenarios; el epidemiólogo, que usa la web, aprueba y consulta.
 - La app de escritorio no se construye en el segundo parcial (D10). Su proceso queda escrito en la arquitectura v3 y su código va en el tercer parcial.
+- Implementada en la web el 2026-11-11: se quitaron las rutas y los botones de crear, versionar, duplicar, editar intervenciones, enviar a revisión, ejecutar y re-ejecutar. Como la web ya no corre simulaciones, `frontend_web/run.py` tampoco cierra al arrancar las corridas encoladas o en ejecución: eran sus hilos, y hoy serían las del simulador.
 
 Depende de: D1

@@ -11,13 +11,6 @@
   </div>
   <div class="page-actions">
     <a class="btn" href="{{ url_for('main.simulaciones_lista') }}">← Simulaciones</a>
-    {% if puede_ejecutar and run.status in ('completado', 'fallido', 'cancelado') %}
-    <form method="post" action="{{ url_for('main.simulacion_reejecutar', run_id=run.id) }}">
-      <button type="submit" class="btn btn-primary" title="Encola una corrida nueva con la misma versión y la misma semilla, para demostrar reproducibilidad.">
-        ⟳ Re-ejecutar con la misma semilla ({{ run.seed }})
-      </button>
-    </form>
-    {% endif %}
   </div>
 </div>
 
@@ -115,8 +108,8 @@
       motor y debe reportarse.</div>
     {% endif %}
   {% else %}
-    <p class="field-hint">Todavía no hay otra corrida completada con esta misma versión y semilla. Usa
-      "Re-ejecutar con la misma semilla" para demostrar que el resultado se repite.</p>
+    <p class="field-hint">Todavía no hay otra corrida completada con esta misma versión y semilla. Para
+      demostrar que el resultado se repite, lanza otra con la misma semilla desde la app de escritorio.</p>
   {% endif %}
   </div>
 </div>

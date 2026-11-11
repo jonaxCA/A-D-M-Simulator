@@ -27,13 +27,7 @@ from frontend_web.tests.base import RutasConCorridas
 
 class AuditoriaRutasTests(RutasConCorridas):
     def test_bitacora_muestra_las_4_etapas_de_una_corrida_real(self):
-        with self.app.test_client() as client:
-            self._login(client, "alex.cavazos", "Epidemia2026!")
-            resp = client.post(f"/simulaciones/{self.version_id}/ejecutar",
-                               data={"seed": "77001"}, follow_redirects=False)
-            run_id = self._run_id_del_redirect(resp)
-            self._batches_creados.append(self._batch_del_run(run_id))
-            self._espera_terminal(client, run_id)
+        run_id = self._corre(77001)
 
         sim_id = f"SIM-{run_id:05d}"
         with self.app.test_client() as client:
@@ -46,14 +40,9 @@ class AuditoriaRutasTests(RutasConCorridas):
             self.assertIn(f"Simulacion completada {sim_id}", html)
 
     def test_bitacora_muestra_corrida_fallida_forzada_como_fallida_no_correcta(self):
+        run_id = self._corre(77002, usuario="admin", forzar_error=True)
         with self.app.test_client() as client:
             self._login(client, "admin", "Admin2026!")
-            resp = client.post(f"/simulaciones/{self.version_id}/ejecutar",
-                               data={"seed": "77002", "forzar_error": "1"}, follow_redirects=False)
-            run_id = self._run_id_del_redirect(resp)
-            self._batches_creados.append(self._batch_del_run(run_id))
-            self._espera_terminal(client, run_id)
-
             resp = client.get("/auditoria")
             self.assertEqual(resp.status_code, 200)
             html = resp.data.decode("utf-8")
@@ -81,21 +70,10 @@ class AuditoriaRutasTests(RutasConCorridas):
             self.assertIn('value="RUN::completado"', html)
 
     def test_filtro_run_fallido_aisla_solo_las_fallidas_de_esa_corrida(self):
+        run_completado = self._corre(77003, usuario="admin")
+        run_fallido = self._corre(77004, usuario="admin", forzar_error=True)
         with self.app.test_client() as client:
             self._login(client, "admin", "Admin2026!")
-
-            resp = client.post(f"/simulaciones/{self.version_id}/ejecutar",
-                               data={"seed": "77003"}, follow_redirects=False)
-            run_completado = self._run_id_del_redirect(resp)
-            self._batches_creados.append(self._batch_del_run(run_completado))
-            self._espera_terminal(client, run_completado)
-
-            resp = client.post(f"/simulaciones/{self.version_id}/ejecutar",
-                               data={"seed": "77004", "forzar_error": "1"}, follow_redirects=False)
-            run_fallido = self._run_id_del_redirect(resp)
-            self._batches_creados.append(self._batch_del_run(run_fallido))
-            self._espera_terminal(client, run_fallido)
-
             resp = client.get("/auditoria?accion=RUN::fallido")
             self.assertEqual(resp.status_code, 200)
             html = resp.data.decode("utf-8")

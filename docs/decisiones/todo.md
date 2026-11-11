@@ -58,14 +58,14 @@ D1 quedó aceptada el 2026-11-07 (ver [`D01-permisos-y-auditoria.md`](D01-permis
 
 ## Cambios pendientes por D4
 
-D4 quedó aceptada el 2026-11-07 (ver [`D04-web-contra-escritorio.md`](D04-web-contra-escritorio.md)). La parte del escritorio ya está hecha. Los cambios de la web no están implementados; se hacen cuando el equipo lo pida.
+D4 quedó aceptada el 2026-11-07 (ver [`D04-web-contra-escritorio.md`](D04-web-contra-escritorio.md)). La parte del escritorio ya está hecha y la de la web se hizo el 2026-11-11, a petición del equipo.
 
 ### Código
 
-- **Web, creación de escenarios:** quitar `/escenarios/nuevo`, `/escenarios/<id>/versiones/nueva`, `/escenarios/<id>/duplicar`, las rutas de intervenciones (`/escenarios/<id>/intervenciones`, con agregar, quitar y mover) y `/escenarios/<id>/enviar`. La web conserva `/escenarios/<id>/revisar` y `/revisiones`.
-- **Web, corridas:** quitar `/simulaciones/<id>/ejecutar` y `/simulaciones/corridas/<id>/reejecutar`. Lanzar una corrida pasa a escritorio.
-- **Web, consulta:** `/escenarios`, `/escenarios/<id>`, `/simulaciones` y `/simulaciones/corridas/<id>` se quedan en solo lectura. Revisar que sus plantillas no tengan botones de editar o lanzar.
-- **Web, comparación:** la vista `/comparacion` se queda como consulta. No se le agrega exportación ni impresión, porque van en escritorio.
+- **Hecho. Web, creación de escenarios:** quitar `/escenarios/nuevo`, `/escenarios/<id>/versiones/nueva`, `/escenarios/<id>/duplicar`, las rutas de intervenciones (`/escenarios/<id>/intervenciones`, con agregar, quitar y mover) y `/escenarios/<id>/enviar`. La web conserva `/escenarios/<id>/revisar` y `/revisiones`.
+- **Hecho. Web, corridas:** quitar `/simulaciones/<id>/ejecutar` y `/simulaciones/corridas/<id>/reejecutar`. Lanzar una corrida pasa a escritorio. Con eso, `frontend_web/run.py` ya no cierra corridas al arrancar.
+- **Hecho. Web, consulta:** `/escenarios`, `/escenarios/<id>`, `/simulaciones` y `/simulaciones/corridas/<id>` se quedan en solo lectura. Sus plantillas ya no tienen botones de editar o lanzar; un escenario en borrador avisa que se edita en el escritorio.
+- **Hecho. Web, comparación:** la vista `/comparacion` se queda como consulta. No se le agrega exportación ni impresión, porque van en escritorio.
 - **Escritorio:** hecho en el MVP de `frontend_desktop/`. Crea escenarios y versiones, duplica, edita intervenciones y envía a revisión. También lanza lotes de corridas y compara los resultados, con exportación e impresión.
 
 ### Documentos
@@ -74,7 +74,7 @@ D4 quedó aceptada el 2026-11-07 (ver [`D04-web-contra-escritorio.md`](D04-web-c
 
 ### Preguntas abiertas
 
-- ¿`/comparacion/costos` es consulta o edición? La tabla no la menciona.
+- ~~¿`/comparacion/costos` es consulta o edición? La tabla no la menciona.~~ Es edición, pero del catálogo: fija el costo unitario de los tipos de intervención (EPIDEMIOLOGO y ADMINISTRADOR), que el escritorio no hace. Se queda en la web.
 
 ## Cambios pendientes por D2
 

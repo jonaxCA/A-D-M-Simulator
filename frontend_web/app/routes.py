@@ -10,17 +10,17 @@ Recorrido funcional actual:
 Alcance de esta version:
     - Pantallas funcionales: dashboard publico, login, dashboard autenticado,
       mapa, monitoreo, catalogo de enfermedades, captura de casos, regiones,
-      usuarios, auditoria, escenarios (crear, versionar, enviar a revision y
-      aprobar), simulaciones (correr versiones ya aprobadas, en segundo plano,
-      con resultados e indicadores) y comparacion de corridas con costos y
-      frontera de Pareto.
+      usuarios, auditoria, escenarios (consulta y aprobacion), simulaciones
+      (consulta de corridas, con resultados e indicadores) y comparacion de
+      corridas con costos y frontera de Pareto.
+    - Crear y editar escenarios, enviarlos a revision y lanzar corridas es de
+      la app de escritorio (D4): la web consulta y aprueba.
     - Todo corre en un solo proceso Flask contra PostgreSQL directamente,
       sin la capa de microservicios.
     - Mapa acotado a Nuevo Leon.
 """
 import csv
 import io
-import threading
 from datetime import date, datetime, timezone
 from urllib.parse import urlsplit
 
@@ -36,15 +36,9 @@ from .permisos import (login_required, admin_required, roles_required, tiene_rol
 
 bp = Blueprint("main", __name__)
 
-# Roles que pueden encolar una corrida, segun la matriz de permisos de
-# 010_datos_iniciales.sql: 'simulations.run' se le otorga a ANALISTA y a
-# ADMINISTRADOR (que tiene todos los permisos); EPIDEMIOLOGO solo tiene
-# 'simulations.read'. roles_required es ademas quien deja el intento negado
-# en audit_log si alguien llega por URL directa sin el rol.
-ROLES_EJECUTAN_SIMULACION = ("ANALISTA", "ADMINISTRADOR")
-
-# Roles con 'simulations.read' en la misma matriz. CAPTURISTA no lo tiene: no
-# ve escenarios, corridas ni resultados.
+# Roles con 'simulations.read' en la matriz de permisos de
+# 010_datos_iniciales.sql. CAPTURISTA no lo tiene: no ve escenarios, corridas
+# ni resultados. Lanzar corridas ('simulations.run') ya no es de la web (D4).
 ROLES_LEEN_SIMULACION = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 ROLES_LEEN_ESCENARIO = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 
@@ -69,10 +63,6 @@ def inject_globals():
         # solo para mostrar u ocultar botones: el control real esta en
         # roles_required, en cada ruta.
         "puede_editar_catalogo": tiene_rol(user, *ROLES_FIJAN_PARAMETROS),
-        # Quien puede dar de alta escenarios. Mismo criterio: esto solo pinta o
-        # esconde el boton, el candado real esta en roles_required.
-        "puede_crear_escenarios": tiene_rol(user, "ANALISTA", "EPIDEMIOLOGO",
-                                            "ADMINISTRADOR"),
         # Quien decide una revision. Aprobar o rechazar es del EPIDEMIOLOGO y de
         # nadie mas: el ADMINISTRADOR ve la bandeja, pero no dictamina.
         "puede_revisar": tiene_rol(user, "EPIDEMIOLOGO"),
@@ -692,14 +682,11 @@ def region_edades_editar(region_id):
 
 
 # ---------------------------------------------------------------------------
-# Escenarios -- alta y consulta
+# Escenarios -- consulta y dictamen
 # ---------------------------------------------------------------------------
-# Consultar es abierto a cualquier usuario autenticado. Dar de alta es de
-# ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR: el ANALISTA es quien arma y envia a
-# revision segun el flujo de aprobacion.
-ROLES_ESCENARIO = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
-
-
+# Crear, versionar, duplicar, editar intervenciones y enviar a revision es de
+# la app de escritorio, por medio de los servicios (D4). Aqui se consulta, de
+# ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR, y el EPIDEMIOLOGO dictamina.
 @bp.route("/escenarios")
 @roles_required(*ROLES_LEEN_ESCENARIO, entity_type="scenarios")
 def escenarios():
@@ -712,83 +699,13 @@ def escenarios():
     )
 
 
-@bp.route("/escenarios/nuevo", methods=["GET", "POST"])
-@roles_required(*ROLES_ESCENARIO, entity_type="scenarios")
-def escenario_nuevo():
-    """Alta de escenario. Guardar crea el escenario y su version 1 en la misma
-    transaccion: un escenario sin version no se puede simular ni revisar.
-
-    Antes de guardar, el escenario se contrasta con el motor. Vale la pena que
-    el rechazo aparezca aqui y no al momento de correr la simulacion.
-    """
-    regiones = queries.get_regiones_para_escenario()
-    enfermedades = queries.get_enfermedades_para_escenario()
-    contexto = {
-        "regiones": regiones, "enfermedades": enfermedades,
-        "limites": queries.LIMITES_ESCENARIO,
-        "politicas": queries.POLITICAS_EDAD_DESCONOCIDA,
-        "active_nav": "escenarios",
-    }
-
-    if request.method == "GET":
-        return render_template("escenario_form.html", errores=[], valores={}, **contexto)
-
-    datos, errores = queries.valida_escenario(request.form, regiones, enfermedades)
-    valores = {k: (request.form.get(k) or "") for k in
-               ("name", "description", "disease_id", "region_id", "population_size",
-                "initial_infected", "horizon_days", "age_unknown_policy", "notes")}
-    valores["estratificar"] = bool(request.form.get("estratificar"))
-
-    if not errores:
-        ok, error, scenario_id = queries.crea_escenario(datos, contexto=contexto_de_peticion())
-        if ok:
-            flash(f"Escenario «{datos['name']}» creado con su versión 1 en borrador.", "ok")
-            return redirect(url_for("main.escenarios"))
-        errores = [error]
-
-    return render_template("escenario_form.html", errores=errores, valores=valores,
-                           **contexto), 400
-
-
-# ---------------------------------------------------------------------------
-# Detalle de escenario e intervenciones de su version vigente
-# ---------------------------------------------------------------------------
-# Consultar el detalle es abierto. Editar las intervenciones pide tres cosas a
-# la vez: el rol, que la version siga en borrador, y ser dueno del escenario (o
-# ADMINISTRADOR). Lo primero lo hace el decorador; los otros dos se revisan
-# aqui, porque dependen de la fila y no del usuario.
-def _es_dueno_o_admin(escenario):
-    """Quien creo el escenario, o un ADMINISTRADOR. Es la regla para editar
-    intervenciones, crear versiones y enviar a revision."""
-    return escenario["owner_id"] == g.user["sub"] or tiene_rol(g.user, "ADMINISTRADOR")
-
-
-def _puede_editar(detalle):
-    """(puede, motivo). El motivo se muestra al usuario tal cual."""
-    if not detalle["version"]:
-        return False, "Este escenario no tiene una versión vigente."
-    if detalle["version"]["status"] != "borrador":
-        return False, ("Esta versión ya no es un borrador: para cambiar sus "
-                       "intervenciones hay que crear una versión nueva.")
-    if not _es_dueno_o_admin(detalle["escenario"]):
-        return False, "Solo quien creó el escenario puede editar sus intervenciones."
-    return True, None
-
-
-def _detalle_o_404(scenario_id):
-    detalle = queries.get_escenario_detalle(scenario_id)
-    if detalle is None:
-        flash("Ese escenario no existe.", "error")
-        return None
-    return detalle
-
-
 @bp.route("/escenarios/<int:scenario_id>")
 @roles_required(*ROLES_LEEN_ESCENARIO, entity_type="scenarios")
 def escenario_detalle(scenario_id):
-    """Detalle de una version. Sin `?version=` muestra la vigente; con uno,
-    muestra esa, de solo lectura: un historial que no se puede abrir no sirve
-    para entender como llego el escenario a donde esta."""
+    """Detalle de una version, de solo lectura. Sin `?version=` muestra la
+    vigente; con uno, esa: un historial que no se puede abrir no sirve para
+    entender como llego el escenario a donde esta. El motor revisa la version
+    para que quien dictamina vea lo que la simulacion haria con ella."""
     pedida = request.args.get("version", type=int)
     detalle = queries.get_escenario_detalle(scenario_id, pedida)
     if detalle is None:
@@ -796,187 +713,21 @@ def escenario_detalle(scenario_id):
         return redirect(url_for("main.escenarios"))
 
     errores_motor, avisos_motor = queries.revisa_version(detalle)
-    if detalle["editable"]:
-        puede, motivo = _puede_editar(detalle)
-    elif pedida is not None and detalle["version"] and not detalle["version"]["is_current"]:
-        puede, motivo = False, ("Estás viendo una versión anterior. Solo la vigente "
-                                "se puede editar.")
-    else:
-        puede, motivo = False, "Esta versión ya no es un borrador."
-
     return render_template(
         "escenario_detalle.html", **detalle,
         versiones=queries.get_versiones(scenario_id),
-        tipos=queries.get_tipos_intervencion(),
         errores_motor=errores_motor, avisos_motor=avisos_motor,
-        puede_editar=puede, motivo_bloqueo=motivo,
-        errores=[], valores={}, active_nav="escenarios")
-
-
-@bp.route("/escenarios/<int:scenario_id>/versiones/nueva", methods=["GET", "POST"])
-@roles_required(*ROLES_ESCENARIO, entity_type="scenario_versions")
-def version_nueva(scenario_id):
-    """Crea la version siguiente. Modificar nunca sobrescribe.
-
-    El formulario llega con los valores de la vigente, y las intervenciones se
-    copian solas: si hubiera que recapturarlas, nadie versionaria nada.
-    """
-    detalle = _detalle_o_404(scenario_id)
-    if detalle is None:
-        return redirect(url_for("main.escenarios"))
-    if not detalle["version"]:
-        flash("Ese escenario no tiene una versión de la que partir.", "error")
-        return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
-    if not _es_dueno_o_admin(detalle["escenario"]):
-        flash("Solo quien creó el escenario puede versionarlo.", "error")
-        return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
-
-    version = detalle["version"]
-    region = next((r for r in queries.get_regiones_para_escenario()
-                   if r["id"] == detalle["escenario"]["region_id"]), None)
-    contexto = {"escenario": detalle["escenario"], "version": version,
-                "region": region, "limites": queries.LIMITES_ESCENARIO,
-                "politicas": queries.POLITICAS_EDAD_DESCONOCIDA,
-                "active_nav": "escenarios"}
-
-    if request.method == "GET":
-        valores = {
-            "population_size": version["population_size"],
-            "initial_infected": version["initial_infected"],
-            "horizon_days": version["horizon_days"],
-            "estratificar": bool(version["population_by_age"]),
-            "age_unknown_policy": version["age_unknown_policy"] or "",
-            "notes": "",
-        }
-        return render_template("version_form.html", errores=[], valores=valores, **contexto)
-
-    datos, errores = queries.valida_version(
-        request.form, region, detalle["escenario"]["default_params"])
-    if not errores:
-        ok, error, numero = queries.crea_version(scenario_id, datos, contexto=contexto_de_peticion())
-        if ok:
-            flash(f"Versión {numero} creada en borrador, con las intervenciones de la "
-                  f"versión {version['version_number']} copiadas.", "ok")
-            return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
-        errores = [error]
-
-    valores = {k: (request.form.get(k) or "") for k in
-               ("population_size", "initial_infected", "horizon_days",
-                "age_unknown_policy", "notes")}
-    valores["estratificar"] = bool(request.form.get("estratificar"))
-    return render_template("version_form.html", errores=errores, valores=valores,
-                           **contexto), 400
-
-
-@bp.route("/escenarios/<int:scenario_id>/duplicar", methods=["POST"])
-@roles_required(*ROLES_ESCENARIO, entity_type="scenarios")
-def escenario_duplicar(scenario_id):
-    """Copia una version a un escenario nuevo, del que duplica.
-
-    No pide ser dueno del original: duplicar no lo toca. El nuevo nace en
-    borrador con version 1, porque nadie ha revisado esto todavia.
-    """
-    numero = request.form.get("version", type=int)
-    ok, error, nuevo_id = queries.duplica_escenario(
-        scenario_id, numero, request.form.get("name"), contexto=contexto_de_peticion())
-    if ok:
-        flash("Escenario duplicado. Esta copia es tuya y empieza en borrador.", "ok")
-        return redirect(url_for("main.escenario_detalle", scenario_id=nuevo_id))
-    flash(error, "error")
-    return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
-
-
-@bp.route("/escenarios/<int:scenario_id>/intervenciones", methods=["POST"])
-@roles_required(*ROLES_ESCENARIO, entity_type="scenario_interventions")
-def intervencion_agregar(scenario_id):
-    detalle = _detalle_o_404(scenario_id)
-    if detalle is None:
-        return redirect(url_for("main.escenarios"))
-    puede, motivo = _puede_editar(detalle)
-    if not puede:
-        flash(motivo, "error")
-        return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
-
-    tipos = queries.get_tipos_intervencion()
-    datos, errores = queries.valida_intervencion(
-        request.form, tipos, detalle["version"], detalle["intervenciones"])
-    if not errores:
-        ok, error = queries.agrega_intervencion(
-            detalle["version"]["id"], datos, contexto=contexto_de_peticion())
-        if ok:
-            flash(f"Intervención «{datos['code']}» agregada a la versión "
-                  f"{detalle['version']['version_number']}.", "ok")
-            return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
-        errores = [error]
-
-    errores_motor, avisos_motor = queries.revisa_version(detalle)
-    return render_template(
-        "escenario_detalle.html", **detalle, tipos=tipos,
-        # Sin esto el historial se pintaba como "(0)" justo cuando el usuario
-        # se equivocaba al capturar: la plantilla es la misma que la del GET.
-        versiones=queries.get_versiones(scenario_id),
-        errores_motor=errores_motor, avisos_motor=avisos_motor,
-        puede_editar=True, motivo_bloqueo=None,
-        errores=errores, valores=request.form, active_nav="escenarios"), 400
-
-
-@bp.route("/escenarios/<int:scenario_id>/intervenciones/<int:intervencion_id>/quitar",
-          methods=["POST"])
-@roles_required(*ROLES_ESCENARIO, entity_type="scenario_interventions")
-def intervencion_quitar(scenario_id, intervencion_id):
-    detalle = _detalle_o_404(scenario_id)
-    if detalle is None:
-        return redirect(url_for("main.escenarios"))
-    puede, motivo = _puede_editar(detalle)
-    if not puede:
-        flash(motivo, "error")
-    else:
-        ok, error = queries.quita_intervencion(
-            detalle["version"]["id"], intervencion_id, contexto=contexto_de_peticion())
-        flash("Intervención quitada." if ok else error, "ok" if ok else "error")
-    return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
-
-
-@bp.route("/escenarios/<int:scenario_id>/intervenciones/<int:intervencion_id>/mover",
-          methods=["POST"])
-@roles_required(*ROLES_ESCENARIO, entity_type="scenario_interventions")
-def intervencion_mover(scenario_id, intervencion_id):
-    detalle = _detalle_o_404(scenario_id)
-    if detalle is None:
-        return redirect(url_for("main.escenarios"))
-    puede, motivo = _puede_editar(detalle)
-    if not puede:
-        flash(motivo, "error")
-    else:
-        ok, error = queries.mueve_intervencion(
-            detalle["version"]["id"], intervencion_id,
-            request.form.get("direccion"), contexto=contexto_de_peticion())
-        if not ok and error:
-            flash(error, "error")
-    return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
+        active_nav="escenarios")
 
 
 # ---------------------------------------------------------------------------
 # Flujo de aprobacion
 # ---------------------------------------------------------------------------
-# Enviar es de quien armo el escenario. Dictaminar es del EPIDEMIOLOGO, y solo
-# de el: el ADMINISTRADOR ve la bandeja pero no aprueba, porque quien opera el
-# sistema no es quien valida la epidemiologia. La base ademas impide que nadie
-# revise su propia version (ck_scenario_versions_no_autoaprobacion).
-@bp.route("/escenarios/<int:scenario_id>/enviar", methods=["POST"])
-@roles_required(*ROLES_ESCENARIO, entity_type="scenario_versions")
-def version_enviar(scenario_id):
-    detalle = _detalle_o_404(scenario_id)
-    if detalle is None:
-        return redirect(url_for("main.escenarios"))
-    if not _es_dueno_o_admin(detalle["escenario"]):
-        flash("Solo quien creó el escenario puede enviarlo a revisión.", "error")
-    else:
-        ok, error = queries.envia_a_revision(scenario_id, contexto=contexto_de_peticion())
-        flash("Versión enviada a revisión." if ok else error, "ok" if ok else "error")
-    return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
-
-
+# Enviar a revision es de quien armo el escenario, desde la app de escritorio
+# (D4). Dictaminar es del EPIDEMIOLOGO, y solo de el: el ADMINISTRADOR ve la
+# bandeja pero no aprueba, porque quien opera el sistema no es quien valida la
+# epidemiologia. La base ademas impide que nadie revise su propia version
+# (ck_scenario_versions_no_autoaprobacion).
 @bp.route("/escenarios/<int:scenario_id>/revisar", methods=["POST"])
 @roles_required("EPIDEMIOLOGO", entity_type="scenario_versions")
 def version_revisar(scenario_id):
@@ -990,7 +741,7 @@ def version_revisar(scenario_id):
             flash("Versión aprobada. Ya se puede simular.", "ok")
         else:
             flash("Versión rechazada. Quien la armó puede crear una versión nueva con "
-                  "las correcciones.", "ok")
+                  "las correcciones en la app de escritorio.", "ok")
     else:
         flash(error, "error")
     return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
@@ -1089,41 +840,11 @@ def export_monitoreo_csv():
 
 
 # ---------------------------------------------------------------------------
-# 6.5 Simulaciones -- ejecucion, estados y resultados
+# 6.5 Simulaciones -- estados y resultados
 # ---------------------------------------------------------------------------
-# Esta pantalla solo lista las versiones de escenario (se crean y aprueban en
-# la de escenarios) y permite correr las aprobadas. La traduccion
-# version -> entrada del motor y la corrida en hilo viven en
-# backend_web.simulaciones; aqui solo hay HTTP.
-def _lanza_corrida(version_id, seed, forzar_error):
-    """Encola la corrida y arranca el hilo que la ejecuta. Devuelve
-    (run_id, error): si error no es None, no se creo nada que lanzar."""
-    run_id, _batch_id, error = queries.crear_corrida(
-        version_id, seed, g.user["sub"], simulaciones.ENGINE_VERSION,
-    )
-    if error:
-        return None, error
-
-    log_audit(contexto_de_peticion(), "RUN", "simulation_run", entity_id=str(run_id),
-              data_after={"estado": "encolado", "seed": seed,
-                         "scenario_version_id": version_id,
-                         "forzar_error": forzar_error})
-
-    # daemon=True: si el proceso de Flask se detiene, el hilo no lo detiene a
-    # su vez ni deja el proceso colgado esperandolo. La corrida en si queda en
-    # 'ejecutando' hasta que el servidor vuelve a arrancar y
-    # simulaciones.recupera_corridas_interrumpidas la cierra como fallida: no
-    # hay una cola de trabajos que la reencole.
-    hilo = threading.Thread(
-        target=simulaciones.ejecutar_run,
-        args=(run_id,),
-        kwargs={"forzar_error": forzar_error},
-        daemon=True,
-    )
-    hilo.start()
-    return run_id, None
-
-
+# De solo lectura. Las corridas las lanza la app de escritorio por medio de
+# `corridas`, y el simulador las ejecuta desde la cola de Redis (D4): la web
+# no corre simulaciones.
 @bp.route("/simulaciones")
 @roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
 def simulaciones_lista():
@@ -1131,42 +852,9 @@ def simulaciones_lista():
         "simulaciones.html",
         versiones=queries.listar_versiones_escenario(),
         runs=queries.get_runs_recientes(20),
-        puede_ejecutar=tiene_rol(g.user, *ROLES_EJECUTAN_SIMULACION),
         aviso_simulacion=simulaciones.AVISO_SIMULACION,
         active_nav="simulaciones",
     )
-
-
-@bp.route("/simulaciones/<int:version_id>/ejecutar", methods=["POST"])
-@roles_required(*ROLES_EJECUTAN_SIMULACION, entity_type="simulations")
-def simulacion_ejecutar(version_id):
-    """"Ejecutar simulacion": solo sobre versiones aprobadas. El boton ya esta
-    oculto en la plantilla para lo que no esta aprobado, pero eso no es
-    control de acceso -- por eso se vuelve a checar aqui, y crear_corrida()
-    lo vuelve a checar una tercera vez contra la base antes del INSERT, y el
-    trigger fn_version_aprobada (014) lo checa una cuarta si alguien se salta
-    todo lo anterior.
-    """
-    seed, error = formularios.semilla(request.form.get("seed"))
-    if error:
-        flash(error, "error")
-        return redirect(url_for("main.simulaciones_lista"))
-
-    # La casilla "forzar error (prueba)" es la unica
-    # forma documentada de disparar el camino de ERROR a proposito, y solo
-    # tiene efecto si quien la marco es ADMINISTRADOR -- ignorarla en
-    # silencio para cualquier otro rol es mas seguro que solo ocultarla en la
-    # plantilla, porque un POST armado a mano no pasa por la plantilla.
-    forzar_error = (request.form.get("forzar_error") == "1"
-                    and tiene_rol(g.user, "ADMINISTRADOR"))
-
-    run_id, error = _lanza_corrida(version_id, seed, forzar_error)
-    if error:
-        flash(error, "error")
-        return redirect(url_for("main.simulaciones_lista"))
-
-    flash(f"Corrida {simulaciones.id_simulacion(run_id)} encolada con semilla {seed}.", "ok")
-    return redirect(url_for("main.simulacion_detalle", run_id=run_id))
 
 
 @bp.route("/simulaciones/corridas/<int:run_id>")
@@ -1195,7 +883,6 @@ def simulacion_detalle(run_id):
         run=run,
         resultado=resultado,
         equivalente=equivalente,
-        puede_ejecutar=tiene_rol(g.user, *ROLES_EJECUTAN_SIMULACION),
         aviso_simulacion=simulaciones.AVISO_SIMULACION,
         simplificaciones=simulaciones.SIMPLIFICACIONES,
         engine_version_actual=simulaciones.ENGINE_VERSION,
@@ -1220,28 +907,6 @@ def simulacion_estado(run_id):
         "error_message": run["error_message"],
         "terminal": run["status"] in ("completado", "fallido", "cancelado"),
     })
-
-
-@bp.route("/simulaciones/corridas/<int:run_id>/reejecutar", methods=["POST"])
-@roles_required(*ROLES_EJECUTAN_SIMULACION, entity_type="simulations")
-def simulacion_reejecutar(run_id):
-    """"Re-ejecutar con la misma semilla": nueva
-    corrida sobre la MISMA version y la MISMA semilla. Si el escenario y el
-    engine_version no cambiaron, el resultado tiene que salir identico -- eso
-    es justo lo que la pantalla de detalle de la corrida nueva compara."""
-    anterior = queries.get_run(run_id)
-    if not anterior:
-        flash("Esa corrida ya no existe.", "error")
-        return redirect(url_for("main.simulaciones_lista"))
-
-    nuevo_id, error = _lanza_corrida(anterior["scenario_version_id"], anterior["seed"], False)
-    if error:
-        flash(error, "error")
-        return redirect(url_for("main.simulacion_detalle", run_id=run_id))
-
-    flash(f"Re-ejecutando con la misma semilla ({anterior['seed']}) como "
-          f"{simulaciones.id_simulacion(nuevo_id)}.", "ok")
-    return redirect(url_for("main.simulacion_detalle", run_id=nuevo_id))
 
 
 # ---------------------------------------------------------------------------

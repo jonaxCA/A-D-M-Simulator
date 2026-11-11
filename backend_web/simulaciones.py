@@ -190,13 +190,13 @@ def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
 # Corrida en segundo plano
 # ---------------------------------------------------------------------------
 def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None):
-    """Cuerpo del hilo que corre una simulation_run ya encolada.
+    """Corre una simulation_run ya encolada. Lo llama el trabajador del
+    simulador (microservicios/simulador/trabajador.py) por cada corrida que
+    toma de la cola; la web ya no lanza corridas (D4).
 
     Cada paso usa su propia conexion a PostgreSQL (backend_web.db.get_conn
-    abre y cierra una por llamada dentro de queries.py), asi que no hace falta
-    compartir conexiones ni contexto de Flask entre el hilo y la peticion que
-    lo lanzo -- routes.py ya respondio con el redirect antes de que esto
-    termine.
+    abre y cierra una por llamada dentro de queries.py), asi que no comparte
+    conexiones con quien la encolo.
 
     `demora_seg` deja visible la transicion encolado -> ejecutando en la
     pantalla de detalle (que hace polling cada segundo); en pruebas se pasa 0.
@@ -336,22 +336,16 @@ MENSAJE_INTERRUMPIDA = (
 def recupera_corridas_interrumpidas(estados=("encolado", "ejecutando")):
     """Cierra como 'fallido' las corridas que un proceso anterior dejo a medias.
 
-    _marca_fallido_y_audita protege contra cualquier error DENTRO del hilo,
-    pero no contra que el proceso entero muera: el hilo es daemon y se va con
-    el. Con `FLASK_DEBUG=1` eso pasa cada vez que se guarda un .py (el
-    recargador reinicia el servidor), y sin esto la corrida se quedaria en
-    'ejecutando' para siempre, con la pantalla de detalle consultando su
-    estado cada segundo.
+    _marca_fallido_y_audita protege contra cualquier error DENTRO de la
+    ejecucion, pero no contra que el proceso entero muera: sin esto la corrida
+    se quedaria en 'ejecutando' para siempre, con la pantalla de detalle
+    consultando su estado cada segundo.
 
-    Se llama desde frontend_web/run.py al arrancar, NO desde create_app():
-    las pruebas crean la app muchas veces y no deben cerrar corridas ajenas.
-    Supone un solo proceso sirviendo, que es como corre hoy la app. Con
-    varios procesos (gunicorn -w 4), uno que arranca cerraria corridas vivas
-    de los otros; ese caso lo resuelve la cola con worker del documento de
-    arquitectura, no este barrido.
-
-    El microservicio simulador pasa estados=('ejecutando',): con la cola de
-    Redis, una corrida encolada no se perdio, solo sigue esperando.
+    Lo llama el simulador al arrancar (microservicios/simulador/__main__.py),
+    con estados=('ejecutando',): con la cola de Redis, una corrida encolada no
+    se perdio, solo sigue esperando. La web lo llamaba al arrancar, con el
+    valor por omision, mientras corria simulaciones en un hilo propio; desde
+    D4 no lanza corridas y ya no lo llama, porque cerraria las del simulador.
 
     Devuelve cuantas corridas cerro.
     """
