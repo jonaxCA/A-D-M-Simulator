@@ -10,7 +10,7 @@
       "impacto": 100,
       "desglose_costo": [],
       "semilla": 982314,
-      "engine_version": "python-ref-0.1",
+      "engine_version": "seir-ref-0.1",
       "dias": 120,
       "poblacion": 500000,
       "dominado": false,
@@ -34,7 +34,7 @@
         }
       ],
       "semilla": 982314,
-      "engine_version": "python-ref-0.1",
+      "engine_version": "seir-ref-0.1",
       "dias": 120,
       "poblacion": 500000,
       "dominado": false,
@@ -58,7 +58,7 @@
         }
       ],
       "semilla": 982314,
-      "engine_version": "python-ref-0.1",
+      "engine_version": "seir-ref-0.1",
       "dias": 120,
       "poblacion": 500000,
       "dominado": false,
@@ -92,7 +92,7 @@
         }
       ],
       "semilla": 982314,
-      "engine_version": "python-ref-0.1",
+      "engine_version": "seir-ref-0.1",
       "dias": 120,
       "poblacion": 500000,
       "dominado": false,

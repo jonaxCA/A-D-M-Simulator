@@ -1,10 +1,10 @@
 # EPIDEMIA - Servicio simulador
 
-Proceso trabajador: toma las corridas de `python-ref` de su cola de Redis
-(`queue:simulaciones:python-ref`), ejecuta el motor, guarda el resultado en PostgreSQL y avisa
+Proceso trabajador: toma las corridas de `seir-ref` de su cola de Redis
+(`queue:simulaciones:seir-ref`), ejecuta el motor, guarda el resultado en PostgreSQL y avisa
 a `notificaciones` al terminar o fallar. Su única ruta propia es el estado del trabajador.
 
-Las corridas de otro motor (`numba`, `cuda`) van a su propia cola y no las toca: las tomará el
+Las corridas de otro motor (`abm-ref`, `abm-gpu`) van a su propia cola y no las toca: las tomará el
 simulador de ese motor, que todavía no existe.
 
 Puerto externo: 5242; puerto interno en Docker: 8000. Contrato en

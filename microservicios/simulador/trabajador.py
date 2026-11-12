@@ -1,4 +1,4 @@
-"""El proceso trabajador: toma corridas de la cola de Redis de python-ref y las ejecuta.
+"""El proceso trabajador: toma corridas de la cola de Redis de seir-ref y las ejecuta.
 
 La corrida la ejecuta simulaciones.ejecutar_run(), la misma del monolito: marca
 'ejecutando' con la transición condicionada (dos trabajadores no corren la
@@ -23,7 +23,7 @@ AVISOS = {"completado": ("RUN_FINISHED", "La corrida %s terminó"),
           "fallido": ("RUN_FAILED", "La corrida %s falló")}
 # ejecutar_run corre el motor de procesamiento/motor; las corridas de otro motor van a otra
 # cola y las toma el simulador de ese motor.
-MOTOR = "python-ref"
+MOTOR = "seir-ref"
 COLA = llaves.cola_simulaciones(MOTOR)
 
 # Lo que reporta /api/v1/worker/status. Solo lo escribe el hilo del trabajador.

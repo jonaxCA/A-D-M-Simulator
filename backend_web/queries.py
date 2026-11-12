@@ -3389,11 +3389,11 @@ def listar_versiones_escenario():
     )
 
 
-def crear_corrida(version_id, seed, user_id, engine_version, *, engine="python-ref",
+def crear_corrida(version_id, seed, user_id, engine_version, *, engine="seir-ref",
                   contexto=None, forzar_error=False):
     """Encola una corrida: un lote de una sola replica (una corrida a la vez --
-    ver 014_simulacion_resultados.sql) y su run. `engine` queda en el lote: el
-    monolito siempre usa python-ref; el microservicio corridas deja elegirlo.
+    ver 014_simulacion_resultados.sql) y su run. `engine` queda en el lote; por
+    omision, seir-ref. El microservicio corridas deja elegirlo.
 
     Valida que la version este aprobada ANTES del INSERT, para poder devolver
     un mensaje claro. El trigger fn_version_aprobada (014) es la ULTIMA linea

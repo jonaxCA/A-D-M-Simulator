@@ -5,7 +5,7 @@
   "seed": 982314,
   "status": "ejecutando",
   "progress": 30,
-  "engine_version": "python-ref-0.1",
+  "engine_version": "seir-ref-0.1",
   "queued_at": "2026-10-20T15:00:00+00:00",
   "started_at": "2026-10-20T15:03:00+00:00",
   "finished_at": null,
@@ -24,6 +24,6 @@
   "region_name": "Monterrey",
   "requested_by_username": "ana",
   "requested_by_nombre": "Ana Analista",
-  "engine": "python-ref",
+  "engine": "seir-ref",
   "terminal": false
 }

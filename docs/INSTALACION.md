@@ -726,7 +726,7 @@ script y no en el archivo: `backend_web/tests/test_archivos_sql.py` falla si dej
 ## Motor de simulación
 
 `procesamiento/motor/` es un modelo SEIR estocástico con hospitalizados, fallecidos y vacunados,
-por grupo de edad y reproducible por semilla (`python-ref-0.1`), más el cálculo de
+por grupo de edad y reproducible por semilla (`seir-ref-0.1`), más el cálculo de
 costo y frontera de Pareto para comparar escenarios. No depende de Flask ni de la
 base, y no trae valores epidemiológicos ni costos por defecto: cada parámetro debe
 venir con su fuente o marcado como supuesto.

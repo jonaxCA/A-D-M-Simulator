@@ -18,7 +18,7 @@ El SEIR no se retira. Sirve para medir qué aporta el ABM en nuestros propios es
 ## Consecuencias
 - Si FLAME GPU falla, queda un ABM funcionando: el de Python.
 - El aporte del ABM se mide contra el SEIR, en los mismos escenarios.
-- Los motores cambian de nombre: `python-ref` → `seir-ref`, `numba` → `abm-ref`, `cuda` → `abm-gpu`. La base solo los acepta con una migración nueva, porque el CHECK de la 014 los tiene fijos.
+- Los motores cambian de nombre: `python-ref` → `seir-ref`, `numba` → `abm-ref`, `cuda` → `abm-gpu`. La base solo los acepta con una migración nueva, porque el CHECK de la 014 los tiene fijos. Hecho el 2026-11-12 con la migración 035, junto con el contrato que cumplen los tres motores (`docs/contratos/motor/`).
 - El ABM depende de D22 (decidido) y de D23 (CPU o GPU). Con esta opción, FLAME GPU ya está en la lista de motores; D23 toma la opción B: el ABM en GPU corre en FLAME GPU, con créditos de GCP.
 - Los cambios de código y documentos que siguen de esta decisión están en [`todo.md`](todo.md), sección «Cambios pendientes por D2». No están implementados.
 

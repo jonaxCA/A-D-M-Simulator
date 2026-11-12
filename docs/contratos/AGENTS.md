@@ -4,7 +4,8 @@
 > el bloque M del checklist (`docs/parciales/parcial-2/checklist.md`).
 
 Aquí está el contrato de cada microservicio, en una carpeta por servicio:
-`docs/contratos/<servicio>/`. Las apps de escritorio y móvil se construyen a partir de estos
+`docs/contratos/<servicio>/`. La excepción es `motor/`: no es una API HTTP sino la interfaz en
+Python de los motores de simulación, y no lleva `openapi.json`. Las apps de escritorio y móvil se construyen a partir de estos
 archivos, así que un contrato que no coincide con el servicio es un error del servicio.
 
 ## Qué lleva cada carpeta

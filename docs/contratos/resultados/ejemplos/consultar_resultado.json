@@ -21,7 +21,7 @@
     "horizon_days": 5,
     "finished_at": "2026-10-20T15:02:00+00:00"
   },
-  "engine_version": "python-ref-0.1",
+  "engine_version": "seir-ref-0.1",
   "scenario_checksum": "de8417bf8d7ff3a4e59ef77e663f55dfcc37f5fb510644e60d4497f9b971ea39",
   "resumen": {
     "casos_acumulados": 95,

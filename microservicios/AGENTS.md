@@ -156,8 +156,8 @@ Están en `docs/decisiones/decisiones.md`; si algo de aquí choca con ese archiv
   de `estado-servicios`.
 - **Pruebas con `pytest` (D14)**, que también corre las de `unittest`.
 - **XSD con `xmlschema` y XML con `defusedxml` (D15).**
-- **Migraciones desde la 026 (D16).** Las 031 a 033 son de los roles de D27; la siguiente libre
-  es la 034. Confirma el número antes de crear una.
+- **Migraciones desde la 026 (D16).** Las 031 a 033 son de los roles de D27 y la 035, de los nombres
+  de motores (D2); la 034 está reservada para D1. Confirma el número antes de crear una.
 - **Migraciones SQL numeradas (D17)**, sin Alembic (ver `datos/AGENTS.md`).
 - **Un rol de PostgreSQL por servicio (D18):** cada servicio lee todo y escribe solo en las
   tablas de su dominio (regla 2).

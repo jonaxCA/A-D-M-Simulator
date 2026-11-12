@@ -39,38 +39,38 @@ class CorridasDelServicioTests(ConCorridasDePrueba):
         self.assertEqual(len(filas), 1)
         self.assertEqual(filas[0]["user_id"], self.user_id)
         self.assertEqual(filas[0]["data_after"]["estado"], "encolado")
-        self.assertEqual(filas[0]["data_after"]["engine"], "python-ref")
+        self.assertEqual(filas[0]["data_after"]["engine"], "seir-ref")
         self.assertTrue(filas[0]["data_after"]["forzar_error"])
 
     def test_el_motor_queda_en_el_lote(self):
         por_omision = self._encola_auditada(404)
         run_id, batch_id, error = queries.crear_corrida(
-            self.version_id, 405, self.user_id, None, engine="cuda",
+            self.version_id, 405, self.user_id, None, engine="abm-gpu",
             contexto=Contexto(self.user_id, "10.0.0.5", "pruebas"))
         self.assertIsNone(error, error)
         self._batches_creados.append(batch_id)
-        self.assertEqual(queries.get_motor_run(por_omision), "python-ref")
-        self.assertEqual(queries.get_motor_run(run_id), "cuda")
+        self.assertEqual(queries.get_motor_run(por_omision), "seir-ref")
+        self.assertEqual(queries.get_motor_run(run_id), "abm-gpu")
         self.assertIsNone(queries.get_motor_run(-1))
         recientes = {r["id"]: r["engine"] for r in queries.get_runs_recientes(100)}
-        self.assertEqual((recientes[por_omision], recientes[run_id]), ("python-ref", "cuda"))
-        self.assertEqual(_bitacora(run_id, "RUN")[0]["data_after"]["engine"], "cuda")
+        self.assertEqual((recientes[por_omision], recientes[run_id]), ("seir-ref", "abm-gpu"))
+        self.assertEqual(_bitacora(run_id, "RUN")[0]["data_after"]["engine"], "abm-gpu")
 
     def test_los_filtros_de_la_lista(self):
-        python_ref = self._encola_auditada(406)
-        cuda, batch_id, error = queries.crear_corrida(
-            self.version_id, 407, self.user_id, None, engine="cuda",
+        seir = self._encola_auditada(406)
+        gpu, batch_id, error = queries.crear_corrida(
+            self.version_id, 407, self.user_id, None, engine="abm-gpu",
             contexto=Contexto(self.user_id, "10.0.0.5", "pruebas"))
         self.assertIsNone(error, error)
         self._batches_creados.append(batch_id)
         # Las 21:00 del 20 de octubre en Monterrey ya son el 21 en UTC: el filtro cuenta el
         # día de Monterrey.
-        for run_id in (python_ref, cuda):
+        for run_id in (seir, gpu):
             escribe("UPDATE simulation_runs SET queued_at = '2026-10-21 03:00:00+00' WHERE id = %s",
                     (run_id,))
         escenario = query("SELECT scenario_id FROM scenario_versions WHERE id = %s",
                           (self.version_id,), one=True)["scenario_id"]
-        nuestras = {python_ref, cuda}
+        nuestras = {seir, gpu}
 
         def encontradas(**filtros):
             return nuestras & {r["id"] for r in queries.get_runs_recientes(100, **filtros)}
@@ -78,12 +78,13 @@ class CorridasDelServicioTests(ConCorridasDePrueba):
         dia = date(2026, 10, 20)
         self.assertEqual(encontradas(scenario_id=escenario, scenario_version_id=self.version_id,
                                      status="encolado", desde=dia, hasta=dia), nuestras)
-        self.assertEqual(encontradas(engine="cuda", desde=dia, hasta=dia), {cuda})
+        self.assertEqual(encontradas(engine="abm-gpu", desde=dia, hasta=dia), {gpu})
         self.assertEqual(encontradas(status="completado", desde=dia, hasta=dia), set())
         self.assertEqual(encontradas(desde=date(2026, 10, 21), hasta=date(2026, 10, 21)), set())
         self.assertEqual(encontradas(hasta=date(2026, 10, 19)), set())
-        fila = next(r for r in queries.get_runs_recientes(100, engine="cuda", desde=dia, hasta=dia)
-                    if r["id"] == cuda)
+        fila = next(r for r in queries.get_runs_recientes(100, engine="abm-gpu",
+                                                         desde=dia, hasta=dia)
+                    if r["id"] == gpu)
         self.assertEqual(fila["scenario_version_id"], self.version_id)
 
     def test_cancelar_una_encolada(self):

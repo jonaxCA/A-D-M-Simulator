@@ -128,7 +128,7 @@ with candados.candado(llaves.candado_corrida(version_id), ttl=10):
                  json.dumps({"id": corrida_id, "forzar_error": False}))
 
 # simulador: tomar() regresa el texto encolado, o None si no llegó nada.
-pedido = cola.tomar(llaves.cola_simulaciones("python-ref"))
+pedido = cola.tomar(llaves.cola_simulaciones("seir-ref"))
 opcional("progreso", lambda r: r.set(llaves.progreso(corrida_id), 40, ex=86400))
 ```
 

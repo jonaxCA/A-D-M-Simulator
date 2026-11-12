@@ -21,11 +21,15 @@ Los roles son los de la pantalla Simulaciones del monolito; cancelar es `simulat
 en la matriz de permisos (migración 010). CAPTURISTA recibe 403 en todas.
 
 - `seed` es un entero de 0 a 2³¹−1; si no llega, se elige al azar.
-- `engine` es el motor: `python-ref` si no llega. `numba` y `cuda` solo se aceptan si
+- `engine` es el motor: `seir-ref` si no llega. `abm-ref` y `abm-gpu` solo se aceptan si
   `MOTORES_HABILITADOS` los nombra, porque sin un `simulador` de ese motor la corrida se
-  quedaría encolada para siempre; hoy solo existe el de `python-ref`. Queda en
-  `simulation_batches.engine`. `engine_version` sale de `python-ref` al encolar; con otro motor
+  quedaría encolada para siempre; hoy solo existe el de `seir-ref`. Queda en
+  `simulation_batches.engine`. `engine_version` sale de `seir-ref` al encolar; con otro motor
   queda vacía, porque este servicio no la conoce.
+- Los nombres de antes de D2 (`python-ref`, `numba` y `cuda`) se siguen aceptando en `engine`,
+  en el filtro `engine` de la lista y en `MOTORES_HABILITADOS`, y se traducen a `seir-ref`,
+  `abm-ref` y `abm-gpu`. Así un cliente de la v1 no se rompe; las respuestas usan los nombres
+  nuevos.
 - `forzar_error` solo cuenta si quien lo pide es ADMINISTRADOR; para otro rol se ignora, como
   en el monolito. La corrida termina en `fallido` y sirve para probar ese camino.
 - Mientras la corrida no termina, `progress` sale de Redis (`job:<id>:progress`, lo escribe el
@@ -61,8 +65,8 @@ Cancelar usa la misma transición condicionada que el `simulador` (`WHERE status
 ## Variables
 
 `DATABASE_URL` (rol `svc_corridas`, migración 029), `JWT_SECRET_KEY`, `REDIS_URL`; opcionales
-`JWT_ISSUER`, `JWT_AUDIENCE` y `MOTORES_HABILITADOS` (los motores además de `python-ref` que
-tienen su `simulador` desplegado, separados por comas; por ejemplo `cuda`).
+`JWT_ISSUER`, `JWT_AUDIENCE` y `MOTORES_HABILITADOS` (los motores además de `seir-ref` que
+tienen su `simulador` desplegado, separados por comas; por ejemplo `abm-gpu`).
 
 ## Probarlo
 

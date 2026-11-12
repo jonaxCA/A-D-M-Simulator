@@ -2,7 +2,9 @@
 
 > **Estado: Vigente** · 2026-09-25 · Complementa el `AGENTS.md` de la raíz.
 
-El formato de entrada del motor está en el docstring de `motor/parametros.py`.
+El formato de entrada del motor está en el docstring de `motor/parametros.py`. Lo que entra y
+sale de cualquier motor (`seir-ref`, `abm-ref`, `abm-gpu`) está en `contrato.py` y en
+`docs/contratos/motor/README.md`; `tests/test_contrato_motor.py` revisa que cada motor lo cumpla.
 
 - Se importa siempre como `procesamiento.motor`, también en `tests/` y en los
   microservicios. `import motor` carga una segunda copia con otras clases de excepción;

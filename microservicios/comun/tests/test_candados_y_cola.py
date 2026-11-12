@@ -32,7 +32,7 @@ class Candados(ConRedis):
 
 
 class Cola(ConRedis):
-    LLAVE = llaves.cola_simulaciones("python-ref")
+    LLAVE = llaves.cola_simulaciones("seir-ref")
 
     def test_sale_en_el_orden_en_que_entro(self):
         cola.encolar(self.LLAVE, 1)

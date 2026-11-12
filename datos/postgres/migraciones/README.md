@@ -33,6 +33,7 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `031_rol_dispositivos.sql` | El rol de `dispositivos`, dueño de `devices`, y la lectura de `devices` (dueño y revocado) que necesita `casos` |
 | `032_rol_evidencias.sql` | El rol de `evidencias`, dueño de `case_attachments` (sin UPDATE: una evidencia se sube o se borra) |
 | `033_rol_vacunas.sql` | El rol de `vacunas`, dueño de `vaccine_lots`; de un lote ya registrado solo cambia `doses_used` |
+| `035_nombres_de_motores.sql` | Los motores cambian de nombre (D2): `python-ref` → `seir-ref`, `numba` → `abm-ref` y `cuda` → `abm-gpu`, en el CHECK, el DEFAULT y los lotes que ya existen. La 034 queda reservada para D1 |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.

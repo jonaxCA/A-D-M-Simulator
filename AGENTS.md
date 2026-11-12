@@ -21,7 +21,7 @@ cambios pequeños, legibles y fáciles de revisar.
   - El catálogo de servicios está en `docs/arquitectura/microservicios.md`.
 - **App de escritorio:** `frontend_desktop/`, en PySide6 y solo XML (MVP). Antes de tocarla, lee
   su `AGENTS.md`.
-- **Motor:** el SEIR de referencia (`python-ref`, que pasa a `seir-ref`; D2). El modelo basado
+- **Motor:** el SEIR de referencia (`seir-ref`, antes `python-ref`; D2). El modelo basado
   en agentes (D22, con FLAME GPU 2 según D23) es parte de este parcial y todavía no tiene
   código. MongoDB sigue sin decidirse (D28).
 

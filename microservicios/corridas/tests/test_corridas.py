@@ -22,7 +22,7 @@ class Base:
     def __init__(self):
         self.corridas, self.creadas, self.canceladas, self.motores = {}, [], [], {}
 
-    def crear_corrida(self, version_id, seed, user_id, engine_version, *, engine="python-ref",
+    def crear_corrida(self, version_id, seed, user_id, engine_version, *, engine="seir-ref",
                       contexto=None, forzar_error=False):
         if version_id not in (VERSION_APROBADA, VERSION_BORRADOR):
             return None, None, "La versión de escenario no existe."
@@ -41,7 +41,7 @@ class Base:
     def get_motor_run(self, run_id):
         if run_id not in self.corridas:
             return None
-        return self.motores.get(run_id, ("python-ref",))[0]
+        return self.motores.get(run_id, ("seir-ref",))[0]
 
     def cancelar_run(self, run_id, *, contexto):
         if self.corridas.get(run_id, {}).get("status") != "encolado":
@@ -53,7 +53,7 @@ class Base:
 
 def corrida(run_id, status, progress=0):
     return {"id": run_id, "batch_id": 90, "scenario_version_id": VERSION_APROBADA, "seed": 982314,
-            "status": status, "progress": progress, "engine_version": "python-ref-0.1",
+            "status": status, "progress": progress, "engine_version": "seir-ref-0.1",
             "queued_at": datetime(2026, 10, 20, 15, tzinfo=timezone.utc), "started_at": None,
             "finished_at": None, "error_message": None, "requested_by": 7, "version_number": 2,
             "scenario_id": 3, "version_status": "aprobado", "population_size": 500000,
@@ -87,7 +87,7 @@ def lanzar(cliente, cabeceras, cuerpo):
     return cliente.post("/api/v1/runs?format=json", json=cuerpo, headers=cabeceras)
 
 
-def en_cola(redis_falso, motor="python-ref"):
+def en_cola(redis_falso, motor="seir-ref"):
     # LPUSH y BRPOP: el que se toma primero está al final de la lista.
     llave = llaves.cola_simulaciones(motor)
     return [json.loads(x) for x in reversed(redis_falso.lrange(llave, 0, -1))]
@@ -110,9 +110,9 @@ def test_lanzar_responde_202_y_encola(cliente, token, base, redis_falso, rol):
     r = lanzar(cliente, token((rol,)), {"scenario_version_id": VERSION_APROBADA, "seed": 0})
     assert r.status_code == 202
     assert r.get_json() == {"id": 40, "batch_id": 91, "scenario_version_id": 11, "seed": 0,
-                            "engine": "python-ref", "forzar_error": False, "status": "encolado"}
+                            "engine": "seir-ref", "forzar_error": False, "status": "encolado"}
     assert base.creadas == [(11, 0, 7, 7, False)]
-    assert base.motores == {40: ("python-ref", "python-ref-0.1")}
+    assert base.motores == {40: ("seir-ref", "seir-ref-0.1")}
     assert en_cola(redis_falso) == [{"id": 40, "forzar_error": False}]
     # El candado se suelta al terminar.
     assert redis_falso.get(llaves.candado_corrida(11)) is None
@@ -120,22 +120,40 @@ def test_lanzar_responde_202_y_encola(cliente, token, base, redis_falso, rol):
 
 def test_un_motor_no_habilitado_es_422(cliente, token, base, redis_falso, monkeypatch):
     monkeypatch.delenv("MOTORES_HABILITADOS", raising=False)
-    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "cuda"})
-    assert r.status_code == 422 and r.get_json()["detail"] == "engine debe ser uno de: python-ref."
-    assert base.creadas == [] and en_cola(redis_falso, "cuda") == []
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "abm-gpu"})
+    assert r.status_code == 422 and r.get_json()["detail"] == "engine debe ser uno de: seir-ref."
+    assert base.creadas == [] and en_cola(redis_falso, "abm-gpu") == []
 
 
 def test_un_motor_habilitado_va_a_su_propia_cola(cliente, token, base, redis_falso, monkeypatch):
-    monkeypatch.setenv("MOTORES_HABILITADOS", " cuda ,gpu")
-    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "cuda"})
-    assert r.status_code == 202 and r.get_json()["engine"] == "cuda"
-    # La versión de cuda no la sabe corridas: la pone su simulador.
-    assert base.motores == {40: ("cuda", None)}
-    assert en_cola(redis_falso, "cuda") == [{"id": 40, "forzar_error": False}]
+    monkeypatch.setenv("MOTORES_HABILITADOS", " abm-gpu ,gpu")
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "abm-gpu"})
+    assert r.status_code == 202 and r.get_json()["engine"] == "abm-gpu"
+    # La versión de abm-gpu no la sabe corridas: la pone su simulador.
+    assert base.motores == {40: ("abm-gpu", None)}
+    assert en_cola(redis_falso, "abm-gpu") == [{"id": 40, "forzar_error": False}]
     assert en_cola(redis_falso) == []
     # Un nombre que la base no acepta no se habilita aunque venga en la variable.
-    assert rutas.motores_habilitados() == ["python-ref", "cuda"]
+    assert rutas.motores_habilitados() == ["seir-ref", "abm-gpu"]
     assert lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "gpu"}).status_code == 422
+
+
+@pytest.mark.parametrize("anterior, actual", [("python-ref", "seir-ref"), ("cuda", "abm-gpu")])
+def test_los_nombres_anteriores_a_d2_se_traducen(cliente, token, base, redis_falso, monkeypatch,
+                                                anterior, actual):
+    """Un cliente de la v1 que todavía manda los nombres viejos no se rompe (D2): se traducen,
+    también en MOTORES_HABILITADOS, y la respuesta lleva el nombre nuevo."""
+    monkeypatch.setenv("MOTORES_HABILITADOS", "cuda")
+    assert rutas.motores_habilitados() == ["seir-ref", "abm-gpu"]
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": anterior})
+    assert r.status_code == 202 and r.get_json()["engine"] == actual
+    assert base.motores[40][0] == actual
+    assert en_cola(redis_falso, actual) == [{"id": 40, "forzar_error": False}]
+
+
+def test_un_motor_que_no_es_texto_es_422(cliente, token, base):
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": ["seir-ref"]})
+    assert r.status_code == 422 and base.creadas == []
 
 
 def test_semilla_aleatoria_si_no_llega(cliente, token, base):
@@ -153,11 +171,11 @@ def test_forzar_error_solo_para_administrador(cliente, token, base, redis_falso)
 def test_acepta_xml(cliente, token, base):
     r = cliente.post("/api/v1/runs", headers={**token(), "Content-Type": "application/xml"},
                      data=b"<solicitud><scenario_version_id>11</scenario_version_id>"
-                          b"<seed>5</seed><engine>python-ref</engine>"
+                          b"<seed>5</seed><engine>seir-ref</engine>"
                           b"<forzar_error>false</forzar_error></solicitud>")
     assert r.status_code == 202 and r.mimetype == "application/xml"
     assert ET.fromstring(r.data).findtext("seed") == "5"
-    assert ET.fromstring(r.data).findtext("engine") == "python-ref"
+    assert ET.fromstring(r.data).findtext("engine") == "seir-ref"
 
 
 @pytest.mark.parametrize("cuerpo", [{}, {"scenario_version_id": "x"}, {"scenario_version_id": 0},
@@ -217,12 +235,17 @@ def test_lista_con_limite(cliente, token, base):
 
 def test_lista_con_todos_los_filtros(cliente, token, base):
     r = cliente.get("/api/v1/runs?format=json&scenario_id=3&scenario_version_id=11&status=fallido"
-                    "&engine=cuda&from=2026-10-01&to=2026-10-20", headers=token())
+                    "&engine=abm-gpu&from=2026-10-01&to=2026-10-20", headers=token())
     assert r.status_code == 200
-    # cuda no está habilitado para lanzar, pero sus corridas se pueden buscar.
+    # abm-gpu no está habilitado para lanzar, pero sus corridas se pueden buscar.
     assert base.filtros == [{"scenario_id": 3, "scenario_version_id": 11, "status": "fallido",
-                             "engine": "cuda", "desde": date(2026, 10, 1),
+                             "engine": "abm-gpu", "desde": date(2026, 10, 1),
                              "hasta": date(2026, 10, 20)}]
+
+
+def test_el_filtro_acepta_el_nombre_anterior_del_motor(cliente, token, base):
+    r = cliente.get("/api/v1/runs?format=json&engine=numba", headers=token())
+    assert r.status_code == 200 and base.filtros == [{"engine": "abm-ref"}]
 
 
 def test_un_solo_dia(cliente, token, base):
@@ -276,8 +299,8 @@ def test_consultar_en_xml_por_omision(cliente, token, base):
 
 def test_consultar_dice_el_motor(cliente, token, base):
     base.corridas[40] = corrida(40, "encolado")
-    base.motores[40] = ("cuda", None)
-    assert cliente.get("/api/v1/runs/40?format=json", headers=token()).get_json()["engine"] == "cuda"
+    base.motores[40] = ("abm-gpu", None)
+    assert cliente.get("/api/v1/runs/40?format=json", headers=token()).get_json()["engine"] == "abm-gpu"
 
 
 def test_corrida_inexistente_es_404(cliente, token):
@@ -312,7 +335,7 @@ def test_contrato_servido_es_el_del_repo(cliente):
 
 def test_las_respuestas_xml_validan_contra_el_xsd(cliente, token, base, monkeypatch):
     # Las columnas de get_runs_recientes; una corrida sin lote no tiene motor.
-    reciente = {"id": 43, "status": "fallido", "seed": 7, "engine": "python-ref",
+    reciente = {"id": 43, "status": "fallido", "seed": 7, "engine": "seir-ref",
                 "queued_at": datetime(2026, 10, 20, 15, tzinfo=timezone.utc),
                 "started_at": datetime(2026, 10, 20, 15, 1, tzinfo=timezone.utc),
                 "finished_at": datetime(2026, 10, 20, 15, 2, tzinfo=timezone.utc),

@@ -1,4 +1,4 @@
-"""Motor epidemiologico de referencia de EPIDEMIA (python-ref).
+"""Motor epidemiologico de referencia de EPIDEMIA (seir-ref).
 
 Modelo compartimental SEIR con hospitalizados, fallecidos y vacunados
 protegidos, estratificado por grupo de edad, estocastico y reproducible:

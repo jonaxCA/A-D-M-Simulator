@@ -51,7 +51,7 @@ def consultas(monkeypatch):
     def get_resultado_run(run_id):
         if run_id != 42:
             return None
-        return {"run_id": 42, "engine_version": "python-ref-0.1", "scenario_checksum": "a" * 64,
+        return {"run_id": 42, "engine_version": "seir-ref-0.1", "scenario_checksum": "a" * 64,
                 "resumen": RESUMEN, "serie": SERIE, "trazabilidad": TRAZA}
 
     monkeypatch.setattr(queries, "get_run", get_run)

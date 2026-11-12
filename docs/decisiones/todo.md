@@ -78,17 +78,17 @@ D4 quedó aceptada el 2026-11-07 (ver [`D04-web-contra-escritorio.md`](D04-web-c
 
 ## Cambios pendientes por D2
 
-D2 quedó aceptada el 2026-11-08 (ver [`D02-papel-del-seir.md`](D02-papel-del-seir.md)). Estos cambios no están implementados.
+D2 quedó aceptada el 2026-11-08 (ver [`D02-papel-del-seir.md`](D02-papel-del-seir.md)). El nombre del motor, la migración y el contrato se hicieron el 2026-11-12; falta el ABM.
 
 ### Código
 
-- **Nombre del motor:** cambiar `ENGINE_VERSION` de `python-ref-0.1` a `seir-ref-0.1` en `procesamiento/motor/modelo.py`.
-- **Migración de motores** (siguiente número libre). Hoy sería la 034, pero D1 también la reserva: si la de D1 va primero, esta es la 035. El CHECK de `simulation_batches.engine` (014) acepta `python-ref`, `numba` y `cuda`. Hay que cambiarlo a `seir-ref`, `abm-ref` y `abm-gpu`, y el orden dentro de la migración es: soltar el CHECK, convertir los valores, poner el CHECK nuevo y cambiar el DEFAULT.
+- **Hecho. Nombre del motor:** cambiar `ENGINE_VERSION` de `python-ref-0.1` a `seir-ref-0.1` en `procesamiento/motor/modelo.py`.
+- **Hecho. Migración de motores:** la 035 (`035_nombres_de_motores.sql`); la 034 queda para D1. `corridas` sigue aceptando los nombres anteriores en lo que manda el cliente y los traduce, para no romper la v1. El CHECK de `simulation_batches.engine` (014) acepta `python-ref`, `numba` y `cuda`. Hay que cambiarlo a `seir-ref`, `abm-ref` y `abm-gpu`, y el orden dentro de la migración es: soltar el CHECK, convertir los valores, poner el CHECK nuevo y cambiar el DEFAULT.
 - **ABM en Python** como paquete aparte en `procesamiento/`, con la misma entrada y salida que el SEIR. Fuera del segundo parcial según `AGENTS.md` (el ABM está fuera de alcance) y D21: pasa al tercero, salvo que el equipo diga otra cosa.
 
 ### Documentos
 
-- **Contrato del motor** en `docs/contratos/`: el formato de entrada y salida que deben respetar los tres motores.
+- **Hecho. Contrato del motor:** `docs/contratos/motor/README.md`, con su versión en código en `procesamiento/contrato.py` y la prueba `procesamiento/tests/test_contrato_motor.py`. Queda pendiente acordar con D28 si la serie lleva el desglose por grupo de edad.
 
 ## Cambios pendientes por D23
 

@@ -33,21 +33,31 @@ LIMITE, LIMITE_MAX = 20, 100
 CANDADO_TTL = 10
 TERMINALES = ("completado", "fallido", "cancelado")
 ESTADOS = ("encolado", "ejecutando") + TERMINALES
-# Los que acepta la base (ck_simulation_batches_engine, migración 014). python-ref siempre;
+# Los que acepta la base (ck_simulation_batches_engine, migración 035). seir-ref siempre;
 # los demás solo si MOTORES_HABILITADOS los nombra: sin un simulador de ese motor desplegado,
 # la corrida se quedaría encolada para siempre.
-MOTORES = ("python-ref", "numba", "cuda")
-MOTOR_REFERENCIA = "python-ref"
+MOTORES = ("seir-ref", "abm-ref", "abm-gpu")
+MOTOR_REFERENCIA = "seir-ref"
+# Los nombres de antes de D2. La v1 los sigue aceptando en lo que manda el cliente (el cuerpo
+# de POST /runs y el filtro engine) y en MOTORES_HABILITADOS, y los traduce; las respuestas ya
+# usan los nuevos.
+NOMBRES_ANTERIORES = {"python-ref": "seir-ref", "numba": "abm-ref", "cuda": "abm-gpu"}
+
+
+def nombre_actual(motor):
+    return NOMBRES_ANTERIORES.get(motor, motor) if isinstance(motor, str) else motor
 
 
 def motores_habilitados():
-    nombrados = {m.strip() for m in (os.environ.get("MOTORES_HABILITADOS") or "").split(",")}
+    nombrados = {nombre_actual(m.strip())
+                 for m in (os.environ.get("MOTORES_HABILITADOS") or "").split(",")}
     return [m for m in MOTORES if m == MOTOR_REFERENCIA or m in nombrados]
 
 
 def _motor(valor):
     if valor is None or valor == "":
         return MOTOR_REFERENCIA
+    valor = nombre_actual(valor)
     habilitados = motores_habilitados()
     if valor not in habilitados:
         raise ErrorAPI(422, "DATOS_INVALIDOS", "engine debe ser uno de: %s." % ", ".join(habilitados))
@@ -63,6 +73,8 @@ def _filtros():
             filtros[nombre] = entero_positivo(request.args[nombre], nombre)
     for nombre, validos in (("status", ESTADOS), ("engine", MOTORES)):
         valor = request.args.get(nombre)
+        if nombre == "engine":
+            valor = nombre_actual(valor)
         if valor is not None:
             if valor not in validos:
                 raise ErrorAPI(422, "DATOS_INVALIDOS",

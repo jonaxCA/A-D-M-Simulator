@@ -33,9 +33,9 @@
   <!-- Los de ck_simulation_batches_engine (migración 014). Vacío en una corrida sin lote. -->
   <xs:simpleType name="motor">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="python-ref"/>
-      <xs:enumeration value="numba"/>
-      <xs:enumeration value="cuda"/>
+      <xs:enumeration value="seir-ref"/>
+      <xs:enumeration value="abm-ref"/>
+      <xs:enumeration value="abm-gpu"/>
     </xs:restriction>
   </xs:simpleType>
 
