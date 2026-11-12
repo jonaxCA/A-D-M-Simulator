@@ -15,7 +15,10 @@ import argparse
 import json
 import sys
 
-from . import AVISO_SIMULACION, ENGINE_VERSION, METRICAS_IMPACTO, comparar, simular
+# La comparacion vive fuera del motor; este programa de ejemplo usa las dos partes.
+from procesamiento.analitica import METRICAS_IMPACTO, comparar
+
+from . import AVISO_SIMULACION, ENGINE_VERSION, simular
 
 SUP = "Ejemplo del motor, no validado"
 

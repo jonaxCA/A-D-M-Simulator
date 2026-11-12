@@ -289,7 +289,7 @@ Es la única pieza que no es Flask. Vive en `procesamiento/motor/`, no conoce HT
 | Núcleo de simulación | Ejecuta el paso diario |
 | Motor de intervenciones | Aplica las reglas programadas en cada fecha y capa de contacto |
 | Indicadores | Agrega casos, hospitalizaciones, muertes y costo por corrida |
-| Frontera de Pareto | Compara corridas por costo contra impacto (`pareto.py`) |
+| Frontera de Pareto | Compara corridas por costo contra impacto. Desde D3 vive fuera del motor, en `procesamiento/analitica/pareto.py` |
  
 **Dos implementaciones detrás del mismo contrato:**
  

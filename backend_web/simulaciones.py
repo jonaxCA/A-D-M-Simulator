@@ -29,10 +29,10 @@ import time
 # atraparia lo que lanza el otro. backend_web/tests/test_integridad.py lo
 # vigila. (Las pruebas del motor usan `from motor import ...` porque corren
 # desde dentro de procesamiento/, en otro proceso.)
+from procesamiento.analitica import ComparacionInvalida, comparar as comparar_pareto
 from procesamiento.motor import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular  # noqa: F401
 from procesamiento.motor.modelo import SIMPLIFICACIONES                      # noqa: F401
 from procesamiento.motor.parametros import EscenarioInvalido
-from procesamiento.motor.pareto import ComparacionInvalida, comparar as comparar_pareto
 
 from . import queries
 from .audit import log_audit

@@ -20,9 +20,9 @@ intervencion, con la misma trazabilidad que los parametros de enfermedad:
 """
 
 
-from .modelo import huella_escenario
-from .parametros import (INTERVENCIONES_CAPA, EscenarioInvalido, _desempaca,
-                         _es_numero, _estado_traza, resolver)
+from procesamiento.contrato import huella
+from procesamiento.motor import INTERVENCIONES_CAPA, EscenarioInvalido, resolver
+from procesamiento.trazabilidad import desempaca, es_numero, estado_traza
 
 UNIDAD_COSTO = {
     **{tipo: "por_habitante_dia" for tipo in INTERVENCIONES_CAPA},
@@ -63,7 +63,7 @@ def costo_escenario(escenario, resultado, costos):
     p = resolver(escenario)  # levanta EscenarioInvalido
     errores, desglose, traza = [], [], {}
 
-    if not isinstance(resultado, dict) or resultado.get("huella_escenario") != huella_escenario(escenario):
+    if not isinstance(resultado, dict) or resultado.get("huella_escenario") != huella(escenario):
         raise ComparacionInvalida(["El resultado no corresponde a este escenario (huella distinta)."])
     if not isinstance(costos, dict):
         costos = {}
@@ -72,12 +72,12 @@ def costo_escenario(escenario, resultado, costos):
         if tipo not in costos:
             errores.append(f"Falta el costo unitario de '{tipo}' ({UNIDAD_COSTO[tipo]}).")
             return None
-        valor, fuente, supuesto = _desempaca(costos[tipo])
-        if not (_es_numero(valor) and valor >= 0):
+        valor, fuente, supuesto = desempaca(costos[tipo])
+        if not (es_numero(valor) and valor >= 0):
             errores.append(f"El costo unitario de '{tipo}' debe ser un numero >= 0.")
             return None
         traza[tipo] = {"tipo": tipo, "valor": valor, "unidad": UNIDAD_COSTO[tipo],
-                       "fuente": fuente, "estado": _estado_traza(fuente, supuesto)}
+                       "fuente": fuente, "estado": estado_traza(fuente, supuesto)}
         return float(valor)
 
     crudas = escenario.get("intervenciones") or []
@@ -145,7 +145,7 @@ def frontera_pareto(puntos):
         errores.append("Los ids de los escenarios deben ser unicos.")
     for pt in puntos:
         for eje in ("costo", "impacto"):
-            if not (_es_numero(pt.get(eje)) and pt[eje] >= 0):
+            if not (es_numero(pt.get(eje)) and pt[eje] >= 0):
                 errores.append(f"Escenario '{pt.get('id')}': '{eje}' debe ser un numero >= 0.")
     if errores:
         raise ComparacionInvalida(errores)

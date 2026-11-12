@@ -109,14 +109,14 @@ D23 quedó aceptada el 2026-11-08 (ver [`D23-tecnologia-del-abm.md`](D23-tecnolo
 
 ## Cambios pendientes por D3
 
-D3 quedó aceptada el 2026-11-08 (ver [`D03-unidad-de-costo.md`](D03-unidad-de-costo.md)). Estos cambios no están implementados.
+D3 quedó aceptada el 2026-11-08 (ver [`D03-unidad-de-costo.md`](D03-unidad-de-costo.md)). Los cambios de código se hicieron el 2026-11-12; los de documentos y datos siguen pendientes.
 
 ### Código
 
-1. **Trazabilidad fuera del motor:** mover `_desempaca`, `_es_numero` y `_estado_traza` de `motor/parametros.py` a `procesamiento/trazabilidad.py`, sin guion bajo. Pareto los necesita desde fuera del motor.
-2. **Pareto fuera del motor:** mover `pareto.py` a `procesamiento/analitica/`. Solo puede importar los nombres públicos del motor (`resolver`, `huella_escenario`, `INTERVENCIONES_CAPA`, `EscenarioInvalido`) y el módulo de trazabilidad.
-3. **Imports:** quitar `comparar`, `costo_escenario` y `frontera_pareto` de `motor/__init__.py`, y actualizar los imports de `backend_web/simulaciones.py` y de los servicios `pareto` y `comparacion`.
-4. **Verificación:** ningún import de `procesamiento/analitica/` trae un nombre con guion bajo, y `python -m pytest procesamiento/tests` pasa.
+1. **Hecho. Trazabilidad fuera del motor:** mover `_desempaca`, `_es_numero` y `_estado_traza` de `motor/parametros.py` a `procesamiento/trazabilidad.py`, sin guion bajo. Pareto los necesita desde fuera del motor.
+2. **Hecho. Pareto fuera del motor:** mover `pareto.py` a `procesamiento/analitica/`. Solo puede importar los nombres públicos del motor (`resolver`, `huella_escenario`, `INTERVENCIONES_CAPA`, `EscenarioInvalido`) y el módulo de trazabilidad. En lugar de `huella_escenario` usa `huella` de `procesamiento/contrato.py`, que es la misma para los tres motores; `resolver` e `INTERVENCIONES_CAPA` se exportan desde `procesamiento.motor`.
+3. **Hecho. Imports:** quitar `comparar`, `costo_escenario` y `frontera_pareto` de `motor/__init__.py`, y actualizar los imports de `backend_web/simulaciones.py` y de los servicios `pareto` y `comparacion`.
+4. **Hecho. Verificación:** ningún import de `procesamiento/analitica/` trae un nombre con guion bajo, y `python -m pytest procesamiento/tests` pasa.
 
 ### Documentos y datos
 

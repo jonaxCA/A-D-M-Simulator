@@ -10,6 +10,9 @@ con el escenario y regresa un diccionario serializable a JSON; la capa web se
 encarga de leer la version del escenario, guardar la corrida y sus estados.
 Asi, cuando el motor pase a ser un worker o microservicio, se mueve tal cual.
 
+La comparacion por costo e impacto (Pareto) no es parte del motor: vive en
+procesamiento.analitica y solo usa los nombres publicos de aqui.
+
 Uso minimo:
 
     from procesamiento.motor import simular
@@ -18,21 +21,17 @@ Uso minimo:
 """
 
 from .modelo import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular
-from .parametros import CAPAS_CONTACTO_SUPUESTO, EscenarioInvalido, validar_escenario
-from .pareto import (METRICAS_IMPACTO, ComparacionInvalida, comparar, costo_escenario,
-                     frontera_pareto)
+from .parametros import (CAPAS_CONTACTO_SUPUESTO, INTERVENCIONES_CAPA, EscenarioInvalido,
+                         resolver, validar_escenario)
 
 __all__ = [
     "AVISO_SIMULACION",
     "ENGINE_VERSION",
     "CAPAS_CONTACTO_SUPUESTO",
-    "METRICAS_IMPACTO",
-    "ComparacionInvalida",
+    "INTERVENCIONES_CAPA",
     "ErrorMotor",
     "EscenarioInvalido",
-    "comparar",
-    "costo_escenario",
-    "frontera_pareto",
+    "resolver",
     "simular",
     "validar_escenario",
 ]

@@ -636,7 +636,7 @@ autenticado, **monitoreo** (con *Compartir vista*), mapa, catálogo de enfermeda
 auditoría. **Simulaciones** y **Comparación** todavía son páginas "Próximamente".
 
 El **motor de simulación** y el **cálculo de la frontera de Pareto** ya existen como
-paquete de Python en `motor/`, con pruebas, pero aún no están conectados a la base
+paquetes de Python en `procesamiento/`, con pruebas, pero aún no están conectados a la base
 ni a las pantallas. Ver *Motor de simulación* más abajo.
 
 Los tres **"Exportar" sí son funcionales** — el del dashboard descarga el resumen
@@ -726,8 +726,9 @@ script y no en el archivo: `backend_web/tests/test_archivos_sql.py` falla si dej
 ## Motor de simulación
 
 `procesamiento/motor/` es un modelo SEIR estocástico con hospitalizados, fallecidos y vacunados,
-por grupo de edad y reproducible por semilla (`seir-ref-0.1`), más el cálculo de
-costo y frontera de Pareto para comparar escenarios. No depende de Flask ni de la
+por grupo de edad y reproducible por semilla (`seir-ref-0.1`). El cálculo de costo y frontera
+de Pareto para comparar escenarios está aparte, en `procesamiento/analitica/`, porque sirve
+para cualquier motor. No depende de Flask ni de la
 base, y no trae valores epidemiológicos ni costos por defecto: cada parámetro debe
 venir con su fuente o marcado como supuesto.
 
@@ -762,7 +763,9 @@ frontend_web/app/static/css/styles.css        estilos
 frontend_web/app/static/js/nl_municipios.json geometria de los 51 municipios (generado)
 frontend_web/tests/          pruebas de las rutas
 
-procesamiento/motor/         motor de simulacion de referencia y frontera de Pareto
+procesamiento/motor/         motor de simulacion de referencia (seir-ref)
+procesamiento/analitica/     costo, impacto y frontera de Pareto, para cualquier motor
+procesamiento/contrato.py    lo que entra y sale de un motor (docs/contratos/motor/)
 procesamiento/tests/         pruebas del motor
 
 datos/postgres/dump_completo.sql   esquema completo (migraciones concatenadas)

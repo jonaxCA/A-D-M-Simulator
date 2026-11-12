@@ -3,11 +3,14 @@
     python -m pytest procesamiento/tests -v
 """
 
+import ast
 import json
 import unittest
+from pathlib import Path
 
-from procesamiento.motor import (ComparacionInvalida, EscenarioInvalido, comparar, costo_escenario,
-                                 frontera_pareto, simular)
+from procesamiento.analitica import (ComparacionInvalida, comparar, costo_escenario,
+                                     frontera_pareto)
+from procesamiento.motor import EscenarioInvalido, simular
 
 from .test_motor import escenario
 
@@ -213,6 +216,31 @@ class Comparacion(unittest.TestCase):
     def test_aviso_por_costo_sin_fuente(self):
         r = comparar(self.entradas, {**COSTOS, "CIERRE_ESCUELAS": 10.0})
         self.assertTrue(any("CIERRE_ESCUELAS" in a for a in r["avisos"]))
+
+
+class CapasTests(unittest.TestCase):
+    """Pareto vive fuera del motor (D3): la analitica usa el motor, nunca al reves, y solo con
+    nombres publicos."""
+
+    PROCESAMIENTO = Path(__file__).resolve().parents[1]
+
+    def _importes(self, carpeta):
+        for archivo in sorted((self.PROCESAMIENTO / carpeta).rglob("*.py")):
+            for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+                if isinstance(nodo, ast.ImportFrom):
+                    yield archivo.name, nodo.module or "", [a.name for a in nodo.names]
+
+    def test_la_analitica_no_importa_nombres_privados(self):
+        privados = [(archivo, modulo, nombre)
+                    for archivo, modulo, nombres in self._importes("analitica")
+                    for nombre in nombres if nombre.startswith("_")]
+        self.assertEqual(privados, [])
+
+    def test_el_motor_no_importa_la_analitica(self):
+        # __main__ es el programa de ejemplo: usa las dos partes, pero nadie lo importa.
+        hacia_analitica = [(archivo, modulo) for archivo, modulo, _ in self._importes("motor")
+                           if "analitica" in modulo and archivo != "__main__.py"]
+        self.assertEqual(hacia_analitica, [])
 
 
 if __name__ == "__main__":

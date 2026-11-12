@@ -6,7 +6,8 @@ import xmlschema
 
 from backend_web import simulaciones
 from microservicios.pareto import rutas
-from procesamiento.motor import AVISO_SIMULACION, METRICAS_IMPACTO, comparar, simular
+from procesamiento.analitica import METRICAS_IMPACTO, comparar
+from procesamiento.motor import AVISO_SIMULACION, simular
 from procesamiento.tests.test_motor import escenario
 
 RAIZ = Path(__file__).resolve().parents[3]
