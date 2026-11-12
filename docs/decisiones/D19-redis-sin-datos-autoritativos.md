@@ -1,6 +1,6 @@
 # D19 - Redis sin datos autoritativos
 
-Fecha: — · Estado: Por confirmar
+Fecha: 2026-11-11 · Estado: Aceptada
 
 ## Contexto
 Redis guarda sesiones, caché, candados, la cola de corridas, el resultado de cada lote de sincronización y el historial de `estado-servicios`. `decisiones/todo.md` la listaba como «por registrar o confirmar».
@@ -10,6 +10,10 @@ No quedó registrado qué otras opciones se consideraron.
 
 ## Decisión
 PostgreSQL es la fuente de verdad. Lo que está en Redis se puede reconstruir o perder sin dañar datos.
+
+- Reencolar al arrancar: trabajador.recuperar() hoy solo cierra las corridas ejecutando. Debe también volver a meter a la cola las encolado. Es un cambio pequeño.
+- Historial de estado-servicios en MongoDB (D28), que era el único dato que se perdía.
+
 
 ## Consecuencias
 Redis guarda en disco (`--appendonly yes` y el volumen `redis-datos` de `infra/docker-compose.yml`), así que un reinicio no borra nada. Lo que sigue aplica si Redis no está o si se pierde su volumen:

@@ -1,6 +1,6 @@
 # D6 - Qué significa la población de un escenario
 
-Fecha: 2026-11-08 · Estado: Propuesta
+Fecha: 2026-11-08 · Estado: Aceptada
 
 ## Contexto
 La migración 023 sube el tope de población a 20 millones para que quepa el estado completo, y los contratos ejemplifican con `population_size` de 200 000. Con un modelo de agentes, simular un agente por habitante es mucho más caro que el SEIR.
@@ -12,7 +12,7 @@ La migración 023 sube el tope de población a 20 millones para que quepa el est
 - Opción D: factor de escala arbitrario. La app de escritorio permite ajustar el factor a mano. Es la que el equipo quiere implementar; su viabilidad en el motor está por investigar.
 
 ## Decisión
-Propuesta: la opción D. No está confirmada. Antes de tomarla hay que investigar si el motor puede usar un factor arbitrario. Ver [`todo.md`](todo.md), sección «Cambios pendientes por D6».
+opción C. population_size cuenta agentes simulados y el factor se calcula fuera del motor.
 
 ## Consecuencias
 - Con un factor arbitrario, los habitantes representados ya no salen solo de `regions.population`. Hay que decidir si el factor se valida contra el censo o se guarda como supuesto (regla 8 de `AGENTS.md`).

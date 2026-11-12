@@ -201,3 +201,13 @@ Cada punto de la rúbrica (Android, escritorio, integración, seguridad, nube, m
 7. Redactar los requerimientos, las historias de usuario y la trazabilidad (§10.6).
 8. Escribir el plan de implementación con las tareas que salen de los RF. Ya están.
 9. Marcar la v2 como Obsoleta.
+
+## 12. Cosas a implementar despues de arquitectura v3
+
+1. MongoDB (D28): contenedor, cliente en epidemia_comun, las dos colecciones con sus índices y /health/mongodb.
+2. Volumen y medición (D29): generar las ~10,000 corridas, medir inserción y consultas con y sin índice y con y sin Redis.
+3. Locust: perfiles de consulta, captura móvil, reportes de escritorio y procesos automáticos. Reportar p95, p99, errores y saturación.
+4. Seguridad y fallos: límites de consumo (D31), reencolado de corridas (D19) y demostración de caída de un servicio, Redis, MongoDB, PostgreSQL y un tiempo de espera.
+5. Archivos (D30) y nginx local (D25 y D26): bucket o emulador con URLs firmadas; nginx con certificado de mkcert.
+6. ABM: abm-ref en Python con la misma entrada y salida que el SEIR, y la migración de nombres de motores (035). FLAME GPU solo si sobra tiempo y hay cuota.
+

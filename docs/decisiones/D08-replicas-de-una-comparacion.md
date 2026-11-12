@@ -1,6 +1,6 @@
 # D8 - Cuántas réplicas usa una comparación y cómo se resumen
 
-Fecha: 2026-11-08 · Estado: Propuesta
+Fecha: 2026-11-08 · Estado: Aceptada
 
 ## Contexto
 Una comparación pone corridas lado a lado. Con un modelo de agentes estocástico, una sola corrida no basta para comparar dos escenarios. Cada corrida guarda su semilla (`seed`). Estaba marcada para revisar en el tercer parcial; ya llegó.
@@ -10,13 +10,13 @@ Una comparación pone corridas lado a lado. Con un modelo de agentes estocástic
 - Resumen: media, mediana o intervalo entre percentiles. La propuesta recomienda mediana y banda del percentil 5 al 95.
 
 ## Decisión
-Propuesta, sin confirmar por el equipo.
+- Réplicas configurables, 30 por omisión; con menos de 30 la app pide confirmación.
+- Mismas semillas (1 a N) en todos los escenarios comparados, para que las diferencias se deban a las intervenciones.
+- Resumen por escenario: media, mediana y banda del percentil 5 al 95.
+- La frontera de Pareto se calcula sobre medianas, y la pantalla avisa cuando las bandas de dos escenarios se enciman.
+- Tope real de 100. El escritorio topa en 100 por GET /runs, mientras la base acepta 200 y nadie lee max_replicas_por_lote. Se documenta 100 como tope y se ajusta system_settings con una migración.
+- El cálculo se queda en el cliente (frontend_desktop/app/resumen.py) este parcial. Moverlo a comparacion y pareto queda para la entrega final.
 
-Número de réplicas: **configurable**. El analista elige cuántas réplicas tiene cada lote en la aplicación de escritorio. La base acepta de 1 a 200 y el valor por defecto es 30.
-
-Piso: **30** como referencia. Si el analista elige menos de 30, la aplicación de escritorio pide confirmación («¿seguro que quieres bajar de 30 réplicas?»). La base no lo impide.
-
-Resumen de resultados: por escenario se muestran **la media, la mediana y el intervalo entre percentiles 5 y 95**.
 
 ## Consecuencias
 - El escritorio controla el número de réplicas. La web no lanza corridas (D4).
