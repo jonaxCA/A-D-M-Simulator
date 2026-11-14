@@ -198,7 +198,7 @@ Cada punto de la rúbrica (Android, escritorio, integración, seguridad, nube, m
 2. Escribir y validar en equipo los tres procesos con su columna RF (§10.0 y §10.1). Escritos en [`procesos_v3.md`](procesos_v3.md) el 2026-11-11; falta validarlos en equipo.
 3. Sacar las matrices y el inventario de datos (§10.2 y §10.3).
 4. Llenar la ficha del simulador (§10.4). Hecha el 2026-11-14: [`ficha_simulador.md`](ficha_simulador.md).
-5. Escribir la v3 a partir de la v2, con un apartado por cliente, el diagrama de despliegue en GCP con nginx y el diseño de MongoDB y de GCS.
+5. Escribir la v3 a partir de la v2, con un apartado por cliente, el diagrama de despliegue en GCP con nginx y el diseño de MongoDB y de GCS. Borrador escrito el 2026-11-14 en [`arquitectura_v3.md`](arquitectura_v3.md); falta validarlo en equipo.
 6. Validar la v3 contra la rúbrica (§10.5) y confirmar el volumen con el profesor.
 7. Redactar los requerimientos, las historias de usuario y la trazabilidad (§10.6).
 8. Escribir el plan de implementación con las tareas que salen de los RF. Ya están.
