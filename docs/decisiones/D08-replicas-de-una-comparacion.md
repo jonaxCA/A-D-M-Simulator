@@ -22,6 +22,6 @@ Una comparación pone corridas lado a lado. Con un modelo de agentes estocástic
 - El escritorio controla el número de réplicas. La web no lanza corridas (D4).
 - Un lote con más réplicas tarda más y produce más resultados. El tope de 200 evita saturar la cola.
 - Bajar de 30 réplicas es posible, con confirmación. El aviso es de la app de escritorio; la base sigue aceptando de 1 a 200.
-- La frontera sobre medianas y el aviso de bandas encimadas no están confirmados. Ver [`todo.md`](todo.md), sección «Cambios pendientes por D8».
+- La frontera sobre medianas ya la calcula el escritorio; el aviso de bandas encimadas falta. Ver [`todo.md`](todo.md), sección «Cambios pendientes por D8».
 
 Depende de: D22

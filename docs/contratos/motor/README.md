@@ -21,6 +21,9 @@ una versión antes de enviarla. Por eso no hay `openapi.json`.
   `corridas` todavía acepta los anteriores en lo que manda el cliente y los traduce.
 - `engine_version` es `<motor>-<mayor>.<menor>`, por ejemplo `seir-ref-0.1`. Sube cada vez que
   un cambio altera los números (`procesamiento/AGENTS.md`).
+- Cómo funciona cada motor por dentro (variables, pseudocódigo, complejidad, validación y
+  tiempos) está en la ficha del simulador,
+  [`docs/arquitectura/ficha_simulador.md`](../../arquitectura/ficha_simulador.md).
 
 ## Interfaz
 

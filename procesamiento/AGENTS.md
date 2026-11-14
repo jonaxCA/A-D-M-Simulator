@@ -24,6 +24,10 @@ sale de cualquier motor (`seir-ref`, `abm-ref`, `abm-gpu`) está en `contrato.py
   `backend_web/tests/test_integridad.py` lo revisa.
 - Todo se corre desde la raíz: `python -m pytest procesamiento/tests` y
   `python -m procesamiento.motor`.
+- `mediciones.py` saca las tablas de tiempos y de validación de la ficha del simulador
+  (`docs/arquitectura/ficha_simulador.md`): `python -m procesamiento.mediciones tiempos` y
+  `... validacion`. Si un cambio mueve los números del ABM, se vuelven a correr y se
+  actualiza la ficha.
 
 - No renombres los campos de la salida (`resumen`, `serie`, …). Las columnas generadas de
   `simulation_results` (migración 014) leen esos nombres: un cambio no da error, deja

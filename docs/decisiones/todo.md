@@ -2,7 +2,6 @@
 
 Nadie ha decidido estas (ver `decisiones.md`):
 
-- [D24](D24-calibracion-del-abm.md): calibración y parámetros de los agentes. Depende de D22.
 - [D28](D28-uso-de-mongodb.md): qué datos van a MongoDB. Depende de D21.
 - [D29](D29-volumen-de-datos.md): volumen de datos de alto volumen. Depende de D6, D8 y D28.
 
@@ -143,19 +142,18 @@ D7 quedó aceptada el 2026-11-08 con la opción C, la tercera de la propuesta (v
 
 ## Cambios pendientes por D8
 
-D8 está como propuesta (ver [`D08-replicas-de-una-comparacion.md`](D08-replicas-de-una-comparacion.md)): el analista configura las réplicas, con piso de referencia 30 y confirmación por debajo; el resumen muestra media, mediana e intervalo entre percentiles 5 y 95. Falta que el equipo la confirme. Estos cambios no están implementados.
+D8 quedó aceptada (ver [`D08-replicas-de-una-comparacion.md`](D08-replicas-de-una-comparacion.md)): el analista configura las réplicas, 30 por omisión y confirmación por debajo; el resumen muestra media, mediana e intervalo entre percentiles 5 y 95, y la frontera de Pareto se calcula sobre medianas. El cálculo se queda en el cliente este parcial.
 
 ### Código y base de datos
 
 - **Escritorio, réplicas:** hecho en el MVP de `frontend_desktop`, del lado del cliente. La app lanza N corridas por versión (semillas 1..N; 30 por omisión, máximo 100 por el tope de `GET /runs`) y pide confirmación con menos de 30. Los servicios no cambiaron: cada réplica queda como un lote de una corrida.
-- **Escritorio, resumen:** hecho también en el cliente (`frontend_desktop/app/resumen.py`): media, mediana y percentiles 5 y 95 por escenario, sobre las semillas comunes a las versiones comparadas. La frontera se calcula sobre medianas. D8 sigue en propuesta. Si se confirma con lotes en el servidor, este cálculo pasa a `corridas`, `comparacion` y `pareto`.
-- **Tope:** la base ya tiene `max_replicas_por_lote` (200) y `replicas_por_defecto` (30) en `system_settings` (migración 010). Ningún código las lee hoy; hay que usarlas.
+- **Escritorio, resumen:** hecho también en el cliente (`frontend_desktop/app/resumen.py`): media, mediana y percentiles 5 y 95 por escenario, sobre las semillas comunes a las versiones comparadas. La frontera se calcula sobre medianas. Pasarlo a `corridas`, `comparacion` y `pareto` queda para la entrega final.
+- **Tope:** D8 lo fija en 100, el de `GET /runs`. La base tiene `max_replicas_por_lote` (200) y `replicas_por_defecto` (30) en `system_settings` (migración 010), y ningún código las lee. Falta la migración que baja el tope a 100 (la siguiente libre es la 036).
 - **Web:** no lanza corridas (D4). Solo muestra lo que se corrió.
 
-### Preguntas abiertas
+### Pendiente
 
-- ¿La frontera de Pareto se calcula sobre las medianas? La propuesta lo recomienda; no está confirmado.
-- ¿Se muestra un aviso cuando las bandas de dos escenarios se enciman? La propuesta lo recomienda; no está confirmado.
+- **Escritorio, aviso de bandas encimadas:** cuando las bandas p5–p95 de dos escenarios se enciman, la pantalla de comparación lo avisa (integrante 6).
 
 ## Cambios pendientes por D6
 
