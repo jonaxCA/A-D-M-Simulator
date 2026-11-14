@@ -14,7 +14,7 @@ una versión antes de enviarla. Por eso no hay `openapi.json`.
 | Nombre | Qué es | Dónde | Estado |
 |---|---|---|---|
 | `seir-ref` | SEIR estocástico por grupo de edad. Queda como control experimental (D2) | `procesamiento/motor/` | Implementado |
-| `abm-ref` | Modelo basado en agentes en Python, en CPU (D22) | Paquete aparte en `procesamiento/` | Por hacer |
+| `abm-ref` | Modelo basado en agentes en Python, en CPU (D22): cada persona con su hogar, salón o centro de trabajo | `procesamiento/abm/` | Implementado como motor; falta conectarlo al `simulador` |
 | `abm-gpu` | El mismo modelo en FLAME GPU 2 (D23) | — | Solo si sobra tiempo |
 
 - Los nombres son los de D2. Hasta la migración 035 eran `python-ref`, `numba` y `cuda`;

@@ -6,6 +6,10 @@ El formato de entrada del motor está en el docstring de `motor/parametros.py`. 
 sale de cualquier motor (`seir-ref`, `abm-ref`, `abm-gpu`) está en `contrato.py` y en
 `docs/contratos/motor/README.md`; `tests/test_contrato_motor.py` revisa que cada motor lo cumpla.
 
+- `abm/` es `abm-ref`, el modelo basado en agentes (D22). Valida la entrada con el `resolver`
+  del motor y repite sus transiciones; solo cambia el contagio, por hogar, salón, centro de
+  trabajo y comunidad. Sus supuestos (tamaños de los grupos) van en la trazabilidad de la
+  salida, y `tests/test_abm.py` revisa que con un solo grupo por capa dé lo mismo que el SEIR.
 - La comparación por costo e impacto (Pareto) vive en `analitica/`, fuera de los motores. Solo
   importa nombres públicos de `procesamiento.motor` y la lectura de valores con fuente de
   `trazabilidad.py`; nunca un nombre con guion bajo.

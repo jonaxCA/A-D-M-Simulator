@@ -764,6 +764,7 @@ frontend_web/app/static/js/nl_municipios.json geometria de los 51 municipios (ge
 frontend_web/tests/          pruebas de las rutas
 
 procesamiento/motor/         motor de simulacion de referencia (seir-ref)
+procesamiento/abm/           modelo basado en agentes (abm-ref), con el mismo contrato
 procesamiento/analitica/     costo, impacto y frontera de Pareto, para cualquier motor
 procesamiento/contrato.py    lo que entra y sale de un motor (docs/contratos/motor/)
 procesamiento/tests/         pruebas del motor

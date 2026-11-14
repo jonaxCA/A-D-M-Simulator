@@ -9,6 +9,7 @@ import json
 import unittest
 
 from procesamiento import contrato
+from procesamiento.abm import simular as simular_abm
 from procesamiento.motor import EscenarioInvalido
 from procesamiento.motor import simular as simular_seir
 from procesamiento.motor.modelo import huella_escenario
@@ -16,6 +17,7 @@ from procesamiento.motor.modelo import huella_escenario
 # nombre del motor -> su simular(escenario, semilla)
 MOTORES_IMPLEMENTADOS = {
     "seir-ref": simular_seir,
+    "abm-ref": simular_abm,
 }
 
 ESCENARIO = contrato.ESCENARIO_EJEMPLO
