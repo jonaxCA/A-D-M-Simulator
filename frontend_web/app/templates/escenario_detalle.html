@@ -38,7 +38,16 @@
       {%- else %} param-falta-pill{% endif %}">{{ version.status }}</span>
   </div>
   <ul class="detalle-lista">
-    <li><span>Población</span><span>{{ "{:,}".format(version.population_size) }}</span></li>
+    <li><span>Población</span><span>{{ "{:,}".format(version.population_size) }} agentes simulados
+      {%- if escala and escala.factor %}
+      <div class="detalle-texto">
+        {%- if escala.factor == 1 %} Uno por habitante de {{ escenario.region }} (Censo 2020).
+        {%- else %} Cada agente representa {{ "{:,.2f}".format(escala.factor) }} habitantes de
+        {{ escenario.region }} ({{ "{:,}".format(escala.habitantes) }} en el Censo 2020).{% endif %}
+      </div>
+      {%- endif %}
+      {% for a in (escala.avisos if escala else []) %}<div class="detalle-texto">{{ a }}</div>{% endfor %}
+    </span></li>
     {% if version.population_by_age %}
     <li><span>Por grupo de edad</span><span>
       {% for grupo, n in version.population_by_age.items() %}{{ grupo }}: {{ "{:,}".format(n) }}{% if not loop.last %} · {% endif %}{% endfor %}

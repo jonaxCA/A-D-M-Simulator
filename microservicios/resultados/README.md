@@ -12,7 +12,7 @@ Puerto externo: 5243; puerto interno en Docker: 8000. Contrato en
 
 | Método | Ruta | Qué regresa |
 |--------|------|-------------|
-| GET | `/api/v1/runs/{run_id}/results` | `aviso`, `simplificaciones` del modelo, `corrida` (escenario, versión, semilla, población, horizonte), `engine_version`, `scenario_checksum`, `resumen`, `serie` y `trazabilidad` de los parámetros |
+| GET | `/api/v1/runs/{run_id}/results` | `aviso`, `simplificaciones` del modelo, `corrida` (escenario, versión, semilla, población, horizonte), `engine_version`, `scenario_checksum`, `resumen`, `serie`, `trazabilidad` de los parámetros y `escala` (D6: cuántos habitantes de la región representa cada agente, y los conteos del resumen llevados a habitantes) |
 | GET | `/api/v1/runs/{run_id}/curves` | `aviso`, `run_id` y `serie`: un punto por día |
 | GET | `/api/v1/runs/{run_id}/indicators` | `aviso`, `run_id` y `resumen`, con el desglose por grupo de edad |
 

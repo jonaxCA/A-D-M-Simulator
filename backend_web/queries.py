@@ -2685,7 +2685,8 @@ def get_escenario_detalle(scenario_id, version_number=None):
     escenario = query(
         """SELECT s.id, s.name, s.description, s.status, s.owner_id, s.created_at,
                   d.id AS disease_id, d.name AS enfermedad, d.default_params,
-                  g.id AS region_id, g.name AS region, u.full_name AS autor
+                  g.id AS region_id, g.name AS region, g.population AS region_poblacion,
+                  u.full_name AS autor
            FROM scenarios s
            JOIN diseases d ON d.id = s.disease_id
            JOIN regions  g ON g.id = s.region_id
@@ -3465,7 +3466,7 @@ def get_run(run_id):
                sv.population_size, sv.horizon_days, sv.initial_infected,
                s.name AS scenario_name, s.disease_id, s.region_id,
                d.name AS disease_name,
-               reg.name AS region_name,
+               reg.name AS region_name, reg.population AS region_population,
                u.username AS requested_by_username, u.full_name AS requested_by_nombre
         FROM simulation_runs r
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id

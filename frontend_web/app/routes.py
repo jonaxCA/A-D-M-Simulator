@@ -713,10 +713,14 @@ def escenario_detalle(scenario_id):
         return redirect(url_for("main.escenarios"))
 
     errores_motor, avisos_motor = queries.revisa_version(detalle)
+    # D6: population_size son agentes; cuantos habitantes representa cada uno.
+    escala = (simulaciones.escala(detalle["escenario"]["region_poblacion"],
+                                  detalle["version"]["population_size"])
+              if detalle["version"] else None)
     return render_template(
         "escenario_detalle.html", **detalle,
         versiones=queries.get_versiones(scenario_id),
-        errores_motor=errores_motor, avisos_motor=avisos_motor,
+        errores_motor=errores_motor, avisos_motor=avisos_motor, escala=escala,
         active_nav="escenarios")
 
 
@@ -890,6 +894,9 @@ def simulacion_detalle(run_id):
         aviso_simulacion=simulaciones.AVISO_SIMULACION,
         simplificaciones=simplificaciones,
         engine_version_actual=version_actual,
+        # D6: los conteos de la corrida son de agentes; su equivalente en habitantes.
+        escala=simulaciones.escala(run["region_population"], run["population_size"],
+                                   resultado["resumen"] if resultado else None),
         active_nav="simulaciones",
     )
 

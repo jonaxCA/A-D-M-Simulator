@@ -159,19 +159,18 @@ D8 está como propuesta (ver [`D08-replicas-de-una-comparacion.md`](D08-replicas
 
 ## Cambios pendientes por D6
 
-D6 está como propuesta: la opción D, un factor de escala que el analista ajusta en la app de escritorio (ver [`D06-poblacion-del-escenario.md`](D06-poblacion-del-escenario.md)). Falta investigar si el motor la puede usar. No hay código por cambiar todavía.
+D6 quedó aceptada con la opción C, el factor calculado (ver [`D06-poblacion-del-escenario.md`](D06-poblacion-del-escenario.md)), y se implementó el 2026-11-14.
 
-### Investigar antes de implementar
+### Hecho
 
-- **Dónde entra la población al motor:** hoy el SEIR (`python-ref`) recibe `population_size` como conteo por grupo de edad (migración 023). Revisar `procesamiento/motor/`.
-- **Dentro o fuera del motor:** si el factor entra al motor, cambia la dinámica del contagio. Si se aplica solo a los casos y muertes que se muestran (como la opción C), solo cambia la escala de los números.
-- **Validación:** decidir si el factor se valida contra el censo o se guarda como supuesto (regla 8 de `AGENTS.md`).
+- **Cálculo fuera del motor:** `procesamiento/analitica/escala.py`. El factor es `regions.population` / `population_size`; el motor solo ve agentes.
+- **Esquema:** no cambia. Con la opción C el factor sale del censo; la columna y el campo del escritorio eran de la opción D.
+- **Web:** el detalle del escenario dice cuántos habitantes representa cada agente, y el de la corrida pone junto a cada conteo su equivalente aproximado en habitantes.
+- **`resultados`:** el resultado de una corrida lleva `escala` (agentes, habitantes, factor, fuente, avisos y los conteos llevados a habitantes), en el contrato y en el XSD.
 
-### Si se confirma
+### Pendiente
 
-- **Esquema:** guardar el factor en la versión, con una migración nueva después de las que ya están pendientes (D1 y D2).
-- **App de escritorio:** campo para ajustar el factor. Se construye en el tercer parcial (D10).
-- **Web:** solo muestra el factor y los habitantes representados de la versión.
+- **App de escritorio:** mostrar la escala que ya trae `resultados` (integrante 6).
 
 ## Cambios pendientes por D18 y D20
 

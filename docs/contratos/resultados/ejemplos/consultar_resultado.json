@@ -175,5 +175,23 @@
       "fuente": null,
       "estado": "sin_fuente"
     }
-  ]
+  ],
+  "escala": {
+    "agentes": 200000,
+    "habitantes": 1142994,
+    "factor": 5.715,
+    "fuente": "regions.population (Censo 2020 de INEGI)",
+    "avisos": [],
+    "representados": {
+      "casos_acumulados": 543,
+      "casos_activos_final": 326,
+      "pico_casos_activos": 326,
+      "pico_nuevos_casos": 80,
+      "hospitalizaciones": 0,
+      "pico_hospitalizados": 0,
+      "fallecimientos": 0,
+      "vacunados_protegidos": 0,
+      "dosis_aplicadas": 0
+    }
+  }
 }

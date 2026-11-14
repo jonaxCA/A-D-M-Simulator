@@ -88,13 +88,13 @@ Primero se termina el documento de arquitectura. El código se toca después, co
 
 ## 8. Decisiones abiertas que bloquean la v3
 
-| Decisión                     | Qué bloquea                                                                                                                        |
-|------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
-| D6 · Población del escenario | Con el ABM se vuelve crítica: ¿un agente por habitante o un factor de escala? Define el tamaño de la simulación. Está en propuesta |
-| D8 · Réplicas                | La comparación y su tiempo de ejecución (A3). Está en propuesta; el escritorio ya la sigue del lado del cliente                    |
-| D24 · Calibración del ABM    | De dónde salen los parámetros de contacto y transmisión de los agentes, con su fuente (regla 8) (A6)                               |
-| D28 · Uso de MongoDB         | Qué colecciones existen (D-1)                                                                                                      |
-| D29 · Volumen de datos       | La cifra de alto volumen (D-6). Depende de D6, D8 y D28                                                                            |
+| Decisión                         | Qué bloquea                                                                                                                                                                                                                                                          |
+|----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ~~D6 · Población del escenario~~ | ~~Con el ABM se vuelve crítica: ¿un agente por habitante o un factor de escala? Define el tamaño de la simulación.~~ **Aceptada** e implementada (2026-11-14): `population_size` son agentes y el factor (habitantes del censo / agentes) se calcula fuera del motor |
+| D8 · Réplicas                    | La comparación y su tiempo de ejecución (A3). Está en propuesta; el escritorio ya la sigue del lado del cliente                                                                                                                                                      |
+| D24 · Calibración del ABM        | De dónde salen los parámetros de contacto y transmisión de los agentes, con su fuente (regla 8) (A6)                                                                                                                                                                 |
+| D28 · Uso de MongoDB             | Qué colecciones existen (D-1)                                                                                                                                                                                                                                        |
+| D29 · Volumen de datos           | La cifra de alto volumen (D-6). Depende de D6, D8 y D28                                                                                                                                                                                                              |
 
 ## 9. Respuestas a las preguntas del profesor y del equipo (2026-11-01)
 

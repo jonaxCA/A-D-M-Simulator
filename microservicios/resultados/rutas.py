@@ -4,7 +4,7 @@ Lee lo que guardó el simulador (queries.get_run y get_resultado_run). El
 resultado de una corrida completada ya no cambia, así que se guarda en la
 caché de Redis; lo que no está completado no entra a la caché.
 """
-from backend_web import queries
+from backend_web import queries, simulaciones
 from epidemia_comun import cache
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import responder
@@ -38,7 +38,10 @@ def _resultado(run_id):
                 "engine_version": guardado["engine_version"],
                 "scenario_checksum": guardado["scenario_checksum"],
                 "resumen": guardado["resumen"], "serie": guardado["serie"],
-                "trazabilidad": guardado["trazabilidad"]}
+                "trazabilidad": guardado["trazabilidad"],
+                # D6: la corrida simula agentes; cuántos habitantes de la región representan.
+                "escala": simulaciones.escala(corrida["region_population"],
+                                              corrida["population_size"], guardado["resumen"])}
 
     return cache.obtener("resultados", "run=%d" % run_id, CACHE_TTL, calcular)
 

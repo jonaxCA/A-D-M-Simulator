@@ -79,6 +79,40 @@
     </xs:all>
   </xs:complexType>
 
+  <!-- D6: la corrida simula agentes. habitantes son los de la región (Censo 2020), factor
+       cuántos representa cada agente (nulo si no se puede calcular) y representados, los
+       conteos del resumen llevados a habitantes. -->
+  <xs:complexType name="Escala">
+    <xs:all>
+      <xs:element name="agentes" type="EnteroONulo"/>
+      <xs:element name="habitantes" type="EnteroONulo"/>
+      <xs:element name="factor" type="NumeroONulo"/>
+      <xs:element name="fuente" type="xs:string"/>
+      <xs:element name="avisos">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="aviso" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="representados">
+        <xs:complexType>
+          <xs:all>
+            <xs:element name="casos_acumulados" type="Entero" minOccurs="0"/>
+            <xs:element name="casos_activos_final" type="Entero" minOccurs="0"/>
+            <xs:element name="pico_casos_activos" type="Entero" minOccurs="0"/>
+            <xs:element name="pico_nuevos_casos" type="Entero" minOccurs="0"/>
+            <xs:element name="hospitalizaciones" type="Entero" minOccurs="0"/>
+            <xs:element name="pico_hospitalizados" type="Entero" minOccurs="0"/>
+            <xs:element name="fallecimientos" type="Entero" minOccurs="0"/>
+            <xs:element name="vacunados_protegidos" type="Entero" minOccurs="0"/>
+            <xs:element name="dosis_aplicadas" type="Entero" minOccurs="0"/>
+          </xs:all>
+        </xs:complexType>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
   <xs:element name="resultado">
     <xs:complexType>
       <xs:all>
@@ -102,6 +136,7 @@
             </xs:sequence>
           </xs:complexType>
         </xs:element>
+        <xs:element name="escala" type="Escala" minOccurs="0"/>
       </xs:all>
     </xs:complexType>
   </xs:element>

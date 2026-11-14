@@ -94,6 +94,10 @@ class SimulacionesRutasTests(RutasConCorridas):
             self.assertIn("Parámetros usados".encode("utf-8"), detalle.data)
             self.assertIn(b"COMPLETADO", detalle.data)
             self.assertNotIn("Re-ejecutar".encode("utf-8"), detalle.data)
+            # D6: la demo simula 500 000 agentes para los 5 784 442 habitantes de Nuevo León.
+            html = " ".join(detalle.data.decode("utf-8").split())
+            self.assertIn("cada agente representa 11.57", html)
+            self.assertIn("habitantes</span>", html)
 
     def test_estado_de_una_corrida_fallida(self):
         run_id = self._corre(1, usuario="admin", forzar_error=True)

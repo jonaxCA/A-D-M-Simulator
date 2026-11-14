@@ -30,6 +30,7 @@ import time
 # vigila. (Las pruebas del motor usan `from motor import ...` porque corren
 # desde dentro de procesamiento/, en otro proceso.)
 from procesamiento.analitica import ComparacionInvalida, comparar as comparar_pareto
+from procesamiento.analitica import factor_de_escala, representados
 from procesamiento.motor import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular  # noqa: F401
 from procesamiento.motor.modelo import SIMPLIFICACIONES                      # noqa: F401
 from procesamiento.motor.parametros import EscenarioInvalido
@@ -83,6 +84,15 @@ def motor_de_resultado(engine_version):
     if motor is None:
         return engine_version, []
     return motor.version, list(motor.simplificaciones)
+
+
+def escala(habitantes, agentes, resumen=None):
+    """El factor de escala de D6 (habitantes de la region / agentes simulados) y, si llega un
+    resumen, sus conteos llevados a habitantes. Lo calcula procesamiento/analitica, fuera del
+    motor: el motor solo ve agentes."""
+    datos = factor_de_escala(habitantes, agentes)
+    datos["representados"] = representados(resumen, datos) if resumen else {}
+    return datos
 
 
 def estado_visible(status_db):

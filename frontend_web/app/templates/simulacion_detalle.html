@@ -54,29 +54,42 @@
     <div>
       <h3>Indicadores</h3>
       <p class="subtitle">Calculados por el motor {{ resultado.engine_version }} a partir de la serie diaria completa.</p>
+      {% set muestra_escala = escala.factor and escala.factor != 1 %}
+      {% if muestra_escala %}
+      <p class="subtitle">Se simularon {{ "{:,}".format(escala.agentes) }} agentes por los
+        {{ "{:,}".format(escala.habitantes) }} habitantes de {{ run.region_name }} (Censo 2020): cada
+        agente representa {{ "{:,.2f}".format(escala.factor) }}. Debajo de cada cifra va su equivalente
+        aproximado en habitantes, que supone que los no simulados se comportan igual.</p>
+      {% endif %}
+      {% for a in escala.avisos %}<p class="subtitle">{{ a }}</p>{% endfor %}
     </div>
   </div>
   <div class="stat-grid sim-indicadores-grid">
     <div class="card stat-card">
       <div class="stat-label"><span>CASOS ACUMULADOS</span></div>
       <div class="stat-value">{{ "{:,}".format(resultado.resumen.casos_acumulados) }}</div>
+      {% if muestra_escala %}<div class="stat-trend"><span>≈ {{ "{:,}".format(escala.representados.casos_acumulados) }} habitantes</span></div>{% endif %}
     </div>
     <div class="card stat-card">
       <div class="stat-label"><span>CASOS ACTIVOS (FINAL)</span></div>
       <div class="stat-value">{{ "{:,}".format(resultado.resumen.casos_activos_final) }}</div>
+      {% if muestra_escala %}<div class="stat-trend"><span>≈ {{ "{:,}".format(escala.representados.casos_activos_final) }} habitantes</span></div>{% endif %}
     </div>
     <div class="card stat-card">
       <div class="stat-label"><span>PICO DE CASOS ACTIVOS</span></div>
       <div class="stat-value">{{ "{:,}".format(resultado.resumen.pico_casos_activos) }}</div>
       <div class="stat-trend"><span>día {{ resultado.resumen.dia_pico }}</span></div>
+      {% if muestra_escala %}<div class="stat-trend"><span>≈ {{ "{:,}".format(escala.representados.pico_casos_activos) }} habitantes</span></div>{% endif %}
     </div>
     <div class="card stat-card">
       <div class="stat-label"><span>HOSPITALIZACIONES</span></div>
       <div class="stat-value">{{ "{:,}".format(resultado.resumen.hospitalizaciones) }}</div>
+      {% if muestra_escala %}<div class="stat-trend"><span>≈ {{ "{:,}".format(escala.representados.hospitalizaciones) }} habitantes</span></div>{% endif %}
     </div>
     <div class="card stat-card">
       <div class="stat-label"><span>FALLECIMIENTOS</span></div>
       <div class="stat-value">{{ "{:,}".format(resultado.resumen.fallecimientos) }}</div>
+      {% if muestra_escala %}<div class="stat-trend"><span>≈ {{ "{:,}".format(escala.representados.fallecimientos) }} habitantes</span></div>{% endif %}
     </div>
     <div class="card stat-card">
       <div class="stat-label"><span>TASA DE ATAQUE</span></div>

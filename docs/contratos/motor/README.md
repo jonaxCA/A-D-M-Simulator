@@ -48,7 +48,7 @@ motor nuevo tiene que aceptar exactamente las mismas entradas, y lo más simple 
 
 | Campo | Qué es |
 |---|---|
-| `poblacion` | Personas simuladas: un entero o un objeto por grupo de edad (`{"0-19": …, "80+": …}`). Entre 1 000 y 20 000 000 (migración 023). Con D6 son agentes simulados; el factor de escala no entra al motor. |
+| `poblacion` | Personas simuladas: un entero o un objeto por grupo de edad (`{"0-19": …, "80+": …}`). Entre 1 000 y 20 000 000 (migración 023). Con D6 son agentes simulados; el factor de escala no entra al motor: lo calcula `procesamiento/analitica/escala.py`. |
 | `infectados_iniciales` | Infectados el día 0. Se reparten entre los grupos según su tamaño. |
 | `dias` | Horizonte, de 1 a 1 095. La serie tiene `dias + 1` filas. |
 | `enfermedad` | `r0`, `incubacion_dias`, `infeccioso_dias`, `dias_hospitalizacion`, `tasa_hospitalizacion` y `letalidad`. Cada uno es un número, un objeto por grupo de edad (las dos tasas) o `{"valor", "fuente", "supuesto"}`. No hay valores por omisión: si falta uno, el escenario es inválido. |

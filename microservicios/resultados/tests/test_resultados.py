@@ -32,7 +32,8 @@ TRAZA = [{"parametro": "r0", "valor": 1.8, "fuente": "Biggerstaff et al. 2014", 
 def corrida(run_id, status):
     return {"id": run_id, "status": status, "scenario_version_id": 11, "scenario_id": 3,
             "version_number": 2, "scenario_name": "Ola Influenza ZMM",
-            "disease_name": "Influenza A", "region_name": "Monterrey", "seed": 982314,
+            "disease_name": "Influenza A", "region_name": "Monterrey", "region_population": 1142994,
+            "seed": 982314,
             "population_size": 200000, "horizon_days": 120, "requested_by": 7,
             "finished_at": datetime(2026, 10, 20, 15, 30, tzinfo=timezone.utc)}
 
@@ -94,6 +95,15 @@ def test_las_simplificaciones_son_las_del_motor_que_corrio(cliente, token, monke
     datos = cliente.get("/api/v1/runs/42/results?format=json", headers=token()).get_json()
     esperado = list(IMPLEMENTADOS[motor].simplificaciones) if motor else []
     assert datos["engine_version"] == version and datos["simplificaciones"] == esperado
+
+
+def test_la_escala_de_d6_lleva_los_conteos_a_habitantes(cliente, token):
+    """200 000 agentes por los 1 142 994 habitantes de Monterrey: cada uno representa 5.71."""
+    escala = cliente.get("/api/v1/runs/42/results?format=json", headers=token()).get_json()["escala"]
+    assert (escala["agentes"], escala["habitantes"], escala["factor"]) == (200000, 1142994, 5.715)
+    assert escala["avisos"] == []
+    assert escala["representados"]["fallecimientos"] == round(RESUMEN["fallecimientos"] * 5.71497)
+    assert "tasa_ataque" not in escala["representados"]
 
 
 def test_curvas_e_indicadores_con_aviso(cliente, token):

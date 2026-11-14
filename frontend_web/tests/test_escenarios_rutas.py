@@ -130,6 +130,21 @@ class ConsultaRutasTests(_ConEscenario):
                           "Duplicar", "Quitar", 'method="post"'):
                 self.assertNotIn(boton, html, f"{usuario}: {boton}")
 
+    def test_el_detalle_dice_cuantos_habitantes_representa_cada_agente(self):
+        """D6: population_size son agentes. Estratificada, la versión toma el censo completo
+        (uno por habitante); la de la demo simula 500 000 agentes para Nuevo León."""
+        demo = query("""SELECT s.id FROM scenarios s JOIN scenario_versions v
+                        ON v.scenario_id = s.id AND v.is_current
+                        WHERE s.name = 'Ola Influenza ZMM - otono 2026'""", one=True)
+        with self.app.test_client() as client:
+            self._login(client, "diana.flores", "Epidemia2026!")
+            propio = self._html(client, f"/escenarios/{self.sid}")
+            self.assertIn("agentes simulados", propio)
+            self.assertIn("Uno por habitante de Monterrey", propio)
+            if demo:
+                html = self._html(client, f"/escenarios/{demo['id']}")
+                self.assertIn("Cada agente representa 11.57 habitantes de Nuevo Leon", html)
+
     def test_una_version_anterior_se_abre_de_solo_lectura(self):
         self.assertEqual(self._version_nueva(), 2)
         with self.app.test_client() as client:
