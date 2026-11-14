@@ -534,6 +534,25 @@ services:
     ports: !reset []
     environment:
       SIMULADOR_MOTOR: abm-ref
+  # El simulador de abm-gpu (D23), con FLAME GPU 2. Necesita una GPU de NVIDIA y NVIDIA
+  # Container Toolkit (en Windows, Docker Desktop con WSL 2), así que va en su propio perfil:
+  #   docker compose --profile simulacion --profile gpu up -d
+  # y corridas lo acepta solo con MOTORES_HABILITADOS=abm-ref,abm-gpu.
+  simulador-gpu:
+    extends:
+      service: simulador
+    build:
+      <<: *construye
+      dockerfile: microservicios/simulador/gpu.Dockerfile
+    profiles: !override [gpu]
+    ports: !reset []
+    gpus:
+      - driver: nvidia
+        count: 1
+    environment:
+      SIMULADOR_MOTOR: abm-gpu
+    volumes:
+      - flamegpu-cache:/var/cache/flamegpu
   resultados:
     <<: *servicio-base
     build:
@@ -702,6 +721,8 @@ services:
       URL_DIRECTORIO: ${URL_DIRECTORIO:-http://localhost:5262}
 
 volumes:
+  # Lo que FLAME GPU compila para cada tamaño de población (simulador-gpu).
+  flamegpu-cache:
   redis-datos:
   postgres-datos:
   evidencias-datos:

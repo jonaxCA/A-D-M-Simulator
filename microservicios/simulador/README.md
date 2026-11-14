@@ -4,12 +4,19 @@ Proceso trabajador: toma las corridas de su motor de su cola de Redis
 (`queue:simulaciones:<motor>`), ejecuta el motor, guarda el resultado en PostgreSQL y avisa
 a `notificaciones` al terminar o fallar. Su única ruta propia es el estado del trabajador.
 
-Hay un contenedor por motor (D2). `SIMULADOR_MOTOR` dice cuál: `seir-ref` si no viene, o
-`abm-ref`. Un motor que no está implementado (`abm-gpu`) detiene el arranque, para no tomar
-corridas que no puede correr. El compose trae dos: `simulador` (`seir-ref`, puerto 5242) y
-`simulador-abm` (`abm-ref`, sin puerto publicado). Así una corrida larga del ABM no detiene las
-del SEIR, y uno sin GPU nunca toma una de `abm-gpu`. Los motores implementados están en
-`procesamiento/motores.py`.
+Hay un contenedor por motor (D2). `SIMULADOR_MOTOR` dice cuál: `seir-ref` si no viene,
+`abm-ref` o `abm-gpu`. Un motor que no se puede correr en el contenedor (`abm-gpu` sin
+`pyflamegpu` o sin GPU) detiene el arranque, para no tomar corridas que no puede correr. El
+compose trae tres:
+
+- `simulador` (`seir-ref`, puerto 5242);
+- `simulador-abm` (`abm-ref`, sin puerto publicado);
+- `simulador-gpu` (`abm-gpu`, sin puerto publicado), con su propia imagen (`gpu.Dockerfile`) y
+  en el perfil `gpu`, porque necesita una GPU de NVIDIA y NVIDIA Container Toolkit en el host
+  (`procesamiento/abm_gpu/README.md`).
+
+Así una corrida larga del ABM no detiene las del SEIR, y uno sin GPU nunca toma una de
+`abm-gpu`. Los motores implementados están en `procesamiento/motores.py`.
 
 Puerto externo: 5242; puerto interno en Docker: 8000. Contrato en
 `docs/contratos/simulador/openapi.json`.

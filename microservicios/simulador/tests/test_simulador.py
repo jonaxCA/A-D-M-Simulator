@@ -1,3 +1,4 @@
+import dataclasses
 import importlib
 import json
 import logging
@@ -129,10 +130,20 @@ def test_el_motor_y_su_cola_salen_de_simulador_motor(otro_motor):
                                                          "abm-ref")
 
 
-@pytest.mark.parametrize("valor", ["abm-gpu", "numba", "otro"])
+@pytest.mark.parametrize("valor", ["numba", "otro"])
 def test_un_motor_que_no_esta_implementado_no_arranca(otro_motor, valor):
     with pytest.raises(MotorNoDisponible):
         otro_motor(valor)
+
+
+def test_abm_gpu_sin_flame_gpu_no_arranca(otro_motor, monkeypatch):
+    """Un simulador de abm-gpu sin pyflamegpu o sin GPU tomaría corridas que no puede correr."""
+    from procesamiento import motores
+    sin_gpu = dataclasses.replace(motores.IMPLEMENTADOS["abm-gpu"],
+                                  disponible=lambda: (False, "no hay GPU"))
+    monkeypatch.setitem(motores.IMPLEMENTADOS, "abm-gpu", sin_gpu)
+    with pytest.raises(MotorNoDisponible, match="no hay GPU"):
+        otro_motor("abm-gpu")
 
 
 def test_el_ciclo_sobrevive_a_redis_caido_y_a_un_pedido_ilegible(mundo, monkeypatch, caplog):

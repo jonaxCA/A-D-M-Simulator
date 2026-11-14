@@ -91,20 +91,21 @@ D2 quedó aceptada el 2026-11-08 (ver [`D02-papel-del-seir.md`](D02-papel-del-se
 
 ## Cambios pendientes por D23
 
-D23 quedó aceptada el 2026-11-08 (ver [`D23-tecnologia-del-abm.md`](D23-tecnologia-del-abm.md)). Estos cambios no están implementados.
+D23 quedó aceptada el 2026-11-08 (ver [`D23-tecnologia-del-abm.md`](D23-tecnologia-del-abm.md)). El motor se implementó el 2026-11-14.
+
+### Hecho
+
+- **Motor `abm-gpu`:** `procesamiento/abm_gpu/`, el modelo de `abm-ref` en FLAME GPU 2. Está en el registro de motores y pasa las pruebas de conformidad donde hay GPU; donde no, se saltan y `del_nombre` no lo entrega.
+- **Imagen de `simulador`:** `microservicios/simulador/gpu.Dockerfile`, con `pyflamegpu` y las piezas de CUDA de pip (`procesamiento/abm_gpu/requerimientos.txt`). En el compose es `simulador-gpu`, en el perfil `gpu`. Construida y probada el 2026-11-14 en Docker Desktop con WSL 2 (RTX 4050): una corrida de punta a punta con `python infra/pruebas_integracion.py --gpu`.
 
 ### Código e infraestructura
 
-- **Imagen de `simulador`:** definir una imagen con soporte para CUDA, porque FLAME GPU lo necesita.
-- **Máquina de Compute Engine con GPU:** elegir el tipo de máquina y su GPU.
+- **Máquina de Compute Engine con GPU:** elegir el tipo de máquina y su GPU, con NVIDIA Container Toolkit (integrante 7).
+- **Escritorio:** ofrecer `abm-gpu` en el selector de motor cuando `corridas` lo acepte (integrante 6).
 
 ### Costos
 
 - Estimar el costo de la máquina con GPU (horas encendidas) y compararlo con los créditos: 100 USD por integrante, unos 600 USD en total si somos seis, como dice `AGENTS.md`. Registrar el resultado en D23.
-
-### Fuera del segundo parcial
-
-- CUDA y FLAME GPU están fuera de alcance del segundo parcial (`AGENTS.md`). Su implementación pasa al tercero (D21).
 
 ## Cambios pendientes por D3
 

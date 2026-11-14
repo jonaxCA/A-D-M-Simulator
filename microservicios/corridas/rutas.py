@@ -145,8 +145,8 @@ def registrar(app):
         forzar = (_booleano(cuerpo.get("forzar_error", False), "forzar_error")
                   and "ADMINISTRADOR" in g.usuario.get("roles", []))
         with candados.candado(llaves.candado_corrida(version_id), ttl=CANDADO_TTL):
-            # La versión del motor sale del registro de procesamiento/motores.py; la de uno que
-            # no está implementado aquí (abm-gpu) la sabría solo su simulador.
+            # La versión del motor sale del registro de procesamiento/motores.py. Está aunque el
+            # motor no corra aquí: corridas no necesita GPU para encolar una de abm-gpu.
             run_id, batch_id, error = queries.crear_corrida(
                 version_id, semilla, g.contexto.user_id,
                 IMPLEMENTADOS[motor].version if motor in IMPLEMENTADOS else None,

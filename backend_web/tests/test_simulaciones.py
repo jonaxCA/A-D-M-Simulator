@@ -22,12 +22,15 @@ Ejecutar:
         python -m unittest backend_web.tests.test_simulaciones -v
 """
 import copy
+import dataclasses
 import json
 import unittest
+from unittest import mock
 
 from backend_web.tests.base import ConCorridasDePrueba
 from backend_web import queries, simulaciones
 from backend_web.db import get_conn, query
+from procesamiento import motores
 
 
 # ---------------------------------------------------------------------------
@@ -138,9 +141,12 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
         self.assertEqual(version, "abm-ref-0.1")
         self.assertTrue(any("hogares" in s for s in simplificaciones))
 
-    def test_un_motor_sin_implementar_falla_con_su_nombre(self):
+    def test_un_motor_que_no_corre_aqui_falla_con_su_nombre(self):
+        sin_gpu = dataclasses.replace(motores.IMPLEMENTADOS["abm-gpu"],
+                                      disponible=lambda: (False, "no hay GPU"))
         run_id = self._encola(32, engine="abm-gpu")
-        self.assertEqual(simulaciones.ejecutar_run(run_id, demora_seg=0), "fallido")
+        with mock.patch.dict(motores.IMPLEMENTADOS, {"abm-gpu": sin_gpu}):
+            self.assertEqual(simulaciones.ejecutar_run(run_id, demora_seg=0), "fallido")
         fila = query("SELECT error_message FROM simulation_runs WHERE id = %s", (run_id,),
                      one=True)
         self.assertIn("abm-gpu", fila["error_message"])

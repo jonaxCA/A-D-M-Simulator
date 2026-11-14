@@ -18,6 +18,8 @@ Opción B: el ABM corre en FLAME GPU 2, con el motor de Python como respaldo. Es
 - La imagen de `simulador` necesita soporte para CUDA, y la máquina de Compute Engine necesita GPU.
 - El costo no está estimado todavía. Hay que compararlo con los créditos disponibles: según `AGENTS.md` somos seis integrantes, unos 600 USD en total.
 - La implementación de CUDA y FLAME GPU queda para el tercer parcial: están fuera de alcance del segundo.
-- Los cambios que siguen de esta decisión están en [`todo.md`](todo.md), sección «Cambios pendientes por D23». No están implementados.
+- Los cambios que siguen de esta decisión están en [`todo.md`](todo.md), sección «Cambios pendientes por D23».
+- Implementado el 2026-11-14 como `abm-gpu` (`procesamiento/abm_gpu/`), con `abm-ref` como respaldo. La imagen no necesita una base de CUDA: `pyflamegpu` y las piezas de CUDA que usa para compilar llegan por pip (`microservicios/simulador/gpu.Dockerfile`), y el driver lo pone el host. Se probó de punta a punta en Docker Desktop con WSL 2. En una RTX 4050 corre un millón de agentes a 180 días en 1.2 s, contra 13.6 s de `abm-ref` (ver [`ficha_simulador.md`](../arquitectura/ficha_simulador.md)).
+- FLAME GPU manda por omisión estadísticas de uso anónimas a un servicio externo. El motor las apaga siempre.
 
 Depende de: D22

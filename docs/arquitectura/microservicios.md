@@ -138,7 +138,8 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
   de su motor (`engine`, por omisión `seir-ref`, guardado en `simulation_batches.engine`) y
   cada `simulador` toma solo la suya, así que uno sin GPU nunca toma una corrida de `abm-gpu`.
   `corridas` acepta otro motor solo si `MOTORES_HABILITADOS` lo nombra. El compose trae un
-  simulador de `seir-ref` y otro de `abm-ref` (`simulador-abm`, con `SIMULADOR_MOTOR`).
+  simulador de `seir-ref`, otro de `abm-ref` (`simulador-abm`, con `SIMULADOR_MOTOR`) y, en el
+  perfil `gpu`, uno de `abm-gpu` (`simulador-gpu`, con FLAME GPU 2).
 - `pareto` lee los resultados directo de la base y no llama a `resultados`: reusa
   `construir_comparacion_costo_impacto()`, el cálculo de la pantalla Comparación del
   monolito, que también arma el escenario de cada versión y lee los costos. Se decidió así

@@ -129,8 +129,8 @@ def test_un_motor_habilitado_va_a_su_propia_cola(cliente, token, base, redis_fal
     monkeypatch.setenv("MOTORES_HABILITADOS", " abm-gpu ,gpu")
     r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "abm-gpu"})
     assert r.status_code == 202 and r.get_json()["engine"] == "abm-gpu"
-    # La versión de abm-gpu no la sabe corridas: la pone su simulador.
-    assert base.motores == {40: ("abm-gpu", None)}
+    # La versión sale del registro, aunque corridas no tenga GPU.
+    assert base.motores == {40: ("abm-gpu", "abm-gpu-0.1")}
     assert en_cola(redis_falso, "abm-gpu") == [{"id": 40, "forzar_error": False}]
     assert en_cola(redis_falso) == []
     # Un nombre que la base no acepta no se habilita aunque venga en la variable.

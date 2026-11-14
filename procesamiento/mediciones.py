@@ -8,6 +8,10 @@ Desde la raíz del repositorio:
 Imprimen tablas en Markdown, listas para pegar en la ficha. Usan el escenario del contrato de los
 motores (procesamiento/contrato.py) llevado a 180 días y al número de agentes de cada renglón.
 Los tiempos dependen de la máquina: la ficha anota en cuál se midieron.
+
+abm-gpu entra solo donde corre (pyflamegpu y una GPU de NVIDIA; ver procesamiento/abm_gpu/
+README.md). Su primera corrida de cada tamaño compila las funciones de agente; la mediana de
+tres la deja fuera. Su memoria pico es la de Python, no la de la GPU.
 """
 import argparse
 import copy
@@ -68,6 +72,8 @@ def tiempos(agentes, repeticiones):
     print("| Motor | Agentes | Días | Segundos (mediana de %d) | Memoria pico (MB) |" % repeticiones)
     print("|---|---|---|---|---|")
     for nombre, motor in motores.IMPLEMENTADOS.items():
+        if not motor.disponible()[0]:
+            continue
         for n in agentes:
             segundos, memoria = mide(motor.simular, escenario(n), repeticiones)
             print("| `%s` | %s | %d | %.2f | %.0f |" % (nombre, f"{n:,}", DIAS, segundos, memoria),
@@ -83,19 +89,26 @@ def validacion(agentes):
     """abm-ref con un solo grupo por capa debe dar la tasa de ataque de seir-ref: la fórmula
     del ABM no cambia nada más que la agrupación. Con hogares, salones y trabajos, baja."""
     seir = motores.IMPLEMENTADOS["seir-ref"].simular
-    abm = motores.IMPLEMENTADOS["abm-ref"].simular
-    print("| R0 | seir-ref | abm-ref con un solo grupo por capa | abm-ref con hogares, salones y trabajos |")
-    print("|---|---|---|---|")
+    abms = [m for m in (motores.IMPLEMENTADOS["abm-ref"], motores.IMPLEMENTADOS["abm-gpu"])
+            if m.disponible()[0]]
+    columnas = ["seir-ref"]
+    for m in abms:
+        columnas += ["%s con un solo grupo por capa" % m.nombre,
+                     "%s con hogares, salones y trabajos" % m.nombre]
+    print("| R0 | " + " | ".join(columnas) + " |")
+    print("|---" * (len(columnas) + 1) + "|")
     for r0 in R0S:
         esc = escenario(agentes, r0=r0, intervenciones=False)
-        original = dict(poblacion.TAMANO_MEDIO)
-        poblacion.TAMANO_MEDIO.update({capa: 10 ** 9 for capa in original})
-        try:
-            mezcla = _ataque(abm, esc)
-        finally:
-            poblacion.TAMANO_MEDIO.update(original)
-        print("| %.1f | %.3f | %.3f | %.3f |" % (r0, _ataque(seir, esc), mezcla, _ataque(abm, esc)),
-              flush=True)
+        fila = [_ataque(seir, esc)]
+        for m in abms:
+            original = dict(poblacion.TAMANO_MEDIO)
+            poblacion.TAMANO_MEDIO.update({capa: 10 ** 9 for capa in original})
+            try:
+                fila.append(_ataque(m.simular, esc))
+            finally:
+                poblacion.TAMANO_MEDIO.update(original)
+            fila.append(_ataque(m.simular, esc))
+        print("| %.1f | " % r0 + " | ".join("%.3f" % x for x in fila) + " |", flush=True)
 
 
 def maquina():

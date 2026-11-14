@@ -13,6 +13,11 @@ sale de cualquier motor (`seir-ref`, `abm-ref`, `abm-gpu`) está en `contrato.py
   del motor y repite sus transiciones; solo cambia el contagio, por hogar, salón, centro de
   trabajo y comunidad. Sus supuestos (tamaños de los grupos) van en la trazabilidad de la
   salida, y `tests/test_abm.py` revisa que con un solo grupo por capa dé lo mismo que el SEIR.
+- `abm_gpu/` es `abm-gpu`, el mismo modelo en FLAME GPU 2 (D23). Arma la población con el
+  código de `abm/` y corre los días en la GPU (`agentes.cu`). Solo corre con `pyflamegpu` y una
+  GPU de NVIDIA (`abm_gpu/README.md`); sin ellos sus pruebas se saltan. Un cambio a las
+  fórmulas de `abm/` se hace también en `abm_gpu/agentes.cu`, y `tests/test_abm_gpu.py`
+  revisa que sigan dando lo mismo.
 - `analitica/escala.py` calcula el factor de escala de D6 (habitantes del censo / agentes) y
   lleva los conteos del resumen a habitantes. El motor nunca lo ve.
 - La comparación por costo e impacto (Pareto) vive en `analitica/`, fuera de los motores. Solo

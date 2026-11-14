@@ -15,12 +15,15 @@ una versión antes de enviarla. Por eso no hay `openapi.json`.
 |---|---|---|---|
 | `seir-ref` | SEIR estocástico por grupo de edad. Queda como control experimental (D2) | `procesamiento/motor/` | Implementado |
 | `abm-ref` | Modelo basado en agentes en Python, en CPU (D22): cada persona con su hogar, salón o centro de trabajo | `procesamiento/abm/` | Implementado; lo corre el contenedor `simulador-abm` |
-| `abm-gpu` | El mismo modelo en FLAME GPU 2 (D23) | — | Solo si sobra tiempo |
+| `abm-gpu` | El mismo modelo en FLAME GPU 2 (D23), en una GPU de NVIDIA | `procesamiento/abm_gpu/` | Implementado; lo corre `simulador-gpu`, en el perfil `gpu` del compose |
 
 - Los nombres son los de D2. Hasta la migración 035 eran `python-ref`, `numba` y `cuda`;
   `corridas` todavía acepta los anteriores en lo que manda el cliente y los traduce.
 - `engine_version` es `<motor>-<mayor>.<menor>`, por ejemplo `seir-ref-0.1`. Sube cada vez que
   un cambio altera los números (`procesamiento/AGENTS.md`).
+- Un motor puede estar en el registro y no correr en una máquina: `abm-gpu` necesita
+  `pyflamegpu` y una GPU (`procesamiento/abm_gpu/README.md`). `Motor.disponible()` lo dice, y
+  `del_nombre()` no lo entrega donde no corre.
 - Cómo funciona cada motor por dentro (variables, pseudocódigo, complejidad, validación y
   tiempos) está en la ficha del simulador,
   [`docs/arquitectura/ficha_simulador.md`](../../arquitectura/ficha_simulador.md).

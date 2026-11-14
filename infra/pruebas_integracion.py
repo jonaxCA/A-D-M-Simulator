@@ -3,6 +3,11 @@
 #     python infra/pruebas_integracion.py              levanta, prueba y borra
 #     python infra/pruebas_integracion.py --conservar  deja arriba el compose de pruebas
 #     python infra/pruebas_integracion.py -- -k flujo  lo que va después de -- es para pytest
+#     python infra/pruebas_integracion.py --gpu        también levanta simulador-gpu (abm-gpu)
+#
+# Sin --gpu se levantan todos los perfiles menos gpu, que necesita una GPU de NVIDIA y NVIDIA
+# Container Toolkit (en Windows, Docker Desktop con WSL 2). Con --gpu, corridas acepta además
+# abm-gpu y test_compose_gpu.py corre una corrida en ese simulador; sin él, esa prueba se salta.
 #
 # Usa su propio proyecto (epidemia-pruebas), con sus propios volúmenes de PostgreSQL y de Redis,
 # y la base se llama simulador_epidemico_pruebas: nunca toca la base ni el Redis de la
@@ -20,20 +25,28 @@ ENTORNO = AQUI / ".env.pruebas"
 PROYECTO = "epidemia-pruebas"
 FIJOS = {"POSTGRES_DB": "simulador_epidemico_pruebas", "REDIS_PUERTO_LOCAL": "6382",
          "POSTGRES_PUERTO_LOCAL": "5435"}
-COMPOSE = ["docker", "compose", "-p", PROYECTO, "-f", str(AQUI / "docker-compose.yml"),
-           "-f", str(AQUI / "docker-compose.pruebas.yml"), "--env-file", str(ENTORNO), "--profile", "*"]
+ARCHIVOS = ["-f", str(AQUI / "docker-compose.yml"), "-f", str(AQUI / "docker-compose.pruebas.yml")]
 # Los del catálogo, la consola y los locales de PostgreSQL y Redis de este compose.
 PUERTOS = [5201, 5202, 5203, 5204, 5211, 5212, 5213, 5214, 5215, 5221, 5222, 5223, 5224, 5225,
            5231, 5232, 5233, 5234, 5235, 5241, 5242, 5243, 5244, 5245, 5251, 5252, 5253, 5260,
            5261, 5262, 6382, 5435]
 
 
-def prepara_entorno():
+def prepara_entorno(gpu):
+    fijos = dict(FIJOS, MOTORES_HABILITADOS="abm-ref,abm-gpu" if gpu else "abm-ref")
     subprocess.run([sys.executable, str(AQUI / "genera_env.py"), str(ENTORNO)], check=True)
     lineas = [l for l in ENTORNO.read_text(encoding="utf-8").splitlines()
-              if l.split("=", 1)[0] not in FIJOS]
-    lineas += ["%s=%s" % par for par in FIJOS.items()]
+              if l.split("=", 1)[0] not in fijos]
+    lineas += ["%s=%s" % par for par in fijos.items()]
     ENTORNO.write_text("\n".join(lineas) + "\n", encoding="utf-8", newline="\n")
+
+
+def comando_compose(gpu):
+    """docker compose con el proyecto de pruebas y sus perfiles: todos, y gpu solo si se pide."""
+    base = ["docker", "compose", "-p", PROYECTO] + ARCHIVOS + ["--env-file", str(ENTORNO)]
+    perfiles = subprocess.run(base + ["config", "--profiles"], capture_output=True, text=True,
+                              check=True).stdout.split()
+    return base + [arg for p in perfiles if gpu or p != "gpu" for arg in ("--profile", p)]
 
 
 def ocupados():
@@ -47,14 +60,17 @@ def ocupados():
 
 
 def main(argumentos):
-    conservar = "--conservar" in argumentos
+    propios = argumentos[:argumentos.index("--")] if "--" in argumentos else argumentos
+    conservar = "--conservar" in propios
+    gpu = "--gpu" in propios
     para_pytest = argumentos[argumentos.index("--") + 1:] if "--" in argumentos else []
     en_uso = ocupados()
     if en_uso:
         sys.exit("Puertos ocupados: %s. Detén el compose de la demostración "
                  "(docker compose -f infra/docker-compose.yml down) y vuelve a correr esto."
                  % ", ".join(map(str, en_uso)))
-    prepara_entorno()
+    prepara_entorno(gpu)
+    COMPOSE = comando_compose(gpu)
     try:
         if subprocess.run(COMPOSE + ["up", "-d", "--build", "--wait"]).returncode:
             subprocess.run(COMPOSE + ["ps", "-a"])

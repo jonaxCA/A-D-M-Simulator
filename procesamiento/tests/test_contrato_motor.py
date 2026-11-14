@@ -5,22 +5,33 @@ Los motores salen del registro (procesamiento/motores.py): uno nuevo pasa estas 
     python -m pytest procesamiento/tests/test_contrato_motor.py -v
 """
 import copy
+import dataclasses
 import json
 import unittest
+from unittest import mock
 
 from procesamiento import contrato, motores
 from procesamiento.motor import EscenarioInvalido
 from procesamiento.motor import simular as simular_seir
 from procesamiento.motor.modelo import huella_escenario
 
-# nombre del motor -> su simular(escenario, semilla)
-MOTORES_IMPLEMENTADOS = {nombre: m.simular for nombre, m in motores.IMPLEMENTADOS.items()}
+# nombre del motor -> su simular(escenario, semilla), de los que se pueden correr aquí. abm-gpu
+# solo corre con pyflamegpu y una GPU de NVIDIA (procesamiento/abm_gpu/README.md).
+MOTORES_IMPLEMENTADOS = {nombre: m.simular for nombre, m in motores.IMPLEMENTADOS.items()
+                         if m.disponible()[0]}
+NO_DISPONIBLES = {nombre: m.disponible()[1] for nombre, m in motores.IMPLEMENTADOS.items()
+                  if not m.disponible()[0]}
 
 ESCENARIO = contrato.ESCENARIO_EJEMPLO
 SEMILLA = contrato.SEMILLA_EJEMPLO
 
 
 class ConformidadTests(unittest.TestCase):
+    def test_los_motores_que_no_corren_aqui_se_reportan(self):
+        if NO_DISPONIBLES:
+            self.skipTest("; ".join("%s no corre en esta máquina: %s" % par
+                                    for par in NO_DISPONIBLES.items()))
+
     def test_la_salida_cumple_el_contrato(self):
         for motor, simular in MOTORES_IMPLEMENTADOS.items():
             with self.subTest(motor=motor):
@@ -65,27 +76,38 @@ class ConformidadTests(unittest.TestCase):
 
 
 class RegistroTests(unittest.TestCase):
-    def test_estan_seir_ref_y_abm_ref_con_los_nombres_de_d2(self):
-        self.assertEqual(set(motores.IMPLEMENTADOS), {"seir-ref", "abm-ref"})
-        self.assertLessEqual(set(motores.IMPLEMENTADOS), set(contrato.MOTORES))
+    def test_estan_los_tres_motores_de_d2(self):
+        self.assertEqual(set(motores.IMPLEMENTADOS), set(contrato.MOTORES))
 
     def test_version_y_simplificaciones_son_las_de_su_salida(self):
         for nombre, motor in motores.IMPLEMENTADOS.items():
+            if nombre not in MOTORES_IMPLEMENTADOS:
+                continue
             with self.subTest(motor=nombre):
                 salida = motor.simular(copy.deepcopy(ESCENARIO), SEMILLA)
                 self.assertEqual(salida["engine_version"], motor.version)
                 self.assertEqual(salida["simplificaciones"], list(motor.simplificaciones))
                 self.assertIs(motores.de_version(motor.version), motor)
 
-    def test_un_motor_sin_implementar_o_desconocido_no_esta_disponible(self):
-        for nombre in ("abm-gpu", "numba", "otro", None):
+    def test_un_motor_desconocido_no_esta_disponible(self):
+        for nombre in ("numba", "otro", None):
             with self.subTest(nombre=nombre):
                 with self.assertRaises(motores.MotorNoDisponible):
                     motores.del_nombre(nombre)
 
+    def test_un_motor_que_no_corre_aqui_no_se_entrega(self):
+        """abm-gpu sin pyflamegpu: del_nombre lo rechaza con el motivo, pero sigue en el
+        registro, así que su versión y sus simplificaciones se conocen igual."""
+        gpu = motores.IMPLEMENTADOS["abm-gpu"]
+        sin_gpu = dataclasses.replace(gpu, disponible=lambda: (False, "no hay GPU"))
+        with mock.patch.dict(motores.IMPLEMENTADOS, {"abm-gpu": sin_gpu}):
+            with self.assertRaisesRegex(motores.MotorNoDisponible, "abm-gpu.*no hay GPU"):
+                motores.del_nombre("abm-gpu")
+            self.assertIs(motores.de_version("abm-gpu-0.1"), sin_gpu)
+
     def test_las_versiones_anteriores_a_la_035_son_seir_ref(self):
         self.assertIs(motores.de_version("python-ref-0.1"), motores.IMPLEMENTADOS["seir-ref"])
-        for version in ("abm-gpu-0.1", "sin-guion", "", None, 3):
+        for version in ("sin-guion", "", None, 3):
             with self.subTest(version=version):
                 self.assertIsNone(motores.de_version(version))
 

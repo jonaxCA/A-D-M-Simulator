@@ -1,0 +1,17 @@
+# Lo que abm-gpu necesita además de procesamiento/requerimientos.txt. Solo lo instala la imagen
+# del simulador de GPU (microservicios/simulador/gpu.Dockerfile) o el venv de pruebas de
+# procesamiento/abm_gpu/README.md; los demás servicios no lo necesitan.
+#
+# pyflamegpu no está en PyPI: sale de las releases de FLAME GPU 2 en GitHub, compilado con
+# CUDA 13.0. La rueda depende del sistema y de la versión de Python.
+pyflamegpu @ https://github.com/FLAMEGPU/FLAMEGPU2/releases/download/v2.0.0-rc.5/pyflamegpu-2.0.0rc5%2Bcuda130-cp312-cp312-linux_x86_64.whl ; sys_platform == "linux" and python_version == "3.12"
+pyflamegpu @ https://github.com/FLAMEGPU/FLAMEGPU2/releases/download/v2.0.0-rc.5/pyflamegpu-2.0.0rc5%2Bcuda130-cp314-cp314-win_amd64.whl ; sys_platform == "win32" and python_version == "3.14"
+
+# Lo que FLAME GPU usa para compilar las funciones de agente (NVRTC, nvJitLink y los
+# encabezados de CUDA, cuRAND y CCCL), sin instalar el CUDA Toolkit. procesamiento/abm_gpu/
+# entorno.py los encuentra solo.
+nvidia-cuda-nvrtc==13.0.88
+nvidia-nvjitlink==13.0.88
+nvidia-cuda-runtime==13.0.96
+nvidia-cuda-cccl==13.0.85
+nvidia-curand==10.4.0.35
