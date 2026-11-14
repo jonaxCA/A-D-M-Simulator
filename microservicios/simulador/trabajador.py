@@ -1,4 +1,8 @@
-"""El proceso trabajador: toma corridas de la cola de Redis de seir-ref y las ejecuta.
+"""El proceso trabajador: toma corridas de la cola de Redis de su motor y las ejecuta.
+
+Hay un simulador por motor (D2): SIMULADOR_MOTOR dice cuál (seir-ref si no viene) y de qué
+cola toma, queue:simulaciones:<motor>. Así uno sin GPU nunca toma una corrida de abm-gpu, y una
+corrida larga del ABM no detiene las del SEIR.
 
 La corrida la ejecuta simulaciones.ejecutar_run(), la misma del monolito: marca
 'ejecutando' con la transición condicionada (dos trabajadores no corren la
@@ -7,6 +11,7 @@ cola, se publica el avance en Redis y se avisa a notificaciones.
 """
 import json
 import logging
+import os
 import socket
 
 from backend_web import queries, simulaciones
@@ -14,6 +19,7 @@ from epidemia_comun import cola, llaves
 from epidemia_comun.http import llamar
 from epidemia_comun.redis_compartido import RedisNoDisponible, opcional
 from epidemia_comun.seguridad import token_servicio
+from procesamiento.motores import MOTOR_REFERENCIA, del_nombre
 
 log = logging.getLogger("simulador")
 
@@ -21,9 +27,9 @@ PROGRESO_TTL = 86400
 PAUSA_SIN_REDIS = 5
 AVISOS = {"completado": ("RUN_FINISHED", "La corrida %s terminó"),
           "fallido": ("RUN_FAILED", "La corrida %s falló")}
-# ejecutar_run corre el motor de procesamiento/motor; las corridas de otro motor van a otra
-# cola y las toma el simulador de ese motor.
-MOTOR = "seir-ref"
+# Un motor que no está implementado (abm-gpu sin FLAME GPU) detiene el arranque: sin esto, el
+# simulador tomaría corridas que no puede correr.
+MOTOR = del_nombre((os.environ.get("SIMULADOR_MOTOR") or MOTOR_REFERENCIA).strip()).nombre
 COLA = llaves.cola_simulaciones(MOTOR)
 
 # Lo que reporta /api/v1/worker/status. Solo lo escribe el hilo del trabajador.
@@ -32,8 +38,10 @@ estado = {"trabajador": socket.gethostname(), "motor": MOTOR, "activo": False,
 
 
 def recuperar():
-    # Las encoladas no se tocan: siguen esperando en la cola.
-    cerradas = simulaciones.recupera_corridas_interrumpidas(estados=("ejecutando",))
+    # Las encoladas no se tocan: siguen esperando en la cola. Y solo las de su motor: las de
+    # otro las está corriendo el simulador de ese motor.
+    cerradas = simulaciones.recupera_corridas_interrumpidas(estados=("ejecutando",),
+                                                           engine=MOTOR)
     if cerradas:
         log.warning("Se cerraron como fallidas %d corridas que quedaron a medias.", cerradas)
     return cerradas

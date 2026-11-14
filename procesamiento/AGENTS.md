@@ -6,6 +6,9 @@ El formato de entrada del motor está en el docstring de `motor/parametros.py`. 
 sale de cualquier motor (`seir-ref`, `abm-ref`, `abm-gpu`) está en `contrato.py` y en
 `docs/contratos/motor/README.md`; `tests/test_contrato_motor.py` revisa que cada motor lo cumpla.
 
+- `motores.py` es el registro de los motores implementados: el simulador, `corridas` y
+  `resultados` lo usan para saber qué motor correr, qué versión registrar y qué
+  simplificaciones mostrar. Un motor nuevo se agrega ahí.
 - `abm/` es `abm-ref`, el modelo basado en agentes (D22). Valida la entrada con el `resolver`
   del motor y repite sus transiciones; solo cambia el contagio, por hogar, salón, centro de
   trabajo y comunidad. Sus supuestos (tamaños de los grupos) van en la trazabilidad de la

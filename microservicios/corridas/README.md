@@ -23,9 +23,10 @@ en la matriz de permisos (migración 010). CAPTURISTA recibe 403 en todas.
 - `seed` es un entero de 0 a 2³¹−1; si no llega, se elige al azar.
 - `engine` es el motor: `seir-ref` si no llega. `abm-ref` y `abm-gpu` solo se aceptan si
   `MOTORES_HABILITADOS` los nombra, porque sin un `simulador` de ese motor la corrida se
-  quedaría encolada para siempre; hoy solo existe el de `seir-ref`. Queda en
-  `simulation_batches.engine`. `engine_version` sale de `seir-ref` al encolar; con otro motor
-  queda vacía, porque este servicio no la conoce.
+  quedaría encolada para siempre; el compose trae los de `seir-ref` y `abm-ref`. Queda en
+  `simulation_batches.engine`. `engine_version` sale del registro de motores
+  (`procesamiento/motores.py`) al encolar; con un motor que no está implementado (`abm-gpu`)
+  queda vacía.
 - Los nombres de antes de D2 (`python-ref`, `numba` y `cuda`) se siguen aceptando en `engine`,
   en el filtro `engine` de la lista y en `MOTORES_HABILITADOS`, y se traducen a `seir-ref`,
   `abm-ref` y `abm-gpu`. Así un cliente de la v1 no se rompe; las respuestas usan los nombres
@@ -66,7 +67,7 @@ Cancelar usa la misma transición condicionada que el `simulador` (`WHERE status
 
 `DATABASE_URL` (rol `svc_corridas`, migración 029), `JWT_SECRET_KEY`, `REDIS_URL`; opcionales
 `JWT_ISSUER`, `JWT_AUDIENCE` y `MOTORES_HABILITADOS` (los motores además de `seir-ref` que
-tienen su `simulador` desplegado, separados por comas; por ejemplo `abm-gpu`).
+tienen su `simulador` desplegado, separados por comas; en el compose, `abm-ref`).
 
 ## Probarlo
 

@@ -11,7 +11,7 @@ import secrets
 
 from flask import g, request
 
-from backend_web import queries, simulaciones
+from backend_web import queries
 from epidemia_comun import candados, cola, llaves
 from epidemia_comun.candados import CandadoOcupado
 from epidemia_comun.errores import ErrorAPI, respuesta_error
@@ -19,6 +19,7 @@ from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.redis_compartido import RedisNoDisponible, opcional
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import diccionario, entero_positivo, fecha
+from procesamiento.motores import IMPLEMENTADOS
 
 log = logging.getLogger("corridas")
 
@@ -144,10 +145,11 @@ def registrar(app):
         forzar = (_booleano(cuerpo.get("forzar_error", False), "forzar_error")
                   and "ADMINISTRADOR" in g.usuario.get("roles", []))
         with candados.candado(llaves.candado_corrida(version_id), ttl=CANDADO_TTL):
-            # La versión de otro motor la sabe su simulador, no este servicio.
+            # La versión del motor sale del registro de procesamiento/motores.py; la de uno que
+            # no está implementado aquí (abm-gpu) la sabría solo su simulador.
             run_id, batch_id, error = queries.crear_corrida(
                 version_id, semilla, g.contexto.user_id,
-                simulaciones.ENGINE_VERSION if motor == MOTOR_REFERENCIA else None,
+                IMPLEMENTADOS[motor].version if motor in IMPLEMENTADOS else None,
                 engine=motor, contexto=g.contexto, forzar_error=forzar)
             if error:
                 raise _error_al_crear(error)

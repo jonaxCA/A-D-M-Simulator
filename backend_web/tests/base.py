@@ -18,6 +18,7 @@ from backend_web import queries, simulaciones  # noqa: E402
 from backend_web.auth import create_token  # noqa: E402
 from backend_web.contexto import Contexto  # noqa: E402
 from backend_web.db import get_conn, query  # noqa: E402
+from procesamiento import motores  # noqa: E402
 
 # Escenario de la semilla de demostracion (datos/postgres/semillas/
 # demo_datos_nl.sql) que ya viene aprobado: sobre su version se encolan las
@@ -120,9 +121,12 @@ class ConCorridasDePrueba(unittest.TestCase):
             escribe("DELETE FROM simulation_batches WHERE id = %s", (batch_id,))
         super().tearDown()
 
-    def _encola(self, seed):
+    def _encola(self, seed, engine="seir-ref"):
+        # La version, como la pone corridas: la del registro, o vacia si no esta implementado.
+        motor = motores.IMPLEMENTADOS.get(engine)
         run_id, batch_id, error = queries.crear_corrida(
-            self.version_id, seed, self.user_id, simulaciones.ENGINE_VERSION)
+            self.version_id, seed, self.user_id, motor.version if motor else None,
+            engine=engine)
         self.assertIsNone(error, error)
         self._batches_creados.append(batch_id)
         return run_id

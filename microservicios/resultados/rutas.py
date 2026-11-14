@@ -11,7 +11,7 @@ from epidemia_comun.formatos import responder
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import entero_positivo
 from procesamiento.motor import AVISO_SIMULACION
-from procesamiento.motor.modelo import SIMPLIFICACIONES
+from procesamiento.motores import de_version
 
 # Los mismos roles que la pantalla de detalle de una corrida del monolito.
 ROLES = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
@@ -48,7 +48,10 @@ def registrar(app):
     @requiere_token(roles=ROLES)
     def resultado(run_id):
         datos = _resultado(run_id)
-        return responder(dict({"aviso": AVISO_SIMULACION, "simplificaciones": SIMPLIFICACIONES},
+        # Las simplificaciones son las del motor que produjo el resultado (D2).
+        motor = de_version(datos["engine_version"])
+        simplificaciones = list(motor.simplificaciones) if motor else []
+        return responder(dict({"aviso": AVISO_SIMULACION, "simplificaciones": simplificaciones},
                               **datos), "resultado")
 
     @app.get("/api/v1/runs/<run_id>/curves")

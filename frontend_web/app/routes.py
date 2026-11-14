@@ -878,14 +878,18 @@ def simulacion_detalle(run_id):
             # bug de no-determinismo en el motor).
             equivalente["coincide"] = (equivalente["resumen"] == resultado["resumen"])
 
+    # Las simplificaciones son las del motor que corrio (seir-ref o abm-ref, D2).
+    version_actual, simplificaciones = (
+        simulaciones.motor_de_resultado(resultado["engine_version"]) if resultado
+        else (simulaciones.ENGINE_VERSION, simulaciones.SIMPLIFICACIONES))
     return render_template(
         "simulacion_detalle.html",
         run=run,
         resultado=resultado,
         equivalente=equivalente,
         aviso_simulacion=simulaciones.AVISO_SIMULACION,
-        simplificaciones=simulaciones.SIMPLIFICACIONES,
-        engine_version_actual=simulaciones.ENGINE_VERSION,
+        simplificaciones=simplificaciones,
+        engine_version_actual=version_actual,
         active_nav="simulaciones",
     )
 

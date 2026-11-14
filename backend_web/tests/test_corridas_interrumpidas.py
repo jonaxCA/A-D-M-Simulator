@@ -1,9 +1,10 @@
 """
 Corridas que un reinicio del servidor dejo sin hilo (auditoria, bug 6).
 
-Antes se quedaban en 'encolado' o 'ejecutando' para siempre. Ahora
-frontend_web/run.py llama a simulaciones.recupera_corridas_interrumpidas()
-al arrancar y las cierra como 'fallido' con un mensaje que lo explica.
+Antes se quedaban en 'encolado' o 'ejecutando' para siempre. Ahora el
+simulador llama a simulaciones.recupera_corridas_interrumpidas() al arrancar
+(la web lo hacia hasta D4) y cierra como 'fallido', con un mensaje que lo
+explica, las de su motor.
 
 De paso cubre dos cosas del mismo ciclo de vida que la auditoria destapo:
 el lote de cada corrida ahora sigue su estado (antes se quedaba 'encolado'
@@ -23,6 +24,7 @@ from backend_web.tests.base import ConCorridasDePrueba
 from backend_web import queries, simulaciones
 from backend_web.contexto import Contexto
 from backend_web.db import query
+from procesamiento import motores
 
 
 def _lote_de(run_id):
@@ -42,7 +44,7 @@ class RecuperaCorridasTests(unittest.TestCase):
                 patch.object(simulaciones, "log_audit") as audita:
             self.assertEqual(simulaciones.recupera_corridas_interrumpidas(), 2)
         marca.assert_called_once_with(simulaciones.MENSAJE_INTERRUMPIDA,
-                                      estados=("encolado", "ejecutando"))
+                                      estados=("encolado", "ejecutando"), engine=None)
         self.assertEqual(audita.call_count, 2)
         for llamada, fila in zip(audita.call_args_list, cerradas):
             args, kwargs = llamada
@@ -54,8 +56,9 @@ class RecuperaCorridasTests(unittest.TestCase):
 
     def test_el_simulador_solo_cierra_las_que_se_estaban_ejecutando(self):
         with patch.object(queries, "marca_corridas_interrumpidas", return_value=[]) as marca:
-            simulaciones.recupera_corridas_interrumpidas(estados=("ejecutando",))
-        marca.assert_called_once_with(simulaciones.MENSAJE_INTERRUMPIDA, estados=("ejecutando",))
+            simulaciones.recupera_corridas_interrumpidas(estados=("ejecutando",), engine="abm-ref")
+        marca.assert_called_once_with(simulaciones.MENSAJE_INTERRUMPIDA, estados=("ejecutando",),
+                                      engine="abm-ref")
 
     def test_sin_corridas_huerfanas_no_audita_nada(self):
         with patch.object(queries, "marca_corridas_interrumpidas", return_value=[]), \
@@ -98,6 +101,20 @@ class MarcaCorridasInterrumpidasTests(_CorridasDePrueba):
             self.assertEqual(fila["status"], "fallido")
             self.assertEqual(fila["error_message"], simulaciones.MENSAJE_INTERRUMPIDA)
             self.assertIsNotNone(fila["finished_at"])
+
+    def test_con_engine_solo_cierra_las_de_ese_motor(self):
+        # Hay un simulador por motor (D2): el del SEIR que arranca no cierra las del ABM.
+        seir = self._encola(110)
+        abm = self._encola(111, engine="abm-ref")
+        for run_id in (seir, abm):
+            self.assertTrue(queries.marcar_run_ejecutando(run_id))
+
+        filas = queries.marca_corridas_interrumpidas(
+            "x", run_ids=[seir, abm], estados=("ejecutando",), engine="seir-ref")
+
+        self.assertEqual([f["id"] for f in filas], [seir])
+        self.assertEqual(self._estado(seir)["status"], "fallido")
+        self.assertEqual(self._estado(abm)["status"], "ejecutando")
 
     def test_con_estados_deja_esperando_a_las_encoladas(self):
         encolada = self._encola(108)
@@ -236,15 +253,18 @@ class GuardadoBlindadoTests(_CorridasDePrueba):
         """De punta a punta: el motor termina, pero mientras corria alguien
         cerro la corrida. No debe quedar un 'completado' en la bitacora."""
         run_id = self._encola(304)
-        simular_real = simulaciones.simular
+        seir = motores.IMPLEMENTADOS["seir-ref"]
 
         def simular_y_que_la_cierren(escenario, semilla):
-            resultado = simular_real(escenario, semilla)
+            resultado = seir.simular(escenario, semilla)
             queries.marca_corridas_interrumpidas("cerrada a media corrida",
                                                  run_ids=[run_id])
             return resultado
 
-        with patch.object(simulaciones, "simular", side_effect=simular_y_que_la_cierren), \
+        # ejecutar_run toma el motor del registro (procesamiento/motores.py).
+        cambiado = motores.Motor(seir.nombre, seir.version, simular_y_que_la_cierren,
+                                 seir.simplificaciones)
+        with patch.object(simulaciones, "motor_del_nombre", return_value=cambiado), \
                 self.assertLogs("backend_web.simulaciones", level="WARNING"):
             simulaciones.ejecutar_run(run_id, demora_seg=0)
 

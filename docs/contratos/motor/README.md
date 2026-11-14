@@ -14,7 +14,7 @@ una versión antes de enviarla. Por eso no hay `openapi.json`.
 | Nombre | Qué es | Dónde | Estado |
 |---|---|---|---|
 | `seir-ref` | SEIR estocástico por grupo de edad. Queda como control experimental (D2) | `procesamiento/motor/` | Implementado |
-| `abm-ref` | Modelo basado en agentes en Python, en CPU (D22): cada persona con su hogar, salón o centro de trabajo | `procesamiento/abm/` | Implementado como motor; falta conectarlo al `simulador` |
+| `abm-ref` | Modelo basado en agentes en Python, en CPU (D22): cada persona con su hogar, salón o centro de trabajo | `procesamiento/abm/` | Implementado; lo corre el contenedor `simulador-abm` |
 | `abm-gpu` | El mismo modelo en FLAME GPU 2 (D23) | — | Solo si sobra tiempo |
 
 - Los nombres son los de D2. Hasta la migración 035 eran `python-ref`, `numba` y `cuda`;
@@ -122,8 +122,6 @@ MongoDB, un documento por día con el `run_id` y el motor.
   vienen los totales finales de `desglose_por_grupo`. O se agrega una llave opcional con la
   serie por grupo, que tendrían que dar los tres motores, o MongoDB guarda totales. Se decide
   con quien implementa D28.
-- **`simplificaciones` por corrida.** El servicio `resultados` muestra hoy la lista del SEIR para
-  cualquier corrida. Cuando exista `abm-ref`, tiene que mostrar la del motor que corrió.
 
 ## Ejemplos
 
@@ -141,5 +139,7 @@ python -m procesamiento.contrato --ejemplos
 2. Valida y lee la entrada con `resolver`, y arma el resumen con `resumir` o con las mismas
    definiciones.
 3. Su `engine_version` empieza con su nombre de esta tabla.
-4. Se agrega a `MOTORES_IMPLEMENTADOS` en `procesamiento/tests/test_contrato_motor.py`, y tiene
-   que pasar las mismas pruebas que `seir-ref`.
+4. Se agrega a `IMPLEMENTADOS` en `procesamiento/motores.py`. Con eso pasa solo por las pruebas
+   de conformidad, `corridas` registra su versión y `resultados` muestra sus simplificaciones.
+5. Su simulador es otro contenedor del servicio `simulador` con `SIMULADOR_MOTOR=<nombre>`, y
+   `corridas` lo acepta cuando `MOTORES_HABILITADOS` lo nombra.

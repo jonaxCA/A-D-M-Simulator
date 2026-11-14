@@ -84,7 +84,7 @@ D2 quedó aceptada el 2026-11-08 (ver [`D02-papel-del-seir.md`](D02-papel-del-se
 
 - **Hecho. Nombre del motor:** cambiar `ENGINE_VERSION` de `python-ref-0.1` a `seir-ref-0.1` en `procesamiento/motor/modelo.py`.
 - **Hecho. Migración de motores:** la 035 (`035_nombres_de_motores.sql`); la 034 queda para D1. `corridas` sigue aceptando los nombres anteriores en lo que manda el cliente y los traduce, para no romper la v1. El CHECK de `simulation_batches.engine` (014) acepta `python-ref`, `numba` y `cuda`. Hay que cambiarlo a `seir-ref`, `abm-ref` y `abm-gpu`, y el orden dentro de la migración es: soltar el CHECK, convertir los valores, poner el CHECK nuevo y cambiar el DEFAULT.
-- **Hecho. ABM en Python** como paquete aparte en `procesamiento/`, con la misma entrada y salida que el SEIR: `procesamiento/abm/` (`abm-ref-0.1`), el 2026-11-14. Falta conectarlo al `simulador` y habilitarlo en `corridas`.
+- **Hecho. ABM en Python** como paquete aparte en `procesamiento/`, con la misma entrada y salida que el SEIR: `procesamiento/abm/` (`abm-ref-0.1`), el 2026-11-14, y conectado el mismo día: lo corre el contenedor `simulador-abm` (`SIMULADOR_MOTOR=abm-ref`) y `corridas` lo acepta por omisión en el compose.
 
 ### Documentos
 

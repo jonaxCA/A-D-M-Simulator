@@ -3792,7 +3792,8 @@ def cancelar_run(run_id, *, contexto):
     return True
 
 
-def marca_corridas_interrumpidas(mensaje, run_ids=None, estados=("encolado", "ejecutando")):
+def marca_corridas_interrumpidas(mensaje, run_ids=None, estados=("encolado", "ejecutando"),
+                                 engine=None):
     """encolado/ejecutando -> fallido para las corridas cuyo hilo ya no existe.
 
     Solo tiene sentido al arrancar el servidor (backend_web.simulaciones.
@@ -3801,7 +3802,8 @@ def marca_corridas_interrumpidas(mensaje, run_ids=None, estados=("encolado", "ej
     iniciado era de uno que ya murio. `run_ids` acota el barrido; lo usan las
     pruebas para no tocar corridas ajenas a ellas. `estados` lo acota el
     microservicio simulador a 'ejecutando': sus corridas encoladas siguen
-    esperando en la cola de Redis.
+    esperando en la cola de Redis. `engine` acota a los lotes de ese motor: hay un
+    simulador por motor (D2), y el que arranca solo responde por las suyas.
 
     Devuelve las filas cerradas (id, requested_by, seed) para auditarlas.
     Las que seguian encoladas reciben started_at = finished_at, por la misma
@@ -3811,6 +3813,9 @@ def marca_corridas_interrumpidas(mensaje, run_ids=None, estados=("encolado", "ej
     if run_ids is not None:
         filtro = "AND id = ANY(%s)"
         params.append(list(run_ids))
+    if engine is not None:
+        filtro += " AND batch_id IN (SELECT id FROM simulation_batches WHERE engine = %s)"
+        params.append(engine)
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(

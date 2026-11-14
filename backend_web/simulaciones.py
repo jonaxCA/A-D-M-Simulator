@@ -33,6 +33,8 @@ from procesamiento.analitica import ComparacionInvalida, comparar as comparar_pa
 from procesamiento.motor import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular  # noqa: F401
 from procesamiento.motor.modelo import SIMPLIFICACIONES                      # noqa: F401
 from procesamiento.motor.parametros import EscenarioInvalido
+from procesamiento.motores import MOTOR_REFERENCIA, de_version as motor_de_version
+from procesamiento.motores import del_nombre as motor_del_nombre
 
 from . import queries
 from .audit import log_audit
@@ -72,6 +74,15 @@ CLASE_BADGE_ESTADO = {
     "fallido": "badge-fallido",
     "cancelado": "badge-inactivo",
 }
+
+
+def motor_de_resultado(engine_version):
+    """(version actual, simplificaciones) del motor que produjo un resultado, para mostrarlas
+    junto a el. Si la version no se reconoce: (engine_version, [])."""
+    motor = motor_de_version(engine_version)
+    if motor is None:
+        return engine_version, []
+    return motor.version, list(motor.simplificaciones)
 
 
 def estado_visible(status_db):
@@ -243,6 +254,10 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None):
             # proposito, no uno real del motor ni de los datos.
             raise ValueError(MENSAJE_ERROR_FORZADO)
 
+        # El motor es el del lote (D2): cada simulador toma de la cola solo los suyos, pero el
+        # que manda es el lote. Uno que no esta implementado aqui falla con su nombre.
+        motor = motor_del_nombre(queries.get_motor_run(run_id) or MOTOR_REFERENCIA)
+
         escenario, _version, errores = construir_escenario_desde_version(
             run["scenario_version_id"]
         )
@@ -250,7 +265,7 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None):
             raise ValueError("; ".join(errores))
         avanza(30)
 
-        resultado = simular(escenario, run["seed"])
+        resultado = motor.simular(escenario, run["seed"])
         avanza(90)
         if not queries.guardar_resultado_run(run_id, resultado):
             # Alguien cerro la corrida mientras el motor trabajaba (otro
@@ -333,7 +348,7 @@ MENSAJE_INTERRUMPIDA = (
 )
 
 
-def recupera_corridas_interrumpidas(estados=("encolado", "ejecutando")):
+def recupera_corridas_interrumpidas(estados=("encolado", "ejecutando"), engine=None):
     """Cierra como 'fallido' las corridas que un proceso anterior dejo a medias.
 
     _marca_fallido_y_audita protege contra cualquier error DENTRO de la
@@ -347,9 +362,13 @@ def recupera_corridas_interrumpidas(estados=("encolado", "ejecutando")):
     valor por omision, mientras corria simulaciones en un hilo propio; desde
     D4 no lanza corridas y ya no lo llama, porque cerraria las del simulador.
 
+    Con `engine`, solo cierra las corridas de lotes de ese motor: hay un simulador por motor
+    (D2), y el que arranca no debe cerrar las que otro esta ejecutando.
+
     Devuelve cuantas corridas cerro.
     """
-    filas = queries.marca_corridas_interrumpidas(MENSAJE_INTERRUMPIDA, estados=estados)
+    filas = queries.marca_corridas_interrumpidas(MENSAJE_INTERRUMPIDA, estados=estados,
+                                                 engine=engine)
     for fila in filas:
         try:
             log_audit(Contexto.sin_peticion(fila["requested_by"]), "RUN", "simulation_run",

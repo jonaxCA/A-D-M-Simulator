@@ -1,3 +1,4 @@
+import importlib
 import json
 import logging
 import threading
@@ -11,6 +12,7 @@ from epidemia_comun import llaves
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.redis_compartido import RedisNoDisponible
 from microservicios.simulador import rutas, trabajador
+from procesamiento.motores import MotorNoDisponible
 
 RAIZ = Path(__file__).resolve().parents[3]
 AJUSTES = {"JWT_SECRET_KEY": "secreto-de-pruebas-del-simulador-0123456789",
@@ -96,12 +98,41 @@ def test_un_aviso_fallido_no_afecta_la_corrida(mundo, caplog, falla):
     assert any(r.levelno == logging.WARNING for r in caplog.records)
 
 
-def test_recuperar_solo_cierra_las_que_se_estaban_ejecutando(monkeypatch):
+def test_recuperar_solo_cierra_las_que_se_estaban_ejecutando_de_su_motor(monkeypatch):
     pedidos = []
     monkeypatch.setattr(simulaciones, "recupera_corridas_interrumpidas",
-                        lambda estados: pedidos.append(estados) or 2)
+                        lambda estados, engine: pedidos.append((estados, engine)) or 2)
     assert trabajador.recuperar() == 2
-    assert pedidos == [("ejecutando",)]
+    assert pedidos == [(("ejecutando",), "seir-ref")]
+
+
+@pytest.fixture
+def otro_motor(monkeypatch):
+    """Vuelve a cargar el trabajador con SIMULADOR_MOTOR, y al final con el de omisión."""
+    def cargar(valor):
+        if valor is None:
+            monkeypatch.delenv("SIMULADOR_MOTOR", raising=False)
+        else:
+            monkeypatch.setenv("SIMULADOR_MOTOR", valor)
+        return importlib.reload(trabajador)
+
+    yield cargar
+    monkeypatch.delenv("SIMULADOR_MOTOR", raising=False)
+    importlib.reload(trabajador)
+
+
+def test_el_motor_y_su_cola_salen_de_simulador_motor(otro_motor):
+    seir = otro_motor(None)
+    assert (seir.MOTOR, seir.COLA) == ("seir-ref", "queue:simulaciones:seir-ref")
+    abm = otro_motor(" abm-ref ")
+    assert (abm.MOTOR, abm.COLA, abm.estado["motor"]) == ("abm-ref", "queue:simulaciones:abm-ref",
+                                                         "abm-ref")
+
+
+@pytest.mark.parametrize("valor", ["abm-gpu", "numba", "otro"])
+def test_un_motor_que_no_esta_implementado_no_arranca(otro_motor, valor):
+    with pytest.raises(MotorNoDisponible):
+        otro_motor(valor)
 
 
 def test_el_ciclo_sobrevive_a_redis_caido_y_a_un_pedido_ilegible(mundo, monkeypatch, caplog):

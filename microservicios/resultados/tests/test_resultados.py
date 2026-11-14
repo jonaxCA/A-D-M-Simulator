@@ -8,6 +8,7 @@ import xmlschema
 from backend_web import queries
 from microservicios.resultados import rutas
 from procesamiento.motor import AVISO_SIMULACION
+from procesamiento.motores import IMPLEMENTADOS
 
 RAIZ = Path(__file__).resolve().parents[3]
 XSD = RAIZ / "docs/contratos/resultados/resultado.xsd"
@@ -80,6 +81,19 @@ def test_resultado_completo_con_aviso(cliente, token, rol):
     assert datos["corrida"]["id"] == 42 and datos["corrida"]["finished_at"].startswith("2026-10-20")
     assert "requested_by" not in datos["corrida"]
     assert datos["resumen"] == RESUMEN and datos["serie"] == SERIE and datos["trazabilidad"] == TRAZA
+
+
+@pytest.mark.parametrize("version, motor", [("abm-ref-0.1", "abm-ref"),
+                                            ("python-ref-0.1", "seir-ref"),
+                                            ("otro-9.9", None)])
+def test_las_simplificaciones_son_las_del_motor_que_corrio(cliente, token, monkeypatch, version,
+                                                           motor):
+    guardado = {"run_id": 42, "engine_version": version, "scenario_checksum": "a" * 64,
+                "resumen": RESUMEN, "serie": SERIE, "trazabilidad": TRAZA}
+    monkeypatch.setattr(queries, "get_resultado_run", lambda run_id: dict(guardado))
+    datos = cliente.get("/api/v1/runs/42/results?format=json", headers=token()).get_json()
+    esperado = list(IMPLEMENTADOS[motor].simplificaciones) if motor else []
+    assert datos["engine_version"] == version and datos["simplificaciones"] == esperado
 
 
 def test_curvas_e_indicadores_con_aviso(cliente, token):

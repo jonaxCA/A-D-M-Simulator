@@ -260,7 +260,8 @@ En **Nuevo lote** (parte inferior):
    con esa versión ya marcada.
 2. Elige las **réplicas** por escenario. Son 30 por omisión, con un máximo de 100. Si eliges
    menos de 30, la app pide confirmación: con pocas réplicas la comparación es menos confiable.
-3. Elige el **motor**. Hoy solo existe `seir-ref`.
+3. Elige el **motor**: `seir-ref` (SEIR por grupo de edad) o `abm-ref` (modelo basado en
+   agentes, más lento). Si el servidor no tiene el de `abm-ref`, la app muestra el error.
 4. Pulsa **Encolar N escenarios**.
 
 Cada escenario usa las semillas **1, 2, …, N**. Todos los escenarios del lote usan las

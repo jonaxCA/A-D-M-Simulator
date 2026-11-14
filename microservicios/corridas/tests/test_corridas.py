@@ -138,6 +138,16 @@ def test_un_motor_habilitado_va_a_su_propia_cola(cliente, token, base, redis_fal
     assert lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "gpu"}).status_code == 422
 
 
+def test_abm_ref_va_a_su_cola_con_su_version(cliente, token, base, redis_falso, monkeypatch):
+    """corridas conoce la versión de los motores implementados (procesamiento/motores.py)."""
+    monkeypatch.setenv("MOTORES_HABILITADOS", "abm-ref")
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "abm-ref"})
+    assert r.status_code == 202 and r.get_json()["engine"] == "abm-ref"
+    assert base.motores == {40: ("abm-ref", "abm-ref-0.1")}
+    assert en_cola(redis_falso, "abm-ref") == [{"id": 40, "forzar_error": False}]
+    assert en_cola(redis_falso) == []
+
+
 @pytest.mark.parametrize("anterior, actual", [("python-ref", "seir-ref"), ("cuda", "abm-gpu")])
 def test_los_nombres_anteriores_a_d2_se_traducen(cliente, token, base, redis_falso, monkeypatch,
                                                 anterior, actual):

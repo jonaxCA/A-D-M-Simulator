@@ -128,6 +128,23 @@ class TraduccionYFormatoTests(unittest.TestCase):
 # Integracion contra PostgreSQL real
 # ---------------------------------------------------------------------------
 class SimulacionesIntegracionTests(ConCorridasDePrueba):
+    def test_una_corrida_de_abm_ref_la_corre_el_abm(self):
+        """El motor es el del lote (D2), no el SEIR de siempre."""
+        run_id = self._encola(31, engine="abm-ref")
+        self.assertEqual(simulaciones.ejecutar_run(run_id, demora_seg=0), "completado")
+        guardado = queries.get_resultado_run(run_id)
+        self.assertEqual(guardado["engine_version"], "abm-ref-0.1")
+        version, simplificaciones = simulaciones.motor_de_resultado(guardado["engine_version"])
+        self.assertEqual(version, "abm-ref-0.1")
+        self.assertTrue(any("hogares" in s for s in simplificaciones))
+
+    def test_un_motor_sin_implementar_falla_con_su_nombre(self):
+        run_id = self._encola(32, engine="abm-gpu")
+        self.assertEqual(simulaciones.ejecutar_run(run_id, demora_seg=0), "fallido")
+        fila = query("SELECT error_message FROM simulation_runs WHERE id = %s", (run_id,),
+                     one=True)
+        self.assertIn("abm-gpu", fila["error_message"])
+
     def test_construir_escenario_desde_version_del_demo_no_da_errores(self):
         escenario, version, errores = simulaciones.construir_escenario_desde_version(
             self.version_id

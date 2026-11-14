@@ -1,6 +1,6 @@
 """Conformidad con el contrato de los motores (procesamiento/contrato.py, D2).
 
-Cada motor implementado se agrega a MOTORES_IMPLEMENTADOS y pasa las mismas pruebas.
+Los motores salen del registro (procesamiento/motores.py): uno nuevo pasa estas pruebas solo.
 
     python -m pytest procesamiento/tests/test_contrato_motor.py -v
 """
@@ -8,17 +8,13 @@ import copy
 import json
 import unittest
 
-from procesamiento import contrato
-from procesamiento.abm import simular as simular_abm
+from procesamiento import contrato, motores
 from procesamiento.motor import EscenarioInvalido
 from procesamiento.motor import simular as simular_seir
 from procesamiento.motor.modelo import huella_escenario
 
 # nombre del motor -> su simular(escenario, semilla)
-MOTORES_IMPLEMENTADOS = {
-    "seir-ref": simular_seir,
-    "abm-ref": simular_abm,
-}
+MOTORES_IMPLEMENTADOS = {nombre: m.simular for nombre, m in motores.IMPLEMENTADOS.items()}
 
 ESCENARIO = contrato.ESCENARIO_EJEMPLO
 SEMILLA = contrato.SEMILLA_EJEMPLO
@@ -66,6 +62,32 @@ class ConformidadTests(unittest.TestCase):
                 with self.subTest(motor=motor, semilla=semilla):
                     with self.assertRaises(ValueError):
                         simular(copy.deepcopy(ESCENARIO), semilla)
+
+
+class RegistroTests(unittest.TestCase):
+    def test_estan_seir_ref_y_abm_ref_con_los_nombres_de_d2(self):
+        self.assertEqual(set(motores.IMPLEMENTADOS), {"seir-ref", "abm-ref"})
+        self.assertLessEqual(set(motores.IMPLEMENTADOS), set(contrato.MOTORES))
+
+    def test_version_y_simplificaciones_son_las_de_su_salida(self):
+        for nombre, motor in motores.IMPLEMENTADOS.items():
+            with self.subTest(motor=nombre):
+                salida = motor.simular(copy.deepcopy(ESCENARIO), SEMILLA)
+                self.assertEqual(salida["engine_version"], motor.version)
+                self.assertEqual(salida["simplificaciones"], list(motor.simplificaciones))
+                self.assertIs(motores.de_version(motor.version), motor)
+
+    def test_un_motor_sin_implementar_o_desconocido_no_esta_disponible(self):
+        for nombre in ("abm-gpu", "numba", "otro", None):
+            with self.subTest(nombre=nombre):
+                with self.assertRaises(motores.MotorNoDisponible):
+                    motores.del_nombre(nombre)
+
+    def test_las_versiones_anteriores_a_la_035_son_seir_ref(self):
+        self.assertIs(motores.de_version("python-ref-0.1"), motores.IMPLEMENTADOS["seir-ref"])
+        for version in ("abm-gpu-0.1", "sin-guion", "", None, 3):
+            with self.subTest(version=version):
+                self.assertIsNone(motores.de_version(version))
 
 
 class ContratoTests(unittest.TestCase):
