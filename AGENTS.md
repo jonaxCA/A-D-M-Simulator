@@ -67,7 +67,7 @@ Calibración (D24), IA predictiva, visualización 3D y un modelo económico sofi
 
 ## Decisiones
 
-Todas las registradas en `docs/decisiones/decisiones.md` (D1 a D31) están aceptadas. Si una
+Todas las registradas en `docs/decisiones/decisiones.md` (D1 a D32) están aceptadas. Si una
 tarea pide algo que ninguna cubre, pregunta antes de implementarlo y regístralo ahí.
 
 ## Qué manda cuando dos fuentes se contradicen
