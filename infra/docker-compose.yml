@@ -7,6 +7,9 @@ name: epidemia
 # `python infra/genera_env.py`.
 x-servicio-base: &servicio-base
   restart: unless-stopped
+  # Límites de consumo (LIMITE_NORMAL, etc.); ver infra/limites.env. Todo va comentado por
+  # defecto y los servicios usan las cifras de epidemia_comun/limites.py.
+  env_file: limites.env
 
 # Todos los Dockerfile parten de epidemia/base (infra/docker/base.Dockerfile). Con
 # additional_contexts el compose construye primero el servicio base y nunca la busca en

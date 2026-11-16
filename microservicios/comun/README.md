@@ -82,6 +82,7 @@ docker compose -f infra/docker-compose.yml up -d redis
 | `cache` | `obtener(servicio, clave, ttl, calcular)` | Calcula con la base y sigue |
 | `candados` | `with candado(llave, ttl):` | 503 |
 | `cola` | `encolar`, `tomar` (espera hasta `ESPERA` segundos), `pendientes` | 503 |
+| `limites` | `consumir(usuario)` (lo llama `@requiere_token`) y `@limitar(perfil)` para rutas sin sesión, por IP | Sin sesión no se limita; con sesión ya da 503 |
 | `llaves` | El nombre de cada llave del catálogo y `huella()` | — |
 | `redis_compartido` | `requerido()`, `opcional()`, `estado()` para `/health` | — |
 
@@ -93,6 +94,7 @@ convierta en RFC 7807 sin conocerlas una por una:
 | `redis_compartido.RedisNoDisponible` | `REDIS_NO_DISPONIBLE` | 503 |
 | `sesiones.RefreshReutilizado` | `TOKEN_REVOCADO` | 401 |
 | `candados.CandadoOcupado` | `CONFLICTO` | 409 |
+| `errores.ErrorAPI` desde `limites` | `LIMITE_EXCEDIDO` (con `Retry-After`) | 429 |
 
 ## Cómo se usa
 
@@ -156,3 +158,18 @@ python -m pytest microservicios
 - Para correrlas contra un Redis real, define `REDIS_URL_PRUEBAS` con una base vacía, por
   ejemplo `redis://:<contraseña>@127.0.0.1:6380/15`. Cada prueba la borra al terminar; si no
   está vacía, se saltan.
+
+## Límites de consumo (D31)
+
+Ventana fija en Redis, un contador `ratelimit:<usuario>:<MÉTODO:regla>` (por IP en las rutas
+sin sesión). Las cifras son **supuestos de ingeniería**, a ajustar con las pruebas de carga;
+se cambian con `LIMITE_<PERFIL>="peticiones/segundos"`.
+
+| Perfil | Por defecto | Dónde |
+|---|---|---|
+| `normal` | 120 / 60 s | todos los servicios y `GET /auth/captcha` |
+| `permisivo` | 600 / 60 s | `casos`, `sincronizacion` |
+| `estricto` | 10 / 60 s | escrituras de `corridas` (las lecturas son `normal`) |
+| `publico` | 10 / 60 s | `POST /auth/login` |
+
+Detrás de nginx, `remote_addr` será la IP del proxy: habrá que leer `X-Forwarded-For` entonces.

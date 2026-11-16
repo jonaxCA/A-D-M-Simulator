@@ -5,6 +5,7 @@ from uuid import uuid4
 import jwt
 
 from .errores import ErrorAPI
+from . import limites
 from .llaves import huella, revocado, sesion
 
 
@@ -72,6 +73,7 @@ def requiere_token(roles=()):
                 raise ErrorAPI(401, "TOKEN_INVALIDO", "Identificador de usuario inválido.")
             g.contexto = Contexto(user_id, request.remote_addr,
                                   request.user_agent.string[:255])
+            limites.consumir(usuario["sub"])
             return funcion(*args, **kwargs)
         return ejecutar
     return decorador

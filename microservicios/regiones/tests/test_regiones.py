@@ -80,3 +80,10 @@ def test_responde_aunque_redis_este_caido(cliente, apagar_redis):
     apagar_redis()
     assert cliente.get("/api/v1/regions?format=json").status_code == 200
     assert cliente.get("/api/v1/regions/39").status_code == 200
+
+
+def test_el_catalogo_publico_limita_por_ip(cliente, monkeypatch):
+    monkeypatch.setenv("LIMITE_NORMAL", "2/60")
+    estados = [cliente.get("/api/v1/regions").status_code for _ in range(3)]
+    assert estados[:2] == [200, 200] and estados[2] == 429
+    assert [cliente.get("/api/v1/regions/39").status_code for _ in range(3)] == [200, 200, 429]

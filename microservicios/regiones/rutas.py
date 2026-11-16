@@ -1,10 +1,12 @@
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import responder
+from epidemia_comun.limites import limitar
 from backend_web import queries
 
 
 def registrar(app):
     @app.get("/api/v1/regions")
+    @limitar("normal")
     def regiones():
         from flask import request
         buscar = (request.args.get("q") or "").strip() or None
@@ -18,6 +20,7 @@ def registrar(app):
         return responder(datos, "catalogo_regiones")
 
     @app.get("/api/v1/regions/<int:region_id>")
+    @limitar("normal")
     def region(region_id):
         item = queries.get_region_municipio(region_id)
         if item is None:
