@@ -153,7 +153,7 @@
   }
 
   const ESTADOS = {ok: "OK", degradado: "Degradado", caido: "Caído"};
-  const CAUSAS = {postgresql: "PostgreSQL", redis: "Redis", proceso: "Proceso"};
+  const CAUSAS = {postgresql: "PostgreSQL", redis: "Redis", mongodb: "MongoDB", bucket: "Bucket", proceso: "Proceso"};
   const DETALLES = {sin_conexion: "sin conexión", tiempo_agotado: "tiempo agotado",
                     respuesta_invalida: "respuesta inválida"};
 
@@ -172,6 +172,7 @@
         el("td", {text: causa || "—"}),
         el("td", {text: s.version || "—"}),
         el("td", {class: "numero", text: s.latencia_ms === null ? "—" : `${s.latencia_ms} ms`}),
+        el("td", {class: "numero", text: s.errores === null || s.errores === undefined ? "—" : String(s.errores)}),
         el("td", {text: hora(new Date(s.revisado))}));
     }));
   }

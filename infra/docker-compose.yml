@@ -310,6 +310,7 @@ services:
       DATABASE_URL: ${DATABASE_URL_SINCRONIZACION:-postgresql://svc_sincronizacion:${DB_PASSWORD_SINCRONIZACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       SYNC_LOTE_TTL_SECONDS: ${SYNC_LOTE_TTL_SECONDS:-604800}
       SERVICIO_CASOS_URL: http://casos:8000
+      SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -587,6 +588,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_COMPARACION:-postgresql://svc_comparacion:${DB_PASSWORD_COMPARACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SERVICIO_RESULTADOS_URL: http://resultados:8000
     depends_on:
       postgres:
         condition: service_healthy

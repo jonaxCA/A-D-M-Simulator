@@ -116,7 +116,10 @@ def sondear(nombre):
     # Una página de error o la salud de otro servicio: el puerto no es el de ese servicio.
     if not isinstance(salud, dict) or salud.get("servicio") != nombre:
         return _registro(nombre, "caido", ["proceso"], "respuesta_invalida", latencia_ms=latencia)
-    causas = [c for c in ("postgresql", "redis") if salud.get(c) is False]
+    # MongoDB y el bucket valen "no_usa" si el servicio no los usa; un servicio que no trae
+    # esos campos (versión anterior de la biblioteca) tampoco se marca.
+    causas = [c for c in ("postgresql", "redis", "mongodb", "bucket")
+              if salud.get(c) is False or salud.get(c) == "no_configurado"]
     # Manda el código, como en el HEALTHCHECK de Docker: un 503 es degradado aunque no diga por qué.
     estado = "ok" if r.status_code == 200 else "degradado"
     return _registro(nombre, estado, causas, None, salud.get("version"), latencia)
@@ -139,6 +142,13 @@ def guardar(registros):
             p.expire(historial, TTL_HISTORIAL)
         p.execute()
     opcional("estado-servicios: guardar la salud", escribir)
+
+
+def errores(nombres):
+    # Errores 5xx de las últimas 24 h por servicio; None si Redis no responde.
+    valores = opcional("estado-servicios: leer los errores",
+                       lambda r: r.mget([llaves.errores(n) for n in nombres]))
+    return None if valores is None else {n: int(v or 0) for n, v in zip(nombres, valores)}
 
 
 def ultimos(nombres):

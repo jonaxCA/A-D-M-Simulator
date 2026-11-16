@@ -68,6 +68,14 @@ Además:
 | `URL_SONDEO`      | `http://127.0.0.1:{puerto}` | Dónde sondea; en el compose, `http://{servicio}:8000` |
 | `SONDEO_SEGUNDOS` | `10`                        | Cada cuánto sondea |
 
+Detrás de nginx (D25, RF-K11), `URL_PUBLICA=https://<dominio>/{servicio}` hace que el directorio
+responda `https://<dominio>/<servicio>`, con `/docs` y `/openapi.json` debajo.
+
+`/api/v1/services/health` agrega a cada servicio `errores`: las respuestas 5xx de las últimas
+24 h (`errors:<servicio>`, ver `comun/README.md`), o vacío si Redis no responde. En `causas`
+pueden salir también `mongodb` y `bucket` cuando el `/health` del servicio los reporta caídos o
+`no_configurado`.
+
 En las dos URL, `{puerto}` se cambia por el puerto de cada servicio y `{servicio}`
 por su nombre.
 
