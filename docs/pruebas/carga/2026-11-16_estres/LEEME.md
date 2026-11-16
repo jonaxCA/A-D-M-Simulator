@@ -34,3 +34,5 @@
 
 - Considerar un límite por IP (perfil `publico` con un valor alto, por ejemplo 300/60) para `GET /regions`, que es la única ruta abierta y la que más CPU gasta en PostgreSQL.
 - Para estimar capacidad real, repetir con `LIMITE_*` altos y con más de 100 usuarios; hasta entonces la cifra defendible es "100 usuarios sobre 4 cuentas, 457 req/s, 0 errores".
+
+Nota posterior: `GET /regions` y `GET /regions/{id}` ya llevan límite por IP (perfil normal, 120/60) y el compose pasa `LIMITE_*` a los contenedores desde `infra/limites.env`. Esta medición es anterior a ese cambio.
