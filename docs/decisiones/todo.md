@@ -100,8 +100,8 @@ D23 quedó aceptada el 2026-11-08 (ver [`D23-tecnologia-del-abm.md`](D23-tecnolo
 
 ### Código e infraestructura
 
-- **Máquina de Compute Engine con GPU:** elegir el tipo de máquina y su GPU, con NVIDIA Container Toolkit (integrante 7).
-- **Escritorio:** ofrecer `abm-gpu` en el selector de motor cuando `corridas` lo acepte (integrante 6).
+- **Máquina de Compute Engine con GPU:** elegir el tipo de máquina y su GPU, con NVIDIA Container Toolkit (bloque F del [checklist](../parciales/parcial-3/checklist.md)).
+- **Escritorio:** ofrecer `abm-gpu` en el selector de motor cuando `corridas` lo acepte (bloque A del [checklist](../parciales/parcial-3/checklist.md)).
 
 ### Costos
 
@@ -154,7 +154,7 @@ D8 quedó aceptada (ver [`D08-replicas-de-una-comparacion.md`](D08-replicas-de-u
 
 ### Pendiente
 
-- **Escritorio, aviso de bandas encimadas:** cuando las bandas p5–p95 de dos escenarios se enciman, la pantalla de comparación lo avisa (integrante 6).
+- **Escritorio, aviso de bandas encimadas:** cuando las bandas p5–p95 de dos escenarios se enciman, la pantalla de comparación lo avisa (bloque A del [checklist](../parciales/parcial-3/checklist.md)).
 
 ## Cambios pendientes por D6
 
@@ -169,7 +169,7 @@ D6 quedó aceptada con la opción C, el factor calculado (ver [`D06-poblacion-de
 
 ### Pendiente
 
-- **App de escritorio:** mostrar la escala que ya trae `resultados` (integrante 6).
+- **App de escritorio:** mostrar la escala que ya trae `resultados` (bloque A del [checklist](../parciales/parcial-3/checklist.md)).
 
 ## Cambios pendientes por D18 y D20
 

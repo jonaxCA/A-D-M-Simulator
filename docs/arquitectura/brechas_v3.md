@@ -21,7 +21,7 @@ Primero se termina el documento de arquitectura. El código se toca después, co
 
 | #  | Problema                                                                                                                                                                                   | Evidencia                       | Tipo                                         |
 |----|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|----------------------------------------------|
-| E5 | Los requerimientos funcionales, la trazabilidad y el contexto general están marcados como **Obsoleto**, y la matriz de permisos y las reglas de negocio como "revisar". La v3 no tiene una base de requerimientos vigente. | Encabezados de `requerimentos/` | Falta; se resuelve con §9.0, §9.1 y §9.6     |
+| E5 | Los requerimientos funcionales, la trazabilidad y el contexto general están marcados como **Obsoleto**, y la matriz de permisos y las reglas de negocio como "revisar". La v3 no tiene una base de requerimientos vigente. | Encabezados de `requerimentos/` | Borrador del 2026-11-16 en [`requerimentos/`](../requerimentos/README.md); falta validarlo en equipo |
 | E7 | La v2 deja fuera de alcance MongoDB, Cloud Storage y los límites de consumo, que ya decidieron D28, D30 y D31.                                                                             | `arquitectura_v2.md` §9.1 y §8  | Contradicción: la v3 tiene que incluirlos    |
 
 ## 2. Aplicaciones cliente
@@ -71,7 +71,7 @@ Primero se termina el documento de arquitectura. El código se toca después, co
 
 | #  | Requisito de la rúbrica                                                                                                                   | Documentado                                                                        | Implementado                                                                                                                                       | Tipo                                         |
 |----|-------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|
-| A3 | Réplicas de una comparación y cómo se resumen                                                                                             | D8: 30 réplicas con semillas 1..N; media, mediana y p5–p95; Pareto sobre medianas | En el escritorio (`frontend_desktop/app/resumen.py`)                                                                                               | Falta (parcial): el aviso de bandas encimadas (integrante 6) |
+| A3 | Réplicas de una comparación y cómo se resumen                                                                                             | D8: 30 réplicas con semillas 1..N; media, mediana y p5–p95; Pareto sobre medianas | En el escritorio (`frontend_desktop/app/resumen.py`)                                                                                               | Falta (parcial): el aviso de bandas encimadas (bloque A) |
 | A4 | Pruebas con Locust por perfil (consulta, registro, móvil, escritorio, procesos automáticos)                                               | Pendiente                                                                          | No                                                                                                                                                 | Falta                                        |
 | A5 | Métricas: usuarios concurrentes, peticiones por segundo, tiempo medio, p95, p99, errores, saturación, recuperación y endpoints más lentos | No                                                                                 | No                                                                                                                                                 | Falta                                        |
 
@@ -168,8 +168,8 @@ Cada punto de la rúbrica (Android, escritorio, integración, seguridad, nube, m
 2. Sacar las matrices y el inventario de datos (§9.2 y §9.3).
 3. Escribir la v3 a partir de la v2, con un apartado por cliente, el diagrama de despliegue en GCP con nginx y el diseño de MongoDB y de GCS.
 4. Validar la v3 contra la rúbrica (§9.5) y confirmar el volumen con el profesor (§8).
-5. Redactar los requerimientos, las historias de usuario y la trazabilidad (§9.6).
-6. Escribir el plan de implementación con las tareas que salen de los RF.
+5. Redactar los requerimientos, las historias de usuario y la trazabilidad (§9.6). **Borrador del 2026-11-16** en [`requerimentos/`](../requerimentos/README.md); falta validarlo en equipo.
+6. Escribir el plan de implementación con las tareas que salen de los RF. **Borrador del 2026-11-16** en [`parciales/parcial-3/checklist.md`](../parciales/parcial-3/checklist.md); falta validarlo en equipo.
 7. Marcar la v2 como Obsoleta.
 
 ## 11. Qué implementar después de la v3
@@ -180,4 +180,4 @@ Cada punto sigue su decisión:
 2. Volumen y mediciones con y sin índice y con y sin Redis ([D29](../decisiones/D29-volumen-de-datos.md)).
 3. Locust por perfil, con p95, p99, errores y saturación (A4 y A5).
 4. Límites de consumo ([D31](../decisiones/D31-limites-de-consumo.md)), reencolado de corridas ([D19](../decisiones/D19-redis-sin-datos-autoritativos.md)) y demostración de fallos (N5).
-5. Archivos en un bucket o emulador con URLs firmadas ([D30](../decisiones/D30-archivos-en-cloud-storage.md)); nginx local con certificado de mkcert ([D25](../decisiones/D25-nginx-como-entrada.md) y [D26](../decisiones/D26-certificado-https.md)).
+a. Archivos en un bucket o emulador con URLs firmadas ([D30](../decisiones/D30-archivos-en-cloud-storage.md)); nginx local con certificado de mkcert ([D25](../decisiones/D25-nginx-como-entrada.md) y [D26](../decisiones/D26-certificado-https.md)).
