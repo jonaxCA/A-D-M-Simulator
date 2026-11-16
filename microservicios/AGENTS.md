@@ -1,13 +1,13 @@
 # AGENTS.md — microservicios
 
-> **Estado: Vigente** · 2026-11-08 · Complementa el `AGENTS.md` de la raíz. Las decisiones que
+> **Estado: Vigente** · 2026-11-14 · Complementa el `AGENTS.md` de la raíz. Las decisiones que
 > afectan a los microservicios ya están tomadas (ver `docs/decisiones/decisiones.md`); van resumidas al final.
 
 ## Qué hay aquí
 
 Son 29 microservicios Flask pequeños, cada uno con una sola tarea, más una consola web para
-probarlos. Los usan **solo** las apps de escritorio (XML) y móvil (JSON). La móvil ya se programa
-contra ellos; la de escritorio todavía no tiene código. El sistema web (el monolito) sigue
+probarlos. Los usan **solo** las apps de escritorio (XML, `frontend_desktop/`) y móvil (JSON,
+`frontend_movil/`). El sistema web (el monolito) sigue
 hablando directo con PostgreSQL y no los llama.
 
 - [`docs/arquitectura/microservicios.md`](../docs/arquitectura/microservicios.md) es la
@@ -93,9 +93,10 @@ docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
     catálogo. Un puerto no se cambia sin cambiar el catálogo.
 11. **Contratos.** Una ruta nueva o un cambio de forma se refleja en
     `docs/contratos/<servicio>/` en el mismo PR. Un cambio incompatible va a `/api/v2/`.
-12. **Dependencias.** Nada de MongoDB ni de Google Cloud Storage. nginx es solo la entrada de
-    D25 (en `infra/`): ningún servicio lo llama. Una dependencia nueva se acuerda con el equipo
-    y va en los requerimientos de `comun`, no de un solo servicio.
+12. **Dependencias.** MongoDB solo con el cliente de `epidemia_comun` y solo para las
+    colecciones de D28. Google Cloud Storage solo en `evidencias` (D30). nginx es solo la
+    entrada de D25 (en `infra/`): ningún servicio lo llama. Una dependencia nueva se acuerda con
+    el equipo y va en los requerimientos de `comun`, no de un solo servicio.
 13. **Python.** Compatible con 3.9 (regla 11 de la raíz), aunque la imagen use una versión
     más nueva: el código de `backend_web` también lo corre el monolito.
 14. **El monolito no se toca para consumir servicios.** Si una tarea pide que la web llame a
@@ -165,6 +166,13 @@ Están en `docs/decisiones/decisiones.md`; si algo de aquí choca con ese archiv
   negocio.
 - **Servicios de la app móvil (D27):** `dispositivos`, `evidencias` y `vacunas`, con su
   contenedor, su rol, su contrato y sus pruebas.
+- **MongoDB (D28):** `historial_servicios` (el historial de `estado-servicios`, con TTL) y
+  `series_corridas` (un documento por día de cada corrida). Contenedor en `infra/`, cliente en
+  `epidemia_comun` y `/health/mongodb` en `fabrica.py`.
+- **Cloud Storage (D30):** `evidencias` guarda los archivos en un bucket, con URLs firmadas para
+  los privados; PostgreSQL guarda solo los metadatos.
+- **Límites de consumo (D31):** contador `ratelimit:<usuario>:<ruta>` en Redis, en
+  `epidemia_comun`; más permisivo en `casos` y `sincronizacion`, más estricto en `corridas`.
 
 Si te piden algo que ninguna de estas cubre ni está en `docs/decisiones/decisiones.md`, pregunta antes
 de implementarlo.

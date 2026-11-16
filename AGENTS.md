@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> **Estado: Vigente** · 2026-11-08
+> **Estado: Vigente** · 2026-11-14
 > Si algo aquí choca con lo que pide la persona en la sesión, pregunta antes de actuar.
 
 ## Contexto
@@ -21,14 +21,15 @@ cambios pequeños, legibles y fáciles de revisar.
   - El catálogo de servicios está en `docs/arquitectura/microservicios.md`.
 - **App de escritorio:** `frontend_desktop/`, en PySide6 y solo XML (MVP). Antes de tocarla, lee
   su `AGENTS.md`.
-- **Motor:** el SEIR de referencia (`seir-ref`, antes `python-ref`; D2). El modelo basado
-  en agentes (D22, con FLAME GPU 2 según D23) es parte de este parcial y todavía no tiene
-  código. MongoDB sigue sin decidirse (D28).
+- **Motor:** el SEIR de referencia (`seir-ref`, antes `python-ref`; D2) y el modelo basado
+  en agentes (D22): `abm-ref`, en Python (`procesamiento/abm/`), corre en el contenedor
+  `simulador-abm`. FLAME GPU 2 (D23) solo si sobra tiempo.
+- **Por implementar en este parcial:** MongoDB (D28), el volumen de datos (D29), Cloud Storage
+  (D30), los límites de consumo (D31) y nginx con HTTPS (D25 y D26).
 
-## Fuera de alcance (por ahora)
+## Fuera de alcance
 
-Falta decidir si se implementaran: MongoDB, Google Cloud Storage, calibración, IA predictiva, visualización 3D, límites de consumo
-y un modelo económico sofisticado.
+Calibración (D24), IA predictiva, visualización 3D y un modelo económico sofisticado.
 
 ## Reglas
 
@@ -64,19 +65,10 @@ y un modelo económico sofisticado.
 - Las pruebas corren contra `<base>_pruebas`, nunca contra la de la demostración. Se crea con
   `python datos/scripts/prepara_base_pruebas.py` (ver `docs/INSTALACION.md`).
 
-## Decisiones abiertas: pregunta antes de implementar
+## Decisiones
 
-Cada una tiene su número en `docs/decisiones/decisiones.md`:
-
-- Si la población de un escenario son habitantes o agentes simulados (D6, propuesta).
-- Cuántas réplicas usa una comparación y cómo se resumen (D8, propuesta).
-- Redis sin datos autoritativos (D19, por confirmar con el equipo).
-- Calibración y parámetros de los agentes (D24).
-- Qué datos van a MongoDB (D28).
-- Volumen de datos de alto volumen (D29).
-
-Las demás decisiones ya registradas están en `docs/decisiones/decisiones.md`. Cuando se tome una
-de esta lista, se marca en `docs/decisiones/decisiones.md` y se quita de aquí.
+Todas las registradas en `docs/decisiones/decisiones.md` (D1 a D31) están aceptadas. Si una
+tarea pide algo que ninguna cubre, pregunta antes de implementarlo y regístralo ahí.
 
 ## Qué manda cuando dos fuentes se contradicen
 
