@@ -11,6 +11,7 @@ import uuid
 from pathlib import Path
 
 import pytest
+import requests
 
 AQUI = Path(__file__).resolve().parent
 RAIZ = AQUI.parents[2]
@@ -38,7 +39,10 @@ def pytest_collection_modifyitems(config, items):
 def espera(condicion, limite, falla, cada=1):
     fin = time.monotonic() + limite
     while True:
-        valor = condicion()
+        try:
+            valor = condicion()
+        except requests.exceptions.ConnectionError:
+            valor = None
         if valor:
             return valor
         assert time.monotonic() < fin, falla
@@ -176,6 +180,10 @@ def lanza(api, analista):
     def lanzar(version, semilla):
         r = api("corridas", "POST", "/api/v1/runs", analista["access"],
                 json={"scenario_version_id": version, "seed": semilla})
+        while r.status_code == 429:
+            time.sleep(int(r.headers["Retry-After"]) + 1)
+            r = api("corridas", "POST", "/api/v1/runs", analista["access"],
+                    json={"scenario_version_id": version, "seed": semilla})
         assert r.status_code == 202, r.text
         return r.json()["id"]
     return lanzar

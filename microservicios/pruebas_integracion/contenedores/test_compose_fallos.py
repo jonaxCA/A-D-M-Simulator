@@ -1,5 +1,5 @@
-"""Caídas de un servicio, de PostgreSQL y un timeout (N5); la de Redis está en test_compose_redis.py.
-La demostración para humanos es infra/demo_fallos.py."""
+# Caídas de un servicio, de PostgreSQL y un timeout (N5); la de Redis está en test_compose_redis.py.
+# La demostración para humanos es infra/demo_fallos.py.
 from microservicios.estado_servicios.sondeo import SERVICIOS
 
 from .conftest import espera

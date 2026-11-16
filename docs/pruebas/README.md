@@ -22,4 +22,4 @@ El script está en [`pruebas_carga/locustfile.py`](../../pruebas_carga/locustfil
 
 ## Fallos
 
-La demostración se ejecuta con `python infra/demo_fallos.py` (ver `arquitectura_v3.md` §8). Su evidencia se agregará aquí.
+La demostración se ejecuta con `python infra/demo_fallos.py` (ver `arquitectura_v3.md` §9). Resultados del 2026-11-16: [fallos/2026-11-16](fallos/2026-11-16/LEEME.md) (servicio caído, Redis y la web, MongoDB y bucket de la demostración, PostgreSQL, tiempo excedido y cierre de sesión), con la salida de consola, las respuestas de cada caso y cómo repetirla.
