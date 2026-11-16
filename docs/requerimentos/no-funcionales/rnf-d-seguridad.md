@@ -14,11 +14,11 @@ Lo que pide la rúbrica en seguridad y cómo se cumple. El cotejo está en [`arq
 | RNF-D05 | Las consultas a PostgreSQL llevan parámetros, sin armar SQL con texto del usuario | Ninguna consulta concatena valores que llegan de fuera | Bases de datos, Seguridad | Verificar |
 | RNF-D06 | La web escapa lo que muestra | Las plantillas escapan el HTML por omisión | Web, Seguridad | Verificar |
 | RNF-D07 | Los formularios de la web llevan protección contra CSRF | Un formulario enviado desde otro sitio se rechaza | Web, Seguridad | Falta: no hay código ni brecha registrada |
-| RNF-D08 | Hay límites de consumo por usuario y ruta (D31) | Un contador `ratelimit:<usuario>:<ruta>` en Redis, en `epidemia_comun`. Más permisivo en `casos` y `sincronizacion`, más estricto en `corridas`. Sin sesión, va por IP. Propuesta: responder 429 con `Retry-After` | Microservicios, Seguridad | Falta (S2) |
+| RNF-D08 | Hay límites de consumo por usuario y ruta (D31) | Un contador `ratelimit:<usuario>:<ruta>` en Redis, en `epidemia_comun`. Más permisivo en `casos` y `sincronizacion`, más estricto en `corridas`. Sin sesión, va por IP. Responde 429 con `Retry-After` | Microservicios, Seguridad | Hecho |
 | RNF-D09 | Desde fuera solo se llega a nginx | Ni los servicios ni las bases publican puertos en la nube | Infraestructura, Seguridad | Falta (N1, S6) |
 | RNF-D10 | El firewall deja pasar solo lo necesario | 80 y 443 para todos; 22 solo para el equipo; 5432 y 6379 solo desde la máquina con GPU; lo demás, denegado | Infraestructura, Seguridad | Falta (N1) |
 | RNF-D11 | Los tokens tienen vida corta | Token de acceso HS256 de 20 minutos; token de renovación de un solo uso; sesión de 8 horas | Seguridad | Hecho |
-| RNF-D12 | Un token revocado deja de servir de inmediato | Cada servicio revisa la sesión y la revocación en Redis en cada petición. En Redis solo se guarda la huella del identificador, nunca el valor | Seguridad, Microservicios | Hecho en los servicios (S1); la web está por decidir (RF-A12) |
+| RNF-D12 | Un token revocado deja de servir de inmediato | Cada servicio revisa la sesión y la revocación en Redis en cada petición. En Redis solo se guarda la huella del identificador, nunca el valor | Seguridad, Microservicios | Hecho en los servicios (S1) y en la web (RF-A12, verificado el 2026-11-16) |
 | RNF-D13 | Cada servicio toca solo sus datos | Un rol de PostgreSQL por servicio, con permiso solo sobre sus tablas (D18) | Bases de datos, Seguridad | Hecho |
 | RNF-D14 | La auditoría es completa | Ver RF-A06 | Seguridad | Hecho |
 | RNF-D15 | No se guardan datos que identifiquen a una persona | Un caso no lleva nombre, CURP ni domicilio: solo edad, sexo, fechas, resultado, severidad y ubicación | Bases de datos, Seguridad | Hecho |

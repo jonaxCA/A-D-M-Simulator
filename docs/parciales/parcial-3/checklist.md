@@ -182,7 +182,7 @@ La web sigue directa a PostgreSQL (D20). Nada de SQL en `frontend_web`.
 
 ### C2. Sesión y seguridad
 
-- [ ] La web registra y revisa su sesión en Redis; cerrar sesión deja el token sin valor (I3, RF-A12).
+- [x] La web registra y revisa su sesión en Redis; cerrar sesión deja el token sin valor (I3, RF-A12). Verificado el 2026-11-16: `demo_fallos.py web` y `redis` (`docs/pruebas/fallos/2026-11-16`).
 - [ ] Protección contra CSRF en los formularios (RNF-D07).
 - [ ] Encabezados de seguridad en las respuestas (RNF-D21).
 - [ ] Verificar que ninguna consulta arma SQL con texto del usuario (RNF-D05) y que las plantillas escapan lo que muestran (RNF-D06).
@@ -258,40 +258,41 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### E1. Avisos (I1)
 
-- [ ] `sincronizacion` crea un aviso por lote a los EPIDEMIOLOGO cuando el lote trae casos nuevos. Un reintento del mismo lote no vuelve a avisar (D32, RF-C19).
-- [ ] Al enviar una versión a revisión se avisa a los EPIDEMIOLOGO (RF-D15).
-- [ ] `aprobacion` avisa al autor también cuando se rechaza (RF-D16).
+- [x] `sincronizacion` crea un aviso por lote a los EPIDEMIOLOGO cuando el lote trae casos nuevos. Un reintento del mismo lote no vuelve a avisar (D32, RF-C19).
+- [x] Al enviar una versión a revisión se avisa a los EPIDEMIOLOGO (RF-D15).
+- [x] `aprobacion` avisa al autor también cuando se rechaza (RF-D16).
 
 ### E2. Corridas y comparación
 
-- [ ] `comparacion` pide los resultados a `resultados`, en lugar de leer la tabla (RF-F22). Va después de D1.
-- [ ] Migración que baja el tope de réplicas de 200 a 100, y `corridas` rechaza más de 100 (D8, RF-E03).
-- [ ] Al arrancar, el simulador vuelve a encolar las corridas `encolado` de su motor (D19, RF-E19, RNF-C03).
-- [ ] `corridas` acepta `abm-gpu` solo donde está habilitado (RF-E15).
-- [ ] La web se identifica ante `resultados` como se haya decidido (D20).
+- [x] `comparacion` pide los resultados a `resultados`, en lugar de leer la tabla (RF-F22). Va después de D1.
+- [x] Migración que baja el tope de réplicas de 200 a 100, y `corridas` rechaza más de 100 (D8, RF-E03). Migración 036; `POST /runs` valida `replicas` (opcional, hasta 100) y el valor no cambia nada más: los lotes con varias réplicas llegan con la app de escritorio (RF-E03 queda «En parte»).
+- [x] Al arrancar, el simulador vuelve a encolar las corridas `encolado` de su motor (D19, RF-E19, RNF-C03).
+- [x] `corridas` acepta `abm-gpu` solo donde está habilitado (RF-E15). Lo decide `MOTORES_HABILITADOS` (por omisión solo `abm-ref`, el respaldo).
+- [x] La web se identifica ante `resultados` como se haya decidido (D20).
+  - D34: reenvía el JWT de la sesión del usuario (`backend_web/resultados.py`). Las curvas se piden a `resultados` si hay `SERVICIO_RESULTADOS_URL`; si no responde, la web sigue con PostgreSQL. El punto de arriba, «La corrida muestra su resumen desde `simulation_runs`…», sigue esperando a MongoDB.
 
 ### E3. Límites de consumo (D31, S2)
 
-- [ ] Contador `ratelimit:<usuario>:<ruta>` en Redis, desde `epidemia_comun` (RNF-D08).
-- [ ] Al pasar el límite, el servicio responde 429 con el tiempo de espera.
-- [ ] Prueba de que el límite se cumple y de que se libera al vencer.
+- [x] Contador `ratelimit:<usuario>:<ruta>` en Redis, desde `epidemia_comun/limites.py` (RNF-D08).
+- [x] Al pasar el límite, el servicio responde 429 con el tiempo de espera (`Retry-After`).
+- [x] Prueba de que el límite se cumple y de que se libera al vencer (`comun/tests/test_limites.py`; en contenedores, `test_compose_limites.py`).
 
 ### E4. Salud y panel (N3, N4)
 
-- [ ] `/health` informa también MongoDB, el bucket y el tiempo de respuesta. Un servicio que no los usa lo dice (RF-K10).
-- [ ] `estado-servicios` marca MongoDB y el bucket como dependencias caídas (RF-K05).
-- [ ] El panel cuenta los errores de cada servicio (RF-K12, RNF-J05).
+- [x] `/health` informa también MongoDB, el bucket y el tiempo de respuesta. Un servicio que no los usa lo dice (RF-K10). Hecho en `epidemia_comun/salud.py` (`no_usa`, `no_configurado`, tiempos; ver `comun/README.md`); listo para conectar cuando D agregue el servicio: falta declarar `dependencias=` / `DEPENDENCIAS` y `MONGO_URL` / `BUCKET_URL` en los servicios que los usen. Verificado con MongoDB y emulador del bucket de la demostración (`infra/docker-compose.fallos.yml`; evidencia en `docs/pruebas/fallos/2026-11-16`); falta conectarlo a los servicios reales del bloque D.
+- [x] `estado-servicios` marca MongoDB y el bucket como dependencias caídas (RF-K05). Hecho en `sondeo.py` (causas `mongodb` y `bucket`, con prueba); listo para conectar cuando D agregue el servicio. Verificado con MongoDB y emulador del bucket de la demostración (`infra/docker-compose.fallos.yml`; evidencia en `docs/pruebas/fallos/2026-11-16`); falta conectarlo a los servicios reales del bloque D.
+- [x] El panel cuenta los errores de cada servicio (RF-K12, RNF-J05): llave `errors:<servicio>` y columna «Errores (24 h)» de la consola.
 
 ### E5. Detrás de nginx (D25)
 
-- [ ] Cada servicio funciona detrás de `/<servicio>`: revisar `/docs`, `/openapi.json` y el CORS.
-- [ ] `estado-servicios` responde `https://<dominio>/<servicio>` (RF-K11).
+- [x] Cada servicio funciona detrás de `/<servicio>`: revisar `/docs`, `/openapi.json` y el CORS. `DETRAS_DE_PROXY=1` (ProxyFix); falta probarlo con el nginx real (F2).
+- [x] `estado-servicios` responde `https://<dominio>/<servicio>` (RF-K11), con `URL_PUBLICA=https://<dominio>/{servicio}`.
 
 ### E6. Verificar
 
-- [ ] Cada línea de registro trae la fecha, el servicio, el nivel y el identificador de correlación (RNF-J06).
-- [ ] Los contratos de `docs/contratos/` y la colección de Postman coinciden con las rutas nuevas (pruebas de contratos).
-- [ ] `python -m pytest microservicios` y `python infra/pruebas_integracion.py` pasan.
+- [x] Cada línea de registro trae la fecha, el servicio, el nivel y el identificador de correlación (RNF-J06). Formato en `epidemia_comun/registro.py`.
+- [x] Los contratos de `docs/contratos/` y la colección de Postman coinciden con las rutas nuevas (pruebas de contratos).
+- [x] `python -m pytest microservicios` y `python infra/pruebas_integracion.py` pasan (sin `--gpu`: 133 pasan, 1 se salta).
 
 ## F. Nube, monitoreo y pruebas de carga
 
@@ -327,14 +328,14 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### F5. Demostración de fallos (N5)
 
-- [ ] Guion y evidencia de qué pasa cuando se detiene un microservicio (RNF-C02).
-- [ ] Lo mismo con Redis, con MongoDB y con PostgreSQL (RNF-C16).
-- [ ] Lo mismo con el bucket, y con una petición que excede el tiempo máximo (RNF-C18).
+- [x] Guion y evidencia de qué pasa cuando se detiene un microservicio (RNF-C02). Evidencia: `docs/pruebas/fallos/2026-11-16`.
+- [x] Lo mismo con Redis, con MongoDB y con PostgreSQL (RNF-C16). Evidencia: `docs/pruebas/fallos/2026-11-16`. MongoDB, solo `/health` y panel (falta la corrida con resumen, bloque D); con PostgreSQL las lecturas dan 503 `SERVICIO_NO_DISPONIBLE` (antes 500; corregido en `fabrica.py` y vuelto a demostrar el 2026-11-16).
+- [x] Lo mismo con el bucket, y con una petición que excede el tiempo máximo (RNF-C18). Evidencia: `docs/pruebas/fallos/2026-11-16`. Bucket, solo `/health` y panel (falta la subida, bloque D).
 
 ### F6. Documentos
 
 - [ ] Guía de despliegue en GCP y `INSTALACION.md` al día, con MongoDB, el emulador y nginx.
-- [ ] Resultados de Locust y de las pruebas de fallos en `docs/`.
+- [x] Resultados de Locust y de las pruebas de fallos en `docs/` (`docs/pruebas/carga` y `docs/pruebas/fallos/2026-11-16`).
 
 ---
 

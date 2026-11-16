@@ -149,7 +149,7 @@ D8 quedó aceptada (ver [`D08-replicas-de-una-comparacion.md`](D08-replicas-de-u
 
 - **Escritorio, réplicas:** hecho en el MVP de `frontend_desktop`, del lado del cliente. La app lanza N corridas por versión (semillas 1..N; 30 por omisión, máximo 100 por el tope de `GET /runs`) y pide confirmación con menos de 30. Los servicios no cambiaron: cada réplica queda como un lote de una corrida.
 - **Escritorio, resumen:** hecho también en el cliente (`frontend_desktop/app/resumen.py`): media, mediana y percentiles 5 y 95 por escenario, sobre las semillas comunes a las versiones comparadas. La frontera se calcula sobre medianas. Pasarlo a `corridas`, `comparacion` y `pareto` queda para la entrega final.
-- **Tope:** D8 lo fija en 100, el de `GET /runs`. La base tiene `max_replicas_por_lote` (200) y `replicas_por_defecto` (30) en `system_settings` (migración 010), y ningún código las lee. Falta la migración que baja el tope a 100 (la siguiente libre es la 036).
+- **Tope:** D8 lo fija en 100, el de `GET /runs`. La base tiene `max_replicas_por_lote` (200) y `replicas_por_defecto` (30) en `system_settings` (migración 010), y ningún código las lee. La migración 036 baja el tope a 100 (`system_settings` y el CHECK) y `corridas` rechaza `replicas` mayor que 100.
 - **Web:** no lanza corridas (D4). Solo muestra lo que se corrió.
 
 ### Pendiente
