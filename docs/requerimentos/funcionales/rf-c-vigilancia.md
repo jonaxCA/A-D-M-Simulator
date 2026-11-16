@@ -1,147 +1,44 @@
-Estado: Obsoleto. Requiere actualizarse
+> **Estado: Borrador** · 2026-11-16 · Por validar en equipo
 
-# RF-C: Vigilancia Epidemiológica (Captura de Campo)
+# RF-C: Vigilancia epidemiológica (captura en campo)
+
+Es el proceso **P1** de [`procesos_v3.md`](../../arquitectura/procesos_v3.md): el CAPTURISTA registra casos con su ubicación y fotos desde la app Android, aunque no tenga conexión, y los manda después. Cómo leer la tabla: [`README.md`](../README.md).
 
 ## Dependencias
 
-- RF-A (autenticación)
-- RF-B (catálogos: regiones)
-- PostgreSQL (cases)
-- GCS (evidencias)
+- RF-A (sesión y teléfono registrado), RF-B (catálogos) y RF-I (la app).
+- PostgreSQL: `cases`, `case_attachments`, `vaccine_lots`.
+- Redis: candado y resultado de cada lote.
+- Cloud Storage: las fotos (D30).
+- Servicios: `sincronizacion`, `casos`, `evidencias`, `vacunas`, `notificaciones`.
 
-### RF-C01 Registro de caso
+## Requerimientos
 
-La app móvil debe permitir capturar: folio, edad, sexo, municipio, AGEB, fecha de inicio de síntomas, cuadro clínico, resultado de laboratorio
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
+| ID | Requerimiento | Criterio de aceptación | Paso | Componente | Prioridad | Estado |
+|---|---|---|---|---|---|---|
+| RF-C01 | La app registra un caso con enfermedad, municipio, fecha, edad, sexo, resultado de la prueba y severidad. No se captura el nombre ni otro dato que identifique a la persona | El caso queda pendiente en el teléfono con su `local_uuid` | 1.4 | Móvil | Alta | Hecho |
+| RF-C02 | La app toma la ubicación del GPS al capturar | El caso guarda latitud y longitud | 1.4 | Móvil | Alta | Hecho |
+| RF-C03 | La app toma fotos del caso y las sube cuando el caso ya existe en el servidor | Las fotos se reducen a 1600 px y pierden el EXIF. `evidencias` guarda en `case_attachments` la ruta, el tipo, el tamaño, la huella, la privacidad, quién y cuándo; queda `CREATE` en la auditoría. El archivo va al bucket | 1.5, 1.7 | Móvil, Microservicios | Alta | En parte: el archivo va a un volumen del servicio; falta el bucket (D-3, D30) |
+| RF-C04 | La app lee el QR de un lote de vacuna y lo registra | `vacunas` da de alta el lote en `vaccine_lots`; queda `CREATE` en la auditoría. Un lote caducado no se registra (RN-10) | 1.8 | Móvil, Microservicios | Media | Hecho |
+| RF-C05 | La app lee también el código de barras de un lote de vacuna | Igual que RF-C04 | 1.8 | Móvil | Media | Hecho |
+| RF-C06 | El formulario se valida en el teléfono | Un campo obligatorio vacío o un valor fuera de rango no deja guardar y dice por qué | 1.4 | Móvil | Alta | Hecho |
+| RF-C07 | La captura funciona sin conexión | Sin red, el caso y sus fotos se guardan en el teléfono (Room) y no se pierden al cerrar la app | 1.4, 1.5 | Móvil | Alta | Hecho |
+| RF-C08 | Con red, la app manda sola los casos pendientes, en lotes de hasta 100 | `sincronizacion` crea los casos por medio de `casos`; quedan `SYNC` de `sync_batches` y `CREATE` de `cases` en la auditoría | 1.6 | Móvil, Microservicios | Alta | Hecho |
+| RF-C09 | Un caso no se duplica aunque el lote se mande dos veces | Un reintento usa el mismo lote. El servidor no repite un `local_uuid` y responde el resultado guardado del lote (7 días en Redis) | 1.6 | Microservicios, Bases de datos | Alta | Hecho |
+| RF-C10 | El servidor asigna su identificador a cada caso | La app guarda el `case_id` como comprobante del envío | 1.6 | Microservicios | Alta | Hecho |
+| RF-C12 | El servidor valida cada caso al recibirlo | Un caso con datos inválidos se rechaza con su motivo, sin detener el resto del lote; la app lo muestra como rechazado | 1.6 | Microservicios | Alta | Hecho |
+| RF-C13 | La app aplica dosis a un lote de vacuna | `vacunas` suma a `doses_used`; queda `UPDATE` en la auditoría. No se aplica a un lote caducado ni más dosis de las que tiene (RN-11, RN-30) | 1.8 | Móvil, Microservicios | Media | Hecho |
+| RF-C14 | La app muestra qué se envió, qué se rechazó y qué falta | Cada caso aparece como enviado, rechazado o pendiente | 1.6 | Móvil | Alta | Hecho |
+| RF-C19 | Cuando un lote trae casos nuevos, se avisa a los EPIDEMIOLOGO | `sincronizacion` crea un aviso por lote, no uno por caso, por medio de `notificaciones`. Un reintento del mismo lote no vuelve a avisar (D32) | 1.6 | Microservicios | Alta | Falta (I1) |
+| RF-C20 | La web muestra la foto de un caso con una URL firmada | Solo un rol con permiso recibe la URL, y vence en minutos | 1.9 | Web, Microservicios | Alta | Falta (D-3) |
+| RF-C21 | Un teléfono revocado deja de sincronizar | `sincronizacion` rechaza el lote; los casos vuelven a pendientes en el teléfono y la app cierra la sesión | 1.6 | Microservicios, Móvil | Media | Hecho |
 
-### RF-C02 Georreferenciación
+## Fuera de alcance
 
-La app debe capturar automáticamente coordenadas GPS del lugar de captura
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-C03 Evidencia fotográfica
-
-La app debe permitir adjuntar fotografías al caso usando CameraX
-Criterio de aceptación: pendiente de definir
-Prioridad: Media
-
-### RF-C04 Escaneo de QR
-
-La app debe leer códigos QR de lotes de vacuna usando ML Kit
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-C05 Escaneo de código de barras
-
-La app debe leer códigos de barras de kits de prueba diagnóstica
-Criterio de aceptación: pendiente de definir
-Prioridad: Media
-
-### RF-C06 Validación local
-
-La app debe validar en el dispositivo: campos obligatorios, rangos de edad, formatos de fecha
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-C07 Modo sin conexión
-
-La app debe almacenar casos localmente en Room cuando no hay conectividad
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-C08 Sincronización posterior
-
-La app debe reenviar automáticamente casos pendientes usando WorkManager
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-C09 Deduplicación
-
-El sistema debe evitar duplicados usando folio local generado por dispositivo
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-C10 Folio de servidor
-
-El sistema debe asignar folio único de servidor al recibir cada caso
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-C11 Edición de caso
-
-El usuario autorizado debe poder corregir datos de un caso ya registrado
-Criterio de aceptación: pendiente de definir
-Prioridad: Media
-
-### RF-C12 Validación semántica
-
-El sistema debe validar coherencia: fecha de síntomas ≤ fecha de captura, edad en rango válido
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-C13 Registro de vacunación
-
-El sistema debe permitir registrar dosis aplicadas asociadas a lote escaneado
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-C14 Estado de sincronización
-
-La app debe mostrar claramente qué registros están pendientes de envío
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-C15 Eliminación con justificación
-
-El usuario debe poder marcar un caso como erróneo con motivo documentado
-Criterio de aceptación: pendiente de definir
-Prioridad: Media
-
-### RF-C16 Importación de datos históricos
-
-El sistema debe permitir cargar series históricas desde archivos para calibración
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-C17 Consolidación por AGEB
-
-El sistema debe agregar casos por AGEB para alimentar el modelo
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-C18 Umbral de publicación
-
-El sistema no debe publicar datos de AGEB con menos de N casos (protección de privacidad)
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-#### CU-C01: Captura de caso en campo sin conexión
-
-* **Actor:** Capturista  
-* **Precondición:** Dispositivo sin conectividad  
-* **Flujo principal:**
-
-  1\. Capturista abre formulario de nuevo caso
-
-  2\. App valida campos obligatorios
-
-  3\. App genera folio local (UUID \+ timestamp)
-
-  4\. App captura coordenadas GPS
-
-  5\. App guarda en Room con estado "pendiente"
-
-  6\. WorkManager detecta reconexión
-
-  7\. App envía caso al servidor
-
-  8\. Servidor asigna folio oficial
-
-  9\. App actualiza estado a "sincronizado"
-
-* **Flujos alternativos:**  
-  * Envío duplicado → servidor deduplica por folio local  
-  * Error de validación → app muestra errores y permite corrección  
-* **Postcondición:** Caso registrado en sistema con trazabilidad completa
+| ID | Qué pedía | Por qué sale |
+|---|---|---|
+| RF-C11 | Corregir un caso ya registrado | `casos` solo registra y consulta. D32 decidió que la app no edita casos |
+| RF-C15 | Marcar un caso como erróneo con su motivo | Ningún proceso lo pide; la web no valida ni descarta casos |
+| RF-C16 | Cargar series históricas para calibrar | La calibración queda fuera (D24) |
+| RF-C17 | Agregar casos por AGEB | El catálogo llega a municipio. El tablero y el mapa agregan por municipio (RF-G03) |
+| RF-C18 | No publicar zonas con menos de N casos | No hay umbral definido ni decisión que lo pida |

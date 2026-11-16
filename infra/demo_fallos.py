@@ -136,10 +136,10 @@ def redis_caido(token):
                 estado_web = urllib.request.urlopen(web.rstrip("/") + "/login", timeout=10).status
             except urllib.error.HTTPError as e:
                 estado_web = e.code
-            veredicto("Redis caído (web)", "/login responde 200 con un mensaje amable, sin 500 (D32)",
+            veredicto("Redis caído (web)", "/login responde 200 con un mensaje amable, sin 500 (D33)",
                       "/login=%d" % estado_web, estado_web == 200)
         else:
-            print("  (web) sin DEMO_WEB_URL: probar a mano que /login muestre el aviso y que una sesión abierta siga (D32)")
+            print("  (web) sin DEMO_WEB_URL: probar a mano que /login muestre el aviso y que una sesión abierta siga (D33)")
     finally:
         compose("start", REDIS)
     ok = espera(lambda: pide("casos", "/api/v1/cases", token=token)[0] == 200)

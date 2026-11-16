@@ -1,4 +1,4 @@
-# D32 - Redis caído en la web
+# D33 - Redis caído en la web
 
 Fecha: 2026-11-16 · Estado: Aceptada (tomada por el orquestador; pendiente de validación del equipo)
 

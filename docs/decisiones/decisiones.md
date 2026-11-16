@@ -37,4 +37,5 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D29 | Volumen de datos de alto volumen                                               | Aceptada  | D6, D8, D28 | [D29-volumen-de-datos.md](D29-volumen-de-datos.md)                                     |
 | D30 | Archivos en Cloud Storage                                                      | Aceptada  | -           | [D30-archivos-en-cloud-storage.md](D30-archivos-en-cloud-storage.md)                   |
 | D31 | Limites de consumo                                                             | Aceptada  |             | [D31-limites-de-consumo.md](D31-limites-de-consumo.md)                                                              |
-| D32 | Redis caído en la web (pendiente de validación del equipo)                      | Aceptada  | D31, D20    | [D32-redis-caido-en-la-web.md](D32-redis-caido-en-la-web.md)                            |
+| D32 | Cierre de los procesos de la v3: aviso de P1, C9 y P2 sin bucket               | Aceptada  | D28, D30    | [D32-cierre-de-los-procesos-v3.md](D32-cierre-de-los-procesos-v3.md)                   |
+| D33 | Redis caído en la web (pendiente de validación del equipo)                      | Aceptada  | D31, D20    | [D33-redis-caido-en-la-web.md](D33-redis-caido-en-la-web.md)                            |

@@ -1,78 +1,33 @@
-Estado: Obsoleto. Requiere actualizarse
+> **Estado: Borrador** · 2026-11-16 · Por validar en equipo
 
-# RNF-K: Almacenamiento y Datos
+# RNF-K: Almacenamiento y datos
 
-### RNF-K01 Integridad referencial
+Dónde va cada dato y por qué. La regla está en [`brechas_v3.md`](../../arquitectura/brechas_v3.md) (§9.3) y el inventario en [`matrices_v3.md`](../../arquitectura/matrices_v3.md). Cómo leer la tabla: [`README.md`](../README.md).
 
-PostgreSQL con claves foráneas y restricciones
-Criterio de aceptación: pendiente de definir
+## Requerimientos
 
-### RNF-K02 Datos versionados
+| ID | Requerimiento | Criterio de aceptación | Componente | Estado |
+|---|---|---|---|---|
+| RNF-K01 | PostgreSQL cuida la integridad | Llaves foráneas y restricciones (`CHECK`) en las tablas; los estados válidos los fija la base | Bases de datos | Hecho |
+| RNF-K02 | Un escenario no se sobrescribe | Cada cambio es una versión nueva, y la versión congela su población y sus parámetros (D5) | Bases de datos | Hecho |
+| RNF-K03 | MongoDB guarda lo de alta frecuencia que se agrega más de lo que se edita (D28) | Dos colecciones: `historial_servicios` y `series_corridas`. Se demuestran inserción, consulta, actualización, agregación, índices y recuperación por `run_id` | Bases de datos | Falta (D-1) |
+| RNF-K05 | Todo lo que va a Redis tiene vencimiento | Cada llave se escribe con su tiempo de vida: captcha 300 s, sesión 8 h, resultado de lote 7 días, avance de corrida 24 h, caché de `resultados` 300 s | Bases de datos | Hecho |
+| RNF-K07 | Cada dato tiene definido cuánto vive | El inventario de datos dice la retención de cada tabla, colección y archivo | Bases de datos | Falta: la retención de las tablas de PostgreSQL y de los archivos está «Por definir» en `matrices_v3.md` |
+| RNF-K08 | Un registro no entra dos veces | Ver RF-C09 | Bases de datos | Hecho |
+| RNF-K11 | PostgreSQL es la fuente de verdad | Si Redis o MongoDB se pierden, lo que queda en PostgreSQL basta para seguir (D19) | Bases de datos | Hecho |
+| RNF-K12 | Ningún archivo va dentro de la base | PostgreSQL guarda solo el identificador, la ruta, el tipo, el tamaño, el propietario, la fecha, la huella y la privacidad. El archivo va a Cloud Storage (D30) | Bases de datos | En parte: hoy el archivo va a un volumen; falta el bucket (D-3) |
+| RNF-K14 | Las consultas frecuentes tienen su índice | En MongoDB: `{run_id, dia}` único y `{batch_id}` en `series_corridas`; `{servicio, fecha}` con TTL en `historial_servicios`. Se mide con y sin índice (D29) | Bases de datos | Falta (D-1, D-6) |
+| RNF-K16 | Cada tabla tiene un solo servicio dueño | Solo el dueño escribe en ella; el catálogo dice quién escribe y quién lee cada tabla | Bases de datos, Microservicios | Hecho |
+| RNF-K17 | Los documentos de MongoDB llevan su versión de esquema | Cada documento tiene `version_esquema`; quien lee acepta las versiones que conoce | Bases de datos | Falta (D-1) |
+| RNF-K18 | Un solo bucket privado para los archivos | Sin lectura pública. Propuesta: los prefijos `evidencias/` y `reportes/` | Infraestructura, Bases de datos | Falta (D-3) |
 
-Escenarios y catálogos con versionado completo
-Criterio de aceptación: pendiente de definir
+## Fuera de alcance
 
-### RNF-K03 Series temporales
-
-MongoDB para series diarias de simulación
-Criterio de aceptación: pendiente de definir
-
-### RNF-K04 Inmutabilidad de resultados
-
-Resultados de simulación una vez escritos no se modifican
-Criterio de aceptación: pendiente de definir
-
-### RNF-K05 Caché con TTL
-
-Entradas de caché Redis con expiración definida
-Criterio de aceptación: pendiente de definir
-
-### RNF-K06 Archivado
-
-Datos antiguos archivados a GCS para preservar rendimiento
-Criterio de aceptación: pendiente de definir
-
-### RNF-K07 Retención configurable
-
-Políticas de retención por tipo de dato
-Criterio de aceptación: pendiente de definir
-
-### RNF-K08 Deduplicación
-
-Prevención de registros duplicados desde origen
-Criterio de aceptación: pendiente de definir
-
-### RNF-K09 Copias de seguridad
-
-Respaldo diario automático con verificación
-Criterio de aceptación: pendiente de definir
-
-### RNF-K10 Consistencia eventual
-
-Resultados de simulación toleran consistencia eventual
-Criterio de aceptación: pendiente de definir
-
-### RNF-K11 Consistencia fuerte
-
-Datos transacciónales requieren consistencia fuerte (PostgreSQL)
-Criterio de aceptación: pendiente de definir
-
-### RNF-K12 Almacenamiento de archivos
-
-Archivos nunca en base de datos; solo referencias
-Criterio de aceptación: pendiente de definir
-
-### RNF-K13 Compresión
-
-Series temporales comprimidas para optimizar almacenamiento
-Criterio de aceptación: pendiente de definir
-
-### RNF-K14 Índices óptimos
-
-Índices para patrones de consulta definidos
-Criterio de aceptación: pendiente de definir
-
-### RNF-K15 Particionamiento
-
-Series históricas particionables por período
-Criterio de aceptación: pendiente de definir
+| ID | Qué pedía | Por qué sale |
+|---|---|---|
+| RNF-K04 | Resultados que no se modifican | Se cubre con la versión congelada (RNF-K02) y con RNF-J12 |
+| RNF-K06 | Archivar datos viejos en Cloud Storage | El volumen de D29 no lo pide |
+| RNF-K09 | Respaldo diario | Ver RNF-C05 |
+| RNF-K10 | Consistencia eventual en resultados | Se cubre con RNF-K11 |
+| RNF-K13 | Comprimir las series | El volumen de D29 no lo pide |
+| RNF-K15 | Particionar las series por periodo | El volumen de D29 no lo pide |

@@ -12,7 +12,8 @@ cambios pequeños, legibles y fáciles de revisar.
 ## Etapa actual: tercer parcial
 
 - **Sistema web:** el monolito Flask sigue conectado directo a PostgreSQL y **no llama a los
-  microservicios**. Consulta escenarios y corridas y el epidemiólogo aprueba en ella; crear y
+  microservicios**; la única excepción, cuando exista MongoDB, serán las curvas de una corrida,
+  que pedirá a `resultados` (D20 y D28). Consulta escenarios y corridas y el epidemiólogo aprueba en ella; crear y
   editar escenarios, enviarlos a revisión y lanzar corridas es de la app de escritorio (D4).
 - **Microservicios:** 29 servicios Flask pequeños en `microservicios/`, cada uno en su
   contenedor de Docker, con Redis y JWT. Son para las apps de escritorio (XML) y móvil
@@ -67,7 +68,7 @@ Calibración (D24), IA predictiva, visualización 3D y un modelo económico sofi
 
 ## Decisiones
 
-Todas las registradas en `docs/decisiones/decisiones.md` (D1 a D32) están aceptadas. Si una
+Todas las registradas en `docs/decisiones/decisiones.md` (D1 a D33) están aceptadas. Si una
 tarea pide algo que ninguna cubre, pregunta antes de implementarlo y regístralo ahí.
 
 ## Qué manda cuando dos fuentes se contradicen

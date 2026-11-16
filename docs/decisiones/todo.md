@@ -39,7 +39,7 @@ D1 quedó aceptada el 2026-11-07 (ver [`D01-permisos-y-auditoria.md`](D01-permis
 - **Migración 034** (siguiente número libre; 031 a 033 son de D27 y no se edita la 010): crear `scenarios.approve`, darlo a EPIDEMIOLOGO y ADMINISTRADOR, y quitar `audit.read` al EPIDEMIOLOGO.
 - **Quitar la captura de casos de la web:** la ruta `/reportes/nuevo`, sus enlaces y su plantilla. `cases.create` sigue para el CAPTURISTA, en la app móvil y en la API.
 - **Candados por permiso** (propuesta, pasos 4 a 7): leer los permisos al iniciar sesión y guardarlos en el JWT (`perms`) en `backend_web/auth.py`; crear `requiere_permiso(codigo)` en `frontend_web/app/permisos.py`, que responde 403 y registra `PERMISSION_DENIED` con `log_audit`; cambiar el candado de cada ruta según la tabla de la propuesta; exponer `puede()` a las plantillas.
-- **Cuenta de prueba de CAPTURISTA** (propuesta, paso 8) en `datos/postgres/semillas/demo_datos_nl.sql`. Sirve para la API, no para la web.
+- **Cuenta de prueba de CAPTURISTA** (propuesta, paso 8) en `datos/postgres/semillas/demo_datos_nl.sql`. Sirve para la API y, en la web, solo para el tablero y el mapa (D1, 2026-11-16).
 - **Verificación:** `grep -n "roles_required\|admin_required" frontend_web/app/routes.py` no regresa nada.
 
 ### Documentos
@@ -49,7 +49,7 @@ D1 quedó aceptada el 2026-11-07 (ver [`D01-permisos-y-auditoria.md`](D01-permis
 ### Preguntas abiertas
 
 - ¿El ADMINISTRADOR también captura casos? La respuesta 1 dice solo CAPTURISTA. La matriz le quita la captura, pero la migración 010 le da todos los permisos, incluido `cases.create`.
-- ¿El login web rechaza al CAPTURISTA, o le deja entrar y le niega cada pantalla con 403?
+- ~~¿El login web rechaza al CAPTURISTA, o le deja entrar y le niega cada pantalla con 403?~~ Resuelto el 2026-11-16: entra, ve el tablero y el mapa, y lo demás responde 403.
 
 ### Efectos en otras decisiones
 
@@ -100,8 +100,8 @@ D23 quedó aceptada el 2026-11-08 (ver [`D23-tecnologia-del-abm.md`](D23-tecnolo
 
 ### Código e infraestructura
 
-- **Máquina de Compute Engine con GPU:** elegir el tipo de máquina y su GPU, con NVIDIA Container Toolkit (integrante 7).
-- **Escritorio:** ofrecer `abm-gpu` en el selector de motor cuando `corridas` lo acepte (integrante 6).
+- **Máquina de Compute Engine con GPU:** elegir el tipo de máquina y su GPU, con NVIDIA Container Toolkit (bloque F del [checklist](../parciales/parcial-3/checklist.md)).
+- **Escritorio:** ofrecer `abm-gpu` en el selector de motor cuando `corridas` lo acepte (bloque A del [checklist](../parciales/parcial-3/checklist.md)).
 
 ### Costos
 
@@ -154,7 +154,7 @@ D8 quedó aceptada (ver [`D08-replicas-de-una-comparacion.md`](D08-replicas-de-u
 
 ### Pendiente
 
-- **Escritorio, aviso de bandas encimadas:** cuando las bandas p5–p95 de dos escenarios se enciman, la pantalla de comparación lo avisa (integrante 6).
+- **Escritorio, aviso de bandas encimadas:** cuando las bandas p5–p95 de dos escenarios se enciman, la pantalla de comparación lo avisa (bloque A del [checklist](../parciales/parcial-3/checklist.md)).
 
 ## Cambios pendientes por D6
 
@@ -169,7 +169,7 @@ D6 quedó aceptada con la opción C, el factor calculado (ver [`D06-poblacion-de
 
 ### Pendiente
 
-- **App de escritorio:** mostrar la escala que ya trae `resultados` (integrante 6).
+- **App de escritorio:** mostrar la escala que ya trae `resultados` (bloque A del [checklist](../parciales/parcial-3/checklist.md)).
 
 ## Cambios pendientes por D18 y D20
 
