@@ -218,6 +218,7 @@ guarda su huella (SHA-256).
 | `cache:<servicio>:<clave>`   | La respuesta, en JSON                                                             | Corto; lo fija cada servicio (`resultados`: 300 s)                 | `resultados`, `indicadores`, `series`, `zonas` | `cache`    |
 | `sync:lote:<id>`             | Resultado de un lote ya recibido                                                  | 7 días (`SYNC_LOTE_TTL_SECONDS`, por defecto 604800)               | `sincronizacion`                               | —          |
 | `sync:lote:<id>:candado`     | Marca de la petición que está procesando ese lote                                 | 300 s                                                              | `sincronizacion`                               | `candados` |
+| `ratelimit:<usuario>:<ruta>` | Contador de peticiones de la ventana; sin sesión, `<usuario>` es `ip-<dirección>` y `<ruta>` es `MÉTODO:regla` | La ventana (60 s por defecto)                                      | todos los servicios                            | `limites`  |
 | `health:<servicio>`          | Último sondeo de un servicio, en JSON                                             | Tres intervalos de sondeo: 30 s con `SONDEO_SEGUNDOS` en 10        | `estado-servicios`                             | —          |
 | `health:history:<servicio>`  | Lista con los últimos 30 sondeos, del más reciente al más viejo                   | Una hora desde el último sondeo                                    | `estado-servicios`                             | —          |
 
