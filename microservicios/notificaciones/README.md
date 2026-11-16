@@ -19,11 +19,14 @@ Puerto externo: 5261; puerto interno en Docker: 8000. Contrato en
 
 ### Crear (ruta interna)
 
-Cuerpo `{user_id, type, title, body?, payload?}`, sin otros campos:
+Cuerpo `{user_id | role, type, title, body?, payload?}`, sin otros campos. `role` (hoy solo
+`EPIDEMIOLOGO`) va en lugar de `user_id` y crea un aviso por cada persona activa con ese rol;
+responde 201 con `{role, type, total}`. Mandar los dos es 422.
+
 
 - `type` es uno de `RUN_FINISHED`, `RUN_FAILED`, `THRESHOLD_EXCEEDED`, `ASSIGNMENT`,
-  `SCENARIO_PUBLISHED`, `SCENARIO_APPROVED` y `SYSTEM` (CHECK de la tabla, migraciones 003 y
-  029).
+  `SCENARIO_PUBLISHED`, `SCENARIO_APPROVED`, `SCENARIO_SUBMITTED`, `SCENARIO_REJECTED`,
+  `NEW_CASES` y `SYSTEM` (CHECK de la tabla, migraciones 003, 029 y 037).
 - `title` lleva como máximo 160 caracteres.
 - `payload` es un objeto con los ids para llegar al recurso.
 
@@ -32,7 +35,9 @@ Solo acepta un token de servicio (audiencia `epidemia-interno`, de
 ADMINISTRADOR, recibe 401. Lo usan:
 
 - `simulador`: `RUN_FINISHED` y `RUN_FAILED`, para quien pidió la corrida.
-- `aprobacion`: `SCENARIO_APPROVED`, para quien armó la versión.
+- `aprobacion`: `SCENARIO_SUBMITTED` (a los EPIDEMIOLOGO), `SCENARIO_APPROVED` y
+  `SCENARIO_REJECTED` (a quien armó la versión).
+- `sincronizacion`: `NEW_CASES`, a los EPIDEMIOLOGO, una vez por lote.
 
 | Caso | Respuesta |
 |------|-----------|
@@ -47,7 +52,7 @@ Al crear no hay persona detrás: `user_id` queda vacío y `user_agent` dice qué
 
 ## Variables
 
-`DATABASE_URL` (rol `svc_notificaciones`, migración 029), `JWT_SECRET_KEY`, `REDIS_URL`;
+`DATABASE_URL` (rol `svc_notificaciones`, migraciones 029 y 037; esta le da lectura de `users`, `user_roles` y `roles` para los avisos a un rol), `JWT_SECRET_KEY`, `REDIS_URL`;
 opcionales `JWT_ISSUER`, `JWT_AUDIENCE` y `JWT_AUDIENCE_INTERNA`.
 
 ## Probarlo

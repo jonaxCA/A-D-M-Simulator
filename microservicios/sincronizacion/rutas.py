@@ -4,7 +4,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from flask import g, request
+from flask import current_app, g, request
 
 from backend_web.audit import log_audit
 from epidemia_comun import llaves
@@ -13,7 +13,7 @@ from epidemia_comun.errores import ErrorAPI, respuesta_error
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.http import llamar
 from epidemia_comun.redis_compartido import RedisNoDisponible, requerido
-from epidemia_comun.seguridad import requiere_token
+from epidemia_comun.seguridad import requiere_token, token_servicio
 from epidemia_comun.validaciones import diccionario
 
 log = logging.getLogger(__name__)
@@ -128,6 +128,28 @@ def _bitacora(lote_id, resumen):
         log.exception("No se pudo registrar el SYNC del lote %s", lote_id)
 
 
+def _avisar_casos_nuevos(guardado):
+    # Un solo aviso por lote. Solo se llama cuando el lote se procesa por primera vez: un
+    # reintento lo contesta _repetido_o_none con lo guardado, sin llegar aquí. Si falla, el lote
+    # ya está guardado: solo se anota.
+    n = guardado["creados"]
+    try:
+        resp = llamar("notificaciones", "POST", "/api/v1/notifications", formato="json", timeout=3,
+                      token=token_servicio(current_app.config, "sincronizacion"),
+                      cuerpo={"role": "EPIDEMIOLOGO", "type": "NEW_CASES",
+                              "title": "Lote con %d caso%s nuevo%s" % (n, "" if n == 1 else "s",
+                                                                       "" if n == 1 else "s"),
+                              "body": "Un lote sincronizado desde un dispositivo trajo %d caso%s nuevo%s."
+                                      % (n, "" if n == 1 else "s", "" if n == 1 else "s"),
+                              "payload": {"batch_id": guardado["batch_id"], "creados": n,
+                                          "total": guardado["total"]}})
+        if resp.status_code >= 400:
+            log.warning("notificaciones respondió %d al avisar el lote %s",
+                        resp.status_code, guardado["batch_id"])
+    except Exception as exc:
+        log.warning("No se pudo avisar el lote %s: %s", guardado["batch_id"], exc)
+
+
 def registrar(app):
     @app.errorhandler(RedisNoDisponible)
     def redis_caido(exc):
@@ -178,6 +200,8 @@ def registrar(app):
                         "resultados": resultados, "user_id": g.contexto.user_id}
             requerido("lote_guardar", lambda r: r.set(
                 llaves.lote(lote_id), json.dumps(guardado, ensure_ascii=False), ex=_ttl_lote()))
+            if guardado["creados"]:
+                _avisar_casos_nuevos(guardado)
         _bitacora(lote_id, {"batch_id": lote_id, "device_id": device_id, "total": guardado["total"],
                             "creados": guardado["creados"], "duplicados": guardado["duplicados"],
                             "rechazados": guardado["rechazados"]})

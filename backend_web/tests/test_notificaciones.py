@@ -23,6 +23,10 @@ class ValidaNotificacionTests(unittest.TestCase):
             {"user_id": True, "type": "OTRO", "title": " ", "body": 5, "payload": [1]})
         self.assertEqual(len(errores), 5)
 
+    def test_a_un_rol_no_pide_user_id(self):
+        self.assertEqual(notificaciones.valida_notificacion(
+            {"type": "NEW_CASES", "title": "Lote"}, a_rol=True), [])
+
     def test_titulo_demasiado_largo(self):
         errores = notificaciones.valida_notificacion(
             {"user_id": 3, "type": "SYSTEM", "title": "x" * (notificaciones.TITULO_MAX + 1)})
@@ -68,6 +72,24 @@ class NotificacionesTests(unittest.TestCase):
 
     def test_acepta_scenario_approved(self):
         self._crea(type="SCENARIO_APPROVED")
+
+    def test_acepta_los_tipos_de_la_037(self):
+        for tipo in ("SCENARIO_SUBMITTED", "SCENARIO_REJECTED", "NEW_CASES"):
+            self._crea(type=tipo)
+
+    def test_aviso_a_un_rol_llega_a_cada_epidemiologo_activo(self):
+        esperados = {f["id"] for f in query(
+            """SELECT u.id FROM users u JOIN user_roles ur ON ur.user_id = u.id
+               JOIN roles r ON r.id = ur.role_id WHERE r.code = 'EPIDEMIOLOGO' AND u.is_active""")}
+        ids, error = notificaciones.crear_notificaciones_a_rol(
+            {"type": "NEW_CASES", "title": "Lote con 2 casos nuevos", "payload": {"batch_id": "x"}},
+            "EPIDEMIOLOGO", contexto=self.servicio)
+        self.creadas.extend(ids)
+        self.assertIsNone(error)
+        destinatarios = {f["user_id"] for f in query(
+            "SELECT user_id FROM notifications WHERE id = ANY(%s)", (ids,))}
+        self.assertEqual(destinatarios, esperados)
+        self.assertEqual(len(ids), len(esperados))
 
     def test_destinatario_inexistente(self):
         notificacion_id, error = notificaciones.crear_notificacion(

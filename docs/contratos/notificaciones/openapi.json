@@ -126,17 +126,29 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "422": {
             "description": "unread o limit inválidos"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       },
       "post": {
         "summary": "Crear una notificación (interna)",
         "operationId": "crear_notificacion",
-        "description": "Solo con token de servicio: la usan simulador y aprobacion. La bitácora registra qué servicio la creó.",
+        "description": "Solo con token de servicio: la usan simulador, aprobacion y sincronizacion. Manda user_id (una persona) o role (todas las personas activas con ese rol; hoy solo EPIDEMIOLOGO), no los dos. La bitácora registra qué servicio la creó.",
         "security": [
           {
             "tokenServicio": []
@@ -149,7 +161,6 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "user_id",
                   "type",
                   "title"
                 ],
@@ -168,6 +179,9 @@
                       "ASSIGNMENT",
                       "SCENARIO_PUBLISHED",
                       "SCENARIO_APPROVED",
+                      "SCENARIO_SUBMITTED",
+                      "SCENARIO_REJECTED",
+                      "NEW_CASES",
                       "SYSTEM"
                     ]
                   },
@@ -181,9 +195,28 @@
                   "payload": {
                     "type": "object",
                     "description": "Ids para llegar al recurso (run_id, scenario_id...)"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "EPIDEMIOLOGO"
+                    ],
+                    "description": "Destinatarios por rol, alternativa a user_id"
                   }
                 },
-                "additionalProperties": false
+                "additionalProperties": false,
+                "oneOf": [
+                  {
+                    "required": [
+                      "user_id"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "role"
+                    ]
+                  }
+                ]
               },
               "example": {
                 "user_id": 5,
@@ -202,7 +235,6 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "user_id",
                   "type",
                   "title"
                 ],
@@ -221,6 +253,9 @@
                       "ASSIGNMENT",
                       "SCENARIO_PUBLISHED",
                       "SCENARIO_APPROVED",
+                      "SCENARIO_SUBMITTED",
+                      "SCENARIO_REJECTED",
+                      "NEW_CASES",
                       "SYSTEM"
                     ]
                   },
@@ -234,12 +269,31 @@
                   "payload": {
                     "type": "object",
                     "description": "Ids para llegar al recurso (run_id, scenario_id...)"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "EPIDEMIOLOGO"
+                    ],
+                    "description": "Destinatarios por rol, alternativa a user_id"
                   }
                 },
                 "additionalProperties": false,
                 "xml": {
                   "name": "solicitud"
-                }
+                },
+                "oneOf": [
+                  {
+                    "required": [
+                      "user_id"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "role"
+                    ]
+                  }
+                ]
               },
               "examples": {
                 "peticion": {
@@ -255,7 +309,16 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "description": "Con user_id: id, user_id y type"
+                    },
+                    {
+                      "type": "object",
+                      "description": "Con role: role, type y total (cuántas notificaciones se crearon)"
+                    }
+                  ]
                 },
                 "example": {
                   "id": 8,
@@ -268,7 +331,8 @@
                   "type": "object",
                   "xml": {
                     "name": "notificacion"
-                  }
+                  },
+                  "description": "Con user_id: id, user_id y type; con role: role, type y total"
                 },
                 "examples": {
                   "respuesta": {
@@ -291,10 +355,10 @@
             "description": "Content-Type no soportado"
           },
           "422": {
-            "description": "Campos desconocidos, tipo fuera de la lista o título vacío"
+            "description": "Campos desconocidos, tipo fuera de la lista, título vacío, user_id y role juntos o role no permitido"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         }
       }
@@ -367,13 +431,25 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "404": {
             "description": "No existe o es de otra persona"
           },
           "422": {
             "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }

@@ -30,9 +30,14 @@ misma transacción y el `Contexto` del token. Lee `scenarios` y `scenario_interv
   `UPDATE` llevan `WHERE status = ...`).
 - 503 `SERVICIO_NO_DISPONIBLE`: `validacion` caído (el envío no escribe nada) o Redis caído.
 
-Al aprobar se llama a `notificaciones` (`POST /api/v1/notifications`, tipo `SCENARIO_APPROVED`,
-para quien creó la versión) con un **token de servicio** (`token_servicio`), porque esa ruta es
-interna. Si falla, **la aprobación se mantiene** y solo se anota una advertencia en el log.
+Se llama a `notificaciones` (`POST /api/v1/notifications`) con un **token de servicio**
+(`token_servicio`), porque esa ruta es interna:
+
+- Al enviar a revisión: tipo `SCENARIO_SUBMITTED`, a los EPIDEMIOLOGO (`role`), RF-D15.
+- Al aprobar: `SCENARIO_APPROVED`, para quien creó la versión.
+- Al rechazar: `SCENARIO_REJECTED`, para quien creó la versión, con el comentario en `body` (RF-D16).
+
+Si falla, **el cambio de estado se mantiene** y solo se anota una advertencia en el log.
 
 ## Variables
 

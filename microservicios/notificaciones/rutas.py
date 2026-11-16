@@ -1,8 +1,8 @@
 """Servicio notificaciones: los avisos de cada persona para las apps.
 
 Leer y marcar como leída es para quien inició sesión, y solo con sus propios
-avisos. Crearlos es una ruta interna: la llaman simulador y aprobacion con un
-token de servicio.
+avisos. Crearlos es una ruta interna: la llaman simulador, aprobacion y sincronizacion
+con un token de servicio.
 """
 from flask import g, request
 
@@ -14,7 +14,8 @@ from epidemia_comun.seguridad import requiere_token, solo_servicios
 from epidemia_comun.validaciones import diccionario, entero_positivo
 
 LIMITE, LIMITE_MAX = 50, 200
-CAMPOS = {"user_id", "type", "title", "body", "payload"}
+CAMPOS = {"user_id", "role", "type", "title", "body", "payload"}
+ROLES_DESTINO = ("EPIDEMIOLOGO",)
 
 
 def _solo_no_leidas(valor):
@@ -55,10 +56,23 @@ def registrar(app):
         if desconocidos:
             raise ErrorAPI(422, "DATOS_INVALIDOS",
                            "Campos no reconocidos: " + ", ".join(sorted(desconocidos)))
-        # En XML sin tipo="numero" el id llega como texto.
-        datos = dict(cuerpo, user_id=entero_positivo(cuerpo.get("user_id"), "user_id"))
         # No hay persona detrás: la bitácora registra qué servicio lo pidió.
         contexto = Contexto(None, request.remote_addr, ("servicio " + g.servicio["sub"])[:255])
+        if "role" in cuerpo:
+            if "user_id" in cuerpo:
+                raise ErrorAPI(422, "DATOS_INVALIDOS", "Manda user_id o role, no los dos.")
+            if cuerpo["role"] not in ROLES_DESTINO:
+                raise ErrorAPI(422, "DATOS_INVALIDOS",
+                               "role debe ser uno de: %s." % ", ".join(ROLES_DESTINO))
+            datos = {k: v for k, v in cuerpo.items() if k != "role"}
+            ids, error = notificaciones.crear_notificaciones_a_rol(datos, cuerpo["role"],
+                                                                   contexto=contexto)
+            if error:
+                raise ErrorAPI(422, "DATOS_INVALIDOS", error)
+            return responder({"role": cuerpo["role"], "type": datos["type"], "total": len(ids)},
+                             "notificacion", estado=201)
+        # En XML sin tipo="numero" el id llega como texto.
+        datos = dict(cuerpo, user_id=entero_positivo(cuerpo.get("user_id"), "user_id"))
         notificacion_id, error = notificaciones.crear_notificacion(datos, contexto=contexto)
         if error and error.startswith("No existe"):
             raise ErrorAPI(404, "NO_ENCONTRADO", error)

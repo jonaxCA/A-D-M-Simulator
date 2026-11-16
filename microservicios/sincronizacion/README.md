@@ -47,6 +47,16 @@ tiene raíz `resultado_lote`. XSD: `docs/contratos/sincronizacion/lote.xsd`.
   (aunque el contenido cambie). Otra persona con ese `batch_id` recibe 409.
 - Candado `sync:lote:<batch_id>:candado` (300 s) con `candados.candado`: si otra petición
   procesa el mismo lote, 409 `CONFLICTO`.
+- **Aviso (D32, RF-C19):** si el lote se procesa por primera vez y `creados` es mayor que 0,
+  se llama a `notificaciones` (`POST /api/v1/notifications` con `role: EPIDEMIOLOGO`, tipo
+  `NEW_CASES`, `payload` con `batch_id`, `creados` y `total`) con un token de servicio. Es uno por
+  lote, no por caso. Un reintento regresa lo guardado y no llega a esa llamada. Es best-effort:
+  si falla, el lote se mantiene y solo se anota en el log.
+- **Limitaciones conocidas:** (1) si un lote tarda más que el candado (300 s; 100 casos con
+  5 s de timeout por llamada pueden pasarse), una segunda petición lo procesa otra vez y el
+  aviso `NEW_CASES` puede duplicarse. (2) Si `casos` crea las filas y falla guardar el
+  resultado del lote en Redis, el reintento ve todo como duplicado y ya no avisa. Ambos son
+  casos extremos y se aceptan.
 - Si casos no responde o contesta 5xx: **todo el lote es 503** `SERVICIO_NO_DISPONIBLE`, sin
   reintentos y sin guardar resultado. El cliente reenvía el lote; los casos ya creados salen
   como `duplicado` gracias a `local_uuid`. Un 401/403 de casos se propaga.
@@ -57,7 +67,7 @@ tiene raíz `resultado_lote`. XSD: `docs/contratos/sincronizacion/lote.xsd`.
 ## Variables
 
 `JWT_SECRET_KEY`, `REDIS_URL`, `DATABASE_URL` (rol `svc_sincronizacion`: solo INSERT en
-`audit_log`), `SERVICIO_CASOS_URL` (en Docker, `http://casos:8000`), `SYNC_LOTE_TTL_SECONDS`
+`audit_log`), `SERVICIO_CASOS_URL` (en Docker, `http://casos:8000`), `SERVICIO_NOTIFICACIONES_URL`, `SYNC_LOTE_TTL_SECONDS`
 (opcional).
 
 ## Cómo probar
