@@ -43,10 +43,10 @@ def capturista_de_prueba():
 
 
 class AppTestCase(unittest.TestCase):
-    """La app se crea una vez por clase. Redis es fakeredis (self.redis).
-    Los tokens que las pruebas firman a mano no traen sesion en Redis, asi que
-    sesion_vigente se da por buena; con sesion_real = True la prueba usa la
-    verificacion de verdad (login y logout por /login y /logout)."""
+    # La app se crea una vez por clase. Redis es fakeredis (self.redis).
+    # Los tokens que las pruebas firman a mano no traen sesion en Redis, asi que
+    # sesion_vigente se da por buena; con sesion_real = True la prueba usa la
+    # verificacion de verdad (login y logout por /login y /logout).
 
     sesion_real = False
 

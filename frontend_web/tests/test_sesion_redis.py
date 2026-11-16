@@ -1,13 +1,11 @@
-"""
-La web abre la sesion en Redis al entrar, la verifica en cada peticion y la
-revoca al salir (I3), con el mismo mecanismo de epidemia_comun.sesiones.
-
-Para saber si hay sesion se pide GET /login: con sesion redirige al dashboard,
-sin ella muestra el formulario.
-
-Ejecutar:
-    python -m unittest frontend_web.tests.test_sesion_redis -v
-"""
+# La web abre la sesion en Redis al entrar, la verifica en cada peticion y la
+# revoca al salir (I3), con el mismo mecanismo de epidemia_comun.sesiones.
+#
+# Para saber si hay sesion se pide GET /login: con sesion redirige al dashboard,
+# sin ella muestra el formulario.
+#
+# Ejecutar:
+#     python -m unittest frontend_web.tests.test_sesion_redis -v
 from unittest.mock import patch
 
 from frontend_web.app.permisos import COOKIE_NAME

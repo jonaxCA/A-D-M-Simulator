@@ -12,9 +12,10 @@ Ejecutar:
     python -m unittest frontend_web.tests.test_simulaciones_rutas -v
 """
 import unittest
+from unittest.mock import patch
 
 from frontend_web.tests.base import CAPTURISTA_PRUEBA, capturista_de_prueba, RutasConCorridas
-from backend_web import simulaciones
+from backend_web import resultados, simulaciones
 from backend_web.auth import create_token
 from backend_web.db import query
 from frontend_web.app.permisos import COOKIE_NAME
@@ -98,6 +99,50 @@ class SimulacionesRutasTests(RutasConCorridas):
             html = " ".join(detalle.data.decode("utf-8").split())
             self.assertIn("cada agente representa 11.57", html)
             self.assertIn("habitantes</span>", html)
+
+    def test_curvas_vienen_de_resultados_con_el_token_de_la_sesion(self):
+        run_id = self._corre(424243)
+        serie = [{"dia": 0, "S": 1, "E": 0, "I": 0, "R": 0, "H": 0}]
+        with self.app.test_client() as client:
+            self._login(client, "alex.cavazos", "Epidemia2026!")
+            token = client.get_cookie(COOKIE_NAME).value
+            with patch("frontend_web.app.routes.resultados.curvas_de_corrida",
+                       return_value=serie) as llama:
+                detalle = client.get(f"/simulaciones/corridas/{run_id}")
+            self.assertEqual(llama.call_args[0][:2], (token, run_id))
+            self.assertIn(b'"S": 1', detalle.data)
+            self.assertIn(simulaciones.AVISO_SIMULACION.encode("utf-8"), detalle.data)
+
+    def test_resultados_sin_respuesta_cae_a_postgres(self):
+        run_id = self._corre(424244)
+        with self.app.test_client() as client:
+            self._login(client, "alex.cavazos", "Epidemia2026!")
+            with patch("frontend_web.app.routes.resultados.curvas_de_corrida",
+                       return_value=None):
+                detalle = client.get(f"/simulaciones/corridas/{run_id}")
+            self.assertEqual(detalle.status_code, 200)
+            self.assertIn(b"CASOS ACUMULADOS", detalle.data)
+
+    def test_resultados_niega_el_acceso(self):
+        run_id = self._corre(424245)
+        with self.app.test_client() as client:
+            self._login(client, "alex.cavazos", "Epidemia2026!")
+            with patch("frontend_web.app.routes.resultados.curvas_de_corrida",
+                       side_effect=resultados.SinAcceso(403)):
+                detalle = client.get(f"/simulaciones/corridas/{run_id}")
+            self.assertEqual(detalle.status_code, 302)
+            self.assertIn("denegado=1", detalle.headers["Location"])
+
+    def test_resultados_con_401_pide_iniciar_sesion_de_nuevo(self):
+        run_id = self._corre(424246)
+        with self.app.test_client() as client:
+            self._login(client, "alex.cavazos", "Epidemia2026!")
+            with patch("frontend_web.app.routes.resultados.curvas_de_corrida",
+                       side_effect=resultados.SinAcceso(401)):
+                detalle = client.get(f"/simulaciones/corridas/{run_id}")
+            self.assertEqual(detalle.status_code, 302)
+            self.assertIn("/login", detalle.headers["Location"])
+            self.assertNotIn("denegado", detalle.headers["Location"])
 
     def test_estado_de_una_corrida_fallida(self):
         run_id = self._corre(1, usuario="admin", forzar_error=True)
