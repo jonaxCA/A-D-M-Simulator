@@ -39,7 +39,7 @@ D1 quedó aceptada el 2026-11-07 (ver [`D01-permisos-y-auditoria.md`](D01-permis
 - **Migración 034** (siguiente número libre; 031 a 033 son de D27 y no se edita la 010): crear `scenarios.approve`, darlo a EPIDEMIOLOGO y ADMINISTRADOR, y quitar `audit.read` al EPIDEMIOLOGO.
 - **Quitar la captura de casos de la web:** la ruta `/reportes/nuevo`, sus enlaces y su plantilla. `cases.create` sigue para el CAPTURISTA, en la app móvil y en la API.
 - **Candados por permiso** (propuesta, pasos 4 a 7): leer los permisos al iniciar sesión y guardarlos en el JWT (`perms`) en `backend_web/auth.py`; crear `requiere_permiso(codigo)` en `frontend_web/app/permisos.py`, que responde 403 y registra `PERMISSION_DENIED` con `log_audit`; cambiar el candado de cada ruta según la tabla de la propuesta; exponer `puede()` a las plantillas.
-- **Cuenta de prueba de CAPTURISTA** (propuesta, paso 8) en `datos/postgres/semillas/demo_datos_nl.sql`. Sirve para la API, no para la web.
+- **Cuenta de prueba de CAPTURISTA** (propuesta, paso 8) en `datos/postgres/semillas/demo_datos_nl.sql`. Sirve para la API y, en la web, solo para el tablero y el mapa (D1, 2026-11-16).
 - **Verificación:** `grep -n "roles_required\|admin_required" frontend_web/app/routes.py` no regresa nada.
 
 ### Documentos
@@ -49,7 +49,7 @@ D1 quedó aceptada el 2026-11-07 (ver [`D01-permisos-y-auditoria.md`](D01-permis
 ### Preguntas abiertas
 
 - ¿El ADMINISTRADOR también captura casos? La respuesta 1 dice solo CAPTURISTA. La matriz le quita la captura, pero la migración 010 le da todos los permisos, incluido `cases.create`.
-- ¿El login web rechaza al CAPTURISTA, o le deja entrar y le niega cada pantalla con 403?
+- ~~¿El login web rechaza al CAPTURISTA, o le deja entrar y le niega cada pantalla con 403?~~ Resuelto el 2026-11-16: entra, ve el tablero y el mapa, y lo demás responde 403.
 
 ### Efectos en otras decisiones
 

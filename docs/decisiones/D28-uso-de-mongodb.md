@@ -15,7 +15,7 @@ Candidatos:
 Las dos colecciones estado-servicios y series diarias de las corridas del ABM.
 
 - historial_servicios: el historial de estado-servicios, que hoy vive en Redis y es lo único que D19 admite perder. Es de alta frecuencia y se consulta agregado: disponibilidad por servicio, latencia promedio, último error y dependencia caída. Alimenta directo el panel de monitoreo que pide la rúbrica.
-- series_corridas: un documento por día de cada corrida, con su run_id, motor, semilla y compartimentos por grupo de edad. Funciona desde hoy con el SEIR, sin esperar al ABM, y es la base del volumen de D29. Sustituye a simulation_results como tabla puente.
+- series_corridas: un documento por día de cada corrida, con su run_id, motor, semilla y compartimentos por grupo de edad. Funciona desde hoy con el SEIR, sin esperar al ABM, y es la base del volumen de D29. Sustituye a simulation_results (confirmado el 2026-11-16): la tabla deja de usarse cuando la colección esté en operación. El resumen de la corrida pasa a simulation_runs, que es de donde lo lee la web; hoy esa tabla no tiene columna para el resumen, así que pide una migración nueva. Las curvas las pide la web a resultados, que lee la colección (excepción a D20).
 
 Los lotes crudos de sincronizacion quedan como tercera colección solo si sobra tiempo.
 Lo que hay que construir:
