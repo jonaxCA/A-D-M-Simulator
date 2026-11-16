@@ -29,8 +29,11 @@ from flask import (Blueprint, jsonify, render_template, request, redirect,
 
 from backend_web import queries, simulaciones
 from backend_web.audit import log_audit
-from backend_web.auth import attempt_login, create_token, hash_password
+from backend_web.auth import attempt_login, hash_password
+from epidemia_comun.redis_compartido import RedisNoDisponible
+
 from . import formularios, presentacion
+from .sesion_redis import MENSAJE_SIN_REDIS, abre_sesion, cierra_sesion
 from .permisos import (login_required, admin_required, roles_required, tiene_rol,
                        get_current_user, contexto_de_peticion, COOKIE_NAME)
 
@@ -135,8 +138,11 @@ def login():
         log_audit(contexto_de_peticion(None), "LOGIN_FAILED", "users", entity_id=usuario)
         return render_template("login.html", error=error, usuario=usuario), 401
 
+    try:
+        token = abre_sesion(user)
+    except RedisNoDisponible:
+        return render_template("login.html", error=MENSAJE_SIN_REDIS, usuario=usuario), 503
     log_audit(contexto_de_peticion(user["id"]), "LOGIN", "users", entity_id=str(user["id"]))
-    token = create_token(user)
     next_url = destino_seguro(request.args.get("next")) or url_for("main.dashboard")
     resp = make_response(redirect(next_url))
     resp.set_cookie(
@@ -150,6 +156,7 @@ def logout():
     user = get_current_user()
     if user:
         log_audit(contexto_de_peticion(user["sub"]), "LOGOUT", "users", entity_id=str(user["sub"]))
+    cierra_sesion(request.cookies.get(COOKIE_NAME))
     resp = make_response(redirect(url_for("main.dashboard_publico")))
     resp.delete_cookie(COOKIE_NAME)
     return resp

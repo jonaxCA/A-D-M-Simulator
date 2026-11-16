@@ -14,6 +14,7 @@ from backend_web.db import get_conn, query
 @requiere_base
 class CapturaFueraDeCatalogoTests(AppTestCase):
     def setUp(self):
+        super().setUp()
         self.municipio = query("SELECT id FROM regions WHERE code = '19039'", one=True)["id"]
         self.estado = query("SELECT id FROM regions WHERE level = 'estado' LIMIT 1",
                             one=True)["id"]

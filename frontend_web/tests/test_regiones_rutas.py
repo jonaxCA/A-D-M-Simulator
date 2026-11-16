@@ -15,6 +15,7 @@ from backend_web.db import get_conn, query
 
 class RegionesRutasTests(AppTestCase):
     def setUp(self):
+        super().setUp()
         municipio = query(
             "SELECT id, population, population_60plus FROM regions WHERE code = '19003'",
             one=True,

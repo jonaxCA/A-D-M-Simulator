@@ -48,6 +48,7 @@ class LoginRedireccionTests(AppTestCase):
     """El POST de login con un `next` hostil termina en el dashboard."""
 
     def setUp(self):
+        super().setUp()
         # Sin credenciales reales ni filas de bitacora: lo que se prueba es a
         # donde manda el redirect, no la autenticacion.
         for objetivo, valor in (
@@ -124,6 +125,7 @@ class RevocacionTests(AppTestCase):
     guarda en ningun lado."""
 
     def setUp(self):
+        super().setUp()
         escribe(
             """INSERT INTO users (username, email, password_hash, full_name, is_active)
                VALUES (%s, %s, %s, 'Revocacion de prueba', TRUE)
@@ -194,6 +196,7 @@ CODIGO_EPIDEMIOLOGO = "ZZZ_ALTA_EPIDEMIOLOGO"
 @requiere_base
 class AltaEnfermedadTests(AppTestCase):
     def setUp(self):
+        super().setUp()
         self._borra()
 
     def tearDown(self):

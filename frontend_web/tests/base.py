@@ -8,6 +8,9 @@ import secrets
 import unittest
 from unittest.mock import patch
 
+import fakeredis
+from epidemia_comun import redis_compartido
+
 # Primero: fija JWT_SECRET_KEY antes de que db.py cargue el .env.
 from backend_web.tests.base import (contexto_de_prueba, escribe, id_de_usuario,
                                     requiere_base, version_demo_aprobada)
@@ -40,13 +43,29 @@ def capturista_de_prueba():
 
 
 class AppTestCase(unittest.TestCase):
-    """La app se crea una vez por clase."""
+    """La app se crea una vez por clase. Redis es fakeredis (self.redis).
+    Los tokens que las pruebas firman a mano no traen sesion en Redis, asi que
+    sesion_vigente se da por buena; con sesion_real = True la prueba usa la
+    verificacion de verdad (login y logout por /login y /logout)."""
+
+    sesion_real = False
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.app = create_app()
         cls.app.testing = True
+
+    def setUp(self):
+        super().setUp()
+        self.servidor_redis = fakeredis.FakeServer()
+        self.redis = fakeredis.FakeRedis(server=self.servidor_redis, decode_responses=True)
+        redis_compartido.usar(self.redis)
+        self.addCleanup(redis_compartido.usar, None)
+        if not self.sesion_real:
+            simulado = patch("frontend_web.app.permisos.sesion_vigente", return_value=True)
+            simulado.start()
+            self.addCleanup(simulado.stop)
 
     def _login(self, client, usuario, password):
         resp = client.post("/login", data={"usuario": usuario, "password": password},

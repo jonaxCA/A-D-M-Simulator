@@ -181,7 +181,7 @@ def usuario_vigente(payload):
             "full_name": fila["full_name"], "roles": list(fila["roles"])}
 
 
-def create_token(user):
+def create_token(user, sid=None, jti=None):
     ahora = datetime.datetime.now(datetime.timezone.utc)
     payload = {
         "sub": str(user["id"]),
@@ -191,6 +191,8 @@ def create_token(user):
         "exp": ahora + datetime.timedelta(minutes=TOKEN_TTL_MINUTES),
         "iat": ahora,
     }
+    if sid and jti:
+        payload.update(sid=sid, jti=jti)
     return jwt.encode(payload, secreto_jwt(), algorithm="HS256")
 
 
