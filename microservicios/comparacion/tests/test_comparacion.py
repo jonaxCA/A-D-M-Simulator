@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 import pytest
 import xmlschema
 
-from backend_web import queries
+from epidemia_comun.errores import ErrorAPI
 from microservicios.comparacion import rutas
 from procesamiento.motor import AVISO_SIMULACION, simular
 from procesamiento.tests.test_motor import escenario
@@ -25,15 +25,33 @@ def corrida(id_, fallecimientos):
 COMPLETADAS = {12: corrida(12, 100), 15: corrida(15, 61)}
 
 
+class Respuesta:
+    def __init__(self, estado, datos=None):
+        self.status_code, self.datos = estado, datos
+
+    def json(self):
+        return self.datos
+
+
+def resultado(c):
+    return {"corrida": {k: c[k] for k in ("scenario_id", "version_number", "scenario_name")},
+            "serie": c["serie"],
+            "resumen": {k: c[k] for k in ("fallecimientos", "pico_casos_activos", "dia_pico",
+                                          "tasa_ataque")}}
+
+
 @pytest.fixture
 def pedidas(monkeypatch):
     registro = []
 
-    def corridas_para_comparar(run_ids):
-        registro.append(list(run_ids))
-        return [COMPLETADAS[i] for i in run_ids if i in COMPLETADAS]
+    def llamar(servicio, metodo, ruta, **kw):
+        registro.append((servicio, metodo, ruta, kw["token"], kw["correlation_id"]))
+        run_id = int(ruta.split("/")[4])
+        if run_id in COMPLETADAS:
+            return Respuesta(200, resultado(COMPLETADAS[run_id]))
+        return Respuesta(409 if run_id == 98 else 404)
 
-    monkeypatch.setattr(queries, "get_corridas_para_comparar", corridas_para_comparar)
+    monkeypatch.setattr(rutas, "llamar", llamar)
     return registro
 
 
@@ -56,10 +74,12 @@ def test_compara_en_el_orden_pedido_sin_repetidas(cliente, token, pedidas, rol):
     r = cliente.get("/api/v1/comparisons?runs=15,12,15&format=json", headers=token((rol,)))
     assert r.status_code == 200
     datos = r.get_json()
-    assert pedidas == [[15, 12]]
+    assert sorted(p[:3] for p in pedidas) == [("resultados", "GET", "/api/v1/runs/12/results"),
+                                              ("resultados", "GET", "/api/v1/runs/15/results")]
     assert [c["id"] for c in datos["corridas"]] == [15, 12]
     assert datos["aviso"] == AVISO_SIMULACION
     assert datos["corridas"][0]["tasa_ataque"] == 0.425
+    assert datos["corridas"][0]["scenario_name"] == "Escenario 15"
     assert datos["corridas"][0]["serie"][1] == {"dia": 1, "casos_activos": 120, "H": 1, "D": 0}
 
 
@@ -73,7 +93,7 @@ def test_xml_por_omision(cliente, token):
     assert [p.findtext("casos_activos") for p in corridas[0].findall("serie/punto")] == ["100", "120"]
 
 
-def test_xml_con_la_serie_real_del_motor_valida_contra_el_xsd(cliente, token, monkeypatch):
+def test_xml_con_la_serie_real_del_motor_valida_contra_el_xsd(cliente, token, monkeypatch, pedidas):
     serie = simular(escenario(dias=5), 1)["serie"]
     for corrida_ in COMPLETADAS.values():
         monkeypatch.setitem(corrida_, "serie", serie)
@@ -103,7 +123,44 @@ def test_inexistentes_o_sin_terminar_es_404_con_sus_ids(cliente, token):
 def test_acepta_hasta_el_maximo(cliente, token, pedidas):
     runs = ",".join(str(i) for i in range(1, rutas.MAXIMO + 1))
     cliente.get("/api/v1/comparisons?format=json&runs=" + runs, headers=token())
-    assert len(pedidas[0]) == rutas.MAXIMO
+    assert len(pedidas) == rutas.MAXIMO
+
+
+def test_reenvia_el_token_y_la_correlacion_a_resultados(cliente, token, pedidas):
+    encabezados = dict(token(), **{"X-Correlation-ID": "abc-123"})
+    cliente.get("/api/v1/comparisons?runs=12,15&format=json", headers=encabezados)
+    tokens = {p[3] for p in pedidas}
+    assert tokens == {encabezados["Authorization"][7:]}
+    assert {p[4] for p in pedidas} == {"abc-123"}
+
+
+@pytest.mark.parametrize("fallo", [ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio no respondió."),
+                                   Respuesta(500), Respuesta(200, {"raro": 1})])
+def test_resultados_caido_o_ilegible_es_503(cliente, token, monkeypatch, fallo):
+    def llamar(*a, **kw):
+        if isinstance(fallo, Exception):
+            raise fallo
+        return fallo
+
+    monkeypatch.setattr(rutas, "llamar", llamar)
+    r = cliente.get("/api/v1/comparisons?runs=12,15&format=json", headers=token())
+    assert r.status_code == 503 and r.get_json()["codigo"] == "SERVICIO_NO_DISPONIBLE"
+
+
+def test_resultados_que_rechaza_la_identidad_se_propaga(cliente, token, monkeypatch):
+    monkeypatch.setattr(rutas, "llamar", lambda *a, **kw: Respuesta(403))
+    r = cliente.get("/api/v1/comparisons?runs=12,15&format=json", headers=token())
+    assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE"
+
+
+def test_resultados_con_429_se_propaga_con_su_retry_after(cliente, token, monkeypatch):
+    class Limitada(Respuesta):
+        headers = {"Retry-After": "17"}
+
+    monkeypatch.setattr(rutas, "llamar", lambda *a, **kw: Limitada(429))
+    r = cliente.get("/api/v1/comparisons?runs=12,15&format=json", headers=token())
+    assert r.status_code == 429 and r.get_json()["codigo"] == "LIMITE_EXCEDIDO"
+    assert r.headers["Retry-After"] == "17"
 
 
 def test_redis_caido_es_503(cliente, token, apagar_redis):

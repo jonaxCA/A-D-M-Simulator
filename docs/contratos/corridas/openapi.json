@@ -66,6 +66,12 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Solo cuenta para ADMINISTRADOR; para otro rol se ignora"
+                  },
+                  "replicas": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "description": "Opcional. Solo se valida el tope (D8): más de 100 es 422. Los lotes con varias réplicas llegan con la app de escritorio; cada POST crea una sola corrida"
                   }
                 }
               },
@@ -107,6 +113,12 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Solo cuenta para ADMINISTRADOR; para otro rol se ignora"
+                  },
+                  "replicas": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "description": "Opcional. Solo se valida el tope (D8): más de 100 es 422. Los lotes con varias réplicas llegan con la app de escritorio; cada POST crea una sola corrida"
                   }
                 },
                 "xml": {
@@ -161,7 +173,7 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "400": {
             "description": "JSON o XML ilegible"
@@ -176,7 +188,19 @@
             "description": "Content-Type no soportado"
           },
           "422": {
-            "description": "scenario_version_id, seed, engine o forzar_error inválidos; engine también si su motor no está habilitado"
+            "description": "scenario_version_id, seed, engine, replicas (más de 100) o forzar_error inválidos; engine también si su motor no está habilitado"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       },
@@ -331,10 +355,22 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "422": {
             "description": "limit, scenario_id, scenario_version_id, status, engine, from o to inválidos, o from posterior a to"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -421,13 +457,25 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "404": {
             "description": "No existe la corrida"
           },
           "422": {
             "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -489,7 +537,7 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "404": {
             "description": "No existe la corrida"
@@ -499,6 +547,18 @@
           },
           "422": {
             "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }

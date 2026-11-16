@@ -118,6 +118,23 @@ def test_lanzar_responde_202_y_encola(cliente, token, base, redis_falso, rol):
     assert redis_falso.get(llaves.candado_corrida(11)) is None
 
 
+@pytest.mark.parametrize("replicas", [30, 100, "50"])
+def test_replicas_hasta_el_tope_se_aceptan(cliente, token, base, redis_falso, replicas):
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "replicas": replicas})
+    assert r.status_code == 202
+
+
+@pytest.mark.parametrize("replicas, detalle", [
+    (101, "replicas no puede pasar de 100."), (200, "replicas no puede pasar de 100."),
+    (0, "El campo replicas debe ser entero positivo."),
+    ("x", "El campo replicas debe ser entero positivo.")])
+def test_replicas_mas_del_tope_es_422(cliente, token, base, redis_falso, replicas, detalle):
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "replicas": replicas})
+    assert r.status_code == 422 and r.get_json()["codigo"] == "DATOS_INVALIDOS"
+    assert r.get_json()["detail"] == detalle
+    assert base.creadas == [] and en_cola(redis_falso) == []
+
+
 def test_un_motor_no_habilitado_es_422(cliente, token, base, redis_falso, monkeypatch):
     monkeypatch.delenv("MOTORES_HABILITADOS", raising=False)
     r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "abm-gpu"})
