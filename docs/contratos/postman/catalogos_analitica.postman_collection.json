@@ -39,7 +39,9 @@
                   "pm.test(\"Trae X-Correlation-ID\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.be.a(\"string\").and.not.empty);",
                   "const s = pm.response.json();",
                   "pm.test(\"Es tipos-intervencion\", () => pm.expect(s.servicio).to.eql(\"tipos-intervencion\"));",
-                  "pm.test(\"PostgreSQL y Redis arriba\", () => { pm.expect(s.postgresql).to.be.true; pm.expect(s.redis).to.be.true; });"
+                  "pm.test(\"PostgreSQL y Redis arriba\", () => { pm.expect(s.postgresql).to.be.true; pm.expect(s.redis).to.be.true; });",
+                  "pm.test(\"MongoDB y bucket informados\", () => { [s.mongodb, s.bucket].forEach(v => pm.expect([true, false, \"no_usa\", \"no_configurado\"]).to.include(v)); });",
+                  "pm.test(\"Trae tiempos_ms y tiempo_ms\", () => { pm.expect(s.tiempos_ms).to.have.property(\"postgresql\"); pm.expect(s.tiempos_ms).to.have.property(\"redis\"); pm.expect(s.tiempo_ms).to.be.a(\"number\"); });"
                 ]
               }
             }
@@ -178,7 +180,9 @@
                   "pm.test(\"Trae X-Correlation-ID\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.be.a(\"string\").and.not.empty);",
                   "const s = pm.response.json();",
                   "pm.test(\"Es indicadores\", () => pm.expect(s.servicio).to.eql(\"indicadores\"));",
-                  "pm.test(\"PostgreSQL y Redis arriba\", () => { pm.expect(s.postgresql).to.be.true; pm.expect(s.redis).to.be.true; });"
+                  "pm.test(\"PostgreSQL y Redis arriba\", () => { pm.expect(s.postgresql).to.be.true; pm.expect(s.redis).to.be.true; });",
+                  "pm.test(\"MongoDB y bucket informados\", () => { [s.mongodb, s.bucket].forEach(v => pm.expect([true, false, \"no_usa\", \"no_configurado\"]).to.include(v)); });",
+                  "pm.test(\"Trae tiempos_ms y tiempo_ms\", () => { pm.expect(s.tiempos_ms).to.have.property(\"postgresql\"); pm.expect(s.tiempos_ms).to.have.property(\"redis\"); pm.expect(s.tiempo_ms).to.be.a(\"number\"); });"
                 ]
               }
             }
@@ -317,7 +321,9 @@
                   "pm.test(\"Trae X-Correlation-ID\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.be.a(\"string\").and.not.empty);",
                   "const s = pm.response.json();",
                   "pm.test(\"Es series\", () => pm.expect(s.servicio).to.eql(\"series\"));",
-                  "pm.test(\"PostgreSQL y Redis arriba\", () => { pm.expect(s.postgresql).to.be.true; pm.expect(s.redis).to.be.true; });"
+                  "pm.test(\"PostgreSQL y Redis arriba\", () => { pm.expect(s.postgresql).to.be.true; pm.expect(s.redis).to.be.true; });",
+                  "pm.test(\"MongoDB y bucket informados\", () => { [s.mongodb, s.bucket].forEach(v => pm.expect([true, false, \"no_usa\", \"no_configurado\"]).to.include(v)); });",
+                  "pm.test(\"Trae tiempos_ms y tiempo_ms\", () => { pm.expect(s.tiempos_ms).to.have.property(\"postgresql\"); pm.expect(s.tiempos_ms).to.have.property(\"redis\"); pm.expect(s.tiempo_ms).to.be.a(\"number\"); });"
                 ]
               }
             }
@@ -456,7 +462,9 @@
                   "pm.test(\"Trae X-Correlation-ID\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.be.a(\"string\").and.not.empty);",
                   "const s = pm.response.json();",
                   "pm.test(\"Es zonas\", () => pm.expect(s.servicio).to.eql(\"zonas\"));",
-                  "pm.test(\"PostgreSQL y Redis arriba\", () => { pm.expect(s.postgresql).to.be.true; pm.expect(s.redis).to.be.true; });"
+                  "pm.test(\"PostgreSQL y Redis arriba\", () => { pm.expect(s.postgresql).to.be.true; pm.expect(s.redis).to.be.true; });",
+                  "pm.test(\"MongoDB y bucket informados\", () => { [s.mongodb, s.bucket].forEach(v => pm.expect([true, false, \"no_usa\", \"no_configurado\"]).to.include(v)); });",
+                  "pm.test(\"Trae tiempos_ms y tiempo_ms\", () => { pm.expect(s.tiempos_ms).to.have.property(\"postgresql\"); pm.expect(s.tiempos_ms).to.have.property(\"redis\"); pm.expect(s.tiempo_ms).to.be.a(\"number\"); });"
                 ]
               }
             }

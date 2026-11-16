@@ -119,7 +119,7 @@
             "description": "Falta token, es inválido, venció o la sesión se cerró"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "403": {
             "description": "El rol no sube evidencias, o el caso lo reportó otra persona"
@@ -132,6 +132,18 @@
           },
           "422": {
             "description": "Vacío, de un tipo no permitido o enviado como formulario"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       },
@@ -213,13 +225,25 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "404": {
             "description": "No existe el caso"
           },
           "422": {
             "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -287,13 +311,25 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "404": {
             "description": "No existe la evidencia"
           },
           "422": {
             "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       },
@@ -359,13 +395,25 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "404": {
             "description": "No existe la evidencia"
           },
           "422": {
             "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -430,13 +478,25 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "404": {
             "description": "No existe la evidencia o su archivo ya no está"
           },
           "422": {
             "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }

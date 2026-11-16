@@ -548,7 +548,7 @@
             }
           },
           "503": {
-            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml.",
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -841,7 +841,7 @@
             }
           },
           "503": {
-            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml.",
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1036,7 +1036,7 @@
             }
           },
           "503": {
-            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml.",
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {

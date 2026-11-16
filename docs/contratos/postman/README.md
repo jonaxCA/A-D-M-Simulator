@@ -65,6 +65,6 @@ en **Authorize** (sin escribir `Bearer`).
 
 - **Todo da 401 `TOKEN_REVOCADO`:** el token venció (20 min por omisión) o se generó con
   otro `JWT_SECRET_KEY` o contra otro Redis. Genera otro con las mismas variables.
-- **`/health` da 503:** revisa en la respuesta si el que falla es `postgresql` o `redis`.
+- **`/health` da 503:** revisa en la respuesta cuál falla: `postgresql`, `redis`, `mongodb` o `bucket` (valen `no_usa` si el servicio no los usa y `no_configurado` si falta su URL). Trae también `tiempos_ms` por dependencia y `tiempo_ms` total.
 - **Series y zonas salen en ceros con 7 o 30 días:** la base no tiene casos recientes. La
   colección usa 90 días donde necesita datos.

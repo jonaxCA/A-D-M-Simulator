@@ -100,3 +100,15 @@ def test_ejemplos_json_y_xml_por_ruta(servicio, paquete, puerto, publico):
             assert contenido["application/json"]["example"] == en_json
             assert contenido["application/xml"]["examples"]["respuesta"]["value"] == en_xml
             ET.fromstring(en_xml.encode("utf-8"))
+
+
+def test_toda_ruta_con_limite_documenta_el_429():
+    publicas = {("auth", "/api/v1/auth/captcha"), ("auth", "/api/v1/auth/login"),
+                ("regiones", "/api/v1/regions"), ("regiones", "/api/v1/regions/{region_id}")}
+    for archivo in (RAIZ / "docs/contratos").glob("*/openapi.json"):
+        contrato = json.loads(archivo.read_text(encoding="utf-8"))
+        for ruta, metodos in contrato["paths"].items():
+            for item in metodos.values():
+                if item.get("security") == [{"bearerAuth": []}] or (archivo.parent.name, ruta) in publicas:
+                    respuesta = item["responses"]["429"]
+                    assert "Retry-After" in respuesta["headers"], (archivo.parent.name, ruta)

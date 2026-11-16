@@ -190,7 +190,7 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "400": {
             "description": "JSON o XML ilegible"
@@ -203,6 +203,18 @@
           },
           "422": {
             "description": "Algún campo inválido o desconocido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       },
@@ -323,10 +335,22 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "422": {
             "description": "disease_id, region_id o limit inválidos"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -400,13 +424,25 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "404": {
             "description": "No existe el lote"
           },
           "422": {
             "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -528,7 +564,7 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "400": {
             "description": "JSON o XML ilegible"
@@ -544,6 +580,18 @@
           },
           "422": {
             "description": "doses o id inválidos"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
