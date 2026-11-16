@@ -116,6 +116,18 @@ class MarcaCorridasInterrumpidasTests(_CorridasDePrueba):
         self.assertEqual(self._estado(seir)["status"], "fallido")
         self.assertEqual(self._estado(abm)["status"], "ejecutando")
 
+    def test_corridas_encoladas_de_un_motor_en_orden_de_id(self):
+        seir_b = self._encola(121)
+        seir_a = self._encola(120)
+        abm = self._encola(122, engine="abm-ref")
+        ejecutando = self._encola(123)
+        self.assertTrue(queries.marcar_run_ejecutando(ejecutando))
+
+        ids = simulaciones.corridas_encoladas("seir-ref")
+
+        propios = [i for i in ids if i in (seir_a, seir_b, abm, ejecutando)]
+        self.assertEqual(propios, sorted([seir_a, seir_b]))
+
     def test_con_estados_deja_esperando_a_las_encoladas(self):
         encolada = self._encola(108)
         ejecutando = self._encola(109)

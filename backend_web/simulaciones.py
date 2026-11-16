@@ -391,3 +391,10 @@ def recupera_corridas_interrumpidas(estados=("encolado", "ejecutando"), engine=N
                 "La corrida %s se cerro como interrumpida pero no se pudo auditar",
                 fila["id"])
     return len(filas)
+
+
+def corridas_encoladas(engine):
+    filas = queries.query("SELECT r.id FROM simulation_runs r"
+                       " JOIN simulation_batches b ON b.id = r.batch_id"
+                       " WHERE r.status = 'encolado' AND b.engine = %s ORDER BY r.id", (engine,))
+    return [fila["id"] for fila in filas]
