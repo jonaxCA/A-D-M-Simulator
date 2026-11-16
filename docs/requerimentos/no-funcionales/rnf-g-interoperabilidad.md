@@ -1,78 +1,30 @@
-Estado: Obsoleto. Requiere actualizarse
+> **Estado: Borrador** · 2026-11-16 · Por validar en equipo
 
 # RNF-G: Interoperabilidad
 
-### RNF-G01 API REST versionada
+Cómo hablan los clientes con los servicios. Las convenciones están en [`microservicios.md`](../../arquitectura/microservicios.md). Cómo leer la tabla: [`README.md`](../README.md).
 
-Todas las rutas bajo /api/v1/, versionado explícito
-Criterio de aceptación: pendiente de definir
+## Requerimientos
 
-### RNF-G02 JSON para móvil
+| ID | Requerimiento | Criterio de aceptación | Componente | Estado |
+|---|---|---|---|---|
+| RNF-G01 | Todas las rutas de los servicios van bajo `/api/v1/`, en inglés (D11) | Ninguna ruta de un servicio queda fuera del prefijo, salvo `/health` y `/docs` | Microservicios | Hecho |
+| RNF-G02 | La app Android consume solo JSON | Todas sus peticiones piden JSON | Móvil | Hecho |
+| RNF-G03 | La app de escritorio consume solo XML | Todas sus peticiones piden XML | Escritorio | Hecho |
+| RNF-G04 | Cada servicio responde en XML o en JSON, según se le pida (D9) | XML por omisión; JSON con `?format=json` o con `Accept: application/json`. Un formato desconocido responde 400 | Microservicios | Hecho |
+| RNF-G06 | El XML de un escenario tiene su esquema | [`escenario.xsd`](../../contratos/escenarios-xml/escenario.xsd), validado con `xmlschema` (D15) en la app y en el servidor | Microservicios, Escritorio | Hecho |
+| RNF-G07 | El motor tiene un contrato de entrada y de salida | [`docs/contratos/motor/`](../../contratos/motor/), con su versión en código en `procesamiento/contrato.py` | Microservicios | Hecho |
+| RNF-G08 | Los formatos de intercambio son tres | XML para escenarios, CSV y PDF para lo que se exporta, y JSON o XML en la API | Microservicios, Escritorio, Web | Hecho |
+| RNF-G09 | Los tres motores cumplen el mismo contrato | `seir-ref`, `abm-ref` y `abm-gpu` pasan las mismas pruebas de conformidad | Microservicios | Hecho |
+| RNF-G15 | Todos los servicios responden los errores igual | RFC 7807 con un `codigo` estable | Microservicios | Hecho |
 
-Android consume exclusivamente JSON
-Criterio de aceptación: pendiente de definir
+## Fuera de alcance
 
-### RNF-G03 XML para escritorio
-
-App de escritorio consume exclusivamente XML
-Criterio de aceptación: pendiente de definir
-
-### RNF-G04 Negociación de contenido
-
-Mismo esquema, dos representaciónes según Accept header
-Criterio de aceptación: pendiente de definir
-
-### RNF-G05 OpenAPI
-
-Documentación automática de todos los endpoints
-Criterio de aceptación: pendiente de definir
-
-### RNF-G06 XML Schema
-
-scenario.xsd define contrato de escenarios
-Criterio de aceptación: pendiente de definir
-
-### RNF-G07 JSON Schema
-
-Contrato de trabajo y resultado del motor definido
-Criterio de aceptación: pendiente de definir
-
-### RNF-G08 Importación/exportación
-
-CSV para datos tabulares, XML para escenarios, JSON para API
-Criterio de aceptación: pendiente de definir
-
-### RNF-G09 Compatibilidad de motores
-
-Ambos motores leen mismo formato de trabajo y escriben mismo formato de resultado
-Criterio de aceptación: pendiente de definir
-
-### RNF-G10 Protocolos estándar
-
-HTTPS para API, WebSocket opcional para notificaciones
-Criterio de aceptación: pendiente de definir
-
-### RNF-G11 Formato de fechas
-
-ISO 8601 en todos los intercambios
-Criterio de aceptación: pendiente de definir
-
-### RNF-G12 Codificación UTF-8
-
-UTF-8 en todo intercambio de texto
-Criterio de aceptación: pendiente de definir
-
-### RNF-G13 Identificadores UUID
-
-UUID v4 para recursos persistentes
-Criterio de aceptación: pendiente de definir
-
-### RNF-G14 Paginación estándar
-
-Cursor pagination para listados
-Criterio de aceptación: pendiente de definir
-
-### RNF-G15 Códigos de error estándar
-
-Formato de error uniforme en todos los servicios
-Criterio de aceptación: pendiente de definir
+| ID | Qué pedía | Por qué sale |
+|---|---|---|
+| RNF-G05 | OpenAPI | Pasa a RNF-F03 |
+| RNF-G10 | HTTPS y WebSocket | HTTPS pasa a RNF-D01; no hay WebSocket |
+| RNF-G11 | Fechas en ISO 8601 | No se comprobó en todos los servicios; lo fija cada contrato |
+| RNF-G12 | UTF-8 | Es lo que ya hacen Flask y PostgreSQL; no hay más que comprobar |
+| RNF-G13 | UUID v4 para todo recurso | Los identificadores son números de la base; solo el caso lleva un `local_uuid` |
+| RNF-G14 | Paginación con cursor | `GET /runs` regresa como mucho 100 corridas, sin paginar (RNF-B04) |

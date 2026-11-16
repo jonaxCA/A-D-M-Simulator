@@ -1,138 +1,48 @@
-Estado: Obsoleto. Requiere actualizarse
+> **Estado: Borrador** · 2026-11-16 · Por validar en equipo
 
-# RF-F: Resultados y Análisis
+# RF-F: Resultados y comparación
+
+Es la segunda mitad del proceso **P3** de [`procesos_v3.md`](../../arquitectura/procesos_v3.md): el ANALISTA compara los resultados contra su costo y exporta un reporte; EPIDEMIOLOGO y ANALISTA consultan en la web. Cómo leer la tabla: [`README.md`](../README.md).
 
 ## Dependencias
 
-- RF-E (simulación completada)
-- MongoDB (resultados)
+- RF-E (corridas completadas) y RF-H (la app de escritorio).
+- PostgreSQL: `simulation_runs`, `simulation_results`, `intervention_types` (costo).
+- MongoDB: `series_corridas` (D28).
+- Redis: la caché de `resultados`.
+- Cloud Storage: el reporte (D30).
+- Servicios: `resultados`, `comparacion`, `pareto`.
 
-### RF-F01 Curvas diarias
+## Requerimientos
 
-El sistema debe generar curvas de: casos nuevos, casos activos, hospitalizados, fallecidos acumulados
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
+| ID | Requerimiento | Criterio de aceptación | Paso | Componente | Prioridad | Estado |
+|---|---|---|---|---|---|---|
+| RF-F01 | Cada corrida entrega sus curvas diarias | `resultados` responde un punto por día simulado, con los compartimentos del modelo | 3.5, 3.7 | Microservicios | Alta | Hecho |
+| RF-F02 | Las curvas se desglosan por grupo de edad | La serie trae cada compartimento total y por grupo de edad | 3.5 | Microservicios | Media | Verificar: falta acordar con D28 si la serie lleva el desglose |
+| RF-F04 | Cada corrida entrega su resumen: casos acumulados, hospitalizaciones, fallecimientos, pico de casos activos, día del pico y tasa de ataque | `resultados` responde los seis indicadores | 3.5, 3.7 | Microservicios | Alta | Hecho |
+| RF-F05 | El costo de cada escenario se calcula con el costo unitario de sus intervenciones, en personas-día y en pesos por separado (D3) | `pareto` responde el costo de cada intervención y el total. La frontera usa personas-día; los pesos van aparte en la tabla | 3.5 | Microservicios | Alta | Hecho |
+| RF-F06 | Las réplicas de una versión se resumen con media, mediana y la banda del percentil 5 al 95 (D8) | Se usan solo las semillas comunes a todas las versiones comparadas. Este parcial el resumen se calcula en el escritorio | 3.5 | Escritorio | Alta | Hecho |
+| RF-F07 | La comparación dibuja la frontera de Pareto sobre las medianas, contra el costo | Un escenario dominado queda fuera de la frontera. La pantalla muestra opciones y costos, y no recomienda ninguno (RN-36) | 3.5 | Escritorio, Microservicios | Alta | Hecho |
+| RF-F08 | Las curvas de varias versiones se ven juntas, cada una con su banda | La gráfica muestra la mediana y la banda de cada versión | 3.5 | Escritorio | Alta | Hecho |
+| RF-F09 | La comparación se exporta a CSV | Salen la tabla y las curvas | 3.6 | Escritorio | Alta | Hecho |
+| RF-F11 | La comparación se exporta a un reporte en PDF, o se imprime | El reporte trae la tabla, la frontera, las curvas y el aviso de que no es una predicción | 3.6 | Escritorio | Alta | Hecho |
+| RF-F17 | El reporte se sube a Cloud Storage y se comparte con una URL firmada | PostgreSQL guarda los metadatos del reporte, en una tabla nueva. La exportación queda en la auditoría. La web abre el reporte con una URL que vence en minutos | 3.6, 3.7 | Escritorio, Microservicios, Web | Alta | Falta (D-3): hoy el reporte queda en la computadora |
+| RF-F19 | Toda pantalla de resultados muestra el aviso de que no es una predicción (`AVISO_SIMULACION`) | El aviso llega del servidor y se ve en la web, en el escritorio y en el reporte (RN-35) | 3.5 a 3.7 | Web, Escritorio, Microservicios | Alta | Hecho |
+| RF-F20 | Los conteos se entregan junto con el factor de escala: habitantes del censo entre agentes simulados (D6) | `resultados` responde el factor. La pantalla lo muestra | 3.5 | Microservicios, Escritorio | Media | En parte: el escritorio todavía no lo muestra (RF-H21) |
+| RF-F21 | La web consulta una corrida: su resumen y sus curvas | EPIDEMIOLOGO, ANALISTA y ADMINISTRADOR ven la corrida. Con D28, el resumen sale de `simulation_runs` y las curvas se piden a `resultados`; si `resultados` no responde, se ve el resumen sin curvas (D20) | 3.7 | Web | Alta | En parte: hoy lee `simulation_results`; el cambio va con D28 |
+| RF-F22 | `comparacion` pide los resultados a `resultados` y aprovecha su caché | Una comparación repetida no vuelve a leer la serie completa | 3.5 | Microservicios | Media | Falta: hoy lee `simulation_results` directo; el cambio va con D28 |
+| RF-F23 | La pantalla avisa cuando las bandas de dos escenarios se enciman (D8) | Si las bandas se cruzan, la comparación lo dice junto a la frontera | 3.5 | Escritorio | Media | Falta (A3) |
 
-### RF-F02 Desglose por grupo etario
+## Fuera de alcance
 
-Resultados deben desglosarse por grupos: 0-17, 18-29, 30-59, 60+
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-F03 Desglose geográfico
-
-Resultados deben desglosarse por municipio
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-F04 Indicadores resumen
-
-Cada corrida debe reportar: pico máximo, día del pico, tasa de ataque, días-cama acumulados
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-F05 Estimación de costo
-
-El sistema debe calcular días-persona de actividad económica perdida por escenario
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-F06 Mediana y banda
-
-El sistema debe reportar mediana y banda de incertidumbre (percentiles 25-75) para ensambles
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-F07 Frontera de eficiencia
-
-El sistema debe construir gráfica muertes vs. costo con frontera de Pareto
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-F08 Superposición de curvas
-
-El sistema debe graficar múltiples escenarios superpuestos para comparación
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-F09 Exportación de datos
-
-El sistema debe permitir exportar series en CSV y JSON
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-F10 Exportación gráfica
-
-El sistema debe permitir exportar gráficas en PNG y PDF
-Criterio de aceptación: pendiente de definir
-Prioridad: Media
-
-### RF-F11 Reporte automático
-
-El sistema debe generar reporte PDF con hallazgos principales de un análisis
-Criterio de aceptación: pendiente de definir
-Prioridad: Media
-
-### RF-F12 Análisis de sensibilidad
-
-El sistema debe permitir visualizar efecto de variar un parámetro manteniendo otros constantes
-Criterio de aceptación: pendiente de definir
-Prioridad: Media
-
-### RF-F13 Comparación con datos reales
-
-El sistema debe permitir superponer curva simulada con serie histórica real para validación
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-F14 Métricas de calibración
-
-El sistema debe calcular error cuadrático medio y R² entre simulación y datos reales
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-F15 Mapa de incidencia
-
-El sistema debe mostrar mapa 2D con incidencia por zona geográfica
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-F16 Animación temporal
-
-El sistema debe permitir animar la evolución diaria sobre el mapa
-Criterio de aceptación: pendiente de definir
-Prioridad: Media
-
-### RF-F17 Compartición de resultados
-
-El analista debe poder compartir vista de resultados con tomadores de decisión
-Criterio de aceptación: pendiente de definir
-Prioridad: Media
-
-### RF-F18 Favoritos
-
-El usuario debe poder marcar resultados como favoritos para acceso rápido
-Criterio de aceptación: pendiente de definir
-Prioridad: Baja
-
-#### CU-F01: Construcción de frontera de eficiencia
-
-* **Actor:** Analista, Tomador de decisiones  
-* **Precondición:** Al menos 3 escenarios completados  
-* **Flujo principal:**
-
-  1\. Usuario selecciona escenarios a comparar
-
-  2\. Sistema recupera resultados de MongoDB
-
-  3\. Sistema calcula mediana de muertes y costo por escenario
-
-  4\. Sistema identifica puntos no dominados (frontera de Pareto)
-
-  5\. Sistema genera gráfica interactiva
-
-  6\. Usuario explora trade-offs
-
-  7\. Usuario exporta gráfica o datos
-
-* **Postcondición:** Decisión informada disponible
+| ID | Qué pedía | Por qué sale |
+|---|---|---|
+| RF-F03 | Resultados por municipio | Un escenario es de una sola región |
+| RF-F10 | Exportar las gráficas en PNG | Se cubre con el PDF (RF-F11) |
+| RF-F12 | Análisis de sensibilidad | Ningún proceso lo pide |
+| RF-F13 | Encimar la curva simulada con datos reales | La calibración queda fuera (D24): los resultados son escenarios, no pronósticos |
+| RF-F14 | Error cuadrático y R² contra datos reales | Igual que RF-F13 |
+| RF-F15 | Mapa de incidencia | Es el mapa de casos del tablero web (RF-G03) |
+| RF-F16 | Animar la evolución sobre el mapa | La visualización 3D y las animaciones quedan fuera |
+| RF-F18 | Marcar resultados como favoritos | Ningún proceso lo pide |
+| — | Resumir las réplicas en el servidor | Queda para la entrega final (D8) |
