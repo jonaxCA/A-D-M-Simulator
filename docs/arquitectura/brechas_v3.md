@@ -1,4 +1,4 @@
-> **Estado: Borrador** · 2026-11-01 · Revisado el 2026-11-14
+> **Estado: Borrador** · 2026-11-01 · Revisado el 2026-11-16
 
 # Inventario de brechas para la arquitectura v3
 
@@ -11,33 +11,32 @@ Tipos de brecha:
 - **Ambigüedad:** nadie lo ha decidido.
 - **Verificar:** no se pudo confirmar leyendo el código; alguien tiene que probarlo.
 
-Todas las decisiones de `decisiones/` (D1 a D31) están aceptadas. Lo que queda aquí es lo que falta documentar en la v3 o implementar. Por D21, todo lo pendiente es del tercer parcial.
+Todas las decisiones de `decisiones/` (D1 a D32) están aceptadas. Lo que queda aquí es lo que falta documentar en la v3 o implementar. Por D21, todo lo pendiente es del tercer parcial.
 
 Primero se termina el documento de arquitectura. El código se toca después, con el plan de implementación (§10).
 
-**Ya resueltas:** I2 y S3; S1 (con pruebas de revocación); A1 (`abm-ref` en `procesamiento/abm/`, corre en `simulador-abm`; FLAME GPU solo si sobra tiempo) y A2 ([`ficha_simulador.md`](ficha_simulador.md)). A6, la calibración, queda fuera de alcance por D24.
+**Ya resueltas:** I2 y S3; S1 (con pruebas de revocación); A1 (`abm-ref` en `procesamiento/abm/`, corre en `simulador-abm`; FLAME GPU solo si sobra tiempo) y A2 ([`ficha_simulador.md`](ficha_simulador.md)). C9: aplicar dosis y marcar avisos como leídos basta como «actualización de información» de la móvil (D32). A6, la calibración, queda fuera de alcance por D24.
 
 ## 1. Fallas de estructura
 
 | #  | Problema                                                                                                                                                                                   | Evidencia                       | Tipo                                         |
 |----|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|----------------------------------------------|
-| E5 | Los requerimientos funcionales, la trazabilidad y el contexto general están marcados como **Obsoleto**, y la matriz de permisos y las reglas de negocio como "revisar". La v3 no tiene una base de requerimientos vigente. | Encabezados de `requerimentos/` | Falta; se resuelve con §9.0, §9.1 y §9.6     |
+| E5 | Los requerimientos funcionales, la trazabilidad y el contexto general están marcados como **Obsoleto**, y la matriz de permisos y las reglas de negocio como "revisar". La v3 no tiene una base de requerimientos vigente. | Encabezados de `requerimentos/` | Borrador del 2026-11-16 en [`requerimentos/`](../requerimentos/README.md); falta validarlo en equipo |
 | E7 | La v2 deja fuera de alcance MongoDB, Cloud Storage y los límites de consumo, que ya decidieron D28, D30 y D31.                                                                             | `arquitectura_v2.md` §9.1 y §8  | Contradicción: la v3 tiene que incluirlos    |
 
 ## 2. Aplicaciones cliente
 
 | #   | Requisito de la rúbrica                                | Documentado                                  | Implementado                                                                                                                                                                                                                                                       | Tipo                                                                                                               |
 |-----|--------------------------------------------------------|----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
-| C3  | Android: indicador de conexión                         | `frontend_movil/README.md`, secciones 3 y 4  | Token cifrado con una llave del Keystore (`sesion/`). Una sola renovación a la vez (`red/Renovador.kt`). Al cerrar o perder la sesión se borra lo guardado. Para la conexión, solo hay mensajes de «Sin conexión» en cada pantalla                                 | Falta (parcial): un indicador de conexión fijo                                                                     |
+| C3  | Android: indicador de conexión                         | `frontend_movil/README.md`, secciones 3 y 4  | Token cifrado con una llave del Keystore (`sesion/`). Una sola renovación a la vez (`red/Renovador.kt`). Al cerrar o perder la sesión se borran los tokens; los casos sin enviar se quedan y se mandan cuando vuelve la conexión (D19). Para la conexión, solo hay mensajes de «Sin conexión» en cada pantalla                                 | Falta (parcial): un indicador de conexión fijo                                                                     |
 | C8  | Menú por rol en ambas apps                             | D1 aceptada. La matriz sigue «por confirmar» | Escritorio: solo entran ANALISTA y ADMINISTRADOR, y «forzar error» es solo de ADMINISTRADOR. Móvil: muestra el mismo menú a cualquier rol                                                                                                                          | Falta (parcial): el menú por rol de la móvil                                                                       |
-| C9  | Android: actualización de información                  | `frontend_movil/README.md`, secciones 8 y 9  | La app crea casos, fotos y lotes. Lo que actualiza: aplicar una dosis suma al lote (`doses_used`, en `vacunas`) y abrir un aviso lo marca como leído (`notificaciones`). No edita casos                                                                            | Ambigüedad: decidir si eso cuenta o si se agrega editar un caso antes de sincronizarlo                             |
 | C10 | Escritorio: validación del JWT y modificación de datos | `frontend_desktop/README.md`, «Sesión»       | No decodifica el JWT: lo valida cada servicio, y la app renueva con `TOKEN_EXPIRADO` y regresa al login con los demás 401 (`app/api.py`). Modifica: crea versiones; agrega, quita y mueve intervenciones; cancela corridas y envía a revisión (`app/servicios.py`) | Ambigüedad (parcial): decidir si «validación del JWT» pide que la app revise `exp`. La modificación está **Hecha** |
 
 ## 3. Integración completa
 
 | #  | Requisito de la rúbrica                                                                                                   | Documentado                                                                                         | Implementado                                                                                                                                                                                                                                                                                                                                                                                                                                       | Tipo  |
 |----|---------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------|
-| I1 | ≥ 3 procesos de principio a fin: usuario, app, microservicios, Redis, BD, bucket, auditoría, notificación y visualización | No hay una lista de los tres procesos; ver la propuesta en §9.1                                     | P1 va de punta a punta en la móvil (caso, sincronización y fotos). P2 y P3 van en el escritorio (escenario, revisión, aprobación en la web, corridas y comparación). P3 notifica al terminar cada corrida. P2 solo notifica si se aprueba por `aprobacion`: en la web no, y nadie avisa al enviar a revisión ([`procesos_v3.md`](procesos_v3.md), 2.7 y 2.8). Faltan el bucket y MongoDB, y P1 no notifica a nadie: `casos`, `sincronizacion` y `evidencias` no llaman a `notificaciones` (solo lo hacen `aprobacion` y `simulador`) | Falta |
+| I1 | ≥ 3 procesos de principio a fin: usuario, app, microservicios, Redis, BD, bucket, auditoría, notificación y visualización | No hay una lista de los tres procesos; ver la propuesta en §9.1                                     | P1 va de punta a punta en la móvil (caso, sincronización y fotos). P2 y P3 van en el escritorio (escenario, revisión, aprobación en la web, corridas y comparación). P3 notifica al terminar cada corrida. P2 solo notifica si se aprueba por `aprobacion`: en la web no, y nadie avisa al enviar a revisión ([`procesos_v3.md`](procesos_v3.md), 2.7 y 2.8). Faltan el bucket y MongoDB, y P1 no notifica a nadie (D32: será un aviso por lote a los EPIDEMIOLOGO): `casos`, `sincronizacion` y `evidencias` no llaman a `notificaciones` (solo lo hacen `aprobacion` y `simulador`) | Falta |
 | I3 | "Todos los componentes deberán consultar Redis durante la autenticación"                                                  | Sin documentar para la web. La rúbrica lo pide desde el segundo parcial («Implementación de Redis») | Verificado: la web no usa Redis en ningún lado. Firma su propio JWT, lo guarda en una cookie (`frontend_web/app/routes.py`) y lo verifica `backend_web/auth.py` contra PostgreSQL. Cerrar sesión borra la cookie, pero el token sigue valiendo hasta que vence: no hay revocación. D20 no lo impide: la web puede seguir directa a PostgreSQL y consultar Redis solo para la sesión                                                                 | Falta |
 
 ## 4. Datos
@@ -72,7 +71,7 @@ Primero se termina el documento de arquitectura. El código se toca después, co
 
 | #  | Requisito de la rúbrica                                                                                                                   | Documentado                                                                        | Implementado                                                                                                                                       | Tipo                                         |
 |----|-------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|
-| A3 | Réplicas de una comparación y cómo se resumen                                                                                             | D8: 30 réplicas con semillas 1..N; media, mediana y p5–p95; Pareto sobre medianas | En el escritorio (`frontend_desktop/app/resumen.py`)                                                                                               | Falta (parcial): el aviso de bandas encimadas (integrante 6) |
+| A3 | Réplicas de una comparación y cómo se resumen                                                                                             | D8: 30 réplicas con semillas 1..N; media, mediana y p5–p95; Pareto sobre medianas | En el escritorio (`frontend_desktop/app/resumen.py`)                                                                                               | Falta (parcial): el aviso de bandas encimadas (bloque A) |
 | A4 | Pruebas con Locust por perfil (consulta, registro, móvil, escritorio, procesos automáticos)                                               | Pendiente                                                                          | No                                                                                                                                                 | Falta                                        |
 | A5 | Métricas: usuarios concurrentes, peticiones por segundo, tiempo medio, p95, p99, errores, saturación, recuperación y endpoints más lentos | No                                                                                 | No                                                                                                                                                 | Falta                                        |
 
@@ -101,7 +100,7 @@ Cada proceso es una tabla con un renglón por paso:
 | Paso | Quién (rol) | Dónde (app) | Qué hace | RF | Servicio | Formato | Escribe en | Lee de | Archivo en GCS | Auditoría | Notifica a |
 |------|-------------|-------------|----------|----|----------|---------|------------|--------|----------------|-----------|------------|
 
-Propuesta de los tres procesos, sacada del catálogo actual. **Está por validar.** Las tablas paso a paso están en [`procesos_v3.md`](procesos_v3.md):
+Propuesta de los tres procesos, sacada del catálogo actual. Validada el 2026-11-16 (D32). Las tablas paso a paso están en [`procesos_v3.md`](procesos_v3.md):
 
 - **P1 · Captura en campo (Android, JSON).** Una persona en campo registra un caso con GPS y foto, aunque no tenga conexión, y sincroniza después. Servicios: `auth`, `sesiones`, `casos`, `sincronizacion`, `regiones`, `enfermedades` y `evidencias`. Usa la cámara, el GPS, el almacenamiento local y la sincronización. Escribe el caso en PostgreSQL y la foto en GCS (D30). El resultado se ve en el tablero web. Opcional: el QR de lotes de `vacunas`. **Implementado en `frontend_movil/`, con `evidencias` y el QR de `vacunas`; faltan GCS y la notificación (I1).**
 - **P2 · Diseño y aprobación de escenarios (escritorio, XML).** Se arma un escenario con sus intervenciones y costos, se importa o exporta en XML validado con XSD y se envía a revisión; quien revisa lo aprueba y se notifica. Servicios: `escenarios`, `intervenciones`, `validacion`, `escenarios-xml`, `aprobacion` y `notificaciones`. **Implementado en `frontend_desktop/`; la aprobación queda en la web (D4).**
@@ -145,7 +144,7 @@ Entre las tres sale la clasificación por componente que la rúbrica pide para l
 | PostgreSQL | Pide integridad, relaciones o transacciones, o es la fuente de verdad        | Usuarios, roles, casos, escenarios y versiones, estado de las corridas, auditoría, metadatos de archivos |
 | MongoDB    | Es semiestructurado o de alta frecuencia, o se agrega más de lo que se edita | D28: `historial_servicios` y `series_corridas`; los lotes de `sincronizacion` solo si sobra tiempo      |
 | Redis      | Es temporal, tiene TTL y se puede reconstruir (D19)                          | Sesiones, tokens revocados, caché, contadores de límites (D31), candados, cola y progreso de corridas  |
-| GCS        | Es un archivo binario o grande                                               | D30: fotos y evidencias; candidatos: reportes y exportaciones, XML de intercambio                       |
+| GCS        | Es un archivo binario o grande                                               | D30: fotos y evidencias; reportes y exportaciones; el XML de intercambio solo si sobra tiempo (D32)                       |
 
 ### 9.4 El simulador
 
@@ -165,12 +164,12 @@ Cada punto de la rúbrica (Android, escritorio, integración, seguridad, nube, m
 
 ## 10. Orden de trabajo
 
-1. Validar en equipo los tres procesos de [`procesos_v3.md`](procesos_v3.md) con su columna RF (§9.0 y §9.1).
+1. Validar en equipo los tres procesos de [`procesos_v3.md`](procesos_v3.md) con su columna RF (§9.0 y §9.1). **Hecho el 2026-11-16 (D32).**
 2. Sacar las matrices y el inventario de datos (§9.2 y §9.3).
 3. Escribir la v3 a partir de la v2, con un apartado por cliente, el diagrama de despliegue en GCP con nginx y el diseño de MongoDB y de GCS.
 4. Validar la v3 contra la rúbrica (§9.5) y confirmar el volumen con el profesor (§8).
-5. Redactar los requerimientos, las historias de usuario y la trazabilidad (§9.6).
-6. Escribir el plan de implementación con las tareas que salen de los RF.
+5. Redactar los requerimientos, las historias de usuario y la trazabilidad (§9.6). **Borrador del 2026-11-16** en [`requerimentos/`](../requerimentos/README.md); falta validarlo en equipo.
+6. Escribir el plan de implementación con las tareas que salen de los RF. **Borrador del 2026-11-16** en [`parciales/parcial-3/checklist.md`](../parciales/parcial-3/checklist.md); falta validarlo en equipo.
 7. Marcar la v2 como Obsoleta.
 
 ## 11. Qué implementar después de la v3
@@ -181,4 +180,4 @@ Cada punto sigue su decisión:
 2. Volumen y mediciones con y sin índice y con y sin Redis ([D29](../decisiones/D29-volumen-de-datos.md)).
 3. Locust por perfil, con p95, p99, errores y saturación (A4 y A5).
 4. Límites de consumo ([D31](../decisiones/D31-limites-de-consumo.md)), reencolado de corridas ([D19](../decisiones/D19-redis-sin-datos-autoritativos.md)) y demostración de fallos (N5).
-5. Archivos en un bucket o emulador con URLs firmadas ([D30](../decisiones/D30-archivos-en-cloud-storage.md)); nginx local con certificado de mkcert ([D25](../decisiones/D25-nginx-como-entrada.md) y [D26](../decisiones/D26-certificado-https.md)).
+a. Archivos en un bucket o emulador con URLs firmadas ([D30](../decisiones/D30-archivos-en-cloud-storage.md)); nginx local con certificado de mkcert ([D25](../decisiones/D25-nginx-como-entrada.md) y [D26](../decisiones/D26-certificado-https.md)).

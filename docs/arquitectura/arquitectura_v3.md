@@ -2,7 +2,7 @@
 
 > **Estado: Borrador** · 2026-11-14 · Por validar en equipo (paso 6 de §11 de [`brechas_v3.md`](brechas_v3.md)). Al validarse reemplaza a [`arquitectura_v2.md`](arquitectura_v2.md); mientras tanto, lo que este documento no cambia sigue como en la v2.
 
-La v3 es la arquitectura del tercer parcial: las apps cliente, la entrada por nginx, MongoDB, Cloud Storage, los límites de consumo, el ABM y el despliegue en GCP. Sale de los tres procesos ([`procesos_v3.md`](procesos_v3.md)), de las decisiones D1 a D31 ([`decisiones.md`](../decisiones/decisiones.md)) y del código de `feat/tercer-parcial` al 2026-11-14. Enlaza en vez de copiar: el detalle de cada servicio está en [`microservicios.md`](microservicios.md), y el del simulador en [`ficha_simulador.md`](ficha_simulador.md).
+La v3 es la arquitectura del tercer parcial: las apps cliente, la entrada por nginx, MongoDB, Cloud Storage, los límites de consumo, el ABM y el despliegue en GCP. Sale de los tres procesos ([`procesos_v3.md`](procesos_v3.md)), de las decisiones D1 a D32 ([`decisiones.md`](../decisiones/decisiones.md)) y del código de `feat/tercer-parcial` al 2026-11-14. Enlaza en vez de copiar: el detalle de cada servicio está en [`microservicios.md`](microservicios.md), y el del simulador en [`ficha_simulador.md`](ficha_simulador.md).
 
 Si este documento y el catálogo no coinciden, manda el catálogo; si el catálogo y el código no coinciden, manda el código.
 
@@ -23,8 +23,8 @@ Cada pieza lleva su estado:
 | Motor | SEIR por edad; FLAME GPU después | Tres motores con el mismo contrato: `seir-ref`, `abm-ref` y `abm-gpu`, cada uno con su simulador y su cola | D2, D22, D23 | **Hecho** |
 | Población de un escenario | Habitantes | Agentes; el factor de escala se calcula fuera del motor | D6 | **Hecho** |
 | Réplicas | — | 30 por omisión, semillas 1..N; el escritorio resume | D8 | **Hecho**, menos el aviso de bandas encimadas (integrante 6) |
-| MongoDB | Fuera de la etapa | `historial_servicios` y `series_corridas` | D28 | Falta (D-1, D-2; integrante 2) |
-| Archivos | Volumen de Docker de `evidencias` | Cloud Storage con URLs firmadas | D30 | Falta (D-3, D-4; integrante 3) |
+| MongoDB | Fuera de la etapa | `historial_servicios` y `series_corridas` | D28 | Falta (D-1; integrante 2) |
+| Archivos | Volumen de Docker de `evidencias` | Cloud Storage con URLs firmadas | D30 | Falta (D-3; integrante 3) |
 | Límites de consumo | Fuera de la etapa | Un contador por usuario y ruta en Redis, en `epidemia_comun` | D31 | Falta (S2; integrante 4) |
 | Salud y panel | `/health` con PostgreSQL y Redis; historial en Redis | Más MongoDB, bucket y tiempo de respuesta; historial en MongoDB y número de errores | D28 | Falta, en parte (N3, N4; integrante 7) |
 | Despliegue | Pendiente | Compute Engine: una VM principal y una con GPU que se enciende solo cuando hace falta | D23, D25, D26 | Falta (N1, N2, N6; integrante 7) |
@@ -67,9 +67,9 @@ Los tres procesos integrales que pide la rúbrica, paso a paso, están en [`proc
 
 | Proceso | Usuario y app | Servicios | Redis | PostgreSQL o MongoDB | Archivo en bucket | Auditoría | Notificación | Visualización |
 |---|---|---|---|---|---|---|---|---|
-| P1 · Captura en campo | CAPTURISTA, Android | `auth`, `sesiones`, `dispositivos`, `enfermedades`, `regiones`, `sincronizacion`, `casos`, `evidencias`, `vacunas` | Sí: sesión, candado y resultado del lote | Sí: `cases` | Falta: las fotos a GCS (D-3) | Sí | Falta (I1). Propuesta: un aviso por lote con casos nuevos a los EPIDEMIOLOGO | Sí: tablero y mapa de la web |
-| P2 · Diseño y aprobación | ANALISTA en el escritorio; EPIDEMIOLOGO en la web | `escenarios`, `intervenciones`, `validacion`, `escenarios-xml`, `aprobacion`, `notificaciones` | Sí: sesión | Sí | Opcional. Propuesta: guardar el XML de intercambio | Sí | En parte: falta avisar a los EPIDEMIOLOGO al enviar a revisión, y al autor cuando se dictamina en la web (I1) | Sí: estado de la versión |
-| P3 · Simulación y comparación | ANALISTA en el escritorio; consulta en la web | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto`, `notificaciones` | Sí: sesión, candado, cola y avance | Sí: `simulation_results`; con D28, la serie en MongoDB | Falta: el reporte a GCS con URL firmada (D-3, D-4) | Sí | Sí: al terminar o fallar una corrida | Sí: escritorio y web |
+| P1 · Captura en campo | CAPTURISTA, Android | `auth`, `sesiones`, `dispositivos`, `enfermedades`, `regiones`, `sincronizacion`, `casos`, `evidencias`, `vacunas` | Sí: sesión, candado y resultado del lote | Sí: `cases` | Falta: las fotos a GCS (D-3) | Sí | Falta (I1): un aviso por lote con casos nuevos a los EPIDEMIOLOGO (D32) | Sí: tablero y mapa de la web |
+| P2 · Diseño y aprobación | ANALISTA en el escritorio; EPIDEMIOLOGO en la web | `escenarios`, `intervenciones`, `validacion`, `escenarios-xml`, `aprobacion`, `notificaciones` | Sí: sesión | Sí | No corresponde (D32); el XML de intercambio, solo si sobra tiempo | Sí | En parte: falta avisar a los EPIDEMIOLOGO al enviar a revisión, y al autor cuando se dictamina en la web (I1) | Sí: estado de la versión |
+| P3 · Simulación y comparación | ANALISTA en el escritorio; consulta en la web | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto`, `notificaciones` | Sí: sesión, candado, cola y avance | Hoy `simulation_results`; con D28, el resumen en `simulation_runs` y la serie en `series_corridas` (MongoDB) | Falta: el reporte a GCS con URL firmada (D-3) | Sí | Sí: al terminar o fallar una corrida | Sí: escritorio y web |
 
 Los tres usan PostgreSQL, que basta para la rúbrica («PostgreSQL o MongoDB»). MongoDB entra por el monitoreo y por las series del simulador (§6).
 
@@ -77,7 +77,7 @@ Los tres usan PostgreSQL, que basta para la rúbrica («PostgreSQL o MongoDB»).
 
 | Cliente | Para quién | Qué hace | Formato | Estado |
 |---|---|---|---|---|
-| **Web** (`frontend_web/`, `backend_web/`) | Todos los roles; sitio público sin sesión | Tablero, mapa, catálogos, casos, administración y bitácora. Consulta escenarios y corridas, y el EPIDEMIOLOGO aprueba o rechaza versiones (D4). Va directo a PostgreSQL (D20) y funciona aunque los servicios estén caídos (I2) | HTML | **Hecho**. Falta la carga de archivos (D-5). Propuesta: subir evidencias con la misma interfaz de almacenamiento que `evidencias` (D30) |
+| **Web** (`frontend_web/`, `backend_web/`) | Todos los roles; sitio público sin sesión | Tablero, mapa, catálogos, casos, administración y bitácora. Consulta escenarios y corridas, y el EPIDEMIOLOGO aprueba o rechaza versiones (D4). Va directo a PostgreSQL (D20) y funciona aunque los servicios estén caídos (I2); con D28, solo las curvas de una corrida se piden a `resultados` | HTML | **Hecho**. Falta la carga de archivos (D-5). Propuesta: subir evidencias con la misma interfaz de almacenamiento que `evidencias` (D30) |
 | **Android** (`frontend_movil/`) | CAPTURISTA en campo | P1: casos sin conexión con GPS y fotos, sincronización por lotes, lotes de vacuna por QR o código de barras, avisos y perfil | JSON | **Hecho**: usa once servicios y seis capacidades del teléfono (cámara, GPS, código QR y de barras, notificaciones, almacenamiento local y sincronización). Falta un indicador de conexión fijo (C3) y el menú por rol (C8); C9 (actualizar información) está por decidir |
 | **Escritorio** (`frontend_desktop/`) | ANALISTA y ADMINISTRADOR | P2 y P3: escenarios y su XML validado con XSD, envío a revisión, lotes de réplicas, comparación con Pareto, exportación e impresión | XML | **Hecho**. Falta mostrar la escala de D6, ofrecer `abm-gpu` en el selector de motor y el aviso de bandas encimadas (integrante 6). C10 (si «validación del JWT» pide revisar `exp` en la app) está por decidir |
 | **Consola** (`microservicios/consola`) | El equipo | Swagger, probador y panel de salud de los 29 servicios | JSON y XML | **Hecho**. Es herramienta de pruebas, no cliente del producto |
@@ -115,7 +115,7 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
 | MongoDB | El historial de salud de los servicios y las series diarias de las corridas (D28) | Falta (integrante 2) |
 | Cloud Storage | Fotos y evidencias, reportes exportados y, opcional, el XML de intercambio (D30) | Falta (integrante 3) |
 
-**Diseño de MongoDB (D-2, D28).**
+**Diseño de MongoDB (D-1, D28).**
 
 | Colección | Un documento es | Campos | Índices | Vida |
 |---|---|---|---|---|
@@ -127,7 +127,7 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
 - **Qué se demuestra:** inserción, consulta, actualización, agregación (disponibilidad y latencia por servicio; curvas por lote), índices y recuperación por `run_id`.
 - **Lotes crudos de `sincronizacion`:** son una tercera colección solo si sobra tiempo (§10).
 
-**Archivos en Cloud Storage (D-3, D-4, D30).**
+**Archivos en Cloud Storage (D-3, D30).**
 
 - **Un bucket privado.** Propuesta: los prefijos `evidencias/`, `reportes/` y `xml/`, con acceso uniforme y sin lectura pública.
 - **Qué guarda la base:** de cada archivo, solo identificador, ruta, tipo, tamaño, propietario, fecha, huella SHA-256, nivel de privacidad, estado y metadatos. Las evidencias ya tienen esos campos en `case_attachments`. Los reportes de P3 necesitan su tabla, con una migración nueva (036 o siguiente).
@@ -230,7 +230,7 @@ flowchart TB
 |---|---|---|
 | Un microservicio se detiene | El panel lo marca caído; quien lo llama responde 503 `SERVICIO_NO_DISPONIBLE`; los demás siguen | Lo hace hoy; falta la demostración |
 | Redis no responde | Las rutas protegidas responden 503 (fallan cerradas); las públicas y la caché de analítica siguen contra PostgreSQL; `corridas` no deja una corrida colgada; la web sigue (I2) | **Hecho** (`test_redis_caido.py`) |
-| MongoDB no responde | El panel lo marca como dependencia caída y se pierde el historial de ese lapso. Propuesta: la corrida termina con su resumen en PostgreSQL y la serie se reintenta (integrante 2) | Falta |
+| MongoDB no responde | El panel lo marca como dependencia caída y se pierde el historial de ese lapso. La corrida termina con su resumen en `simulation_runs` (D28). Propuesta: la serie se reintenta (integrante 2) | Falta |
 | PostgreSQL no responde | `/health` en 503, el panel los marca degradados, y las escrituras fallan sin dejar datos a medias (una transacción por escritura) | Falta la demostración |
 | El bucket no está disponible | La subida responde 503 y la app conserva el archivo para reintentar; el caso ya creado no se pierde | Falta |
 | Una petición excede el tiempo | `llamar()` corta a los 5 s y responde 503; propuesta: un tiempo máximo también en nginx | En parte |

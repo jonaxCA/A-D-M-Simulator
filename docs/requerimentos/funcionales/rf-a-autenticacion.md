@@ -1,88 +1,33 @@
-Estado: Obsoleto. Requiere actualizarse
+> **Estado: Borrador** · 2026-11-16 · Por validar en equipo
 
-# RF-A: Autenticación y Control de Acceso
+# RF-A: Autenticación y control de acceso
+
+Función de soporte: la usan los tres procesos (pasos 1.1 y 2.1 de [`procesos_v3.md`](../../arquitectura/procesos_v3.md)). Cómo leer la tabla: [`README.md`](../README.md).
 
 ## Dependencias
 
-- PostgreSQL (users, roles)
-- Redis (sesiones)
+- PostgreSQL: `users`, `user_roles`, `role_permissions`, `devices`, `audit_log`.
+- Redis: captcha, sesión y tokens revocados.
+- Servicios: `auth`, `sesiones`, `usuarios`, `roles`, `dispositivos`.
 
-### RF-A01 Inicio de sesión
+## Requerimientos
 
-El sistema debe permitir autenticación mediante usuario y contraseña, emitiendo un JWT con tiempo de expiración configurable
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
+| ID | Requerimiento | Criterio de aceptación | Paso | Componente | Prioridad | Estado |
+|---|---|---|---|---|---|---|
+| RF-A01 | Las apps inician sesión con usuario, contraseña y captcha. `auth` emite un token de acceso y uno de renovación | Con datos correctos responde los dos tokens y abre la sesión en Redis; queda `LOGIN` en la auditoría. Con datos incorrectos responde 401 con un mensaje genérico y queda `LOGIN_FAILED`. El captcha sirve para un solo intento y vence a los 300 s | 1.1, 2.1 | Microservicios, Seguridad | Alta | Hecho |
+| RF-A02 | La sesión se renueva sin volver a pedir la contraseña | `sesiones` cambia el token de renovación por uno nuevo. Reutilizar uno ya usado cierra la sesión completa. Renovar no alarga la sesión | 1.1, 2.1 | Microservicios, Seguridad | Alta | Hecho |
+| RF-A03 | Cerrar sesión revoca el token | `sesiones` marca el token como revocado en Redis y borra la sesión; la siguiente petición con ese token responde 401 | Soporte | Microservicios, Seguridad | Alta | Hecho |
+| RF-A04 | El sistema tiene cuatro roles: ADMINISTRADOR, EPIDEMIOLOGO, ANALISTA y CAPTURISTA. El sitio público no pide sesión | Toda cuenta tiene un rol (RN-01). El token lleva los roles | Soporte | Seguridad, Bases de datos | Alta | Hecho |
+| RF-A05 | Cada ruta lleva un candado por rol, según la [matriz de permisos](../matriz-permisos.md) | Un rol sin permiso recibe 403 y un mensaje; ocultar el botón no basta. Se prueba con un rol que entra y con uno que no | Soporte | Seguridad | Alta | En parte: falta la migración 034 y los candados por permiso en la web (D1) |
+| RF-A06 | Todo cambio de datos queda en la auditoría | `audit_log` guarda quién, qué acción, sobre qué entidad, cuándo, la IP y el identificador de correlación, en la misma transacción que el cambio | Todos | Seguridad, Bases de datos | Alta | Hecho |
+| RF-A09 | La app móvil registra el teléfono, uno por cuenta | `dispositivos` crea o actualiza el registro en `devices`; queda `CREATE` o `UPDATE` en la auditoría. Un teléfono revocado no sincroniza | 1.2 | Móvil, Microservicios | Media | Hecho |
+| RF-A11 | La web inicia sesión con usuario y contraseña, y guarda su token en una cookie | Con datos correctos entra al tablero; con datos incorrectos no entra y queda `LOGIN_FAILED`. Después de entrar solo redirige a rutas del propio sitio | Soporte | Web, Seguridad | Alta | Hecho |
+| RF-A12 | La web registra y revisa su sesión en Redis, igual que las apps | Cerrar sesión en la web deja el token sin valor antes de que venza | Soporte | Web, Seguridad | Alta | Por decidir (I3): falta acordar qué hace la web si Redis no responde |
+| RF-A13 | Cada usuario consulta su perfil | `usuarios` responde el nombre, el usuario y los roles de quien pregunta (`GET /api/v1/users/me`) | Soporte | Microservicios | Media | Hecho |
 
-### RF-A02 Renovación de token
+## Fuera de alcance
 
-El sistema debe permitir renovar el JWT sin necesidad de reautenticación completa
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-A03 Cierre de sesión
-
-El sistema debe permitir revocar el token activo, invalidándolo en Redis
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-A04 Gestión de roles
-
-El sistema debe soportar cinco perfiles: Administrador, Epidemiólogo, Analista, Capturista y Público general
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-A05 Matriz de permisos
-
-El sistema debe aplicar permisos diferenciados por rol para cada operación disponible
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-A06 Registro de auditoría
-
-El sistema debe registrar usuario, fecha, hora, dirección IP y operación realizada en cada acción sensible
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-### RF-A08 Sesiones concurrentes
-
-El sistema debe permitir configurar el número máximo de sesiónes activas por usuario
-Criterio de aceptación: pendiente de definir
-Prioridad: Baja
-
-### RF-A09 Verificación por dispositivo
-
-La app móvil debe registrar un identificador único por dispositivo asociado al usuario
-Criterio de aceptación: pendiente de definir
-Prioridad: Media
-
-### RF-A10 Recuperación de contraseña
-
-El sistema debe permitir restablecimiento de contraseña mediante flujo seguro
-Criterio de aceptación: pendiente de definir
-Prioridad: Alta
-
-#### Casos de uso detallados:
-
-#### CU-A01: Autenticación de usuario
-
-* **Actor:** Todos los usuarios registrados  
-* **Precondición:** Usuario registrado en el sistema  
-* **Flujo principal:**
-
-  1\. Usuario ingresa credenciales
-
-  2\. Sistema valida credenciales contra PostgreSQL
-
-  3\. Sistema verifica que la cuenta esté activa
-
-  4\. Sistema emite JWT con claims de rol y permisos
-
-  5\. Sistema registra sesión en Redis
-
-  6\. Sistema responde con token y perfil del usuario
-
-* **Flujos alternativos:**  
-  * Credenciales inválidas → 401 con mensaje genérico  
-  * Cuenta bloqueada → 403 con tiempo de desbloqueo  
-  * Token previo no revocado → renovación automática  
-* **Postcondición:** Usuario autenticado con sesión activa
+| ID | Qué pedía | Por qué sale |
+|---|---|---|
+| RF-A08 | Número máximo de sesiones por usuario, configurable | Ningún proceso lo pide |
+| RF-A10 | Recuperar la contraseña | El servicio `recuperacion` era opcional y no se construyó; la contraseña la cambia el ADMINISTRADOR (RF-L01) |

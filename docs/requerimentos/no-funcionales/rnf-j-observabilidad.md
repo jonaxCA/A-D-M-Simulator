@@ -1,63 +1,28 @@
-Estado: Obsoleto. Requiere actualizarse
+> **Estado: Borrador** · 2026-11-16 · Por validar en equipo
 
 # RNF-J: Observabilidad
 
-### RNF-J01 X-Correlation-ID
+Cómo se sabe qué pasó dentro del sistema. El panel y el historial están en [RF-K](../funcionales/rf-k-monitoreo.md). Cómo leer la tabla: [`README.md`](../README.md).
 
-Toda petición con identificador de correlación propagado
-Criterio de aceptación: pendiente de definir
+## Requerimientos
 
-### RNF-J02 Trazabilidad completa
+| ID | Requerimiento | Criterio de aceptación | Componente | Estado |
+|---|---|---|---|---|
+| RNF-J01 | Cada petición lleva un identificador de correlación | `X-Correlation-ID` se propaga de un servicio a otro y queda en la auditoría | Microservicios, Monitoreo | Hecho |
+| RNF-J05 | Cada servicio responde su salud | Ver RF-K10 | Microservicios, Monitoreo | En parte (N3) |
+| RNF-J06 | Los registros de cada servicio se pueden leer y buscar | Cada línea trae la fecha, el servicio, el nivel y el identificador de correlación | Microservicios, Monitoreo | Verificar |
+| RNF-J12 | De cada corrida se sabe con qué se hizo | Se guardan la versión del motor, la versión congelada del escenario y la semilla (RF-E12) | Microservicios, Bases de datos | Hecho |
+| RNF-J13 | Los registros se centralizan en la nube | Ver RF-K08 | Monitoreo, Infraestructura | Falta (N6) |
 
-Una operación rastreable a través de todos los servicios
-Criterio de aceptación: pendiente de definir
+## Fuera de alcance
 
-### RNF-J03 Métricas de negocio
-
-Conteo de casos por hora, simulaciónes por día, errores por servicio
-Criterio de aceptación: pendiente de definir
-
-### RNF-J04 Métricas técnicas
-
-CPU, memoria, disco, red por servicio
-Criterio de aceptación: pendiente de definir
-
-### RNF-J05 Health endpoints
-
-/health/live, /ready, /database, /redis, /mongodb, /storage en todos los servicios
-Criterio de aceptación: pendiente de definir
-
-### RNF-J06 Logs estructurados
-
-Formato JSON: timestamp, servicio, nivel, correlación, mensaje
-Criterio de aceptación: pendiente de definir
-
-### RNF-J07 Alertas
-
-Umbrales configurados que disparan notificaciones
-Criterio de aceptación: pendiente de definir
-
-### RNF-J08 Dashboard de monitoreo
-
-Visualización en tiempo real de salud del sistema
-Criterio de aceptación: pendiente de definir
-
-### RNF-J09 Historial de incidentes
-
-Registro de eventos y fallos consultable
-Criterio de aceptación: pendiente de definir
-
-### RNF-J10 Trazabilidad de datos
-
-Origen de cada dato rastreable: fuente, fecha, usuario
-Criterio de aceptación: pendiente de definir
-
-### RNF-J11 Métricas de simulación
-
-Tiempo por corrida, réplicas completadas, tasa de fallos
-Criterio de aceptación: pendiente de definir
-
-### RNF-J12 Trazabilidad de modelos
-
-Versión de motor, parámetros y semilla registrados por corrida
-Criterio de aceptación: pendiente de definir
+| ID | Qué pedía | Por qué sale |
+|---|---|---|
+| RNF-J02 | Rastrear una operación por todos los servicios | Se cubre con RNF-J01 |
+| RNF-J03 | Métricas de negocio | No lo pide la rúbrica |
+| RNF-J04 | CPU, memoria, disco y red por servicio | Se miden en las pruebas de volumen y de carga (RNF-A16, RNF-A17) |
+| RNF-J07 | Alertas por umbral | Ver RF-K06 |
+| RNF-J08 | Panel de monitoreo | Pasa a RF-K02 |
+| RNF-J09 | Historial de incidentes | Pasa a RF-K03 |
+| RNF-J10 | Origen de cada dato | Se cubre con la auditoría (RF-A06) y con las fuentes de los parámetros (RF-B09) |
+| RNF-J11 | Métricas de simulación | Se cubre con RNF-A02 |

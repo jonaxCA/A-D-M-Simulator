@@ -1,73 +1,29 @@
-Estado: Obsoleto. Requiere actualizarse
+> **Estado: Borrador** · 2026-11-16 · Por validar en equipo
 
 # RNF-E: Usabilidad
 
-### RNF-E01 Interfaz en español
+Lo que se le pide a las tres interfaces. Cómo leer la tabla: [`README.md`](../README.md).
 
-Toda la interfaz de usuario debe estar en español
-Criterio de aceptación: pendiente de definir
+## Requerimientos
 
-### RNF-E02 Consistencia visual
+| ID | Requerimiento | Criterio de aceptación | Componente | Estado |
+|---|---|---|---|---|
+| RNF-E01 | Toda la interfaz está en español | La web, la app Android y la de escritorio muestran sus textos y sus errores en español | Web, Móvil, Escritorio | Hecho |
+| RNF-E03 | La web se adapta al tamaño de la pantalla | El tablero y el mapa se leen en un teléfono | Web | Verificar |
+| RNF-E06 | Los errores se explican | Cada cliente dice qué pasó y qué se puede hacer, sin mostrar la traza (ver RF-H24 y RF-I22) | Web, Móvil, Escritorio | Verificar |
+| RNF-E08 | Cada aplicación tiene su manual de usuario | Hay un manual por aplicación en [`docs/manuales/`](../../manuales/) | Web, Móvil, Escritorio | En parte: está el del escritorio; faltan el de la web y el de la móvil |
+| RNF-E11 | La app móvil dice siempre si hay conexión | Ver RF-I20 | Móvil | Falta (C3) |
 
-Misma paleta, tipografía y componentes entre web, móvil y escritorio
-Criterio de aceptación: pendiente de definir
+## Fuera de alcance
 
-### RNF-E03 Responsive
-
-La interfaz web debe adaptarse a dispositivos móviles
-Criterio de aceptación: pendiente de definir
-
-### RNF-E04 Accesibilidad básica
-
-Contraste suficiente, etiquetas en formularios, navegación por teclado
-Criterio de aceptación: pendiente de definir
-
-### RNF-E05 Feedback inmediato
-
-Toda acción del usuario debe tener confirmación visual en \< 1 segundo
-Criterio de aceptación: pendiente de definir
-
-### RNF-E06 Mensajes de error claros
-
-Errores en lenguaje entendible, con sugerencia de solución
-Criterio de aceptación: pendiente de definir
-
-### RNF-E07 Tiempo de aprendizaje
-
-Un capturista nuevo debe poder usar la app móvil sin entrenamiento extenso
-Criterio de aceptación: pendiente de definir
-
-### RNF-E08 Documentación de usuario
-
-Manuales de usuario disponibles para cada aplicación
-Criterio de aceptación: pendiente de definir
-
-### RNF-E09 Tooltips y ayuda contextual
-
-Campos complejos deben tener ayuda integrada
-Criterio de aceptación: pendiente de definir
-
-### RNF-E10 Atajos de teclado
-
-La app de escritorio debe ofrecer atajos para acciónes frecuentes
-Criterio de aceptación: pendiente de definir
-
-### RNF-E11 Modo sin conexión informativo
-
-La app móvil debe indicar claramente estado de conectividad
-Criterio de aceptación: pendiente de definir
-
-### RNF-E12 Carga progresiva
-
-Datos grandes deben mostrarse progresivamente, no con bloqueo total
-Criterio de aceptación: pendiente de definir
-
-### RNF-E13 Accesibilidad móvil
-
-Botones con tamaño táctil adecuado (≥ 48 dp)
-Criterio de aceptación: pendiente de definir
-
-### RNF-E14 Internacionalización preparada
-
-Arquitectura preparada para multi-idioma futuro
-Criterio de aceptación: pendiente de definir
+| ID | Qué pedía | Por qué sale |
+|---|---|---|
+| RNF-E02 | Misma paleta y tipografía en los tres clientes | No hay con qué comprobarlo |
+| RNF-E04 | Accesibilidad básica | No lo pide la rúbrica |
+| RNF-E05 | Confirmación visual en menos de 1 s | Se cubre con las metas de RNF-A |
+| RNF-E07 | Uso de la app móvil sin entrenamiento | No hay con qué comprobarlo |
+| RNF-E09 | Ayuda en los campos complejos | Ningún proceso lo pide |
+| RNF-E10 | Atajos de teclado en el escritorio | Ningún proceso lo pide |
+| RNF-E12 | Carga progresiva de datos grandes | Ningún proceso lo pide |
+| RNF-E13 | Botones de 48 dp o más | No hay con qué comprobarlo |
+| RNF-E14 | Preparado para otros idiomas | El sistema es solo en español |

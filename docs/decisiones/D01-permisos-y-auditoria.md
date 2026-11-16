@@ -16,7 +16,7 @@ Respuestas del equipo a las preguntas de la sección D1 de la propuesta, más la
 - **Captura de casos (`cases.create`):** solo CAPTURISTA, desde la app móvil. Se quita la captura desde la web.
 - **Alta de enfermedades (`catalogs.create`):** EPIDEMIOLOGO y ADMINISTRADOR.
 - **Auditoría (`audit.read`):** solo ADMINISTRADOR.
-- **CAPTURISTA en la web:** no entra. Solo usa la app móvil.
+- **CAPTURISTA en la web:** entra solo a consultar el tablero y el mapa (`/dashboard` y `/mapa`); cualquier otra pantalla le responde 403. Captura únicamente en la app móvil. (Cambiado el 2026-11-16; antes no entraba.)
 - **Aprobar o rechazar versiones (`scenarios.approve`):** EPIDEMIOLOGO y ADMINISTRADOR. Aprobar autoriza simular; publicar (`scenarios.publish`) es un permiso aparte.
 
 ## Consecuencias
