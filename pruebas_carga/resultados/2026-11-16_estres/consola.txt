@@ -1,0 +1,53 @@
+[2026-11-16 16:53:40,537] Enriques-MacBook/INFO/locust.main: Starting Locust 2.47.0
+[2026-11-16 16:53:40,539] Enriques-MacBook/INFO/locust.main: Run time limit set to 150 seconds
+[2026-11-16 16:53:40,539] Enriques-MacBook/INFO/locust.runners: Ramping to 100 users at a rate of 3.00 per second
+[2026-11-16 16:54:13,614] Enriques-MacBook/INFO/locust.runners: All users spawned: {"Estres": 100} (100 total users)
+[2026-11-16 16:56:10,396] Enriques-MacBook/INFO/locust.main: --run-time limit reached, shutting down
+[2026-11-16 16:56:10,504] Enriques-MacBook/INFO/locust.main: Shutting down (exit code 0)
+Type     Name                                                                          # reqs      # fails |    Avg     Min     Max    Med |   req/s  failures/s
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+GET      GET /auth/captcha                                                                  4     0(0.00%) |      3       2       4      4 |    0.03        0.00
+GET      GET /cases                                                                      7200     0(0.00%) |     12       5     159     10 |   48.04        0.00
+GET      GET /cases/{id}                                                                 5526     0(0.00%) |      8       4     135      7 |   36.87        0.00
+GET      GET /dashboard/indicators                                                       6020     0(0.00%) |      1       0      44      2 |   40.17        0.00
+GET      GET /regions                                                                   11727     0(0.00%) |     36      15     334     26 |   78.25        0.00
+GET      GET /regions/{id}                                                               3897     0(0.00%) |     16       4     261      7 |   26.00        0.00
+GET      GET /runs                                                                       1080     0(0.00%) |     13       6     131     11 |    7.21        0.00
+GET      GET /scenarios                                                                  1080     0(0.00%) |     27      11     310     21 |    7.21        0.00
+GET      GET /scenarios/{id}/versions                                                    1080     0(0.00%) |     47      21     358     40 |    7.21        0.00
+POST     POST /auth/login                                                                   4     0(0.00%) |    193     183     201    190 |    0.03        0.00
+POST     POST /runs                                                                        38     0(0.00%) |     17      10      43     15 |    0.25        0.00
+POST     [409] POST /runs                                                                   2     0(0.00%) |      2       1       2      2 |    0.01        0.00
+GET      [429] GET /cases                                                               12203     0(0.00%) |      1       0      25      2 |   81.42        0.00
+GET      [429] GET /cases/{id}                                                            139     0(0.00%) |      3       0      43      2 |    0.93        0.00
+GET      [429] GET /runs                                                                 6746     0(0.00%) |      2       0      28      2 |   45.01        0.00
+GET      [429] GET /scenarios                                                            6842     0(0.00%) |      2       0     279      2 |   45.65        0.00
+GET      [429] GET /scenarios/{id}/versions                                              4867     0(0.00%) |      2       0      66      2 |   32.47        0.00
+POST     [429] POST /runs                                                                 114     0(0.00%) |      2       1      17      2 |    0.76        0.00
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+         Aggregated                                                                     68569     0(0.00%) |     11       0     358      3 |  457.51        0.00
+
+Response time percentiles (approximated)
+Type     Name                                                                                  50%    66%    75%    80%    90%    95%    98%    99%  99.9% 99.99%   100% # reqs
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+GET      GET /auth/captcha                                                                       4      4      5      5      5      5      5      5      5      5      5      4
+GET      GET /cases                                                                             10     12     14     15     19     24     33     44    120    160    160   7200
+GET      GET /cases/{id}                                                                         7      8      9     10     13     17     22     29     93    140    140   5526
+GET      GET /dashboard/indicators                                                               2      2      2      2      3      4      6      8     32     45     45   6020
+GET      GET /regions                                                                           26     32     39     44     66     98    140    170    270    310    330  11727
+GET      GET /regions/{id}                                                                       7     10     15     20     37     68    110    150    240    260    260   3897
+GET      GET /runs                                                                              11     14     15     17     20     24     30     38    120    130    130   1080
+GET      GET /scenarios                                                                         21     26     30     33     46     62     92    110    300    310    310   1080
+GET      GET /scenarios/{id}/versions                                                           40     48     54     58     73     97    140    230    350    360    360   1080
+POST     POST /auth/login                                                                      190    190    200    200    200    200    200    200    200    200    200      4
+POST     POST /runs                                                                             15     20     23     24     30     32     43     43     43     43     43     38
+POST     [409] POST /runs                                                                        3      3      3      3      3      3      3      3      3      3      3      2
+GET      [429] GET /cases                                                                        2      2      2      2      3      3      4      5     18     23     26  12203
+GET      [429] GET /cases/{id}                                                                   2      3      3      3      5      7     14     17     44     44     44    139
+GET      [429] GET /runs                                                                         2      2      2      2      3      4      5      7     18     29     29   6746
+GET      [429] GET /scenarios                                                                    2      2      2      2      3      4      6     12    120    280    280   6842
+GET      [429] GET /scenarios/{id}/versions                                                      2      2      2      2      3      4      5      7     39     66     66   4867
+POST     [429] POST /runs                                                                        2      2      3      3      3      4      4      5     17     17     17    114
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+         Aggregated                                                                              3      8     15     19     29     43     74    110    220    310    360  68569
+
