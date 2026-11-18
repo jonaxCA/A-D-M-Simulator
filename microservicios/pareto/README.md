@@ -11,7 +11,7 @@ Puerto externo: 5245; puerto interno en Docker: 8000. Contrato en
 
 | Método | Ruta             | Qué regresa |
 |--------|------------------|-------------|
-| GET    | `/api/v1/pareto` | `aviso` y la comparación: por cada corrida (`filas`), su costo con el desglose por intervención, su impacto y si otra la domina (`dominado_por`). `frontera` son las corridas no dominadas; `trazabilidad_costos`, de dónde sale cada costo unitario |
+| GET    | `/api/v1/pareto` | `aviso` y la comparación: por cada corrida (`filas`), su costo en personas-día (`costo`, el eje de la frontera) y en pesos (`costo_pesos`, aparte y nulo si falta un costo unitario), con el desglose por intervención, su impacto y si otra la domina (`dominado_por`). `frontera` son las corridas no dominadas; `trazabilidad_costos`, de dónde sale cada costo unitario y el factor de personas-día por dosis (D3) |
 
 Pide `Authorization: Bearer` de ANALISTA, EPIDEMIOLOGO o ADMINISTRADOR, los
 mismos roles que la pantalla Comparación del monolito, donde vive este cálculo.
@@ -38,8 +38,9 @@ el desglose, `<intervencion>`, y la trazabilidad, `<costo>`.
 ## De dónde salen los datos
 
 Reusa `simulaciones.construir_comparacion_costo_impacto()` del monolito: arma el
-escenario de cada versión, lee los costos de `intervention_types` y el resultado
-guardado de cada corrida, y llama a `comparar()` del motor. Lee la base directo y no
+escenario de cada versión, lee los costos y el factor de personas-día por dosis de
+`intervention_types` (migración 040) y el resultado guardado de cada corrida, y llama a
+`comparar()` de `procesamiento.analitica`. Sin factor, una corrida con vacunación da 422. Lee la base directo y no
 llama a `resultados`, que todavía no existe (ver la nota en
 `docs/arquitectura/microservicios.md`).
 

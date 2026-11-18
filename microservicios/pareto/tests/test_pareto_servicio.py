@@ -14,8 +14,8 @@ RAIZ = Path(__file__).resolve().parents[3]
 
 
 def fila(id_, costo, impacto, dominado_por=()):
-    return {"id": id_, "nombre": "SIM-%05d - Escenario" % id_, "costo": costo, "impacto": impacto,
-            "desglose_costo": [], "dominado": bool(dominado_por),
+    return {"id": id_, "nombre": "SIM-%05d - Escenario" % id_, "costo": costo, "costo_pesos": None,
+            "impacto": impacto, "desglose_costo": [], "dominado": bool(dominado_por),
             "dominado_por": list(dominado_por)}
 
 
@@ -101,7 +101,8 @@ def test_la_salida_real_del_motor_valida_contra_el_xsd(cliente, token, monkeypat
                          "resultado": simular(esc, 982314)})
     costos = {"CIERRE_ESCUELAS": {"valor": 10.0, "fuente": "prueba", "supuesto": False},
               "VACUNACION": {"valor": 300.0, "supuesto": True}}
-    real = comparar(entradas, costos, base=base)
+    factores = {"VACUNACION": {"valor": 0.5, "supuesto": True}}
+    real = comparar(entradas, costos, base=base, factores=factores)
     monkeypatch.setattr(simulaciones, "construir_comparacion_costo_impacto",
                         lambda run_ids, metrica="fallecimientos": (real, []))
     r = cliente.get("/api/v1/pareto?runs=12,15", headers=token())

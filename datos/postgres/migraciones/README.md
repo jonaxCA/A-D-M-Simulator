@@ -36,6 +36,7 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `035_nombres_de_motores.sql` | Los motores cambian de nombre (D2): `python-ref` → `seir-ref`, `numba` → `abm-ref` y `cuda` → `abm-gpu`, en el CHECK, el DEFAULT y los lotes que ya existen. La 034 queda reservada para D1 |
 | `036_tope_de_replicas_100.sql` | El tope de réplicas por lote baja de 200 a 100 (D8): CHECK de `simulation_batches.replicas` y `max_replicas_por_lote` de `system_settings` |
 | `037_avisos_de_casos_y_revision.sql` | Tipos de aviso `NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED` en el CHECK, y lectura de `users`, `user_roles` y `roles` para `svc_notificaciones`. La 036 queda reservada |
+| `040_personas_dia_por_dosis.sql` | `intervention_types` gana el factor de personas-día por dosis de la frontera de Pareto (D3): valor, fuente y marca de supuesto, sin valor por omisión. `svc_intervenciones` puede actualizarlo |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.

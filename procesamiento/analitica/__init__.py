@@ -7,17 +7,18 @@ Del motor solo usa nombres públicos (`resolver`, `INTERVENCIONES_CAPA`, `Escena
 y de la trazabilidad, procesamiento/trazabilidad.py.
 
     from procesamiento.analitica import comparar
-    comparacion = comparar(entradas, costos, metrica="fallecimientos")
+    comparacion = comparar(entradas, costos, metrica="fallecimientos", factores=factores)
 """
 
 from .escala import INDICADORES_ESCALABLES, factor_de_escala, representados
-from .pareto import (METRICAS_IMPACTO, UNIDAD_COSTO, ComparacionInvalida, comparar,
-                     costo_escenario, frontera_pareto)
+from .pareto import (METRICAS_IMPACTO, UNIDAD_COSTO, UNIDAD_FACTOR, ComparacionInvalida,
+                     comparar, costo_escenario, frontera_pareto)
 
 __all__ = [
     "INDICADORES_ESCALABLES",
     "METRICAS_IMPACTO",
     "UNIDAD_COSTO",
+    "UNIDAD_FACTOR",
     "ComparacionInvalida",
     "comparar",
     "costo_escenario",

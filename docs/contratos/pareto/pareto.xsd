@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- La respuesta del servicio pareto (puerto 5245): GET /api/v1/pareto?runs=...&metric=...,
-     raíz <pareto>. Es la salida de procesamiento.motor.pareto.comparar(): una fila por
+     raíz <pareto>. Es la salida de procesamiento.analitica.pareto.comparar(): una fila por
      corrida con su costo, su impacto y si otra la domina, y la frontera con los ids de las
      no dominadas, de la más barata a la más cara.
+     D3: costo va en personas-día y es el eje de la frontera; costo_pesos va aparte, no entra
+     a la frontera y es nulo si falta algún costo unitario. Lo mismo en cada renglón del
+     desglose.
      impacto_evitado, costo_adicional y costo_por_unidad_evitada solo salen cuando hay
      escenario base; hoy el servicio no lo pide, así que base llega vacío y esos tres no
      vienen. -->
@@ -10,7 +13,7 @@
 
   <xs:include schemaLocation="../comun/tipos.xsd"/>
 
-  <!-- METRICAS_IMPACTO de procesamiento/motor/pareto.py. -->
+  <!-- METRICAS_IMPACTO de procesamiento/analitica/pareto.py. -->
   <xs:simpleType name="metrica">
     <xs:restriction base="xs:string">
       <xs:enumeration value="fallecimientos"/>
@@ -29,11 +32,13 @@
     </xs:restriction>
   </xs:simpleType>
 
-  <!-- UNIDAD_COSTO: a qué se aplica el costo unitario. -->
+  <!-- UNIDAD_COSTO: a qué se aplica el costo unitario en pesos. UNIDAD_FACTOR
+       (personas_dia_por_dosis): el factor que lleva las dosis a personas-día. -->
   <xs:simpleType name="unidadCosto">
     <xs:restriction base="xs:string">
       <xs:enumeration value="por_habitante_dia"/>
       <xs:enumeration value="por_dosis"/>
+      <xs:enumeration value="personas_dia_por_dosis"/>
     </xs:restriction>
   </xs:simpleType>
 
@@ -51,8 +56,8 @@
     </xs:sequence>
   </xs:complexType>
 
-  <!-- Un renglón del costo de una corrida. La vacunación se cobra por dosis aplicadas y no
-       tiene dia_fin, dias_activos ni intensidad. -->
+  <!-- Un renglón del costo de una corrida: costo en personas-día y costo_pesos aparte. La
+       vacunación se cuenta por dosis aplicadas y no tiene dia_fin, dias_activos ni intensidad. -->
   <xs:complexType name="CostoIntervencion">
     <xs:all>
       <xs:element name="tipo" type="xs:string"/>
@@ -63,6 +68,7 @@
       <xs:element name="cantidad" type="Numero"/>
       <xs:element name="unidad" type="unidadCantidad"/>
       <xs:element name="costo" type="Numero"/>
+      <xs:element name="costo_pesos" type="NumeroONulo"/>
     </xs:all>
   </xs:complexType>
 
@@ -71,6 +77,7 @@
       <xs:element name="id" type="Entero"/>
       <xs:element name="nombre" type="xs:string"/>
       <xs:element name="costo" type="Numero"/>
+      <xs:element name="costo_pesos" type="NumeroONulo"/>
       <xs:element name="impacto" type="Numero"/>
       <xs:element name="desglose_costo">
         <xs:complexType>
@@ -91,7 +98,7 @@
     </xs:all>
   </xs:complexType>
 
-  <!-- El costo unitario que se usó para un tipo de intervención, con su fuente. -->
+  <!-- El costo unitario o el factor que se usó para un tipo de intervención, con su fuente. -->
   <xs:complexType name="CostoUnitario">
     <xs:all>
       <xs:element name="tipo" type="xs:string"/>

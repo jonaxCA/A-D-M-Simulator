@@ -24,5 +24,5 @@ Opción C: personas-día y pesos por separado.
 Afecta el esquema de costos, `pareto`, `comparacion`, los reportes de escritorio y la interpretación del aviso de que no es una predicción.
 
 - Mostrar pesos exige fuente o marca de supuesto para cada precio (regla 8 de `AGENTS.md`).
-- La frontera no refleja el costo de vacunar en pesos. El factor de día-persona por dosis necesita su propio lugar en la base, con su valor y su fuente o marca de supuesto.
+- La frontera no refleja el costo de vacunar en pesos. El factor de día-persona por dosis vive en `intervention_types.person_days_per_unit` (migración 040), con su fuente o marca de supuesto, y empieza vacío: sin él, una comparación con vacunación se niega.
 - Los cambios de código y documentos que siguen de esta decisión están en [`todo.md`](todo.md), sección «Cambios pendientes por D3». No están implementados.

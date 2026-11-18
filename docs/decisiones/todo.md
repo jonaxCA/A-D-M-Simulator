@@ -119,7 +119,7 @@ D3 quedó aceptada el 2026-11-08 (ver [`D03-unidad-de-costo.md`](D03-unidad-de-c
 2. **Hecho. Pareto fuera del motor:** mover `pareto.py` a `procesamiento/analitica/`. Solo puede importar los nombres públicos del motor (`resolver`, `huella_escenario`, `INTERVENCIONES_CAPA`, `EscenarioInvalido`) y el módulo de trazabilidad. En lugar de `huella_escenario` usa `huella` de `procesamiento/contrato.py`, que es la misma para los tres motores; `resolver` e `INTERVENCIONES_CAPA` se exportan desde `procesamiento.motor`.
 3. **Hecho. Imports:** quitar `comparar`, `costo_escenario` y `frontera_pareto` de `motor/__init__.py`, y actualizar los imports de `backend_web/simulaciones.py` y de los servicios `pareto` y `comparacion`.
 4. **Hecho. Verificación:** ningún import de `procesamiento/analitica/` trae un nombre con guion bajo, y `python -m pytest procesamiento/tests` pasa.
-5. **Unidades de la frontera:** hoy la frontera usa el total de `costo_escenario` (`procesamiento/analitica/pareto.py`), que suma el costo por habitante-día y el costo por dosis. Por D3 va en personas-día, con la vacunación por su factor de día-persona por dosis, y los pesos aparte. El escritorio toma el costo de `pareto`, así que no cambia por su cuenta.
+5. **Hecho (2026-11-17). Unidades de la frontera:** `costo_escenario` (`procesamiento/analitica/pareto.py`) da personas-día (capas y testeo: población × intensidad × días; vacunación: dosis × factor) y pesos aparte. El factor vive en `intervention_types.person_days_per_unit` (migración 040) y lo fija `intervenciones`. Falta que el escritorio y la web rotulen personas-día (bloques A y C del checklist).
 
 ### Documentos y datos
 
