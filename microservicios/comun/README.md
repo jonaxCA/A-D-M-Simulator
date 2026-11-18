@@ -35,11 +35,11 @@ comprobación) y `tiempo_ms` (el total). `mongodb` y `bucket` valen:
 | `"no_configurado"`| La declara pero falta su URL (también `degradado`) |
 
 Un servicio declara lo que usa con `crear_app(..., dependencias=("mongodb",))` o, sin tocar
-código, con la variable `DEPENDENCIAS=mongodb,bucket`. Las comprobaciones son ligeras y viven en
-`salud.py`, sin dependencias nuevas: MongoDB abre una conexión TCP a `MONGO_URL`; el bucket hace
-un GET a `BUCKET_HEALTH_URL` (o, si falta, a `BUCKET_URL`) y cuenta como vivo con cualquier
-respuesta menor a 500. Cuando el bloque D agregue sus clientes, basta cambiar `_mongodb` y
-`_bucket` por un `ping` y un listado del bucket.
+código, con la variable `DEPENDENCIAS=mongodb,bucket`. Hoy declaran MongoDB `simulador`,
+`resultados` y `estado-servicios`. Las comprobaciones viven en `salud.py`: MongoDB hace un `ping`
+con el cliente de `mongo.py` (ver «MongoDB» abajo); el bucket hace un GET a `BUCKET_HEALTH_URL`
+(o, si falta, a `BUCKET_URL`) y cuenta como vivo con cualquier respuesta menor a 500. Cuando el
+bloque D2 agregue su cliente, basta cambiar `_bucket` por un listado del bucket.
 
 ## Errores contados (RF-K12)
 
@@ -69,7 +69,8 @@ export PYTHONPATH="$PWD/microservicios/comun:$PWD"
 python -m pytest microservicios -q
 ```
 
-Variables necesarias: `JWT_SECRET_KEY`, `REDIS_URL`, `DATABASE_URL`; opcionales: `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_AUDIENCE_INTERNA`.
+Variables necesarias: `JWT_SECRET_KEY`, `REDIS_URL`, `DATABASE_URL`; `MONGO_URL` en los que usan
+MongoDB; opcionales: `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_AUDIENCE_INTERNA`, `MONGO_TIMEOUT_MS`.
 
 No subir `.env` ni secretos. `JWT_ISSUER` predeterminado: `epidemia-auth`;
 `JWT_AUDIENCE`: `epidemia-api`; audiencia de rutas internas: `epidemia-interno`.
@@ -211,3 +212,66 @@ se cambian con `LIMITE_<PERFIL>="peticiones/segundos"`.
 | `publico` | 10 / 60 s | `POST /auth/login` |
 
 Detrás de nginx, `remote_addr` será la IP del proxy: habrá que leer `X-Forwarded-For` entonces.
+
+---
+
+# MongoDB (bloque D, D28)
+
+Ningún servicio crea su propio `MongoClient`: todo pasa por `mongo.py`, y solo para las dos
+colecciones de D28 (regla 12 de `microservicios/AGENTS.md`).
+
+| Variable | Para qué | Si falta |
+|---|---|---|
+| `MONGO_URL` | `mongodb://epidemia:<MONGO_PASSWORD>@mongodb:27017/epidemia?authSource=epidemia` dentro del compose; desde tu máquina, el puerto `27018` | `/health` dice `no_configurado` y toda operación falla como MongoDB caído |
+| `MONGO_TIMEOUT_MS` | Cuánto espera para encontrar el servidor y conectarse; las operaciones, cinco veces eso | `2000` |
+
+| Módulo | Para qué | MongoDB caído |
+|---|---|---|
+| `mongo` | `base()`, `coleccion(nombre)` (crea sus índices la primera vez), `requerido()`, `opcional()`, `ping()` y `usar()` para las pruebas | `requerido` lanza `MongoNoDisponible` (503 `SERVICIO_NO_DISPONIBLE`, lo convierte `crear_app`); `opcional` regresa el defecto |
+| `series_corridas` | `documentos(run, motor, resultado)`, `guardar(docs)`, `leer(run_id)` y `banda(version, motor, campo)` | Según quién llame: el simulador reintenta, `resultados` responde 503 |
+
+## Colecciones
+
+`mongo.INDICES` es el diseño en código; `coleccion()` lo aplica.
+
+| Colección | Un documento es | Índices | Vida | Escribe / lee |
+|---|---|---|---|---|
+| `series_corridas` | Un día de una corrida: `run_id`, `batch_id`, `scenario_version_id`, `motor`, `engine_version`, `semilla`, los campos de `CAMPOS_SERIE` (`procesamiento/contrato.py`) y `version_esquema` | `{run_id, dia}` único; `{scenario_version_id, motor, dia}` | La de la corrida | `simulador` / `resultados` |
+| `historial_servicios` | Un sondeo: `servicio`, `fecha`, `estado`, `latencia_ms`, `version`, `dependencias_caidas`, `error` y `version_esquema` | `{servicio, fecha}`; `{fecha}` con TTL de 30 días (el TTL solo se pone en un índice de un campo) | 30 días | `estado-servicios` |
+
+- **Versión de esquema.** Cada documento lleva `version_esquema` (hoy 1). Quien lee filtra por las
+  versiones que conoce (`CONOCIDAS`).
+- **Actualización.** `series_corridas.guardar()` reemplaza por `{run_id, dia}`: volver a guardar una
+  corrida (el reintento del simulador) actualiza sus días y no los duplica.
+- **Agregación.** `series_corridas.banda()` da p5, mediana y p95 por día entre las corridas de una
+  versión y un motor (`$percentile`, MongoDB 7). `estado-servicios` agrega la disponibilidad y la
+  latencia de las últimas 24 h de cada servicio.
+
+```python
+from epidemia_comun import mongo, series_corridas
+
+# simulador: si MongoDB no responde, opcional() regresa None y la serie queda pendiente.
+mongo.opcional("simulador: guardar la serie", lambda: series_corridas.guardar(docs))
+
+# resultados: sin MongoDB, 503.
+serie = mongo.requerido("resultados: leer la serie", lambda: series_corridas.leer(run_id))
+```
+
+## Pruebas
+
+- Con mongomock: `microservicios/conftest.py` trae `mongo_falso` (una base en memoria, con
+  `tz_aware` como el cliente real) y `apagar_mongo()` (toda operación falla; `.encender()` lo
+  regresa).
+- `tests/test_mongo_real.py` demuestra inserción, consulta, actualización, agregación e índices
+  contra un MongoDB real; mongomock no tiene `$percentile` ni `explain()`. Se salta sin
+  `MONGO_URL_PRUEBAS`, que apunta a la base `epidemia_pruebas`, nunca a `epidemia`:
+
+```bash
+MONGO_URL_PRUEBAS="mongodb://epidemia:$(grep '^MONGO_PASSWORD=' infra/.env | cut -d= -f2-)@127.0.0.1:27018/epidemia_pruebas?authSource=epidemia" \
+    python -m pytest microservicios/comun/tests/test_mongo_real.py
+```
+
+El `$(grep …)` toma la contraseña de `infra/.env` sin mostrarla. En PowerShell, pon en su lugar
+el valor de `MONGO_PASSWORD` de ese archivo. Si sale `Authentication failed`, la contraseña no es
+la de `infra/.env`, o el volumen de MongoDB se creó con otra: el usuario se crea solo la primera
+vez.

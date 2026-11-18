@@ -10,7 +10,7 @@ Dónde corre el sistema: igual en la máquina de cada quien que en Google Cloud.
 |---|---|---|---|---|
 | RNF-H01 | El sistema corre con Docker en la máquina de cualquier integrante | Las imágenes se construyen desde sus Dockerfile, sin pasos a mano | Infraestructura | Hecho |
 | RNF-H02 | El sistema se despliega en Compute Engine | La máquina principal corre el mismo `infra/docker-compose.yml` que en local, con nginx enfrente y una IP fija | Infraestructura | Falta (N1) |
-| RNF-H05 | Un solo comando levanta todo en local | `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait` levanta PostgreSQL con la base de la demostración, Redis y los servicios | Infraestructura | Hecho; falta agregar MongoDB (D28) y nginx (D25) |
+| RNF-H05 | Un solo comando levanta todo en local | `docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait` levanta PostgreSQL con la base de la demostración, Redis, MongoDB y los servicios; `simulador-gpu` va aparte, con `--profile gpu` | Infraestructura | Hecho; falta agregar nginx (D25) |
 | RNF-H06 | La GPU es opcional | Sin GPU, `abm-ref` hace lo mismo que `abm-gpu`, más despacio | Microservicios, Infraestructura | Hecho |
 | RNF-H07 | La máquina con GPU está separada de la principal | Corre solo `simulador-gpu` y llega a PostgreSQL y a Redis por la red interna | Infraestructura | Falta (N1) |
 | RNF-H16 | nginx es la única entrada (D25) | `https://<dominio>/<servicio>/api/v1/...` llega a cada servicio sin cambiar sus rutas. nginx no valida tokens ni tiene lógica | Infraestructura | Falta (S6) |

@@ -131,10 +131,12 @@ Ya existen:
 - Pruebas de integración contra los contenedores, en su propio compose:
   `python infra/pruebas_integracion.py`
 - Contraseñas de `infra/.env`: `python infra/genera_env.py`
-- Levantar todo: `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait`
+- Levantar todo menos `simulador-gpu`:
+  `docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait`. No uses `--profile '*'`: activa el perfil `gpu`, que sin una GPU de NVIDIA falla con
+  `could not select device driver "nvidia"` y deja servicios en `Created`.
 - Solo un dominio: `docker compose -f infra/docker-compose.yml --profile escenarios up -d`
 - Reconstruir un servicio sin tocar los demás:
-  `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --no-deps <servicio>`
+  `docker compose -f infra/docker-compose.yml up -d --build --no-deps <servicio>` (nombrarlo activa su perfil)
 - Salud: `curl "http://localhost:<puerto>/health?format=json"`
 - Salud de los 29 y directorio: `curl "http://localhost:5262/api/v1/services/health?format=json"`
   y `/api/v1/services` (`estado-servicios`)
@@ -168,7 +170,8 @@ Están en `docs/decisiones/decisiones.md`; si algo de aquí choca con ese archiv
   contenedor, su rol, su contrato y sus pruebas.
 - **MongoDB (D28):** `historial_servicios` (el historial de `estado-servicios`, con TTL) y
   `series_corridas` (un documento por día de cada corrida). Contenedor en `infra/`, cliente en
-  `epidemia_comun` y `/health/mongodb` en `fabrica.py`.
+  `epidemia_comun` (`mongo.py` y `series_corridas.py`) y `mongodb` en el `/health` de quien lo
+  usa. Ver «MongoDB» en `comun/README.md`.
 - **Cloud Storage (D30):** `evidencias` guarda los archivos en un bucket, con URLs firmadas para
   los privados; PostgreSQL guarda solo los metadatos.
 - **Límites de consumo (D31):** contador `ratelimit:<usuario>:<ruta>` en Redis, en

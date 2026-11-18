@@ -2,8 +2,9 @@
 
 Directorio de los 29 servicios y sondeo de su salud. No hay pasarela (D13): las apps y
 la consola le piden aquí la URL de cada servicio. Cada pocos segundos sondea el
-`/health` de los 29, incluido el suyo, **en XML**, y guarda en Redis el último estado
-y un historial corto. No lee ni escribe tablas.
+`/health` de los 29, incluido el suyo, **en XML**. Guarda el último estado en Redis y
+cada sondeo en MongoDB (`historial_servicios`, D28), que lo conserva 30 días. No lee ni
+escribe tablas.
 
 Puerto externo: 5262; puerto interno en Docker: 8000. Contrato en
 `docs/contratos/estado-servicios/openapi.json`.
@@ -17,7 +18,7 @@ salud de cada servicio ya es pública en su `/health`.
 |--------|------------------------------------|-------------|
 | GET    | `/api/v1/services`                 | Por servicio: `nombre`, `dominio` (su perfil del compose), `puerto`, `url`, `docs`, `openapi` y la `version` del último sondeo. No sondea |
 | GET    | `/api/v1/services/health`          | `resumen` (cuántos `ok`, `degradado` y `caido`) y el último sondeo de cada uno |
-| GET    | `/api/v1/services/{nombre}/history`| Sus últimos 30 sondeos, del más reciente al más viejo |
+| GET    | `/api/v1/services/{nombre}/history`| Sus últimos 30 sondeos, del más reciente al más viejo, y `resumen` de las últimas 24 h: `sondeos`, `disponibilidad` (fracción en `ok`) y `latencia_promedio_ms` (RF-K03) |
 
 Cada sondeo trae `estado`, `causas`, `detalle`, `version`, `latencia_ms` y `revisado`
 (ISO 8601, UTC):
@@ -25,7 +26,7 @@ Cada sondeo trae `estado`, `causas`, `detalle`, `version`, `latencia_ms` y `revi
 | `estado`    | Cuándo | `causas` | `detalle` |
 |-------------|--------|----------|-----------|
 | `ok`        | `/health` respondió 200 | `[]` | `null` |
-| `degradado` | Respondió 503: el proceso vive, pero le falla la base o Redis | `postgresql`, `redis` o las dos | `null` |
+| `degradado` | Respondió 503: el proceso vive, pero le falla una dependencia | `postgresql`, `redis`, `mongodb` o `bucket` | `null` |
 | `caido`     | No respondió, o lo que respondió no es su salud | `proceso` | `sin_conexion`, `tiempo_agotado` o `respuesta_invalida` |
 
 `respuesta_invalida` es una página de error o la salud de otro servicio: el puerto
@@ -33,9 +34,9 @@ del directorio no es el de ese servicio. Un servicio detenido sale `caido` con
 `sin_conexion`, sin estorbar a los demás.
 
 Errores: un `nombre` que no está en el directorio es 404 `NO_ENCONTRADO`; el historial
-con Redis caído es 503 `SERVICIO_NO_DISPONIBLE`.
+con MongoDB caído es 503 `SERVICIO_NO_DISPONIBLE` (con Redis caído sí responde).
 
-## Sondeo y Redis
+## Sondeo, Redis y MongoDB
 
 - Un hilo sondea a los 29 a la vez cada `SONDEO_SEGUNDOS` (10 por defecto), con 5 s
   de espera cada uno: en Docker Desktop, el nombre de un contenedor detenido tarda unos
@@ -46,8 +47,10 @@ con Redis caído es 503 `SERVICIO_NO_DISPONIBLE`.
   así que las pruebas no lo ven.
 - `health:<servicio>` guarda el último sondeo, y vence a los tres intervalos (30 s):
   si el hilo se detiene, la salud no se queda congelada en verde.
-- `health:history:<servicio>` guarda los últimos 30 sondeos, unos 5 minutos. Se
-  borra una hora después del último sondeo.
+- Cada sondeo es un documento de `historial_servicios` en MongoDB: `servicio`,
+  `fecha`, `estado`, `latencia_ms`, `version`, `dependencias_caidas`, `error` y
+  `version_esquema`. El índice TTL lo borra a los 30 días. Si MongoDB no responde, el
+  sondeo sigue y solo se pierde el historial de ese lapso (D19).
 - `/services/health` sondea en ese momento lo que no encuentra en Redis: si venció,
   si Redis está caído o si el hilo no ha corrido. Por eso responde aunque Redis
   esté caído; en ese caso cada consulta sondea a los 29 y tarda unos 8 s (los 4 s
@@ -59,8 +62,8 @@ catálogo se agrega ahí.
 
 ## Variables
 
-`DATABASE_URL` (para su `/health`), `JWT_SECRET_KEY` y `REDIS_URL`, como todos.
-Además:
+`DATABASE_URL` (para su `/health`), `JWT_SECRET_KEY` y `REDIS_URL`, como todos, y
+`MONGO_URL` para el historial. Además:
 
 | Variable          | Por defecto                 | Qué es |
 |-------------------|-----------------------------|--------|

@@ -461,23 +461,39 @@ construye la base antes que los servicios, y cada dominio es un perfil. Desde ce
 
 ```bash
 python infra/genera_env.py                    # crea infra/.env y llena las contraseñas vacías
-docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait
+docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait
 docker compose -f infra/docker-compose.yml ps # todo debe salir "healthy"
 ```
 
+Escribe el comando en una sola línea, así funciona igual en bash, PowerShell y cmd.
+
 `genera_env.py` no imprime ninguna contraseña ni cambia las que ya tienen valor. Para levantar
-solo un dominio, cambia `'*'` por su perfil (`--profile catalogos`); sin `--profile` solo
-arrancan PostgreSQL y Redis.
+solo un dominio, deja únicamente su perfil (`--profile catalogos`); sin `--profile` solo
+arrancan PostgreSQL, Redis y MongoDB.
+
+**No uses `--profile '*'`.** Activa también el perfil `gpu`, cuyo `simulador-gpu` (`abm-gpu`, D23)
+necesita una GPU de NVIDIA y NVIDIA Container Toolkit. Sin ellos falla con
+
+```
+Error response from daemon: could not select device driver "nvidia" with capabilities: [[gpu]]
+```
+
+y el compose se detiene a la mitad: algunos servicios (por ejemplo `escenarios`, `aprobacion`,
+`escenarios-xml` y `sincronizacion`) quedan en `Created` sin arrancar, y el panel los marca
+caídos. Se arregla corriendo el comando de arriba; si quieres, borra el contenedor que quedó
+creado con `docker rm epidemia-simulador-gpu-1`. Solo en una máquina con GPU se agrega
+`--profile gpu` (ver `procesamiento/abm_gpu/README.md`).
 
 | Perfil | Servicios |
 |---|---|
 | `identidad` | `auth`, `sesiones`, `usuarios`, `roles` |
 | `catalogos` | `enfermedades`, `parametros`, `regiones`, `poblacion`, `tipos-intervencion` |
-| `vigilancia` | `casos`, `sincronizacion` |
+| `vigilancia` | `casos`, `sincronizacion`, `dispositivos`, `evidencias`, `vacunas` |
 | `escenarios` | `escenarios`, `intervenciones`, `aprobacion`, `validacion`, `escenarios-xml` |
-| `simulacion` | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto` |
+| `simulacion` | `corridas`, `simulador`, `simulador-abm`, `resultados`, `comparacion`, `pareto` |
 | `analitica` | `indicadores`, `series`, `zonas` |
 | `plataforma` | `notificaciones`, `estado-servicios`, `consola` |
+| `gpu` | `simulador-gpu`: solo con GPU de NVIDIA; no entra en el comando de arriba |
 
 **La base.** El compose trae su propio PostgreSQL 16. La primera vez, con el volumen vacío,
 `infra/postgres/10-inicializa.sh` carga el dump (con todas las migraciones), las dos semillas y
@@ -497,6 +513,30 @@ en el siguiente `up`. Si la migración crea el rol de un servicio nuevo (la 031 
 `dispositivos`, la 032 de `evidencias` o la 033 de `vacunas`), corre antes `python infra/genera_env.py`, que agrega
 su `DB_PASSWORD_<SERVICIO>` a `infra/.env`, y ponle esa contraseña con
 `ALTER ROLE svc_<servicio> PASSWORD '...'`: `10-inicializa.sh` solo las pone la primera vez.
+
+**Si ya tenías el compose antes de MongoDB (D1, 2026-11-18).** Tu volumen de PostgreSQL no
+tiene las migraciones 038 y 041, y `infra/.env` no tiene las contraseñas de MongoDB. Sin la
+038, el simulador nuevo marca cada corrida como fallida y `resultados` no responde. En este
+orden:
+
+```bash
+python infra/genera_env.py
+docker compose -f infra/docker-compose.yml up -d postgres --wait
+docker compose -f infra/docker-compose.yml exec postgres psql -v ON_ERROR_STOP=1 -U postgres -d simulador_epidemico -f /datos/migraciones/038_resumen_en_simulation_runs.sql
+docker compose -f infra/docker-compose.yml exec postgres psql -v ON_ERROR_STOP=1 -U postgres -d simulador_epidemico -f /datos/migraciones/041_retira_simulation_results.sql
+docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait
+```
+
+1. `genera_env.py` agrega `MONGO_ROOT_PASSWORD` y `MONGO_PASSWORD` sin tocar las demás.
+2. La 038 copia a `simulation_runs` el resumen de las corridas que ya tenías.
+3. La 041 borra `simulation_results`, y con ella la serie de esas corridas: su detalle sigue
+   mostrando el resumen, pero sin curvas. Para recuperar las curvas de una, vuelve a lanzarla
+   con la misma semilla.
+4. El `up` crea MongoDB vacío y reconstruye la imagen base, que ahora trae `pymongo`.
+
+Comprueba que `curl "http://localhost:5243/health?format=json"` diga `"mongodb": true`. Si
+prefieres empezar de cero, `down -v` borra todos los volúmenes (también las corridas y los
+archivos de `evidencias`) y el siguiente `up` carga la base con todas las migraciones.
 
 Con todo arriba (los 26 servicios, PostgreSQL y Redis) son unos 1,100 MiB: de 32 a 51 MiB por
 servicio, 83 MiB PostgreSQL y 6 MiB Redis (medido el 21 de octubre).
@@ -556,11 +596,11 @@ su pestaña. Detalles en `microservicios/consola/README.md`.
 
 ### 5. Pruebas de los microservicios
 
-No necesitan Docker ni base: usan fakeredis y la base simulada.
+No necesitan Docker ni base: usan fakeredis, mongomock y la base simulada.
 
 ```bash
 pip install -r backend_web/requerimientos.txt -r procesamiento/requerimientos.txt \
-            -r microservicios/comun/requirements.txt "fakeredis>=2.20,<3" pytest
+            -r microservicios/comun/requirements.txt "fakeredis>=2.20,<3" "mongomock>=4.1,<5" pytest
 export PYTHONPATH="$PWD:$PWD/microservicios/comun"
 python -m pytest microservicios -q
 ```

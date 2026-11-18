@@ -13,7 +13,7 @@ Lo que la materia o las decisiones del equipo ya fijaron. La lista de la materia
 | RNF-L04 | La app Android es de Kotlin | Usa Room para lo local y WorkManager para sincronizar | Móvil | Hecho |
 | RNF-L05 | La app de escritorio es de Python con PySide6 | — | Escritorio | Hecho |
 | RNF-L06 | La base relacional es PostgreSQL | — | Bases de datos | Hecho |
-| RNF-L07 | La base no relacional es MongoDB | Ver RNF-K03 | Bases de datos | Falta (D-1) |
+| RNF-L07 | La base no relacional es MongoDB | Ver RNF-K03 | Bases de datos | Hecho (D-1) |
 | RNF-L08 | Redis lleva las sesiones, la caché, los candados y las colas | — | Bases de datos | Hecho |
 | RNF-L09 | La nube es Google Cloud | Compute Engine y Cloud Storage | Infraestructura | Falta (N1, D-3) |
 | RNF-L10 | Todo corre en contenedores de Docker | — | Infraestructura | Hecho |
