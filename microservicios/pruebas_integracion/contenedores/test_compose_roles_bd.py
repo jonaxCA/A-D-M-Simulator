@@ -13,7 +13,8 @@ NEGADAS = [
     ("casos", "INSERT INTO scenarios (name) SELECT 'x' WHERE false"),
     ("zonas", "INSERT INTO cases (local_uuid) SELECT NULL WHERE false"),
     ("comparacion", "UPDATE simulation_runs SET status = status WHERE false"),
-    ("resultados", "INSERT INTO simulation_results (run_id) SELECT 1 WHERE false"),
+    ("resultados", "UPDATE simulation_runs SET resumen = resumen WHERE false"),
+    ("corridas", "UPDATE simulation_runs SET resumen = resumen WHERE false"),
     ("notificaciones", "UPDATE notifications SET title = title WHERE false"),
     ("pareto", "SELECT password_hash FROM users LIMIT 1"),
     ("estado-servicios", "SELECT 1 FROM users LIMIT 1"),
@@ -28,6 +29,8 @@ NEGADAS = [
     ("vacunas", "UPDATE cases SET vaccine_lot_id = NULL WHERE false"),
 ]
 PERMITIDAS = [
+    ("simulador", "UPDATE simulation_runs SET resumen = resumen, engine_version = engine_version,"
+                  " scenario_checksum = scenario_checksum, trazabilidad = trazabilidad WHERE false"),
     ("aprobacion", "UPDATE scenario_versions SET status = status WHERE false"),
     ("casos", "INSERT INTO cases (local_uuid) SELECT NULL WHERE false"),
     ("notificaciones", "UPDATE notifications SET read_at = read_at WHERE false"),

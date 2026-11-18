@@ -18,7 +18,7 @@ def curvas_de_corrida(token, run_id, correlacion=None):
     cabeceras = {"Authorization": "Bearer " + token, "Accept": "application/json"}
     if correlacion:
         cabeceras["X-Correlation-ID"] = correlacion
-    peticion = urllib.request.Request("%s/api/v1/runs/%d/results" % (base, run_id),
+    peticion = urllib.request.Request("%s/api/v1/runs/%d/curves" % (base, run_id),
                                       headers=cabeceras)
     try:
         timeout = float(os.environ.get("SERVICIO_RESULTADOS_TIMEOUT") or 3)

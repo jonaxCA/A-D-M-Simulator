@@ -6,18 +6,20 @@ corrida larga del ABM no detiene las del SEIR.
 
 La corrida la ejecuta simulaciones.ejecutar_run(), la misma del monolito: marca
 'ejecutando' con la transición condicionada (dos trabajadores no corren la
-misma), corre el motor, guarda el resultado y audita. Aquí solo se lee la
-cola, se publica el avance en Redis y se avisa a notificaciones.
+misma), corre el motor, guarda el resumen en simulation_runs y audita. Aquí se
+lee la cola, se publica el avance en Redis, se guarda la serie diaria en MongoDB
+(series_corridas, D28) y se avisa a notificaciones.
 """
 import json
 import logging
 import os
 import socket
+import time
 
 import psycopg2
 
 from backend_web import queries, simulaciones
-from epidemia_comun import cola, llaves
+from epidemia_comun import cola, llaves, mongo, series_corridas
 from epidemia_comun.http import llamar
 from epidemia_comun.redis_compartido import RedisNoDisponible, opcional
 from epidemia_comun.seguridad import token_servicio
@@ -27,6 +29,7 @@ log = logging.getLogger("simulador")
 
 PROGRESO_TTL = 86400
 PAUSA_SIN_REDIS = 5
+REINTENTO_SERIES = 30
 AVISOS = {"completado": ("RUN_FINISHED", "La corrida %s terminó"),
           "fallido": ("RUN_FAILED", "La corrida %s falló")}
 # Un motor que no está implementado (abm-gpu sin FLAME GPU) detiene el arranque: sin esto, el
@@ -39,6 +42,9 @@ estado = {"trabajador": socket.gethostname(), "motor": MOTOR, "activo": False,
           "corrida_actual": None, "procesadas": 0, "ultima": None}
 
 pendiente = []
+# Series que MongoDB no aceptó, por run_id; el ciclo las reintenta (RNF-C08). Si el proceso
+# muere se pierden, pero la misma semilla vuelve a dar la misma serie.
+series_pendientes = {}
 
 
 def _en_cola(crudo):
@@ -73,6 +79,22 @@ def recuperar():
         pendiente.append(True)
         log.warning("Redis no responde: se reintentará reencolar dentro del ciclo.")
     return cerradas
+
+
+def guardar_serie(run, motor, resultado):
+    docs = series_corridas.documentos(run, motor, resultado)
+    if mongo.opcional("simulador: guardar la serie", lambda: series_corridas.guardar(docs)) is None:
+        series_pendientes[run["id"]] = docs
+        log.warning("MongoDB no guardó la serie de la corrida %s; se reintentará.", run["id"])
+
+
+def reintentar_series():
+    for run_id, docs in list(series_pendientes.items()):
+        if mongo.opcional("simulador: reintentar la serie",
+                          lambda: series_corridas.guardar(docs)) is None:
+            return
+        del series_pendientes[run_id]
+        log.info("Se guardó la serie pendiente de la corrida %s.", run_id)
 
 
 def _avance(run_id, porcentaje):
@@ -111,7 +133,8 @@ def procesar(crudo, ajustes):
     estado["corrida_actual"] = run_id
     try:
         final = simulaciones.ejecutar_run(run_id, forzar_error=bool(pedido.get("forzar_error")),
-                                          al_avanzar=lambda p: _avance(run_id, p))
+                                          al_avanzar=lambda p: _avance(run_id, p),
+                                          al_guardar=guardar_serie)
     finally:
         estado["corrida_actual"] = None
     estado["procesadas"] += 1
@@ -124,8 +147,12 @@ def procesar(crudo, ajustes):
 
 def ciclo(ajustes, detener):
     estado["activo"] = True
+    ultimo_reintento = 0.0
     try:
         while not detener.is_set():
+            if series_pendientes and time.monotonic() - ultimo_reintento >= REINTENTO_SERIES:
+                ultimo_reintento = time.monotonic()
+                reintentar_series()
             try:
                 if pendiente:
                     try:

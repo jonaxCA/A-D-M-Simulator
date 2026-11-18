@@ -21,20 +21,31 @@ AJUSTES = {"JWT_SECRET_KEY": "secreto-de-pruebas-del-simulador-0123456789",
            "JWT_ISSUER": "epidemia-auth", "JWT_AUDIENCE_INTERNA": "epidemia-interno"}
 
 
+FILA = {"S": 990, "E": 0, "I": 10, "R": 0, "H": 0, "D": 0, "V": 0, "casos_activos": 10,
+        "nuevos_casos": 0, "nuevas_hospitalizaciones": 0, "nuevas_defunciones": 0,
+        "dosis_aplicadas": 0}
+RESULTADO = {"engine_version": "seir-ref-0.1",
+             "serie": [dict(FILA, dia=0), dict(FILA, dia=1, casos_activos=12, E=2, S=988)]}
+
+
 class Resp:
     def __init__(self, estado=201):
         self.status_code = estado
 
 
 @pytest.fixture
-def mundo(monkeypatch, redis_falso):
-    """ejecutar_run, get_run y llamar() simulados; el avance va al Redis falso."""
+def mundo(monkeypatch, redis_falso, mongo_falso):
+    """ejecutar_run, get_run y llamar() simulados; el avance va al Redis falso y la serie de
+    una corrida completada, al MongoDB falso."""
     m = {"ejecutadas": [], "llamadas": [], "final": "completado", "respuesta": Resp()}
 
-    def ejecutar_run(run_id, forzar_error=False, al_avanzar=None):
+    def ejecutar_run(run_id, forzar_error=False, al_avanzar=None, al_guardar=None):
         m["ejecutadas"].append((run_id, forzar_error))
         for porcentaje in (10, 30, 90, 100):
             al_avanzar(porcentaje)
+        if m["final"] == "completado":
+            al_guardar({"id": run_id, "batch_id": 8, "scenario_version_id": 11, "seed": 7},
+                       "seir-ref", RESULTADO)
         return m["final"]
 
     def llamar(servicio, metodo, ruta, **kw):
@@ -51,6 +62,7 @@ def mundo(monkeypatch, redis_falso):
     monkeypatch.setattr(trabajador, "llamar", llamar)
     monkeypatch.setitem(trabajador.estado, "procesadas", 0)
     monkeypatch.setitem(trabajador.estado, "ultima", None)
+    monkeypatch.setattr(trabajador, "series_pendientes", {})
     return m
 
 
@@ -61,6 +73,47 @@ def test_procesar_ejecuta_y_publica_el_avance(mundo, redis_falso):
     assert 0 < redis_falso.ttl(llaves.progreso(42)) <= trabajador.PROGRESO_TTL
     assert trabajador.estado["ultima"] == {"id": 42, "status": "completado"}
     assert trabajador.estado["corrida_actual"] is None
+
+
+def test_la_serie_va_a_series_corridas(mundo, mongo_falso):
+    trabajador.procesar(json.dumps({"id": 42}), AJUSTES)
+    docs = list(mongo_falso["series_corridas"].find({"run_id": 42}, {"_id": 0}).sort("dia", 1))
+    assert [d["casos_activos"] for d in docs] == [10, 12]
+    assert docs[0]["motor"] == "seir-ref" and docs[0]["scenario_version_id"] == 11
+    assert docs[0]["semilla"] == 7 and docs[0]["batch_id"] == 8
+    assert docs[0]["version_esquema"] == 1 and docs[0]["engine_version"] == "seir-ref-0.1"
+    assert trabajador.series_pendientes == {}
+
+
+def test_con_mongodb_caido_la_corrida_termina_y_la_serie_se_reintenta(mundo, mongo_falso,
+                                                                      apagar_mongo, caplog):
+    apagar_mongo()
+    with caplog.at_level(logging.WARNING, logger="simulador"):
+        assert trabajador.procesar(json.dumps({"id": 42}), AJUSTES) == "completado"
+    assert mundo["llamadas"][0][3]["cuerpo"]["type"] == "RUN_FINISHED"
+    assert list(trabajador.series_pendientes) == [42]
+    assert any("se reintentará" in r.getMessage() for r in caplog.records)
+    trabajador.reintentar_series()
+    assert list(trabajador.series_pendientes) == [42]
+    apagar_mongo.encender()
+    trabajador.reintentar_series()
+    assert trabajador.series_pendientes == {}
+    assert mongo_falso["series_corridas"].count_documents({"run_id": 42}) == 2
+
+
+def test_un_reintento_no_duplica_dias(mundo, mongo_falso):
+    trabajador.procesar(json.dumps({"id": 42}), AJUSTES)
+    trabajador.procesar(json.dumps({"id": 42}), AJUSTES)
+    assert mongo_falso["series_corridas"].count_documents({"run_id": 42}) == 2
+
+
+def test_el_ciclo_reintenta_las_series_pendientes(mundo, mongo_falso, monkeypatch):
+    detener = threading.Event()
+    monkeypatch.setitem(trabajador.series_pendientes, 42, [dict(FILA, dia=0, run_id=42)])
+    monkeypatch.setattr(trabajador.cola, "tomar", lambda llave: detener.set())
+    trabajador.ciclo(AJUSTES, detener)
+    assert trabajador.series_pendientes == {}
+    assert mongo_falso["series_corridas"].count_documents({"run_id": 42}) == 1
 
 
 def test_acepta_el_id_solo(mundo):
