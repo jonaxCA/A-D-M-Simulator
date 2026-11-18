@@ -134,6 +134,8 @@ Ya existen:
 - Levantar todo menos `simulador-gpu`:
   `docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait`. No uses `--profile '*'`: activa el perfil `gpu`, que sin una GPU de NVIDIA falla con
   `could not select device driver "nvidia"` y deja servicios en `Created`.
+- Bajar todo (aquí sí va `'*'`; sin `--profile` solo baja las bases):
+  `docker compose -f infra/docker-compose.yml --profile '*' down`
 - Solo un dominio: `docker compose -f infra/docker-compose.yml --profile escenarios up -d`
 - Reconstruir un servicio sin tocar los demás:
   `docker compose -f infra/docker-compose.yml up -d --build --no-deps <servicio>` (nombrarlo activa su perfil)

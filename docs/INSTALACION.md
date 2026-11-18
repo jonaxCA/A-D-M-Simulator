@@ -125,6 +125,13 @@ de regiones que carga `dump_completo.sql`.
 > la semilla completa las bandas censales que falten en los 41 municipios
 > agregados después de la migración 021, y no pisa bandas que ya existan o hayan
 > sido corregidas manualmente.
+>
+> **Ojo: `simulation_results` se retira.** El dump incluye la migración `041`, que
+> borra la tabla `simulation_results` (`DROP TABLE IF EXISTS`). Si esta base tiene
+> series de corridas anteriores a D28, volver a correr el dump las pierde. El resumen
+> ya quedó en `simulation_runs` gracias a la `038`, y la serie se recupera volviendo a
+> lanzar la corrida con la misma semilla (ver la nota de compose más abajo). Ni la app
+> ni los servicios la leen.
 
 > **Corrección de bandas por municipio.** En Regiones, `ADMINISTRADOR` puede
 > abrir **Corregir bandas de edad**. La suma de las cinco bandas debe conservar
@@ -401,7 +408,7 @@ P="psql -h 127.0.0.1 -p 5433 -U postgres -v ON_ERROR_STOP=1"
 
 $P -c "CREATE DATABASE simulador_epidemico;"
 $P -c "CREATE ROLE epidemia_app LOGIN PASSWORD '<contraseña de epidemia_app>';"
-$P -d simulador_epidemico -f datos/postgres/dump_completo.sql          # trae de la 001 a la 026
+$P -d simulador_epidemico -f datos/postgres/dump_completo.sql          # trae de la 001 a la 041
 $P -d simulador_epidemico -f datos/postgres/semillas/nl_municipios_completos.sql
 $P -d simulador_epidemico -f datos/postgres/semillas/demo_datos_nl.sql
 $P -d simulador_epidemico -c "GRANT USAGE ON SCHEMA public TO epidemia_app;
@@ -471,7 +478,7 @@ Escribe el comando en una sola línea, así funciona igual en bash, PowerShell y
 solo un dominio, deja únicamente su perfil (`--profile catalogos`); sin `--profile` solo
 arrancan PostgreSQL, Redis y MongoDB.
 
-**No uses `--profile '*'`.** Activa también el perfil `gpu`, cuyo `simulador-gpu` (`abm-gpu`, D23)
+**No uses `--profile '*'` para levantar.** Activa también el perfil `gpu`, cuyo `simulador-gpu` (`abm-gpu`, D23)
 necesita una GPU de NVIDIA y NVIDIA Container Toolkit. Sin ellos falla con
 
 ```
@@ -483,6 +490,10 @@ y el compose se detiene a la mitad: algunos servicios (por ejemplo `escenarios`,
 caídos. Se arregla corriendo el comando de arriba; si quieres, borra el contenedor que quedó
 creado con `docker rm epidemia-simulador-gpu-1`. Solo en una máquina con GPU se agrega
 `--profile gpu` (ver `procesamiento/abm_gpu/README.md`).
+
+**Para bajar todo, ahí sí va `'*'`:** `docker compose -f infra/docker-compose.yml --profile '*' down`. `down` sin `--profile` solo baja PostgreSQL, Redis y
+MongoDB; los servicios siguen arriba y falla con `Network epidemia_default Resource is still in
+use`. `down` no necesita la GPU, y de paso quita el `simulador-gpu` que haya quedado creado.
 
 | Perfil | Servicios |
 |---|---|
