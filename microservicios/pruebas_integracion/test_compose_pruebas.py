@@ -30,7 +30,8 @@ def test_el_script_revisa_todos_los_puertos_publicados():
     publicados = {int(p) for p in re.findall(r'^      - "(\d+):8000"$', COMPOSE, re.M)}
     # Cada servicio y la consola.
     assert len(publicados) == len(SERVICIOS) + 1
-    locales = {int(SCRIPT.FIJOS["REDIS_PUERTO_LOCAL"]), int(SCRIPT.FIJOS["POSTGRES_PUERTO_LOCAL"])}
+    locales = {int(SCRIPT.FIJOS[v]) for v in ("REDIS_PUERTO_LOCAL", "POSTGRES_PUERTO_LOCAL",
+                                              "MONGO_PUERTO_LOCAL")}
     assert set(SCRIPT.PUERTOS) == publicados | locales
 
 

@@ -9,7 +9,7 @@
 # Container Toolkit (en Windows, Docker Desktop con WSL 2). Con --gpu, corridas acepta además
 # abm-gpu y test_compose_gpu.py corre una corrida en ese simulador; sin él, esa prueba se salta.
 #
-# Usa su propio proyecto (epidemia-pruebas), con sus propios volúmenes de PostgreSQL y de Redis,
+# Usa su propio proyecto (epidemia-pruebas), con sus propios volúmenes de PostgreSQL, Redis y MongoDB,
 # y la base se llama simulador_epidemico_pruebas: nunca toca la base ni el Redis de la
 # demostración. Sus contraseñas, aleatorias, van en infra/.env.pruebas (fuera de git). Publica
 # los mismos puertos que el compose principal, así que ese tiene que estar abajo.
@@ -24,12 +24,12 @@ RAIZ = AQUI.parent
 ENTORNO = AQUI / ".env.pruebas"
 PROYECTO = "epidemia-pruebas"
 FIJOS = {"POSTGRES_DB": "simulador_epidemico_pruebas", "REDIS_PUERTO_LOCAL": "6382",
-         "POSTGRES_PUERTO_LOCAL": "5435"}
+         "POSTGRES_PUERTO_LOCAL": "5435", "MONGO_PUERTO_LOCAL": "27019"}
 ARCHIVOS = ["-f", str(AQUI / "docker-compose.yml"), "-f", str(AQUI / "docker-compose.pruebas.yml")]
-# Los del catálogo, la consola y los locales de PostgreSQL y Redis de este compose.
+# Los del catálogo, la consola y los locales de PostgreSQL, Redis y MongoDB de este compose.
 PUERTOS = [5201, 5202, 5203, 5204, 5211, 5212, 5213, 5214, 5215, 5221, 5222, 5223, 5224, 5225,
            5231, 5232, 5233, 5234, 5235, 5241, 5242, 5243, 5244, 5245, 5251, 5252, 5253, 5260,
-           5261, 5262, 6382, 5435]
+           5261, 5262, 6382, 5435, 27019]
 
 
 def prepara_entorno(gpu):
