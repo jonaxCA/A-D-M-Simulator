@@ -17,10 +17,12 @@ Opción C: personas-día y pesos por separado.
 
 - La frontera de Pareto usa personas-día.
 - El costo directo en pesos aparece aparte, en la tabla comparativa, y no entra a la frontera.
+- **Vacunación (2026-11-17):** entra a la frontera como fracción de día-persona por dosis, marcada como supuesto. El factor no va en `unit_cost`, que guarda el precio por dosis en pesos.
+- «No hacer nada» cuesta cero, así que siempre queda en la frontera.
 
 ## Consecuencias
 Afecta el esquema de costos, `pareto`, `comparacion`, los reportes de escritorio y la interpretación del aviso de que no es una predicción.
 
 - Mostrar pesos exige fuente o marca de supuesto para cada precio (regla 8 de `AGENTS.md`).
-- La frontera no refleja el costo de vacunar en pesos. Cómo entra la vacunación queda abierto (ver [`todo.md`](todo.md)).
+- La frontera no refleja el costo de vacunar en pesos. El factor de día-persona por dosis necesita su propio lugar en la base, con su valor y su fuente o marca de supuesto.
 - Los cambios de código y documentos que siguen de esta decisión están en [`todo.md`](todo.md), sección «Cambios pendientes por D3». No están implementados.

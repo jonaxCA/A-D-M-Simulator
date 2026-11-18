@@ -18,7 +18,7 @@ Es la segunda mitad del proceso **P3** de [`procesos_v3.md`](../../arquitectura/
 | ID | Requerimiento | Criterio de aceptación | Paso | Componente | Prioridad | Estado |
 |---|---|---|---|---|---|---|
 | RF-F01 | Cada corrida entrega sus curvas diarias | `resultados` responde un punto por día simulado, con los compartimentos del modelo | 3.5, 3.7 | Microservicios | Alta | Hecho |
-| RF-F02 | Las curvas se desglosan por grupo de edad | La serie trae cada compartimento total y por grupo de edad | 3.5 | Microservicios | Media | Verificar: falta acordar con D28 si la serie lleva el desglose |
+| RF-F02 | El resultado se desglosa por grupo de edad | La serie diaria trae totales; el desglose por grupo sale de `desglose_por_grupo` del resumen (D28) | 3.5 | Microservicios | Media | Verificar: que la web y el escritorio muestren `desglose_por_grupo` |
 | RF-F04 | Cada corrida entrega su resumen: casos acumulados, hospitalizaciones, fallecimientos, pico de casos activos, día del pico y tasa de ataque | `resultados` responde los seis indicadores | 3.5, 3.7 | Microservicios | Alta | Hecho |
 | RF-F05 | El costo de cada escenario se calcula con el costo unitario de sus intervenciones, en personas-día y en pesos por separado (D3) | `pareto` responde el costo de cada intervención y el total. La frontera usa personas-día; los pesos van aparte en la tabla | 3.5 | Microservicios | Alta | Hecho |
 | RF-F06 | Las réplicas de una versión se resumen con media, mediana y la banda del percentil 5 al 95 (D8) | Se usan solo las semillas comunes a todas las versiones comparadas. Este parcial el resumen se calcula en el escritorio | 3.5 | Escritorio | Alta | Hecho |

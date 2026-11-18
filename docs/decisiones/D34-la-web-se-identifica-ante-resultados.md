@@ -1,6 +1,6 @@
 # D34 - La web se identifica ante `resultados` con el JWT de la sesión
 
-Fecha: 2026-11-16 · Estado: Aceptada (tomada por el orquestador; pendiente de validación del equipo)
+Fecha: 2026-11-16 · Estado: Aceptada (tomada por el orquestador; validada por el líder el 2026-11-17)
 
 ## Contexto
 D20 (excepción por D28) hace que la web pida las curvas de una corrida a `resultados`, pero no dice con qué identidad. `resultados` exige un JWT con `iss`, `aud`, `nbf`, `sid` y `jti`, y revisa la sesión y la revocación en Redis.
