@@ -12,7 +12,7 @@ Puerto externo: 5224; puerto interno en Docker: 8000. Contrato en
 
 | Método | Ruta | Roles | Qué hace |
 |--------|------|-------|----------|
-| POST | `/api/v1/cases/{case_id}/attachments` | CAPTURISTA (solo en los casos que reportó) y ADMINISTRADOR | Guarda el archivo que viene **tal cual en el cuerpo**. **201**, o **200** si esa foto ya estaba en el caso |
+| POST | `/api/v1/cases/{case_id}/attachments` | CAPTURISTA, solo en los casos que reportó (D1: el ADMINISTRADOR no captura) | Guarda el archivo que viene **tal cual en el cuerpo**. **201**, o **200** si esa foto ya estaba en el caso |
 | GET | `/api/v1/cases/{case_id}/attachments` | Los cuatro roles que leen casos | Las evidencias del caso, de la más vieja a la más nueva |
 | GET | `/api/v1/attachments/{id}` | Los cuatro | Tipo, tamaño, huella, quién la subió y cuándo |
 | GET | `/api/v1/attachments/{id}/content` | Los cuatro | El archivo, con su tipo |

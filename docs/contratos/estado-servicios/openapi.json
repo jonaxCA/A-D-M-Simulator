@@ -288,7 +288,7 @@
       "get": {
         "summary": "Salud de los 26 servicios",
         "operationId": "salud_servicios",
-        "description": "El último sondeo de cada uno, guardado en Redis. Lo que no está ahí (venció, Redis está caído o el sondeo no ha corrido) se sondea en ese momento, así que responde aunque Redis esté caído. Por servicio: `estado` (`ok`, `degradado` o `caido`), `causas` (`postgresql`, `redis` o `proceso`), `detalle` cuando está caído (`sin_conexion`, `tiempo_agotado` o `respuesta_invalida`), `version`, `latencia_ms` y `revisado` (ISO 8601, UTC). `resumen` cuenta cuántos hay en cada estado.",
+        "description": "El último sondeo de cada uno, guardado en Redis. Lo que no está ahí (venció, Redis está caído o el sondeo no ha corrido) se sondea en ese momento, así que responde aunque Redis esté caído. Por servicio: `estado` (`ok`, `degradado` o `caido`), `causas` (`postgresql`, `redis`, `mongodb`, `bucket` o `proceso`; las dos nuevas solo si el servicio las usa y fallan o no están configuradas), `detalle` cuando está caído (`sin_conexion`, `tiempo_agotado` o `respuesta_invalida`), `version`, `latencia_ms` y `revisado` (ISO 8601, UTC). `resumen` cuenta cuántos hay en cada estado. `errores` cuenta las respuestas 5xx del servicio en las últimas 24 h (null si Redis no responde).",
         "responses": {
           "200": {
             "description": "Operación correcta",
@@ -311,7 +311,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 3.1,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "sesiones",
@@ -320,7 +321,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 5.9,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "usuarios",
@@ -329,7 +331,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 4.3,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "roles",
@@ -338,7 +341,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 7.1,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "enfermedades",
@@ -347,7 +351,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 5.5,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "parametros",
@@ -356,7 +361,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 3.9,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "regiones",
@@ -365,7 +371,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 6.7,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "poblacion",
@@ -374,7 +381,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 5.1,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "tipos-intervencion",
@@ -383,7 +391,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 3.5,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "casos",
@@ -392,7 +401,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 6.3,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "sincronizacion",
@@ -401,7 +411,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 4.7,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "escenarios",
@@ -410,7 +421,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 3.1,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "intervenciones",
@@ -419,7 +431,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 5.9,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "aprobacion",
@@ -428,7 +441,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 4.3,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "validacion",
@@ -437,7 +451,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 7.1,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "escenarios-xml",
@@ -446,7 +461,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 5.5,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "corridas",
@@ -455,7 +471,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 3.9,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "simulador",
@@ -466,7 +483,8 @@
                       "detalle": "sin_conexion",
                       "version": null,
                       "latencia_ms": null,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "resultados",
@@ -475,7 +493,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 5.1,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "comparacion",
@@ -484,7 +503,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 3.5,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "pareto",
@@ -493,7 +513,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 6.3,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "indicadores",
@@ -502,7 +523,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 4.7,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "series",
@@ -513,7 +535,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 3.1,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "zonas",
@@ -522,7 +545,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 5.9,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "notificaciones",
@@ -531,7 +555,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 4.3,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 0
                     },
                     {
                       "nombre": "estado-servicios",
@@ -540,7 +565,8 @@
                       "detalle": null,
                       "version": "0.1.0",
                       "latencia_ms": 7.1,
-                      "revisado": "2026-10-20T18:30:05+00:00"
+                      "revisado": "2026-10-20T18:30:05+00:00",
+                      "errores": 3
                     }
                   ]
                 }
@@ -554,7 +580,7 @@
                 },
                 "examples": {
                   "respuesta": {
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<estado_servicios><resumen><ok tipo=\"numero\">24</ok><degradado tipo=\"numero\">1</degradado><caido tipo=\"numero\">1</caido></resumen><servicios><servicio><nombre>auth</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>sesiones</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>usuarios</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>roles</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">7.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>enfermedades</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.5</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>parametros</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>regiones</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">6.7</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>poblacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>tipos-intervencion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.5</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>casos</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">6.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>sincronizacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.7</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>escenarios</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>intervenciones</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>aprobacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>validacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">7.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>escenarios-xml</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.5</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>corridas</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>simulador</nombre><estado>caido</estado><causas><causa>proceso</causa></causas><detalle>sin_conexion</detalle><version nil=\"true\" /><latencia_ms nil=\"true\" /><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>resultados</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>comparacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.5</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>pareto</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">6.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>indicadores</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.7</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>series</nombre><estado>degradado</estado><causas><causa>postgresql</causa></causas><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>zonas</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>notificaciones</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio><servicio><nombre>estado-servicios</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">7.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></servicio></servicios></estado_servicios>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<estado_servicios><resumen><ok tipo=\"numero\">24</ok><degradado tipo=\"numero\">1</degradado><caido tipo=\"numero\">1</caido></resumen><servicios><servicio><nombre>auth</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>sesiones</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>usuarios</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>roles</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">7.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>enfermedades</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.5</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>parametros</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>regiones</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">6.7</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>poblacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>tipos-intervencion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.5</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>casos</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">6.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>sincronizacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.7</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>escenarios</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>intervenciones</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>aprobacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>validacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">7.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>escenarios-xml</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.5</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>corridas</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>simulador</nombre><estado>caido</estado><causas><causa>proceso</causa></causas><detalle>sin_conexion</detalle><version nil=\"true\" /><latencia_ms nil=\"true\" /><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>resultados</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>comparacion</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.5</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>pareto</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">6.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>indicadores</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.7</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>series</nombre><estado>degradado</estado><causas><causa>postgresql</causa></causas><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>zonas</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.9</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>notificaciones</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.3</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">0</errores></servicio><servicio><nombre>estado-servicios</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">7.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado><errores tipo=\"numero\">3</errores></servicio></servicios></estado_servicios>\n"
                   }
                 }
               }

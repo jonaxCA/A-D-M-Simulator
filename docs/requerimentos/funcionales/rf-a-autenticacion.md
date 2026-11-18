@@ -22,7 +22,7 @@ Función de soporte: la usan los tres procesos (pasos 1.1 y 2.1 de [`procesos_v3
 | RF-A06 | Todo cambio de datos queda en la auditoría | `audit_log` guarda quién, qué acción, sobre qué entidad, cuándo, la IP y el identificador de correlación, en la misma transacción que el cambio | Todos | Seguridad, Bases de datos | Alta | Hecho |
 | RF-A09 | La app móvil registra el teléfono, uno por cuenta | `dispositivos` crea o actualiza el registro en `devices`; queda `CREATE` o `UPDATE` en la auditoría. Un teléfono revocado no sincroniza | 1.2 | Móvil, Microservicios | Media | Hecho |
 | RF-A11 | La web inicia sesión con usuario y contraseña, y guarda su token en una cookie | Con datos correctos entra al tablero; con datos incorrectos no entra y queda `LOGIN_FAILED`. Después de entrar solo redirige a rutas del propio sitio | Soporte | Web, Seguridad | Alta | Hecho |
-| RF-A12 | La web registra y revisa su sesión en Redis, igual que las apps | Cerrar sesión en la web deja el token sin valor antes de que venza | Soporte | Web, Seguridad | Alta | Por decidir (I3): falta acordar qué hace la web si Redis no responde |
+| RF-A12 | La web registra y revisa su sesión en Redis, igual que las apps | Cerrar sesión en la web deja el token sin valor antes de que venza | Soporte | Web, Seguridad | Alta | Hecho (I3), verificado el 2026-11-16; con Redis caído la web conserva las sesiones abiertas y no deja entrar (D33) |
 | RF-A13 | Cada usuario consulta su perfil | `usuarios` responde el nombre, el usuario y los roles de quien pregunta (`GET /api/v1/users/me`) | Soporte | Microservicios | Media | Hecho |
 
 ## Fuera de alcance

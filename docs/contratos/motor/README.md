@@ -123,11 +123,9 @@ MongoDB, un documento por día con el `run_id` y el motor.
 
 ## Pendiente de acordar
 
-- **Serie por grupo de edad.** D28 dice que `series_corridas` guarda los compartimentos por
-  grupo de edad de cada día, pero la `serie` de hoy solo trae totales por día; por grupo solo
-  vienen los totales finales de `desglose_por_grupo`. O se agrega una llave opcional con la
-  serie por grupo, que tendrían que dar los tres motores, o MongoDB guarda totales. Se decide
-  con quien implementa D28.
+- ~~**Serie por grupo de edad.**~~ Resuelto el 2026-11-17 (D28): la `serie` se queda con
+  totales por día y MongoDB guarda totales. El desglose por grupo solo viene en
+  `desglose_por_grupo`.
 
 ## Ejemplos
 

@@ -7,7 +7,7 @@ epidemiológicos (tabla `cases`). Es el único servicio que escribe en ella.
 
 | Ruta | Roles | Qué hace |
 |---|---|---|
-| `POST /cases` | CAPTURISTA, ADMINISTRADOR | Valida con `queries.valida_caso` (catálogo vigente de enfermedades y municipios, fechas, rangos, coordenadas completas), inserta con `status = pendiente` y deja un `CREATE` en `audit_log`, en la misma transacción. `reported_by` sale del token. |
+| `POST /cases` | CAPTURISTA (D1: el ADMINISTRADOR no captura) | Valida con `queries.valida_caso` (catálogo vigente de enfermedades y municipios, fechas, rangos, coordenadas completas), inserta con `status = pendiente` y deja un `CREATE` en `audit_log`, en la misma transacción. `reported_by` sale del token. |
 | `GET /cases` | CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR | Lista paginada. Filtros: `disease_id`, `region_id` (municipio), `status`, `sex`, `from`, `to` (sobre `report_date`), `page` (1), `per_page` (20, máx. 100). Regresa `casos`, `total`, `pagina`, `por_pagina`, `paginas`. |
 | `GET /cases/{id}` | los cuatro roles | Un caso; 404 si no existe. |
 

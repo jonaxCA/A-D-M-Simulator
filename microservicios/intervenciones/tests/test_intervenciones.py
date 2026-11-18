@@ -38,6 +38,8 @@ class Mundo:
         self.sentencias = []
         self.commits = 0
         self.tipo_costo = (2, 100, "viejo", True)  # id, unit_cost, source, assumption
+        # id, cost_unit, person_days_per_unit, person_days_source, person_days_is_assumption
+        self.tipo_factor = (2, "por_dosis", None, None, True)
         self.resultado = (True, None)
 
 
@@ -85,7 +87,8 @@ def mundo(monkeypatch):
         def fetchone(self):
             sql, params = m.sentencias[-1]
             if sql.startswith("SELECT t.id"):
-                return m.tipo_costo if params[0] == 77 and params[1] == 31 else None
+                fila = m.tipo_factor if "person_days" in sql else m.tipo_costo
+                return fila if params[0] == 77 and params[1] == 31 else None
 
     class Conn:
         def cursor(self):
@@ -119,7 +122,7 @@ BASE = "/api/v1/versions/31/interventions"
 
 @pytest.mark.parametrize("metodo,ruta", [
     ("get", BASE), ("post", BASE), ("delete", BASE + "/77"),
-    ("post", BASE + "/77/move"), ("put", BASE + "/77/cost")])
+    ("post", BASE + "/77/move"), ("put", BASE + "/77/cost"), ("put", BASE + "/77/person-days")])
 def test_sin_token_401_y_rol_ajeno_403(cliente, token, mundo, metodo, ruta):
     r = getattr(cliente, metodo)(ruta + "?format=json")
     assert r.status_code == 401
@@ -314,6 +317,62 @@ def test_costo_como_supuesto_sin_fuente_y_404(cliente, token, mundo):
     assert len(mundo.auditoria) == 1 and mundo.commits == 1
 
 
+# --- personas-día por dosis (D3) ---------------------------------------------
+
+FACTOR = {"person_days_per_unit": 0.5, "person_days_source": None, "person_days_is_assumption": True}
+
+
+def test_factor_audita_en_la_misma_transaccion(cliente, token, mundo):
+    r = cliente.put(BASE + "/77/person-days?format=json", headers=token(("EPIDEMIOLOGO",)),
+                    **con_json(FACTOR))
+    assert r.status_code == 200
+    assert r.get_json() == {"id": 77, "intervention_type_id": 2, **FACTOR}
+    assert [s[0].split()[0] for s in mundo.sentencias] == ["SELECT", "UPDATE"]
+    assert "person_days_per_unit = %s" in mundo.sentencias[1][0] and mundo.commits == 1
+    contexto, accion, tipo, entidad, antes, despues, cur = mundo.auditoria[0]
+    assert (accion, tipo, entidad) == ("UPDATE", "intervention_types", 2)
+    assert antes == {"person_days_per_unit": None, "person_days_source": None,
+                     "person_days_is_assumption": True}
+    assert despues == FACTOR and cur is not None
+
+
+def test_factor_analista_403(cliente, token, mundo):
+    r = cliente.put(BASE + "/77/person-days?format=json", headers=token(("ANALISTA",)),
+                    **con_json(FACTOR))
+    assert r.status_code == 403 and not mundo.sentencias
+
+
+def test_factor_solo_en_tipos_por_dosis(cliente, token, mundo):
+    mundo.tipo_factor = (1, "por_habitante_dia", None, None, True)
+    r = cliente.put(BASE + "/77/person-days?format=json", headers=token(("ADMINISTRADOR",)),
+                    **con_json(FACTOR))
+    assert r.status_code == 422 and "por dosis" in r.get_json()["detail"]
+    assert not mundo.auditoria and mundo.commits == 0
+
+
+@pytest.mark.parametrize("cuerpo", [
+    {"person_days_per_unit": 0.5}, {"person_days_per_unit": -1, "person_days_is_assumption": True},
+    {"person_days_per_unit": "abc", "person_days_is_assumption": True}, {"person_days_is_assumption": True},
+    {"unit_cost": 10, "cost_is_assumption": True}])
+def test_factor_invalido_422(cliente, token, mundo, cuerpo):
+    r = cliente.put(BASE + "/77/person-days?format=json", headers=token(("EPIDEMIOLOGO",)),
+                    **con_json(cuerpo))
+    assert r.status_code == 422
+    assert not mundo.sentencias and not mundo.auditoria
+
+
+def test_factor_sin_fuente_ni_supuesto_lo_explica(cliente, token, mundo):
+    r = cliente.put(BASE + "/77/person-days?format=json", headers=token(("EPIDEMIOLOGO",)),
+                    **con_json({"person_days_per_unit": 0.5}))
+    assert "El factor de personas-dia que no es supuesto debe incluir una fuente." in r.get_json()["detail"]
+
+
+def test_factor_de_otra_version_404(cliente, token, mundo):
+    r = cliente.put(BASE + "/5/person-days?format=json", headers=token(("EPIDEMIOLOGO",)),
+                    **con_json(FACTOR))
+    assert r.status_code == 404 and not mundo.auditoria
+
+
 def test_redis_caido_503(cliente, token, mundo, apagar_redis):
     cabecera = token()
     apagar_redis()
@@ -361,6 +420,8 @@ def test_las_respuestas_xml_validan_contra_el_xsd(cliente, token, mundo):
         cliente.delete(BASE + "/77", headers=token()),
         cliente.put(BASE + "/77/cost", headers=token(("ADMINISTRADOR",)),
                     data=a_xml(COSTO, "costo"), content_type="application/xml"),
+        cliente.put(BASE + "/77/person-days", headers=token(("ADMINISTRADOR",)),
+                    data=a_xml(FACTOR, "factor"), content_type="application/xml"),
     ]
     for r in respuestas:
         assert r.status_code in (200, 201), r.data
@@ -371,7 +432,8 @@ def test_las_peticiones_de_ejemplo_se_aceptan(cliente, token, mundo):
     mundo.version["horizon_days"] = 120
     llamadas = (("agregar_intervencion", "post", BASE, 201, ("ANALISTA",)),
                 ("mover_intervencion", "post", BASE + "/77/move", 200, ("ANALISTA",)),
-                ("actualizar_costo_intervencion", "put", BASE + "/77/cost", 200, ("EPIDEMIOLOGO",)))
+                ("actualizar_costo_intervencion", "put", BASE + "/77/cost", 200, ("EPIDEMIOLOGO",)),
+                ("actualizar_factor_personas_dia", "put", BASE + "/77/person-days", 200, ("EPIDEMIOLOGO",)))
     for op, metodo, ruta, esperado, roles in llamadas:
         for ext, tipo in (("json", "application/json"), ("xml", "application/xml")):
             datos = (CONTRATO / "ejemplos" / ("%s_peticion.%s" % (op, ext))).read_bytes()

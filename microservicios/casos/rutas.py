@@ -13,10 +13,10 @@ from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import diccionario, entero_positivo, fecha
 
-# Matriz de permisos (migración 010): cases.create = CAPTURISTA (+ ADMINISTRADOR, que
-# lo tiene todo); cases.read = los cuatro roles. El monolito deja capturar a cualquier
+# Matriz de permisos: cases.create = solo CAPTURISTA (D1; la migración 034 se lo quita al
+# ADMINISTRADOR); cases.read = los cuatro roles. El monolito deja capturar a cualquier
 # usuario autenticado; aquí se aplica la matriz.
-ROLES_ESCRITURA = ("CAPTURISTA", "ADMINISTRADOR")
+ROLES_ESCRITURA = ("CAPTURISTA",)
 ROLES_LECTURA = ("CAPTURISTA", "EPIDEMIOLOGO", "ANALISTA", "ADMINISTRADOR")
 
 ESTADOS = ("pendiente", "validado", "duplicado", "descartado")

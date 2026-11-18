@@ -18,3 +18,7 @@ def tomar(llave):
 
 def pendientes(llave):
     return requerido("cola_pendientes", lambda r: r.llen(llave))
+
+
+def contenidos(llave):
+    return requerido("cola_contenidos", lambda r: r.lrange(llave, 0, -1))

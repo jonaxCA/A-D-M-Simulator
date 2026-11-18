@@ -49,7 +49,7 @@ La columna **Prueba** dice dónde están las pruebas que tocan ese paso, no que 
 | Sitio público | RF-J01, RF-J03 | RNF-D15 | Web | — | `backend_web/tests` |
 | Monitoreo del sistema | RF-K01 a RF-K05, RF-K08, RF-K10 a RF-K12 | RNF-J01, RNF-J05, RNF-J06, RNF-J13, RNF-C16 | Monitoreo | `estado-servicios`, `/health` de cada servicio | `microservicios/estado_servicios/tests`, `microservicios/comun/tests` |
 | Administración | RF-L01 a RF-L05 | RNF-D20 | Web, Microservicios | `usuarios`, `roles`, `sesiones`, `dispositivos` | `microservicios/usuarios/tests`, `backend_web/tests/test_dispositivos.py` |
-| Seguridad de la plataforma | — | RNF-D01, RNF-D03, RNF-D08 a RNF-D10, RNF-D26, RNF-D28 | Seguridad, Infraestructura | `epidemia_comun`, nginx | `microservicios/comun/tests`; nginx y límites: falta |
+| Seguridad de la plataforma | — | RNF-D01, RNF-D03, RNF-D08 a RNF-D10, RNF-D26, RNF-D28 | Seguridad, Infraestructura | `epidemia_comun`, nginx | `microservicios/comun/tests`; nginx: falta |
 | Despliegue y datos | — | RNF-H01 a RNF-H18, RNF-K01 a RNF-K18, RNF-A16, RNF-A17 | Infraestructura, Bases de datos | — | `infra/pruebas_integracion.py`, `datos/scripts/verifica_migraciones.py`; Locust: falta |
 
 ## Por rol
@@ -89,4 +89,4 @@ Los que no están en «Hecho», agrupados por la brecha de [`brechas_v3.md`](../
 | D8, D19 (corridas) | RF-E03, RF-E19, RNF-C03 |
 | Escritorio (bloque A) | RF-E15, RF-F20, RF-H20, RF-H21 |
 | Sin brecha registrada | RNF-D07, RNF-D21, RNF-E08, RNF-K07 |
-| Por verificar | RF-F02, RF-H24, RF-I22, RNF-D05, RNF-D06, RNF-E03, RNF-E06, RNF-J06 |
+| Por verificar | RF-F02, RF-H24, RF-I22, RNF-D05, RNF-D06, RNF-E03, RNF-E06 |

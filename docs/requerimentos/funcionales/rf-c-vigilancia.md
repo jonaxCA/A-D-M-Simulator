@@ -29,7 +29,7 @@ Es el proceso **P1** de [`procesos_v3.md`](../../arquitectura/procesos_v3.md): e
 | RF-C12 | El servidor valida cada caso al recibirlo | Un caso con datos inválidos se rechaza con su motivo, sin detener el resto del lote; la app lo muestra como rechazado | 1.6 | Microservicios | Alta | Hecho |
 | RF-C13 | La app aplica dosis a un lote de vacuna | `vacunas` suma a `doses_used`; queda `UPDATE` en la auditoría. No se aplica a un lote caducado ni más dosis de las que tiene (RN-11, RN-30) | 1.8 | Móvil, Microservicios | Media | Hecho |
 | RF-C14 | La app muestra qué se envió, qué se rechazó y qué falta | Cada caso aparece como enviado, rechazado o pendiente | 1.6 | Móvil | Alta | Hecho |
-| RF-C19 | Cuando un lote trae casos nuevos, se avisa a los EPIDEMIOLOGO | `sincronizacion` crea un aviso por lote, no uno por caso, por medio de `notificaciones`. Un reintento del mismo lote no vuelve a avisar (D32) | 1.6 | Microservicios | Alta | Falta (I1) |
+| RF-C19 | Cuando un lote trae casos nuevos, se avisa a los EPIDEMIOLOGO | `sincronizacion` crea un aviso por lote, no uno por caso, por medio de `notificaciones`. Un reintento del mismo lote no vuelve a avisar (D32) | 1.6 | Microservicios | Alta | Hecho |
 | RF-C20 | La web muestra la foto de un caso con una URL firmada | Solo un rol con permiso recibe la URL, y vence en minutos | 1.9 | Web, Microservicios | Alta | Falta (D-3) |
 | RF-C21 | Un teléfono revocado deja de sincronizar | `sincronizacion` rechaza el lote; los casos vuelven a pendientes en el teléfono y la app cierra la sesión | 1.6 | Microservicios, Móvil | Media | Hecho |
 

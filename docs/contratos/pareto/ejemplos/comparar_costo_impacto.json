@@ -7,6 +7,7 @@
       "id": 12,
       "nombre": "SIM-00012 - A - Sin intervencion",
       "costo": 0,
+      "costo_pesos": 0,
       "impacto": 100,
       "desglose_costo": [],
       "semilla": 982314,
@@ -19,7 +20,8 @@
     {
       "id": 13,
       "nombre": "SIM-00013 - B - Cierre escolar",
-      "costo": 292500000.0,
+      "costo": 19500000.0,
+      "costo_pesos": 292500000.0,
       "impacto": 67,
       "desglose_costo": [
         {
@@ -30,7 +32,8 @@
           "intensidad": 1.0,
           "cantidad": 19500000,
           "unidad": "habitante_dia",
-          "costo": 292500000.0
+          "costo": 19500000.0,
+          "costo_pesos": 292500000.0
         }
       ],
       "semilla": 982314,
@@ -43,7 +46,8 @@
     {
       "id": 14,
       "nombre": "SIM-00014 - C - Vacunacion 60+",
-      "costo": 15879200.0,
+      "costo": 19849.0,
+      "costo_pesos": 15879200.0,
       "impacto": 71,
       "desglose_costo": [
         {
@@ -54,7 +58,8 @@
           "intensidad": null,
           "cantidad": 39698,
           "unidad": "dosis",
-          "costo": 15879200.0
+          "costo": 19849.0,
+          "costo_pesos": 15879200.0
         }
       ],
       "semilla": 982314,
@@ -67,7 +72,8 @@
     {
       "id": 15,
       "nombre": "SIM-00015 - D - Cierre + vacuna",
-      "costo": 308379200.0,
+      "costo": 19519849.0,
+      "costo_pesos": 308379200.0,
       "impacto": 51,
       "desglose_costo": [
         {
@@ -78,7 +84,8 @@
           "intensidad": 1.0,
           "cantidad": 19500000,
           "unidad": "habitante_dia",
-          "costo": 292500000.0
+          "costo": 19500000.0,
+          "costo_pesos": 292500000.0
         },
         {
           "tipo": "VACUNACION",
@@ -88,7 +95,8 @@
           "intensidad": null,
           "cantidad": 39698,
           "unidad": "dosis",
-          "costo": 15879200.0
+          "costo": 19849.0,
+          "costo_pesos": 15879200.0
         }
       ],
       "semilla": 982314,
@@ -115,12 +123,19 @@
     },
     {
       "tipo": "VACUNACION",
+      "valor": 0.5,
+      "unidad": "personas_dia_por_dosis",
+      "fuente": "Ejemplo del motor, no validado",
+      "estado": "supuesto"
+    },
+    {
+      "tipo": "VACUNACION",
       "valor": 400.0,
       "unidad": "por_dosis",
       "fuente": "Ejemplo del motor, no validado",
       "estado": "supuesto"
     }
   ],
-  "modelo_costo": "unitario x poblacion x intensidad x dias (capas y testeo); unitario x dosis aplicadas (vacunacion)",
+  "modelo_costo": "personas-dia: poblacion x intensidad x dias (capas y testeo) y dosis aplicadas x personas-dia por dosis (vacunacion). Pesos, aparte y fuera de la frontera: unitario x esas personas-dia o x dosis aplicadas",
   "avisos": []
 }

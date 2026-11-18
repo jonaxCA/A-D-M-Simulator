@@ -18,5 +18,5 @@ Se eligió porque los servicios reutilizan las funciones de `backend_web`, que c
 - La responsabilidad se vuelve un permiso de la base.
 - Cada servicio nuevo pide un rol y una migración (de la 026 a la 033 ya hay roles).
 - Una tabla nueva no la lee ningún servicio hasta que una migración se la otorgue al rol que la necesita. Los roles `svc_*` no tienen privilegios por omisión; los de la 009 (`ALTER DEFAULT PRIVILEGES`) solo aplican a los `app_*`.
-- El monolito (`epidemia_app`) y los roles `app_*` quedan fuera de esta regla. Ver las preguntas abiertas en `todo.md`.
+- El monolito (`epidemia_app`) y los roles `app_*` quedan fuera de esta regla. Los `app_*` no se retiran, y la web sigue con `epidemia_app` en este parcial (2026-11-17). En GCP también se crea.
 - En GCP las contraseñas se inyectan como variables de entorno.

@@ -12,7 +12,7 @@ Puerto externo: 5241; puerto interno en Docker: 8000. Contrato en
 
 | Método | Ruta | Roles | Qué hace |
 |--------|------|-------|----------|
-| POST | `/api/v1/runs` | ANALISTA, ADMINISTRADOR | Cuerpo `{scenario_version_id, seed?, engine?, forzar_error?}`. Responde **202** con `id`, `batch_id`, `seed`, `engine` y `status: encolado` |
+| POST | `/api/v1/runs` | ANALISTA, ADMINISTRADOR | Cuerpo `{scenario_version_id, seed?, engine?, replicas?, forzar_error?}`. Responde **202** con `id`, `batch_id`, `seed`, `engine` y `status: encolado` |
 | GET | `/api/v1/runs?limit=20` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Las corridas más recientes, con su `engine` y su `scenario_version_id` (`limit` de 1 a 100). Filtros opcionales: `scenario_id`, `scenario_version_id`, `status`, `engine`, `from` y `to` |
 | GET | `/api/v1/runs/{run_id}` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Estado, `progress`, `engine` y `terminal` |
 | POST | `/api/v1/runs/{run_id}/cancel` | ANALISTA, ADMINISTRADOR | Cancela una corrida que sigue `encolado` |
@@ -21,6 +21,10 @@ Los roles son los de la pantalla Simulaciones del monolito; cancelar es `simulat
 en la matriz de permisos (migración 010). CAPTURISTA recibe 403 en todas.
 
 - `seed` es un entero de 0 a 2³¹−1; si no llega, se elige al azar.
+- `replicas` es el tamaño del lote que el cliente está lanzando (D8): un entero de 1 a 100. Cada POST
+  crea una sola corrida y el valor no cambia nada más: se valida el tope (D8) y se rechaza el que
+  pasa de 100 (migración 036 baja el tope de la base de 200 a 100). Los lotes con varias réplicas
+  llegan con la app de escritorio.
 - `engine` es el motor: `seir-ref` si no llega. `abm-ref` y `abm-gpu` solo se aceptan si
   `MOTORES_HABILITADOS` los nombra, porque sin un `simulador` de ese motor la corrida se
   quedaría encolada para siempre; el compose trae los de `seir-ref` y `abm-ref`. Queda en
@@ -43,7 +47,7 @@ en la matriz de permisos (migración 010). CAPTURISTA recibe 403 en todas.
 
 | Caso | Respuesta |
 |------|-----------|
-| Cuerpo, `limit` o un filtro inválidos, `from` posterior a `to`, o lanzar con un `engine` no habilitado | 422 `DATOS_INVALIDOS` |
+| Cuerpo, `limit` o un filtro inválidos, `from` posterior a `to`, o lanzar con un `engine` no habilitado, o `replicas` mayor que 100 | 422 `DATOS_INVALIDOS` |
 | No existe la versión o la corrida | 404 `NO_ENCONTRADO` |
 | Versión no aprobada, o ya se está lanzando una corrida de la misma versión | 409 `CONFLICTO` |
 | Cancelar una corrida que ya empezó o terminó | 409 `CONFLICTO` |

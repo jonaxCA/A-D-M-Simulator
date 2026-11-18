@@ -19,7 +19,8 @@ from epidemia_comun.validaciones import entero_positivo
 
 log = logging.getLogger("evidencias")
 
-ROLES_SUBEN = ("CAPTURISTA", "ADMINISTRADOR")
+# Solo el CAPTURISTA captura, y sus fotos son parte de la captura (D1).
+ROLES_SUBEN = ("CAPTURISTA",)
 # Los mismos que leen casos.
 ROLES_LEEN = ("CAPTURISTA", "EPIDEMIOLOGO", "ANALISTA", "ADMINISTRADOR")
 ROLES_BORRAN = ("ADMINISTRADOR",)
@@ -62,9 +63,9 @@ def registrar(app):
     @requiere_token(roles=ROLES_SUBEN)
     def subir(case_id):
         caso = _caso(case_id)
-        if caso["reported_by"] != g.contexto.user_id and "ADMINISTRADOR" not in g.usuario.get("roles", []):
+        if caso["reported_by"] != g.contexto.user_id:
             raise ErrorAPI(403, "PERMISO_INSUFICIENTE",
-                           "Solo quien reportó el caso o ADMINISTRADOR le adjunta evidencias.")
+                           "Solo quien reportó el caso le adjunta evidencias.")
         fila, creada = evidencias.guardar_evidencia(caso["id"], _archivo(), g.contexto.user_id,
                                                     carpeta(), contexto=g.contexto)
         return responder(fila, "evidencia", estado=201 if creada else 200)

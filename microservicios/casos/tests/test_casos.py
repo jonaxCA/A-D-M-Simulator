@@ -313,15 +313,11 @@ def test_sin_token_401(cliente):
     assert cliente.get("/api/v1/cases/1").status_code == 401
 
 
-@pytest.mark.parametrize("rol", ["EPIDEMIOLOGO", "ANALISTA"])
+# El ADMINISTRADOR tampoco captura (D1).
+@pytest.mark.parametrize("rol", ["EPIDEMIOLOGO", "ANALISTA", "ADMINISTRADOR"])
 def test_crear_con_rol_sin_permiso_403(cliente, token, rol):
     r = cliente.post("/api/v1/cases?format=json", json=cuerpo(), headers=token(roles=(rol,)))
     assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE"
-
-
-def test_administrador_puede_crear(cliente, token):
-    r = cliente.post("/api/v1/cases?format=json", json=cuerpo(), headers=token(roles=("ADMINISTRADOR",)))
-    assert r.status_code == 201
 
 
 @pytest.mark.parametrize("rol", ["CAPTURISTA", "EPIDEMIOLOGO", "ANALISTA", "ADMINISTRADOR"])

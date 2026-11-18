@@ -151,15 +151,21 @@ def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
     if len(run_ids) < 2:
         return None, ["Selecciona al menos dos corridas completadas."]
 
-    costos = {}
+    # Pesos por tipo y, para los tipos por dosis, personas-dia por dosis (D3).
+    costos, factores = {}, {}
     for tipo in queries.get_tipos_intervencion():
-        if tipo["unit_cost"] is None:
-            continue
-        costos[tipo["code"]] = {
-            "valor": float(tipo["unit_cost"]),
-            "fuente": tipo["cost_source"],
-            "supuesto": bool(tipo["cost_is_assumption"]),
-        }
+        if tipo["unit_cost"] is not None:
+            costos[tipo["code"]] = {
+                "valor": float(tipo["unit_cost"]),
+                "fuente": tipo["cost_source"],
+                "supuesto": bool(tipo["cost_is_assumption"]),
+            }
+        if tipo.get("person_days_per_unit") is not None:
+            factores[tipo["code"]] = {
+                "valor": float(tipo["person_days_per_unit"]),
+                "fuente": tipo["person_days_source"],
+                "supuesto": bool(tipo["person_days_is_assumption"]),
+            }
 
     entradas = []
     errores = []
@@ -202,7 +208,7 @@ def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
         return None, errores
 
     try:
-        return comparar_pareto(entradas, costos, metrica=metrica), []
+        return comparar_pareto(entradas, costos, metrica=metrica, factores=factores), []
     except ComparacionInvalida as exc:
         return None, exc.errores
 
@@ -391,3 +397,10 @@ def recupera_corridas_interrumpidas(estados=("encolado", "ejecutando"), engine=N
                 "La corrida %s se cerro como interrumpida pero no se pudo auditar",
                 fila["id"])
     return len(filas)
+
+
+def corridas_encoladas(engine):
+    filas = queries.query("SELECT r.id FROM simulation_runs r"
+                       " JOIN simulation_batches b ON b.id = r.batch_id"
+                       " WHERE r.status = 'encolado' AND b.engine = %s ORDER BY r.id", (engine,))
+    return [fila["id"] for fila in filas]

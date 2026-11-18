@@ -7,6 +7,7 @@ from xml.etree import ElementTree as ET
 import pytest
 import requests
 
+from epidemia_comun import llaves
 from epidemia_comun.formatos import a_xml
 from microservicios.estado_servicios import app as modulo_app
 from microservicios.estado_servicios import sondeo
@@ -288,3 +289,43 @@ def test_cada_servicio_existente_se_llama_como_en_el_directorio():
         texto = app.read_text(encoding="utf-8")
         nombre = re.search(r'crear_app\("([a-z-]+)"', texto).group(1)
         assert "port=%d" % sondeo.SERVICIOS[nombre][1] in texto, app
+
+
+def test_mongodb_y_el_bucket_caidos_son_causas_del_servicio(cliente, red):
+    def con_salud(**campos):
+        base = {"servicio": None, "version": "0.1.0", "postgresql": True, "redis": True,
+                "mongodb": "no_usa", "bucket": "no_usa"}
+
+        def contesta(nombre):
+            datos = dict(base, servicio=nombre, **campos)
+            return respuesta(503, a_xml(dict(datos, estado="degradado"), "salud"))
+        return contesta
+    red["respuestas"].update({"evidencias": con_salud(mongodb=False, bucket="no_configurado"),
+                              "series": con_salud(mongodb="no_usa")})
+    por_nombre = {s["nombre"]: s for s in
+                  cliente.get("/api/v1/services/health?format=json").get_json()["servicios"]}
+    assert por_nombre["evidencias"]["causas"] == ["mongodb", "bucket"]
+    assert por_nombre["evidencias"]["estado"] == "degradado"
+    assert por_nombre["series"]["causas"] == []
+
+
+def test_el_panel_cuenta_los_errores_de_cada_servicio(cliente, red, redis_falso):
+    redis_falso.set(llaves.errores("casos"), 3)
+    datos = cliente.get("/api/v1/services/health?format=json").get_json()
+    por_nombre = {s["nombre"]: s["errores"] for s in datos["servicios"]}
+    assert por_nombre["casos"] == 3 and por_nombre["auth"] == 0
+
+
+def test_con_redis_caido_los_errores_van_vacios(cliente, red, apagar_redis):
+    apagar_redis()
+    datos = cliente.get("/api/v1/services/health?format=json").get_json()
+    assert all(s["errores"] is None for s in datos["servicios"])
+
+
+def test_url_publica_detras_de_nginx(cliente, monkeypatch):
+    monkeypatch.setenv("URL_PUBLICA", "https://epidemia.example.com/{servicio}")
+    servicios = cliente.get("/api/v1/services?format=json").get_json()["servicios"]
+    casos = next(s for s in servicios if s["nombre"] == "casos")
+    assert casos["url"] == "https://epidemia.example.com/casos"
+    assert casos["docs"] == "https://epidemia.example.com/casos/docs"
+    assert casos["openapi"] == "https://epidemia.example.com/casos/openapi.json"

@@ -34,6 +34,8 @@ def registrar(app):
     @app.get("/api/v1/services/health")
     def salud():
         servicios = sondeo.vigentes(list(sondeo.SERVICIOS))
+        errores = sondeo.errores(list(sondeo.SERVICIOS)) or {}
+        servicios = [dict(s, errores=errores.get(s["nombre"])) for s in servicios]
         resumen = {e: sum(s["estado"] == e for s in servicios) for e in ESTADOS}
         return responder({"resumen": resumen, "servicios": servicios}, "estado_servicios")
 

@@ -2,6 +2,7 @@ import json
 import uuid
 from xml.etree import ElementTree as ET
 
+import jwt
 import pytest
 
 from epidemia_comun import llaves
@@ -28,11 +29,18 @@ class CasosFalso:
     """Imita al servicio casos: crea una vez por local_uuid, rechaza los inválidos."""
     def __init__(self):
         self.llamadas = []
+        self.avisos = []
+        self.aviso_falla = None
         self.creados = {}
         self.caido = False
         self.respuesta_fija = None
 
     def __call__(self, servicio, metodo, ruta, formato="json", cuerpo=None, token=None, **kw):
+        if servicio == "notificaciones":
+            self.avisos.append((metodo, ruta, cuerpo, token))
+            if self.aviso_falla:
+                raise self.aviso_falla
+            return Resp(201, {})
         self.llamadas.append((servicio, metodo, ruta, formato, cuerpo, token))
         if self.caido:
             raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio no respondió.")
@@ -142,6 +150,42 @@ def test_reenviar_el_lote_no_duplica(cliente, captura, casos, bitacora):
     assert d["resultados"] == primero["resultados"] and d["recibido_en"] == primero["recibido_en"]
     assert len(casos.llamadas) == 2          # no volvió a llamar a casos
     assert len(bitacora) == 1                # un SYNC por lote procesado
+
+
+def test_lote_con_casos_nuevos_avisa_una_vez_a_los_epidemiologos(cliente, captura, casos):
+    enviar(cliente, captura)
+    assert len(casos.avisos) == 1
+    metodo, ruta, cuerpo, token = casos.avisos[0]
+    assert (metodo, ruta) == ("POST", "/api/v1/notifications")
+    assert cuerpo["role"] == "EPIDEMIOLOGO" and cuerpo["type"] == "NEW_CASES"
+    assert "user_id" not in cuerpo
+    assert cuerpo["payload"] == {"batch_id": LOTE, "creados": 1, "total": 2}
+    assert jwt.decode(token, options={"verify_signature": False})["aud"] == "epidemia-interno"
+
+
+def test_reintentar_el_lote_no_vuelve_a_avisar(cliente, captura, casos):
+    enviar(cliente, captura)
+    enviar(cliente, captura)
+    assert len(casos.avisos) == 1
+
+
+def test_lote_sin_casos_nuevos_no_avisa(cliente, captura, casos):
+    enviar(cliente, captura)
+    casos.avisos.clear()
+    otro = lote(batch_id="1c6f5a53-1d1f-4f52-8a0a-5d0a4a0e9c22")
+    otro["cases"] = [c for c in otro["cases"] if c["local_uuid"] == U1]
+    d = enviar(cliente, captura, otro).get_json()
+    assert d["creados"] == 0 and d["duplicados"] == 1
+    assert casos.avisos == []
+
+
+@pytest.mark.parametrize("falla", [ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "caído"),
+                                   RuntimeError("boom")])
+def test_aviso_fallido_no_tumba_el_lote(cliente, captura, casos, falla):
+    casos.aviso_falla = falla
+    r = enviar(cliente, captura)
+    assert r.status_code == 200 and r.get_json()["creados"] == 1
+    assert enviar(cliente, captura).get_json()["repetido"] is True
 
 
 def test_sync_deja_una_bitacora_con_conteos(cliente, captura, bitacora):
@@ -267,6 +311,15 @@ def test_sin_token_401_y_rol_403(cliente, token):
         h = token(roles=(rol,))
         assert enviar(cliente, h).status_code == 403
         assert cliente.get("/api/v1/sync/batches/" + LOTE, headers=h).status_code == 403
+
+
+def test_administrador_consulta_pero_no_envia(cliente, token, casos):
+    # Solo el CAPTURISTA captura (D1); el ADMINISTRADOR sigue viendo cualquier lote.
+    admin = token(roles=("ADMINISTRADOR",), sub="9")
+    r = enviar(cliente, admin)
+    assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE"
+    assert casos.llamadas == []
+    assert cliente.get("/api/v1/sync/batches/" + LOTE, headers=admin).status_code == 404
 
 
 def test_consultar_lote(cliente, captura):

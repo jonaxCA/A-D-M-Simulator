@@ -1,0 +1,18 @@
+2026-11-16T23:31:34+0000 casos INFO - Serving on http://0.0.0.0:8000
+2026-11-16T23:31:39+0000 casos INFO 644e488b-5f6a-4f97-87b8-03968254e4ed GET /health 200 5.3ms usuario=-
+2026-11-16T23:31:43+0000 casos INFO efc7d161-0f9f-4d6d-b360-580bcbdd1985 GET /health 200 12.8ms usuario=-
+2026-11-16T23:31:53+0000 casos INFO 2c05a540-ebb6-4ea6-b884-70dd5f2923e1 GET /health 200 22.5ms usuario=-
+2026-11-16T23:32:03+0000 casos INFO 1fbb97bc-9a10-4bdb-a079-196190e23b69 GET /health 200 19.5ms usuario=-
+2026-11-16T23:32:09+0000 casos INFO e043ad9a-3c42-4764-9c13-1d87df802ea6 GET /health 200 3.9ms usuario=-
+2026-11-16T23:32:09+0000 casos INFO 4d7e7893-81f9-4df5-a392-f030f3635408 GET /health 503 3.4ms usuario=-
+2026-11-16T23:32:09+0000 casos WARNING 4893a9e6-0f5f-4992-a29e-0b30c6b5fa3e PostgreSQL no disponible para casos: OperationalError
+2026-11-16T23:32:09+0000 casos INFO 4893a9e6-0f5f-4992-a29e-0b30c6b5fa3e GET /api/v1/cases 503 6.0ms usuario=1
+2026-11-16T23:32:09+0000 casos INFO e0cd7da7-4f8a-4a54-af4f-c40c9af39e7a GET /health 503 1.3ms usuario=-
+2026-11-16T23:32:12+0000 casos INFO cd0733de-b1d4-4258-8a11-4750704a3c79 GET /health 200 18.3ms usuario=-
+2026-11-16T23:32:12+0000 casos INFO 02a87bab-8fad-43b4-b105-b75b92632cf6 GET /api/v1/cases 200 19.9ms usuario=1
+2026-11-16T23:32:13+0000 casos INFO f4b2e265-03fd-4f8f-b5f5-a1ecb95a0604 GET /health 200 11.9ms usuario=-
+2026-11-16T23:32:23+0000 casos INFO 42fa74cb-a060-4491-b89d-d38ddfac1063 GET /health 200 14.2ms usuario=-
+2026-11-16T23:32:33+0000 casos INFO 0824ee0d-9024-408c-955b-8f2b4725c1bc GET /health 503 2.5ms usuario=-
+2026-11-16T23:32:33+0000 casos WARNING 5133b72f-64ae-4c48-859d-aae38082f307 PostgreSQL no disponible para casos: OperationalError
+2026-11-16T23:32:33+0000 casos INFO 5133b72f-64ae-4c48-859d-aae38082f307 GET /api/v1/cases 503 2.3ms usuario=1
+2026-11-16T23:32:33+0000 casos INFO 9de9318f-58fc-481f-b905-6ea80792403e GET /health 503 6.5ms usuario=-

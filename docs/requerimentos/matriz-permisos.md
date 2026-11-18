@@ -19,7 +19,7 @@ Qué puede hacer cada rol, según [D1](../decisiones/D01-permisos-y-auditoria.md
 | Dar de alta, editar o dar de baja enfermedades | Web | ✓ | ✓ | — | — |
 | Corregir población y bandas de edad | Web | ✓ | — | — | — |
 | Fijar el costo unitario de una intervención | Web | ✓ | ✓ | — | — |
-| Registrar casos y fotos | Android | ? | — | — | ✓ |
+| Registrar casos y fotos | Android | — | — | — | ✓ |
 | Registrar lotes de vacuna y aplicar dosis | Android | ? | — | — | ✓ |
 | Consultar escenarios y versiones | Web | ✓ | ✓ | ✓ | — |
 | Crear y editar escenarios e intervenciones | Escritorio | ✓ | — | ✓ | — |
@@ -29,6 +29,7 @@ Qué puede hacer cada rol, según [D1](../decisiones/D01-permisos-y-auditoria.md
 | Lanzar y cancelar corridas | Escritorio | ✓ | — | ✓ | — |
 | Consultar corridas, resultados y comparación | Web | ✓ | ✓ | ✓ | — |
 | Comparar con frontera y exportar el reporte | Escritorio | ✓ | — | ✓ | — |
+| Subir el reporte de una comparación (`reports.upload`, D35) | Web, escritorio | ✓ | — | ✓ | — |
 | Administrar cuentas y roles | Web | ✓ | — | — | — |
 | Revocar teléfonos y sesiones | Servicios | ✓ | — | — | — |
 | Consultar la bitácora de auditoría | Web | ✓ | — | — | — |
@@ -37,8 +38,7 @@ La app de escritorio solo deja entrar a ANALISTA y ADMINISTRADOR. La app Android
 
 ## Pendiente
 
-- **¿El ADMINISTRADOR también captura casos?** D1 dice que solo el CAPTURISTA, pero la migración 010 le da todos los permisos al ADMINISTRADOR. Está sin responder en D1.
-- **Migración 034:** crea `scenarios.approve`, lo da a EPIDEMIOLOGO y ADMINISTRADOR, y quita `audit.read` al EPIDEMIOLOGO. No está aplicada (ver [`decisiones/todo.md`](../decisiones/todo.md), «Cambios pendientes por D1»).
+- **Migración 034:** crea `scenarios.approve`, lo da a EPIDEMIOLOGO y ADMINISTRADOR, quita `audit.read` al EPIDEMIOLOGO, quita `cases.create` al ADMINISTRADOR y crea `reports.upload` (D35). No está aplicada (ver [`decisiones/todo.md`](../decisiones/todo.md), «Cambios pendientes por D1»).
 - **Candados de la web contra esta matriz:** hoy el monitoreo epidemiológico y las exportaciones solo piden sesión, así que el CAPTURISTA también entra. Falta limitarlo al tablero y al mapa (RF-G11).
 - **La captura de casos en la web** (`/reportes/nuevo`) sigue en el código; D1 la quita.
 

@@ -20,6 +20,14 @@ archivos, así que un contrato que no coincide con el servicio es un error del s
   aprobación, comparación y Pareto. Los tipos compartidos están en `comun/tipos.xsd` y la
   serie diaria de una corrida, en `comun/serie.xsd`.
 
+## Rutas que no llevan contrato propio
+
+- `/health` de cada servicio (público, sin versión) responde `servicio`, `version`, `estado`,
+  `postgresql`, `redis`, `mongodb` y `bucket` (booleano, `no_usa` o `no_configurado`), más
+  `tiempos_ms` por dependencia y `tiempo_ms` total. Es 503 si algo usado falla.
+- Toda ruta protegida, y `auth` (captcha y login) y `regiones`, puede responder 429
+  `LIMITE_EXCEDIDO` con la cabecera `Retry-After`; cada contrato lo declara.
+
 ## Reglas
 
 1. El contrato cambia en el **mismo PR** que la ruta. Una ruta sin contrato no está

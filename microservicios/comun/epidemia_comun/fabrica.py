@@ -1,19 +1,32 @@
+import json
+import os
 from pathlib import Path
 from time import monotonic
 from uuid import uuid4
 
+TTL_ERRORES = 86400
 
-def crear_app(nombre, contrato, registrar_rutas=None):
+
+def crear_app(nombre, contrato, registrar_rutas=None, dependencias=()):
     from flask import Flask, g, request
     from werkzeug.exceptions import HTTPException
+    from psycopg2 import InterfaceError, OperationalError
     from redis import Redis
     from .ajustes import cargar_ajustes
     from .errores import ErrorAPI, respuesta_error
     from .formatos import responder
+    from . import llaves, redis_compartido, registro, salud
 
+    registro.configurar(nombre)
     app = Flask(nombre)
     app.config.update(cargar_ajustes(nombre))
     app.extensions["epidemia_redis"] = Redis.from_url(app.config["REDIS_URL"], socket_timeout=2)
+    # Detrás de nginx (D25): confía en un solo proxy. Sin la variable se ignoran las cabeceras
+    # X-Forwarded-*, para que nadie falsee su IP ni el prefijo.
+    detras = os.environ.get("DETRAS_DE_PROXY", "").lower() in ("1", "true", "si")
+    if detras:
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     @app.before_request
     def inicio_peticion():
@@ -33,10 +46,16 @@ def crear_app(nombre, contrato, registrar_rutas=None):
             respuesta.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
             # Sin esto, el navegador no deja que la consola lea el X-Correlation-ID.
             respuesta.headers["Access-Control-Expose-Headers"] = "X-Correlation-ID"
+        if respuesta.status_code >= 500 and request.path != "/health":
+            def contar(r):
+                p = r.pipeline()
+                p.set(llaves.errores(nombre), 0, nx=True, ex=TTL_ERRORES)
+                p.incr(llaves.errores(nombre))
+                p.execute()
+            redis_compartido.opcional("contador de errores", contar)
         usuario = getattr(g, "usuario", {}).get("sub", "-")
-        app.logger.info("%s %s %s %.1fms usuario=%s id=%s", request.method,
-                        request.path, respuesta.status_code, ms, usuario,
-                        getattr(g, "correlation_id", "-"))
+        app.logger.info("%s %s %s %.1fms usuario=%s", request.method,
+                        request.path, respuesta.status_code, ms, usuario)
         return respuesta
 
     @app.errorhandler(ErrorAPI)
@@ -48,32 +67,41 @@ def crear_app(nombre, contrato, registrar_rutas=None):
         if isinstance(exc, HTTPException):
             codigo = "NO_ENCONTRADO" if exc.code == 404 else "DATOS_INVALIDOS"
             return respuesta_error(ErrorAPI(exc.code or 500, codigo, exc.description))
+        if isinstance(exc, InterfaceError) or (
+                isinstance(exc, OperationalError) and (exc.pgcode or "08").startswith(("08", "57P"))):
+            app.logger.warning("PostgreSQL no disponible para %s: %s", nombre, type(exc).__name__)
+            return respuesta_error(ErrorAPI(503, "SERVICIO_NO_DISPONIBLE",
+                                            "La base de datos no está disponible.", {"Retry-After": "5"}))
         app.logger.exception("Fallo interno de %s", nombre)
         return respuesta_error(ErrorAPI(500, "ERROR_INTERNO", "Ocurrió un error interno."))
 
     @app.route("/health")
     def health():
         from backend_web.db import query
-        redis_ok, postgres_ok = True, True
-        try:
+
+        def ping():
             app.extensions["epidemia_redis"].ping()
-        except Exception:
-            redis_ok = False
-        try:
+            return True
+
+        def sql():
             query("SELECT 1 AS ok", one=True)
-        except Exception:
-            postgres_ok = False
-        sano = redis_ok and postgres_ok
-        return responder({"servicio": nombre, "version": app.config["VERSION_SERVICIO"],
-                          "estado": "ok" if sano else "degradado",
-                          "postgresql": postgres_ok, "redis": redis_ok}, "salud",
+            return True
+
+        sano, datos = salud.informe(ping, sql, dependencias)
+        return responder(dict({"servicio": nombre, "version": app.config["VERSION_SERVICIO"],
+                               "estado": "ok" if sano else "degradado"}, **datos), "salud",
                          estado=200 if sano else 503)
 
     ruta = Path(contrato)
     @app.route("/openapi.json")
     def openapi():
         from flask import Response
-        return Response(ruta.read_bytes(), content_type="application/json")
+        contenido = ruta.read_bytes()
+        if detras:
+            contrato_json = json.loads(contenido)
+            contrato_json["servers"] = [{"url": request.url_root.rstrip("/")}]
+            contenido = json.dumps(contrato_json, ensure_ascii=False).encode("utf-8")
+        return Response(contenido, content_type="application/json")
 
     @app.route("/docs")
     def swagger():
@@ -81,8 +109,12 @@ def crear_app(nombre, contrato, registrar_rutas=None):
         html = '''<!DOCTYPE html><html lang="es"><head><title>Swagger EPIDEMIA</title>
 <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"></head>
 <body><div id="swagger-ui"></div><script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-<script>window.onload=()=>SwaggerUIBundle({url:'/openapi.json',dom_id:'#swagger-ui'});</script></body></html>'''
-        return Response(html, content_type="text/html; charset=utf-8")
+<script>window.onload=()=>SwaggerUIBundle({url:__URL__,dom_id:'#swagger-ui'});</script></body></html>'''
+        url = json.dumps(request.script_root + "/openapi.json")
+        for caracter, escapado in (("<", "\\u003c"), (">", "\\u003e"), ("&", "\\u0026")):
+            url = url.replace(caracter, escapado)
+        return Response(html.replace("__URL__", url),
+                        content_type="text/html; charset=utf-8")
 
     if registrar_rutas:
         registrar_rutas(app)

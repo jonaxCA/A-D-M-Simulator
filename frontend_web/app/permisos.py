@@ -8,6 +8,8 @@ from flask import request, redirect, url_for, g, flash
 from backend_web.auth import decode_token, usuario_vigente
 from backend_web.contexto import Contexto
 
+from .sesion_redis import sesion_vigente
+
 COOKIE_NAME = "access_token"
 
 # Mismo texto en todos los candados, para que el rechazo se vea igual en
@@ -46,7 +48,7 @@ def get_current_user():
     token = request.cookies.get(COOKIE_NAME)
     if token:
         payload = decode_token(token)
-        if payload:
+        if payload and sesion_vigente(payload):
             usuario = usuario_vigente(payload)
     g._usuario_actual = usuario
     return usuario

@@ -35,8 +35,10 @@ Más `/health`, `/docs` y `/openapi.json`, como todos.
 
 1. **Al arrancar** cierra como `fallido` las corridas de su motor que quedaron en
    `ejecutando` (`simulaciones.recupera_corridas_interrumpidas(estados=("ejecutando",),
-   engine=MOTOR)`). Las de otro motor las está corriendo su propio simulador, y las que están
-   en `encolado` no se tocan: siguen esperando en la cola.
+   engine=MOTOR)`) y vuelve a meter a su cola las que están `encolado` en PostgreSQL, en orden
+   de id y sin repetir las que ya estén en la cola (D19). Las de otro motor las atiende su
+   propio simulador. Si Redis no responde, el arranque no falla: el ciclo reintenta. La
+   corrida reencolada pierde `forzar_error` (no se guarda en la base).
 2. **Lanza el hilo trabajador** (`trabajador.ciclo`). Espera en la cola y, por cada corrida,
    llama a `simulaciones.ejecutar_run()`, la misma del monolito:
    - marca `ejecutando` con la transición condicionada, así que dos contenedores nunca corren

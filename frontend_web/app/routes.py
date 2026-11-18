@@ -24,14 +24,18 @@ import io
 from datetime import date, datetime, timezone
 from urllib.parse import urlsplit
 
-from flask import (Blueprint, jsonify, render_template, request, redirect,
+import psycopg2
+from flask import (Blueprint, current_app, jsonify, render_template, request, redirect,
                    url_for, make_response, g, flash)
 
-from backend_web import queries, simulaciones
+from backend_web import queries, resultados, simulaciones
 from backend_web.audit import log_audit
-from backend_web.auth import attempt_login, create_token, hash_password
+from backend_web.auth import attempt_login, hash_password
+from epidemia_comun.redis_compartido import RedisNoDisponible
+
 from . import formularios, presentacion
-from .permisos import (login_required, admin_required, roles_required, tiene_rol,
+from .sesion_redis import MENSAJE_SIN_REDIS, abre_sesion, cierra_sesion
+from .permisos import (login_required, admin_required, roles_required, tiene_rol, MENSAJE_SIN_PERMISO,
                        get_current_user, contexto_de_peticion, COOKIE_NAME)
 
 bp = Blueprint("main", __name__)
@@ -135,8 +139,11 @@ def login():
         log_audit(contexto_de_peticion(None), "LOGIN_FAILED", "users", entity_id=usuario)
         return render_template("login.html", error=error, usuario=usuario), 401
 
+    try:
+        token = abre_sesion(user)
+    except RedisNoDisponible:
+        return render_template("login.html", error=MENSAJE_SIN_REDIS, usuario=usuario), 503
     log_audit(contexto_de_peticion(user["id"]), "LOGIN", "users", entity_id=str(user["id"]))
-    token = create_token(user)
     next_url = destino_seguro(request.args.get("next")) or url_for("main.dashboard")
     resp = make_response(redirect(next_url))
     resp.set_cookie(
@@ -150,6 +157,7 @@ def logout():
     user = get_current_user()
     if user:
         log_audit(contexto_de_peticion(user["sub"]), "LOGOUT", "users", entity_id=str(user["sub"]))
+    cierra_sesion(request.cookies.get(COOKIE_NAME))
     resp = make_response(redirect(url_for("main.dashboard_publico")))
     resp.delete_cookie(COOKIE_NAME)
     return resp
@@ -872,6 +880,18 @@ def simulacion_detalle(run_id):
     resultado = queries.get_resultado_run(run_id) if run["status"] == "completado" else None
     equivalente = None
     if resultado:
+        try:
+            serie = resultados.curvas_de_corrida(
+                request.cookies.get(COOKIE_NAME), run_id, request.headers.get("X-Correlation-ID"))
+        except resultados.SinAcceso as sin_acceso:
+            if sin_acceso.args[0] == 401:
+                return redirect(url_for("main.login"))
+            log_audit(contexto_de_peticion(), "PERMISSION_DENIED", "simulations",
+                      entity_id=request.path)
+            flash(MENSAJE_SIN_PERMISO, "error")
+            return redirect(url_for("main.dashboard", denegado=1))
+        if serie is not None:
+            resultado = {**resultado, "serie": serie}
         equivalente = queries.buscar_run_equivalente(
             run_id, run["scenario_version_id"], run["seed"], resultado["scenario_checksum"],
         )
@@ -1250,3 +1270,17 @@ def no_encontrado(_):
         "error.html", codigo="404", titulo="Esta página no existe",
         mensaje="Revisa la dirección o vuelve al panorama epidemiológico.",
     ), 404
+
+
+@bp.app_errorhandler(psycopg2.OperationalError)
+@bp.app_errorhandler(psycopg2.InterfaceError)
+def sin_base(exc):
+    if isinstance(exc, psycopg2.OperationalError) and not (exc.pgcode or "08").startswith(("08", "57P")):
+        raise exc
+    current_app.logger.warning("PostgreSQL no disponible: %s", type(exc).__name__)
+    g._usuario_actual = None
+    return render_template(
+        "error.html", codigo="503", titulo="El sistema no está disponible por ahora",
+        mensaje="No se pudo conectar con la base de datos. Tus datos no se perdieron; "
+                "vuelve a intentarlo en unos minutos.",
+    ), 503

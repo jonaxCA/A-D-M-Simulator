@@ -1,0 +1,42 @@
+# SOLO PARA LA DEMOSTRACIÓN DE FALLOS (N5), hasta que el bloque D agregue MongoDB y el bucket
+# de verdad al compose principal. Agrega un MongoDB y un emulador del bucket (fake-gcs-server)
+# y los declara en dos servicios para que su /health y el panel de estado-servicios los
+# revisen. Los servicios todavía no escriben nada en ellos: solo prueban la salud.
+# Se usa encima del compose normal:
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.fallos.yml --profile '*' up -d --wait
+# Cuando el bloque D los agregue al compose principal, borra este archivo.
+services:
+  mongodb:
+    image: mongo:7
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' | grep -q 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  bucket:
+    image: fsouza/fake-gcs-server
+    command: ["-scheme", "http", "-port", "4443", "-backend", "memory"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:4443/storage/v1/b"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  resultados:
+    environment:
+      DEPENDENCIAS: mongodb
+      MONGO_URL: mongodb://mongodb:27017/epidemia
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  evidencias:
+    environment:
+      DEPENDENCIAS: bucket
+      BUCKET_HEALTH_URL: http://bucket:4443/storage/v1/b
+    depends_on:
+      bucket:
+        condition: service_healthy

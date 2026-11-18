@@ -9,6 +9,7 @@
 - `manuales/`: manuales de usuario de cada aplicación; las capturas van en `manuales/img/`.
 - `parciales/`: planes de desarrollo por parcial.
 - `requerimentos/`: requerimientos funcionales y no funcionales, historias de usuario, reglas, matriz de permisos y trazabilidad de la v3. Borrador del 2026-11-16, por validar en equipo; empieza por su `README.md`.
+- `pruebas/`: resultados de las pruebas de carga (Locust) y cómo repetirlas.
 - `rubrica/`: textos de la materia. No se edita.
 - `INSTALACION.md`: instalación y base de pruebas.
 - `todo.md`: pendientes generales de la documentación.

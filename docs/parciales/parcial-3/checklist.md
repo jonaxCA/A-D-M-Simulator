@@ -8,7 +8,7 @@ Este documento son las tareas. No repite los requerimientos: cada casilla cita e
 
 - Los ID `RF-…` y `RNF-…` están en [`requerimentos/`](../../requerimentos/README.md).
 - Las brechas (`I1`, `D-1`, `S6`, `N3`…) están en [`brechas_v3.md`](../../arquitectura/brechas_v3.md).
-- Las decisiones (`D1` a `D32`) están en [`decisiones.md`](../../decisiones/decisiones.md), y sus pendientes en [`decisiones/todo.md`](../../decisiones/todo.md).
+- Las decisiones (`D1` a `D35`) están en [`decisiones.md`](../../decisiones/decisiones.md), y sus pendientes en [`decisiones/todo.md`](../../decisiones/todo.md).
 
 > Propuesta para repartir. Cada casilla debería ser un issue, una rama y un Pull Request.
 
@@ -70,20 +70,20 @@ Una casilla se marca cuando:
 
 ### Decisiones que frenan a otros
 
-Ninguna se implementa sin respuesta. Cada respuesta se anota en `decisiones/`.
+Ninguna se implementa sin respuesta. Cada respuesta se anota en `decisiones/`. El detalle de las respuestas está en [`preguntas0.md`](preguntas0.md).
 
-- [ ] Definir qué cambia en la interfaz del escritorio para que sea más intuitiva y usable. **Frena a A.**
-- [ ] ¿El ADMINISTRADOR también captura casos? (D1). **Frena a C** y a la migración 034.
-- [ ] ¿Qué hace la web si Redis no responde? (I3, RF-A12). **Frena a C.**
-- [ ] ¿Cómo se identifica la web ante `resultados` para pedir las curvas? (D20). **Frena a C y a E.**
-- [ ] ¿El aviso de casos nuevos usa el tipo `SYSTEM` o lleva una migración con un tipo propio? (D32). **Frena a E.**
-- [ ] ¿«Validación del JWT» pide que el escritorio revise `exp`? (C10, RF-H23). **Frena a A.**
-- [ ] ¿La serie diaria lleva el desglose por grupo de edad? (RF-F02, D28). **Frena a D.**
-- [ ] ¿Quién consigue el dominio y con qué proveedor? (D26). **Frena a F.**
-- [ ] ¿Qué archivo recibe la web? Propuesta: evidencias de un caso (D-5, RF-G16). **Frena a C.**
-- [ ] ¿Cómo entra la vacunación a la frontera de Pareto? (D3).
-- [ ] ¿Se retiran los roles `app_*` de la migración 009, y qué rol de base usa el monolito? (D18).
-- [ ] Con el profesor: confirmar el volumen de D29 y si hay créditos para la GPU (brechas §8). **Frena a D y a F.**
+- [ ] Definir qué cambia en la interfaz del escritorio para que sea más intuitiva y usable. **Frena a A.** Delegada al bloque A (A1).
+- [x] ¿El ADMINISTRADOR también captura casos? (D1). **Frena a C** y a la migración 034. No (D1).
+- [x] ¿Qué hace la web si Redis no responde? (I3, RF-A12). **Frena a C.** Conserva las sesiones abiertas y no deja entrar (D33, validada el 2026-11-17).
+- [x] ¿Cómo se identifica la web ante `resultados` para pedir las curvas? (D20). **Frena a C y a E.** Con el JWT de la sesión (D34, validada el 2026-11-17).
+- [x] ¿El aviso de casos nuevos usa el tipo `SYSTEM` o lleva una migración con un tipo propio? (D32). **Frena a E.** Migración 037 con `NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED` (D32).
+- [x] ¿«Validación del JWT» pide que el escritorio revise `exp`? (C10, RF-H23). **Frena a A.** Sí (D35).
+- [x] ¿La serie diaria lleva el desglose por grupo de edad? (RF-F02, D28). **Frena a D.** No (D28).
+- [ ] ¿Quién consigue el dominio y con qué proveedor? (D26). **Frena a F.** Delegada al bloque F (F2).
+- [x] ¿Qué archivo recibe la web? (D-5, RF-G16). **Frena a C.** El reporte de una comparación (D35).
+- [x] ¿Cómo entra la vacunación a la frontera de Pareto? (D3). Como fracción de día-persona por dosis (D3).
+- [x] ¿Se retiran los roles `app_*` de la migración 009, y qué rol de base usa el monolito? (D18). No; la web sigue con `epidemia_app` (D18).
+- [ ] Con el profesor: confirmar el volumen de D29 y si hay créditos para la GPU (brechas §8). **Frena a D y a F.** Créditos: sí (D23). Falta el volumen.
 
 ### Documentos
 
@@ -96,7 +96,8 @@ Ninguna se implementa sin respuesta. Cada respuesta se anota en `decisiones/`.
 ### Integración
 
 - [ ] Crear un issue por casilla, con su bloque y su responsable.
-- [ ] Confirmar el número de cada migración antes de que alguien la cree. Hoy: 034 para D1, y de la 036 en adelante lo demás.
+- [x] Reservar los números de migración de cada bloque: tabla y reglas en [«Números reservados»](../../../datos/postgres/migraciones/README.md#números-reservados-tercer-parcial) (2026-11-17).
+- [ ] Confirmar el número de cada migración antes de que alguien la cree, y agregar a esa tabla los que se pidan fuera de ella.
 - [ ] Integrar las ramas de los dos salones al menos una vez por semana.
 - [ ] Ensayar P1, P2 y P3 de punta a punta en la nube, con cada rol.
 - [ ] Guion de la demostración en la nube.
@@ -133,7 +134,8 @@ Antes de empezar: `frontend_desktop/AGENTS.md`. La app solo habla XML.
 - [ ] Mostrar la escala que ya responde `resultados`: habitantes por agente (D6, RF-H21, RF-F20).
 - [ ] Ofrecer `abm-gpu` en el selector de motor solo si `corridas` lo acepta (D23, RF-H20, RF-E15).
 - [ ] Subir el reporte exportado al bucket y mostrar su URL firmada (D30, RF-F17). Espera a D.
-- [ ] Revisar la expiración del token antes de usarlo, si así se decide (C10, RF-H23).
+- [ ] Leer `exp` del token sin verificar la firma y renovarlo antes de que venza (D35, RF-H23).
+- [ ] La comparación dice «Personas-día» donde hoy dice «Costo», y muestra y exporta `costo_pesos` aparte, como «sin dato» cuando es nulo (D3, `ui/comparacion.py` y `exportar.py`). Desde el 2026-11-17 `pareto` ya manda personas-día en `costo`: hasta este cambio, la pantalla las rotula como costo.
 
 ### A3. Verificar
 
@@ -152,6 +154,7 @@ La app solo habla JSON.
 - [ ] Menú por rol: un rol distinto del CAPTURISTA no ve la captura (C8, RF-I19).
 - [ ] Las fotos se suben y se bajan con la `evidencias` del bucket (D30, RF-C03). Espera a D.
 - [ ] Probar que el aviso por lote no se repite cuando la app reintenta el mismo lote (D32, RF-C19). Espera a E.
+- [ ] Mostrar los tipos de aviso de la migración 037 (`NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED`) en `Formato.kt` (D32).
 
 ### B2. Verificar
 
@@ -172,7 +175,7 @@ La web sigue directa a PostgreSQL (D20). Nada de SQL en `frontend_web`.
 
 ### C1. Permisos (D1)
 
-- [ ] Migración 034: crea `scenarios.approve`, lo da a EPIDEMIOLOGO y ADMINISTRADOR, y quita `audit.read` al EPIDEMIOLOGO (RF-L05).
+- [ ] Migración 034: crea `scenarios.approve`, lo da a EPIDEMIOLOGO y ADMINISTRADOR, quita `audit.read` al EPIDEMIOLOGO (RF-L05) y quita `cases.create` al ADMINISTRADOR. También crea `reports.upload` para ANALISTA y ADMINISTRADOR (D35).
 - [ ] Quitar la captura de casos de la web: `/reportes/nuevo`, sus enlaces y su plantilla.
 - [ ] Guardar los permisos en la sesión y crear `requiere_permiso(codigo)`, que responde 403 y registra `PERMISSION_DENIED` (RF-A05).
 - [ ] Cambiar el candado de cada ruta según la [matriz de permisos](../../requerimentos/matriz-permisos.md).
@@ -182,7 +185,7 @@ La web sigue directa a PostgreSQL (D20). Nada de SQL en `frontend_web`.
 
 ### C2. Sesión y seguridad
 
-- [ ] La web registra y revisa su sesión en Redis; cerrar sesión deja el token sin valor (I3, RF-A12).
+- [x] La web registra y revisa su sesión en Redis; cerrar sesión deja el token sin valor (I3, RF-A12). Verificado el 2026-11-16: `demo_fallos.py web` y `redis` (`docs/pruebas/fallos/2026-11-16`).
 - [ ] Protección contra CSRF en los formularios (RNF-D07).
 - [ ] Encabezados de seguridad en las respuestas (RNF-D21).
 - [ ] Verificar que ninguna consulta arma SQL con texto del usuario (RNF-D05) y que las plantillas escapan lo que muestran (RNF-D06).
@@ -193,7 +196,9 @@ La web sigue directa a PostgreSQL (D20). Nada de SQL en `frontend_web`.
 - [ ] La web deja de leer `simulation_results`.
 - [ ] La web muestra la foto de un caso con una URL firmada que vence en minutos (D30, RF-C20). Espera a D.
 - [ ] La web abre el reporte de una comparación con su URL firmada (RF-F17). Espera a D.
-- [ ] La web recibe archivos, validados por su contenido, su tamaño y su huella, y los manda al bucket (D-5, RF-G16).
+- [ ] La web recibe el reporte de una comparación (ANALISTA y ADMINISTRADOR, `reports.upload`), lo valida por su contenido, su tamaño y su huella, y lo manda al bucket con la misma tabla y la misma interfaz que el escritorio (D35, RF-G16). Espera a D.
+- [ ] `/comparacion` dice personas-día en el eje y la tabla de la frontera, y muestra `costo_pesos` aparte (D3). Desde el 2026-11-17 `costo` ya viene en personas-día: hasta este cambio, la gráfica lo rotula «Costo total de intervención».
+- [ ] `/comparacion/costos` permite fijar las personas-día por dosis de la vacunación, con fuente o marca de supuesto (D3, migración 040). Sin ese factor, la comparación de escenarios con vacunación se niega.
 
 ### C4. Avisos de P2
 
@@ -219,24 +224,24 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 - [ ] Contenedor de MongoDB en `infra/docker-compose.yml`, con su contraseña en `genera_env.py`.
 - [ ] Cliente de MongoDB en `epidemia_comun`, para que ningún servicio lo arme por su cuenta (RNF-L07).
-- [ ] Colección `series_corridas`: un documento por día de cada corrida, con sus índices y `version_esquema` (RF-E20, RNF-K03, RNF-K14).
+- [ ] Colección `series_corridas`: un documento por día de cada corrida, con los totales del día (sin desglose por grupo), `scenario_version_id`, motor y `version_esquema`. Índices `{run_id, dia}` y `{scenario_version_id, motor, dia}` (D28, RF-E20, RNF-K03, RNF-K14).
 - [ ] Colección `historial_servicios`, con TTL de 30 días (RF-K03, RNF-K17).
 - [ ] `simulador` guarda la serie en MongoDB y el resumen en `simulation_runs` (RF-E20).
-- [ ] Migración nueva con las columnas del resumen en `simulation_runs`. Confirmar el número con el líder.
+- [ ] Migración 038 con las columnas del resumen en `simulation_runs`.
 - [ ] `resultados` lee la serie de MongoDB y conserva su caché de Redis.
 - [ ] `estado-servicios` pasa su historial de Redis a MongoDB (RF-K03).
-- [ ] Demostrar inserción, consulta, actualización y agregación, cada una con su prueba.
-- [ ] `simulation_results` deja de usarse. Retirarla con una migración, cuando la web (C) ya no la lea.
+- [ ] Demostrar inserción, consulta, actualización y agregación, cada una con su prueba. La agregación: la banda p5–p95 por día de una versión y un motor (D28).
+- [ ] `simulation_results` deja de usarse. Retirarla con la migración 041, cuando la web (C) ya no la lea.
 - [ ] Si MongoDB no responde, la corrida termina con su resumen y la captura de casos sigue (RNF-C08).
 
 ### D2. Cloud Storage (D30, D-3)
 
-- [ ] Una interfaz de archivos en `epidemia_comun` que cambie de disco a bucket por configuración.
+- [ ] Una interfaz de archivos en `epidemia_comun` que cambie de disco a bucket por configuración. La web también la usa (D35), y hoy no importa `epidemia_comun`: acordar con C dónde vive.
 - [ ] Emulador del bucket en el compose, para trabajar en local.
 - [ ] `evidencias` guarda en el bucket y deja de usar su volumen (RF-C03, RNF-B01).
 - [ ] URLs firmadas que vencen en minutos para los archivos privados (RNF-D17, RNF-D27).
 - [ ] Validar cada archivo por su contenido, su tamaño y su huella al subirlo (RNF-C09).
-- [ ] Tabla nueva con los metadatos de los reportes, y la ruta para subir uno (RF-F17). Confirmar el número de la migración.
+- [ ] Tabla nueva con los metadatos de los reportes, y la ruta para subir uno (RF-F17). La usan el escritorio y la web (D35). Migración 039.
 - [ ] Si el bucket no responde, el caso se guarda y la foto se reintenta (RNF-C19).
 - [ ] Crear el bucket real en GCP, privado, con su cuenta de servicio (RNF-K12, RNF-K18). Con F.
 
@@ -258,40 +263,46 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### E1. Avisos (I1)
 
-- [ ] `sincronizacion` crea un aviso por lote a los EPIDEMIOLOGO cuando el lote trae casos nuevos. Un reintento del mismo lote no vuelve a avisar (D32, RF-C19).
-- [ ] Al enviar una versión a revisión se avisa a los EPIDEMIOLOGO (RF-D15).
-- [ ] `aprobacion` avisa al autor también cuando se rechaza (RF-D16).
+- [x] `sincronizacion` crea un aviso por lote a los EPIDEMIOLOGO cuando el lote trae casos nuevos. Un reintento del mismo lote no vuelve a avisar (D32, RF-C19).
+- [x] Al enviar una versión a revisión se avisa a los EPIDEMIOLOGO (RF-D15).
+- [x] `aprobacion` avisa al autor también cuando se rechaza (RF-D16).
 
 ### E2. Corridas y comparación
 
-- [ ] `comparacion` pide los resultados a `resultados`, en lugar de leer la tabla (RF-F22). Va después de D1.
-- [ ] Migración que baja el tope de réplicas de 200 a 100, y `corridas` rechaza más de 100 (D8, RF-E03).
-- [ ] Al arrancar, el simulador vuelve a encolar las corridas `encolado` de su motor (D19, RF-E19, RNF-C03).
-- [ ] `corridas` acepta `abm-gpu` solo donde está habilitado (RF-E15).
-- [ ] La web se identifica ante `resultados` como se haya decidido (D20).
+- [x] `comparacion` pide los resultados a `resultados`, en lugar de leer la tabla (RF-F22). Va después de D1.
+- [x] Migración que baja el tope de réplicas de 200 a 100, y `corridas` rechaza más de 100 (D8, RF-E03). Migración 036; `POST /runs` valida `replicas` (opcional, hasta 100) y el valor no cambia nada más: los lotes con varias réplicas llegan con la app de escritorio (RF-E03 queda «En parte»).
+- [x] Al arrancar, el simulador vuelve a encolar las corridas `encolado` de su motor (D19, RF-E19, RNF-C03).
+- [x] `corridas` acepta `abm-gpu` solo donde está habilitado (RF-E15). Lo decide `MOTORES_HABILITADOS` (por omisión solo `abm-ref`, el respaldo).
+- [x] La web se identifica ante `resultados` como se haya decidido (D20).
+  - D34: reenvía el JWT de la sesión del usuario (`backend_web/resultados.py`). Las curvas se piden a `resultados` si hay `SERVICIO_RESULTADOS_URL`; si no responde, la web sigue con PostgreSQL. El punto de arriba, «La corrida muestra su resumen desde `simulation_runs`…», sigue esperando a MongoDB.
+- [x] `pareto` calcula la frontera en personas-día, con la vacunación por su factor de día-persona por dosis, y deja los pesos aparte. El factor necesita su lugar en la base, con fuente o marca de supuesto: migración 040 (D3). Hecho el 2026-11-17: `costo` va en personas-día y `costo_pesos` aparte (nulo si falta un precio, con aviso); el factor vive en `intervention_types.person_days_per_unit`, vacío, y se fija con `PUT .../interventions/{iid}/person-days` de `intervenciones`. Sin factor, una comparación con vacunación da 422.
+
+### E2b. Captura solo del CAPTURISTA (D1)
+
+- [x] Quitar al ADMINISTRADOR de `ROLES_ESCRITURA` en `casos`, de `ROLES` en `sincronizacion` y de `ROLES_SUBEN` en `evidencias`. `ROLES_BORRAN` se queda. Hecho el 2026-11-17; en `sincronizacion` solo para enviar: el ADMINISTRADOR sigue consultando cualquier lote.
 
 ### E3. Límites de consumo (D31, S2)
 
-- [ ] Contador `ratelimit:<usuario>:<ruta>` en Redis, desde `epidemia_comun` (RNF-D08).
-- [ ] Al pasar el límite, el servicio responde 429 con el tiempo de espera.
-- [ ] Prueba de que el límite se cumple y de que se libera al vencer.
+- [x] Contador `ratelimit:<usuario>:<ruta>` en Redis, desde `epidemia_comun/limites.py` (RNF-D08).
+- [x] Al pasar el límite, el servicio responde 429 con el tiempo de espera (`Retry-After`).
+- [x] Prueba de que el límite se cumple y de que se libera al vencer (`comun/tests/test_limites.py`; en contenedores, `test_compose_limites.py`).
 
 ### E4. Salud y panel (N3, N4)
 
-- [ ] `/health` informa también MongoDB, el bucket y el tiempo de respuesta. Un servicio que no los usa lo dice (RF-K10).
-- [ ] `estado-servicios` marca MongoDB y el bucket como dependencias caídas (RF-K05).
-- [ ] El panel cuenta los errores de cada servicio (RF-K12, RNF-J05).
+- [x] `/health` informa también MongoDB, el bucket y el tiempo de respuesta. Un servicio que no los usa lo dice (RF-K10). Hecho en `epidemia_comun/salud.py` (`no_usa`, `no_configurado`, tiempos; ver `comun/README.md`); listo para conectar cuando D agregue el servicio: falta declarar `dependencias=` / `DEPENDENCIAS` y `MONGO_URL` / `BUCKET_URL` en los servicios que los usen. Verificado con MongoDB y emulador del bucket de la demostración (`infra/docker-compose.fallos.yml`; evidencia en `docs/pruebas/fallos/2026-11-16`); falta conectarlo a los servicios reales del bloque D.
+- [x] `estado-servicios` marca MongoDB y el bucket como dependencias caídas (RF-K05). Hecho en `sondeo.py` (causas `mongodb` y `bucket`, con prueba); listo para conectar cuando D agregue el servicio. Verificado con MongoDB y emulador del bucket de la demostración (`infra/docker-compose.fallos.yml`; evidencia en `docs/pruebas/fallos/2026-11-16`); falta conectarlo a los servicios reales del bloque D.
+- [x] El panel cuenta los errores de cada servicio (RF-K12, RNF-J05): llave `errors:<servicio>` y columna «Errores (24 h)» de la consola.
 
 ### E5. Detrás de nginx (D25)
 
-- [ ] Cada servicio funciona detrás de `/<servicio>`: revisar `/docs`, `/openapi.json` y el CORS.
-- [ ] `estado-servicios` responde `https://<dominio>/<servicio>` (RF-K11).
+- [x] Cada servicio funciona detrás de `/<servicio>`: revisar `/docs`, `/openapi.json` y el CORS. `DETRAS_DE_PROXY=1` (ProxyFix); falta probarlo con el nginx real (F2).
+- [x] `estado-servicios` responde `https://<dominio>/<servicio>` (RF-K11), con `URL_PUBLICA=https://<dominio>/{servicio}`.
 
 ### E6. Verificar
 
-- [ ] Cada línea de registro trae la fecha, el servicio, el nivel y el identificador de correlación (RNF-J06).
-- [ ] Los contratos de `docs/contratos/` y la colección de Postman coinciden con las rutas nuevas (pruebas de contratos).
-- [ ] `python -m pytest microservicios` y `python infra/pruebas_integracion.py` pasan.
+- [x] Cada línea de registro trae la fecha, el servicio, el nivel y el identificador de correlación (RNF-J06). Formato en `epidemia_comun/registro.py`.
+- [x] Los contratos de `docs/contratos/` y la colección de Postman coinciden con las rutas nuevas (pruebas de contratos).
+- [x] `python -m pytest microservicios` y `python infra/pruebas_integracion.py` pasan (sin `--gpu`: 133 pasan, 1 se salta).
 
 ## F. Nube, monitoreo y pruebas de carga
 
@@ -300,7 +311,8 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [ ] Crear la máquina y reservar una IP externa fija (RNF-H02, RNF-H17).
 - [ ] Firewall: solo los puertos 80 y 443 abiertos (RNF-D10).
 - [ ] Compose de producción: ningún servicio ni base publica su puerto fuera de nginx (RNF-H07, RNF-H18).
-- [ ] Desplegar la web, los 29 servicios, PostgreSQL, MongoDB y Redis, con la base de la demostración (RNF-L09).
+- [ ] Desplegar la web, los 29 servicios, PostgreSQL, MongoDB y Redis, con la base de la demostración (RNF-L09). La web usa el rol `epidemia_app` (D18).
+- [ ] Pedir desde ya el aumento de cuota de GPU del proyecto, y confirmar qué cuenta de facturación paga la máquina: los cupones no se juntan (D23).
 - [ ] Secretos fuera del repositorio y de la imagen, protegidos en GCP (S5, RNF-D03).
 - [ ] Solo si sobra tiempo: máquina con GPU para `abm-gpu`, con su costo comparado contra los créditos y anotado en D23. Se enciende solo cuando hay corridas de `abm-gpu` (RNF-B09).
 
@@ -308,6 +320,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 - [ ] nginx en `infra/`, como única entrada, con una ruta por servicio y la web (RNF-H16, RNF-L11).
 - [ ] En local, certificado de mkcert.
+- [ ] Conseguir el dominio: elegir el proveedor, confirmar que permite Let's Encrypt y quién lo paga (D26).
 - [ ] Apuntar el dominio a la IP fija y obtener el certificado de Let's Encrypt con certbot (RNF-D01).
 - [ ] Renovación programada del certificado, y HTTP redirige a HTTPS (RNF-D09).
 - [ ] Tiempo máximo por petición en nginx, para la prueba del *timeout* (RNF-C10).
@@ -327,14 +340,14 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### F5. Demostración de fallos (N5)
 
-- [ ] Guion y evidencia de qué pasa cuando se detiene un microservicio (RNF-C02).
-- [ ] Lo mismo con Redis, con MongoDB y con PostgreSQL (RNF-C16).
-- [ ] Lo mismo con el bucket, y con una petición que excede el tiempo máximo (RNF-C18).
+- [x] Guion y evidencia de qué pasa cuando se detiene un microservicio (RNF-C02). Evidencia: `docs/pruebas/fallos/2026-11-16`.
+- [x] Lo mismo con Redis, con MongoDB y con PostgreSQL (RNF-C16). Evidencia: `docs/pruebas/fallos/2026-11-16`. MongoDB, solo `/health` y panel (falta la corrida con resumen, bloque D); con PostgreSQL las lecturas dan 503 `SERVICIO_NO_DISPONIBLE` (antes 500; corregido en `fabrica.py` y vuelto a demostrar el 2026-11-16).
+- [x] Lo mismo con el bucket, y con una petición que excede el tiempo máximo (RNF-C18). Evidencia: `docs/pruebas/fallos/2026-11-16`. Bucket, solo `/health` y panel (falta la subida, bloque D).
 
 ### F6. Documentos
 
 - [ ] Guía de despliegue en GCP y `INSTALACION.md` al día, con MongoDB, el emulador y nginx.
-- [ ] Resultados de Locust y de las pruebas de fallos en `docs/`.
+- [x] Resultados de Locust y de las pruebas de fallos en `docs/` (`docs/pruebas/carga` y `docs/pruebas/fallos/2026-11-16`).
 
 ---
 

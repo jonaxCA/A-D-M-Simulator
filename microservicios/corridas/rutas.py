@@ -31,6 +31,9 @@ ROLES_CANCELAN = ("ANALISTA", "ADMINISTRADOR")
 # El mismo tope que la semilla del formulario del monolito.
 SEMILLA_MAX = 2**31 - 1
 LIMITE, LIMITE_MAX = 20, 100
+# D8: tope de réplicas de un lote (migración 036). Cada POST crea una corrida; replicas es el
+# tamaño del lote que el cliente está lanzando y aquí solo se valida.
+REPLICAS_MAX = 100
 CANDADO_TTL = 10
 TERMINALES = ("completado", "fallido", "cancelado")
 ESTADOS = ("encolado", "ejecutando") + TERMINALES
@@ -141,6 +144,8 @@ def registrar(app):
         version_id = entero_positivo(cuerpo.get("scenario_version_id"), "scenario_version_id")
         semilla = _semilla(cuerpo.get("seed"))
         motor = _motor(cuerpo.get("engine"))
+        if "replicas" in cuerpo and entero_positivo(cuerpo["replicas"], "replicas") > REPLICAS_MAX:
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "replicas no puede pasar de %d." % REPLICAS_MAX)
         # Como en el monolito: para otro rol se ignora, no se rechaza.
         forzar = (_booleano(cuerpo.get("forzar_error", False), "forzar_error")
                   and "ADMINISTRADOR" in g.usuario.get("roles", []))

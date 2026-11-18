@@ -14,6 +14,8 @@ import logging
 import os
 import socket
 
+import psycopg2
+
 from backend_web import queries, simulaciones
 from epidemia_comun import cola, llaves
 from epidemia_comun.http import llamar
@@ -36,14 +38,40 @@ COLA = llaves.cola_simulaciones(MOTOR)
 estado = {"trabajador": socket.gethostname(), "motor": MOTOR, "activo": False,
           "corrida_actual": None, "procesadas": 0, "ultima": None}
 
+pendiente = []
+
+
+def _en_cola(crudo):
+    try:
+        pedido = json.loads(crudo)
+    except ValueError:
+        return None
+    return pedido.get("id") if isinstance(pedido, dict) else pedido
+
+
+def reencolar():
+    presentes = {_en_cola(c) for c in cola.contenidos(COLA)}
+    faltan = [i for i in simulaciones.corridas_encoladas(MOTOR) if i not in presentes]
+    for run_id in faltan:
+        cola.encolar(COLA, json.dumps({"id": run_id}))
+    if faltan:
+        log.warning("Se volvieron a encolar %d corridas que estaban encoladas en la base.",
+                    len(faltan))
+    return len(faltan)
+
 
 def recuperar():
-    # Las encoladas no se tocan: siguen esperando en la cola. Y solo las de su motor: las de
-    # otro las está corriendo el simulador de ese motor.
+    # Las ejecutando se cierran como fallidas; las encoladas se vuelven a meter a la cola
+    # (D19). Solo las de su motor: las de otro las atiende el simulador de ese motor.
     cerradas = simulaciones.recupera_corridas_interrumpidas(estados=("ejecutando",),
                                                            engine=MOTOR)
     if cerradas:
         log.warning("Se cerraron como fallidas %d corridas que quedaron a medias.", cerradas)
+    try:
+        reencolar()
+    except RedisNoDisponible:
+        pendiente.append(True)
+        log.warning("Redis no responde: se reintentará reencolar dentro del ciclo.")
     return cerradas
 
 
@@ -99,6 +127,14 @@ def ciclo(ajustes, detener):
     try:
         while not detener.is_set():
             try:
+                if pendiente:
+                    try:
+                        reencolar()
+                        pendiente.clear()
+                    except psycopg2.Error as exc:
+                        log.warning("No se pudo reencolar, se reintenta: %s", exc)
+                        detener.wait(PAUSA_SIN_REDIS)
+                        continue
                 crudo = cola.tomar(COLA)
             except RedisNoDisponible:
                 detener.wait(PAUSA_SIN_REDIS)

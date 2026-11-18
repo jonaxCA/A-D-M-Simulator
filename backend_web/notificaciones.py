@@ -11,18 +11,19 @@ import psycopg2.extras
 from .audit import log_audit
 from .db import a_jsonb, get_conn, query
 
-# Los del CHECK ck_notifications_type (003, con SCENARIO_APPROVED desde la 029).
+# Los del CHECK ck_notifications_type (003, 029 y 037).
 TIPOS = ("RUN_FINISHED", "RUN_FAILED", "THRESHOLD_EXCEEDED", "ASSIGNMENT",
-         "SCENARIO_PUBLISHED", "SCENARIO_APPROVED", "SYSTEM")
+         "SCENARIO_PUBLISHED", "SCENARIO_APPROVED", "SCENARIO_SUBMITTED",
+         "SCENARIO_REJECTED", "NEW_CASES", "SYSTEM")
 TITULO_MAX = 160
 _COLUMNAS = "id, user_id, type, title, body, payload, read_at, created_at"
 
 
-def valida_notificacion(datos):
+def valida_notificacion(datos, *, a_rol=False):
     """Lista de errores en español; vacia si se puede guardar."""
     errores = []
     usuario = datos.get("user_id")
-    if isinstance(usuario, bool) or not isinstance(usuario, int) or usuario < 1:
+    if not a_rol and (isinstance(usuario, bool) or not isinstance(usuario, int) or usuario < 1):
         errores.append("user_id debe ser el id de un usuario.")
     if datos.get("type") not in TIPOS:
         errores.append("type debe ser uno de: %s." % ", ".join(TIPOS))
@@ -60,6 +61,33 @@ def crear_notificacion(datos, *, contexto):
     except psycopg2.errors.ForeignKeyViolation:
         return None, "No existe el usuario destinatario."
     return notificacion_id, None
+
+
+def crear_notificaciones_a_rol(datos, rol, *, contexto):
+    errores = valida_notificacion(datos, a_rol=True)
+    if errores:
+        return None, " ".join(errores)
+    ids = []
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT u.id FROM users u
+                   JOIN user_roles ur ON ur.user_id = u.id
+                   JOIN roles r ON r.id = ur.role_id
+                   WHERE r.code = %s AND u.is_active ORDER BY u.id""", (rol,))
+            for (user_id,) in cur.fetchall():
+                cur.execute(
+                    """INSERT INTO notifications (user_id, type, title, body, payload)
+                       VALUES (%s, %s, %s, %s, %s::jsonb) RETURNING id""",
+                    (user_id, datos["type"], datos["title"].strip(),
+                     datos.get("body"), a_jsonb(datos.get("payload"))))
+                ids.append(cur.fetchone()[0])
+                log_audit(contexto, "CREATE", "notifications", ids[-1],
+                          data_after={"user_id": user_id, "type": datos["type"],
+                                      "title": datos["title"].strip()},
+                          cur=cur)
+        conn.commit()
+    return ids, None
 
 
 def listar_notificaciones(user_id, solo_no_leidas=False, limite=50):

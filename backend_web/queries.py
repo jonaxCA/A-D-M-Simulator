@@ -2614,17 +2614,22 @@ def get_tipos_intervencion():
     """Tipos activos, con el esquema que describe sus parametros."""
     return [dict(r) for r in query(
         """SELECT id, code, name, description, target_layer, primitive, param_schema,
-                  unit_cost, cost_unit, cost_source, cost_is_assumption
+                  unit_cost, cost_unit, cost_source, cost_is_assumption,
+                  person_days_per_unit, person_days_source, person_days_is_assumption
            FROM intervention_types WHERE is_active ORDER BY name""")]
 
 
-def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption):
-    """Valida el importe antes de guardar el costo de una intervencion."""
+def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption, nombre="El importe"):
+    """Valida el importe antes de guardar el costo de una intervencion.
+
+    Tambien valida el factor de personas-dia por dosis (D3), con otro `nombre`:
+    las reglas son las mismas y las llaves del resultado tambien.
+    """
     errores = []
     texto = (unit_cost_raw or "").strip()
 
     if not texto:
-        errores.append("El importe es obligatorio.")
+        errores.append(f"{nombre} es obligatorio.")
         return None, errores
 
     try:
@@ -2633,16 +2638,17 @@ def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption):
         costo = None
     # "nan" e "inf" convierten sin error y la columna numeric los guardaria.
     if costo is None or not math.isfinite(costo):
-        errores.append("El importe debe ser numerico.")
+        errores.append(f"{nombre} debe ser numerico.")
         return None, errores
 
     if costo < 0:
-        errores.append("El importe no puede ser negativo.")
+        errores.append(f"{nombre} no puede ser negativo.")
 
     es_supuesto = bool(cost_is_assumption)
 
     if not es_supuesto and not (cost_source or "").strip():
-        errores.append("Un costo que no es supuesto debe incluir una fuente.")
+        que = "Un costo" if nombre == "El importe" else nombre
+        errores.append(f"{que} que no es supuesto debe incluir una fuente.")
 
     return {
         "unit_cost": costo,

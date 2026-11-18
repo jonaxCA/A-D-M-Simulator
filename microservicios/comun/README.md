@@ -12,7 +12,8 @@ plantilla (bloque A), y **Redis** (bloque K).
 - `requiere_token(roles=...)` y `solo_servicios`: verifican JWT HS256, audiencia, vencimiento, sesión en Redis y rol.
 - `token_servicio(app.config, "simulador")`: firma un token de servicio (audiencia interna, 60 s) para
   llamar con `llamar(..., token=...)` a una ruta con `@solo_servicios` cuando no hay persona detrás.
-- `crear_app(nombre, contrato, registrar_rutas)`: Flask con `/health`, `/docs` y `/openapi.json`.
+- `crear_app(nombre, contrato, registrar_rutas, dependencias=())`: Flask con `/health`, `/docs` y
+  `/openapi.json`. Ver «Salud», «Errores contados» y «Detrás de nginx».
 - `filtros_ambito(args, periodos)` y `clave_ambito(filtros)`: valida `disease_id`, `region_id`
   y `days` (422 si no son válidos, 404 si la enfermedad o el municipio no existen). La usan
   `series` y `zonas`.
@@ -20,6 +21,43 @@ plantilla (bloque A), y **Redis** (bloque K).
 `microservicios/conftest.py` trae para las pruebas de los servicios un fakeredis compartido
 por `crear_app` y `redis_compartido` (`redis_falso`, con `apagar_redis()` para simular la
 caída), un firmador de tokens con sesión (`token`) y `crear_cliente("<paquete>")`.
+
+## Salud (`/health`, RF-K10)
+
+Responde `servicio`, `version`, `estado` (`ok` o `degradado`, con 200 o 503), `postgresql` y `redis`
+(booleanos, como siempre) y, nuevos, `mongodb` y `bucket`, `tiempos_ms` (milisegundos de cada
+comprobación) y `tiempo_ms` (el total). `mongodb` y `bucket` valen:
+
+| Valor             | Significa |
+|-------------------|-----------|
+| `"no_usa"`        | El servicio no declara esa dependencia |
+| `true` / `false`  | La declara y responde / no responde (`false` pone el servicio en `degradado`) |
+| `"no_configurado"`| La declara pero falta su URL (también `degradado`) |
+
+Un servicio declara lo que usa con `crear_app(..., dependencias=("mongodb",))` o, sin tocar
+código, con la variable `DEPENDENCIAS=mongodb,bucket`. Las comprobaciones son ligeras y viven en
+`salud.py`, sin dependencias nuevas: MongoDB abre una conexión TCP a `MONGO_URL`; el bucket hace
+un GET a `BUCKET_HEALTH_URL` (o, si falta, a `BUCKET_URL`) y cuenta como vivo con cualquier
+respuesta menor a 500. Cuando el bloque D agregue sus clientes, basta cambiar `_mongodb` y
+`_bucket` por un `ping` y un listado del bucket.
+
+## Errores contados (RF-K12)
+
+Cada respuesta 5xx (menos las de `/health`) suma uno a `errors:<servicio>` en Redis, con TTL de 24 h
+desde el primer error de la ventana. `estado-servicios` lo muestra como `errores` en
+`/api/v1/services/health` y la consola, en la columna «Errores (24 h)». Con Redis caído no se
+cuenta (best-effort).
+
+## Detrás de nginx (D25, RNF-H16)
+
+Con `DETRAS_DE_PROXY=1`, `crear_app` pone `ProxyFix` (`x_for`, `x_proto`, `x_host`, `x_prefix`, un
+solo proxy). Así `/docs` apunta a `<prefijo>/openapi.json`, el `servers` de `/openapi.json` pasa a
+`https://<dominio>/<servicio>` y los límites de consumo ven la IP real de `X-Forwarded-For`. Sin la
+variable esas cabeceras se ignoran, para que nadie falsee su IP. nginx debe mandar
+`X-Forwarded-For`, `-Proto`, `-Host` y `-Prefix` (`/<servicio>`). El CORS no cambia: compara el
+`Origin` del navegador con `CONSOLE_ORIGIN`, que detrás de nginx es `https://<dominio>`.
+
+**Solo se activa si los puertos de los servicios no están publicados** (compose de producción, F1): si un cliente llega directo al puerto, pone su propio `X-Forwarded-For` y falsea su IP, con lo que se evaden el límite de `/auth/login` y la auditoría. nginx debe sobrescribir la cabecera con `proxy_set_header X-Forwarded-For $remote_addr;` para que `x_for=1` sea fiable. Sin la variable y detrás de nginx, todas las peticiones comparten la IP del proxy.
 
 ## Instalación dentro del entorno de desarrollo
 
@@ -82,6 +120,7 @@ docker compose -f infra/docker-compose.yml up -d redis
 | `cache` | `obtener(servicio, clave, ttl, calcular)` | Calcula con la base y sigue |
 | `candados` | `with candado(llave, ttl):` | 503 |
 | `cola` | `encolar`, `tomar` (espera hasta `ESPERA` segundos), `pendientes` | 503 |
+| `limites` | `consumir(usuario)` (lo llama `@requiere_token`) y `@limitar(perfil)` para rutas sin sesión, por IP | Sin sesión no se limita; con sesión ya da 503 |
 | `llaves` | El nombre de cada llave del catálogo y `huella()` | — |
 | `redis_compartido` | `requerido()`, `opcional()`, `estado()` para `/health` | — |
 
@@ -93,6 +132,7 @@ convierta en RFC 7807 sin conocerlas una por una:
 | `redis_compartido.RedisNoDisponible` | `REDIS_NO_DISPONIBLE` | 503 |
 | `sesiones.RefreshReutilizado` | `TOKEN_REVOCADO` | 401 |
 | `candados.CandadoOcupado` | `CONFLICTO` | 409 |
+| `errores.ErrorAPI` desde `limites` | `LIMITE_EXCEDIDO` (con `Retry-After`) | 429 |
 
 ## Cómo se usa
 
@@ -156,3 +196,18 @@ python -m pytest microservicios
 - Para correrlas contra un Redis real, define `REDIS_URL_PRUEBAS` con una base vacía, por
   ejemplo `redis://:<contraseña>@127.0.0.1:6380/15`. Cada prueba la borra al terminar; si no
   está vacía, se saltan.
+
+## Límites de consumo (D31)
+
+Ventana fija en Redis, un contador `ratelimit:<usuario>:<MÉTODO:regla>` (por IP en las rutas
+sin sesión). Las cifras son **supuestos de ingeniería**, a ajustar con las pruebas de carga;
+se cambian con `LIMITE_<PERFIL>="peticiones/segundos"`.
+
+| Perfil | Por defecto | Dónde |
+|---|---|---|
+| `normal` | 120 / 60 s | todos los servicios y `GET /auth/captcha` |
+| `permisivo` | 600 / 60 s | `casos`, `sincronizacion` |
+| `estricto` | 10 / 60 s | escrituras de `corridas` (las lecturas son `normal`) |
+| `publico` | 10 / 60 s | `POST /auth/login` |
+
+Detrás de nginx, `remote_addr` será la IP del proxy: habrá que leer `X-Forwarded-For` entonces.

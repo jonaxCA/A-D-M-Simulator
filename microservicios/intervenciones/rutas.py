@@ -7,7 +7,8 @@ actualiza_costo_intervencion no audita.
 
 El costo vive en el tipo de intervención (intervention_types), como en el
 monolito: cambiarlo desde una intervención cambia el costo de todas las de ese
-tipo.
+tipo. Lo mismo el factor de personas-día por dosis de la frontera de Pareto (D3,
+migración 040), que solo tienen los tipos por dosis.
 """
 from flask import g
 
@@ -106,6 +107,33 @@ def _formulario(cuerpo, tipos):
     return form
 
 
+def _valor_con_fuente(campos, nombre):
+    """Lee del cuerpo un valor con su fuente y su marca de supuesto (regla 8).
+
+    `campos` son las tres llaves (valor, fuente, supuesto); el resultado las conserva.
+    Las reglas son las de queries.valida_costo_intervencion.
+    """
+    llave_valor, llave_fuente, llave_supuesto = campos
+    cuerpo = diccionario(leer_cuerpo())
+    if set(cuerpo) - set(campos):
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "Solo se aceptan %s, %s y %s." % campos)
+    supuesto = cuerpo.get(llave_supuesto, False)
+    if isinstance(supuesto, str) and supuesto.strip().lower() in ("true", "false", "1", "0"):
+        supuesto = supuesto.strip().lower() in ("true", "1")
+    if not isinstance(supuesto, bool):
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "%s debe ser booleano." % llave_supuesto)
+    fuente = cuerpo.get(llave_fuente)
+    if fuente is not None and not isinstance(fuente, str):
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "%s debe ser texto." % llave_fuente)
+    valor = cuerpo.get(llave_valor)
+    if isinstance(valor, (bool, dict, list)):
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "%s debe ser numerico." % nombre)
+    nuevo, errores = queries.valida_costo_intervencion(_texto(valor), fuente, supuesto, nombre=nombre)
+    if errores:
+        raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
+    return dict(zip(campos, (nuevo["unit_cost"], nuevo["cost_source"], nuevo["cost_is_assumption"])))
+
+
 def _falla(mensaje):
     mensaje = mensaje or "No se pudo completar la operación."
     if "Ya hay" in mensaje:
@@ -177,24 +205,7 @@ def registrar(app):
     @app.put("/api/v1/versions/<int:version_id>/interventions/<int:intervention_id>/cost")
     @requiere_token(roles=ROLES_COSTO)
     def costo(version_id, intervention_id):
-        cuerpo = diccionario(leer_cuerpo())
-        if set(cuerpo) - {"unit_cost", "cost_source", "cost_is_assumption"}:
-            raise ErrorAPI(422, "DATOS_INVALIDOS",
-                           "Solo se aceptan unit_cost, cost_source y cost_is_assumption.")
-        supuesto = cuerpo.get("cost_is_assumption", False)
-        if isinstance(supuesto, str) and supuesto.strip().lower() in ("true", "false", "1", "0"):
-            supuesto = supuesto.strip().lower() in ("true", "1")
-        if not isinstance(supuesto, bool):
-            raise ErrorAPI(422, "DATOS_INVALIDOS", "cost_is_assumption debe ser booleano.")
-        fuente = cuerpo.get("cost_source")
-        if fuente is not None and not isinstance(fuente, str):
-            raise ErrorAPI(422, "DATOS_INVALIDOS", "cost_source debe ser texto.")
-        importe = cuerpo.get("unit_cost")
-        if isinstance(importe, (bool, dict, list)):
-            raise ErrorAPI(422, "DATOS_INVALIDOS", "El importe debe ser numerico.")
-        nuevo, errores = queries.valida_costo_intervencion(_texto(importe), fuente, supuesto)
-        if errores:
-            raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
+        nuevo = _valor_con_fuente(("unit_cost", "cost_source", "cost_is_assumption"), "El importe")
         _version(version_id)
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -221,3 +232,43 @@ def registrar(app):
             conn.commit()
         return responder({"id": intervention_id, "intervention_type_id": tipo_id, **nuevo},
                          "costo_intervencion")
+
+    @app.put("/api/v1/versions/<int:version_id>/interventions/<int:intervention_id>/person-days")
+    @requiere_token(roles=ROLES_COSTO)
+    def personas_dia(version_id, intervention_id):
+        # Personas-día que cuenta cada dosis en la frontera de Pareto (D3). Las capas y el
+        # testeo las cuentan por definición, así que solo lo tienen los tipos por dosis.
+        nuevo = _valor_con_fuente(("person_days_per_unit", "person_days_source",
+                                   "person_days_is_assumption"), "El factor de personas-dia")
+        _version(version_id)
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT t.id, t.cost_unit, t.person_days_per_unit, t.person_days_source,
+                              t.person_days_is_assumption
+                       FROM scenario_interventions i
+                       JOIN intervention_types t ON t.id = i.intervention_type_id
+                       WHERE i.id = %s AND i.scenario_version_id = %s AND t.is_active
+                       FOR UPDATE OF t""", (intervention_id, version_id))
+                fila = cur.fetchone()
+                if fila is None:
+                    raise ErrorAPI(404, "NO_ENCONTRADO", "Esa intervención no está en esta versión.")
+                tipo_id, unidad = fila[0], fila[1]
+                if unidad != "por_dosis":
+                    raise ErrorAPI(422, "DATOS_INVALIDOS",
+                                   "Solo los tipos por dosis llevan factor: las demás "
+                                   "intervenciones cuentan sus personas-día por definición.")
+                antes = {"person_days_per_unit": fila[2], "person_days_source": fila[3],
+                         "person_days_is_assumption": fila[4]}
+                cur.execute(
+                    """UPDATE intervention_types
+                       SET person_days_per_unit = %s, person_days_source = %s,
+                           person_days_is_assumption = %s
+                       WHERE id = %s AND is_active""",
+                    (nuevo["person_days_per_unit"], nuevo["person_days_source"],
+                     nuevo["person_days_is_assumption"], tipo_id))
+                log_audit(g.contexto, "UPDATE", "intervention_types", tipo_id,
+                          data_before=antes, data_after=nuevo, cur=cur)
+            conn.commit()
+        return responder({"id": intervention_id, "intervention_type_id": tipo_id, **nuevo},
+                         "factor_personas_dia")

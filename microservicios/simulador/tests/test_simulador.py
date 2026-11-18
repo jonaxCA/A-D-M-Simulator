@@ -6,6 +6,7 @@ import threading
 from pathlib import Path
 
 import jwt
+import psycopg2
 import pytest
 
 from backend_web import queries, simulaciones
@@ -99,12 +100,79 @@ def test_un_aviso_fallido_no_afecta_la_corrida(mundo, caplog, falla):
     assert any(r.levelno == logging.WARNING for r in caplog.records)
 
 
-def test_recuperar_solo_cierra_las_que_se_estaban_ejecutando_de_su_motor(monkeypatch):
+def test_recuperar_solo_cierra_las_que_se_estaban_ejecutando_de_su_motor(monkeypatch,
+                                                                         redis_falso):
     pedidos = []
+    monkeypatch.setattr(simulaciones, "corridas_encoladas", lambda engine: [])
     monkeypatch.setattr(simulaciones, "recupera_corridas_interrumpidas",
                         lambda estados, engine: pedidos.append((estados, engine)) or 2)
     assert trabajador.recuperar() == 2
     assert pedidos == [(("ejecutando",), "seir-ref")]
+
+
+def test_recuperar_reencola_en_orden_sin_duplicar(monkeypatch, redis_falso):
+    pedidos = []
+    monkeypatch.setattr(simulaciones, "recupera_corridas_interrumpidas", lambda **kw: 0)
+    monkeypatch.setattr(simulaciones, "corridas_encoladas",
+                        lambda engine: pedidos.append(engine) or [3, 5, 8])
+    redis_falso.lpush(trabajador.COLA, json.dumps({"id": 5, "forzar_error": True}))
+    trabajador.recuperar()
+    assert pedidos == ["seir-ref"]
+    tomadas = [json.loads(trabajador.cola.tomar(trabajador.COLA)) for _ in range(3)]
+    assert [t["id"] for t in tomadas] == [5, 3, 8]
+    assert tomadas[0]["forzar_error"] is True
+    trabajador.recuperar()
+    assert trabajador.cola.pendientes(trabajador.COLA) == 3
+
+
+def test_recuperar_con_redis_caido_no_falla_y_el_ciclo_reintenta(monkeypatch, redis_falso,
+                                                                  apagar_redis):
+    monkeypatch.setattr(simulaciones, "recupera_corridas_interrumpidas", lambda **kw: 0)
+    monkeypatch.setattr(simulaciones, "corridas_encoladas", lambda engine: [7])
+    monkeypatch.setattr(trabajador, "pendiente", [])
+    apagar_redis()
+    assert trabajador.recuperar() == 0
+    assert trabajador.pendiente
+
+
+def test_un_error_de_base_al_reintentar_no_mata_al_ciclo(mundo, monkeypatch):
+    detener = threading.Event()
+    intentos = []
+
+    def reencolar():
+        intentos.append(1)
+        if len(intentos) == 1:
+            raise psycopg2.OperationalError("sin base")
+        detener.set()
+
+    monkeypatch.setattr(trabajador, "PAUSA_SIN_REDIS", 0)
+    monkeypatch.setattr(trabajador, "pendiente", [True])
+    monkeypatch.setattr(trabajador, "reencolar", reencolar)
+    monkeypatch.setattr(trabajador.cola, "tomar", lambda llave: None)
+    trabajador.ciclo(AJUSTES, detener)
+    assert len(intentos) == 2 and trabajador.pendiente == []
+
+
+def test_el_ciclo_reintenta_el_reencolado_pendiente(mundo, monkeypatch):
+    detener = threading.Event()
+    intentos = []
+
+    def reencolar():
+        intentos.append(1)
+        if len(intentos) == 1:
+            raise RedisNoDisponible("caído")
+
+    def tomar(llave):
+        if len(intentos) == 2:
+            detener.set()
+        return None
+
+    monkeypatch.setattr(trabajador, "PAUSA_SIN_REDIS", 0)
+    monkeypatch.setattr(trabajador, "pendiente", [True])
+    monkeypatch.setattr(trabajador, "reencolar", reencolar)
+    monkeypatch.setattr(trabajador.cola, "tomar", tomar)
+    trabajador.ciclo(AJUSTES, detener)
+    assert len(intentos) == 2 and trabajador.pendiente == []
 
 
 @pytest.fixture
