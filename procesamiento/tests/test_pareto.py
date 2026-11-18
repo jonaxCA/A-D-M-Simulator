@@ -5,6 +5,8 @@
 
 import ast
 import json
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -278,6 +280,26 @@ class Comparacion(unittest.TestCase):
     def test_aviso_por_costo_sin_fuente(self):
         r = comparar(self.entradas, {**COSTOS, "CIERRE_ESCUELAS": 10.0}, factores=FACTORES)
         self.assertTrue(any("CIERRE_ESCUELAS" in a for a in r["avisos"]))
+
+
+class ProgramaDeEjemploTests(unittest.TestCase):
+    """`python -m procesamiento.motor` sigue corriendo con personas-dia y pesos (D3)."""
+
+    def _correr(self, *argumentos):
+        return subprocess.run([sys.executable, "-m", "procesamiento.motor", *argumentos],
+                              cwd=Path(__file__).resolve().parents[2], capture_output=True,
+                              text=True, check=True).stdout
+
+    def test_imprime_la_frontera_en_personas_dia(self):
+        salida = self._correr()
+        self.assertIn("Frontera de Pareto (por personas-dia)", salida)
+        self.assertIn("SUPUESTOS", salida)
+
+    def test_json_trae_personas_dia_y_pesos(self):
+        filas = json.loads(self._correr("--json"))["comparacion"]["filas"]
+        self.assertEqual(len(filas), 4)
+        self.assertTrue(all(isinstance(f["costo"], (int, float)) for f in filas))
+        self.assertTrue(all(isinstance(f["costo_pesos"], (int, float)) for f in filas))
 
 
 class CapasTests(unittest.TestCase):

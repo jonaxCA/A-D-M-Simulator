@@ -1275,7 +1275,7 @@ def no_encontrado(_):
 @bp.app_errorhandler(psycopg2.OperationalError)
 @bp.app_errorhandler(psycopg2.InterfaceError)
 def sin_base(exc):
-    if isinstance(exc, psycopg2.OperationalError) and (exc.pgcode or "08")[:2] not in ("08", "57"):
+    if isinstance(exc, psycopg2.OperationalError) and not (exc.pgcode or "08").startswith(("08", "57P")):
         raise exc
     current_app.logger.warning("PostgreSQL no disponible: %s", type(exc).__name__)
     g._usuario_actual = None

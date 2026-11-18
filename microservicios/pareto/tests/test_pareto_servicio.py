@@ -87,9 +87,11 @@ def test_xml_por_omision(cliente, token):
 
 
 # El servicio no pide escenario base (base vacío); con base salen además impacto_evitado,
-# costo_adicional y costo_por_unidad_evitada. El XSD acepta las dos formas.
+# costo_adicional y costo_por_unidad_evitada. Sin el precio de la vacuna, costo_pesos va nulo
+# en la fila y en el desglose, con un aviso (D3). El XSD acepta todas las formas.
+@pytest.mark.parametrize("con_pesos", [True, False])
 @pytest.mark.parametrize("base", [None, 12])
-def test_la_salida_real_del_motor_valida_contra_el_xsd(cliente, token, monkeypatch, base):
+def test_la_salida_real_del_motor_valida_contra_el_xsd(cliente, token, monkeypatch, base, con_pesos):
     cierre = {"tipo": "CIERRE_ESCUELAS", "dia_inicio": 7, "dia_fin": 60, "params": {"reduccion": 1.0}}
     vacuna = {"tipo": "VACUNACION", "dia_inicio": 10, "cobertura": 0.7,
               "params": {"eficacia": 0.9, "dosis_diarias": 2000, "prioridad": "edad_desc",
@@ -99,15 +101,19 @@ def test_la_salida_real_del_motor_valida_contra_el_xsd(cliente, token, monkeypat
         esc = escenario(intervenciones=intervenciones)
         entradas.append({"id": id_, "nombre": "SIM-%05d - Escenario" % id_, "escenario": esc,
                          "resultado": simular(esc, 982314)})
-    costos = {"CIERRE_ESCUELAS": {"valor": 10.0, "fuente": "prueba", "supuesto": False},
-              "VACUNACION": {"valor": 300.0, "supuesto": True}}
+    costos = {"CIERRE_ESCUELAS": {"valor": 10.0, "fuente": "prueba", "supuesto": False}}
+    if con_pesos:
+        costos["VACUNACION"] = {"valor": 300.0, "supuesto": True}
     factores = {"VACUNACION": {"valor": 0.5, "supuesto": True}}
     real = comparar(entradas, costos, base=base, factores=factores)
+    assert (real["filas"][1]["costo_pesos"] is None) is not con_pesos
     monkeypatch.setattr(simulaciones, "construir_comparacion_costo_impacto",
                         lambda run_ids, metrica="fallecimientos": (real, []))
     r = cliente.get("/api/v1/pareto?runs=12,15", headers=token())
     assert r.status_code == 200
-    xmlschema.XMLSchema(str(RAIZ / "docs/contratos/pareto/pareto.xsd")).validate(r.data.decode("utf-8"))
+    xml = r.data.decode("utf-8")
+    xmlschema.XMLSchema(str(RAIZ / "docs/contratos/pareto/pareto.xsd")).validate(xml)
+    assert ("Falta el costo unitario en pesos de VACUNACION" in xml) is not con_pesos
 
 
 @pytest.mark.parametrize("runs", [None, "", "12", "12,12", "12,abc", "12,0",
