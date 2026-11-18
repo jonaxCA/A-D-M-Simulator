@@ -59,10 +59,6 @@ def salud(servicio):
     return f"health:{servicio}"
 
 
-def historial_salud(servicio):
-    return f"health:history:{servicio}"
-
-
 def limite(quien, ruta):
     return f"ratelimit:{quien}:{ruta}"
 

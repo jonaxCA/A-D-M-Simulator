@@ -1,6 +1,7 @@
 import json
 import re
 import threading
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -48,7 +49,7 @@ def red(monkeypatch):
 
 
 @pytest.fixture
-def cliente(crear_cliente, red):
+def cliente(crear_cliente, red, mongo_falso):
     return crear_cliente("estado_servicios")
 
 
@@ -195,7 +196,7 @@ def test_con_redis_caido_la_salud_se_sondea_en_vivo(cliente, red, apagar_redis, 
     assert cliente.get("/api/v1/services?format=json").status_code == 200
 
 
-def test_historial_del_mas_reciente_al_mas_viejo_y_corto(cliente, red, redis_falso):
+def test_historial_del_mas_reciente_al_mas_viejo_y_corto(cliente, red, mongo_falso):
     for i in range(sondeo.HISTORIAL + 5):
         red["respuestas"]["series"] = lambda n, i=i: salud(n, version="0.%d" % i)
         sondeo.guardar(sondeo.sondear_varios(["series"]))
@@ -204,13 +205,43 @@ def test_historial_del_mas_reciente_al_mas_viejo_y_corto(cliente, red, redis_fal
     datos = r.get_json()
     assert datos["servicio"] == "series"
     assert [s["version"] for s in datos["sondeos"]] == ["0.%d" % i for i in range(sondeo.HISTORIAL + 4, 4, -1)]
-    assert 0 < redis_falso.ttl("health:history:series") <= sondeo.TTL_HISTORIAL
+    assert set(datos["sondeos"][0]) == {"nombre", "estado", "causas", "detalle", "version",
+                                        "latencia_ms", "revisado"}
+    assert datos["sondeos"][0]["revisado"].endswith("+00:00")
+    # En MongoDB se quedan todos: el TTL de 30 días los borra, no el tope de la respuesta.
+    assert mongo_falso["historial_servicios"].count_documents({"servicio": "series"}) == \
+        sondeo.HISTORIAL + 5
+
+
+def test_historial_guarda_un_documento_por_sondeo(red, mongo_falso):
+    red["respuestas"]["series"] = lambda n: salud(n, postgresql=False)
+    sondeo.guardar(sondeo.sondear_varios(["series", "zonas"]))
+    doc = mongo_falso["historial_servicios"].find_one({"servicio": "series"}, {"_id": 0})
+    assert doc["estado"] == "degradado" and doc["dependencias_caidas"] == ["postgresql"]
+    assert doc["version_esquema"] == 1 and doc["error"] is None and doc["latencia_ms"] >= 0
+    assert doc["fecha"].tzinfo is not None
+    assert mongo_falso["historial_servicios"].count_documents({}) == 2
+
+
+def test_disponibilidad_y_latencia_de_las_ultimas_24_horas(cliente, mongo_falso):
+    ahora = datetime.now(timezone.utc)
+    mongo_falso["historial_servicios"].insert_many([
+        {"servicio": "zonas", "fecha": ahora - timedelta(minutes=m), "estado": e,
+         "latencia_ms": l, "version": "0.1.0", "dependencias_caidas": [], "error": None,
+         "version_esquema": 1}
+        for m, e, l in ((1, "ok", 10.0), (2, "ok", 20.0), (3, "degradado", 30.0),
+                        (4, "caido", None), (60 * 25, "caido", None))])
+    datos = cliente.get("/api/v1/services/zonas/history?format=json").get_json()
+    assert datos["resumen"] == {"horas": 24, "sondeos": 4, "disponibilidad": 0.5,
+                                "latencia_promedio_ms": 20.0}
+    assert len(datos["sondeos"]) == 5
 
 
 def test_historial_vacio_y_en_xml(cliente):
     raiz = ET.fromstring(cliente.get("/api/v1/services/zonas/history").data)
     assert raiz.tag == "historial" and raiz.findtext("servicio") == "zonas"
     assert raiz.findall("sondeos/sondeo") == []
+    assert raiz.findtext("resumen/sondeos") == "0"
 
 
 def test_historial_de_un_servicio_que_no_existe(cliente):
@@ -218,17 +249,29 @@ def test_historial_de_un_servicio_que_no_existe(cliente):
     assert r.status_code == 404 and r.get_json()["codigo"] == "NO_ENCONTRADO"
 
 
-def test_historial_con_redis_caido_es_503(cliente, apagar_redis):
-    apagar_redis()
+def test_historial_con_mongodb_caido_es_503(cliente, apagar_mongo):
+    apagar_mongo()
     r = cliente.get("/api/v1/services/zonas/history?format=json")
     assert r.status_code == 503 and r.get_json()["codigo"] == "SERVICIO_NO_DISPONIBLE"
+
+
+def test_historial_no_depende_de_redis(cliente, apagar_redis):
+    apagar_redis()
+    assert cliente.get("/api/v1/services/zonas/history").status_code == 200
+
+
+def test_con_mongodb_caido_el_sondeo_sigue_y_guarda_en_redis(red, redis_falso, apagar_mongo):
+    apagar_mongo()
+    sondeo.guardar(sondeo.sondear_varios(["auth"]))
+    assert redis_falso.exists("health:auth")
 
 
 class Alto(Exception):
     pass
 
 
-def test_el_ciclo_guarda_cada_ronda_y_sigue_si_una_falla(red, redis_falso, monkeypatch):
+def test_el_ciclo_guarda_cada_ronda_y_sigue_si_una_falla(red, redis_falso, mongo_falso,
+                                                        monkeypatch):
     rondas, real = [], sondeo.sondear_varios
 
     def varios(nombres):
@@ -247,7 +290,8 @@ def test_el_ciclo_guarda_cada_ronda_y_sigue_si_una_falla(red, redis_falso, monke
     with pytest.raises(Alto):
         sondeo._ciclo()
     assert rondas == [list(sondeo.SERVICIOS)] * 2
-    assert redis_falso.exists("health:auth") and redis_falso.llen("health:history:auth") == 1
+    assert redis_falso.exists("health:auth")
+    assert mongo_falso["historial_servicios"].count_documents({"servicio": "auth"}) == 1
 
 
 def test_url_de_sondeo_del_compose(monkeypatch):
