@@ -4,9 +4,9 @@
 
 ## Migraciones nuevas
 
-1. Confirma el número con la persona: hay números reservados. Las del segundo parcial van de
-   la 026 a la 030; las 031 a 033 son de los roles de D27, y la siguiente libre es la 034
-   (D16 en `docs/decisiones/decisiones.md`).
+1. Usa el número reservado para tu bloque en «Números reservados» de
+   `postgres/migraciones/README.md`, y confírmalo con la persona. Si no hay uno para lo que
+   haces, pregunta antes de crear el archivo.
 2. Copia la estructura de la 017: encabezado, `BEGIN;` … `COMMIT;` y registro en `schema_migrations`.
 3. Hazla idempotente (`IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) y agrega `COMMENT ON` a todo lo nuevo.
 4. Copia el archivo tal cual al final de `postgres/dump_completo.sql` y actualiza el número de

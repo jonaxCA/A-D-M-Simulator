@@ -96,7 +96,8 @@ Ninguna se implementa sin respuesta. Cada respuesta se anota en `decisiones/`. E
 ### Integración
 
 - [ ] Crear un issue por casilla, con su bloque y su responsable.
-- [ ] Confirmar el número de cada migración antes de que alguien la cree. Hoy: 034 para D1 y D35, 036 el tope de réplicas, 037 los tipos de aviso, y de la 038 en adelante lo demás.
+- [x] Reservar los números de migración de cada bloque: tabla y reglas en [«Números reservados»](../../../datos/postgres/migraciones/README.md#números-reservados-tercer-parcial) (2026-11-17).
+- [ ] Confirmar el número de cada migración antes de que alguien la cree, y agregar a esa tabla los que se pidan fuera de ella.
 - [ ] Integrar las ramas de los dos salones al menos una vez por semana.
 - [ ] Ensayar P1, P2 y P3 de punta a punta en la nube, con cada rol.
 - [ ] Guion de la demostración en la nube.
@@ -223,11 +224,11 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [ ] Colección `series_corridas`: un documento por día de cada corrida, con los totales del día (sin desglose por grupo), `scenario_version_id`, motor y `version_esquema`. Índices `{run_id, dia}` y `{scenario_version_id, motor, dia}` (D28, RF-E20, RNF-K03, RNF-K14).
 - [ ] Colección `historial_servicios`, con TTL de 30 días (RF-K03, RNF-K17).
 - [ ] `simulador` guarda la serie en MongoDB y el resumen en `simulation_runs` (RF-E20).
-- [ ] Migración nueva con las columnas del resumen en `simulation_runs`. Confirmar el número con el líder.
+- [ ] Migración 038 con las columnas del resumen en `simulation_runs`.
 - [ ] `resultados` lee la serie de MongoDB y conserva su caché de Redis.
 - [ ] `estado-servicios` pasa su historial de Redis a MongoDB (RF-K03).
 - [ ] Demostrar inserción, consulta, actualización y agregación, cada una con su prueba. La agregación: la banda p5–p95 por día de una versión y un motor (D28).
-- [ ] `simulation_results` deja de usarse. Retirarla con una migración, cuando la web (C) ya no la lea.
+- [ ] `simulation_results` deja de usarse. Retirarla con la migración 041, cuando la web (C) ya no la lea.
 - [ ] Si MongoDB no responde, la corrida termina con su resumen y la captura de casos sigue (RNF-C08).
 
 ### D2. Cloud Storage (D30, D-3)
@@ -237,7 +238,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [ ] `evidencias` guarda en el bucket y deja de usar su volumen (RF-C03, RNF-B01).
 - [ ] URLs firmadas que vencen en minutos para los archivos privados (RNF-D17, RNF-D27).
 - [ ] Validar cada archivo por su contenido, su tamaño y su huella al subirlo (RNF-C09).
-- [ ] Tabla nueva con los metadatos de los reportes, y la ruta para subir uno (RF-F17). La usan el escritorio y la web (D35). Confirmar el número de la migración.
+- [ ] Tabla nueva con los metadatos de los reportes, y la ruta para subir uno (RF-F17). La usan el escritorio y la web (D35). Migración 039.
 - [ ] Si el bucket no responde, el caso se guarda y la foto se reintenta (RNF-C19).
 - [ ] Crear el bucket real en GCP, privado, con su cuenta de servicio (RNF-K12, RNF-K18). Con F.
 
@@ -271,7 +272,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [x] `corridas` acepta `abm-gpu` solo donde está habilitado (RF-E15). Lo decide `MOTORES_HABILITADOS` (por omisión solo `abm-ref`, el respaldo).
 - [x] La web se identifica ante `resultados` como se haya decidido (D20).
   - D34: reenvía el JWT de la sesión del usuario (`backend_web/resultados.py`). Las curvas se piden a `resultados` si hay `SERVICIO_RESULTADOS_URL`; si no responde, la web sigue con PostgreSQL. El punto de arriba, «La corrida muestra su resumen desde `simulation_runs`…», sigue esperando a MongoDB.
-- [ ] `pareto` calcula la frontera en personas-día, con la vacunación por su factor de día-persona por dosis, y deja los pesos aparte. El factor necesita su lugar en la base, con fuente o marca de supuesto; confirmar la migración con el líder (D3).
+- [ ] `pareto` calcula la frontera en personas-día, con la vacunación por su factor de día-persona por dosis, y deja los pesos aparte. El factor necesita su lugar en la base, con fuente o marca de supuesto: migración 040 (D3).
 
 ### E2b. Captura solo del CAPTURISTA (D1)
 

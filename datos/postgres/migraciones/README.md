@@ -40,6 +40,35 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.
 
+## Números reservados (tercer parcial)
+
+Acordados el 2026-11-17 con el líder (bloque 0 del
+[checklist](../../../docs/parciales/parcial-3/checklist.md)). Los huecos no son
+problema: ya falta la 018.
+
+| Número | Bloque | Contenido |
+|---|---|---|
+| 034 | C | Permisos de D1 y D35: crea `scenarios.approve` y `reports.upload`, quita `audit.read` al EPIDEMIOLOGO y `cases.create` al ADMINISTRADOR |
+| 038 | D | Columnas del resumen en `simulation_runs` y sus permisos para los roles `svc_*` (D28) |
+| 039 | D | Tabla de metadatos de los reportes y el rol del servicio que la escribe (D30, D35) |
+| 040 | E | Lugar del factor de día-persona por dosis, con fuente o marca de supuesto (D3) |
+| 041 | D | Retira `simulation_results`, cuando la web ya no la lea (D28) |
+| 042–044 | D | Reserva |
+| 045–046 | E | Reserva |
+| 047 | C | Reserva |
+| 048–049 | 0 | Reserva del líder (por ejemplo, `cost_unit` en pesos, D3) |
+| 050 en adelante | — | Se piden al líder |
+
+1. **Cada migración corre en cualquier orden.** El dump las tiene en el orden en
+   que se integran, y una instalación limpia las corre por número: la 034 llegará
+   al dump después de la 037, pero corre antes en una instalación limpia. Ninguna
+   depende de otra que no esté integrada, y todas son idempotentes (D7).
+2. **Cada una se copia idéntica al final de `dump_completo.sql`.** Si dos ramas
+   agregan migraciones a la vez, chocan ahí. Se conservan los dos bloques, en el
+   orden en que se integran.
+3. **El bloque usa los números de su fila.** Si se le acaban, pide el siguiente al
+   líder y se agrega a esta tabla antes de crear el archivo.
+
 ## Cómo ejecutarlas
 
 Con la base ya creada:
