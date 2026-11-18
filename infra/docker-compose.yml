@@ -102,6 +102,30 @@ services:
       retries: 60
     restart: unless-stopped
 
+  # MongoDB (D28): la serie diaria de cada corrida (series_corridas) y el historial de
+  # estado-servicios (historial_servicios). La primera vez (volumen vacío) mongo/10-usuario.js
+  # crea el usuario epidemia, el único que usan los servicios. Solo en 127.0.0.1, para mongosh.
+  mongodb:
+    image: mongo:7.0
+    # Poca caché: la VM y las máquinas del equipo comparten la memoria con 29 servicios.
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-}
+      MONGO_INITDB_DATABASE: epidemia
+      MONGO_PASSWORD: ${MONGO_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${MONGO_PUERTO_LOCAL:-27018}:27017"
+    volumes:
+      - mongo-datos:/data/db
+      - ./mongo:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' | grep -q 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
   base:
     image: epidemia/base
     build:
@@ -521,6 +545,9 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_SIMULADOR:-postgresql://svc_simulador:${DB_PASSWORD_SIMULADOR:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # La serie diaria va a series_corridas. Si MongoDB no responde, la corrida termina igual
+      # con su resumen en PostgreSQL y la serie se reintenta.
+      MONGO_URL: mongodb://epidemia:${MONGO_PASSWORD:-}@mongodb:27017/epidemia?authSource=epidemia
       # Avisa al terminar o fallar una corrida. Best-effort: si notificaciones no está arriba
       # (perfil plataforma), la corrida termina igual y solo queda un aviso en el log.
       SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
@@ -528,6 +555,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
   # El simulador de abm-ref (D22): el mismo servicio, con otro motor y su propia cola, para que
   # una corrida larga del ABM no detenga las del SEIR. No publica puerto: no es otro servicio del
@@ -570,10 +599,13 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_RESULTADOS:-postgresql://svc_resultados:${DB_PASSWORD_RESULTADOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      MONGO_URL: mongodb://epidemia:${MONGO_PASSWORD:-}@mongodb:27017/epidemia?authSource=epidemia
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
   comparacion:
     <<: *servicio-base
@@ -706,10 +738,14 @@ services:
       DATABASE_URL: ${DATABASE_URL_ESTADO_SERVICIOS:-postgresql://svc_estado_servicios:${DB_PASSWORD_ESTADO_SERVICIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       URL_SONDEO: "http://{servicio}:8000"
       URL_PUBLICA: ${URL_PUBLICA:-}
+      # El historial de los sondeos va a historial_servicios (30 días); el último, a Redis.
+      MONGO_URL: mongodb://epidemia:${MONGO_PASSWORD:-}@mongodb:27017/epidemia?authSource=epidemia
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
   # La consola es una página: el navegador llama a cada servicio con la URL que da el
   # directorio de estado-servicios, y cada servicio solo abre CORS para CONSOLE_ORIGIN.
@@ -730,4 +766,5 @@ volumes:
   flamegpu-cache:
   redis-datos:
   postgres-datos:
+  mongo-datos:
   evidencias-datos:

@@ -105,7 +105,12 @@
       <p class="subtitle">Susceptibles, Expuestos, Infecciosos, Recuperados, Hospitalizados y Fallecidos por día.</p>
     </div>
   </div>
+  {% if resultado.serie %}
   <div class="chart-wrap"><div id="curvas-chart" style="height:360px;"></div></div>
+  {% else %}
+  <div class="alert alert-warn">Las curvas no están disponibles en este momento: el servicio de
+    resultados no respondió. Los indicadores de arriba sí son los de esta corrida.</div>
+  {% endif %}
 </div>
 
 <div class="card sim-card">
@@ -172,7 +177,7 @@
 <script src="https://code.highcharts.com/highcharts.js"></script>
 <script>
 (function () {
-  {% if resultado %}
+  {% if resultado and resultado.serie %}
   var serie = {{ resultado.serie | tojson }};
   var dias = serie.map(function (f) { return f.dia; });
   function serieDe(campo) { return serie.map(function (f) { return f[campo]; }); }

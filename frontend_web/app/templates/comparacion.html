@@ -124,6 +124,10 @@
     </table>
   </div>
 
+  {% if sin_curvas %}
+  <div class="alert alert-warn">Sin curvas para {% for i in sin_curvas %}{{ i | id_sim }}{{ ", " if not loop.last }}{% endfor %}:
+    el servicio de resultados no respondió. La tabla sí muestra sus indicadores.</div>
+  {% endif %}
   <div id="comparacion-casos" style="height: 340px;"></div>
   <div id="comparacion-hospitalizaciones" style="height: 340px;"></div>
   <div id="comparacion-fallecimientos" style="height: 340px;"></div>

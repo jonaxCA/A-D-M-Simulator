@@ -5,13 +5,13 @@ import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from xml.etree.ElementTree import ParseError
 
 import requests
 from defusedxml.common import DefusedXmlException
 
-from epidemia_comun import llaves
+from epidemia_comun import llaves, mongo
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import de_xml
 from epidemia_comun.http import llamar
@@ -58,7 +58,11 @@ INTERVALO = 10
 # detenido: con Redis caído, el /health de cada servicio tarda eso en responder 503.
 ESPERA = 5
 HISTORIAL = 30
-TTL_HISTORIAL = 3600
+# El historial vive en MongoDB (D28), 30 días por su índice TTL (epidemia_comun.mongo).
+COLECCION = "historial_servicios"
+VERSION_ESQUEMA = 1
+CONOCIDAS = [1]
+VENTANA_HORAS = 24
 
 
 def intervalo():
@@ -93,10 +97,11 @@ def url_sondeo(nombre):
     return plantilla.format(servicio=nombre, puerto=SERVICIOS[nombre][1])
 
 
-def _registro(nombre, estado, causas=(), detalle=None, version=None, latencia_ms=None):
+def _registro(nombre, estado, causas=(), detalle=None, version=None, latencia_ms=None,
+              revisado=None):
     return {"nombre": nombre, "estado": estado, "causas": list(causas), "detalle": detalle,
             "version": version, "latencia_ms": latencia_ms,
-            "revisado": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+            "revisado": revisado or datetime.now(timezone.utc).isoformat(timespec="seconds")}
 
 
 def sondear(nombre):
@@ -134,14 +139,56 @@ def guardar(registros):
     def escribir(r):
         p = r.pipeline(transaction=False)
         for registro in registros:
-            valor = json.dumps(registro)
-            historial = llaves.historial_salud(registro["nombre"])
-            p.set(llaves.salud(registro["nombre"]), valor, ex=3 * intervalo())
-            p.lpush(historial, valor)
-            p.ltrim(historial, 0, HISTORIAL - 1)
-            p.expire(historial, TTL_HISTORIAL)
+            p.set(llaves.salud(registro["nombre"]), json.dumps(registro), ex=3 * intervalo())
         p.execute()
     opcional("estado-servicios: guardar la salud", escribir)
+    # Con MongoDB caído se pierde el historial de ese lapso: lo único que D19 admite perder.
+    documentos = [_documento(r) for r in registros]
+    mongo.opcional("estado-servicios: guardar el historial",
+                   lambda: mongo.coleccion(COLECCION).insert_many(documentos))
+
+
+def _documento(registro):
+    return {"servicio": registro["nombre"], "fecha": datetime.fromisoformat(registro["revisado"]),
+            "estado": registro["estado"], "latencia_ms": registro["latencia_ms"],
+            "version": registro["version"], "dependencias_caidas": registro["causas"],
+            "error": registro["detalle"], "version_esquema": VERSION_ESQUEMA}
+
+
+def historial(nombre):
+    """Los últimos sondeos de un servicio, del más reciente al más viejo, con la forma de
+    siempre (la del contrato)."""
+    cursor = mongo.coleccion(COLECCION).find(
+        {"servicio": nombre, "version_esquema": {"$in": CONOCIDAS}})
+    return [_registro(d["servicio"], d["estado"], d["dependencias_caidas"], d["error"],
+                      d["version"], d["latencia_ms"], _iso(d["fecha"]))
+            for d in cursor.sort([("fecha", -1), ("_id", -1)]).limit(HISTORIAL)]
+
+
+def disponibilidad(nombre, ahora=None):
+    """Sondeos, fracción en «ok» y latencia promedio de las últimas VENTANA_HORAS (RF-K03)."""
+    desde = (ahora or datetime.now(timezone.utc)) - timedelta(hours=VENTANA_HORAS)
+    filas = list(mongo.coleccion(COLECCION).aggregate([
+        {"$match": {"servicio": nombre, "fecha": {"$gte": desde},
+                    "version_esquema": {"$in": CONOCIDAS}}},
+        {"$group": {"_id": None, "sondeos": {"$sum": 1},
+                    "ok": {"$sum": {"$cond": [{"$eq": ["$estado", "ok"]}, 1, 0]}},
+                    "latencia": {"$avg": "$latencia_ms"}}},
+    ]))
+    resumen = {"horas": VENTANA_HORAS, "sondeos": 0, "disponibilidad": None,
+               "latencia_promedio_ms": None}
+    # Sin sondeos en la ventana no hay grupo (mongomock sí regresa uno vacío).
+    if filas and filas[0]["sondeos"]:
+        f = filas[0]
+        resumen.update(sondeos=f["sondeos"], disponibilidad=round(f["ok"] / f["sondeos"], 4),
+                       latencia_promedio_ms=None if f["latencia"] is None
+                       else round(f["latencia"], 1))
+    return resumen
+
+
+def _iso(fecha):
+    fecha = fecha if fecha.tzinfo else fecha.replace(tzinfo=timezone.utc)
+    return fecha.astimezone(timezone.utc).isoformat(timespec="seconds")
 
 
 def errores(nombres):

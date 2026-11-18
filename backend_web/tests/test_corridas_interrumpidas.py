@@ -231,8 +231,8 @@ class GuardadoBlindadoTests(_CorridasDePrueba):
         return simulaciones.simular(escenario, seed)
 
     def _resultados_guardados(self, run_id):
-        return query("SELECT count(*) AS n FROM simulation_results WHERE run_id = %s",
-                     (run_id,), one=True)["n"]
+        return query("SELECT count(*) AS n FROM simulation_runs"
+                     " WHERE id = %s AND resumen IS NOT NULL", (run_id,), one=True)["n"]
 
     def test_no_guarda_sobre_una_corrida_que_ya_no_esta_ejecutando(self):
         run_id = self._encola(301)

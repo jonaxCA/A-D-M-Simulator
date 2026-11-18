@@ -7,7 +7,7 @@ Es la primera mitad del proceso **P3** de [`procesos_v3.md`](../../arquitectura/
 ## Dependencias
 
 - RF-A (sesión y roles), RF-D (versiones aprobadas) y RF-H (la app de escritorio).
-- PostgreSQL: `simulation_batches`, `simulation_runs`, `simulation_results`, `notifications`.
+- PostgreSQL: `simulation_batches`, `simulation_runs` (con el resumen, 038), `notifications`.
 - Redis: candado por versión, una cola por motor y el avance de cada corrida.
 - MongoDB: `series_corridas` (D28).
 - Servicios: `corridas`, `simulador`, `notificaciones`.
@@ -27,7 +27,7 @@ Es la primera mitad del proceso **P3** de [`procesos_v3.md`](../../arquitectura/
 | RF-E12 | Toda corrida se puede repetir | La corrida guarda la versión congelada, la semilla y la versión del motor (`engine_version`); queda `RUN` en la auditoría al empezar y al cerrar | 3.2 | Microservicios, Bases de datos | Alta | Hecho |
 | RF-E15 | El lote elige su motor: `seir-ref`, `abm-ref` o `abm-gpu` (D2, D22, D23). Cada motor tiene su simulador y su cola | `corridas` solo acepta un motor que esté habilitado en ese despliegue. Sin GPU, `abm-ref` es el respaldo | 3.1, 3.2 | Microservicios, Escritorio | Alta | En parte: `corridas` ya lo acepta solo si `MOTORES_HABILITADOS` lo nombra; el escritorio todavía no ofrece `abm-gpu` (RF-H20) |
 | RF-E19 | Al arrancar, el simulador recupera las corridas que quedaron a medias (D19) | Las `ejecutando` se cierran como `fallido` y las `encolado` de su motor vuelven a la cola | 3.2 | Microservicios | Alta | Hecho |
-| RF-E20 | El simulador guarda el resumen de la corrida en `simulation_runs` y la serie diaria en MongoDB, en `series_corridas` (D28) | Hay un documento por día de cada corrida, que se recupera por `run_id`. `simulation_results` deja de usarse | 3.2 | Microservicios, Bases de datos | Alta | Falta (D-1): hoy todo va a `simulation_results`, y `simulation_runs` necesita una migración para el resumen |
+| RF-E20 | El simulador guarda el resumen de la corrida en `simulation_runs` y la serie diaria en MongoDB, en `series_corridas` (D28) | Hay un documento por día de cada corrida, que se recupera por `run_id`. `simulation_results` deja de usarse | 3.2 | Microservicios, Bases de datos | Alta | Hecho (D-1): el resumen va a `simulation_runs` (038) y la serie a `series_corridas`; `simulation_results` se retiró (041) |
 | RF-E21 | Dos peticiones a la vez no lanzan dos veces la misma versión | `corridas` toma un candado por versión en Redis mientras registra el lote | 3.1 | Microservicios | Media | Hecho |
 
 Las corridas pasan por los estados de la base: `encolado`, `ejecutando`, `completado`, `fallido` y `cancelado` (RN-21).

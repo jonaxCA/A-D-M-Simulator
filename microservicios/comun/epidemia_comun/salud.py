@@ -1,9 +1,9 @@
 import os
-import socket
 import time
-from urllib.parse import urlparse
 
 import requests
+
+from . import mongo
 
 DEPENDENCIAS_OPCIONALES = ("mongodb", "bucket")
 ESPERA = 2
@@ -16,13 +16,9 @@ def usadas(declaradas=()):
 
 
 def _mongodb():
-    # Basta abrir el puerto: el cliente de epidemia_comun (bloque D) puede cambiar esto por un ping.
-    url = os.environ.get("MONGO_URL")
-    if not url:
+    if not os.environ.get("MONGO_URL"):
         return "no_configurado"
-    destino = urlparse(url.split(",")[0] if "," in url else url)
-    socket.create_connection((destino.hostname, destino.port or 27017), ESPERA).close()
-    return True
+    return mongo.ping()
 
 
 def _bucket():

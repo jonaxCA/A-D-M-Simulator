@@ -97,7 +97,7 @@ Del día 0 al último, todos los campos son enteros mayores o iguales a 0. Es la
 
 Sale de la serie con las mismas definiciones en todos los motores. `seir-ref` usa
 `procesamiento/motor/indicadores.py` (`resumir`), y un motor nuevo puede usarla tal cual. Las
-columnas generadas de `simulation_results` (migración 014) leen `casos_acumulados`,
+columnas generadas de `simulation_runs` (migración 038) leen `casos_acumulados`,
 `hospitalizaciones`, `fallecimientos`, `pico_casos_activos`, `dia_pico` y `tasa_ataque`: si
 faltan, la base no da error, deja columnas vacías.
 
@@ -117,9 +117,10 @@ faltan, la base no da error, deja columnas vacías.
 
 ## Qué se guarda
 
-`simulation_results` (migración 014) guarda `engine_version`, `huella_escenario`, `resumen`,
-`serie` y `trazabilidad_parametros`. Con D28, la serie pasa a la colección `series_corridas` de
-MongoDB, un documento por día con el `run_id` y el motor.
+`simulation_runs` (migración 038) guarda `engine_version`, `huella_escenario` (como
+`scenario_checksum`), `resumen` y `trazabilidad_parametros` (como `trazabilidad`). La `serie` va a
+la colección `series_corridas` de MongoDB (D28): un documento por día con el `run_id`, la versión,
+el motor y la semilla. `simulation_results` (014) se retiró con la migración 041.
 
 ## Pendiente de acordar
 

@@ -48,7 +48,7 @@ Los estados son los de la base; el esquema son las migraciones de `datos/postgre
 |---|---|---|
 | RN-18 | Un lote se lanza sobre versiones aprobadas, con el mismo número de réplicas y las mismas semillas (1 a N) en todas (D8) | RF-E04, RF-E09 |
 | RN-19 | Cada réplica es una corrida, con su semilla. Son 30 por omisión y 100 como máximo; con menos de 30, la app pide confirmación (D8) | RF-E03 |
-| RN-20 | La serie diaria de una corrida va a MongoDB (`series_corridas`) y su resumen a `simulation_runs` (D28). Hasta que exista MongoDB, las dos van a `simulation_results` | RF-E20 |
+| RN-20 | La serie diaria de una corrida va a MongoDB (`series_corridas`) y su resumen a `simulation_runs` (D28). Si MongoDB no responde, la corrida termina con su resumen y la serie se reintenta (RNF-C08) | RF-E20 |
 | RN-21 | Una corrida pasa de `encolado` a `ejecutando`, y de ahí a `completado` o a `fallido`. Se puede cancelar (`cancelado`). No pasa de `encolado` a `completado` | RF-E02, RF-E06 |
 | RN-22 | Una comparación usa solo corridas completadas, y solo las semillas comunes a todas las versiones | RF-F06 |
 | RN-35 | Toda pantalla de resultados muestra el aviso de que no es una predicción (`AVISO_SIMULACION`) | RF-F19 |

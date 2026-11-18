@@ -596,7 +596,7 @@
       "get": {
         "summary": "Historial de salud de un servicio",
         "operationId": "historial_servicio",
-        "description": "Sus últimos sondeos, del más reciente al más viejo (hasta 30). Por servicio: `estado` (`ok`, `degradado` o `caido`), `causas` (`postgresql`, `redis` o `proceso`), `detalle` cuando está caído (`sin_conexion`, `tiempo_agotado` o `respuesta_invalida`), `version`, `latencia_ms` y `revisado` (ISO 8601, UTC).",
+        "description": "Sus últimos sondeos, del más reciente al más viejo (hasta 30), de `historial_servicios` en MongoDB, que guarda cada sondeo 30 días (D28). Por servicio: `estado` (`ok`, `degradado` o `caido`), `causas` (`postgresql`, `redis`, `mongodb`, `bucket` o `proceso`), `detalle` cuando está caído (`sin_conexion`, `tiempo_agotado` o `respuesta_invalida`), `version`, `latencia_ms` y `revisado` (ISO 8601, UTC). `resumen` agrega las últimas `horas` (24): `sondeos`, `disponibilidad` (fracción de sondeos en `ok`; `null` sin sondeos) y `latencia_promedio_ms` (`null` si ninguno respondió).",
         "parameters": [
           {
             "in": "path",
@@ -619,6 +619,12 @@
                 },
                 "example": {
                   "servicio": "series",
+                  "resumen": {
+                    "horas": 24,
+                    "sondeos": 8640,
+                    "disponibilidad": 0.9988,
+                    "latencia_promedio_ms": 4.6
+                  },
                   "sondeos": [
                     {
                       "nombre": "series",
@@ -661,7 +667,7 @@
                 },
                 "examples": {
                   "respuesta": {
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<historial><servicio>series</servicio><sondeos><sondeo><nombre>series</nombre><estado>degradado</estado><causas><causa>postgresql</causa></causas><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></sondeo><sondeo><nombre>series</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.8</latencia_ms><revisado>2026-10-20T18:29:55+00:00</revisado></sondeo><sondeo><nombre>series</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.2</latencia_ms><revisado>2026-10-20T18:29:45+00:00</revisado></sondeo></sondeos></historial>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<historial><servicio>series</servicio><resumen><horas tipo=\"numero\">24</horas><sondeos tipo=\"numero\">8640</sondeos><disponibilidad tipo=\"numero\">0.9988</disponibilidad><latencia_promedio_ms tipo=\"numero\">4.6</latencia_promedio_ms></resumen><sondeos><sondeo><nombre>series</nombre><estado>degradado</estado><causas><causa>postgresql</causa></causas><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">3.1</latencia_ms><revisado>2026-10-20T18:30:05+00:00</revisado></sondeo><sondeo><nombre>series</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">4.8</latencia_ms><revisado>2026-10-20T18:29:55+00:00</revisado></sondeo><sondeo><nombre>series</nombre><estado>ok</estado><causas /><detalle nil=\"true\" /><version>0.1.0</version><latencia_ms tipo=\"numero\">5.2</latencia_ms><revisado>2026-10-20T18:29:45+00:00</revisado></sondeo></sondeos></historial>\n"
                   }
                 }
               }
@@ -674,7 +680,7 @@
             "description": "No existe ese servicio"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "MongoDB no está disponible"
           }
         }
       }

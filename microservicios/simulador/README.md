@@ -1,8 +1,9 @@
 # EPIDEMIA - Servicio simulador
 
 Proceso trabajador: toma las corridas de su motor de su cola de Redis
-(`queue:simulaciones:<motor>`), ejecuta el motor, guarda el resultado en PostgreSQL y avisa
-a `notificaciones` al terminar o fallar. Su única ruta propia es el estado del trabajador.
+(`queue:simulaciones:<motor>`), ejecuta el motor, guarda el resumen en `simulation_runs` y la
+serie diaria en MongoDB (`series_corridas`, D28), y avisa a `notificaciones` al terminar o
+fallar. Su única ruta propia es el estado del trabajador.
 
 Hay un contenedor por motor (D2). `SIMULADOR_MOTOR` dice cuál: `seir-ref` si no viene,
 `abm-ref` o `abm-gpu`. Un motor que no se puede correr en el contenedor (`abm-gpu` sin
@@ -43,9 +44,11 @@ Más `/health`, `/docs` y `/openapi.json`, como todos.
    llama a `simulaciones.ejecutar_run()`, la misma del monolito:
    - marca `ejecutando` con la transición condicionada, así que dos contenedores nunca corren
      la misma corrida;
-   - arma la entrada del motor desde la versión aprobada, corre el motor y guarda el
-     resultado y el estado final;
-   - audita cada paso.
+   - arma la entrada del motor desde la versión aprobada, corre el motor y cierra la
+     corrida con su resumen, huella y trazabilidad en `simulation_runs`, en un solo `UPDATE`;
+   - audita cada paso;
+   - ya cerrada la corrida, llama a `al_guardar`, donde el trabajador guarda la serie en
+     `series_corridas`: un documento por día (ver `epidemia_comun/README.md`, «MongoDB»).
    El avance (10, 30, 90 y 100) va a `job:<id>:progress` (TTL de 24 h), de donde lo lee
    `corridas`.
 3. **Sirve** `/health` y `/api/v1/worker/status` con waitress.
@@ -59,6 +62,11 @@ canceló antes), no se avisa.
 Si Redis se cae, el trabajador espera 5 s y vuelve a intentar; un error en una corrida nunca
 tumba el hilo.
 
+Si MongoDB no responde, la corrida termina igual, con su resumen en PostgreSQL y su aviso
+(RNF-C08). La serie queda en `series_pendientes` y el ciclo la reintenta cada 30 s; guardar
+reemplaza por `{run_id, dia}`, así que un reintento no duplica días. Mientras tanto,
+`resultados` responde 404 a sus curvas.
+
 ### Límites conocidos
 
 - **Reinicio con varias réplicas.** Si se reinicia un `simulador` mientras otro está
@@ -67,6 +75,9 @@ tumba el hilo.
   volver a lanzar con la misma semilla.
 - **PostgreSQL caído al tomar una corrida.** La corrida sale de la cola y se queda
   `encolado` en la base. Se cancela desde `corridas` y se vuelve a lanzar.
+- **Serie pendiente y reinicio.** Las series pendientes viven en la memoria del proceso: si
+  se reinicia antes de que vuelva MongoDB, se pierden. La corrida conserva su resumen, y la
+  misma versión con la misma semilla da la misma serie: basta volver a lanzarla.
 - **Corridas encoladas antes de la cola por motor.** Hasta octubre de 2026 la cola era
   `queue:simulaciones`, sin motor. Si al actualizar quedó algo ahí, nadie lo toma: esas
   corridas siguen `encolado`; se cancelan desde `corridas` y se vuelven a lanzar con la misma
@@ -74,8 +85,9 @@ tumba el hilo.
 
 ## Variables
 
-`DATABASE_URL` (rol `svc_simulador`, migración 029), `JWT_SECRET_KEY`, `REDIS_URL` y
-`SERVICIO_NOTIFICACIONES_URL`; opcionales `JWT_ISSUER` y `JWT_AUDIENCE_INTERNA`.
+`DATABASE_URL` (rol `svc_simulador`, migraciones 029 y 038), `JWT_SECRET_KEY`, `REDIS_URL`,
+`MONGO_URL` y `SERVICIO_NOTIFICACIONES_URL`; opcionales `JWT_ISSUER`, `JWT_AUDIENCE_INTERNA` y
+`MONGO_TIMEOUT_MS`.
 
 ## Probarlo
 

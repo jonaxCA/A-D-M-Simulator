@@ -333,7 +333,15 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
 
     def test_ejecutar_run_completa_con_el_escenario_de_demo(self):
         run_id = self._encola(seed=55555)
-        simulaciones.ejecutar_run(run_id, demora_seg=0)
+        guardadas = []
+
+        def al_guardar(run, motor, resultado):
+            # La serie se entrega con la corrida ya cerrada y su resumen en la base.
+            guardadas.append((run["id"], motor, len(resultado["serie"]),
+                              queries.get_run(run_id)["status"]))
+
+        self.assertEqual(simulaciones.ejecutar_run(run_id, demora_seg=0, al_guardar=al_guardar),
+                         "completado")
 
         run = queries.get_run(run_id)
         self.assertEqual(run["status"], "completado")
@@ -345,7 +353,21 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
         for clave in ("casos_acumulados", "casos_activos_final", "pico_casos_activos",
                      "dia_pico", "hospitalizaciones", "fallecimientos", "tasa_ataque"):
             self.assertIn(clave, resultado["resumen"])
-        self.assertEqual(len(resultado["serie"]), run["horizon_days"] + 1)
+        self.assertNotIn("serie", resultado)
+        self.assertEqual(guardadas, [(run_id, "seir-ref", run["horizon_days"] + 1, "completado")])
+
+    def test_si_guardar_la_serie_falla_la_corrida_sigue_completada(self):
+        """RNF-C08: con MongoDB caido, la corrida termina con su resumen."""
+        run_id = self._encola(seed=55558)
+
+        def al_guardar(run, motor, resultado):
+            raise RuntimeError("MongoDB no responde (prueba)")
+
+        with self.assertLogs("backend_web.simulaciones", level="ERROR"):
+            final = simulaciones.ejecutar_run(run_id, demora_seg=0, al_guardar=al_guardar)
+        self.assertEqual(final, "completado")
+        self.assertEqual(queries.get_run(run_id)["status"], "completado")
+        self.assertIsNotNone(queries.get_resultado_run(run_id))
 
     def test_ejecutar_run_forzado_queda_en_error_con_mensaje(self):
         run_id = self._encola(seed=55556)
@@ -429,10 +451,10 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
         self.assertIsNone(run["finished_at"])
         self.assertIsNone(queries.get_resultado_run(run_id))
 
-    def test_guardar_resultado_run_hace_rollback_si_el_insert_falla(self):
-        """ck_simulation_results_checksum exige un sha256 hexadecimal (o NULL);
-        un huella_escenario invalido tiene que tronar el INSERT SIN dejar la
-        corrida marcada 'completado' (ver el fix de guardar_resultado_run en
+    def test_guardar_resultado_run_hace_rollback_si_el_update_falla(self):
+        """ck_simulation_runs_checksum (038) exige un sha256 hexadecimal (o
+        NULL); un huella_escenario invalido tiene que tronar el UPDATE SIN dejar
+        la corrida marcada 'completado' (ver el fix de guardar_resultado_run en
         queries.py: rollback explicito antes de relanzar)."""
         run_id = self._encola(seed=90004)
         queries.marcar_run_ejecutando(run_id)

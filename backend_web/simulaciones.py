@@ -216,7 +216,7 @@ def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
 # ---------------------------------------------------------------------------
 # Corrida en segundo plano
 # ---------------------------------------------------------------------------
-def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None):
+def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None, al_guardar=None):
     """Corre una simulation_run ya encolada. Lo llama el trabajador del
     simulador (microservicios/simulador/trabajador.py) por cada corrida que
     toma de la cola; la web ya no lanza corridas (D4).
@@ -229,7 +229,10 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None):
     pantalla de detalle (que hace polling cada segundo); en pruebas se pasa 0.
 
     `al_avanzar(porcentaje)` recibe el avance de cada etapa; el microservicio
-    simulador lo escribe en Redis. Devuelve el estado en que esta llamada dejo
+    simulador lo escribe en Redis. `al_guardar(run, motor, resultado)` se llama
+    con la corrida ya cerrada como completada; el simulador guarda ahi la serie
+    diaria en MongoDB (D28). Si falla, la corrida sigue completada con su
+    resumen (RNF-C08). Devuelve el estado en que esta llamada dejo
     la corrida ('completado' o 'fallido'), o None si no la llego a cerrar
     (no existia, otro proceso la tomo o la cerro antes).
     """
@@ -298,6 +301,12 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None):
                       "engine_version": resultado["engine_version"],
                       "indicadores": resultado["resumen"],
                   })
+        if al_guardar:
+            try:
+                al_guardar(run, motor.nombre, resultado)
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "La corrida %s quedo completada, pero no se pudo guardar su serie.", run_id)
         avanza(100)
         return "completado"
 

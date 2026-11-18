@@ -271,10 +271,10 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.») o si MongoDB, donde está la serie (D28), no responde (detail «MongoDB no está disponible.»)."
           },
           "404": {
-            "description": "No existe la corrida o no tiene resultados guardados"
+            "description": "No existe la corrida, no tiene resultados guardados o su serie no está en MongoDB (detail «La corrida no tiene su serie guardada.»)"
           },
           "409": {
             "description": "La corrida no está completada"
@@ -446,10 +446,10 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.») o si MongoDB, donde está la serie (D28), no responde (detail «MongoDB no está disponible.»)."
           },
           "404": {
-            "description": "No existe la corrida o no tiene resultados guardados"
+            "description": "No existe la corrida, no tiene resultados guardados o su serie no está en MongoDB (detail «La corrida no tiene su serie guardada.»)"
           },
           "409": {
             "description": "La corrida no está completada"
@@ -476,7 +476,7 @@
       "get": {
         "summary": "Indicadores de una corrida",
         "operationId": "consultar_indicadores",
-        "description": "Casos acumulados, picos, hospitalizaciones, fallecimientos, tasa de ataque y el desglose por grupo de edad. Siempre incluye aviso: los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR. Se guarda 300 s en la caché de Redis.",
+        "description": "Casos acumulados, picos, hospitalizaciones, fallecimientos, tasa de ataque y el desglose por grupo de edad. Siempre incluye aviso: los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR. Se guarda 300 s en la caché de Redis. Sale solo de PostgreSQL: responde aunque MongoDB esté caído.",
         "parameters": [
           {
             "in": "path",

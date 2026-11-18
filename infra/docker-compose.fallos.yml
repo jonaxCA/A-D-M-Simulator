@@ -1,20 +1,12 @@
-# SOLO PARA LA DEMOSTRACIÓN DE FALLOS (N5), hasta que el bloque D agregue MongoDB y el bucket
-# de verdad al compose principal. Agrega un MongoDB y un emulador del bucket (fake-gcs-server)
-# y los declara en dos servicios para que su /health y el panel de estado-servicios los
-# revisen. Los servicios todavía no escriben nada en ellos: solo prueban la salud.
+# SOLO PARA LA DEMOSTRACIÓN DE FALLOS (N5), hasta que el bloque D agregue el bucket de verdad al
+# compose principal (D2). Agrega un emulador del bucket (fake-gcs-server) y lo declara en
+# evidencias para que su /health y el panel de estado-servicios lo revisen. evidencias todavía
+# no escribe nada en él: solo prueba la salud. MongoDB ya está en el compose principal (D1).
 # Se usa encima del compose normal:
-#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.fallos.yml --profile '*' up -d --wait
-# Cuando el bloque D los agregue al compose principal, borra este archivo.
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.fallos.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --wait
+# Sin --profile '*': activaría el perfil gpu, que sin una GPU de NVIDIA falla.
+# Cuando el bloque D agregue el bucket al compose principal, borra este archivo.
 services:
-  mongodb:
-    image: mongo:7
-    healthcheck:
-      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' | grep -q 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    restart: unless-stopped
-
   bucket:
     image: fsouza/fake-gcs-server
     command: ["-scheme", "http", "-port", "4443", "-backend", "memory"]
@@ -24,14 +16,6 @@ services:
       timeout: 5s
       retries: 20
     restart: unless-stopped
-
-  resultados:
-    environment:
-      DEPENDENCIAS: mongodb
-      MONGO_URL: mongodb://mongodb:27017/epidemia
-    depends_on:
-      mongodb:
-        condition: service_healthy
 
   evidencias:
     environment:

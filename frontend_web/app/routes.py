@@ -869,6 +869,21 @@ def simulaciones_lista():
     )
 
 
+def _sin_acceso_a_resultados(sin_acceso):
+    if sin_acceso.args[0] == 401:
+        return redirect(url_for("main.login"))
+    log_audit(contexto_de_peticion(), "PERMISSION_DENIED", "simulations", entity_id=request.path)
+    flash(MENSAJE_SIN_PERMISO, "error")
+    return redirect(url_for("main.dashboard", denegado=1))
+
+
+def _curvas(run_id):
+    """La serie de una corrida, que vive en MongoDB y solo la da resultados (D28); None si
+    resultados no responde. Lanza SinAcceso con un 401 o un 403."""
+    return resultados.curvas_de_corrida(request.cookies.get(COOKIE_NAME), run_id,
+                                        request.headers.get("X-Correlation-ID"))
+
+
 @bp.route("/simulaciones/corridas/<int:run_id>")
 @roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
 def simulacion_detalle(run_id):
@@ -881,17 +896,10 @@ def simulacion_detalle(run_id):
     equivalente = None
     if resultado:
         try:
-            serie = resultados.curvas_de_corrida(
-                request.cookies.get(COOKIE_NAME), run_id, request.headers.get("X-Correlation-ID"))
+            # Sin resultados, el resumen sin curvas (RF-F21).
+            resultado = {**resultado, "serie": _curvas(run_id)}
         except resultados.SinAcceso as sin_acceso:
-            if sin_acceso.args[0] == 401:
-                return redirect(url_for("main.login"))
-            log_audit(contexto_de_peticion(), "PERMISSION_DENIED", "simulations",
-                      entity_id=request.path)
-            flash(MENSAJE_SIN_PERMISO, "error")
-            return redirect(url_for("main.dashboard", denegado=1))
-        if serie is not None:
-            resultado = {**resultado, "serie": serie}
+            return _sin_acceso_a_resultados(sin_acceso)
         equivalente = queries.buscar_run_equivalente(
             run_id, run["scenario_version_id"], run["seed"], resultado["scenario_checksum"],
         )
@@ -1181,6 +1189,10 @@ def comparacion():
     seleccionados = request.args.getlist("run_id")
     run_ids = formularios.ids_de(seleccionados)
     corridas = queries.get_corridas_para_comparar(run_ids)
+    try:
+        corridas = [dict(c, serie=_curvas(c["id"])) for c in corridas]
+    except resultados.SinAcceso as sin_acceso:
+        return _sin_acceso_a_resultados(sin_acceso)
     comparacion_pareto = None
     errores_pareto = []
     if len(seleccionados) >= 2:
@@ -1191,6 +1203,7 @@ def comparacion():
         "comparacion.html",
         runs=queries.get_runs_completados_para_comparar(),
         corridas=corridas,
+        sin_curvas=[c["id"] for c in corridas if c["serie"] is None],
         seleccionados=seleccionados,
         comparacion_pareto=comparacion_pareto,
         errores_pareto=errores_pareto,

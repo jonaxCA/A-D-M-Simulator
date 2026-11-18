@@ -1,11 +1,9 @@
-import json
-
 from flask import request
 
-from epidemia_comun import llaves
+from epidemia_comun import mongo
 from epidemia_comun.errores import ErrorAPI, respuesta_error
 from epidemia_comun.formatos import responder
-from epidemia_comun.redis_compartido import RedisNoDisponible, requerido
+from epidemia_comun.redis_compartido import RedisNoDisponible
 from . import sondeo
 
 ESTADOS = ("ok", "degradado", "caido")
@@ -39,11 +37,13 @@ def registrar(app):
         resumen = {e: sum(s["estado"] == e for s in servicios) for e in ESTADOS}
         return responder({"resumen": resumen, "servicios": servicios}, "estado_servicios")
 
+    # El historial sale de MongoDB (D28): con MongoDB caído responde 503, aunque Redis esté bien.
     @app.get("/api/v1/services/<nombre>/history")
     def historial(nombre):
         if nombre not in sondeo.SERVICIOS:
             raise ErrorAPI(404, "NO_ENCONTRADO", "No existe el servicio %s." % nombre)
-        sondeos = requerido("estado-servicios: historial",
-                            lambda r: r.lrange(llaves.historial_salud(nombre), 0, -1))
-        return responder({"servicio": nombre, "sondeos": [json.loads(s) for s in sondeos]},
+        sondeos = mongo.requerido("estado-servicios: historial", lambda: sondeo.historial(nombre))
+        resumen = mongo.requerido("estado-servicios: disponibilidad",
+                                  lambda: sondeo.disponibilidad(nombre))
+        return responder({"servicio": nombre, "resumen": resumen, "sondeos": sondeos},
                          "historial")

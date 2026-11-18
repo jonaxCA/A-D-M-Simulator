@@ -113,7 +113,7 @@ class SimulacionesRutasTests(RutasConCorridas):
             self.assertIn(b'"S": 1', detalle.data)
             self.assertIn(simulaciones.AVISO_SIMULACION.encode("utf-8"), detalle.data)
 
-    def test_resultados_sin_respuesta_cae_a_postgres(self):
+    def test_resultados_sin_respuesta_muestra_el_resumen_sin_curvas(self):
         run_id = self._corre(424244)
         with self.app.test_client() as client:
             self._login(client, "alex.cavazos", "Epidemia2026!")
@@ -122,6 +122,8 @@ class SimulacionesRutasTests(RutasConCorridas):
                 detalle = client.get(f"/simulaciones/corridas/{run_id}")
             self.assertEqual(detalle.status_code, 200)
             self.assertIn(b"CASOS ACUMULADOS", detalle.data)
+            self.assertIn("Las curvas no están disponibles".encode("utf-8"), detalle.data)
+            self.assertNotIn(b'id="curvas-chart"', detalle.data)
 
     def test_resultados_niega_el_acceso(self):
         run_id = self._corre(424245)
