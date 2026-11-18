@@ -89,7 +89,8 @@ def test_sin_token_es_401(cliente):
     assert cliente.post("/api/v1/cases/%d/attachments" % PROPIO, data=JPEG).status_code == 401
 
 
-@pytest.mark.parametrize("rol", ["ANALISTA", "EPIDEMIOLOGO"])
+# El ADMINISTRADOR tampoco captura (D1).
+@pytest.mark.parametrize("rol", ["ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR"])
 def test_quien_no_captura_no_sube(cliente, token, mundo, rol):
     assert subir(cliente, token((rol,))).status_code == 403
     assert mundo.guardadas == []
@@ -110,11 +111,10 @@ def test_el_tipo_sale_del_contenido_no_del_encabezado(cliente, capturista):
     assert subir(cliente, capturista, datos=JPEG, tipo="application/octet-stream").status_code == 201
 
 
-def test_el_caso_de_otra_persona_solo_lo_toca_administrador(cliente, capturista, token, mundo):
+def test_el_caso_de_otra_persona_no_recibe_evidencias(cliente, capturista, mundo):
     r = subir(cliente, capturista, caso=AJENO)
     assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE"
     assert mundo.guardadas == []
-    assert subir(cliente, token(("ADMINISTRADOR",)), caso=AJENO).status_code == 201
 
 
 @pytest.mark.parametrize("datos,tipo", [(b"", "image/jpeg"), (b"GIF89a" + b"x" * 20, "image/gif"),

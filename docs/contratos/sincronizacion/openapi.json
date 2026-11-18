@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - sincronizacion",
     "version": "0.1.0",
-    "description": "Recibe lotes de casos capturados sin conexión y los manda uno por uno al servicio casos (JSON, con el token de quien sincroniza). Reenviar el mismo lote no duplica: el resultado se guarda en Redis (sync:lote:<batch_id>, 7 días) y local_uuid evita duplicados en casos. Roles: CAPTURISTA y ADMINISTRADOR. XML por defecto y JSON con ?format=json o Accept: application/json; cuerpos en los dos formatos (en XML, los casos van como <cases><item>...</item></cases>). XSD en lote.xsd (raíz lote en la petición y resultado_lote en la respuesta)."
+    "description": "Recibe lotes de casos capturados sin conexión y los manda uno por uno al servicio casos (JSON, con el token de quien sincroniza). Reenviar el mismo lote no duplica: el resultado se guarda en Redis (sync:lote:<batch_id>, 7 días) y local_uuid evita duplicados en casos. Roles: enviar = solo CAPTURISTA (D1); consultar = CAPTURISTA y ADMINISTRADOR. XML por defecto y JSON con ?format=json o Accept: application/json; cuerpos en los dos formatos (en XML, los casos van como <cases><item>...</item></cases>). XSD en lote.xsd (raíz lote en la petición y resultado_lote en la respuesta)."
   },
   "servers": [
     {
@@ -255,7 +255,7 @@
         "tags": [
           "sincronizacion"
         ],
-        "description": "Llama a POST /api/v1/cases de casos, un caso a la vez y sin reintentos. creado = casos respondió 201; duplicado = 200 (ya existía ese local_uuid); rechazado = 400/409/415/422 de casos, con sus errores y su codigo (CONFLICTO si el dispositivo está revocado, DATOS_INVALIDOS si hay que corregir el caso). Si casos no responde, o responde 5xx, todo el lote es 503 y no se guarda (se puede reenviar: local_uuid evita duplicar lo ya creado, que saldrá como duplicado). Un candado por lote (409 si otra petición lo está procesando). Deja un SYNC en audit_log con los conteos. Roles: CAPTURISTA, ADMINISTRADOR. Máximo 100 casos.",
+        "description": "Llama a POST /api/v1/cases de casos, un caso a la vez y sin reintentos. creado = casos respondió 201; duplicado = 200 (ya existía ese local_uuid); rechazado = 400/409/415/422 de casos, con sus errores y su codigo (CONFLICTO si el dispositivo está revocado, DATOS_INVALIDOS si hay que corregir el caso). Si casos no responde, o responde 5xx, todo el lote es 503 y no se guarda (se puede reenviar: local_uuid evita duplicar lo ya creado, que saldrá como duplicado). Un candado por lote (409 si otra petición lo está procesando). Deja un SYNC en audit_log con los conteos. Roles: CAPTURISTA (D1). Máximo 100 casos.",
         "parameters": [
           {
             "in": "query",

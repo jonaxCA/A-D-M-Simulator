@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - casos",
     "version": "0.1.0",
-    "description": "Registra y consulta casos epidemiológicos (tabla cases). Reutiliza valida_caso del monolito. XML por defecto y JSON con ?format=json o Accept: application/json; los cuerpos se aceptan en los dos formatos. Roles: crear = CAPTURISTA y ADMINISTRADOR; consultar = los cuatro roles (matriz de permisos cases.create / cases.read). Los ejemplos están en docs/contratos/casos/ejemplos; el XSD del recurso, en caso.xsd."
+    "description": "Registra y consulta casos epidemiológicos (tabla cases). Reutiliza valida_caso del monolito. XML por defecto y JSON con ?format=json o Accept: application/json; los cuerpos se aceptan en los dos formatos. Roles: crear = solo CAPTURISTA (D1); consultar = los cuatro roles (matriz de permisos cases.create / cases.read). Los ejemplos están en docs/contratos/casos/ejemplos; el XSD del recurso, en caso.xsd."
   },
   "servers": [
     {
@@ -318,7 +318,7 @@
         "tags": [
           "casos"
         ],
-        "description": "Valida con las reglas del monolito (catálogo vigente de enfermedades y municipios, fechas, rangos, coordenadas completas) e inserta con status pendiente; reported_by sale del token y queda un CREATE en audit_log en la misma transacción. Si local_uuid ya existe regresa 200 con el caso existente y duplicado=true (sin validar ni escribir); si no se manda, el servicio genera uno. Roles: CAPTURISTA, ADMINISTRADOR.",
+        "description": "Valida con las reglas del monolito (catálogo vigente de enfermedades y municipios, fechas, rangos, coordenadas completas) e inserta con status pendiente; reported_by sale del token y queda un CREATE en audit_log en la misma transacción. Si local_uuid ya existe regresa 200 con el caso existente y duplicado=true (sin validar ni escribir); si no se manda, el servicio genera uno. Roles: CAPTURISTA (D1: el ADMINISTRADOR no captura).",
         "parameters": [
           {
             "in": "query",

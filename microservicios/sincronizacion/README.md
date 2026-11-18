@@ -8,7 +8,7 @@ con el token de quien sincroniza). No escribe tablas de casos.
 
 | Ruta | Roles | Qué hace |
 |---|---|---|
-| `POST /sync/cases` | CAPTURISTA, ADMINISTRADOR | Procesa el lote y regresa el resultado de cada caso. |
+| `POST /sync/cases` | CAPTURISTA (D1: el ADMINISTRADOR no captura) | Procesa el lote y regresa el resultado de cada caso. |
 | `GET /sync/batches/{id}` | CAPTURISTA, ADMINISTRADOR | Resultado guardado de un lote (404 si no existe, venció o es de otra persona; el ADMINISTRADOR ve todos). |
 
 ## Cuerpo

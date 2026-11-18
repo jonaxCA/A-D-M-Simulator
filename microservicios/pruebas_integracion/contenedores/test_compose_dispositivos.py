@@ -25,9 +25,10 @@ def test_un_telefono_revocado_ya_no_captura(api, sesion, catalogo):
     r = api("casos", "POST", "/api/v1/cases", karla["access"], json=dict(caso(), device_id=telefono["id"]))
     assert r.status_code == 201, r.text
     assert r.json()["device_id"] == telefono["id"]
-    # El teléfono de karla no sirve para capturar con otra cuenta.
+    # El ADMINISTRADOR no captura (D1). Que el teléfono de karla no sirva con otra cuenta lo
+    # cubre test_dispositivo_inexistente_ajeno_o_revocado_no_captura de casos.
     r = api("casos", "POST", "/api/v1/cases", admin["access"], json=dict(caso(), device_id=telefono["id"]))
-    assert r.status_code == 422, r.text
+    assert r.status_code == 403 and r.json()["codigo"] == "PERMISO_INSUFICIENTE", r.text
 
     r = api("dispositivos", "POST", "/api/v1/devices/%d/revoke" % telefono["id"], karla["access"])
     assert r.status_code == 200 and r.json()["is_revoked"] is True

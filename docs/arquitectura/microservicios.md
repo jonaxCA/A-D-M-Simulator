@@ -86,7 +86,7 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
   con `codigo` `CONFLICTO`, que los distingue de un caso con datos malos (`DATOS_INVALIDOS`).
 - `evidencias` guarda fotos (JPEG, PNG, WebP) y PDF de hasta 20 MB en su volumen de Docker, en
   lugar de Cloud Storage; la base guarda ruta, tipo, tamaño y huella SHA-256. El tipo sale del
-  contenido. Las sube quien reportó el caso o ADMINISTRADOR, las ven los cuatro roles que leen
+  contenido. Las sube quien reportó el caso (D1: el ADMINISTRADOR no captura), las ven los cuatro roles que leen
   casos (siempre con token) y solo ADMINISTRADOR las borra. La misma foto subida dos veces al
   mismo caso no se duplica, así que la app puede reintentar.
 - `vacunas` registra los lotes que la app lee por QR o código de barras (`lot_code` es único)

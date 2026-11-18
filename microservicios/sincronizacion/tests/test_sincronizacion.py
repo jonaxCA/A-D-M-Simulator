@@ -313,6 +313,15 @@ def test_sin_token_401_y_rol_403(cliente, token):
         assert cliente.get("/api/v1/sync/batches/" + LOTE, headers=h).status_code == 403
 
 
+def test_administrador_consulta_pero_no_envia(cliente, token, casos):
+    # Solo el CAPTURISTA captura (D1); el ADMINISTRADOR sigue viendo cualquier lote.
+    admin = token(roles=("ADMINISTRADOR",), sub="9")
+    r = enviar(cliente, admin)
+    assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE"
+    assert casos.llamadas == []
+    assert cliente.get("/api/v1/sync/batches/" + LOTE, headers=admin).status_code == 404
+
+
 def test_consultar_lote(cliente, captura):
     enviado = enviar(cliente, captura).get_json()
     r = cliente.get("/api/v1/sync/batches/" + LOTE + "?format=json", headers=captura)

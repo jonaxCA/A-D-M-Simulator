@@ -18,7 +18,9 @@ from epidemia_comun.validaciones import diccionario
 
 log = logging.getLogger(__name__)
 
-ROLES = ("CAPTURISTA", "ADMINISTRADOR")
+# Solo el CAPTURISTA captura (D1); el ADMINISTRADOR consulta cualquier lote.
+ROLES_ENVIAN = ("CAPTURISTA",)
+ROLES_LEEN = ("CAPTURISTA", "ADMINISTRADOR")
 MAXIMO_CASOS = 100
 # Cuánto se recuerda un lote: una semana cubre un dispositivo sin red varios días.
 TTL_LOTE = 7 * 24 * 3600
@@ -163,12 +165,12 @@ def registrar(app):
         guardado = _leer_guardado(lote_id)
         if guardado is None:
             return None
-        if guardado.get("user_id") != g.contexto.user_id and "ADMINISTRADOR" not in g.usuario.get("roles", []):
+        if guardado.get("user_id") != g.contexto.user_id:
             raise ErrorAPI(409, "CONFLICTO", "Ese lote ya fue enviado por otra persona.")
         return responder(_publico(guardado, True), "resultado_lote")
 
     @app.post("/api/v1/sync/cases")
-    @requiere_token(roles=ROLES)
+    @requiere_token(roles=ROLES_ENVIAN)
     def enviar():
         lote_id, device_id, casos = _leer_lote(leer_cuerpo())
         previo = _repetido_o_none(lote_id)
@@ -208,7 +210,7 @@ def registrar(app):
         return responder(_publico(guardado, False), "resultado_lote")
 
     @app.get("/api/v1/sync/batches/<batch_id>")
-    @requiere_token(roles=ROLES)
+    @requiere_token(roles=ROLES_LEEN)
     def consultar(batch_id):
         lote_id = _uuid(batch_id, "batch_id")
         guardado = _leer_guardado(lote_id)
