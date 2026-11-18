@@ -36,8 +36,9 @@ D1 quedó aceptada el 2026-11-07 (ver [`D01-permisos-y-auditoria.md`](D01-permis
 
 ### Código
 
-- **Migración 034** (siguiente número libre; 031 a 033 son de D27 y no se edita la 010): crear `scenarios.approve`, darlo a EPIDEMIOLOGO y ADMINISTRADOR, y quitar `audit.read` al EPIDEMIOLOGO.
+- **Migración 034** (siguiente número libre; 031 a 033 son de D27 y no se edita la 010): crear `scenarios.approve`, darlo a EPIDEMIOLOGO y ADMINISTRADOR, quitar `audit.read` al EPIDEMIOLOGO, quitar `cases.create` al ADMINISTRADOR y crear `reports.upload` para ANALISTA y ADMINISTRADOR (D35).
 - **Quitar la captura de casos de la web:** la ruta `/reportes/nuevo`, sus enlaces y su plantilla. `cases.create` sigue para el CAPTURISTA, en la app móvil y en la API.
+- **Servicios de captura:** quitar al ADMINISTRADOR de `ROLES_ESCRITURA` en `casos`, de `ROLES` en `sincronizacion` y de `ROLES_SUBEN` en `evidencias`. `ROLES_BORRAN` se queda.
 - **Candados por permiso** (propuesta, pasos 4 a 7): leer los permisos al iniciar sesión y guardarlos en el JWT (`perms`) en `backend_web/auth.py`; crear `requiere_permiso(codigo)` en `frontend_web/app/permisos.py`, que responde 403 y registra `PERMISSION_DENIED` con `log_audit`; cambiar el candado de cada ruta según la tabla de la propuesta; exponer `puede()` a las plantillas.
 - **Cuenta de prueba de CAPTURISTA** (propuesta, paso 8) en `datos/postgres/semillas/demo_datos_nl.sql`. Sirve para la API y, en la web, solo para el tablero y el mapa (D1, 2026-11-16).
 - **Verificación:** `grep -n "roles_required\|admin_required" frontend_web/app/routes.py` no regresa nada.
@@ -48,7 +49,7 @@ D1 quedó aceptada el 2026-11-07 (ver [`D01-permisos-y-auditoria.md`](D01-permis
 
 ### Preguntas abiertas
 
-- ¿El ADMINISTRADOR también captura casos? La respuesta 1 dice solo CAPTURISTA. La matriz le quita la captura, pero la migración 010 le da todos los permisos, incluido `cases.create`.
+- ~~¿El ADMINISTRADOR también captura casos?~~ Resuelto el 2026-11-17: no. La 034 le quita `cases.create`.
 - ~~¿El login web rechaza al CAPTURISTA, o le deja entrar y le niega cada pantalla con 403?~~ Resuelto el 2026-11-16: entra, ve el tablero y el mapa, y lo demás responde 403.
 
 ### Efectos en otras decisiones
@@ -106,6 +107,7 @@ D23 quedó aceptada el 2026-11-08 (ver [`D23-tecnologia-del-abm.md`](D23-tecnolo
 ### Costos
 
 - Estimar el costo de la máquina con GPU (horas encendidas) y compararlo con los créditos: 100 USD por integrante, unos 600 USD en total si somos seis, como dice `AGENTS.md`. Registrar el resultado en D23.
+- **Cuota de GPU:** pedir desde ya el aumento de cuota de GPU del proyecto; suele empezar en cero. Confirmar qué cuenta de facturación paga la máquina: cada cupón está en la cuenta de su dueño y un proyecto se liga a una sola.
 
 ## Cambios pendientes por D3
 
@@ -117,6 +119,7 @@ D3 quedó aceptada el 2026-11-08 (ver [`D03-unidad-de-costo.md`](D03-unidad-de-c
 2. **Hecho. Pareto fuera del motor:** mover `pareto.py` a `procesamiento/analitica/`. Solo puede importar los nombres públicos del motor (`resolver`, `huella_escenario`, `INTERVENCIONES_CAPA`, `EscenarioInvalido`) y el módulo de trazabilidad. En lugar de `huella_escenario` usa `huella` de `procesamiento/contrato.py`, que es la misma para los tres motores; `resolver` e `INTERVENCIONES_CAPA` se exportan desde `procesamiento.motor`.
 3. **Hecho. Imports:** quitar `comparar`, `costo_escenario` y `frontera_pareto` de `motor/__init__.py`, y actualizar los imports de `backend_web/simulaciones.py` y de los servicios `pareto` y `comparacion`.
 4. **Hecho. Verificación:** ningún import de `procesamiento/analitica/` trae un nombre con guion bajo, y `python -m pytest procesamiento/tests` pasa.
+5. **Unidades de la frontera:** hoy la frontera usa el total de `costo_escenario` (`procesamiento/analitica/pareto.py`), que suma el costo por habitante-día y el costo por dosis. Por D3 va en personas-día, con la vacunación por su factor de día-persona por dosis, y los pesos aparte. El escritorio toma el costo de `pareto`, así que no cambia por su cuenta.
 
 ### Documentos y datos
 
@@ -126,7 +129,7 @@ D3 quedó aceptada el 2026-11-08 (ver [`D03-unidad-de-costo.md`](D03-unidad-de-c
 
 ### Preguntas abiertas
 
-- ¿Cómo entra la vacunación a la frontera? La propuesta da dos opciones: como indicador aparte (dosis), o sin costo en la frontera.
+- ~~¿Cómo entra la vacunación a la frontera?~~ Resuelto el 2026-11-17: como fracción de día-persona por dosis, marcada como supuesto (ver D3).
 
 ## Cambios pendientes por D7
 
@@ -177,8 +180,8 @@ D18 y D20 quedaron aceptadas el 2026-11-08 (ver [`D18-un-postgres-un-rol-por-ser
 
 ### Preguntas abiertas
 
-- **Rol del monolito (D18):** hoy la web corre como `epidemia_app`, que se crea a mano (`docs/INSTALACION.md`) y tiene SELECT, INSERT, UPDATE y DELETE sobre todas las tablas. Las migraciones 026 a 030 dicen que no lo tocan. La regla «cada servicio escribe solo en las tablas de su dominio» no lo cubre, porque la web no es un servicio. ¿La web sigue con ese rol o recibe uno propio, con permisos acotados?
-- **Roles `app_*` (D18):** la migración 009 crea `app_web`, `app_surveillance`, `app_analytics` y `app_monitoring`, y ningún código los usa. ¿Se retiran? Sería con una migración nueva; no se edita la 009.
+- ~~**Rol del monolito (D18)**~~ Resuelto el 2026-11-17: la web sigue con `epidemia_app` en este parcial. Hoy la web corre como `epidemia_app`, que se crea a mano (`docs/INSTALACION.md`) y tiene SELECT, INSERT, UPDATE y DELETE sobre todas las tablas. Las migraciones 026 a 030 dicen que no lo tocan. La regla «cada servicio escribe solo en las tablas de su dominio» no lo cubre, porque la web no es un servicio.
+- ~~**Roles `app_*` (D18)**~~ Resuelto el 2026-11-17: no se retiran. La migración 009 crea `app_web`, `app_surveillance`, `app_analytics` y `app_monitoring`, y ningún código los usa.
 - **Reglas de negocio en dos caminos (D20):** la web y los servicios `svc_*` escriben las mismas tablas. Por ejemplo, `backend_web/queries.py` (`crear_corrida`) y `svc_corridas` (migraciones 026 a 030) crean lotes. Con la opción A, cada regla que toque esas tablas tiene que valer en ambos caminos. Revisar cuáles ya están en los dos lados y cuáles solo en uno.
 
 ## Cambios pendientes por D25
@@ -212,4 +215,4 @@ D26 quedó aceptada el 2026-11-08 con la opción A: certificado de Let's Encrypt
 
 ### Preguntas abiertas
 
-- ¿Quién consigue el dominio y con qué proveedor? Sin eso no se puede obtener el certificado.
+- ~~¿Quién consigue el dominio y con qué proveedor?~~ Delegado el 2026-11-17 al bloque F, que elige el proveedor.

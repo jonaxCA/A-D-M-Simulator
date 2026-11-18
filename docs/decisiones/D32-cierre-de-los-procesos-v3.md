@@ -16,7 +16,7 @@ Fecha: 2026-11-16 · Estado: Aceptada
 - **Archivo de P2:** P2 queda sin bucket. P1 (fotos) y P3 (reporte) ya lo usan, y el XML se puede volver a generar desde la versión en PostgreSQL. Guardarlo en GCS queda solo si sobra tiempo.
 
 ## Consecuencias
-- Hay que implementar el aviso en `sincronizacion`, que hoy no llama a `notificaciones`. El CHECK `ck_notifications_type` (migración 029) no tiene un tipo para casos: se usa `SYSTEM` o se agrega uno con una migración nueva.
+- Hay que implementar el aviso en `sincronizacion`, que hoy no llama a `notificaciones`. El CHECK `ck_notifications_type` (migración 029) no tenía un tipo para casos: la migración 037 agregó `NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED` (2026-11-16).
 - C9 sale de `brechas_v3.md` sin código nuevo.
 - Quien implementa D30 solo atiende fotos y reportes.
 - Si el profesor pide archivo en los tres procesos, el XML de intercambio es el candidato.

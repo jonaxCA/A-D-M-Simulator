@@ -20,7 +20,7 @@ Let's Encrypt no emite certificados para localhost, así que la opción A de D26
 
 
 ## Consecuencias
-- Hace falta un dominio, propio o gratuito, que apunte a la IP fija de la máquina. nginx renueva el certificado solo, con certbot.
+- Hace falta un dominio, propio o gratuito, que apunte a la IP fija de la máquina. Lo consigue el bloque F (2026-11-17), que confirma que el proveedor permite Let's Encrypt y quién lo paga. nginx renueva el certificado solo, con certbot.
 - **Android:** la raíz de Let's Encrypt (ISRG Root X1) viene de fábrica desde Android 7.1.1 (API 25), pero la app acepta desde Android 7.0 (`minSdk 24`). Por eso la app trae esa raíz (`frontend_movil/app/src/main/res/raw/isrg_root_x1.crt`) y su configuración de seguridad de red confía en ella además de en las del sistema. `RaicesTlsTest` revisa su huella y que release y debug la conserven. La raíz vence en 2035; si Let's Encrypt deja de encadenar a ella antes, hay que cambiar la que trae la app.
 - **Escritorio:** la app de `feat/app-escritorio` usa `requests`, que confía en las raíces de `certifi`, y ahí está ISRG Root X1. No necesita configuración.
 
