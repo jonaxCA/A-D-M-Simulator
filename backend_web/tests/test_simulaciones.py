@@ -25,6 +25,7 @@ import copy
 import dataclasses
 import json
 import unittest
+from decimal import Decimal
 from unittest import mock
 
 from backend_web.tests.base import ConCorridasDePrueba
@@ -125,6 +126,55 @@ class TraduccionYFormatoTests(unittest.TestCase):
         r2 = simulaciones.simular(escenario, semilla=7)
         self.assertEqual(r1["resumen"], r2["resumen"])
         self.assertEqual(r1["huella_escenario"], r2["huella_escenario"])
+
+
+class ComparacionCostosTests(unittest.TestCase):
+    """Lo que construir_comparacion_costo_impacto le pasa a Pareto desde
+    intervention_types (D3, migracion 040): los pesos en `costos` y las
+    personas-dia por dosis en `factores`, cada uno con su fuente y sin los nulos."""
+
+    TIPOS = [
+        {"code": "CIERRE_ESCUELAS", "unit_cost": Decimal("15.00"), "cost_source": None,
+         "cost_is_assumption": True, "person_days_per_unit": None, "person_days_source": None,
+         "person_days_is_assumption": True},
+        {"code": "VACUNACION", "unit_cost": None, "cost_source": None, "cost_is_assumption": True,
+         "person_days_per_unit": Decimal("0.5000"), "person_days_source": "SSNL 2025",
+         "person_days_is_assumption": False},
+        {"code": "REDUCCION_AFORO", "unit_cost": None, "cost_source": None,
+         "cost_is_assumption": True, "person_days_per_unit": None, "person_days_source": None,
+         "person_days_is_assumption": True},
+    ]
+    RUN = {"status": "completado", "scenario_version_id": 9, "seed": 1, "horizon_days": 120,
+           "population_size": 1000, "scenario_name": "Demo"}
+    GUARDADO = {"scenario_checksum": "abc", "resumen": {}, "engine_version": "seir-ref-0.1"}
+
+    def _llamada_a_pareto(self):
+        llamadas = []
+
+        def pareto(entradas, costos, **kw):
+            llamadas.append((costos, kw))
+            return {"filas": []}
+
+        with mock.patch.object(queries, "get_tipos_intervencion", return_value=self.TIPOS), \
+                mock.patch.object(queries, "get_run", return_value=self.RUN), \
+                mock.patch.object(queries, "get_resultado_run", return_value=self.GUARDADO), \
+                mock.patch.object(simulaciones, "construir_escenario_desde_version",
+                                  return_value=({}, {}, [])), \
+                mock.patch.object(simulaciones, "comparar_pareto", side_effect=pareto):
+            _, errores = simulaciones.construir_comparacion_costo_impacto([1, 2])
+        self.assertEqual(errores, [])
+        self.assertEqual(len(llamadas), 1)
+        return llamadas[0]
+
+    def test_pasa_el_factor_por_dosis_con_su_fuente(self):
+        _, kw = self._llamada_a_pareto()
+        self.assertEqual(kw["factores"],
+                         {"VACUNACION": {"valor": 0.5, "fuente": "SSNL 2025", "supuesto": False}})
+        self.assertIs(type(kw["factores"]["VACUNACION"]["valor"]), float)
+
+    def test_los_pesos_y_el_factor_van_por_separado_y_sin_nulos(self):
+        costos, _ = self._llamada_a_pareto()
+        self.assertEqual(costos, {"CIERRE_ESCUELAS": {"valor": 15.0, "fuente": None, "supuesto": True}})
 
 
 # ---------------------------------------------------------------------------

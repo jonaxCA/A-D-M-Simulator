@@ -136,6 +136,22 @@ class Costo(unittest.TestCase):
             self.costo(esc, factores={})
         self.assertIn("factor de personas-dia por dosis", str(ctx.exception))
 
+    def test_dos_campanias_de_vacunacion_dan_un_renglon(self):
+        # La segunda vacuna a otro grupo, para que sus dosis se sumen a las de la primera.
+        primera = {**self.VACUNA, "dia_fin": 30}
+        segunda = {**self.VACUNA, "dia_inicio": 60,
+                   "params": {"eficacia": 0.8, "dosis_diarias": 1000, "edad_minima": 20}}
+        esc = escenario(intervenciones=[primera, segunda])
+        resultado = simular(esc, 2)
+        c = costo_escenario(esc, resultado, COSTOS, FACTORES)
+        dosis = resultado["resumen"]["dosis_aplicadas"]
+        self.assertGreater(dosis, simular(escenario(intervenciones=[primera]), 2)["resumen"]["dosis_aplicadas"])
+        [renglon] = c["desglose"]
+        self.assertEqual((renglon["tipo"], renglon["dia_inicio"], renglon["cantidad"]),
+                         ("VACUNACION", 5, dosis))
+        self.assertAlmostEqual(c["personas_dia"], 0.5 * dosis, places=2)
+        self.assertAlmostEqual(c["pesos"], 300.0 * dosis, places=2)
+
     def test_factor_negativo_invalido(self):
         esc = escenario(intervenciones=[self.VACUNA])
         with self.assertRaises(ComparacionInvalida):
@@ -251,6 +267,13 @@ class Comparacion(unittest.TestCase):
         self.assertEqual(pesos, {"A": 0, "B": None, "C": None, "D": None})
         self.assertTrue(r["frontera"])
         self.assertTrue(any("pesos" in a and "CIERRE_ESCUELAS" in a for a in r["avisos"]))
+
+    def test_aviso_por_factor_sin_fuente(self):
+        # Un numero solo, sin fuente ni marca de supuesto (regla 8).
+        r = comparar(self.entradas, COSTOS, factores={"VACUNACION": 0.5})
+        self.assertTrue(any("VACUNACION (personas-dia por dosis)" in a for a in r["avisos"]))
+        self.assertIn({"tipo": "VACUNACION", "valor": 0.5, "unidad": "personas_dia_por_dosis",
+                       "fuente": None, "estado": "sin_fuente"}, r["trazabilidad_costos"])
 
     def test_aviso_por_costo_sin_fuente(self):
         r = comparar(self.entradas, {**COSTOS, "CIERRE_ESCUELAS": 10.0}, factores=FACTORES)
