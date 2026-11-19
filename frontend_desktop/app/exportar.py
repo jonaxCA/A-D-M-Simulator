@@ -81,14 +81,38 @@ def reporte_html(datos, usuario, imagenes):
         escape(str(c.get("tipo"))), c.get("valor"), escape(str(c.get("unidad"))),
         escape(str(c.get("fuente") or "sin fuente")), escape(str(c.get("estado"))))
         for c in datos["trazabilidad_costos"])
-    graficas = "".join('<p><img src="%s" width="640"></p>' % nombre for nombre in imagenes)
+    bandas = resumen.avisos_bandas(datos["escenarios"])
+    advertencia = ""
+    if bandas:
+        mensajes = "; ".join(escape(x) for x in bandas)
+        advertencia = (
+            '<p style="background:#FEF3C7; padding:6px;">'
+            '<b>Advertencia p5–p95:</b> %s '
+            'La superposición no demuestra equivalencia.</p>' % mensajes
+        )
+
+    celdas = "".join(
+        '<td width="50%%" valign="top"><img src="%s" width="300"></td>'
+        % escape(nombre, quote=True)
+        for nombre in imagenes[:2]
+    )
+    graficas = advertencia
+    if celdas:
+        graficas += (
+            '<table border="0" cellpadding="2" cellspacing="0" '
+            'width="100%%"><tr>%s</tr></table>' % celdas
+        )
+    graficas += "".join(
+        '<p><img src="%s" width="300"></p>' % escape(nombre, quote=True)
+        for nombre in imagenes[2:]
+    )
     semillas = datos["semillas"]
     return """<html><body style="font-family: sans-serif; font-size: 10pt;">
 <h2>Comparación de escenarios</h2>
 <p>Generado el %s por %s · %d escenarios · %d réplicas por escenario (semillas %s a %s).</p>
 <p style="background:#FEF9C3; padding:6px;"><b>Aviso:</b> %s</p>
 %s
-<h3>Indicadores por escenario</h3>
+<h3 style="page-break-before: always;">Indicadores por escenario</h3>
 <p>Mediana (p5–p95) y media de las réplicas. La frontera compara medianas de %s y personas-día (D3/D8); los pesos se muestran aparte.</p>
 <table border="1" cellspacing="0" cellpadding="4">
 <tr><th>Escenario</th><th>Réplicas</th><th>Muertes</th><th>Pico de casos activos</th><th>Día del pico</th>

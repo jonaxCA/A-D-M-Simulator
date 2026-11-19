@@ -128,6 +128,7 @@ class VistaSimulaciones(QWidget):
         self.datos_fichas = {}
         self.pendiente = None
         self._escala_pendiente = False
+        self._encolando = False
         self.reloj = QTimer(self)
         self.reloj.timeout.connect(self.refrescar)
 
@@ -499,10 +500,14 @@ class VistaSimulaciones(QWidget):
         self.estimacion.setText("%d escenarios × %d réplicas = %d corridas" % (n, self.replicas.value(),
                                                                                n * self.replicas.value()))
         self.encolar.setText("Encolar %d escenarios" % n if n else "Encolar")
-        self.encolar.setEnabled(n > 0)
+        self.encolar.setEnabled(n > 0 and not self._encolando)
 
     def lanzar(self):
+        if self._encolando:
+            return
         versiones = self._elegidas()
+        if not versiones:
+            return
         replicas = self.replicas.value()
         if replicas < config.REPLICAS_DEFECTO:
             pregunta = ("¿Seguro que quieres bajar de %d réplicas? Con menos réplicas la comparación entre "
@@ -510,9 +515,11 @@ class VistaSimulaciones(QWidget):
             if QMessageBox.question(self, "Réplicas", pregunta) != QMessageBox.Yes:
                 return
         total = len(versiones) * replicas
+        self._encolando = True
+        self._estimar()
         alto = threading.Event()
         dialogo = QProgressDialog("Encolando corridas…", "Detener", 0, total, self)
-        dialogo.setWindowModality(Qt.WindowModal)
+        dialogo.setWindowModality(Qt.NonModal)
         dialogo.setMinimumDuration(0)
         dialogo.setAutoClose(False)
         dialogo.setAutoReset(False)
@@ -528,6 +535,8 @@ class VistaSimulaciones(QWidget):
 
         def listo(resultado):
             dialogo.close()
+            self._encolando = False
+            self._estimar()
             hechas, errores = resultado
             texto = "Se encolaron %d de %d corridas." % (hechas, total)
             if errores:
@@ -538,6 +547,8 @@ class VistaSimulaciones(QWidget):
 
         def fallo(exc):
             dialogo.close()
+            self._encolando = False
+            self._estimar()
             self.v.mostrar_error(exc)
 
         en_hilo(_lanzar_lote, self.c, versiones, replicas, motor, forzar, alto,
