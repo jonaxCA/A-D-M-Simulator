@@ -2,6 +2,7 @@
    terciario #0F172A, neutro #F8FAFC. */
 QWidget { font-size: 13px; color: #0F172A; }
 QMainWindow, QDialog, #contenido { background: #F1F5F9; }
+#fichasComparacion, #fichasSimulaciones { background: #FFFFFF; }
 
 #lateral { background: #0F172A; }
 #lateral QLabel { color: #CBD5E1; }

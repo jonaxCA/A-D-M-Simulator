@@ -58,17 +58,20 @@ class VistaComparacion(QWidget):
 
     def _centro(self):
         contenido = QWidget()
+        contenido.setObjectName("contenido")
         capa = QVBoxLayout(contenido)
         capa.setContentsMargins(16, 16, 16, 16)
 
         marco, interior = tarjeta()
         fichas = QWidget()
+        fichas.setObjectName("fichasComparacion")
         self.capa_fichas = QHBoxLayout(fichas)
         self.capa_fichas.setContentsMargins(0, 0, 0, 0)
         desplazar = QScrollArea()
         desplazar.setWidgetResizable(True)
         desplazar.setFrameShape(QFrame.NoFrame)
         desplazar.setFixedHeight(48)
+        desplazar.viewport().setStyleSheet("background-color: #FFFFFF;")
         desplazar.setWidget(fichas)
         interior.addWidget(desplazar)
         fila = QHBoxLayout()
