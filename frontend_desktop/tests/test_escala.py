@@ -1,5 +1,10 @@
-from frontend_desktop.app import config, servicios, xmlio
-from frontend_desktop.app.ui.simulaciones import texto_escala
+import pytest
+
+# texto_escala vive en una vista de Qt: sin PySide6 se salta, como test_humo.py.
+pytest.importorskip("PySide6")
+
+from frontend_desktop.app import config, servicios, xmlio  # noqa: E402
+from frontend_desktop.app.ui.simulaciones import texto_escala  # noqa: E402
 
 
 def test_escala_con_ejemplo_real():

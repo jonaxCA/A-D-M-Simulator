@@ -1,7 +1,10 @@
 import pytest
 
-from frontend_desktop.app import api
-from frontend_desktop.app.ui import ventana
+# La ventana es de Qt: sin PySide6 se salta, como test_humo.py.
+pytest.importorskip("PySide6")
+
+from frontend_desktop.app import api  # noqa: E402
+from frontend_desktop.app.ui import ventana  # noqa: E402
 
 
 @pytest.fixture
