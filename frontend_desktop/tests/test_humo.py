@@ -66,11 +66,11 @@ def datos_comparacion():
     return resumen.armar(elegidas, comparadas, pareto, "fallecimientos", "")
 
 
-def test_la_ventana_carga_con_respuestas_de_ejemplo(tmp_path):
+def test_la_ventana_carga_con_respuestas_de_ejemplo(tmp_path, monkeypatch):
     from frontend_desktop.app.ui.ventana import Ventana
     app = QApplication.instance() or QApplication([])
     errores = []
-    Ventana.mostrar_error = lambda self, exc: errores.append(exc)
+    monkeypatch.setattr(Ventana, 'mostrar_error', lambda self, exc: errores.append(exc))
     cliente = ClienteDeEjemplos()
     ventana = Ventana(cliente)
     esperar(app)
