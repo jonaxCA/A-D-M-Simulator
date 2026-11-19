@@ -4379,7 +4379,8 @@ SET client_encoding = 'UTF8';
 --   la web). Los diez roles que no escribían en audit_log reciben INSERT, igual
 --   que los demás: audit_log es de todos, pero solo para insertar.
 -- - La consulta de la bitácora es del servicio roles (D37, E7): su rol lee
---   audit_log. Nadie más la lee entera.
+--   audit_log (svc_usuarios ya la leía, desde la 026, para las dependencias de
+--   una cuenta).
 -- - Idempotente (D7).
 -- =============================================================================
 

@@ -157,10 +157,95 @@ def test_asignacion_invalida(cliente, admin, base, usuario, cuerpo, estado):
     assert r.status_code == estado and base.commits == 0
 
 
+class Bitacora:
+    """audit_log para las rutas de la bitácora: guarda cada consulta para revisar sus filtros."""
+
+    def __init__(self):
+        self.consultas = []
+
+    def query(self, sql, params=(), one=False):
+        sql = " ".join(sql.split())
+        self.consultas.append((sql, params))
+        if one:
+            return {"eventos_totales": 912, "criticas": 7, "fallidos": 3, "activos_24h": 4}
+        if "DISTINCT entity_type" in sql:
+            return [{"entity_type": "roles"}, {"entity_type": "users"}]
+        if "DISTINCT action" in sql:
+            return [{"action": "LOGIN"}, {"action": "PERMISSION_DENIED"}]
+        if "AS etapa" in sql:
+            return [{"etapa": "fallido"}]
+        if "DISTINCT u.id" in sql:
+            return [{"id": 9, "full_name": "Ana Analista"}]
+        return [{"id": 912, "occurred_at": "2026-11-18T17:42:10+00:00", "action": "LOGIN",
+                 "entity_type": "users", "entity_id": "9", "ip": "10.0.0.15",
+                 "data_after": None, "usuario": "Ana Analista"}]
+
+
+@pytest.fixture
+def bitacora_falsa(monkeypatch):
+    falsa = Bitacora()
+    monkeypatch.setattr(rutas, "query", falsa.query)
+    return falsa
+
+
+def test_bitacora_sin_filtros(cliente, admin, bitacora_falsa):
+    r = cliente.get("/api/v1/audit?format=json", headers=admin)
+    assert r.status_code == 200
+    assert r.get_json() == {"total": 1, "eventos": [
+        {"id": 912, "fecha": "2026-11-18T17:42:10+00:00", "usuario": "Ana Analista",
+         "modulo": "users", "accion": "LOGIN", "entidad_id": "9", "datos": None, "ip": "10.0.0.15"}]}
+    sql, params = bitacora_falsa.consultas[0]
+    assert "WHERE" not in sql and params == (100,)
+
+
+def test_bitacora_con_todos_los_filtros(cliente, admin, bitacora_falsa):
+    cliente.get("/api/v1/audit?format=json&q=ana&user_id=9&module=simulation_run&action=RUN::fallido"
+                "&limit=20", headers=admin)
+    sql, params = bitacora_falsa.consultas[0]
+    assert "a.action = 'RUN' AND a.data_after->>'estado' = %s" in sql
+    assert params == ("%ana%", "%ana%", "%ana%", 9, "simulation_run", "fallido", 20)
+
+
+def test_bitacora_con_una_accion_simple(cliente, admin, bitacora_falsa):
+    cliente.get("/api/v1/audit?format=json&action=PERMISSION_DENIED", headers=admin)
+    sql, params = bitacora_falsa.consultas[0]
+    assert "a.action = %s" in sql and params == ("PERMISSION_DENIED", 100)
+
+
+@pytest.mark.parametrize("consulta", ["limit=0", "limit=501", "limit=x", "user_id=-1"])
+def test_bitacora_con_filtros_invalidos_es_422(cliente, admin, bitacora_falsa, consulta):
+    assert cliente.get("/api/v1/audit?format=json&" + consulta, headers=admin).status_code == 422
+    assert bitacora_falsa.consultas == []
+
+
+def test_resumen_y_filtros_de_la_bitacora(cliente, admin, bitacora_falsa):
+    r = cliente.get("/api/v1/audit/summary?format=json", headers=admin)
+    assert r.get_json() == {"eventos_totales": 912, "criticas": 7, "fallidos": 3, "activos_24h": 4}
+    r = cliente.get("/api/v1/audit/filters?format=json", headers=admin)
+    assert r.get_json() == {"modulos": ["roles", "users"],
+                            "acciones": ["LOGIN", "PERMISSION_DENIED", "RUN::fallido"],
+                            "usuarios": [{"id": 9, "full_name": "Ana Analista"}]}
+
+
+@pytest.mark.parametrize("ruta", ["/api/v1/audit", "/api/v1/audit/summary", "/api/v1/audit/filters"])
+def test_la_bitacora_es_solo_del_administrador(cliente, token, bitacora_falsa, negados, ruta):
+    assert cliente.get(ruta + "?format=json").status_code == 401
+    r = cliente.get(ruta + "?format=json", headers=token(roles=("EPIDEMIOLOGO",)))
+    assert r.status_code == 403 and bitacora_falsa.consultas == []
+    assert negados[0][1:4] == ("PERMISSION_DENIED", "roles", ruta)
+
+
+def test_bitacora_en_xml(cliente, admin, bitacora_falsa):
+    raiz = ET.fromstring(cliente.get("/api/v1/audit", headers=admin).data)
+    assert raiz.tag == "bitacora" and raiz.findtext("total") == "1"
+    assert raiz.find("eventos/item/accion").text == "LOGIN"
+
+
 def test_contrato_servido_es_el_de_docs(cliente):
     from microservicios.roles.app import CONTRATO
     r = cliente.get("/openapi.json")
     assert r.data == CONTRATO.read_bytes()
     assert set(r.get_json()["paths"]) == {
         "/api/v1/roles", "/api/v1/roles/{role_id}/permissions",
-        "/api/v1/roles/assignments/{user_id}"}
+        "/api/v1/roles/assignments/{user_id}", "/api/v1/audit", "/api/v1/audit/summary",
+        "/api/v1/audit/filters"}

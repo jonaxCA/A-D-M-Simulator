@@ -365,6 +365,333 @@
           }
         }
       }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "summary": "Consultar la bitácora",
+        "operationId": "consultar_bitacora",
+        "description": "Los eventos de audit_log, del más reciente al más viejo. Filtros opcionales: q (nombre de quien actuó, IP o módulo), user_id, module (entity_type) y action; action acepta además RUN::<etapa> (encolado, ejecutando, completado, fallido o cancelado) para aislar una etapa de las corridas. datos es data_after tal cual; la descripción para personas la arma el cliente. Solo ADMINISTRADOR (D1).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "description": "Busca en el nombre de quien actuó, la IP y el módulo, sin distinguir mayúsculas.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "user_id",
+            "description": "Solo los eventos de esa cuenta.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "module",
+            "description": "entity_type del evento (users, diseases, simulation_run…). Los valores posibles salen de /api/v1/audit/filters.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "description": "Acción de audit_log (LOGIN, UPDATE, PERMISSION_DENIED…) o RUN::<etapa>.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "Cuántos eventos, de 1 a 500. Por omisión 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 2,
+                  "eventos": [
+                    {
+                      "id": 912,
+                      "fecha": "2026-11-18T17:42:10+00:00",
+                      "usuario": "Ana Analista",
+                      "modulo": "roles",
+                      "accion": "PERMISSION_DENIED",
+                      "entidad_id": "/api/v1/roles",
+                      "datos": {
+                        "metodo": "GET",
+                        "roles_requeridos": [
+                          "ADMINISTRADOR"
+                        ]
+                      },
+                      "ip": "10.0.0.15"
+                    },
+                    {
+                      "id": 911,
+                      "fecha": "2026-11-18T17:40:02+00:00",
+                      "usuario": "Ana Analista",
+                      "modulo": "users",
+                      "accion": "LOGIN",
+                      "entidad_id": "9",
+                      "datos": null,
+                      "ip": "10.0.0.15"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "bitacora"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<bitacora><total tipo=\"numero\">2</total><eventos><item><id tipo=\"numero\">912</id><fecha>2026-11-18T17:42:10+00:00</fecha><usuario>Ana Analista</usuario><modulo>roles</modulo><accion>PERMISSION_DENIED</accion><entidad_id>/api/v1/roles</entidad_id><datos><metodo>GET</metodo><roles_requeridos><item>ADMINISTRADOR</item></roles_requeridos></datos><ip>10.0.0.15</ip></item><item><id tipo=\"numero\">911</id><fecha>2026-11-18T17:40:02+00:00</fecha><usuario>Ana Analista</usuario><modulo>users</modulo><accion>LOGIN</accion><entidad_id>9</entidad_id><datos nil=\"true\" /><ip>10.0.0.15</ip></item></eventos></bitacora>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE): solo ADMINISTRADOR. Queda en la bitácora como PERMISSION_DENIED."
+          },
+          "422": {
+            "description": "user_id o limit no son enteros positivos, o limit pasa de 500 (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/summary": {
+      "get": {
+        "summary": "Resumen de la bitácora",
+        "operationId": "resumen_bitacora",
+        "description": "Las tarjetas de la pantalla de auditoría: eventos totales, criticas (PERMISSION_DENIED), fallidos (LOGIN_FAILED) y activos_24h (cuentas con un LOGIN en las últimas 24 horas). Solo ADMINISTRADOR (D1).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "eventos_totales": 912,
+                  "criticas": 7,
+                  "fallidos": 3,
+                  "activos_24h": 4
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "resumen_bitacora"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<resumen_bitacora><eventos_totales tipo=\"numero\">912</eventos_totales><criticas tipo=\"numero\">7</criticas><fallidos tipo=\"numero\">3</fallidos><activos_24h tipo=\"numero\">4</activos_24h></resumen_bitacora>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE): solo ADMINISTRADOR. Queda en la bitácora como PERMISSION_DENIED."
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/filters": {
+      "get": {
+        "summary": "Valores de los filtros de la bitácora",
+        "operationId": "filtros_bitacora",
+        "description": "Lo que ya aparece en la bitácora, para llenar los filtros de consultar_bitacora: los módulos (module), las acciones (action, con RUN::<etapa> en lugar de RUN) y las cuentas que tienen eventos (user_id). Solo ADMINISTRADOR (D1).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "modulos": [
+                    "diseases",
+                    "roles",
+                    "simulation_run",
+                    "users"
+                  ],
+                  "acciones": [
+                    "LOGIN",
+                    "LOGIN_FAILED",
+                    "PERMISSION_DENIED",
+                    "UPDATE",
+                    "RUN::completado",
+                    "RUN::encolado"
+                  ],
+                  "usuarios": [
+                    {
+                      "id": 9,
+                      "full_name": "Ana Analista"
+                    },
+                    {
+                      "id": 7,
+                      "full_name": "Admin"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "filtros_bitacora"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<filtros_bitacora><modulos><item>diseases</item><item>roles</item><item>simulation_run</item><item>users</item></modulos><acciones><item>LOGIN</item><item>LOGIN_FAILED</item><item>PERMISSION_DENIED</item><item>UPDATE</item><item>RUN::completado</item><item>RUN::encolado</item></acciones><usuarios><item><id tipo=\"numero\">9</id><full_name>Ana Analista</full_name></item><item><id tipo=\"numero\">7</id><full_name>Admin</full_name></item></usuarios></filtros_bitacora>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE): solo ADMINISTRADOR. Queda en la bitácora como PERMISSION_DENIED."
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

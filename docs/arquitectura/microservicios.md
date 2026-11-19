@@ -19,7 +19,9 @@ específicas. Sin MongoDB, Cloud Storage ni nginx.
   leen, y su rol de PostgreSQL no tiene permiso para escribirla. Las excepciones están
   anotadas abajo.
 - **`audit_log` es de todos, pero solo para insertar.** Cada escritura se audita en la misma
-  transacción, con `log_audit(..., cur=cur)`, como hoy.
+  transacción, con `log_audit(..., cur=cur)`, como hoy. Un 403 también queda anotado, como
+  `PERMISSION_DENIED`, desde `requiere_token` (D36, migración 046). La consulta de la
+  bitácora es de `roles` (D37).
 - **Un contenedor por servicio.** Todos parten de la misma imagen base, escuchan en el puerto
   8000 dentro de su contenedor y publican un puerto propio hacia fuera, según la tabla.
 - **La lógica no se reescribe.** Los servicios importan `backend_web`, cuya capa de datos ya
@@ -50,7 +52,7 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 | 1 | `auth`     | Inicia sesión y emite el *access* y el *refresh* | `POST /api/v1/auth/login`                                                                                                               | `users` (intentos fallidos, último acceso) | `users`, `roles`, `user_roles`                     | Redis (abre la sesión)                                | 5201   |
 | 2 | `sesiones` | Renueva, cierra y revoca sesiones                | `POST /api/v1/sessions/refresh`, `POST /api/v1/sessions/logout`, `GET /api/v1/sessions/current`, `DELETE /api/v1/sessions/user/{id}`    | —                                          | —                                                  | Redis                                                 | 5202   |
 | 3 | `usuarios` | Administra cuentas y da a cada una su perfil     | `GET /api/v1/users/me` (cualquier rol), `GET/POST /api/v1/users`, `GET /api/v1/users/summary`, `GET/PUT /api/v1/users/{id}`, `POST /api/v1/users/{id}/activate` y `/deactivate`, `DELETE /api/v1/users/{id}` | `users`                                    | `user_roles` y las tablas que hacen de dependencia | `sesiones`, para cerrar las de una cuenta desactivada | 5203   |
-| 4 | `roles`    | Consulta roles y permisos, y los asigna          | `GET /api/v1/roles`, `GET /api/v1/roles/{id}/permissions`, `PUT /api/v1/roles/assignments/{user_id}`                                    | `user_roles`                               | `roles`, `permissions`, `role_permissions`         | `sesiones`, para cerrar sesiones al quitar un rol     | 5204   |
+| 4 | `roles`    | Consulta roles y permisos, los asigna y consulta la bitácora | `GET /api/v1/roles`, `GET /api/v1/roles/{id}/permissions`, `PUT /api/v1/roles/assignments/{user_id}`, `GET /api/v1/audit`, `GET /api/v1/audit/summary`, `GET /api/v1/audit/filters` | `user_roles`                               | `roles`, `permissions`, `role_permissions`, `audit_log`, `users` (`id`, `full_name`) | `sesiones`, para cerrar sesiones al quitar un rol     | 5204   |
 
 ## Catálogos
 
