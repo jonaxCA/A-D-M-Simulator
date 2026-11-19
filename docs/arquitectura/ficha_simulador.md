@@ -318,4 +318,39 @@ Tasa de ataque media de 5 semillas, con 1 000 000 de agentes, 365 días, sin int
 | R0 0.8 (bajo el umbral) | Sin brote: el total de una ramificación subcrítica, I0/N / (1 − R0 efectivo) = 0.0034 | 0.0034 |
 | R0 menor que 1, más R0 más ataque, población conservada cada día, dosis que no pasan la cobertura | Lo que dice cada prueba | `test_motor.py` (§9) |
 
+## 14. Análisis de sensibilidad
+
+[Retro: «pruebas de sensibilidad de parámetros»; RF-F12].
+- Se cambia un parámetro a la vez (un factor a la vez, OAT) a 0.8 y 1.2 veces su valor; los demás quedan como en el caso base.
+- Cada celda es la métrica media de 5 semillas dividida entre la del caso base.
+- Se repite con `python -m procesamiento.mediciones sensibilidad`.
+
+<!-- python -m procesamiento.mediciones sensibilidad · Python 3.14.4, NumPy 2.5.5, WSL 2 (Linux) -->
+| Parámetro | Factor | Tasa de ataque | Pico de casos activos | Día del pico | Hospitalizaciones | Fallecimientos |
+|---|---|---|---|---|---|---|
+| (base) | 1.0 | 0.7201 | 112 200 | 88.4 | 5 562 | 294.4 |
+| r0 | 0.8 | 0.722 | 0.424 | 1.495 | 0.708 | 0.729 |
+| r0 | 1.2 | 1.147 | 1.557 | 0.765 | 1.139 | 1.129 |
+| incubacion_dias | 0.8 | 0.998 | 1.001 | 0.950 | 1.002 | 0.993 |
+| incubacion_dias | 1.2 | 0.999 | 1.006 | 1.050 | 0.998 | 1.016 |
+| infeccioso_dias | 0.8 | 1.021 | 1.069 | 0.839 | 1.012 | 1.046 |
+| infeccioso_dias | 1.2 | 0.983 | 0.957 | 1.127 | 0.992 | 1.022 |
+| tasa_hospitalizacion | 0.8 | 1.000 | 1.003 | 0.991 | 0.796 | 0.982 |
+| tasa_hospitalizacion | 1.2 | 0.999 | 1.005 | 0.993 | 1.198 | 0.997 |
+| letalidad | 0.8 | 0.999 | 0.999 | 0.998 | 1.004 | 0.824 |
+| letalidad | 1.2 | 0.999 | 1.000 | 0.998 | 1.004 | 1.229 |
+
+1 000 000 de agentes, 365 días, sin intervenciones, escenario del contrato (R0 1.6).
+
+**Lo que se esperaba y lo que dio:**
+- **R0** es el parámetro que más pesa.
+  - Con 0.8 veces (R0 efectivo 1.41), el ataque baja 28 % y el pico de casos activos, 58 %; el pico llega 50 % más tarde.
+  - Con 1.2 veces, el ataque sube 15 % y el pico llega 24 % antes.
+  - Es lo que da el tamaño final de la §13: la respuesta no es proporcional y es mayor cerca del umbral.
+- **Incubación:** no cambia cuántos se contagian (±0.2 %), solo cuándo. El pico se mueve ±5 %, como se espera de un periodo latente.
+- **Periodo infeccioso, con R0 fijo:** cambia β y, por el paso de un día, un poco el R0 efectivo. Por eso el ataque se mueve ±2 % y el pico se mueve en el tiempo.
+- **Tasa de hospitalización y letalidad:** escalan su propia métrica casi en proporción (0.80 y 1.20 de hospitalizaciones; 0.82 y 1.23 de fallecimientos, con el ruido de unos 300 fallecimientos) y no cambian la transmisión, porque el modelo no deja transmitir a los hospitalizados y la duración en I es la misma.
+
+**Qué usar de esto:** el R0 es el parámetro cuya incertidumbre más cambia los resultados, y es supuesto en todas las enfermedades sin calibración. Por eso los escenarios se comparan con la misma enfermedad y las mismas semillas (D8), y no como cifras absolutas. El escritorio mostrará este análisis (A4).
+
 **Qué demuestra y qué no.** Esto muestra que el modelo es *matemáticamente consistente*: está verificado. No muestra que reproduzca un brote real, porque eso exige compararlo con datos observados, y no los hay (§11). Por eso sus corridas se presentan como exploratorias (§17 y D39).

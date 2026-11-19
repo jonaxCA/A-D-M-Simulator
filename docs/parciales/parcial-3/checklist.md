@@ -225,7 +225,7 @@ Cada una reemplaza o amplía una decisión vigente (ver [«Lo que la retroalimen
 - [ ] Investigar una fuente de datos observados para validar y calibrar: qué serie, de qué periodo y con qué licencia. Con D (D6).
 - [x] Validación contra resultados esperados: soluciones conocidas (por ejemplo, el tamaño final de un brote SEIR), casos límite y `abm-ref` contra `seir-ref` (ya medido en la ficha). §13 de la ficha, `python -m procesamiento.mediciones esperados` y `test_validacion_cientifica.py`. Encontró que el R0 efectivo es ~10 % mayor que el nominal (§11): corregirlo queda como decisión del equipo.
 - [ ] Validación contra los datos observados.
-- [ ] Análisis de sensibilidad: variar cada parámetro y comprobar que el modelo responde como se espera (RF-F12, reabierto). El escritorio lo muestra (A4).
+- [x] Análisis de sensibilidad: variar cada parámetro y comprobar que el modelo responde como se espera (RF-F12, reabierto). El escritorio lo muestra (A4). §14 de la ficha (un factor a la vez, ±20 %) y `python -m procesamiento.mediciones sensibilidad`; las direcciones las revisa `test_validacion_cientifica.py`. Mostrarlo en el escritorio sigue en A4.
 - [ ] Calibración: el algoritmo en `procesamiento/`, con su función de pérdida, sus métricas de ajuste y sus versiones. El escritorio la muestra (A4) y un servicio la expone (E7).
 - [ ] Reproducibilidad: la corrida determinista repetida, y la estocástica con la misma semilla y versión, dan lo mismo. Las pruebas existen (`test_contrato_motor.py`); falta la evidencia para la entrega.
 - [ ] Incertidumbre: cada intervalo se muestra con su interpretación.
