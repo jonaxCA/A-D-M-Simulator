@@ -206,12 +206,12 @@ Ninguna se implementa sin respuesta. Cada respuesta se anota en `decisiones/`. E
 
 Cada una reemplaza o amplía una decisión vigente (ver [«Lo que la retroalimentación reabre»](#lo-que-la-retroalimentación-reabre)) y se registra en `decisiones/` con número nuevo.
 
-- [ ] La web consume los servicios: en qué orden pasa cada módulo y qué ve el usuario cuando un servicio no responde. Reemplaza D20 y D33. **Frena a C y a E.**
-- [ ] Dueño de cada regla de negocio, y cómo dejan los servicios de importar `backend_web`. Cambia las reglas 2 y 14 de `microservicios/AGENTS.md`. **Frena a E.**
+- [x] La web consume los servicios: en qué orden pasa cada módulo y qué ve el usuario cuando un servicio no responde. Reemplaza D20 y D33. **Frena a C y a E.** Opción B, sin respaldo en la base; orden de la demostración integrada (D36).
+- [x] Dueño de cada regla de negocio, y cómo dejan los servicios de importar `backend_web`. Cambia las reglas 2 y 14 de `microservicios/AGENTS.md`. **Frena a E.** El dueño de la tabla es el dueño de la regla; los demás la piden por HTTP (D37).
 - [ ] Instituciones, regiones y los perfiles INVESTIGADOR y AUTORIDAD SANITARIA, con los permisos por recurso, región, institución y operación. Amplía D1. **Frena a E, B y C.**
 - [ ] Editar y rechazar casos: qué se edita, quién lo hace y cómo se detecta un conflicto. Reemplaza lo de D32 sobre editar casos. **Frena a E y a B.**
 - [ ] Calibración: método, función de pérdida, métricas de ajuste, datos y dónde corre. Reemplaza D24. **Frena a A.**
-- [ ] Corridas interrumpidas: reencolarlas en lugar de cerrarlas como fallidas, y qué pasa con su serie en MongoDB (RNF-C03). **Frena a E y a D.**
+- [x] Corridas interrumpidas: reencolarlas en lugar de cerrarlas como fallidas, y qué pasa con su serie en MongoDB (RNF-C03). **Frena a E y a D.** Se reencolan hasta 3 intentos con la misma semilla; solo cuentan las series de corridas completadas; migración 045 (D38).
 - [ ] MFA: qué perfiles son críticos y con qué segundo factor. **Frena a E.**
 - [ ] Qué son «campañas» y «seguimiento de intervenciones» en la web, y qué datos llevan. **Frena a C y a E.**
 - [ ] Qué agrupa un proyecto de investigación del escritorio y dónde vive. **Frena a A y a E.**
@@ -221,13 +221,13 @@ Cada una reemplaza o amplía una decisión vigente (ver [«Lo que la retroalimen
 
 [Retro: «Hace falta validación científica»]. Lo que no se valide se presenta como exploratorio.
 
-- [ ] Ficha de cada modelo (`seir-ref`, `abm-ref` y `abm-gpu`): formulación matemática, población representada, variables, supuestos, fuentes de parámetros, límites de aplicación, versión del algoritmo, escenarios de prueba y resultados de validación. Se amplía [`ficha_simulador.md`](../../arquitectura/ficha_simulador.md).
+- [x] Ficha de cada modelo (`seir-ref`, `abm-ref` y `abm-gpu`): formulación matemática, población representada, variables, supuestos, fuentes de parámetros, límites de aplicación, versión del algoritmo, escenarios de prueba y resultados de validación. Se amplía [`ficha_simulador.md`](../../arquitectura/ficha_simulador.md). §16 (una columna por modelo) y §17 (categoría de D39); §13 a §15 con la validación.
 - [ ] Investigar una fuente de datos observados para validar y calibrar: qué serie, de qué periodo y con qué licencia. Con D (D6).
-- [ ] Validación contra resultados esperados: soluciones conocidas (por ejemplo, el tamaño final de un brote SEIR), casos límite y `abm-ref` contra `seir-ref` (ya medido en la ficha).
+- [x] Validación contra resultados esperados: soluciones conocidas (por ejemplo, el tamaño final de un brote SEIR), casos límite y `abm-ref` contra `seir-ref` (ya medido en la ficha). §13 de la ficha, `python -m procesamiento.mediciones esperados` y `test_validacion_cientifica.py`. Encontró que el R0 efectivo es ~10 % mayor que el nominal (§11): corregirlo queda como decisión del equipo.
 - [ ] Validación contra los datos observados.
-- [ ] Análisis de sensibilidad: variar cada parámetro y comprobar que el modelo responde como se espera (RF-F12, reabierto). El escritorio lo muestra (A4).
+- [x] Análisis de sensibilidad: variar cada parámetro y comprobar que el modelo responde como se espera (RF-F12, reabierto). El escritorio lo muestra (A4). §14 de la ficha (un factor a la vez, ±20 %) y `python -m procesamiento.mediciones sensibilidad`; las direcciones las revisa `test_validacion_cientifica.py`. Mostrarlo en el escritorio sigue en A4.
 - [ ] Calibración: el algoritmo en `procesamiento/`, con su función de pérdida, sus métricas de ajuste y sus versiones. El escritorio la muestra (A4) y un servicio la expone (E7).
-- [ ] Reproducibilidad: la corrida determinista repetida, y la estocástica con la misma semilla y versión, dan lo mismo. Las pruebas existen (`test_contrato_motor.py`); falta la evidencia para la entrega.
+- [x] Reproducibilidad: la corrida determinista repetida, y la estocástica con la misma semilla y versión, dan lo mismo. Las pruebas existen (`test_contrato_motor.py`); falta la evidencia para la entrega. Evidencia en `docs/pruebas/validacion/2026-11-19` y §15 de la ficha; `seir-ref` y `abm-ref` (sin GPU aquí, `abm-gpu` queda pendiente de evidencia).
 - [ ] Incertidumbre: cada intervalo se muestra con su interpretación.
 - [ ] Las pantallas distinguen simulación exploratoria, predicción y resultado validado. Hoy `AVISO_SIMULACION` solo dice que no es una predicción.
 

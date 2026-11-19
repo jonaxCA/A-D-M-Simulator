@@ -11,10 +11,11 @@ cambios pequeños, legibles y fáciles de revisar.
 
 ## Etapa actual: tercer parcial
 
-- **Sistema web:** el monolito Flask sigue conectado directo a PostgreSQL y **no llama a los
-  microservicios**; la única excepción, cuando exista MongoDB, serán las curvas de una corrida,
-  que pedirá a `resultados` (D20 y D28). Consulta escenarios y corridas y el epidemiólogo aprueba en ella; crear y
-  editar escenarios, enviarlos a revisión y lanzar corridas es de la app de escritorio (D4).
+- **Sistema web:** pasa a consumir los microservicios módulo por módulo, sin respaldo en la
+  base (D36, que reemplaza D20 y D33). Al terminar no tiene credenciales de PostgreSQL, MongoDB
+  ni Redis, y no importa `epidemia_comun`. Mientras tanto, nada de SQL nuevo en `backend_web`.
+  Consulta escenarios y corridas y el epidemiólogo aprueba en ella; crear y editar escenarios,
+  enviarlos a revisión y lanzar corridas es de la app de escritorio (D4).
 - **Microservicios:** 29 servicios Flask pequeños en `microservicios/`, cada uno en su
   contenedor de Docker, con Redis y JWT. Son para las apps de escritorio (XML) y móvil
   (JSON). La móvil ya tiene código en `frontend_movil/`.
@@ -46,7 +47,9 @@ Calibración (D24), IA predictiva, visualización 3D y un modelo económico sofi
    Corridas: `encolado`, `ejecutando`, `completado`, `fallido`, `cancelado`.
 8. No inventes cifras: todo parámetro de enfermedad o costo lleva su fuente o la marca de
    supuesto. Si falta un dato, el sistema se niega a simular.
-9. Las pantallas de resultados muestran el aviso de que no es una predicción (`AVISO_SIMULACION`).
+9. Las pantallas de resultados muestran la categoría de la corrida (`exploratoria`,
+   `prediccion` o `validada`) con su explicación, como la regresa `resultados` (D39). Mientras
+   no haya calibración, todo es exploratorio (`AVISO_SIMULACION`).
 10. La comparación muestra opciones y costos; no recomienda un escenario.
 11. El código debe correr en Python 3.9: sin `match` ni `X | Y` en anotaciones.
 
@@ -70,7 +73,8 @@ Calibración (D24), IA predictiva, visualización 3D y un modelo económico sofi
 
 ## Decisiones
 
-Todas las registradas en `docs/decisiones/decisiones.md` (D1 a D35) están aceptadas. Si una
+Las registradas en `docs/decisiones/decisiones.md` (D1 a D39) están aceptadas, salvo las
+marcadas como reemplazadas (D20 y D33, por D36). Si una
 tarea pide algo que ninguna cubre, pregunta antes de implementarlo y regístralo ahí.
 
 ## Qué manda cuando dos fuentes se contradicen

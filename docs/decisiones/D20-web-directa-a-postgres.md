@@ -1,6 +1,6 @@
 # D20 - La web sigue conectada directo a PostgreSQL, sin fachada hacia los servicios
 
-Fecha: — · Estado: Aceptada (2026-11-08)
+Fecha: — · Estado: Reemplazada por D36 (2026-11-19; antes Aceptada el 2026-11-08)
 
 ## Contexto
 `decisiones/todo.md` la listaba como «por registrar o confirmar». Hoy el monolito va directo a PostgreSQL y no llama a los microservicios; el profesor lo confirmó (§9.1 de la v2) y la rúbrica pide que la web siga funcionando de forma independiente.
