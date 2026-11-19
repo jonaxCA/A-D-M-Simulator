@@ -44,3 +44,4 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D36 | La web consume los microservicios (reemplaza D20 y D33)                        | Aceptada  | D34         | [D36-la-web-consume-los-servicios.md](D36-la-web-consume-los-servicios.md)             |
 | D37 | Dueños de las reglas de negocio y servicios sin `backend_web`                  | Aceptada  | D36         | [D37-duenos-de-las-reglas-de-negocio.md](D37-duenos-de-las-reglas-de-negocio.md)       |
 | D38 | Corridas interrumpidas: se reencolan, no se cierran como fallidas              | Aceptada  | D19, D28    | [D38-corridas-interrumpidas.md](D38-corridas-interrumpidas.md)                         |
+| D39 | Simulación exploratoria, predicción y resultado validado                       | Aceptada  | D24, D37    | [D39-exploratoria-prediccion-validada.md](D39-exploratoria-prediccion-validada.md)     |
