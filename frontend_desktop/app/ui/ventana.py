@@ -170,10 +170,15 @@ class Ventana(QMainWindow):
         if isinstance(exc, api.SesionCerrada):
             self.reingresar(str(exc))
             return
-        bitacora.error(str(exc))
-        detalle = "\n".join("%s: %s" % (e.get("ruta"), e.get("mensaje")) if isinstance(e, dict) else str(e)
-                            for e in getattr(exc, "errores", [])[:10])
-        caja = QMessageBox(QMessageBox.Warning, "EPIDEMIA", str(exc), parent=self)
+        protegido = isinstance(exc, api.ErrorServicio) and exc.status in (403, 503)
+        mensaje = api.MENSAJES[exc.status] if protegido else str(exc)
+        bitacora.error(mensaje)
+        detalle = "" if protegido else "\n".join(
+            "%s: %s" % (e.get("ruta"), e.get("mensaje"))
+            if isinstance(e, dict) else str(e)
+            for e in getattr(exc, "errores", [])[:10]
+        )
+        caja = QMessageBox(QMessageBox.Warning, "EPIDEMIA", mensaje, parent=self)
         if detalle:
             caja.setDetailedText(detalle)
         caja.exec()
