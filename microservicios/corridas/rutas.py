@@ -12,6 +12,7 @@ import secrets
 from flask import g, request
 
 from backend_web import queries
+from backend_web.db import query
 from epidemia_comun import candados, cola, llaves
 from epidemia_comun.candados import CandadoOcupado
 from epidemia_comun.errores import ErrorAPI, respuesta_error
@@ -192,6 +193,28 @@ def registrar(app):
             if avance is not None:
                 corrida["progress"] = int(avance)
         return responder(corrida, "corrida")
+
+    # La demostración de reproducibilidad: otra corrida completada con la misma versión, la misma
+    # semilla y la misma huella del escenario. Si existe, su resumen debe ser idéntico.
+    @app.get("/api/v1/runs/<run_id>/equivalent")
+    @requiere_token(roles=ROLES_LEEN)
+    def equivalente(run_id):
+        corrida = query("""SELECT id, scenario_version_id, seed, scenario_checksum
+                           FROM simulation_runs WHERE id = %s""",
+                        (entero_positivo(run_id, "id"),), one=True)
+        if corrida is None:
+            raise ErrorAPI(404, "NO_ENCONTRADO", "No existe la corrida.")
+        otra = None
+        if corrida["scenario_checksum"]:
+            otra = query("""SELECT id, resumen FROM simulation_runs
+                            WHERE scenario_version_id = %s AND seed = %s AND id <> %s
+                              AND scenario_checksum = %s AND status = 'completado'
+                            ORDER BY finished_at ASC LIMIT 1""",
+                         (corrida["scenario_version_id"], corrida["seed"], corrida["id"],
+                          corrida["scenario_checksum"]), one=True)
+        return responder({"run_id": corrida["id"], "scenario_version_id": corrida["scenario_version_id"],
+                          "seed": corrida["seed"], "scenario_checksum": corrida["scenario_checksum"],
+                          "equivalente": dict(otra) if otra else None}, "equivalencia")
 
     @app.post("/api/v1/runs/<run_id>/cancel")
     @requiere_token(roles=ROLES_CANCELAN)

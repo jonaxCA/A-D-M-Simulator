@@ -1,0 +1,17 @@
+{
+  "run_id": 43,
+  "scenario_version_id": 11,
+  "seed": 982314,
+  "scenario_checksum": "5f2c0a9e7b1d4c3a8e6f0b2d9c7a1e4f3b5d8c0a2e6f9b1d4c7a0e3f5b8d2c6a",
+  "equivalente": {
+    "id": 40,
+    "resumen": {
+      "casos_acumulados": 61240,
+      "hospitalizaciones": 1873,
+      "fallecimientos": 212,
+      "pico_casos_activos": 9105,
+      "dia_pico": 47,
+      "tasa_ataque": 0.3062
+    }
+  }
+}

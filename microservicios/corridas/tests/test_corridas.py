@@ -380,3 +380,64 @@ def test_las_respuestas_xml_validan_contra_el_xsd(cliente, token, base, monkeypa
     for r in respuestas:
         assert r.status_code in (200, 202) and r.mimetype == "application/xml", r.data
         xsd.validate(r.data.decode("utf-8"))
+
+
+class Equivalencias:
+    """simulation_runs para la ruta de la corrida equivalente."""
+
+    def __init__(self):
+        self.filas = {43: {"id": 43, "scenario_version_id": 11, "seed": 7, "scenario_checksum": "abc"},
+                      44: {"id": 44, "scenario_version_id": 11, "seed": 8, "scenario_checksum": None}}
+        self.otras = {(11, 7, 43, "abc"): {"id": 40, "resumen": {"casos_acumulados": 120,
+                                                                 "tasa_ataque": 0.25}}}
+
+    def query(self, sql, params, one=False):
+        if "WHERE id = %s" in sql:
+            return self.filas.get(params[0])
+        return self.otras.get(tuple(params))
+
+
+@pytest.fixture
+def equivalencias(monkeypatch):
+    falsa = Equivalencias()
+    monkeypatch.setattr(rutas, "query", falsa.query)
+    return falsa
+
+
+def test_corrida_equivalente(cliente, token, equivalencias):
+    r = cliente.get("/api/v1/runs/43/equivalent?format=json", headers=token(("EPIDEMIOLOGO",)))
+    assert r.status_code == 200
+    assert r.get_json() == {"run_id": 43, "scenario_version_id": 11, "seed": 7,
+                            "scenario_checksum": "abc",
+                            "equivalente": {"id": 40, "resumen": {"casos_acumulados": 120,
+                                                                  "tasa_ataque": 0.25}}}
+
+
+def test_sin_equivalente_o_sin_huella_es_nulo(cliente, token, equivalencias):
+    equivalencias.otras.clear()
+    assert cliente.get("/api/v1/runs/43/equivalent?format=json",
+                       headers=token()).get_json()["equivalente"] is None
+    assert cliente.get("/api/v1/runs/44/equivalent?format=json",
+                       headers=token()).get_json()["equivalente"] is None
+
+
+def test_equivalente_de_una_corrida_inexistente_es_404(cliente, token, equivalencias):
+    assert cliente.get("/api/v1/runs/99/equivalent?format=json", headers=token()).status_code == 404
+    assert cliente.get("/api/v1/runs/x/equivalent?format=json", headers=token()).status_code == 422
+
+
+def test_capturista_no_ve_la_equivalente(cliente, token, equivalencias, negados):
+    r = cliente.get("/api/v1/runs/43/equivalent?format=json", headers=token(("CAPTURISTA",)))
+    assert r.status_code == 403
+    assert negados[0][1:4] == ("PERMISSION_DENIED", "corridas", "/api/v1/runs/43/equivalent")
+    assert cliente.get("/api/v1/runs/43/equivalent").status_code == 401
+
+
+def test_la_equivalencia_en_xml_valida_contra_el_xsd(cliente, token, equivalencias):
+    xsd = xmlschema.XMLSchema(str(RAIZ / "docs/contratos/corridas/corrida.xsd"))
+    con = cliente.get("/api/v1/runs/43/equivalent", headers=token())
+    assert con.mimetype == "application/xml"
+    xsd.validate(con.data.decode("utf-8"))
+    equivalencias.otras.clear()
+    xsd.validate(cliente.get("/api/v1/runs/44/equivalent", headers=token()).data.decode("utf-8"))
+    assert not xsd.is_valid("<equivalencia><run_id tipo='numero'>1</run_id></equivalencia>")

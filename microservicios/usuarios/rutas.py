@@ -4,7 +4,7 @@ from flask import g, request
 from backend_web import queries
 from backend_web.audit import log_audit
 from backend_web.auth import get_user_roles, hash_password
-from backend_web.db import get_conn
+from backend_web.db import get_conn, query
 from epidemia_comun import sesiones
 from epidemia_comun.errores import ErrorAPI, respuesta_error
 from epidemia_comun.formatos import leer_cuerpo, responder
@@ -87,6 +87,17 @@ def registrar(app):
             busqueda=(request.args.get("q") or "").strip() or None,
             rol_id=entero_positivo(rol, "role_id") if rol else None, estado=estado)
         return responder({"total": len(datos), "usuarios": datos}, "catalogo_usuarios")
+
+    # Las tarjetas de la pantalla de usuarios, con los mismos estados que la lista.
+    @app.get("/api/v1/users/summary")
+    @requiere_token(roles=ADMIN)
+    def resumen():
+        fila = query("""SELECT count(*) AS total,
+                               count(*) FILTER (WHERE is_active AND last_login_at IS NOT NULL) AS activos,
+                               count(*) FILTER (WHERE is_active AND last_login_at IS NULL) AS pendientes,
+                               count(*) FILTER (WHERE NOT is_active) AS inactivos
+                        FROM users""", one=True)
+        return responder(dict(fila), "resumen_usuarios")
 
     # El perfil: cualquier cuenta consulta la suya, sin ser ADMINISTRADOR.
     @app.get("/api/v1/users/me")

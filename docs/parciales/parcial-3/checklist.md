@@ -591,7 +591,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### E9. Rutas para la web
 
-- [ ] Una ruta para cada cosa que la web hoy lee o escribe directo, según el inventario de C6. Cada bloque agrega las de sus servicios (D, E y F).
+- [x] Una ruta para cada cosa que la web hoy lee o escribe directo, según el inventario de C6. Cada bloque agrega las de sus servicios (D, E y F). Las 11 del inventario: E-1 a E-4 en `feat/bloque-E`, D-1 a D-4 en `feat/bloque-D` (#166) y F-1 a F-3 en `feat/bloque-F` (#171). Las de F todavía sin pruebas propias.
 
 ## F. Nube, monitoreo y pruebas de carga
 

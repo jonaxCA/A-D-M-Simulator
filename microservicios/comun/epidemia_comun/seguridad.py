@@ -55,6 +55,18 @@ def verificar_token(token, ajustes, redis_client, roles=(), interno=False):
     return payload
 
 
+def _audita_negado(contexto, roles):
+    # RF-A05: el 403 queda en la bitácora del servicio que lo responde (D36). Si la base no
+    # responde, el 403 sale igual: negar no depende de poder anotarlo.
+    from flask import current_app, request
+    from backend_web.audit import log_audit
+    try:
+        log_audit(contexto, "PERMISSION_DENIED", current_app.name[:60], entity_id=request.path[:64],
+                  data_after={"metodo": request.method, "roles_requeridos": list(roles)})
+    except Exception as exc:
+        current_app.logger.warning("No se pudo auditar el permiso denegado: %s", type(exc).__name__)
+
+
 def requiere_token(roles=()):
     from flask import current_app, g, request
     def decorador(funcion):
@@ -64,7 +76,7 @@ def requiere_token(roles=()):
             if not cabecera.startswith("Bearer "):
                 raise ErrorAPI(401, "TOKEN_AUSENTE", "Falta Authorization: Bearer.")
             usuario = verificar_token(cabecera[7:].strip(), current_app.config,
-                                     current_app.extensions["epidemia_redis"], roles)
+                                     current_app.extensions["epidemia_redis"])
             g.usuario = usuario
             from backend_web.contexto import Contexto
             try:
@@ -73,6 +85,9 @@ def requiere_token(roles=()):
                 raise ErrorAPI(401, "TOKEN_INVALIDO", "Identificador de usuario inválido.")
             g.contexto = Contexto(user_id, request.remote_addr,
                                   request.user_agent.string[:255])
+            if roles and not set(roles).intersection(usuario.get("roles") or []):
+                _audita_negado(g.contexto, roles)
+                raise ErrorAPI(403, "PERMISO_INSUFICIENTE", "No tienes permiso para esta operación.")
             limites.consumir(usuario["sub"])
             return funcion(*args, **kwargs)
         return ejecutar

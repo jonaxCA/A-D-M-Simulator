@@ -1,7 +1,8 @@
 # EPIDEMIA - Servicio roles
 
-Consulta los roles y sus permisos, y asigna el rol de una cuenta. Escribe solo `user_roles`;
-lee `roles`, `permissions` y `role_permissions`.
+Consulta los roles y sus permisos, asigna el rol de una cuenta y consulta la bitácora (D37).
+Escribe solo `user_roles`; lee `roles`, `permissions`, `role_permissions` y `audit_log`
+(migración 046).
 
 Puerto externo: 5204; puerto interno en Docker: 8000. Contrato en
 `docs/contratos/roles/openapi.json`.
@@ -15,6 +16,9 @@ Todas piden token con rol `ADMINISTRADOR`, como las pantallas de usuarios del mo
 | GET    | `/api/v1/roles`                         | Roles (`id`, `code`, `name`) ordenados por nombre |
 | GET    | `/api/v1/roles/{id}/permissions`        | El rol con sus permisos (`code`, `resource`, `action`, `description`) |
 | PUT    | `/api/v1/roles/assignments/{user_id}`   | Recibe `role_id` y reemplaza el rol de la cuenta |
+| GET    | `/api/v1/audit`                         | Eventos de la bitácora, del más reciente al más viejo. Filtros `q`, `user_id`, `module`, `action` (también `RUN::<etapa>`) y `limit` (1 a 500, 100 por omisión) |
+| GET    | `/api/v1/audit/summary`                 | Eventos totales, `criticas` (`PERMISSION_DENIED`), `fallidos` (`LOGIN_FAILED`) y `activos_24h` |
+| GET    | `/api/v1/audit/filters`                 | Los `modulos`, `acciones` y `usuarios` que ya aparecen en la bitácora, para los filtros |
 
 - **Un rol por cuenta**, como en el monolito ("un solo rol por usuario en esta versión"): la
   asignación reemplaza el que tenga y guarda quién lo asignó (`assigned_by`).

@@ -230,10 +230,33 @@ def test_eliminar(cliente, admin, base, bitacora, monkeypatch):
     assert bitacora[0][0] == "DELETE"
 
 
+def test_resumen_de_cuentas(cliente, token, monkeypatch):
+    consultas = []
+
+    def query(sql, params=None, one=False):
+        consultas.append((" ".join(sql.split()), one))
+        return {"total": 14, "activos": 11, "pendientes": 2, "inactivos": 1}
+    monkeypatch.setattr(rutas, "query", query)
+    admin = token(roles=("ADMINISTRADOR",))
+    r = cliente.get("/api/v1/users/summary?format=json", headers=admin)
+    assert r.status_code == 200
+    assert r.get_json() == {"total": 14, "activos": 11, "pendientes": 2, "inactivos": 1}
+    assert consultas[0][1] and "FROM users" in consultas[0][0]
+    raiz = ET.fromstring(cliente.get("/api/v1/users/summary", headers=admin).data)
+    assert raiz.tag == "resumen_usuarios" and raiz.findtext("pendientes") == "2"
+
+
+def test_resumen_solo_administrador(cliente, token, negados):
+    r = cliente.get("/api/v1/users/summary?format=json", headers=token(roles=("EPIDEMIOLOGO",)))
+    assert r.status_code == 403
+    assert negados[0][1:4] == ("PERMISSION_DENIED", "usuarios", "/api/v1/users/summary")
+    assert cliente.get("/api/v1/users/summary?format=json").status_code == 401
+
+
 def test_contrato_servido_es_el_de_docs(cliente):
     from microservicios.usuarios.app import CONTRATO
     r = cliente.get("/openapi.json")
     assert r.data == CONTRATO.read_bytes()
     assert set(r.get_json()["paths"]) == {
-        "/api/v1/users", "/api/v1/users/me", "/api/v1/users/{user_id}",
+        "/api/v1/users", "/api/v1/users/summary", "/api/v1/users/me", "/api/v1/users/{user_id}",
         "/api/v1/users/{user_id}/{accion}"}

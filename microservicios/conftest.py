@@ -97,6 +97,17 @@ def crear_cliente(redis_falso):
     return crear
 
 
+@pytest.fixture(autouse=True)
+def negados(monkeypatch):
+    """Los PERMISSION_DENIED que anota requiere_token; así un 403 nunca escribe en una base."""
+    from backend_web import audit
+    eventos = []
+    monkeypatch.setattr(audit, "log_audit",
+                        lambda ctx, accion, entidad, entity_id=None, data_after=None, **_:
+                        eventos.append((ctx.user_id, accion, entidad, entity_id, data_after)))
+    return eventos
+
+
 @pytest.fixture
 def token(redis_falso):
     """token(roles) firma un access válido y abre su sesión en el Redis falso."""
