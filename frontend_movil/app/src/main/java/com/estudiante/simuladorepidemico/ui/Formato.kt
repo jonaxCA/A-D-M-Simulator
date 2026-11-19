@@ -22,7 +22,7 @@ private val ROLES = mapOf(
 
 fun nombreDeRol(codigo: String): String = ROLES[codigo] ?: codigo
 
-// Los tipos de aviso (CHECK de notifications, migraciones 003 y 029).
+// Los tipos de aviso (CHECK de notifications, migraciones 003, 029 y 037).
 private val TIPOS_DE_AVISO = mapOf(
     "RUN_FINISHED" to "Corrida terminada",
     "RUN_FAILED" to "Corrida con error",
@@ -30,6 +30,9 @@ private val TIPOS_DE_AVISO = mapOf(
     "ASSIGNMENT" to "Asignación",
     "SCENARIO_PUBLISHED" to "Escenario publicado",
     "SCENARIO_APPROVED" to "Versión aprobada",
+    "SCENARIO_SUBMITTED" to "Versión por revisar",
+    "SCENARIO_REJECTED" to "Versión rechazada",
+    "NEW_CASES" to "Casos nuevos",
     "SYSTEM" to "Aviso del sistema",
 )
 

@@ -30,4 +30,12 @@ class FormatoTest {
         assertEquals("Epidemiólogo", nombreDeRol("EPIDEMIOLOGO"))
         assertEquals("NUEVO_ROL", nombreDeRol("NUEVO_ROL"))
     }
+
+    @Test
+    fun los_avisos_de_la_migracion_037_con_su_nombre() {
+        assertEquals("Casos nuevos", nombreDeAviso("NEW_CASES"))
+        assertEquals("Versión por revisar", nombreDeAviso("SCENARIO_SUBMITTED"))
+        assertEquals("Versión rechazada", nombreDeAviso("SCENARIO_REJECTED"))
+        assertEquals("Aviso", nombreDeAviso("OTRO_TIPO"))
+    }
 }
