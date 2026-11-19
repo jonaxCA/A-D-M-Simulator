@@ -632,7 +632,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [x] Guion y evidencia de qué pasa cuando se detiene un microservicio (RNF-C02). Evidencia: `docs/pruebas/fallos/2026-11-16`.
 - [x] Lo mismo con Redis, con MongoDB y con PostgreSQL (RNF-C16). Evidencia: `docs/pruebas/fallos/2026-11-16`. MongoDB, solo `/health` y panel (falta la corrida con resumen, bloque D); con PostgreSQL las lecturas dan 503 `SERVICIO_NO_DISPONIBLE` (antes 500; corregido en `fabrica.py` y vuelto a demostrar el 2026-11-16).
 - [x] Lo mismo con el bucket, y con una petición que excede el tiempo máximo (RNF-C18). Evidencia: `docs/pruebas/fallos/2026-11-16`. Bucket, solo `/health` y panel (falta la subida, bloque D).
-- [ ] Fallo de worker: el simulador se detiene después de guardar los resultados y antes de confirmar la corrida, y no quedan corridas duplicadas ni resultados perdidos [Retro: fallo de worker]. Con D y E.
+- [x] Fallo de worker: el simulador se detiene después de guardar los resultados y antes de confirmar la corrida, y no quedan corridas duplicadas ni resultados perdidos [Retro: fallo de worker]. Con D y E. `test_f5_el_trabajador_muere_entre_guardar_la_serie_y_confirmar` (`microservicios/simulador/tests`): el proceso muere ahí, el siguiente arranque la reencola y queda una sola corrida `completado` con su serie entera, sin días duplicados; a los 3 intentos se cierra sin serie. La demostración contra los contenedores (`demo_fallos.py`) queda pendiente.
 
 ### F6. Documentos
 
