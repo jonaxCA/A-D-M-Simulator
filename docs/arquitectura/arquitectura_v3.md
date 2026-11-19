@@ -109,9 +109,9 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
 
 | Almacén | Qué guarda | Estado |
 |---|---|---|
-| PostgreSQL | La fuente de verdad: usuarios y roles, catálogos, casos, escenarios y versiones, corridas y sus resúmenes, avisos, auditoría y los metadatos de cada archivo. Esquema: migraciones `datos/postgres/migraciones/` hasta la 035; la 034 está reservada para D1 y la siguiente libre es la 036 | **Hecho** |
+| PostgreSQL | La fuente de verdad: usuarios y roles, catálogos, casos, escenarios y versiones, corridas y sus resúmenes, avisos, auditoría y los metadatos de cada archivo. Esquema: migraciones de `datos/postgres/migraciones/`, con los números reservados en su README | **Hecho** |
 | Redis | Lo temporal y reconstruible (v2 §5.2): sesiones, revocaciones, captcha, caché, candados, resultado de lotes, avance de corridas y una cola por motor. Nuevo: `ratelimit:<usuario>:<ruta>` (D31) | **Hecho**, menos los límites |
-| MongoDB | El historial de salud de los servicios y las series diarias de las corridas (D28) | Falta (integrante 2) |
+| MongoDB | El historial de salud de los servicios y las series diarias de las corridas (D28) | **Hecho** (D1 del checklist del tercer parcial) |
 | Cloud Storage | Fotos y evidencias, reportes exportados y, opcional, el XML de intercambio (D30) | Falta (integrante 3) |
 
 **Diseño de MongoDB (D-1, D28).**
@@ -125,6 +125,34 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
 - **Crecimiento:** con D29 son unas 10 000 corridas de 180 días, alrededor de 1.8 millones de documentos en `series_corridas`. El tamaño en disco se mide al cargarlos (§9). El historial no crece sin fin, por el TTL.
 - **Qué se demuestra:** inserción, consulta, actualización, agregación (disponibilidad y latencia por servicio; curvas por lote), índices y recuperación por `run_id`.
 - **Lotes crudos de `sincronizacion`:** son una tercera colección solo si sobra tiempo (§10).
+
+**Qué información va a PostgreSQL y cuál a MongoDB** [Retro: MongoDB; D4 del checklist].
+
+El criterio:
+- **PostgreSQL** guarda lo que tiene dueño, reglas y relaciones que la base debe hacer cumplir: llaves foráneas, `CHECK`, transiciones de estado, permisos por rol y auditoría en la misma transacción. Es la fuente de verdad: si un dato decide algo (quién puede, qué está aprobado, qué terminó), vive aquí.
+- **MongoDB** guarda lo que es mucho, llega en ráfagas, casi no se edita y se consulta agregado: un documento por día de cada corrida y un sondeo por servicio cada pocos segundos. Ahí no hay relaciones que proteger, y sí lecturas por rango y agregaciones (la banda p5–p95, la disponibilidad de 24 h) que en PostgreSQL serían millones de filas en tablas transaccionales.
+
+| Dato | Dónde | Por qué |
+|---|---|---|
+| Usuarios, roles, permisos y sesiones abiertas | PostgreSQL (las sesiones vivas en Redis) | Identidad y permisos: integridad y auditoría |
+| Catálogos (enfermedades y sus parámetros con fuente, regiones, población, tipos de intervención) | PostgreSQL | Son la entrada del modelo y se versionan con reglas (regla 8, D5) |
+| Casos, evidencias (metadatos) y lotes de vacuna | PostgreSQL (el archivo, en el bucket) | Registros de personas con dueño, duplicados y auditoría |
+| Escenarios, versiones y su aprobación | PostgreSQL | Estados con transiciones (`borrador` → `aprobado`) que protege la base |
+| Corrida: estado, semilla, motor, `engine_version`, huella, intentos y **resumen** (casos, pico, fallecimientos, tasa de ataque…) | PostgreSQL (`simulation_runs`, migraciones 038 y 045) | Decide qué terminó y qué se compara; la cola y la idempotencia dependen de su estado |
+| **Serie diaria de cada corrida** (S, E, I, R, H, D, V y lo nuevo del día) | MongoDB (`series_corridas`) | 180 a 1 095 documentos por corrida, unos 1.8 millones con D29; se leen por corrida o se agregan por versión y motor |
+| **Historial de salud de los servicios** | MongoDB (`historial_servicios`, TTL de 30 días) | Un sondeo por servicio cada pocos segundos; se agrega en disponibilidad y latencia, y caduca solo |
+| Auditoría | PostgreSQL (`audit_log`, solo inserción) | Debe confirmarse en la misma transacción que el cambio que registra |
+| Archivos (fotos, reportes) | Cloud Storage; sus metadatos, en PostgreSQL | La base no guarda binarios (D30) |
+
+**Cómo se relacionan.**
+- Cada documento de `series_corridas` lleva las referencias estables a PostgreSQL: `run_id`, `scenario_id`, `scenario_version_id`, `engine_version` y `semilla` (D5 del checklist).
+- `resultados` lee el resumen y el estado de `simulation_runs` y la serie de MongoDB por `run_id`. Una serie sin su corrida no se muestra, y una corrida sin serie muestra su resumen sin curvas.
+- La banda de una comparación solo cuenta las series de corridas `completado` según PostgreSQL (D38).
+
+**Consistencia entre las dos bases.**
+- La serie se guarda antes de confirmar la corrida, así que una corrida `completado` no se queda sin curvas porque el proceso muera entre los dos pasos.
+- Si el trabajador muere después de guardar la serie y antes de confirmar, la corrida se reencola con la misma semilla y su serie se reescribe: el índice único `{run_id, dia}` impide los días duplicados (D38).
+- Si MongoDB no responde, la corrida termina con su resumen en PostgreSQL y la serie se reintenta.
 
 **Archivos en Cloud Storage (D-3, D30).**
 

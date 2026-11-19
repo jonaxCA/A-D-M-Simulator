@@ -469,7 +469,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### D4. Documentos
 
-- [ ] Diseño de MongoDB y de los buckets en la arquitectura v3, con qué información va a PostgreSQL y cuál a MongoDB [Retro: MongoDB].
+- [ ] Diseño de MongoDB y de los buckets en la arquitectura v3, con qué información va a PostgreSQL y cuál a MongoDB [Retro: MongoDB]. La parte de MongoDB está hecha (§6 de `arquitectura_v3.md`: criterio, tabla por dato, cómo se relacionan y consistencia); falta la de los buckets, que espera a D2.
 - [ ] Llenar la retención de cada dato en `matrices_v3.md`: hoy hay 48 «Por definir» (RNF-K07).
 - [ ] Actualizar `docs/arquitectura/microservicios.md` con lo que cada servicio escribe ahora.
 
