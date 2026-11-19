@@ -292,6 +292,61 @@
         ]
       }
     },
+    "/api/v1/diseases/stats": {
+      "get": {
+        "summary": "Estadísticas del catálogo",
+        "operationId": "estadisticas_enfermedades",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "registradas": 9,
+                  "activas": 7,
+                  "inactivas": 2,
+                  "altas_30d": 1,
+                  "detectadas_30d": 3
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "estadisticas_enfermedades"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<estadisticas_enfermedades><registradas tipo=\"numero\">9</registradas><activas tipo=\"numero\">7</activas><inactivas tipo=\"numero\">2</inactivas><altas_30d tipo=\"numero\">1</altas_30d><detectadas_30d tipo=\"numero\">3</detectadas_30d></estadisticas_enfermedades>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        },
+        "description": "Las tarjetas de la pantalla de enfermedades: registradas, activas, inactivas, altas en los últimos 30 días y detectadas_30d (enfermedades con al menos un caso pendiente o validado en un municipio de Nuevo León en los últimos 30 días). Pública, como el catálogo. El porcentaje de activas lo calcula el cliente."
+      }
+    },
     "/api/v1/diseases/{disease_id}": {
       "get": {
         "summary": "Consultar enfermedad",
