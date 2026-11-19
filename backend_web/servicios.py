@@ -11,6 +11,7 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime
 
 log = logging.getLogger(__name__)
 
@@ -78,3 +79,27 @@ def llamar(servicio, metodo, ruta, token=None, params=None, cuerpo=None, correla
     except (OSError, ValueError) as error:
         log.warning("%s no responde en %s %s: %s", servicio, metodo.upper(), ruta, error)
         raise ServicioNoDisponible(servicio) from error
+
+
+def con_fechas(filas, *campos):
+    """Los servicios mandan las fechas en ISO 8601; las plantillas esperan datetime."""
+    for fila in filas:
+        for campo in campos:
+            if isinstance(fila.get(campo), str):
+                fila[campo] = datetime.fromisoformat(fila[campo])
+    return filas
+
+
+# --- Aprobación (D36, paso 2) --------------------------------------------------------------
+
+def pendientes_revision(token):
+    datos = llamar("aprobacion", "GET", "/api/v1/reviews/pending", token=token)
+    return con_fechas(datos["pendientes"], "submitted_at")
+
+
+def revisar(token, scenario_id, decision, comentario):
+    """El estado nuevo de la versión ('aprobado' o 'rechazado'). aprobacion valida, impide
+    revisar la versión propia, audita y avisa al autor; un rechazo suyo sube como ErrorServicio."""
+    datos = llamar("aprobacion", "POST", "/api/v1/scenarios/%d/review" % scenario_id, token=token,
+                   cuerpo={"decision": decision, "comentario": comentario or ""})
+    return datos["status"]

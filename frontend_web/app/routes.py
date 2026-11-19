@@ -28,7 +28,7 @@ import psycopg2
 from flask import (Blueprint, current_app, jsonify, render_template, request, redirect,
                    url_for, make_response, g, flash)
 
-from backend_web import queries, resultados, simulaciones
+from backend_web import queries, resultados, servicios, simulaciones
 from backend_web.audit import log_audit
 from backend_web.auth import hash_password
 from backend_web.servicios import ErrorServicio, ServicioNoDisponible
@@ -752,28 +752,31 @@ def escenario_detalle(scenario_id):
 @bp.route("/escenarios/<int:scenario_id>/revisar", methods=["POST"])
 @roles_required("EPIDEMIOLOGO", entity_type="scenario_versions")
 def version_revisar(scenario_id):
-    ok, error, estado = queries.resuelve_revision(
-        scenario_id, request.form.get("decision"),
-        request.form.get("comentario"), contexto=contexto_de_peticion())
-    if ok:
-        # "Versión aprobado" chirría: el estado de la base es masculino y la
-        # versión es femenina, así que el mensaje usa su propia palabra.
-        if estado == "aprobado":
-            flash("Versión aprobada. Ya se puede simular.", "ok")
-        else:
-            flash("Versión rechazada. Quien la armó puede crear una versión nueva con "
-                  "las correcciones en la app de escritorio.", "ok")
+    # D36: el dictamen lo resuelve el servicio aprobacion (valida, audita y avisa al autor).
+    try:
+        estado = servicios.revisar(token_de_sesion(), scenario_id, request.form.get("decision"),
+                                   request.form.get("comentario"))
+    except ErrorServicio as exc:
+        if exc.estado in (401, 403):
+            raise
+        flash(exc.detalle or "No se pudo registrar el dictamen.", "error")
+        return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
+    # "Versión aprobado" chirría: el estado de la base es masculino y la
+    # versión es femenina, así que el mensaje usa su propia palabra.
+    if estado == "aprobado":
+        flash("Versión aprobada. Ya se puede simular.", "ok")
     else:
-        flash(error, "error")
+        flash("Versión rechazada. Quien la armó puede crear una versión nueva con "
+              "las correcciones en la app de escritorio.", "ok")
     return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
 
 
 @bp.route("/revisiones")
 @roles_required("EPIDEMIOLOGO", "ADMINISTRADOR", entity_type="scenario_versions")
 def revisiones():
-    """Bandeja de versiones esperando dictamen, la mas antigua primero."""
+    """Bandeja de versiones esperando dictamen, la mas antigua primero (servicio aprobacion)."""
     return render_template("revisiones.html",
-                           pendientes=queries.get_pendientes_revision(),
+                           pendientes=servicios.pendientes_revision(token_de_sesion()),
                            active_nav="revisiones")
 
 
