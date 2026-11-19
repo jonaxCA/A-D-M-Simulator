@@ -1,3 +1,7 @@
+import base64
+import binascii
+import json
+import math
 import threading
 import time
 import uuid
@@ -9,6 +13,30 @@ from . import bitacora, config, esquemas, xmlio
 FIN_DE_SESION = ("TOKEN_AUSENTE", "TOKEN_INVALIDO", "TOKEN_REVOCADO")
 MENSAJES = {403: "No tienes permiso para esta operación.",
             503: "El servicio no está disponible. Intenta más tarde."}
+
+
+MARGEN_RENOVACION_SEGUNDOS = 120
+
+
+def _expiracion_jwt(token):
+    """Lee exp para anticipar la renovación; no verifica la firma."""
+    if not isinstance(token, str):
+        return None
+    partes = token.split(".")
+    if len(partes) != 3:
+        return None
+    try:
+        payload = partes[1]
+        relleno = "=" * (-len(payload) % 4)
+        datos = json.loads(base64.urlsafe_b64decode(payload + relleno))
+        if not isinstance(datos, dict):
+            return None
+        exp = datos.get("exp")
+        if isinstance(exp, bool) or not isinstance(exp, (int, float)):
+            return None
+        return float(exp) if math.isfinite(exp) else None
+    except (ValueError, TypeError, UnicodeError, binascii.Error, OverflowError):
+        return None
 
 
 class ErrorServicio(Exception):
@@ -80,6 +108,10 @@ class Cliente:
         return r
 
     def enviar(self, servicio, metodo, ruta, cuerpo=None, params=None, publico=False):
+        if not publico and self.access and ruta != "/api/v1/sessions/logout":
+            exp = _expiracion_jwt(self.access)
+            if exp is not None and exp <= time.time() + MARGEN_RENOVACION_SEGUNDOS:
+                self._renovar(self.access)
         token = self.access
         r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico)
         if r.status_code == 401 and not publico:
