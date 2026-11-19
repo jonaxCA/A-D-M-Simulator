@@ -25,7 +25,7 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D17 | Migraciones SQL numeradas en lugar de Alembic                                  | Aceptada  | —           | [D17-migraciones-sql-numeradas.md](D17-migraciones-sql-numeradas.md)                   |
 | D18 | Una sola instancia de PostgreSQL con un rol por servicio                       | Aceptada  | —           | [D18-un-postgres-un-rol-por-servicio.md](D18-un-postgres-un-rol-por-servicio.md)       |
 | D19 | Redis sin datos autoritativos                                                  | Aceptada  | —           | [D19-redis-sin-datos-autoritativos.md](D19-redis-sin-datos-autoritativos.md)           |
-| D20 | La web sigue conectada directo a PostgreSQL, sin fachada hacia los servicios   | Aceptada  | —           | [D20-web-directa-a-postgres.md](D20-web-directa-a-postgres.md)                         |
+| D20 | La web sigue conectada directo a PostgreSQL, sin fachada hacia los servicios   | Reemplazada por D36 | —           | [D20-web-directa-a-postgres.md](D20-web-directa-a-postgres.md)                         |
 | D21 | Lo no implementado pasa al tercer parcial                                      | Aceptada  | —           | [D21-pendientes-pasan-al-tercer-parcial.md](D21-pendientes-pasan-al-tercer-parcial.md) |
 | D22 | Implementar el modelo basado en agentes (ABM)                                  | Aceptada  | D2          | [D22-modelo-basado-en-agentes.md](D22-modelo-basado-en-agentes.md)                     |
 | D23 | Tecnología del ABM: CPU o GPU                                                  | Aceptada  | D22         | [D23-tecnologia-del-abm.md](D23-tecnologia-del-abm.md)                                 |
@@ -38,6 +38,7 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D30 | Archivos en Cloud Storage                                                      | Aceptada  | -           | [D30-archivos-en-cloud-storage.md](D30-archivos-en-cloud-storage.md)                   |
 | D31 | Limites de consumo                                                             | Aceptada  |             | [D31-limites-de-consumo.md](D31-limites-de-consumo.md)                                                              |
 | D32 | Cierre de los procesos de la v3: aviso de P1, C9 y P2 sin bucket               | Aceptada  | D28, D30    | [D32-cierre-de-los-procesos-v3.md](D32-cierre-de-los-procesos-v3.md)                   |
-| D33 | Redis caído en la web                                                          | Aceptada  | D31, D20    | [D33-redis-caido-en-la-web.md](D33-redis-caido-en-la-web.md)                            |
+| D33 | Redis caído en la web                                                          | Reemplazada por D36 | D31, D20    | [D33-redis-caido-en-la-web.md](D33-redis-caido-en-la-web.md)                            |
 | D34 | La web se identifica ante `resultados` con el JWT de la sesión                  | Aceptada  | D20, D28, D33 | [D34-la-web-se-identifica-ante-resultados.md](D34-la-web-se-identifica-ante-resultados.md) |
 | D35 | Expiración del token en el escritorio y archivo que recibe la web              | Aceptada  | D1, D30     | [D35-exp-en-escritorio-y-archivo-de-la-web.md](D35-exp-en-escritorio-y-archivo-de-la-web.md) |
+| D36 | La web consume los microservicios (reemplaza D20 y D33)                        | Aceptada  | D34         | [D36-la-web-consume-los-servicios.md](D36-la-web-consume-los-servicios.md)             |

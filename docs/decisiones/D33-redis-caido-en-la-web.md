@@ -1,6 +1,6 @@
 # D33 - Redis caído en la web
 
-Fecha: 2026-11-16 · Estado: Aceptada (tomada por el orquestador; validada por el líder el 2026-11-17)
+Fecha: 2026-11-16 · Estado: Reemplazada por D36 (2026-11-19; antes Aceptada, tomada por el orquestador y validada por el líder el 2026-11-17)
 
 ## Contexto
 La web consulta Redis en cada petición para saber si la sesión sigue abierta y si el token fue revocado (I3). Los servicios fallan cerrados cuando Redis no responde (503), pero la web debe seguir funcionando (I2).
