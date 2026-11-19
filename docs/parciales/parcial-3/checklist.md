@@ -39,7 +39,7 @@ La retroalimentación pide primero completar la integración y demostrar un proc
 | Fase             | Qué                                                                                                                                                                                                         | Dónde                                             |
 |------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------|
 | 1. Integrar      | La [demostración integrada](#demostración-integrada-obligatoria) corre en local. Incluye las tres limitaciones que señala el profesor: MongoDB, la web que consume los servicios y la validación científica | D1, C6, E9 y «Validación científica» del bloque 0 |
-| 2. Ampliar       | Los módulos que pide la retroalimentación para cada cliente y cada servicio, y lo de la rúbrica general: nube, bucket, nginx, volumen y Locust                                                              | A4, B4, C7, D2 a D6, E7, E8 y F                   |
+| 2. Ampliar       | Los módulos que pide la retroalimentación para cada cliente y cada servicio, y lo de la rúbrica general: nube, bucket, nginx, volumen y Locust                                                              | A4, B4, C7, D2 a D7, E7, E8 y F                   |
 | 3. Entrega final | Corregir, probar y documentar. No se terminan módulos                                                                                                                                                       | Todos                                             |
 
 ## Criterios de aceptación
@@ -53,10 +53,10 @@ Lo que el profesor pide demostrar. Una fase se cierra cuando sus pasos corren, n
 | #  | Paso                                                                                                   | Cliente          | Bloques |
 |----|--------------------------------------------------------------------------------------------------------|------------------|---------|
 | 1  | Un analista inicia sesión y obtiene un JWT validado con Redis                                          | Escritorio       | A, E    |
-| 2  | Elige enfermedad, región, población y parámetros epidemiológicos                                       | Escritorio       | A, E    |
-| 3  | Crea dos escenarios: uno sin intervención y otro con medidas sanitarias                                | Escritorio       | A, E    |
-| 4  | El sistema los valida y los registra en PostgreSQL                                                     | —                | E       |
-| 5  | Un epidemiólogo aprueba las versiones                                                                  | Web              | C, E    |
+| 2  | Elige enfermedad, región, población y parámetros epidemiológicos                                       | Escritorio       | A, D    |
+| 3  | Crea dos escenarios: uno sin intervención y otro con medidas sanitarias                                | Escritorio       | A, D    |
+| 4  | El sistema los valida y los registra en PostgreSQL                                                     | —                | D       |
+| 5  | Un epidemiólogo aprueba las versiones                                                                  | Web              | C, D    |
 | 6  | Se piden dos corridas y las procesa el motor                                                           | Escritorio       | A, E    |
 | 7  | Los resultados extensos van a MongoDB, ligados a las corridas de PostgreSQL                            | —                | D       |
 | 8  | El usuario consulta curvas, indicadores y resultados en la web                                         | Web              | C, E    |
@@ -69,23 +69,23 @@ Lo que el profesor pide demostrar. Una fase se cierra cuando sus pasos corren, n
 
 [Retro: «Para poder tener el sistema aceptable»].
 
-| Prueba                     | Qué se comprueba                                                 | Bloques |
-|----------------------------|------------------------------------------------------------------|---------|
-| Captura móvil              | Casos de prueba desde Android, con datos válidos e inválidos     | B, E    |
-| Sincronización offline     | Lo guardado sin Internet se sincroniza sin duplicados            | B, E    |
-| Integración del portal web | Una operación de la web consume realmente una API                | C, E    |
-| Autorización               | Un capturista no modifica escenarios de otra institución         | E, C    |
-| Escenario de referencia    | Crear y versionar un escenario sin intervención                  | A       |
-| Escenario alternativo      | Intervenciones con fechas, intensidad y duración                 | A       |
-| Validación matemática      | Se rechazan parámetros epidemiológicos imposibles o incoherentes | E, 0    |
-| Reproducibilidad           | Una corrida determinista repetida da el mismo resultado          | 0       |
-| Modelo estocástico         | La misma semilla y la misma versión dan la misma corrida         | 0       |
-| Sensibilidad               | Al variar los parámetros, el modelo responde como se espera      | 0, A    |
-| Persistencia               | Los resultados se recuperan ligados entre PostgreSQL y MongoDB   | D       |
-| Comparación                | Escenarios con la misma línea base y las mismas métricas         | A, E    |
-| Incertidumbre              | Intervalos o distribuciones, con su interpretación               | 0, A, E |
-| Fallo de worker            | Una corrida interrumpida se recupera sin duplicar resultados     | E, D    |
-| Contratos                  | Android consume JSON, y el escritorio, XML validado con XSD      | A, B    |
+| Prueba                     | Qué se comprueba                                                 | Bloques    |
+|----------------------------|------------------------------------------------------------------|------------|
+| Captura móvil              | Casos de prueba desde Android, con datos válidos e inválidos     | B, F       |
+| Sincronización offline     | Lo guardado sin Internet se sincroniza sin duplicados            | B, F       |
+| Integración del portal web | Una operación de la web consume realmente una API                | C, D, E, F |
+| Autorización               | Un capturista no modifica escenarios de otra institución         | E, C       |
+| Escenario de referencia    | Crear y versionar un escenario sin intervención                  | A          |
+| Escenario alternativo      | Intervenciones con fechas, intensidad y duración                 | A          |
+| Validación matemática      | Se rechazan parámetros epidemiológicos imposibles o incoherentes | D, 0       |
+| Reproducibilidad           | Una corrida determinista repetida da el mismo resultado          | 0          |
+| Modelo estocástico         | La misma semilla y la misma versión dan la misma corrida         | 0          |
+| Sensibilidad               | Al variar los parámetros, el modelo responde como se espera      | 0, A       |
+| Persistencia               | Los resultados se recuperan ligados entre PostgreSQL y MongoDB   | D          |
+| Comparación                | Escenarios con la misma línea base y las mismas métricas         | A, E       |
+| Incertidumbre              | Intervalos o distribuciones, con su interpretación               | 0, A, E    |
+| Fallo de worker            | Una corrida interrumpida se recupera sin duplicar resultados     | E, D       |
+| Contratos                  | Android consume JSON, y el escritorio, XML validado con XSD      | A, B       |
 
 La prueba de usuarios queda fuera (ver «Fuera de alcance»).
 
@@ -93,22 +93,22 @@ La prueba de usuarios queda fuera (ver «Fuera de alcance»).
 
 Decisiones y «Fuera de alcance» que chocan con la retroalimentación. Cada fila pide una decisión nueva (bloque 0) o vuelve a meter el requerimiento; sus casillas están en los bloques que se indican.
 
-| Hoy                                                                                                             | La retroalimentación pide                                                                                                                         | Bloques |
-|-----------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|---------|
-| La web va directo a PostgreSQL (D20) y a Redis (D33), e importa `backend_web` y `epidemia_comun`                | Ninguna aplicación cliente se conecta directo a PostgreSQL, MongoDB ni Redis                                                                      | 0, C, E |
-| 28 de los 29 servicios importan `backend_web`, y la regla 2 de `microservicios/AGENTS.md` lo manda              | Dueños claros de las reglas de negocio, contratos de dominio separados y despliegues independientes; `epidemia_comun` solo con funciones técnicas | 0, E    |
-| Sin calibración (D24); RF-C16, RF-F13, RF-F14 y RF-G14 fuera                                                    | Calibración, y validación contra observaciones                                                                                                    | 0, A, D |
-| Sin análisis de sensibilidad (RF-F12 fuera)                                                                     | Sensibilidad                                                                                                                                      | 0, A    |
-| Los casos no se editan ni se rechazan (D32; RF-C11, RF-C15 y RF-I12 fuera)                                      | Actualización y seguimiento de casos, sin sobrescribir en silencio lo que cambió otro profesional, y avisos de registros rechazados               | 0, E, B |
-| Cuatro roles; `users` no tiene institución ni región                                                            | Seis perfiles; permisos por recurso, región, institución y operación                                                                              | 0, E    |
-| Solo el ADMINISTRADOR lee la auditoría (D1)                                                                     | El escritorio consulta quién creó, modificó, revisó o aprobó cada escenario                                                                       | E, A    |
-| Sin límite de sesiones (RF-A08 fuera) ni MFA                                                                    | MFA para perfiles críticos, sesiones concurrentes y dispositivos autorizados                                                                      | 0, E    |
-| La cola atiende en orden de llegada, sin tiempo estimado ni reintentos (RF-E07, RF-E08, RF-E14 y RNF-B08 fuera) | Prioridades, tiempo estimado y reintentos seguros                                                                                                 | E       |
-| Una corrida interrumpida se cierra como fallida (RNF-C03)                                                       | Recuperarla sin duplicar resultados                                                                                                               | 0, E, D |
-| El escritorio no tiene mapa (RF-H12 fuera) ni importa datos (RF-B08 fuera)                                      | Mapas regionales y gestión de datos                                                                                                               | A, D    |
-| Los escenarios no se archivan (RF-D12 fuera)                                                                    | Archivado                                                                                                                                         | E, A    |
-| Las réplicas se resumen solo en el escritorio (D8)                                                              | `resultados` con intervalos de incertidumbre                                                                                                      | E       |
-| Sin ocupación hospitalaria (RF-G07 fuera: no hay fuente)                                                        | `indicadores` con capacidad utilizada                                                                                                             | 0, E    |
+| Hoy                                                                                                             | La retroalimentación pide                                                                                                                         | Bloques       |
+|-----------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| La web va directo a PostgreSQL (D20) y a Redis (D33), e importa `backend_web` y `epidemia_comun`                | Ninguna aplicación cliente se conecta directo a PostgreSQL, MongoDB ni Redis                                                                      | 0, C, D, E, F |
+| 28 de los 29 servicios importan `backend_web`, y la regla 2 de `microservicios/AGENTS.md` lo manda              | Dueños claros de las reglas de negocio, contratos de dominio separados y despliegues independientes; `epidemia_comun` solo con funciones técnicas | 0, D, E, F    |
+| Sin calibración (D24); RF-C16, RF-F13, RF-F14 y RF-G14 fuera                                                    | Calibración, y validación contra observaciones                                                                                                    | 0, A, D       |
+| Sin análisis de sensibilidad (RF-F12 fuera)                                                                     | Sensibilidad                                                                                                                                      | 0, A          |
+| Los casos no se editan ni se rechazan (D32; RF-C11, RF-C15 y RF-I12 fuera)                                      | Actualización y seguimiento de casos, sin sobrescribir en silencio lo que cambió otro profesional, y avisos de registros rechazados               | 0, F, B       |
+| Cuatro roles; `users` no tiene institución ni región                                                            | Seis perfiles; permisos por recurso, región, institución y operación                                                                              | 0, E          |
+| Solo el ADMINISTRADOR lee la auditoría (D1)                                                                     | El escritorio consulta quién creó, modificó, revisó o aprobó cada escenario                                                                       | D, E, A       |
+| Sin límite de sesiones (RF-A08 fuera) ni MFA                                                                    | MFA para perfiles críticos, sesiones concurrentes y dispositivos autorizados                                                                      | 0, E          |
+| La cola atiende en orden de llegada, sin tiempo estimado ni reintentos (RF-E07, RF-E08, RF-E14 y RNF-B08 fuera) | Prioridades, tiempo estimado y reintentos seguros                                                                                                 | E             |
+| Una corrida interrumpida se cierra como fallida (RNF-C03)                                                       | Recuperarla sin duplicar resultados                                                                                                               | 0, E, D       |
+| El escritorio no tiene mapa (RF-H12 fuera) ni importa datos (RF-B08 fuera)                                      | Mapas regionales y gestión de datos                                                                                                               | A, D          |
+| Los escenarios no se archivan (RF-D12 fuera)                                                                    | Archivado                                                                                                                                         | D, A          |
+| Las réplicas se resumen solo en el escritorio (D8)                                                              | `resultados` con intervalos de incertidumbre                                                                                                      | E             |
+| Sin ocupación hospitalaria (RF-G07 fuera: no hay fuente)                                                        | `indicadores` con capacidad utilizada                                                                                                             | 0, F          |
 
 ---
 
@@ -122,9 +122,9 @@ Somos siete, en dos salones. Cada salón tiene un rol, y dentro del salón cada 
 | 1 (3 personas) | **Clientes**  | **B**  | Luz             | App Android                                                                                                      | C        |
 | 1 (3 personas) | **Clientes**  | **C**  | _por llenar_    | Sistema web                                                                                                      | A        |
 | 2 (4 personas) | **Backend**   | **0**  | Rolando (líder) | Coordinación y validación científica: decisiones, validación del modelo, calibración, integración y demostración | Todos    |
-| 2 (4 personas) | **Backend**   | **D**  | Rolando         | Datos: MongoDB, Cloud Storage y volumen                                                                          | E        |
-| 2 (4 personas) | **Backend**   | **E**  | Enrique         | Microservicios y seguridad                                                                                       | F        |
-| 2 (4 personas) | **Backend**   | **F**  | Jonathan        | Nube, monitoreo y pruebas de carga                                                                               | D        |
+| 2 (4 personas) | **Backend**   | **D**  | Rolando         | Datos: MongoDB, Cloud Storage, volumen y los servicios de catálogos y escenarios                                 | E        |
+| 2 (4 personas) | **Backend**   | **E**  | Enrique         | Microservicios y seguridad: los servicios de identidad y simulación, y separarlos del monolito                   | F        |
+| 2 (4 personas) | **Backend**   | **F**  | Jonathan        | Nube, monitoreo, pruebas de carga y los servicios de vigilancia, analítica y plataforma                          | D        |
 
 - **Salón 1, Clientes:** todo lo que ve el usuario. La app de escritorio (XML), la app Android (JSON) y el sistema web. No toca `microservicios/` ni `infra/`; si necesita un cambio ahí, lo pide al bloque dueño.
 - **Salón 2, Backend:** todo lo que está detrás. Los microservicios, las bases de datos, los archivos, la nube y las pruebas de carga. No toca las pantallas de los clientes.
@@ -133,27 +133,39 @@ Somos siete, en dos salones. Cada salón tiene un rol, y dentro del salón cada 
 - Cada quien escribe las pruebas y actualiza los documentos de lo que toca. Es parte de la definición de terminado, no un bloque aparte.
 - **Cada salón entrega lo que le tocó** [Retro: participación]: el salón 1, los tres clientes; el salón 2, el backend. La matriz de autoría dice qué hizo cada persona.
 
+### Dueños de los servicios
+
+Cada servicio tiene un bloque dueño: completa lo que pide la retroalimentación para ese servicio (D7, E7 y F7), le quita las importaciones de `backend_web` (E8) y le agrega las rutas que necesite la web (E9).
+
+| Bloque | Dominio                            | Servicios                                                                                                                                                                |
+|--------|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| D      | Catálogos y escenarios             | `enfermedades`, `parametros`, `regiones`, `poblacion`, `tipos-intervencion`, `escenarios`, `intervenciones`, `aprobacion`, `validacion`, `escenarios-xml` y `evidencias` |
+| E      | Identidad y simulación             | `auth`, `sesiones`, `usuarios`, `roles`, `corridas`, `simulador`, `resultados`, `comparacion` y `pareto`                                                                 |
+| F      | Vigilancia, analítica y plataforma | `casos`, `sincronizacion`, `dispositivos`, `vacunas`, `indicadores`, `series`, `zonas`, `notificaciones` y `estado-servicios`                                            |
+
 ## Dependencias entre salones
 
 Lo que un bloque no puede terminar sin otro. El que entrega avisa en cuanto esté listo en la rama de integración.
 
-| Espera  | De | Qué                                                                                                             |
-|---------|----|-----------------------------------------------------------------------------------------------------------------|
-| A       | D  | El bucket y la URL firmada, para subir el reporte (RF-F17)                                                      |
-| A       | E  | Que `corridas` acepte `abm-gpu` donde haya GPU (RF-H20)                                                         |
-| A       | E  | Proyectos de investigación, historial y archivado de escenarios, y las rutas de calibración y sensibilidad (E7) |
-| A       | D  | Importar conjuntos de datos (D6)                                                                                |
-| A       | 0  | El método de calibración y el de sensibilidad                                                                   |
-| B       | D  | `evidencias` en el bucket, para las fotos (RF-C03)                                                              |
-| B       | E  | El aviso por lote de `sincronizacion` (RF-C19)                                                                  |
-| B       | E  | Editar casos con control de conflictos, formularios por enfermedad, e institución y región de cada cuenta (E7)  |
-| C       | D  | MongoDB con `series_corridas` y el resumen en `simulation_runs` (RF-F21)                                        |
-| C       | E  | Cómo se identifica la web ante `resultados`, y los avisos de P2 (RF-D15, RF-D16)                                |
-| C       | E  | Una ruta para cada cosa que la web hoy lee o escribe directo (E9)                                               |
-| A, B, C | F  | El dominio con HTTPS, para probar contra la nube                                                                |
-| E       | D  | El cliente de MongoDB y el del bucket en `epidemia_comun`, para `/health` (RF-K10)                              |
-| F       | D  | Los contenedores nuevos (MongoDB y el emulador del bucket) en el compose                                        |
-| F       | E  | Los servicios funcionando detrás de `/<servicio>` (D25)                                                         |
+| Espera  | De      | Qué                                                                                             |
+|---------|---------|-------------------------------------------------------------------------------------------------|
+| A       | D       | El bucket y la URL firmada, para subir el reporte (RF-F17)                                      |
+| A       | E       | Que `corridas` acepte `abm-gpu` donde haya GPU (RF-H20)                                         |
+| A       | D       | Proyectos de investigación, historial y archivado de escenarios (D7)                            |
+| A       | E       | Las rutas de calibración y sensibilidad (E7)                                                    |
+| A       | D       | Importar conjuntos de datos (D6)                                                                |
+| A       | 0       | El método de calibración y el de sensibilidad                                                   |
+| B       | D       | `evidencias` en el bucket, para las fotos (RF-C03)                                              |
+| B       | E       | El aviso por lote de `sincronizacion` (RF-C19)                                                  |
+| B       | F       | Editar casos con control de conflictos, y formularios por enfermedad (F7)                       |
+| B       | E       | Institución y región de cada cuenta (E7)                                                        |
+| C       | D       | MongoDB con `series_corridas` y el resumen en `simulation_runs` (RF-F21)                        |
+| C       | E       | Cómo se identifica la web ante `resultados`, y los avisos de P2 (RF-D15, RF-D16)                |
+| C       | D, E, F | Una ruta para cada cosa que la web hoy lee o escribe directo, cada bloque en sus servicios (E9) |
+| A, B, C | F       | El dominio con HTTPS, para probar contra la nube                                                |
+| E       | D       | El cliente de MongoDB y el del bucket en `epidemia_comun`, para `/health` (RF-K10)              |
+| F       | D       | Los contenedores nuevos (MongoDB y el emulador del bucket) en el compose                        |
+| F       | E       | Los servicios funcionando detrás de `/<servicio>` (D25)                                         |
 
 **Ruta crítica:** las decisiones nuevas del bloque 0, la web que consume los servicios (C6 y E9) y nginx con el dominio (F). Mientras llegan, cada bloque avanza con lo que no depende de ellos.
 
@@ -286,7 +298,7 @@ Antes de empezar: `frontend_desktop/AGENTS.md`. La app solo habla XML.
 [Retro: «Aplicación de escritorio»]. Todos son obligatorios. Algunos ya existen en parte (el editor, la comparación y Pareto): la primera casilla es revisarlos.
 
 - [ ] Revisar la app contra esta lista y marcar lo que ya cumple.
-- [ ] Proyectos: crear una investigación con su región, su enfermedad, su periodo y sus modelos. Espera a la decisión (0) y a E.
+- [ ] Proyectos: crear una investigación con su región, su enfermedad, su periodo y sus modelos. Espera a la decisión (0) y a D (D7).
 - [ ] Gestión de datos: importar conjuntos autorizados, verificar su calidad, examinar sus series y registrar versiones. Espera a D (D6).
 - [ ] Configuración del modelo: elegir el modelo, ajustar parámetros y ver sus definiciones y unidades.
 - [ ] Editor de escenarios: crear, duplicar, editar y versionar escenarios de referencia y de intervención.
@@ -300,7 +312,7 @@ Antes de empezar: `frontend_desktop/AGENTS.md`. La app solo habla XML.
 - [ ] Mapas regionales: distribución, intensidad e indicadores por zona (RF-H12, reabierto).
 - [ ] Reportes: resultados, parámetros, versiones, gráficas, metodología y limitaciones.
 - [ ] Reproducibilidad: guardar la semilla, la versión del modelo, los datos, los parámetros y las condiciones, y repetir la corrida.
-- [ ] Auditoría: quién creó, modificó, revisó o aprobó cada escenario. Espera a E.
+- [ ] Auditoría: quién creó, modificó, revisó o aprobó cada escenario. Espera a D (D7).
 - [ ] Cada curva lleva a su escenario, a sus supuestos y a su corrida, que se puede reproducir.
 - [ ] Ninguna gráfica sin fuente, periodo, modelo, versión y unidades.
 
@@ -335,16 +347,16 @@ La app solo habla JSON.
 
 - [ ] Revisar la app contra esta lista y marcar lo que ya cumple.
 - [ ] Panel del capturista: casos pendientes, formularios, registros incompletos, sincronizaciones pendientes y avisos.
-- [ ] Seguimiento: actualizar el estado de un caso, con observaciones e historial (RF-I12, reabierto). Espera a E.
-- [ ] Formularios por enfermedad, con versiones, validaciones y campos obligatorios. Espera a E.
+- [ ] Seguimiento: actualizar el estado de un caso, con observaciones e historial (RF-I12, reabierto). Espera a F (F7).
+- [ ] Formularios por enfermedad, con versiones, validaciones y campos obligatorios. Espera a F (F7).
 - [ ] GPS, con selección manual cuando la captura automática no conviene.
 - [ ] Cola local cifrada: hoy Room guarda los casos sin cifrar y solo los tokens van cifrados.
 - [ ] Un caso no se muestra como recibido, validado o publicado hasta que el servidor lo confirma.
-- [ ] La sincronización no sobrescribe en silencio lo que cambió otro profesional: el conflicto se muestra. Espera a E.
+- [ ] La sincronización no sobrescribe en silencio lo que cambió otro profesional: el conflicto se muestra. Espera a F (F7).
 - [ ] Consulta epidemiológica agregada por zona, periodo y enfermedad, según los permisos.
-- [ ] Alertas: tareas nuevas, registros rechazados, campañas y eventos de vigilancia, desde `notificaciones`. Espera a E.
+- [ ] Alertas: tareas nuevas, registros rechazados, campañas y eventos de vigilancia, desde `notificaciones`. Espera a F (F7).
 - [ ] Control de calidad: avisa de campos incompletos, fechas incoherentes y posibles duplicados.
-- [ ] Perfil con institución, región asignada y estado de conexión. Espera a E.
+- [ ] Perfil con institución, región asignada y estado de conexión. Espera a E (E7).
 - [ ] Menú para cada perfil de campo. Espera a la decisión de perfiles (0).
 
 ## C. Sistema web · `frontend_web/` y `backend_web/`
@@ -394,7 +406,7 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 
 [Retro: «Ninguna aplicación cliente deberá conectarse directamente a PostgreSQL, MongoDB o Redis»]. Va con la decisión que reemplaza D20 (bloque 0).
 
-- [ ] Inventario: cada pantalla de la web y cada consulta de `backend_web` que usa, con el servicio que debe atenderla. Lo que no tenga servicio se le pide a E (E9).
+- [ ] Inventario: cada pantalla de la web y cada consulta de `backend_web` que usa, con el servicio que debe atenderla. Lo que no tenga servicio se le pide a su dueño (E9).
 - [ ] Iniciar y cerrar sesión con `auth` y `sesiones`, sin leer Redis.
 - [ ] Pasar cada módulo a su servicio, en el orden que fije la decisión.
 - [ ] Cuando un servicio no responde, la pantalla lo explica y lo demás sigue.
@@ -477,6 +489,26 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [ ] Importar conjuntos de datos autorizados (CSV, JSON o XML), validarlos y registrar su fuente y su versión (RF-B08, reabierto). Lo usa el escritorio (A4).
 - [ ] Guardar la serie observada que usan la validación y la calibración, con su fuente (bloque 0).
 
+### D7. Completar los servicios de catálogos y escenarios
+
+[Retro: «Microservicios existentes que deben completarse y fortalecerse»]. Los servicios de D en [«Dueños de los servicios»](#dueños-de-los-servicios). La lista es lo que pide la retroalimentación, no lo que falta: lo que ya se cumpla se marca al revisarlo. Lo que dice «reabierto» o «hoy no existe» ya se revisó.
+
+- [ ] Revisar cada servicio contra su lista de la retroalimentación y marcar aquí lo que ya cumple.
+
+**Catálogos**
+
+- [ ] `enfermedades`: definiciones de caso versionadas.
+- [ ] `parametros`: incertidumbre y versiones de cada parámetro.
+- [ ] `regiones`: jerarquía (país, estado, municipio y área sanitaria), geometrías y búsqueda territorial.
+- [ ] `poblacion`: versiones y periodos de referencia.
+- [ ] `tipos-intervencion`: supuestos de efectividad de cada tipo.
+
+**Escenarios**
+
+- [ ] `escenarios`: archivar (RF-D12, reabierto) y proyectos de investigación (decisión del bloque 0).
+- [ ] Historial de un escenario: quién lo creó, modificó, revisó o aprobó (para A4).
+- [ ] `aprobacion`: devolver una versión para cambios, además de rechazarla, y firmar la versión aprobada.
+
 ## E. Microservicios y seguridad
 
 ### E1. Avisos (I1)
@@ -524,9 +556,9 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [ ] Pruebas de interoperabilidad: datos válidos e inválidos, respuestas de error, permisos, versiones y XML contra XSD [Retro: interoperabilidad].
 - [ ] Revisar y corregir los ejemplos de contratos que quedaron pendientes en el segundo parcial [Retro: interoperabilidad].
 
-### E7. Completar los 26 servicios
+### E7. Completar los servicios de identidad y simulación
 
-[Retro: «Microservicios existentes que deben completarse y fortalecerse»]. La lista es lo que pide la retroalimentación para cada servicio, no lo que falta: lo que ya se cumpla se marca al revisarlo. Lo que dice «reabierto» o «hoy no existe» ya se revisó.
+[Retro: «Microservicios existentes que deben completarse y fortalecerse»]. Los servicios de E en [«Dueños de los servicios»](#dueños-de-los-servicios). La lista es lo que pide la retroalimentación, no lo que falta: lo que ya se cumpla se marca al revisarlo. Lo que dice «reabierto» o «hoy no existe» ya se revisó.
 
 - [ ] Revisar cada servicio contra su lista de la retroalimentación y marcar aquí lo que ya cumple.
 
@@ -538,26 +570,6 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [ ] `roles`: permisos por recurso, región, institución y operación (decisión del bloque 0).
 - [ ] Consultar la bitácora: hoy no existe en ningún servicio. La necesitan la web (`/auditoria`) y el escritorio (historial de un escenario).
 
-**Catálogos**
-
-- [ ] `enfermedades`: definiciones de caso versionadas.
-- [ ] `parametros`: incertidumbre y versiones de cada parámetro.
-- [ ] `regiones`: jerarquía (país, estado, municipio y área sanitaria), geometrías y búsqueda territorial.
-- [ ] `poblacion`: versiones y periodos de referencia.
-- [ ] `tipos-intervencion`: supuestos de efectividad de cada tipo.
-
-**Vigilancia**
-
-- [ ] `casos`: actualizar, dar seguimiento y rechazar, con historial, duplicados y control de conflictos (RF-C11 y RF-C15, reabiertos; decisión del bloque 0).
-- [ ] Formularios por enfermedad, con versiones (para B4).
-- [ ] `sincronizacion`: conflictos entre lo capturado sin conexión y lo que cambió otro profesional.
-
-**Escenarios**
-
-- [ ] `escenarios`: archivar (RF-D12, reabierto) y proyectos de investigación (decisión del bloque 0).
-- [ ] Historial de un escenario: quién lo creó, modificó, revisó o aprobó (para A4).
-- [ ] `aprobacion`: devolver una versión para cambios, además de rechazarla, y firmar la versión aprobada.
-
 **Simulación**
 
 - [ ] `corridas`: prioridades, tiempo estimado y reintentos seguros (RF-E07, RF-E08 y RF-E14, reabiertos).
@@ -567,30 +579,19 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [ ] `pareto`: explica por qué cada alternativa queda dominada o no.
 - [ ] Rutas para la calibración y la sensibilidad (con el bloque 0).
 
-**Analítica**
-
-- [ ] `indicadores`: cada indicador con su numerador, su denominador y su periodo; capacidad utilizada, con su fuente (RF-G07, reabierto).
-- [ ] `series`: filtrado, paginación y agregaciones por enfermedad, periodo, región y grupo.
-- [ ] `zonas`: mapas de calor y agrupaciones territoriales.
-
-**Plataforma**
-
-- [ ] `notificaciones`: avisos de campañas, de datos incompletos y de errores operativos.
-- [ ] `estado-servicios`: capacidad de procesamiento (la cola de cada motor).
-
 ### E8. Reglas de negocio y despliegue independiente
 
 [Retro: «Dependencia de reglas de negocio compartidas con el monolito»]. Va con la decisión de dueños (bloque 0).
 
 - [ ] Tabla de dueños: cada regla de negocio con el servicio que la posee.
-- [ ] Los servicios dejan de importar `backend_web`: cada regla vive con su dueño.
+- [ ] Los servicios dejan de importar `backend_web`: cada regla vive con su dueño. Cada bloque lo hace en sus servicios (D, E y F).
 - [ ] `epidemia_comun` queda solo con funciones técnicas. Revisar `sesiones` y `series_corridas`.
 - [ ] Contratos de dominio separados de las clases internas.
 - [ ] Demostrar que un servicio se construye y se despliega sin tocar a los demás.
 
 ### E9. Rutas para la web
 
-- [ ] Una ruta para cada cosa que la web hoy lee o escribe directo, según el inventario de C6.
+- [ ] Una ruta para cada cosa que la web hoy lee o escribe directo, según el inventario de C6. Cada bloque agrega las de sus servicios (D, E y F).
 
 ## F. Nube, monitoreo y pruebas de carga
 
@@ -637,6 +638,29 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 - [ ] Guía de despliegue en GCP y `INSTALACION.md` al día, con MongoDB, el emulador y nginx.
 - [x] Resultados de Locust y de las pruebas de fallos en `docs/` (`docs/pruebas/carga` y `docs/pruebas/fallos/2026-11-16`).
+
+### F7. Completar los servicios de vigilancia, analítica y plataforma
+
+[Retro: «Microservicios existentes que deben completarse y fortalecerse»]. Los servicios de F en [«Dueños de los servicios»](#dueños-de-los-servicios). La lista es lo que pide la retroalimentación, no lo que falta: lo que ya se cumpla se marca al revisarlo. Lo que dice «reabierto» o «hoy no existe» ya se revisó.
+
+- [ ] Revisar cada servicio contra su lista de la retroalimentación y marcar aquí lo que ya cumple.
+
+**Vigilancia**
+
+- [ ] `casos`: actualizar, dar seguimiento y rechazar, con historial, duplicados y control de conflictos (RF-C11 y RF-C15, reabiertos; decisión del bloque 0).
+- [ ] Formularios por enfermedad, con versiones (para B4).
+- [ ] `sincronizacion`: conflictos entre lo capturado sin conexión y lo que cambió otro profesional.
+
+**Analítica**
+
+- [ ] `indicadores`: cada indicador con su numerador, su denominador y su periodo; capacidad utilizada, con su fuente (RF-G07, reabierto).
+- [ ] `series`: filtrado, paginación y agregaciones por enfermedad, periodo, región y grupo.
+- [ ] `zonas`: mapas de calor y agrupaciones territoriales.
+
+**Plataforma**
+
+- [ ] `notificaciones`: avisos de campañas, de datos incompletos y de errores operativos.
+- [ ] `estado-servicios`: capacidad de procesamiento (la cola de cada motor).
 
 ---
 
