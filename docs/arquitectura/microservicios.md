@@ -156,9 +156,9 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 
 | #  | Servicio      | Hace una cosa                                      | Rutas principales                                                     | Escribe | Lee                                   | Llama a       | Puerto |
 |----|---------------|----------------------------------------------------|-----------------------------------------------------------------------|---------|---------------------------------------|---------------|--------|
-| 22 | `indicadores` | Indicadores del tablero y situación por enfermedad | `GET /api/v1/dashboard/indicators`, `GET /api/v1/dashboard/situation` | —       | `cases`, `regions`, `simulation_runs` | Redis (caché) | 5251   |
+| 22 | `indicadores` | Indicadores del tablero y situación por enfermedad | `GET /api/v1/dashboard/indicators`, `GET /api/v1/dashboard/situation`, `GET /api/v1/dashboard/curve` (públicas); `GET /api/v1/dashboard/situation/export` (con sesión) | `audit_log` (EXPORT, migración 046) | `cases`, `regions`, `simulation_runs` | Redis (caché) | 5251   |
 | 23 | `series`      | Curva epidémica y series por edad y sexo           | `GET /api/v1/series/cases`, `.../by-age`, `.../by-sex`, `.../totals`  | —       | `cases`                               | Redis (caché) | 5252   |
-| 24 | `zonas`       | Mapa por municipio y detalle por zona              | `GET /api/v1/zones`, `GET /api/v1/zones/map`                          | —       | `cases`, `regions`                    | Redis (caché) | 5253   |
+| 24 | `zonas`       | Mapa por municipio y detalle por zona              | `GET /api/v1/zones`, `GET /api/v1/zones/diseases`, `GET /api/v1/zones/export`, `GET /api/v1/zones/map` | `audit_log` (EXPORT, migración 046) | `cases`, `regions`, `diseases` | Redis (caché) | 5253   |
 
 ## Plataforma
 

@@ -1,6 +1,6 @@
 import json
 
-from flask import request
+from flask import g, request
 
 from epidemia_comun import cache
 from epidemia_comun.ambito import clave_ambito, filtros_ambito
@@ -9,6 +9,10 @@ from epidemia_comun.formatos import responder
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import entero_positivo
 from backend_web import queries
+from backend_web.audit import log_audit
+from backend_web.db import query
+
+ESTADO_NL = "19"
 
 # Periodos de cada pantalla del monolito: Monitoreo (tabla) y Mapa.
 PERIODOS_TABLA = (7, 30, 90)
@@ -77,6 +81,35 @@ def registrar(app):
         datos["filtros"] = {"disease_id": f["disease_id"], "region_id": f["region_id"],
                             "days": f["dias"], "q": busqueda, "order": orden}
         datos["mayor_cambio"] = mayor_cambio(todas["zonas"])
+        return responder(datos, "zonas_detalle")
+
+    # Las enfermedades con casos en algún municipio de Nuevo León: el filtro del mapa y del
+    # monitoreo, que no ofrece enfermedades sin nada que mostrar.
+    @app.get("/api/v1/zones/diseases")
+    @requiere_token()
+    def enfermedades_con_casos():
+        filas = cache.obtener("zonas", "diseases", TTL_CACHE, lambda: [dict(f) for f in query(
+            """SELECT d.id, d.name FROM diseases d
+               JOIN cases c ON c.disease_id = d.id JOIN regions r ON r.id = c.region_id
+               WHERE r.parent_region_id = (SELECT id FROM regions WHERE code = %s)
+               GROUP BY d.id, d.name ORDER BY d.name""", (ESTADO_NL,))])
+        return responder({"total": len(filas), "enfermedades": filas}, "enfermedades_con_casos")
+
+    # Todas las zonas del ámbito, para exportarlas: queda en la bitácora como EXPORT.
+    @app.get("/api/v1/zones/export")
+    @requiere_token()
+    def exportar_zonas():
+        f = filtros_ambito(request.args, PERIODOS_TABLA)
+        orden = request.args.get("order", "incidencia")
+        if orden not in ORDENES:
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "order debe ser casos o incidencia.")
+        datos = queries.get_monitoreo_zonas(
+            disease_id=f["disease_id"], region_id=f["region_id"], dias=f["dias"],
+            busqueda=(request.args.get("q") or "").strip() or None, orden=orden,
+            pagina=1, por_pagina=TODAS)
+        log_audit(g.contexto, "EXPORT", "reports", entity_id="monitoreo_zonas")
+        datos["filtros"] = {"disease_id": f["disease_id"], "region_id": f["region_id"],
+                            "days": f["dias"], "order": orden}
         return responder(datos, "zonas_detalle")
 
     @app.get("/api/v1/zones/map")
