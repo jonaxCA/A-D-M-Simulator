@@ -6,9 +6,8 @@
 ## Qué hay aquí
 
 Son 29 microservicios Flask pequeños, cada uno con una sola tarea, más una consola web para
-probarlos. Los usan **solo** las apps de escritorio (XML, `frontend_desktop/`) y móvil (JSON,
-`frontend_movil/`). El sistema web (el monolito) sigue
-hablando directo con PostgreSQL y no los llama.
+probarlos. Los usan las apps de escritorio (XML, `frontend_desktop/`) y móvil (JSON,
+`frontend_movil/`) y, módulo por módulo, el sistema web (JSON, D36).
 
 - [`docs/arquitectura/microservicios.md`](../docs/arquitectura/microservicios.md) es la
   referencia de cada servicio: su tarea, rutas, las tablas que escribe y lee, a quién llama,
@@ -32,11 +31,11 @@ docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
 1. Busca el servicio en el catálogo. Si lo que te piden no es la tarea de ese servicio, va
    en otro o es un cambio al catálogo: pregunta, no lo metas donde ya hay un servidor
    levantado.
-2. Busca la regla en `backend_web` (`queries.py`, `conversion.py`, `simulaciones.py`,
-   `auth.py`) o en `procesamiento/motor`, y úsala. Esas reglas tienen 431 pruebas; una copia
-   reescrita en el servicio no tiene ninguna. Si el dominio todavía vive en `queries.py`,
-   sácalo a su propio módulo y deja `queries.py` como fachada (LIMP-11e).
-3. Si algo hace falta en dos servicios, va en `epidemia_comun`, no copiado.
+2. Busca la regla en su servicio dueño (tabla de dueños de E8, D37). Si todavía vive en
+   `backend_web`, múdala al dueño con sus pruebas; no la importes desde `backend_web` ni la
+   reescribas sin pruebas. `procesamiento/` sí se importa en `simulador` y `validacion`.
+3. Si una regla hace falta en dos servicios, el que no es dueño la pide por HTTP. En
+   `epidemia_comun` solo va lo técnico (D37).
 4. Si `epidemia_comun` todavía no tiene lo que necesitas, agrégalo ahí o avisa a quien
    lleva el bloque A (o el K, si es de Redis). No lo resuelvas dentro del servicio.
 
@@ -99,8 +98,9 @@ docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
     el equipo y va en los requerimientos de `comun`, no de un solo servicio.
 13. **Python.** Compatible con 3.9 (regla 11 de la raíz), aunque la imagen use una versión
     más nueva: el código de `backend_web` también lo corre el monolito.
-14. **El monolito no se toca para consumir servicios.** Si una tarea pide que la web llame a
-    un microservicio, pregunta: va contra lo decidido.
+14. **Sin `backend_web`.** Ningún servicio ni `epidemia_comun` importa `backend_web` ni a otro
+    servicio; se conocen por sus contratos (D37). La web consume los servicios por HTTP (D36):
+    si una pantalla necesita un dato sin ruta, la ruta la agrega el bloque dueño (E9).
 
 ## Agregar o cambiar un servicio
 
