@@ -227,7 +227,7 @@ Cada una reemplaza o amplía una decisión vigente (ver [«Lo que la retroalimen
 - [ ] Validación contra los datos observados.
 - [x] Análisis de sensibilidad: variar cada parámetro y comprobar que el modelo responde como se espera (RF-F12, reabierto). El escritorio lo muestra (A4). §14 de la ficha (un factor a la vez, ±20 %) y `python -m procesamiento.mediciones sensibilidad`; las direcciones las revisa `test_validacion_cientifica.py`. Mostrarlo en el escritorio sigue en A4.
 - [ ] Calibración: el algoritmo en `procesamiento/`, con su función de pérdida, sus métricas de ajuste y sus versiones. El escritorio la muestra (A4) y un servicio la expone (E7).
-- [ ] Reproducibilidad: la corrida determinista repetida, y la estocástica con la misma semilla y versión, dan lo mismo. Las pruebas existen (`test_contrato_motor.py`); falta la evidencia para la entrega.
+- [x] Reproducibilidad: la corrida determinista repetida, y la estocástica con la misma semilla y versión, dan lo mismo. Las pruebas existen (`test_contrato_motor.py`); falta la evidencia para la entrega. Evidencia en `docs/pruebas/validacion/2026-11-19` y §15 de la ficha; `seir-ref` y `abm-ref` (sin GPU aquí, `abm-gpu` queda pendiente de evidencia).
 - [ ] Incertidumbre: cada intervalo se muestra con su interpretación.
 - [ ] Las pantallas distinguen simulación exploratoria, predicción y resultado validado. Hoy `AVISO_SIMULACION` solo dice que no es una predicción.
 

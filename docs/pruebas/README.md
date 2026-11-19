@@ -20,6 +20,10 @@ Resultados medidos el 2026-11-16 sobre el compose de `infra/`, con un proceso de
 
 El script está en [`pruebas_carga/locustfile.py`](../../pruebas_carga/locustfile.py).
 
+## Validación científica
+
+[validacion/2026-11-19](validacion/2026-11-19/LEEME.md): resultados esperados (tamaño final de un SEIR, letalidad, casos límite), sensibilidad y reproducibilidad de los motores, con el comando que repite cada tabla.
+
 ## Fallos
 
 La demostración se ejecuta con `python infra/demo_fallos.py` (ver `arquitectura_v3.md` §9). Resultados del 2026-11-16: [fallos/2026-11-16](fallos/2026-11-16/LEEME.md) (servicio caído, Redis y la web, MongoDB y bucket de la demostración, PostgreSQL, tiempo excedido y cierre de sesión), con la salida de consola, las respuestas de cada caso y cómo repetirla.
