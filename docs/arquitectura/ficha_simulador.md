@@ -1,4 +1,4 @@
-> **Estado: Vigente** · 2026-11-14 · Cierra la brecha A2 (§10.4 de [`brechas_v3.md`](brechas_v3.md)). Las mediciones se repiten con `python -m procesamiento.mediciones`.
+> **Estado: Vigente** · 2026-11-19 · Cierra la brecha A2 (§10.4 de [`brechas_v3.md`](brechas_v3.md)) y la validación científica que pidió la retroalimentación del segundo parcial (§13 a §17). Las mediciones se repiten con `python -m procesamiento.mediciones`.
 
 # Ficha del simulador
 
@@ -14,7 +14,10 @@ Sobre sus resultados trabajan dos cálculos de `procesamiento/analitica/`: la fr
 
 Para una enfermedad y una región de Nuevo León, estimar cómo evolucionaría un brote (casos, hospitalizaciones, fallecimientos, vacunados) con y sin intervenciones: cierre de escuelas o trabajos, reducción de aforo, cubrebocas, testeo con aislamiento y vacunación. Así se comparan paquetes de intervenciones por su impacto contra su costo, y la frontera de Pareto muestra cuáles no son peores que otro en los dos ejes.
 
-Los resultados son **escenarios, no pronósticos**: no hay calibración contra datos observados (D24). Por eso `resultados`, `comparacion`, `pareto` y la web ponen ese aviso junto a cada resultado (`AVISO_SIMULACION`).
+Los resultados son **escenarios, no pronósticos**: no hay calibración contra datos observados (D24).
+- Toda corrida es *exploratoria* (D39, §17): el modelo está verificado (§13 a §15), no validado.
+- Por eso `resultados`, `comparacion`, `pareto` y la web ponen ese aviso junto a cada resultado (`AVISO_SIMULACION`).
+- La ficha de cada modelo está en la §16.
 
 `abm-ref` existe para medir lo que el SEIR no ve. El SEIR mezcla a toda la población por igual; en el ABM el contagio se queda en hogares, salones y centros de trabajo, y se agota antes. La diferencia entre los dos, en los mismos escenarios y con las mismas semillas, es el aporte del ABM (D2).
 
@@ -41,10 +44,8 @@ flowchart LR
 2. El `simulador` de ese motor (`SIMULADOR_MOTOR`) la toma y llama a `ejecutar_run` (`backend_web/simulaciones.py`):
    - arma la entrada desde la versión, con los parámetros que se congelaron al enviarla a revisión;
    - corre `simular()` del motor del lote (`procesamiento/motores.py`);
-   - guarda la salida en `simulation_results`, audita y avisa.
+   - guarda la serie diaria en la colección `series_corridas` de MongoDB y, después, el resumen en `simulation_runs` (D28); audita y avisa.
 3. `resultados`, `comparacion` y `pareto` leen lo guardado. El factor de escala (D6) se calcula ahí, fuera del motor.
-
-Con D28, la serie diaria también irá a la colección `series_corridas` de MongoDB.
 
 ## 3. Entradas
 
@@ -318,6 +319,8 @@ Tasa de ataque media de 5 semillas, con 1 000 000 de agentes, 365 días, sin int
 | R0 0.8 (bajo el umbral) | Sin brote: el total de una ramificación subcrítica, I0/N / (1 − R0 efectivo) = 0.0034 | 0.0034 |
 | R0 menor que 1, más R0 más ataque, población conservada cada día, dosis que no pasan la cobertura | Lo que dice cada prueba | `test_motor.py` (§9) |
 
+**Qué demuestra y qué no.** Esto muestra que el modelo es *matemáticamente consistente*: está verificado. No muestra que reproduzca un brote real, porque eso exige compararlo con datos observados, y no los hay (§11). Por eso sus corridas se presentan como exploratorias (§17 y D39).
+
 ## 14. Análisis de sensibilidad
 
 [Retro: «pruebas de sensibilidad de parámetros»; RF-F12].
@@ -353,4 +356,45 @@ Tasa de ataque media de 5 semillas, con 1 000 000 de agentes, 365 días, sin int
 
 **Qué usar de esto:** el R0 es el parámetro cuya incertidumbre más cambia los resultados, y es supuesto en todas las enfermedades sin calibración. Por eso los escenarios se comparan con la misma enfermedad y las mismas semillas (D8), y no como cifras absolutas. El escritorio mostrará este análisis (A4).
 
-**Qué demuestra y qué no.** Esto muestra que el modelo es *matemáticamente consistente*: está verificado. No muestra que reproduzca un brote real, porque eso exige compararlo con datos observados, y no los hay (§11). Por eso sus corridas se presentan como exploratorias (§17 y D39).
+## 15. Reproducibilidad
+
+[Retro: «reproducibilidad de corridas»; aceptación: «Reproducibilidad» y «Modelo estocástico»].
+- Los tres motores son estocásticos. Con la misma entrada, la misma semilla y la misma `engine_version`, la corrida es determinista: da la misma salida bit a bit (§6).
+- Cada corrida guarda en `simulation_runs` lo necesario para repetirla: semilla, `engine_version`, `scenario_checksum` (la huella SHA-256 de la entrada) y la versión del escenario, que congela sus parámetros (D5).
+- `GET /api/v1/runs/{id}/equivalent` (`corridas`) busca otra corrida con la misma versión, semilla y huella para comparar sus resúmenes.
+
+<!-- python -m procesamiento.mediciones reproducibilidad · Python 3.14.4, NumPy 2.5.5, WSL 2 (Linux) -->
+| Motor | engine_version | Semilla | Huella de la salida, 1.ª corrida | 2.ª corrida | Iguales | Otra semilla da otra salida |
+|---|---|---|---|---|---|---|
+| `seir-ref` | seir-ref-0.1 | 20261112 | `7d7eaf0e8618a104…` | `7d7eaf0e8618a104…` | sí | sí |
+| `abm-ref` | abm-ref-0.1 | 20261112 | `9defb805a4d2a0ff…` | `9defb805a4d2a0ff…` | sí | sí |
+| `abm-gpu` | — | — | no corre en esta máquina | | | |
+
+- La huella es la SHA-256 de la salida completa: serie, resumen, trazabilidad y avisos.
+- La evidencia de la entrega está en [`docs/pruebas/validacion/2026-11-19`](../pruebas/validacion/2026-11-19/LEEME.md).
+- `abm-gpu` solo se repite exacto en la misma GPU y con la misma versión de FLAME GPU (§6). Su prueba de contrato (`test_contrato_motor.py`) corre donde hay GPU.
+- Entre máquinas, la salida depende también de la versión de NumPy, que cada corrida anota (`numpy_version`).
+
+## 16. Ficha de cada modelo
+
+[Retro: «cada modelo desarrollado deberá contar con una ficha»]. Lo que pide la retroalimentación para cada uno, con referencia a las secciones de arriba.
+
+| | `seir-ref` | `abm-ref` | `abm-gpu` |
+|---|---|---|---|
+| **Formulación matemática** | SEIR-HDV estocástico de cadena binomial, en pasos de un día, por grupo de edad, con mezcla homogénea (§5 y §8; `procesamiento/motor/modelo.py`) | Modelo basado en agentes: cada persona tiene su hogar, su salón o su trabajo; la fuerza de infección λ_j es de cada susceptible (§5 y §8; `procesamiento/abm/`) | El mismo modelo que `abm-ref` en FLAME GPU 2, un hilo por agente (§8; `procesamiento/abm_gpu/`) |
+| **Población representada** | Agentes simulados por grupo de edad (0-19 a 80+), del Censo 2020 o un total; la escala a habitantes es aparte (D6) | Igual, con un agente por persona simulada | Igual que `abm-ref` |
+| **Variables** | Conteos S, E, I, R, H, D, V por grupo; β, probabilidades diarias, pesos de capas (§5) | El compartimento de cada agente y sus grupos de contacto (§5) | Las de `abm-ref`, en memoria de la GPU |
+| **Supuestos** | Mezcla homogénea; duraciones geométricas; hospitalizados no transmiten; vacuna sin conocer el estado inmunológico; enfermedades por vector como contagio directo (§11; `SIMPLIFICACIONES`) | Los de `seir-ref`, más tamaños de hogar, salón y trabajo y pesos de capas supuestos; hogares armados al azar (§11) | Los de `abm-ref`; otro generador de azar para la epidemia (§11) |
+| **Fuentes de parámetros** | Las de cada enfermedad en `diseases.default_params` (migraciones 017, 020 y 025): cada valor con su fuente o marcado como supuesto (regla 8). Población: Censo 2020 (021) | Las mismas, más los supuestos de estructura (`trazabilidad_parametros`) | Las mismas que `abm-ref` |
+| **Límites de aplicación** | De 1 000 a 20 000 000 agentes y de 1 a 1 095 días (§6). Comparar escenarios entre sí; no anticipar cifras reales: sin calibración, el R0 es nominal y el efectivo es ~10 % mayor (§11) | Los de `seir-ref`; con más de un millón de agentes es lento (§12) | Necesita una GPU de NVIDIA con CUDA 13 (§6 y §12) |
+| **Versión del algoritmo** | `seir-ref-0.1` | `abm-ref-0.1` | La de `procesamiento/abm_gpu/` (`engine_version` de su salida) |
+| **Escenarios de prueba** | `test_motor.py`, `test_caracterizacion_motor.py`, `test_contrato_motor.py`, `test_validacion_cientifica.py` (§9) | `test_abm.py`, `test_contrato_motor.py` | `test_abm_gpu.py` (solo con GPU) |
+| **Resultados de validación** | Tamaño final, letalidad, hospitalización y casos límite (§13); sensibilidad (§14); reproducibilidad (§15). **Verificado, no validado** con datos observados | Con un solo grupo por capa da la tasa de ataque de `seir-ref` (§10); reproducible (§15). Verificado, no validado | Igual que `abm-ref` dentro del ruido entre semillas (§10). Verificado en la GPU de desarrollo, no validado |
+| **Categoría de sus corridas (D39)** | Exploratoria | Exploratoria | Exploratoria |
+
+## 17. Exploratoria, predicción y resultado validado (D39)
+
+Ningún modelo está calibrado ni validado contra datos observados, así que **todas las corridas son exploratorias**: sirven para comparar escenarios entre sí, no para anticipar cifras reales.
+- Para que una corrida sea una *predicción*, el modelo tiene que calibrarse contra una serie observada de esa enfermedad y región (D24, reabierto).
+- Para que sea un *resultado validado*, el modelo tiene que reproducir además datos que no se usaron para calibrar, dentro de la tolerancia que declare esta ficha.
+- Las §13 a §15 hacen del modelo un modelo *verificado*, que se muestra junto a la categoría pero no la sube.
