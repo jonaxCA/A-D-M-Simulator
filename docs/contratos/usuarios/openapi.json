@@ -267,6 +267,85 @@
         }
       }
     },
+    "/api/v1/users/summary": {
+      "get": {
+        "summary": "Resumen de cuentas",
+        "operationId": "resumen_usuarios",
+        "description": "Las tarjetas de la pantalla de usuarios: total y cuántas están activas (ya entraron alguna vez), pendientes (activas que nunca han entrado) e inactivas (baja lógica). Los mismos estados que el filtro status de listar_usuarios.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 14,
+                  "activos": 11,
+                  "pendientes": 2,
+                  "inactivos": 1
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "resumen_usuarios"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<resumen_usuarios><total tipo=\"numero\">14</total><activos tipo=\"numero\">11</activos><pendientes tipo=\"numero\">2</pendientes><inactivos tipo=\"numero\">1</inactivos></resumen_usuarios>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE): solo ADMINISTRADOR. Queda en la bitácora como PERMISSION_DENIED."
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/me": {
       "get": {
         "summary": "Mi perfil",
