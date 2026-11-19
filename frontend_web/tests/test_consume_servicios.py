@@ -19,6 +19,9 @@ class Respuesta(io.BytesIO):
 
 
 class AprobacionPorServicio(ConUsuarioSimulado):
+    # Aquí se intercepta la petición HTTP misma, no se usa el puente de servicios.
+    puente_servicios = False
+
     def setUp(self):
         super().setUp()
         self.peticiones = []

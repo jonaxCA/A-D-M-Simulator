@@ -66,7 +66,7 @@ class ContextoDePeticionTests(AppTestCase):
         usuario = "nadie.de.la.prueba.de.contexto"
         with self.app.test_client() as client:
             resp = client.post("/login", headers={"User-Agent": NAVEGADOR},
-                               data={"usuario": usuario, "password": "x"})
+                               data=dict(self._captcha(), usuario=usuario, password="x"))
         self.assertEqual(resp.status_code, 401)
         fila = self._ultima("LOGIN_FAILED", "users", usuario)
         self.assertEqual((fila["user_id"], fila["ip"], fila["user_agent"]),
@@ -77,6 +77,6 @@ class ContextoDePeticionTests(AppTestCase):
         usuario = "nadie.de.la.prueba.de.recorte"
         with self.app.test_client() as client:
             client.post("/login", headers={"User-Agent": largo},
-                        data={"usuario": usuario, "password": "x"})
+                        data=dict(self._captcha(), usuario=usuario, password="x"))
         self.assertEqual(self._ultima("LOGIN_FAILED", "users", usuario)["user_agent"],
                          "x" * 255)

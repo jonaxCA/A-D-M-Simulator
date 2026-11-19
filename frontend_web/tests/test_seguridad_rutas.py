@@ -120,23 +120,28 @@ USUARIO_REVOCACION = "prueba.revocacion"
 
 @requiere_base
 class RevocacionTests(AppTestCase):
-    """Cuenta de prueba propia: activa con EPIDEMIOLOGO durante la prueba e
-    inactiva al terminar. No se borra porque los intentos denegados la dejan
-    en audit_log, que es de solo insercion. Su contrasena es aleatoria y no se
-    guarda en ningun lado."""
+    """D36: la sesion la llevan auth y sesiones. La cuenta entra con su login real, y desactivarla
+    (usuarios) o cambiarle el rol (roles) cierra sus sesiones: la web deja de aceptarla.
+
+    Cuenta de prueba propia: activa con EPIDEMIOLOGO durante la prueba e inactiva al terminar.
+    No se borra porque los intentos denegados la dejan en audit_log, que es de solo insercion.
+    Su contrasena es aleatoria y no se guarda en ningun lado."""
+
+    sesion_real = True
 
     def setUp(self):
         super().setUp()
+        self.password = secrets.token_urlsafe(24)
         escribe(
             """INSERT INTO users (username, email, password_hash, full_name, is_active)
                VALUES (%s, %s, %s, 'Revocacion de prueba', TRUE)
-               ON CONFLICT (username) DO UPDATE SET is_active = TRUE""",
-            (USUARIO_REVOCACION, f"{USUARIO_REVOCACION}@example.com",
-             hash_password(secrets.token_urlsafe(24))))
+               ON CONFLICT (username) DO UPDATE SET is_active = TRUE, password_hash = EXCLUDED.password_hash""",
+            (USUARIO_REVOCACION, f"{USUARIO_REVOCACION}@example.com", hash_password(self.password)))
         self.user_id = query("SELECT id FROM users WHERE username = %s",
                              (USUARIO_REVOCACION,), one=True)["id"]
         self._pon_rol("EPIDEMIOLOGO")
-        self.token = token_de(USUARIO_REVOCACION)
+        self.client = self.app.test_client()
+        self._login(self.client, USUARIO_REVOCACION, self.password)
 
     def tearDown(self):
         escribe("UPDATE users SET is_active = FALSE WHERE id = %s", (self.user_id,))
@@ -147,28 +152,34 @@ class RevocacionTests(AppTestCase):
         escribe("""INSERT INTO user_roles (user_id, role_id)
                     SELECT %s, id FROM roles WHERE code = %s""", (self.user_id, codigo))
 
+    def _como_admin(self, servicio, metodo, ruta, cuerpo=None):
+        admin = query("""SELECT u.username FROM users u JOIN user_roles ur ON ur.user_id = u.id
+                         JOIN roles r ON r.id = ur.role_id
+                         WHERE r.code = 'ADMINISTRADOR' AND u.is_active LIMIT 1""", one=True)
+        token = self.puente._con_sesion(token_de(admin["username"]), forzar=True)
+        return self.puente(servicio, metodo, ruta, token=token, cuerpo=cuerpo)
+
     def _get(self, ruta):
-        with self.app.test_client() as client:
-            client.set_cookie(COOKIE_NAME, self.token)
-            return client.get(ruta, follow_redirects=False)
+        return self.client.get(ruta, follow_redirects=False)
 
     def test_con_la_cuenta_vigente_entra(self):
         self.assertEqual(self._get("/revisiones").status_code, 200)
 
     def test_cuenta_desactivada_ya_no_entra_con_su_token(self):
-        escribe("UPDATE users SET is_active = FALSE WHERE id = %s", (self.user_id,))
+        self._como_admin("usuarios", "POST", "/api/v1/users/%d/deactivate" % self.user_id)
         resp = self._get("/revisiones")
         self.assertEqual(resp.status_code, 302)
         self.assertIn("/login", resp.headers["Location"])
 
-    def test_rol_retirado_deja_de_valer_aunque_el_token_lo_traiga(self):
-        self._pon_rol("ANALISTA")
-        self.assertIn("EPIDEMIOLOGO", decode_token(self.token)["roles"])
+    def test_cambiar_el_rol_cierra_la_sesion(self):
+        analista = query("SELECT id FROM roles WHERE code = 'ANALISTA'", one=True)["id"]
+        self._como_admin("roles", "PUT", "/api/v1/roles/assignments/%d" % self.user_id,
+                         {"role_id": analista})
         resp = self._get("/revisiones")
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("/dashboard", resp.headers["Location"])
+        self.assertIn("/login", resp.headers["Location"])
 
-    def test_token_de_una_cuenta_que_no_existe(self):
+    def test_token_sin_sesion_no_entra(self):
         fantasma = create_token({"id": 987654321, "username": "nadie",
                                  "full_name": "Nadie", "roles": ["ADMINISTRADOR"]})
         with self.app.test_client() as client:
@@ -181,9 +192,9 @@ class RevocacionTests(AppTestCase):
         """RFC 7519 pide `sub` como cadena (PyJWT >= 2.10 rechaza un entero);
         la app lo compara con ids de la base, asi que lo recibe como int."""
         from frontend_web.app.permisos import get_current_user
-        self.assertEqual(decode_token(self.token)["sub"], str(self.user_id))
-        with self.app.test_request_context(
-                headers={"Cookie": f"{COOKIE_NAME}={self.token}"}):
+        token = self.client.get_cookie(COOKIE_NAME).value
+        self.assertEqual(decode_token(token)["sub"], str(self.user_id))
+        with self.app.test_request_context(headers={"Cookie": f"{COOKIE_NAME}={token}"}):
             self.assertEqual(get_current_user()["sub"], self.user_id)
 
 

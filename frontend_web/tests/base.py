@@ -42,6 +42,55 @@ def capturista_de_prueba():
     return id_de_usuario(CAPTURISTA_PRUEBA)
 
 
+class PuenteServicios:
+    """backend_web.servicios.llamar, pero contra la app Flask de cada microservicio en este
+    mismo proceso: la misma base de pruebas y el mismo Redis falso. Así las pruebas de la web
+    con base son de integración web -> servicio (D36) sin levantar contenedores."""
+
+    def __init__(self, redis, abre_sesiones=True):
+        # Con sesion_real las pruebas usan las sesiones que abre auth: no se inventan.
+        self.redis, self.clientes, self.abre_sesiones = redis, {}, abre_sesiones
+
+    def _cliente(self, servicio):
+        if servicio not in self.clientes:
+            import importlib
+            app = importlib.import_module("microservicios.%s.app" % servicio.replace("-", "_")).app
+            app.config["TESTING"] = True
+            app.extensions["epidemia_redis"] = self.redis
+            self.clientes[servicio] = app.test_client()
+        return self.clientes[servicio]
+
+    def _con_sesion(self, token, forzar=False):
+        # Las pruebas firman tokens sin sesión (create_token sin sid ni jti); los servicios no
+        # los aceptan. Aquí se vuelven a firmar con una sesión abierta en el Redis falso.
+        import uuid
+        from backend_web.auth import decode_token
+        from epidemia_comun.seguridad import identificador_sesion
+        payload = decode_token(token)
+        if not payload or payload.get("sid") or not (self.abre_sesiones or forzar):
+            return token
+        sid, jti = str(uuid.uuid4()), uuid.uuid4().hex
+        self.redis.set("session:" + identificador_sesion(sid), "1")
+        return create_token({"id": int(payload["sub"]), "username": payload.get("username"),
+                             "full_name": payload.get("full_name"),
+                             "roles": payload.get("roles") or []}, sid=sid, jti=jti)
+
+    def __call__(self, servicio, metodo, ruta, token=None, params=None, cuerpo=None, correlacion=None):
+        from backend_web.servicios import ErrorServicio, ServicioNoDisponible, cabeceras_de_la_persona
+        cabeceras = dict(cabeceras_de_la_persona(), Accept="application/json")
+        if token:
+            cabeceras["Authorization"] = "Bearer " + self._con_sesion(token)
+        consulta = {k: v for k, v in dict(params or {}, format="json").items() if v is not None}
+        r = getattr(self._cliente(servicio), metodo.lower())(
+            ruta, query_string=consulta, headers=cabeceras, json=cuerpo)
+        if r.status_code >= 500:
+            raise ServicioNoDisponible(servicio)
+        if r.status_code >= 400:
+            problema = r.get_json(silent=True) or {}
+            raise ErrorServicio(servicio, r.status_code, problema.get("codigo"), problema.get("detail"))
+        return r.get_json(silent=True)
+
+
 def sesion_simulada(token):
     """Lo que responderia el servicio sesiones (D36) por un token que la prueba firmo a mano."""
     from backend_web.auth import decode_token
@@ -60,6 +109,9 @@ class AppTestCase(unittest.TestCase):
     # logout por /login y /logout, contra auth y sesiones).
 
     sesion_real = False
+    # Las llamadas de la web a los servicios van al PuenteServicios (los servicios en este
+    # proceso). Una prueba que intercepta la petición HTTP misma lo apaga.
+    puente_servicios = True
 
     @classmethod
     def setUpClass(cls):
@@ -73,13 +125,27 @@ class AppTestCase(unittest.TestCase):
         self.redis = fakeredis.FakeRedis(server=self.servidor_redis, decode_responses=True)
         redis_compartido.usar(self.redis)
         self.addCleanup(redis_compartido.usar, None)
+        if self.puente_servicios:
+            self.puente = PuenteServicios(self.redis, abre_sesiones=not self.sesion_real)
+            for objetivo in ("backend_web.servicios.llamar",
+                             "frontend_web.app.sesion_servicios.llamar"):
+                simulado = patch(objetivo, side_effect=self.puente)
+                simulado.start()
+                self.addCleanup(simulado.stop)
         if not self.sesion_real:
             simulado = patch("frontend_web.app.sesion_servicios._actual", side_effect=sesion_simulada)
             simulado.start()
             self.addCleanup(simulado.stop)
 
+    def _captcha(self):
+        """Los campos del captcha de auth, ya contestado (D36)."""
+        from frontend_web.app import sesion_servicios
+        captcha = sesion_servicios.captcha()
+        a, b = (int(x) for x in captcha["pregunta"].split("+"))
+        return {"captcha_id": captcha["captcha_id"], "captcha_respuesta": str(a + b)}
+
     def _login(self, client, usuario, password):
-        resp = client.post("/login", data={"usuario": usuario, "password": password},
+        resp = client.post("/login", data=dict(self._captcha(), usuario=usuario, password=password),
                            follow_redirects=False)
         self.assertEqual(resp.status_code, 302, f"login de {usuario} fallo: {resp.data}")
 
