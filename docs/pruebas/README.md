@@ -20,6 +20,10 @@ Resultados medidos el 2026-11-16 sobre el compose de `infra/`, con un proceso de
 
 El script está en [`pruebas_carga/locustfile.py`](../../pruebas_carga/locustfile.py).
 
+## Volumen de datos
+
+[volumen/2026-11-18](volumen/2026-11-18/LEEME.md): 10,000 corridas de 180 días en `series_corridas` (D29), con la inserción, las consultas con y sin índice, con y sin la caché de Redis, y el uso de CPU, memoria y disco de MongoDB. Se repite con `python datos/scripts/volumen_mongo.py` (ver su LEEME).
+
 ## Fallos
 
 La demostración se ejecuta con `python infra/demo_fallos.py` (ver `arquitectura_v3.md` §9). Resultados del 2026-11-16: [fallos/2026-11-16](fallos/2026-11-16/LEEME.md) (servicio caído, Redis y la web, MongoDB y bucket de la demostración, PostgreSQL, tiempo excedido y cierre de sesión), con la salida de consola, las respuestas de cada caso y cómo repetirla.
