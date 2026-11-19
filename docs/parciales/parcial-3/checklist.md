@@ -258,7 +258,7 @@ Cada una reemplaza o amplía una decisión vigente (ver [«Lo que la retroalimen
 - [ ] Video de demostración y presentación final.
 - [ ] Matriz individual de autoría y participación: servicios, pruebas, integración, documentación, incidencias y correcciones de cada estudiante [Retro: participación].
 - [ ] Qué entregó cada salón, por separado [Retro: participación].
-- [ ] Toda la suite en una sola ejecución, sobre una base creada desde cero, con un solo resultado consolidado. Nada de juntar pruebas de distintas versiones [Retro: pruebas].
+- [x] Toda la suite en una sola ejecución, sobre una base creada desde cero, con un solo resultado consolidado. Nada de juntar pruebas de distintas versiones [Retro: pruebas]. `docs/pruebas/suite/2026-11-19`: 2281 pasan, 2 fallan (ya existían: la semilla no trae un epidemiólogo inactivo y una de `frontend_desktop`), 182 se saltan. Repetirla cuando se integren los PR.
 - [ ] Cada integrante ensaya ejecutar, explicar y modificar lo que le tocó, para la defensa técnica [Retro: participación].
 
 ---

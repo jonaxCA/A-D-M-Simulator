@@ -20,6 +20,10 @@ Resultados medidos el 2026-11-16 sobre el compose de `infra/`, con un proceso de
 
 El script está en [`pruebas_carga/locustfile.py`](../../pruebas_carga/locustfile.py).
 
+## Suite consolidada
+
+[suite/2026-11-19](suite/2026-11-19/LEEME.md): todas las pruebas en una sola ejecución, sobre una base creada desde cero: 2281 pasan, 2 fallan (ya existían; se explican ahí) y 182 se saltan.
+
 ## Validación científica
 
 [validacion/2026-11-19](validacion/2026-11-19/LEEME.md): resultados esperados (tamaño final de un SEIR, letalidad, casos límite), sensibilidad y reproducibilidad de los motores, con el comando que repite cada tabla.
