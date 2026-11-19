@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.estudiante.simuladorepidemico.avisos.ABRIR_AVISOS
+import com.estudiante.simuladorepidemico.ui.navegacion.ConIndicadorDeConexion
 import com.estudiante.simuladorepidemico.ui.navegacion.ConPermisoRedLocal
 import com.estudiante.simuladorepidemico.ui.navegacion.Navegacion
 import com.estudiante.simuladorepidemico.ui.tema.TemaEpidemia
@@ -24,8 +25,10 @@ class MainActivity : ComponentActivity() {
         val contenedor = (application as EpidemiaApp).contenedor
         setContent {
             TemaEpidemia {
-                ConPermisoRedLocal {
-                    Navegacion(contenedor, abrirAvisos = abrirAvisos, alAbrirAvisos = { abrirAvisos = false })
+                ConIndicadorDeConexion {
+                    ConPermisoRedLocal {
+                        Navegacion(contenedor, abrirAvisos = abrirAvisos, alAbrirAvisos = { abrirAvisos = false })
+                    }
                 }
             }
         }
