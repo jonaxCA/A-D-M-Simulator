@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, Q
                                QSpinBox, QTabBar, QVBoxLayout, QWidget)
 
 from .. import api, config, exportar, servicios
-from .comun import celda, encabezado, estado, fecha, limpiar, pastilla, sim, tabla, tarjeta
+from .comun import celda, encabezado, estado, fecha, limpiar, num, pastilla, sim, tabla, tarjeta
 from .tareas import en_hilo
 
 PESTANAS = (("Cola", ("encolado", "ejecutando")), ("Completadas", ("completado",)),
@@ -15,6 +15,35 @@ PESTANAS = (("Cola", ("encolado", "ejecutando")), ("Completadas", ("completado",
 COLORES = {"completado": "#0F172A", "ejecutando": "#3B82F6", "encolado": "#E2E8F0",
            "fallido": "#EF4444", "cancelado": "#F59E0B"}
 COLUMNAS = ["Corrida", "Escenario", "Motor", "Semilla", "Estado", "Avance", "Lanzada por", "En cola"]
+
+
+def texto_escala(escala):
+    """Explica la escala recibida del servidor, sin recalcularla."""
+    if not escala:
+        return "El servicio no devolvió datos de escala."
+
+    agentes = escala.get("agentes")
+    habitantes = escala.get("habitantes")
+    factor = escala.get("factor")
+
+    if agentes is None or habitantes is None or factor is None:
+        return "No hay datos suficientes para mostrar la equivalencia."
+
+    lineas = [
+        "Agentes simulados: %s" % num(agentes),
+        "Habitantes representados: %s" % num(habitantes),
+        "1 agente representa aproximadamente %s habitantes." % num(factor, 2),
+    ]
+
+    if escala.get("fuente"):
+        lineas.append("Fuente: %s" % escala["fuente"])
+
+    avisos = escala.get("avisos") or []
+    if isinstance(avisos, str):
+        avisos = [avisos]
+    lineas.extend("Aviso: %s" % aviso for aviso in avisos)
+
+    return "\\n".join(lineas)
 
 
 def _cargar(c, motor):
@@ -98,6 +127,7 @@ class VistaSimulaciones(QWidget):
         self.fichas = {}
         self.datos_fichas = {}
         self.pendiente = None
+        self._escala_pendiente = False
         self.reloj = QTimer(self)
         self.reloj.timeout.connect(self.refrescar)
 
@@ -235,6 +265,8 @@ class VistaSimulaciones(QWidget):
         self.b_cancelar_lote.clicked.connect(self.cancelar_lote)
         self.b_comparar = QPushButton("Comparar esta versión")
         self.b_comparar.clicked.connect(self.comparar)
+        self.b_escala = QPushButton("Ver escala poblacional")
+        self.b_escala.clicked.connect(self.consultar_escala)
         reproducibilidad = QLabel("Reproducibilidad")
         reproducibilidad.setObjectName("tituloTarjeta")
         capa.addWidget(self.d_titulo)
@@ -248,7 +280,7 @@ class VistaSimulaciones(QWidget):
         capa.addLayout(self.d_forma)
         capa.addWidget(self.d_error)
         capa.addStretch(1)
-        for b in (self.b_cancelar, self.b_cancelar_lote, self.b_comparar):
+        for b in (self.b_cancelar, self.b_cancelar_lote, self.b_comparar, self.b_escala):
             capa.addWidget(b)
         self._mostrar_detalle()
         return marco
@@ -341,6 +373,8 @@ class VistaSimulaciones(QWidget):
 
     def _mostrar_detalle(self):
         x = self._corrida_elegida()
+        self.b_escala.setEnabled(bool(x and x["status"] == "completado"
+                                      and not self._escala_pendiente))
         limpiar(self.d_estado)
         for b in (self.b_cancelar, self.b_cancelar_lote, self.b_comparar):
             b.setEnabled(x is not None)
@@ -371,6 +405,35 @@ class VistaSimulaciones(QWidget):
         self.d_error.setText(x.get("error_message") or "")
         self.b_cancelar.setEnabled(x["status"] == "encolado")
         self.b_cancelar_lote.setEnabled(any(y["status"] == "encolado" for y in hermanas))
+
+
+    def consultar_escala(self):
+        corrida = self._corrida_elegida()
+        if not corrida or corrida["status"] != "completado":
+            return
+        if self._escala_pendiente:
+            return
+        self._escala_pendiente = True
+        self.b_escala.setEnabled(False)
+        en_hilo(servicios.escala_corrida, self.c, corrida["id"],
+                listo=self._escala_lista, fallo=self._escala_fallo)
+
+    def _escala_lista(self, datos):
+        self._escala_pendiente = False
+        self._mostrar_detalle()
+        if datos["run_id"] != self.elegida:
+            return
+        dialogo = QMessageBox(self)
+        dialogo.setWindowTitle("Escala poblacional")
+        dialogo.setTextFormat(Qt.PlainText)
+        dialogo.setText(texto_escala(datos.get("escala")))
+        dialogo.setIcon(QMessageBox.Information)
+        dialogo.exec()
+
+    def _escala_fallo(self, exc):
+        self._escala_pendiente = False
+        self._mostrar_detalle()
+        self.v.mostrar_error(exc)
 
     def cancelar(self):
         x = self._corrida_elegida()
