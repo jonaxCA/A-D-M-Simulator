@@ -48,8 +48,10 @@ def corridas(version, replicas, dias):
     escenario["enfermedad"]["r0"]["valor"] = round(1.2 + 0.01 * version, 2)
     for r in range(replicas):
         run_id = version * replicas + r + 1
-        # D8: cada réplica es su propio lote.
-        run = {"id": run_id, "batch_id": run_id, "scenario_version_id": version + 1, "seed": run_id}
+        # D8: cada réplica es su propio lote. Cada versión es su propio escenario; desde D5 del
+        # checklist, cada documento de series_corridas lleva scenario_id.
+        run = {"id": run_id, "batch_id": run_id, "scenario_id": version + 1,
+               "scenario_version_id": version + 1, "seed": run_id}
         yield series_corridas.documentos(run, MOTOR, simular(escenario, run_id))
 
 

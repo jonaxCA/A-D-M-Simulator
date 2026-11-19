@@ -3,6 +3,7 @@
 Cierra D-6 y D29: el conjunto de alto volumen en `series_corridas` y sus mediciones con y sin índice y con y sin la caché de Redis.
 
 - Rama `feat/bloque-B-y-D3`, sobre el commit `c1599fa`.
+- **Se midió antes de que cada documento llevara `scenario_id`** (D5 del checklist, que llegó con `segundo-parcial-correccion`). El script ya lo agrega desde el 2026-11-19; los documentos crecen un campo, así que la inserción y el disco hay que medirlos otra vez con el comando de abajo. Los índices y las consultas no cambian.
 - Entorno: Docker Desktop en Windows 11 (20 CPU, 7.6 GiB para Docker), solo los contenedores `mongodb` (`mongo:7.0`, caché de WiredTiger de 0.25 GB, como en el compose) y `redis`. El script corre en la misma máquina.
 - Datos: 100 versiones × 100 réplicas (el tope de D8) = 10,000 corridas de 180 días de `seir-ref`. Cada versión cambia la R0 del escenario de ejemplo del contrato del motor (de 1.20 a 2.19, parámetros supuestos); cada réplica, la semilla. Son datos de prueba: van a la base `epidemia_pruebas`, nunca a la de la demostración.
 - El script usa las mismas funciones que el simulador y `resultados`: `series_corridas.documentos`, `leer` y `banda`, los índices de `mongo.INDICES` y `cache.obtener`.
