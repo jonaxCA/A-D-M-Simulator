@@ -478,7 +478,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 [Retro: «MongoDB deberá incorporar referencias estables…» y «Fallo de worker»].
 
 - [x] Cada documento de `series_corridas` trae `scenario_id`, además de `run_id`, `scenario_version_id` y la versión del motor. Hecho en `feat/bloque-D` (2026-11-18, `2ceadf8`); vale al integrarse el PR del bloque D.
-- [ ] La serie se guarda antes de confirmar la corrida: si el proceso muere entre los dos pasos, la corrida no queda completada sin curvas. Hecho en `feat/bloque-D` (2026-11-18); se marca al integrarse.
+- [x] La serie se guarda antes de confirmar la corrida: si el proceso muere entre los dos pasos, la corrida no queda completada sin curvas. Hecho en `feat/bloque-D` (2026-11-18, `2ceadf8`); vale al integrarse el PR del bloque D.
 - [ ] La serie de una corrida que el arranque cierra como fallida no se queda en MongoDB, o `banda()` la ignora. Va con la decisión de corridas interrumpidas (0).
 - [ ] Con MongoDB caído y el simulador muerto después de confirmar, la serie se regenera con la misma semilla, comprobando la huella del escenario y el resumen. Va con la misma decisión.
 
