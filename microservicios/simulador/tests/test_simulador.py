@@ -1,4 +1,5 @@
 import dataclasses
+import functools
 import importlib
 import json
 import logging
@@ -14,6 +15,7 @@ from epidemia_comun import llaves
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.redis_compartido import RedisNoDisponible
 from microservicios.simulador import rutas, trabajador
+from procesamiento import motores
 from procesamiento.motores import MotorNoDisponible
 
 RAIZ = Path(__file__).resolve().parents[3]
@@ -24,8 +26,10 @@ AJUSTES = {"JWT_SECRET_KEY": "secreto-de-pruebas-del-simulador-0123456789",
 FILA = {"S": 990, "E": 0, "I": 10, "R": 0, "H": 0, "D": 0, "V": 0, "casos_activos": 10,
         "nuevos_casos": 0, "nuevas_hospitalizaciones": 0, "nuevas_defunciones": 0,
         "dosis_aplicadas": 0}
-RESULTADO = {"engine_version": "seir-ref-0.1",
+RESULTADO = {"engine_version": "seir-ref-0.1", "resumen": {},
              "serie": [dict(FILA, dia=0), dict(FILA, dia=1, casos_activos=12, E=2, S=988)]}
+# La de verdad, antes de que el fixture mundo la cambie.
+EJECUTAR_RUN = simulaciones.ejecutar_run
 
 
 class Resp:
@@ -35,17 +39,14 @@ class Resp:
 
 @pytest.fixture
 def mundo(monkeypatch, redis_falso, mongo_falso):
-    """ejecutar_run, get_run y llamar() simulados; el avance va al Redis falso y la serie de
-    una corrida completada, al MongoDB falso."""
+    """ejecutar_run, get_run y llamar() simulados; el avance va al Redis falso."""
     m = {"ejecutadas": [], "llamadas": [], "final": "completado", "respuesta": Resp()}
 
-    def ejecutar_run(run_id, forzar_error=False, al_avanzar=None, al_guardar=None):
+    def ejecutar_run(run_id, forzar_error=False, al_avanzar=None, guardar_serie=None,
+                     descartar_serie=None):
         m["ejecutadas"].append((run_id, forzar_error))
         for porcentaje in (10, 30, 90, 100):
             al_avanzar(porcentaje)
-        if m["final"] == "completado":
-            al_guardar({"id": run_id, "batch_id": 8, "scenario_version_id": 11, "seed": 7},
-                       "seir-ref", RESULTADO)
         return m["final"]
 
     def llamar(servicio, metodo, ruta, **kw):
@@ -56,7 +57,8 @@ def mundo(monkeypatch, redis_falso, mongo_falso):
 
     monkeypatch.setattr(simulaciones, "ejecutar_run", ejecutar_run)
     monkeypatch.setattr(queries, "get_run", lambda run_id: {
-        "id": run_id, "requested_by": 5, "scenario_id": 3, "scenario_version_id": 11,
+        "id": run_id, "batch_id": 8, "requested_by": 5, "scenario_id": 3,
+        "scenario_version_id": 11, "seed": 7, "engine_version": "seir-ref-0.1",
         "scenario_name": "Ola Influenza ZMM", "version_number": 2,
         "error_message": "Error forzado de prueba."})
     monkeypatch.setattr(trabajador, "llamar", llamar)
@@ -75,21 +77,62 @@ def test_procesar_ejecuta_y_publica_el_avance(mundo, redis_falso):
     assert trabajador.estado["corrida_actual"] is None
 
 
-def test_la_serie_va_a_series_corridas(mundo, mongo_falso):
-    trabajador.procesar(json.dumps({"id": 42}), AJUSTES)
+@pytest.fixture
+def sin_base(mundo, monkeypatch, mongo_falso):
+    """La ejecutar_run de verdad con la base simulada. `confirma` es lo que responde
+    guardar_resultado_run, y `dias_al_confirmar`, los días de la corrida que ya estaban en
+    MongoDB cuando se pidió confirmarla."""
+    e = {"confirma": True, "dias_al_confirmar": None}
+
+    def guardar_resultado_run(run_id, resultado):
+        e["dias_al_confirmar"] = mongo_falso["series_corridas"].count_documents({"run_id": run_id})
+        return e["confirma"]
+
+    motor = motores.Motor("seir-ref", "seir-ref-0.1", lambda escenario, semilla: RESULTADO, ())
+    monkeypatch.setattr(simulaciones, "ejecutar_run", functools.partial(EJECUTAR_RUN, demora_seg=0))
+    monkeypatch.setattr(simulaciones, "construir_escenario_desde_version",
+                        lambda version_id: ({}, None, []))
+    monkeypatch.setattr(simulaciones, "motor_del_nombre", lambda nombre: motor)
+    monkeypatch.setattr(simulaciones, "log_audit", lambda *args, **kwargs: None)
+    monkeypatch.setattr(queries, "marcar_run_ejecutando", lambda run_id: True)
+    monkeypatch.setattr(queries, "get_motor_run", lambda run_id: "seir-ref")
+    monkeypatch.setattr(queries, "guardar_resultado_run", guardar_resultado_run)
+    return e
+
+
+def test_la_serie_va_a_series_corridas_antes_de_confirmar(sin_base, mongo_falso):
+    assert trabajador.procesar(json.dumps({"id": 42}), AJUSTES) == "completado"
+    assert sin_base["dias_al_confirmar"] == 2
     docs = list(mongo_falso["series_corridas"].find({"run_id": 42}, {"_id": 0}).sort("dia", 1))
     assert [d["casos_activos"] for d in docs] == [10, 12]
     assert docs[0]["motor"] == "seir-ref" and docs[0]["scenario_version_id"] == 11
+    assert docs[0]["scenario_id"] == 3
     assert docs[0]["semilla"] == 7 and docs[0]["batch_id"] == 8
     assert docs[0]["version_esquema"] == 1 and docs[0]["engine_version"] == "seir-ref-0.1"
     assert trabajador.series_pendientes == {}
 
 
-def test_con_mongodb_caido_la_corrida_termina_y_la_serie_se_reintenta(mundo, mongo_falso,
+def test_si_la_corrida_no_se_confirma_no_queda_su_serie(sin_base, mongo_falso, mundo):
+    sin_base["confirma"] = False
+    assert trabajador.procesar(json.dumps({"id": 42}), AJUSTES) is None
+    assert sin_base["dias_al_confirmar"] == 2
+    assert mongo_falso["series_corridas"].count_documents({"run_id": 42}) == 0
+    assert mundo["llamadas"] == []
+
+
+def test_si_no_se_confirma_con_mongodb_caido_tampoco_queda_pendiente(sin_base, apagar_mongo):
+    sin_base["confirma"] = False
+    apagar_mongo()
+    assert trabajador.procesar(json.dumps({"id": 42}), AJUSTES) is None
+    assert trabajador.series_pendientes == {}
+
+
+def test_con_mongodb_caido_la_corrida_termina_y_la_serie_se_reintenta(sin_base, mundo, mongo_falso,
                                                                       apagar_mongo, caplog):
     apagar_mongo()
     with caplog.at_level(logging.WARNING, logger="simulador"):
         assert trabajador.procesar(json.dumps({"id": 42}), AJUSTES) == "completado"
+    assert sin_base["dias_al_confirmar"] == 0
     assert mundo["llamadas"][0][3]["cuerpo"]["type"] == "RUN_FINISHED"
     assert list(trabajador.series_pendientes) == [42]
     assert any("se reintentará" in r.getMessage() for r in caplog.records)
@@ -101,7 +144,7 @@ def test_con_mongodb_caido_la_corrida_termina_y_la_serie_se_reintenta(mundo, mon
     assert mongo_falso["series_corridas"].count_documents({"run_id": 42}) == 2
 
 
-def test_un_reintento_no_duplica_dias(mundo, mongo_falso):
+def test_un_reintento_no_duplica_dias(sin_base, mongo_falso):
     trabajador.procesar(json.dumps({"id": 42}), AJUSTES)
     trabajador.procesar(json.dumps({"id": 42}), AJUSTES)
     assert mongo_falso["series_corridas"].count_documents({"run_id": 42}) == 2

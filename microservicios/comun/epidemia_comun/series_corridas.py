@@ -13,7 +13,7 @@ CONOCIDAS = [1]
 
 
 def documentos(run, motor, resultado):
-    corrida = {"run_id": run["id"], "batch_id": run["batch_id"],
+    corrida = {"run_id": run["id"], "batch_id": run["batch_id"], "scenario_id": run["scenario_id"],
                "scenario_version_id": run["scenario_version_id"], "motor": motor,
                "engine_version": resultado["engine_version"], "semilla": run["seed"],
                "version_esquema": VERSION_ESQUEMA}
@@ -26,6 +26,10 @@ def guardar(docs):
     for d in docs:
         coleccion.replace_one({"run_id": d["run_id"], "dia": d["dia"]}, d, upsert=True)
     return len(docs)
+
+
+def borrar(run_id):
+    return mongo.coleccion(COLECCION).delete_many({"run_id": run_id}).deleted_count
 
 
 def leer(run_id):

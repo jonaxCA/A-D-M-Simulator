@@ -119,7 +119,7 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
 | Colección | Un documento es | Campos | Índices | Vida |
 |---|---|---|---|---|
 | `historial_servicios` | Un sondeo de `estado-servicios` a un servicio | `servicio`, `fecha`, `estado`, `latencia_ms`, `version`, `dependencias_caidas`, `error`, `version_esquema` | `{servicio, fecha}`; TTL sobre `fecha` | 30 días |
-| `series_corridas` | Un día de una corrida | `run_id`, `batch_id`, `scenario_version_id`, `motor`, `engine_version`, `semilla`, `dia`, los compartimentos totales del día (sin desglose por grupo, D28), `version_esquema` | `{run_id, dia}` único; `{scenario_version_id, motor, dia}` | Lo que viva la corrida |
+| `series_corridas` | Un día de una corrida | `run_id`, `batch_id`, `scenario_id`, `scenario_version_id`, `motor`, `engine_version`, `semilla`, `dia`, los compartimentos totales del día (sin desglose por grupo, D28), `version_esquema` | `{run_id, dia}` único; `{scenario_version_id, motor, dia}` | Lo que viva la corrida |
 
 - **Versionamiento:** cada documento lleva `version_esquema`. Un cambio de forma sube el número, y quien lee acepta las versiones que conoce.
 - **Crecimiento:** con D29 son unas 10 000 corridas de 180 días, alrededor de 1.8 millones de documentos en `series_corridas`. El tamaño en disco se mide al cargarlos (§9). El historial no crece sin fin, por el TTL.

@@ -228,7 +228,7 @@ colecciones de D28 (regla 12 de `microservicios/AGENTS.md`).
 | Módulo | Para qué | MongoDB caído |
 |---|---|---|
 | `mongo` | `base()`, `coleccion(nombre)` (crea sus índices la primera vez), `requerido()`, `opcional()`, `ping()` y `usar()` para las pruebas | `requerido` lanza `MongoNoDisponible` (503 `SERVICIO_NO_DISPONIBLE`, lo convierte `crear_app`); `opcional` regresa el defecto |
-| `series_corridas` | `documentos(run, motor, resultado)`, `guardar(docs)`, `leer(run_id)` y `banda(version, motor, campo)` | Según quién llame: el simulador reintenta, `resultados` responde 503 |
+| `series_corridas` | `documentos(run, motor, resultado)`, `guardar(docs)`, `borrar(run_id)`, `leer(run_id)` y `banda(version, motor, campo)` | Según quién llame: el simulador reintenta, `resultados` responde 503 |
 
 ## Colecciones
 
@@ -236,7 +236,7 @@ colecciones de D28 (regla 12 de `microservicios/AGENTS.md`).
 
 | Colección | Un documento es | Índices | Vida | Escribe / lee |
 |---|---|---|---|---|
-| `series_corridas` | Un día de una corrida: `run_id`, `batch_id`, `scenario_version_id`, `motor`, `engine_version`, `semilla`, los campos de `CAMPOS_SERIE` (`procesamiento/contrato.py`) y `version_esquema` | `{run_id, dia}` único; `{scenario_version_id, motor, dia}` | La de la corrida | `simulador` / `resultados` |
+| `series_corridas` | Un día de una corrida: `run_id`, `batch_id`, `scenario_id`, `scenario_version_id`, `motor`, `engine_version`, `semilla`, los campos de `CAMPOS_SERIE` (`procesamiento/contrato.py`) y `version_esquema` | `{run_id, dia}` único; `{scenario_version_id, motor, dia}` | La de la corrida | `simulador` / `resultados` |
 | `historial_servicios` | Un sondeo: `servicio`, `fecha`, `estado`, `latencia_ms`, `version`, `dependencias_caidas`, `error` y `version_esquema` | `{servicio, fecha}`; `{fecha}` con TTL de 30 días (el TTL solo se pone en un índice de un campo) | 30 días | `estado-servicios` |
 
 - **Versión de esquema.** Cada documento lleva `version_esquema` (hoy 1). Quien lee filtra por las

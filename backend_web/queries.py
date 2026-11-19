@@ -3683,7 +3683,7 @@ def guardar_resultado_run(run_id, resultado):
     resumen de motor.simular(), en un solo UPDATE: si el CHECK de
     scenario_checksum lo rechazara, la corrida NO queda 'completado' sin su
     resumen. La serie diaria no va aqui: la guarda el simulador en MongoDB
-    (D28), despues de este commit.
+    (D28), antes de este UPDATE (ver simulaciones.ejecutar_run).
 
     El json.dumps() se hace ANTES de abrir la conexion: si `resultado` trae
     algo no serializable, falla ahi (sin conexion ni transaccion abierta) en

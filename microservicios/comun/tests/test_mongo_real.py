@@ -1,6 +1,6 @@
 """Demostración de MongoDB contra un servidor real (D28, RNF-K03, RNF-K14): inserción, consulta
-por run_id, actualización, agregación (la banda p5–p95 por día de una versión y un motor) e
-índices. mongomock no tiene $percentile ni explain(), por eso estas van aparte.
+por run_id, actualización, borrado, agregación (la banda p5–p95 por día de una versión y un
+motor) e índices. mongomock no tiene $percentile ni explain(), por eso estas van aparte.
 
 Se saltan sin MONGO_URL_PRUEBAS, que apunta a la base epidemia_pruebas del compose. El comando
 para correrlas está en «MongoDB» de comun/README.md.
@@ -38,7 +38,8 @@ def base(monkeypatch):
 
 def corrida(run_id, version=11, escala=1, dias=5):
     serie = [dict(FILA, dia=d, casos_activos=(d + 1) * escala) for d in range(dias)]
-    run = {"id": run_id, "batch_id": run_id, "scenario_version_id": version, "seed": run_id}
+    run = {"id": run_id, "batch_id": run_id, "scenario_id": 3, "scenario_version_id": version,
+           "seed": run_id}
     return series_corridas.documentos(run, "seir-ref", {"engine_version": "seir-ref-0.1",
                                                          "serie": serie})
 
@@ -50,6 +51,8 @@ def test_insercion_consulta_y_actualizacion(base):
     series_corridas.guardar(corrida(1, escala=10))
     assert base["series_corridas"].count_documents({"run_id": 1}) == 5
     assert [f["casos_activos"] for f in series_corridas.leer(1)] == [10, 20, 30, 40, 50]
+    assert base["series_corridas"].find_one({"run_id": 1})["scenario_id"] == 3
+    assert series_corridas.borrar(1) == 5 and series_corridas.leer(1) == []
 
 
 def test_el_indice_unico_no_deja_repetir_un_dia(base):

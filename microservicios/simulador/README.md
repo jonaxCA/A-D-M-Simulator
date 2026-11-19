@@ -44,11 +44,14 @@ Más `/health`, `/docs` y `/openapi.json`, como todos.
    llama a `simulaciones.ejecutar_run()`, la misma del monolito:
    - marca `ejecutando` con la transición condicionada, así que dos contenedores nunca corren
      la misma corrida;
-   - arma la entrada del motor desde la versión aprobada, corre el motor y cierra la
-     corrida con su resumen, huella y trazabilidad en `simulation_runs`, en un solo `UPDATE`;
-   - audita cada paso;
-   - ya cerrada la corrida, llama a `al_guardar`, donde el trabajador guarda la serie en
-     `series_corridas`: un documento por día (ver `epidemia_comun/README.md`, «MongoDB»).
+   - arma la entrada del motor desde la versión aprobada y corre el motor;
+   - llama a `guardar_serie`, donde el trabajador guarda la serie en `series_corridas`: un
+     documento por día (ver `epidemia_comun/README.md`, «MongoDB»);
+   - después confirma la corrida con su resumen, huella y trazabilidad en `simulation_runs`,
+     en un solo `UPDATE` que solo aplica si sigue `ejecutando`. Si ya no lo estaba (otro
+     proceso la cerró), descarta el resultado y llama a `descartar_serie`, que borra la serie
+     de MongoDB y de `series_pendientes`;
+   - audita cada paso.
    El avance (10, 30, 90 y 100) va a `job:<id>:progress` (TTL de 24 h), de donde lo lee
    `corridas`.
 3. **Sirve** `/health` y `/api/v1/worker/status` con waitress.
@@ -62,7 +65,13 @@ canceló antes), no se avisa.
 Si Redis se cae, el trabajador espera 5 s y vuelve a intentar; un error en una corrida nunca
 tumba el hilo.
 
-Si MongoDB no responde, la corrida termina igual, con su resumen en PostgreSQL y su aviso
+La serie va antes que la confirmación para que una corrida `completado` no se quede sin curvas
+si el proceso muere entre los dos pasos. Si muere ahí, la corrida se queda `ejecutando` con su
+serie en MongoDB; `resultados` no la sirve (409, no está completada) y, al arrancar de nuevo, el
+simulador la cierra como `fallido` (paso 1). Volver a lanzarla crea otra corrida, con su propio
+`run_id`, así que no se duplica nada.
+
+Si MongoDB no responde, la corrida se confirma igual, con su resumen en PostgreSQL y su aviso
 (RNF-C08). La serie queda en `series_pendientes` y el ciclo la reintenta cada 30 s; guardar
 reemplaza por `{run_id, dia}`, así que un reintento no duplica días. Mientras tanto,
 `resultados` responde 404 a sus curvas.
@@ -71,13 +80,20 @@ reemplaza por `{run_id, dia}`, así que un reintento no duplica días. Mientras 
 
 - **Reinicio con varias réplicas.** Si se reinicia un `simulador` mientras otro está
   corriendo, el que arranca cierra como fallida la corrida del otro. Ese otro descarta su
-  resultado (`guardar_resultado_run` ya no la encuentra en `ejecutando`) y la corrida se puede
-  volver a lanzar con la misma semilla.
+  resultado y su serie (`guardar_resultado_run` ya no la encuentra en `ejecutando`) y la
+  corrida se puede volver a lanzar con la misma semilla.
 - **PostgreSQL caído al tomar una corrida.** La corrida sale de la cola y se queda
   `encolado` en la base. Se cancela desde `corridas` y se vuelve a lanzar.
-- **Serie pendiente y reinicio.** Las series pendientes viven en la memoria del proceso: si
-  se reinicia antes de que vuelva MongoDB, se pierden. La corrida conserva su resumen, y la
-  misma versión con la misma semilla da la misma serie: basta volver a lanzarla.
+- **MongoDB caído y reinicio después de confirmar.** Las series pendientes viven en la memoria
+  del proceso. Si se reinicia antes de que vuelva MongoDB, se pierden: la corrida queda
+  `completado` con su resumen, pero sin serie (`resultados` responde 404 a sus curvas). No hay
+  una reconciliación automática. La misma versión con la misma semilla da la misma serie, así
+  que se puede regenerar volviendo a lanzarla.
+- **Serie de una corrida que no se completó.** La de una corrida interrumpida entre guardar
+  la serie y confirmarla se queda en MongoDB cuando el arranque la cierra como `fallido`. Lo
+  mismo si el `UPDATE` que confirma truena: la corrida queda `fallido` y su serie no se borra,
+  porque con la conexión caída no se sabe si el `UPDATE` alcanzó a aplicarse. `resultados` no
+  la sirve, pero `series_corridas.banda()` no filtra por estado y la contaría.
 - **Corridas encoladas antes de la cola por motor.** Hasta octubre de 2026 la cola era
   `queue:simulaciones`, sin motor. Si al actualizar quedó algo ahí, nadie lo toma: esas
   corridas siguen `encolado`; se cancelan desde `corridas` y se vuelven a lanzar con la misma

@@ -8,7 +8,8 @@ La corrida la ejecuta simulaciones.ejecutar_run(), la misma del monolito: marca
 'ejecutando' con la transición condicionada (dos trabajadores no corren la
 misma), corre el motor, guarda el resumen en simulation_runs y audita. Aquí se
 lee la cola, se publica el avance en Redis, se guarda la serie diaria en MongoDB
-(series_corridas, D28) y se avisa a notificaciones.
+(series_corridas, D28) antes de que ejecutar_run confirme la corrida, y se avisa a
+notificaciones.
 """
 import json
 import logging
@@ -43,7 +44,8 @@ estado = {"trabajador": socket.gethostname(), "motor": MOTOR, "activo": False,
 
 pendiente = []
 # Series que MongoDB no aceptó, por run_id; el ciclo las reintenta (RNF-C08). Si el proceso
-# muere se pierden, pero la misma semilla vuelve a dar la misma serie.
+# muere se pierden, pero la misma semilla vuelve a dar la misma serie (ver «Límites conocidos»
+# en el README).
 series_pendientes = {}
 
 
@@ -86,6 +88,12 @@ def guardar_serie(run, motor, resultado):
     if mongo.opcional("simulador: guardar la serie", lambda: series_corridas.guardar(docs)) is None:
         series_pendientes[run["id"]] = docs
         log.warning("MongoDB no guardó la serie de la corrida %s; se reintentará.", run["id"])
+
+
+def descartar_serie(run_id):
+    # ejecutar_run no confirmó la corrida (otro proceso la cerró): su serie no se queda sola.
+    series_pendientes.pop(run_id, None)
+    mongo.opcional("simulador: descartar la serie", lambda: series_corridas.borrar(run_id))
 
 
 def reintentar_series():
@@ -134,7 +142,8 @@ def procesar(crudo, ajustes):
     try:
         final = simulaciones.ejecutar_run(run_id, forzar_error=bool(pedido.get("forzar_error")),
                                           al_avanzar=lambda p: _avance(run_id, p),
-                                          al_guardar=guardar_serie)
+                                          guardar_serie=guardar_serie,
+                                          descartar_serie=descartar_serie)
     finally:
         estado["corrida_actual"] = None
     estado["procesadas"] += 1

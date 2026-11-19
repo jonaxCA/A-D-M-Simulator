@@ -216,7 +216,8 @@ def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
 # ---------------------------------------------------------------------------
 # Corrida en segundo plano
 # ---------------------------------------------------------------------------
-def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None, al_guardar=None):
+def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None,
+                 guardar_serie=None, descartar_serie=None):
     """Corre una simulation_run ya encolada. Lo llama el trabajador del
     simulador (microservicios/simulador/trabajador.py) por cada corrida que
     toma de la cola; la web ya no lanza corridas (D4).
@@ -229,10 +230,12 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None, al
     pantalla de detalle (que hace polling cada segundo); en pruebas se pasa 0.
 
     `al_avanzar(porcentaje)` recibe el avance de cada etapa; el microservicio
-    simulador lo escribe en Redis. `al_guardar(run, motor, resultado)` se llama
-    con la corrida ya cerrada como completada; el simulador guarda ahi la serie
-    diaria en MongoDB (D28). Si falla, la corrida sigue completada con su
-    resumen (RNF-C08). Devuelve el estado en que esta llamada dejo
+    simulador lo escribe en Redis. `guardar_serie(run, motor, resultado)` se
+    llama ANTES de confirmar la corrida como completada; el simulador guarda
+    ahi la serie diaria en MongoDB (D28). Si falla, la corrida se confirma
+    igual con su resumen (RNF-C08). Si la confirmacion no ocurre porque la
+    corrida ya no estaba 'ejecutando', `descartar_serie(run_id)` quita la
+    serie que se guardo. Devuelve el estado en que esta llamada dejo
     la corrida ('completado' o 'fallido'), o None si no la llego a cerrar
     (no existia, otro proceso la tomo o la cerro antes).
     """
@@ -286,6 +289,16 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None, al
 
         resultado = motor.simular(escenario, run["seed"])
         avanza(90)
+        # La serie va antes de confirmar: si el proceso muere entre los dos
+        # pasos, la corrida se queda 'ejecutando' con su serie, nunca
+        # 'completado' sin ella.
+        if guardar_serie:
+            try:
+                guardar_serie(run, motor.nombre, resultado)
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "No se pudo guardar la serie de la corrida %s; se confirma con su "
+                    "resumen.", run_id)
         if not queries.guardar_resultado_run(run_id, resultado):
             # Alguien cerro la corrida mientras el motor trabajaba (otro
             # proceso que arranco y la dio por interrumpida). Su estado
@@ -294,6 +307,12 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None, al
             logging.getLogger(__name__).warning(
                 "La corrida %s termino en el motor, pero ya no estaba en "
                 "'ejecutando'; el resultado se descarto.", run_id)
+            if descartar_serie:
+                try:
+                    descartar_serie(run_id)
+                except Exception:
+                    logging.getLogger(__name__).exception(
+                        "No se pudo descartar la serie de la corrida %s.", run_id)
             return None
         log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
                   data_after={
@@ -301,12 +320,6 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None, al
                       "engine_version": resultado["engine_version"],
                       "indicadores": resultado["resumen"],
                   })
-        if al_guardar:
-            try:
-                al_guardar(run, motor.nombre, resultado)
-            except Exception:
-                logging.getLogger(__name__).exception(
-                    "La corrida %s quedo completada, pero no se pudo guardar su serie.", run_id)
         avanza(100)
         return "completado"
 

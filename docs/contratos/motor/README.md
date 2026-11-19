@@ -119,8 +119,8 @@ faltan, la base no da error, deja columnas vacías.
 
 `simulation_runs` (migración 038) guarda `engine_version`, `huella_escenario` (como
 `scenario_checksum`), `resumen` y `trazabilidad_parametros` (como `trazabilidad`). La `serie` va a
-la colección `series_corridas` de MongoDB (D28): un documento por día con el `run_id`, la versión,
-el motor y la semilla. `simulation_results` (014) se retiró con la migración 041.
+la colección `series_corridas` de MongoDB (D28): un documento por día con el `run_id`, el
+escenario y su versión, el motor y la semilla. `simulation_results` (014) se retiró con la migración 041.
 
 ## Pendiente de acordar
 
