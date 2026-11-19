@@ -2,7 +2,8 @@
 
 El estado de cada versión de motor está en estado_validacion.json. Se cambia solo con su
 evidencia en la ficha del simulador y en un PR revisado. Calibrar o validar es por enfermedad
-y región: «calibrado» y «validado» son listas de {"enfermedad": código, "region": código}.
+y región: «calibrado» y «validado» son listas de {"enfermedad": disease_id, "region": region_id},
+los identificadores de PostgreSQL.
 """
 import json
 from pathlib import Path

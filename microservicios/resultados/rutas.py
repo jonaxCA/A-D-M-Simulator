@@ -12,6 +12,7 @@ from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import responder
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import entero_positivo
+from procesamiento.categoria import categoria
 from procesamiento.motor import AVISO_SIMULACION
 from procesamiento.motores import de_version
 
@@ -21,8 +22,8 @@ CACHE_TTL = 300
 CAMPOS_CORRIDA = ("id", "scenario_version_id", "scenario_id", "version_number", "scenario_name",
                   "disease_name", "region_name", "seed", "population_size", "horizon_days",
                   "finished_at")
-CAMPOS_RESULTADO = ("corrida", "engine_version", "scenario_checksum", "resumen", "serie",
-                    "trazabilidad", "escala")
+CAMPOS_RESULTADO = ("categoria", "corrida", "engine_version", "scenario_checksum", "resumen",
+                    "serie", "trazabilidad", "escala")
 
 
 def _corrida(run_id):
@@ -42,9 +43,13 @@ def _corrida(run_id):
                 "resumen": guardado["resumen"], "trazabilidad": guardado["trazabilidad"],
                 # D6: la corrida simula agentes; cuántos habitantes de la región representan.
                 "escala": simulaciones.escala(corrida["region_population"],
-                                              corrida["population_size"], guardado["resumen"])}
+                                              corrida["population_size"], guardado["resumen"]),
+                # D39: exploratoria, predicción o validada, con su motivo.
+                "categoria": categoria(guardado["engine_version"], guardado["trazabilidad"],
+                                       corrida["disease_id"], corrida["region_id"])}
 
-    return cache.obtener("resultados", "run=%d" % run_id, CACHE_TTL, calcular)
+    # La llave lleva la forma del dato: con D39 se agregó la categoría.
+    return cache.obtener("resultados", "run2=%d" % run_id, CACHE_TTL, calcular)
 
 
 def _serie(run_id):
@@ -73,13 +78,14 @@ def registrar(app):
     @requiere_token(roles=ROLES)
     def curvas(run_id):
         run_id = entero_positivo(run_id, "id")
-        _corrida(run_id)
-        return responder({"aviso": AVISO_SIMULACION, "run_id": run_id,
+        datos = _corrida(run_id)
+        return responder({"aviso": AVISO_SIMULACION, "categoria": datos["categoria"], "run_id": run_id,
                           "serie": _serie(run_id)}, "curvas")
 
     @app.get("/api/v1/runs/<run_id>/indicators")
     @requiere_token(roles=ROLES)
     def indicadores(run_id):
         run_id = entero_positivo(run_id, "id")
-        return responder({"aviso": AVISO_SIMULACION, "run_id": run_id,
-                          "resumen": _corrida(run_id)["resumen"]}, "indicadores")
+        datos = _corrida(run_id)
+        return responder({"aviso": AVISO_SIMULACION, "categoria": datos["categoria"], "run_id": run_id,
+                          "resumen": datos["resumen"]}, "indicadores")

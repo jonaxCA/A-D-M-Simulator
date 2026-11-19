@@ -33,6 +33,7 @@ TRAZA = [{"parametro": "r0", "valor": 1.8, "fuente": "Biggerstaff et al. 2014", 
 def corrida(run_id, status):
     return {"id": run_id, "status": status, "scenario_version_id": 11, "scenario_id": 3,
             "version_number": 2, "scenario_name": "Ola Influenza ZMM",
+            "disease_id": 1, "region_id": 39,
             "disease_name": "Influenza A", "region_name": "Monterrey", "region_population": 1142994,
             "seed": 982314,
             "population_size": 200000, "horizon_days": 120, "requested_by": 7,
@@ -86,6 +87,9 @@ def test_resultado_completo_con_aviso(cliente, token, rol):
     assert datos["corrida"]["id"] == 42 and datos["corrida"]["finished_at"].startswith("2026-10-20")
     assert "requested_by" not in datos["corrida"]
     assert datos["resumen"] == RESUMEN and datos["serie"] == SERIE and datos["trazabilidad"] == TRAZA
+    # D39: sin calibración, la corrida es exploratoria aunque el modelo esté verificado.
+    assert datos["categoria"]["categoria"] == "exploratoria"
+    assert datos["categoria"]["modelo_verificado"] is True
 
 
 @pytest.mark.parametrize("version, motor", [("abm-ref-0.1", "abm-ref"),
@@ -111,8 +115,10 @@ def test_la_escala_de_d6_lleva_los_conteos_a_habitantes(cliente, token):
 
 def test_curvas_e_indicadores_con_aviso(cliente, token):
     curvas = cliente.get("/api/v1/runs/42/curves?format=json", headers=token()).get_json()
+    assert curvas.pop("categoria")["categoria"] == "exploratoria"
     assert curvas == {"aviso": AVISO_SIMULACION, "run_id": 42, "serie": SERIE}
     indicadores = cliente.get("/api/v1/runs/42/indicators?format=json", headers=token()).get_json()
+    assert indicadores.pop("categoria")["categoria"] == "exploratoria"
     assert indicadores == {"aviso": AVISO_SIMULACION, "run_id": 42, "resumen": RESUMEN}
 
 

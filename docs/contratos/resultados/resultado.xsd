@@ -113,10 +113,29 @@
     </xs:all>
   </xs:complexType>
 
+  <!-- D39: exploratoria, prediccion o validada. Hoy todas son exploratorias. -->
+  <xs:simpleType name="nombreCategoria">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="exploratoria"/>
+      <xs:enumeration value="prediccion"/>
+      <xs:enumeration value="validada"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="Categoria">
+    <xs:all>
+      <xs:element name="categoria" type="nombreCategoria"/>
+      <xs:element name="modelo_verificado" type="Booleano"/>
+      <xs:element name="motivo" type="xs:string"/>
+      <xs:element name="texto" type="xs:string"/>
+    </xs:all>
+  </xs:complexType>
+
   <xs:element name="resultado">
     <xs:complexType>
       <xs:all>
         <xs:element name="aviso" type="xs:string"/>
+        <xs:element name="categoria" type="Categoria" minOccurs="0"/>
         <xs:element name="simplificaciones">
           <xs:complexType>
             <xs:sequence>
