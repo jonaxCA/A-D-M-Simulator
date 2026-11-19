@@ -220,6 +220,210 @@
         }
       }
     },
+    "/api/v1/zones/diseases": {
+      "get": {
+        "summary": "Enfermedades con casos",
+        "operationId": "enfermedades_con_casos",
+        "description": "Las enfermedades que tienen al menos un caso en algún municipio de Nuevo León, por nombre: el filtro de enfermedad del mapa y del monitoreo. Cualquier rol con sesión, como las demás rutas de zonas. Caché de 60 s.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 2,
+                  "enfermedades": [
+                    {
+                      "id": 2,
+                      "name": "Dengue"
+                    },
+                    {
+                      "id": 1,
+                      "name": "Influenza"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "enfermedades_con_casos"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<enfermedades_con_casos><total tipo=\"numero\">2</total><enfermedades><enfermedad><id tipo=\"numero\">2</id><name>Dengue</name></enfermedad><enfermedad><id tipo=\"numero\">1</id><name>Influenza</name></enfermedad></enfermedades></enfermedades_con_casos>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE): solo cualquier rol con sesión. Queda en la bitácora como PERMISSION_DENIED."
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zones/export": {
+      "get": {
+        "summary": "Exportar las zonas",
+        "operationId": "exportar_zonas",
+        "description": "Todas las zonas del ámbito (mismos filtros disease_id, region_id, days, q y order que detalle_zonas, sin paginar), para exportarlas; el CSV lo arma el cliente. Registra EXPORT sobre reports (monitoreo_zonas) en la bitácora. Cualquier rol con sesión.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "zonas": [
+                    {
+                      "id": 6,
+                      "zona": "General Escobedo",
+                      "casos": 549,
+                      "incidencia": 114.1,
+                      "variacion": 0.0,
+                      "graves": 77,
+                      "estado": "estable"
+                    },
+                    {
+                      "id": 4,
+                      "zona": "Guadalupe",
+                      "casos": 683,
+                      "incidencia": 106.2,
+                      "variacion": 0.0,
+                      "graves": 76,
+                      "estado": "estable"
+                    },
+                    {
+                      "id": 5,
+                      "zona": "Apodaca",
+                      "casos": 618,
+                      "incidencia": 94.1,
+                      "variacion": 0.0,
+                      "graves": 79,
+                      "estado": "estable"
+                    }
+                  ],
+                  "total": 51,
+                  "pagina": 1,
+                  "paginas": 17,
+                  "desde": 1,
+                  "hasta": 3,
+                  "filtros": {
+                    "disease_id": null,
+                    "region_id": null,
+                    "days": 90,
+                    "order": "incidencia"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "zonas_detalle"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<zonas_detalle><zonas><zona><id tipo=\"numero\">6</id><zona>General Escobedo</zona><casos tipo=\"numero\">549</casos><incidencia tipo=\"numero\">114.1</incidencia><variacion tipo=\"numero\">0.0</variacion><graves tipo=\"numero\">77</graves><estado>estable</estado></zona><zona><id tipo=\"numero\">4</id><zona>Guadalupe</zona><casos tipo=\"numero\">683</casos><incidencia tipo=\"numero\">106.2</incidencia><variacion tipo=\"numero\">0.0</variacion><graves tipo=\"numero\">76</graves><estado>estable</estado></zona><zona><id tipo=\"numero\">5</id><zona>Apodaca</zona><casos tipo=\"numero\">618</casos><incidencia tipo=\"numero\">94.1</incidencia><variacion tipo=\"numero\">0.0</variacion><graves tipo=\"numero\">79</graves><estado>estable</estado></zona></zonas><total tipo=\"numero\">51</total><pagina tipo=\"numero\">1</pagina><paginas tipo=\"numero\">17</paginas><desde tipo=\"numero\">1</desde><hasta tipo=\"numero\">3</hasta><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days><order>incidencia</order></filtros></zonas_detalle>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE): solo cualquier rol con sesión. Queda en la bitácora como PERMISSION_DENIED."
+          },
+          "422": {
+            "description": "Filtros inválidos (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/zones/map": {
       "get": {
         "summary": "Datos del mapa",

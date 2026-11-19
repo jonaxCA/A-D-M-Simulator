@@ -14,7 +14,8 @@ RAIZ = Path(__file__).resolve().parents[3]
 # (servicio del catálogo, paquete de Python, puerto, rutas públicas)
 SERVICIOS = [
     ("tipos-intervencion", "tipos_intervencion", 5215, True),
-    ("indicadores", "indicadores", 5251, True),
+    # Pública salvo la exportación, que pide sesión para auditar quién exporta (D36).
+    ("indicadores", "indicadores", 5251, None),
     ("series", "series", 5252, False),
     ("zonas", "zonas", 5253, False),
     ("comparacion", "comparacion", 5244, False),
@@ -67,7 +68,8 @@ def test_contrato_igual_a_las_rutas(servicio, paquete, puerto, publico):
                 assert {"application/json", "application/xml"} <= set(contenido)
             en_contrato.add((ruta, metodo, item.get("security") == [{"bearerAuth": []}]))
     assert en_contrato == rutas_declaradas(paquete)
-    assert all(not protegida for *_, protegida in en_contrato) is publico
+    if publico is not None:
+        assert all(not protegida for *_, protegida in en_contrato) is publico
 
 
 @pytest.mark.parametrize("servicio,paquete,puerto,publico", SERVICIOS)
