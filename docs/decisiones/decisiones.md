@@ -2,7 +2,7 @@
 
 Una decisión por archivo, con la estructura de [`plantilla_ADR.md`](plantilla_ADR.md). El número es el de siempre (D1, D2…) para que no se rompan las referencias en otros documentos.
 
-Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una opción recomendada sin confirmar), **Por confirmar** (ya está en uso o se asumió, falta que el equipo la confirme) y **Reemplazada por DXX**.
+Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una opción recomendada sin confirmar), **Por confirmar** (ya está en uso o se asumió, falta que el equipo la confirme) **Reemplazada por DXX** y **Reabierta** (la retroalimentación la contradice y todavía no hay decisión que la reemplace).
 
 | #   | Decisión                                                                       | Estado    | Depende de  | Archivo                                                                                |
 | --- | ---                                                                            | ---       | ---         | ---                                                                                    |
@@ -29,7 +29,7 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D21 | Lo no implementado pasa al tercer parcial                                      | Aceptada  | —           | [D21-pendientes-pasan-al-tercer-parcial.md](D21-pendientes-pasan-al-tercer-parcial.md) |
 | D22 | Implementar el modelo basado en agentes (ABM)                                  | Aceptada  | D2          | [D22-modelo-basado-en-agentes.md](D22-modelo-basado-en-agentes.md)                     |
 | D23 | Tecnología del ABM: CPU o GPU                                                  | Aceptada  | D22         | [D23-tecnologia-del-abm.md](D23-tecnologia-del-abm.md)                                 |
-| D24 | Calibración y parámetros de los agentes                                        | Aceptada  | D22         | [D24-calibracion-del-abm.md](D24-calibracion-del-abm.md)                               |
+| D24 | Calibración y parámetros de los agentes                                        | Reabierta | D22         | [D24-calibracion-del-abm.md](D24-calibracion-del-abm.md)                               |
 | D25 | nginx como terminador TLS y entrada única                                      | Aceptada  | D13         | [D25-nginx-como-entrada.md](D25-nginx-como-entrada.md)                                 |
 | D26 | Certificado HTTPS                                                              | Aceptada  | D25         | [D26-certificado-https.md](D26-certificado-https.md)                                   |
 | D27 | Servicios nuevos para la app móvil                                             | Aceptada  | —           | [D27-servicios-nuevos-para-la-movil.md](D27-servicios-nuevos-para-la-movil.md)         |

@@ -1,36 +1,42 @@
 # Arquitectura v3
 
-> **Estado: Borrador** · 2026-11-14 · Por validar en equipo (paso 6 de §11 de [`brechas_v3.md`](brechas_v3.md)). Al validarse reemplaza a [`arquitectura_v2.md`](arquitectura_v2.md); mientras tanto, lo que este documento no cambia sigue como en la v2.
+> **Estado: Borrador** · 2026-11-14 · Al día con las ramas integradas el 2026-11-19 · Por validar en equipo (paso 6 de §11 de [`brechas_v3.md`](brechas_v3.md)). Al validarse reemplaza a [`arquitectura_v2.md`](arquitectura_v2.md); mientras tanto, lo que este documento no cambia sigue como en la v2.
 
-La v3 es la arquitectura del tercer parcial: las apps cliente, la entrada por nginx, MongoDB, Cloud Storage, los límites de consumo, el ABM y el despliegue en GCP. Sale de los tres procesos ([`procesos_v3.md`](procesos_v3.md)), de las decisiones D1 a D33 ([`decisiones.md`](../decisiones/decisiones.md)) y del código de `feat/tercer-parcial` al 2026-11-14. Enlaza en vez de copiar: el detalle de cada servicio está en [`microservicios.md`](microservicios.md), y el del simulador en [`ficha_simulador.md`](ficha_simulador.md).
+La v3 es la arquitectura del tercer parcial: las apps cliente, la entrada por nginx, MongoDB, Cloud Storage, los límites de consumo, el ABM y el despliegue en GCP. Sale de los tres procesos ([`procesos_v3.md`](procesos_v3.md)), de las decisiones D1 a D39 ([`decisiones.md`](../decisiones/decisiones.md)), de la retroalimentación del profesor ([checklist del tercer parcial](../parciales/parcial-3/checklist.md)) y del código de `feat/tercer-parcial` al 2026-11-19. Enlaza en vez de copiar: el detalle de cada servicio está en [`microservicios.md`](microservicios.md), y el del simulador en [`ficha_simulador.md`](ficha_simulador.md).
 
 Si este documento y el catálogo no coinciden, manda el catálogo; si el catálogo y el código no coinciden, manda el código.
 
 Cada pieza lleva su estado:
 
 - **Hecho:** está en el código y tiene pruebas.
-- **Falta:** está decidido y no implementado. Lleva su brecha y quién la tiene (integrante 2 MongoDB, 3 archivos y nginx, 4 seguridad y fallos, 5 simulador, 6 apps cliente, 7 nube y monitoreo).
+- **Falta:** está decidido y no implementado. Lleva su brecha y el bloque del checklist que la tiene: 0 coordinación y validación científica, A escritorio, B Android, C web, D datos, E microservicios y seguridad, F nube y monitoreo.
 - **Propuesta:** una forma de hacerlo que el equipo todavía no decide.
+- **Reabierto:** la retroalimentación lo pide y choca con una decisión vigente; la decisión nueva es del bloque 0.
 
 ## 1. Qué cambia respecto a la v2
 
 | Tema | v2 | v3 | Decisión | Estado |
 |---|---|---|---|---|
-| Entrada | Sin pasarela: cada servicio publica su puerto y el directorio da `host:puerto` | nginx en 80 y 443 con TLS; los servicios dejan de publicar puertos y el directorio da `https://<dominio>/<servicio>` | D25, D26 (ajustan D13) | Falta (N7, S6; integrante 3) |
+| Entrada | Sin pasarela: cada servicio publica su puerto y el directorio da `host:puerto` | nginx en 80 y 443 con TLS; los servicios dejan de publicar puertos y el directorio da `https://<dominio>/<servicio>` | D25, D26 (ajustan D13) | Falta (N7, S6; bloque F) |
 | Web | Crea escenarios y lanza corridas | Consulta y aprueba; el diseño y las corridas son del escritorio | D4 | **Hecho** |
+| Acceso a datos de la web | Directo a PostgreSQL con `backend_web` (D20) | Consume los microservicios por HTTP con el JWT de la sesión; no toca PostgreSQL, MongoDB ni Redis | D34, D36 (reemplaza D20 y D33) | En curso (C6): la sesión y la aprobación ya pasan por los servicios; los demás módulos, en el orden de D36 |
 | Microservicios | 26, más cinco opcionales | 29: entran `dispositivos`, `evidencias` y `vacunas` para la móvil | D27 | **Hecho** |
 | Apps cliente | La consola las sustituye | Android (JSON) y escritorio (XML) | D10 | **Hecho** en lo principal; ver §4 |
 | Motor | SEIR por edad; FLAME GPU después | Tres motores con el mismo contrato: `seir-ref`, `abm-ref` y `abm-gpu`, cada uno con su simulador y su cola | D2, D22, D23 | **Hecho** |
 | Población de un escenario | Habitantes | Agentes; el factor de escala se calcula fuera del motor | D6 | **Hecho** |
-| Réplicas | — | 30 por omisión, semillas 1..N; el escritorio resume | D8 | **Hecho**, menos el aviso de bandas encimadas (integrante 6) |
+| Réplicas | — | 30 por omisión, semillas 1..N; el escritorio resume, con aviso de bandas encimadas | D8 | **Hecho**. Reabierto: `resultados` con intervalos de incertidumbre (bloque E) |
 | MongoDB | Fuera de la etapa | `historial_servicios` y `series_corridas` | D28 | **Hecho** (D-1); ver §6 |
-| Archivos | Volumen de Docker de `evidencias` | Cloud Storage con URLs firmadas | D30 | Falta (D-3; integrante 3) |
+| Archivos | Volumen de Docker de `evidencias` | Cloud Storage con URLs firmadas | D30, D35 | Falta (D-3; bloque D) |
 | Límites de consumo | Fuera de la etapa | Un contador por usuario y regla en Redis, en `epidemia_comun` | D31 | Hecho en la biblioteca (S2); ver §8 |
-| Salud y panel | `/health` con PostgreSQL y Redis; historial en Redis | Más MongoDB, bucket y tiempo de respuesta; historial en MongoDB y número de errores | D28 | Falta, en parte (N3, N4; integrante 7) |
-| Despliegue | Pendiente | Compute Engine: una VM principal y una con GPU que se enciende solo cuando hace falta | D23, D25, D26 | Falta (N1, N2, N6; integrante 7) |
-| Volumen de datos | — | 10 000 corridas de 180 días, 1.81 millones de documentos | D29 | **Hecho** (D-6), medido el 2026-11-18; ver §9. La cifra sigue por confirmar con el profesor |
-| Pruebas de carga | Pendiente | Locust por perfil de uso | — | Falta (A4, A5) |
-| Redis en el login de la web | No | La web también registra y revisa su sesión en Redis | Por decidir | Falta (I3); ver §5 |
+| Salud y panel | `/health` con PostgreSQL y Redis; historial en Redis | Más MongoDB, bucket y tiempo de respuesta; historial en MongoDB y número de errores | D28 | Falta, en parte (N3, N4; bloque F) |
+| Despliegue | Pendiente | Compute Engine: una VM principal y una con GPU que se enciende solo cuando hace falta | D23, D25, D26 | Falta (N1, N2, N6; bloque F) |
+| Volumen de datos | — | 10 000 corridas de 180 días, 1.81 millones de documentos | D29 | **Hecho** (D-6), medido el 2026-11-18; la inserción y el disco se repiten con `scenario_id` (§9). La cifra sigue por confirmar con el profesor |
+| Pruebas de carga | Pendiente | Locust por perfil de uso | — | **Hecho** en local el 2026-11-16 (A4, A5); falta en la nube (bloque F) |
+| Sesión de la web | Firma su propio JWT y lo revisa contra PostgreSQL | Inicia y cierra sesión con `auth` y `sesiones`; cada servicio revisa la sesión en Redis, y la web ya no lee Redis | D36 (reemplaza D33) | **Hecho** (C6; cierra I3) |
+| Reglas de negocio | Los servicios importan `backend_web` | Cada regla vive en su servicio dueño; ningún servicio importa `backend_web`; `epidemia_comun` solo con lo técnico | D37 | Falta (E8; bloques D, E y F): hoy 27 servicios importan `backend_web` |
+| Corridas interrumpidas | Se cierran como fallidas | Se reencolan hasta 3 intentos, sin duplicar la serie | D38 | **Hecho** (E7, migración 045) |
+| Categoría de una corrida | Un solo aviso, `AVISO_SIMULACION` | `exploratoria`, `prediccion` o `validada`, según el estado de validación de cada modelo | D39 | **Hecho** en `procesamiento` y `resultados`; faltan la web y el escritorio (bloques C y A) |
+| Calibración | Fuera de alcance (D24) | Obligatoria: método, función de pérdida, métricas de ajuste y validación contra datos observados | Reabre D24; la decisión nueva es del bloque 0 | Reabierto. Hechas la verificación contra resultados esperados, la sensibilidad de `seir-ref` y la reproducibilidad (ficha) |
 
 ## 2. Vista general
 
@@ -44,9 +50,9 @@ flowchart LR
     NAV & MOV & ESC -->|HTTPS 443| NG[nginx<br/>TLS y entrada única]
     NG -->|/| WEB[Web<br/>monolito Flask]
     NG -->|/servicio/...| MS[29 microservicios<br/>epidemia_comun]
-    WEB --> PG[(PostgreSQL<br/>fuente de verdad)]
-    WEB -.->|sesión, propuesta I3| RD
-    MS --> PG
+    WEB -->|HTTP con el JWT de la sesión, D36| MS
+    WEB -.->|módulos aún sin migrar, D36| PG
+    MS --> PG[(PostgreSQL<br/>fuente de verdad)]
     MS --> RD[(Redis<br/>sesiones, caché,<br/>límites, colas)]
     MS --> MG[(MongoDB<br/>historial y series)]
     MS --> GCS[(Cloud Storage<br/>archivos)]
@@ -55,7 +61,7 @@ flowchart LR
     SIM --> MG
 ```
 
-Siguen los seis principios de la v2 (§1): las apps no tocan las bases y la web sí, una tarea por servicio, un dueño por tabla, lo lento va a una cola, el motor está aislado y PostgreSQL es la fuente de verdad. El quinto ahora tiene tres implementaciones detrás del mismo contrato (`procesamiento/motores.py`). La v3 agrega dos:
+Siguen cinco de los seis principios de la v2 (§1): una tarea por servicio, un dueño por tabla, lo lento va a una cola, el motor está aislado y PostgreSQL es la fuente de verdad. El quinto ahora tiene tres implementaciones detrás del mismo contrato (`procesamiento/motores.py`). El primero cambia con D36: **ningún cliente, tampoco la web, toca PostgreSQL, MongoDB ni Redis**; la web pasa por los servicios, como las apps. Y con D37 la regla de negocio vive en su servicio dueño, no en `backend_web`. La v3 agrega dos:
 
 **7. Una sola puerta.** Desde fuera solo se llega por nginx, en 443 (el 80 redirige). Ni los servicios ni las bases publican puertos en la nube. nginx no valida tokens ni tiene lógica: eso sigue en cada servicio (D25).
 
@@ -67,9 +73,9 @@ Los tres procesos integrales que pide la rúbrica, paso a paso, están en [`proc
 
 | Proceso | Usuario y app | Servicios | Redis | PostgreSQL o MongoDB | Archivo en bucket | Auditoría | Notificación | Visualización |
 |---|---|---|---|---|---|---|---|---|
-| P1 · Captura en campo | CAPTURISTA, Android | `auth`, `sesiones`, `dispositivos`, `enfermedades`, `regiones`, `sincronizacion`, `casos`, `evidencias`, `vacunas` | Sí: sesión, candado y resultado del lote | Sí: `cases` | Falta: las fotos a GCS (D-3) | Sí | Falta (I1): un aviso por lote con casos nuevos a los EPIDEMIOLOGO (D32) | Sí: tablero y mapa de la web |
-| P2 · Diseño y aprobación | ANALISTA en el escritorio; EPIDEMIOLOGO en la web | `escenarios`, `intervenciones`, `validacion`, `escenarios-xml`, `aprobacion`, `notificaciones` | Sí: sesión | Sí | No corresponde (D32); el XML de intercambio, solo si sobra tiempo | Sí | En parte: falta avisar a los EPIDEMIOLOGO al enviar a revisión, y al autor cuando se dictamina en la web (I1) | Sí: estado de la versión |
-| P3 · Simulación y comparación | ANALISTA en el escritorio; consulta en la web | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto`, `notificaciones` | Sí: sesión, candado, cola y avance | Hoy `simulation_results`; con D28, el resumen en `simulation_runs` y la serie en `series_corridas` (MongoDB) | Falta: el reporte a GCS con URL firmada (D-3) | Sí | Sí: al terminar o fallar una corrida | Sí: escritorio y web |
+| P1 · Captura en campo | CAPTURISTA, Android | `auth`, `sesiones`, `dispositivos`, `enfermedades`, `regiones`, `sincronizacion`, `casos`, `evidencias`, `vacunas` | Sí: sesión, candado y resultado del lote | Sí: `cases` | Falta: las fotos a GCS (D-3; bloque D) | Sí | **Hecho**: `sincronizacion` avisa a los EPIDEMIOLOGO por lote con casos nuevos (`NEW_CASES`, D32) | Sí: tablero y mapa de la web |
+| P2 · Diseño y aprobación | ANALISTA en el escritorio; EPIDEMIOLOGO en la web | `escenarios`, `intervenciones`, `validacion`, `escenarios-xml`, `aprobacion`, `notificaciones` | Sí: sesión | Sí | No corresponde (D32); el XML de intercambio, solo si sobra tiempo | Sí | **Hecho**: `aprobacion` avisa a los EPIDEMIOLOGO al enviar a revisión y al autor al aprobar o rechazar; la web dictamina por medio de `aprobacion` (D32, D36) | Sí: estado de la versión |
+| P3 · Simulación y comparación | ANALISTA en el escritorio; consulta en la web | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto`, `notificaciones` | Sí: sesión, candado, cola y avance | Sí: el resumen en `simulation_runs` (038) y la serie en `series_corridas` (MongoDB); `simulation_results` se retiró (041) | Falta: el reporte a GCS con URL firmada (D-3; bloque D) | Sí | Sí: al terminar o fallar una corrida | Sí: escritorio y web |
 
 Los tres usan PostgreSQL, que basta para la rúbrica («PostgreSQL o MongoDB»). MongoDB entra por el monitoreo y por las series del simulador (§6).
 
@@ -77,9 +83,9 @@ Los tres usan PostgreSQL, que basta para la rúbrica («PostgreSQL o MongoDB»).
 
 | Cliente | Para quién | Qué hace | Formato | Estado |
 |---|---|---|---|---|
-| **Web** (`frontend_web/`, `backend_web/`) | Todos los roles; sitio público sin sesión | Tablero, mapa, catálogos, casos, administración y bitácora. Consulta escenarios y corridas, y el EPIDEMIOLOGO aprueba o rechaza versiones (D4). Va directo a PostgreSQL (D20) y funciona aunque los servicios estén caídos (I2); con D28, solo las curvas de una corrida se piden a `resultados` | HTML | **Hecho**. Falta la carga de archivos (D-5). Propuesta: subir evidencias con la misma interfaz de almacenamiento que `evidencias` (D30) |
-| **Android** (`frontend_movil/`) | CAPTURISTA en campo | P1: casos sin conexión con GPS y fotos, sincronización por lotes, lotes de vacuna por QR o código de barras, avisos y perfil | JSON | **Hecho**: usa once servicios y seis capacidades del teléfono (cámara, GPS, código QR y de barras, notificaciones, almacenamiento local y sincronización). Falta un indicador de conexión fijo (C3) y el menú por rol (C8); C9 (actualizar información) está por decidir |
-| **Escritorio** (`frontend_desktop/`) | ANALISTA y ADMINISTRADOR | P2 y P3: escenarios y su XML validado con XSD, envío a revisión, lotes de réplicas, comparación con Pareto, exportación e impresión | XML | **Hecho**. Falta mostrar la escala de D6, ofrecer `abm-gpu` en el selector de motor y el aviso de bandas encimadas (integrante 6). C10 (si «validación del JWT» pide revisar `exp` en la app) está por decidir |
+| **Web** (`frontend_web/`, `backend_web/`) | Todos los roles; sitio público sin sesión | Tablero, mapa, catálogos, casos, administración y bitácora. Consulta escenarios y corridas, y el EPIDEMIOLOGO aprueba o rechaza versiones (D4). Consume los servicios (D36): si uno no responde, solo la sección que depende de él muestra el aviso | HTML | **Hecho** en funciones; el paso a los servicios va en curso (C6). Falta recibir el reporte de una comparación (D-5, D35) y mostrar la categoría de D39 |
+| **Android** (`frontend_movil/`) | CAPTURISTA en campo | P1: casos sin conexión con GPS y fotos, sincronización por lotes, lotes de vacuna por QR o código de barras, avisos y perfil | JSON | **Hecho**: usa once servicios y seis capacidades del teléfono (cámara, GPS, código QR y de barras, notificaciones, almacenamiento local y sincronización). También el indicador de conexión fijo (C3) y la captura solo para el CAPTURISTA (C8). C9 lo cerró D32; editar y rechazar casos lo reabre la retroalimentación (bloques 0, F y B) |
+| **Escritorio** (`frontend_desktop/`) | ANALISTA y ADMINISTRADOR | P2 y P3: escenarios y su XML validado con XSD, envío a revisión, lotes de réplicas, comparación con Pareto, exportación e impresión | XML | **Hecho**, con la escala de D6, el aviso de bandas encimadas (D8) y la revisión de `exp` del JWT con renovación anticipada (C10, D35). Falta ofrecer `abm-gpu` en el selector de motor (RF-H20), mostrar la categoría de D39 y los módulos que pide la retroalimentación (A4) |
 | **Consola** (`microservicios/consola`) | El equipo | Swagger, probador y panel de salud de los 29 servicios | JSON y XML | **Hecho**. Es herramienta de pruebas, no cliente del producto |
 
 Android y escritorio atienden procesos distintos (P1 contra P2 y P3), y el escritorio no copia a la web: D4 le deja el diseño y las corridas.
@@ -100,19 +106,18 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
   - `simulador` corre `seir-ref`, `simulador-abm` corre `abm-ref` y `simulador-gpu` corre `abm-gpu` (perfil `gpu`).
   - Cada uno toma solo su cola, `queue:simulaciones:<motor>`, y `corridas` acepta un motor solo si `MOTORES_HABILITADOS` lo nombra.
   - Un simulador cuyo motor no corre en esa máquina no arranca.
-- **Reencolar al arrancar (D19; integrante 4).** El trabajador cierra como fallidas las corridas que quedaron `ejecutando` y vuelve a encolar las `encolado` de su motor (ver §8).
-- **Redis en la autenticación de la web (I3, en curso; con Redis caído, D33).** La rúbrica pide que todos los componentes consulten Redis al autenticar, y la web hoy no lo hace. Hay dos opciones:
-  - **Propuesta:** al iniciar sesión, la web registra la sesión con las mismas llaves `session:` de `epidemia_comun.sesiones`, y en cada petición revisa que siga abierta y que el token no esté revocado.
-  - **Si Redis no responde (D33):** la web acepta las sesiones ya abiertas, porque no puede verificar la revocación y lo registra en el log, pero no deja iniciar sesión y muestra un mensaje amable. Así conserva su independencia (I2). Pendiente de validación del equipo.
+- **Corridas interrumpidas (D38, hecho; migración 045).** Al arrancar, el simulador regresa a `encolado` las `ejecutando` de su motor y las reencola, hasta 3 intentos; si cambió la versión del motor o se llega al tope, se cierran como `fallido` y su serie se borra. Las `encolado` se vuelven a meter a la cola sin duplicar (D19). Detalle en §8.
+- **La web consume los servicios (D36, en curso; bloque C).** `backend_web` deja de leer la base y llama por HTTP al servicio dueño (`backend_web/servicios.py`), con el JWT de la sesión (D34), JSON y `X-Correlation-ID`, y espera 5 s. La web no importa `epidemia_comun` ni lee Redis: la sesión la valida cada servicio, así que cumple que todos los componentes consulten Redis al autenticar (I3). Si un servicio no responde, solo la sección que depende de él muestra el aviso; si caen `sesiones` o Redis, la web falla cerrada, como los servicios. Los módulos pasan en el orden de D36; ya pasaron la sesión y la aprobación.
+- **Dueños de las reglas de negocio (D37, falta; E8).** Cada regla se muda de `backend_web` a su servicio dueño, cada bloque en los suyos; si otro servicio la necesita, la llama por HTTP. `procesamiento/` es la excepción: es la biblioteca de los modelos y la importan `simulador` y `validacion`.
 
 ## 6. Datos
 
 | Almacén | Qué guarda | Estado |
 |---|---|---|
 | PostgreSQL | La fuente de verdad: usuarios y roles, catálogos, casos, escenarios y versiones, corridas y sus resúmenes, avisos, auditoría y los metadatos de cada archivo. Esquema: migraciones de `datos/postgres/migraciones/`, con los números reservados en su README | **Hecho** |
-| Redis | Lo temporal y reconstruible (v2 §5.2): sesiones, revocaciones, captcha, caché, candados, resultado de lotes, avance de corridas y una cola por motor. Nuevo: `ratelimit:<usuario>:<ruta>` (D31) | **Hecho**, menos los límites |
+| Redis | Lo temporal y reconstruible (v2 §5.2): sesiones, revocaciones, captcha, caché, candados, resultado de lotes, avance de corridas y una cola por motor. Nuevo: `ratelimit:<usuario|ip>:<MÉTODO:regla>` (D31) | **Hecho** |
 | MongoDB | El historial de salud de los servicios y las series diarias de las corridas (D28). Cliente e índices en `epidemia_comun/mongo.py` | **Hecho** (D1 del checklist del tercer parcial) |
-| Cloud Storage | Fotos y evidencias, reportes exportados y, opcional, el XML de intercambio (D30) | Falta (integrante 3) |
+| Cloud Storage | Fotos y evidencias y el reporte de una comparación; el XML de intercambio no corresponde (D30, D32, D35) | Falta (bloque D) |
 
 **Diseño de MongoDB (D-1, D28).**
 
@@ -157,7 +162,7 @@ El criterio:
 **Archivos en Cloud Storage (D-3, D30).**
 
 - **Un bucket privado.** Propuesta: los prefijos `evidencias/`, `reportes/` y `xml/`, con acceso uniforme y sin lectura pública.
-- **Qué guarda la base:** de cada archivo, solo identificador, ruta, tipo, tamaño, propietario, fecha, huella SHA-256, nivel de privacidad, estado y metadatos. Las evidencias ya tienen esos campos en `case_attachments`. Los reportes de P3 necesitan su tabla, con una migración nueva (036 o siguiente).
+- **Qué guarda la base:** de cada archivo, solo identificador, ruta, tipo, tamaño, propietario, fecha, huella SHA-256, nivel de privacidad, estado y metadatos. Las evidencias ya tienen esos campos en `case_attachments`. Los reportes de P3 necesitan su tabla: la migración 039, reservada para el bloque D (D30, D35).
 - **URLs firmadas:** el servicio dueño del archivo revisa el permiso y responde con una URL firmada de lectura que vence en minutos. Propuesta: V4 de 15 minutos. Ninguna URL es permanente.
 - **Validación de archivos:** al subir se revisan el tipo por su contenido (no por la extensión), el tamaño máximo y la huella. Las fotos llegan ya reducidas y sin EXIF desde la móvil.
 - **En local:** una interfaz de almacenamiento que cambia de disco a bucket por variable de entorno, o un emulador de GCS (D30).
@@ -180,8 +185,10 @@ Todo el algoritmo está en [`ficha_simulador.md`](ficha_simulador.md), que cierr
 
   El diagrama está en §2 de la ficha.
 - **Población (D6):** el motor simula agentes. El factor de escala (habitantes del Censo 2020 / agentes) lo calcula `procesamiento/analitica/escala.py`, y `resultados` lo entrega junto a los conteos. **Hecho.**
-- **Réplicas (D8):** 30 por omisión, con las mismas semillas en todas las versiones. El escritorio resume media, mediana y la banda del percentil 5 al 95, y la frontera de Pareto se calcula sobre las medianas. **Hecho**, menos el aviso de bandas encimadas.
-- **Sin calibración (D24):** los resultados son escenarios, no pronósticos (`AVISO_SIMULACION`).
+- **Réplicas (D8):** 30 por omisión, con las mismas semillas en todas las versiones. El escritorio resume media, mediana y la banda del percentil 5 al 95, avisa cuando dos bandas se enciman, y la frontera de Pareto se calcula sobre las medianas. **Hecho.** Reabierto: la retroalimentación pide los intervalos de incertidumbre en `resultados` (bloque E).
+- **Corridas interrumpidas (D38):** se reencolan con la misma semilla, hasta 3 intentos; la serie se guarda antes de confirmar la corrida y el índice único `{run_id, dia}` impide los días duplicados. **Hecho.**
+- **Categoría de cada corrida (D39):** `exploratoria`, `prediccion` o `validada`, según `procesamiento/estado_validacion.json`. Sin calibración, hoy todas son `exploratoria`; `resultados` regresa la categoría, si el modelo está verificado y el motivo. **Hecho** en `procesamiento` y `resultados`; faltan la web y el escritorio.
+- **Calibración (D24, reabierta):** D24 la dejó fuera, pero la retroalimentación la hace obligatoria. El método, la función de pérdida, las métricas de ajuste y los datos observados los decide el bloque 0. Ya están en la ficha la verificación contra resultados esperados (tamaño final de un SEIR, casos límite, `abm-ref` contra `seir-ref`), el análisis de sensibilidad de `seir-ref` y la evidencia de reproducibilidad.
 - **Dónde corre:**
   - `simulador` y `simulador-abm` van en la VM principal.
   - `simulador-gpu` va en la VM con GPU (§8). Nuevo León completo tarda 7.7 s por corrida en una RTX 4050, contra 80 a 90 s de `abm-ref`.
@@ -189,7 +196,7 @@ Todo el algoritmo está en [`ficha_simulador.md`](ficha_simulador.md), que cierr
 
 ## 8. Despliegue y seguridad
 
-**Distribución en GCP (N1, N2; integrante 7).** Propuesta:
+**Distribución en GCP (N1, N2; bloque F).** Propuesta:
 
 ```mermaid
 flowchart TB
@@ -249,8 +256,8 @@ flowchart TB
 
 - Al iniciar sesión, `auth` firma un JWT de acceso con `sid` y `jti` y abre la sesión en Redis (`session:<hash del sid>`); el refresh es de un solo uso.
 - Cada ruta protegida (`requiere_token`) valida firma y expiración, que el `jti` no esté en `jwt:revoked:<jti>` y que la sesión siga abierta. Si Redis no responde, falla cerrada: 503 `SERVICIO_NO_DISPONIBLE`.
-- **La web (I3).** Ahora registra su sesión en Redis con las mismas llaves, la consulta en cada petición y, al cerrar sesión, revoca el token además de borrar la cookie; un token copiado ya no sirve tras el logout.
-- **Con Redis caído (D33):** la web acepta las sesiones ya abiertas (no puede verificar la revocación y lo deja en el log), pero no permite iniciar sesión y muestra un mensaje amable. Pendiente de validación del equipo.
+- **La web (D36, reemplaza D33).** Inicia sesión con `POST` a `auth` y guarda en su cookie firmada el token y el *refresh*, nunca la contraseña. Al cerrar sesión revoca en `auth` y `sesiones`, así que un token copiado ya no sirve. Ya no lee Redis: cada servicio valida la sesión en cada llamada, y un 401 manda a iniciar sesión de nuevo.
+- **Con Redis caído:** los servicios responden 503 y la web muestra el aviso en toda pantalla protegida; falla cerrada, como los servicios (D36). La regla de D33, que conservaba las sesiones abiertas, quedó reemplazada.
 
 **Límites de consumo (S2, D31).**
 
@@ -269,20 +276,20 @@ flowchart TB
 
 **Roles y candados.** Cada ruta lleva `@requiere_token(roles=...)` según la matriz de D1; sin el rol, 403. Las rutas internas usan `@solo_servicios`. La web aplica `roles_required` y `role_permissions`.
 
-**Reencolado de corridas (D19).** PostgreSQL es la fuente de verdad. Al arrancar, `trabajador.recuperar()` cierra como `fallido` las corridas `ejecutando` de su motor y vuelve a meter en `queue:simulaciones:<motor>` las `encolado` que no estén ya en la cola; si Redis no estaba, lo reintenta en el ciclo. Un duplicado es inofensivo: la transición `encolado` a `ejecutando` es condicionada. Una corrida reencolada pierde `forzar_error`, que es un indicador de pruebas y no se guarda.
+**Reencolado de corridas (D19, D38).** PostgreSQL es la fuente de verdad. Al arrancar, y cuando Redis vuelve, `trabajador.recuperar()` regresa a `encolado` las corridas `ejecutando` de su motor (con auditoría y hasta 3 intentos, migración 045) y vuelve a meter en `queue:simulaciones:<motor>` las `encolado` que no estén ya en la cola; si Redis no estaba, lo reintenta en el ciclo. Si cambió la versión del motor o se llega al tope, la corrida se cierra como `fallido` y su serie se borra. Un duplicado es inofensivo: la transición `encolado` a `ejecutando` es condicionada. Una corrida reencolada pierde `forzar_error`, que es un indicador de pruebas y no se guarda.
 
 ## 9. Monitoreo, fallos y rendimiento
 
-**Salud de cada servicio (N3).** `/health` agrega a lo de hoy (proceso, PostgreSQL, Redis y versión) el estado de MongoDB, el del bucket y el tiempo de respuesta. Propuesta: un servicio que no usa MongoDB o el bucket lo reporta como «no usa», en vez de omitirlo. Falta (integrante 7).
+**Salud de cada servicio (N3).** `/health` agrega a lo de hoy (proceso, PostgreSQL, Redis y versión) el estado de MongoDB, el del bucket y el tiempo de respuesta. Propuesta: un servicio que no usa MongoDB o el bucket lo reporta como «no usa», en vez de omitirlo. Falta (bloque F).
 
 **Panel central (N4).** `estado-servicios` ya muestra el estado, la última revisión, la latencia, la versión y las dependencias caídas. Le faltan el número de errores y MongoDB y el bucket como dependencias. Su historial pasa de Redis a `historial_servicios` (§6), así que sobrevive a un reinicio de Redis y se puede agregar.
 
-**Demostración de fallos (N5; integrante 4).**
+**Demostración de fallos (N5; bloque F).**
 
 | Qué falla | Qué debe pasar | Estado |
 |---|---|---|
 | Un microservicio se detiene | El panel lo marca caído; quien lo llama responde 503 `SERVICIO_NO_DISPONIBLE`; los demás siguen | Hecho; demostrado el 2026-11-16 |
-| Redis no responde | Las rutas protegidas responden 503 (fallan cerradas); las públicas y la caché de analítica siguen contra PostgreSQL; `corridas` no deja una corrida colgada; la web sigue (I2) | **Hecho** (`test_redis_caido.py`) |
+| Redis no responde | Las rutas protegidas responden 503 (fallan cerradas); las públicas y la caché de analítica siguen contra PostgreSQL; `corridas` no deja una corrida colgada; la web muestra el aviso en las pantallas protegidas (D36) | **Hecho** (`test_redis_caido.py`) |
 | MongoDB no responde | El panel lo marca como dependencia caída y se pierde el historial de ese lapso. La corrida termina con su resumen en `simulation_runs` (D28) y la serie se reintenta cada 30 s | La detección en `/health` y el panel, demostrada el 2026-11-16; el reintento, en `test_compose_mongo.py` |
 | PostgreSQL no responde | `/health` en 503, el panel los marca degradados, y las escrituras fallan sin dejar datos a medias (una transacción por escritura) | Demostrado el 2026-11-16; las lecturas responden 503 `SERVICIO_NO_DISPONIBLE` (la web, 503 con página amable) |
 | El bucket no está disponible | La subida responde 503 y la app conserva el archivo para reintentar; el caso ya creado no se pierde | La detección en `/health` y el panel, demostrada el 2026-11-16; falta la subida (bloque D) |
@@ -293,7 +300,7 @@ flowchart TB
 | Caso | Cómo se provoca | Qué se espera | Cómo se comprueba | Estado |
 |---|---|---|---|---|
 | Servicio caído | `docker compose stop casos` | El panel lo marca caído; los demás responden 200; al volver, misma sesión en 200 | `demo_fallos.py servicio`; `test_compose_fallos.py` | **Demostrado** 2026-11-16; automatizado (sin ejecutar) |
-| Redis caído | `stop redis` | Ruta protegida 503 `SERVICIO_NO_DISPONIBLE`; públicas 200; la web conserva sesiones abiertas y no deja entrar (D33) | `demo_fallos.py redis`; `test_compose_redis.py`, `test_redis_caido.py` | **Demostrado** 2026-11-16, también la web (D33) |
+| Redis caído | `stop redis` | Ruta protegida 503 `SERVICIO_NO_DISPONIBLE`; públicas 200; la web muestra el aviso en las pantallas protegidas (D36) | `demo_fallos.py redis`; `test_compose_redis.py`, `test_redis_caido.py` | **Demostrado** 2026-11-16, también la web, pero con la regla de D33 (conservar las sesiones abiertas); falta repetir la de la web con D36 |
 | PostgreSQL caído | `stop postgres` | `/health` 503; lecturas y escrituras fallan sin datos a medias; recupera al volver | `demo_fallos.py postgres`; `test_compose_fallos.py` | **Demostrado** 2026-11-16; las lecturas responden 503 `SERVICIO_NO_DISPONIBLE`, tras corregir el 500 inicial (ver LEEME de la evidencia) |
 | MongoDB caído | `stop mongodb` | Panel con dependencia caída; la corrida termina con su resumen en PostgreSQL | `demo_fallos.py mongodb` | **Demostrado** 2026-11-16 con el MongoDB de la demostración (`/health` y panel); falta la corrida con resumen en PostgreSQL (bloque D) |
 | Bucket caído | `stop bucket` | La subida responde 503 y el caso no se pierde | `demo_fallos.py bucket` | **Demostrado** 2026-11-16 con el emulador de la demostración (`/health` y panel); falta la subida (bloque D) |
@@ -301,9 +308,9 @@ flowchart TB
 | Token revocado | Cerrar sesión y reusar el token | 401 en los servicios y en la web | `test_compose_revocacion.py`; `demo_fallos.py web` | Automatizado en servicios; la web **demostrada** 2026-11-16 |
 | Sobrecarga | Rebasar el límite de una ruta | 429 con `Retry-After` y `LIMITE_EXCEDIDO`; pasada la ventana, vuelve a 200 | Pruebas de `epidemia_comun/limites.py` | Automatizado en la biblioteca; falta en contenedores |
 | Sin permisos | Llamar con un rol no permitido | 403 y registro en auditoría | Pruebas de cada servicio; en la web, probar un rol que entra y otro que no | Automatizado en servicios; web, manual |
-| Reinicio del trabajador | Reiniciar `simulador` con corridas `encolado` | Se reencolan y terminan; las `ejecutando` quedan `fallido` | Pruebas de `microservicios/simulador` | Automatizado (sin contenedor) |
+| Reinicio del trabajador | Reiniciar `simulador` con corridas `encolado` y `ejecutando` | Las dos se reencolan y terminan, sin duplicar días de la serie; tras 3 intentos o con otra versión del motor, `fallido` (D38) | Pruebas de `microservicios/simulador`; `test_compose_cola.py` | Automatizado (sin contenedor) |
 
-**Volumen de datos (D-6, D29).** 10 000 corridas de 180 días con el SEIR, 1.81 millones de documentos en `series_corridas`; con el ABM, sus corridas entran a la misma colección. Del lado de PostgreSQL, `gen_demo_data.py` genera cientos de miles de casos. Medido el 2026-11-18 con `datos/scripts/volumen_mongo.py` (detalle y cómo repetirlo en [`docs/pruebas/volumen/2026-11-18`](../pruebas/volumen/2026-11-18/LEEME.md)):
+**Volumen de datos (D-6, D29).** 10 000 corridas de 180 días con el SEIR, 1.81 millones de documentos en `series_corridas`; con el ABM, sus corridas entran a la misma colección. Del lado de PostgreSQL, `gen_demo_data.py` genera cientos de miles de casos. Medido el 2026-11-18 con `datos/scripts/volumen_mongo.py` (detalle y cómo repetirlo en [`docs/pruebas/volumen/2026-11-18`](../pruebas/volumen/2026-11-18/LEEME.md)). Se midió antes de que cada documento llevara `scenario_id`; la inserción y el disco hay que medirlos otra vez, y los índices y las consultas no cambian:
 
 | Medición | Con | Sin |
 |---|---|---|
@@ -322,19 +329,20 @@ En disco ocupan 114 MB comprimidos más 49 MB de índices, unos 17 KB por corrid
 - administradores en el panel;
 - procesos automáticos: el sondeo de `estado-servicios` y los simuladores tomando corridas.
 
-Se reportan usuarios concurrentes, peticiones por segundo, tiempo medio, p95, p99, errores, saturación, recuperación y los endpoints más lentos. Falta.
+Se reportan usuarios concurrentes, peticiones por segundo, tiempo medio, p95, p99, errores, saturación, recuperación y los endpoints más lentos. **Hecho en local** el 2026-11-16 con [`pruebas_carga/locustfile.py`](../../pruebas_carga/locustfile.py): carga normal, estrés hasta la saturación y los dos límites de consumo; resultados en [`docs/pruebas/carga/`](../pruebas/carga/). Falta repetirlo en la nube (bloque F).
 
 ## 10. Fuera de alcance
 
 | Qué | Por qué | Decisión |
 |---|---|---|
-| Calibrar el modelo | No hay serie histórica ni fuente para ajustar los parámetros; los resultados son escenarios | D24 |
-| Resumir las réplicas en el servidor | El escritorio resume este parcial; pasarlo a `corridas`, `comparacion` y `pareto` queda para la entrega final | D8 |
 | Lotes crudos de `sincronizacion` en MongoDB | Tercera colección solo si sobra tiempo | D28 |
 | GKE, Pub/Sub, BigQuery | Un compose en una VM y la cola de Redis bastan para el volumen de D29; la cola por motor ya reparte las corridas entre simuladores | — |
 | Integración continua | No la pide la rúbrica; queda pendiente desde la v2 | — |
 
-FLAME GPU ya no está aquí: `abm-gpu` está implementado y probado en contenedor (§7). Solo falta la VM con GPU en GCP.
+Ya no están aquí:
+
+- **FLAME GPU:** `abm-gpu` está implementado y probado en contenedor (§7). Solo falta la VM con GPU en GCP.
+- **La calibración (D24) y el resumen de réplicas en el servidor (D8):** la retroalimentación los vuelve a pedir (§1 y §7). Ver «Lo que la retroalimentación reabre» en el checklist.
 
 ## 11. Cotejo con la rúbrica
 
@@ -343,18 +351,18 @@ Los entregables del tercer parcial y dónde los cubre la v3:
 | Entregable | Sección | Estado |
 |---|---|---|
 | Plataforma desplegada en GCP | §8 | Falta |
-| Sistema web completo | §4 | **Hecho**, menos la carga de archivos (D-5) |
+| Sistema web completo | §4 | **Hecho** en funciones; el paso a los servicios (D36) va en curso. Falta recibir el reporte (D-5) |
 | Microservicios desplegados | §5, §8 | En local **hecho**; en GCP falta |
-| Aplicación móvil Android funcional e integrada | §4 | **Hecho**, menos C3 y C8 |
+| Aplicación móvil Android funcional e integrada | §4 | **Hecho** |
 | Aplicación de escritorio funcional e integrada | §4 | **Hecho** |
 | Buckets configurados y URLs firmadas | §6 | Falta |
 | Health checks y panel de monitoreo | §9 | En parte |
 | Algoritmo complejo | §7 | **Hecho** |
-| Conjunto de datos de alto volumen | §6, §9 | Falta |
-| Pruebas Locust y resultados de rendimiento | §9 | Falta |
-| Pruebas de fallos | §9 | En parte |
+| Conjunto de datos de alto volumen | §6, §9 | **Hecho** (falta confirmar la cifra con el profesor y repetir la inserción con `scenario_id`) |
+| Pruebas Locust y resultados de rendimiento | §9 | **Hecho** en local; falta en la nube |
+| Pruebas de fallos | §9 | Demostradas en local; falta en contenedores automatizados y en la nube |
 | Evidencia de seguridad | §8 | En parte |
-| Integración completa (tres procesos) | §3 | En parte: bucket y notificaciones |
+| Integración completa (tres procesos) | §3 | En parte: falta el bucket (fotos de P1 y reporte de P3) |
 | Documentación actualizada | Este documento y los que enlaza | Borrador |
 | Demostración en la nube | §8 | Falta |
 
