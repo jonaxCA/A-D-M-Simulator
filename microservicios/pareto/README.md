@@ -4,13 +4,14 @@ Costo contra impacto de varias corridas completadas y su frontera de Pareto. Sol
 lectura. Muestra opciones y costos; no recomienda un escenario.
 
 Puerto externo: 5245; puerto interno en Docker: 8000. Contrato en
-`docs/contratos/pareto/openapi.json`.
+`docs/contratos/pareto/openapi.json`. Su respuesta XML valida contra
+`docs/contratos/pareto/pareto.xsd`.
 
 ## Ruta
 
 | Método | Ruta             | Qué regresa |
 |--------|------------------|-------------|
-| GET    | `/api/v1/pareto` | `aviso` y la comparación: por cada corrida (`filas`), su costo con el desglose por intervención, su impacto, si otra la domina (`dominado_por`) y, contra la `base`, el impacto evitado y el costo por unidad evitada. `frontera` son las corridas no dominadas; `trazabilidad_costos`, de dónde sale cada costo unitario |
+| GET    | `/api/v1/pareto` | `aviso` y la comparación: por cada corrida (`filas`), su costo en personas-día (`costo`, el eje de la frontera) y en pesos (`costo_pesos`, aparte y nulo si falta un costo unitario), con el desglose por intervención, su impacto y si otra la domina (`dominado_por`). `frontera` son las corridas no dominadas; `trazabilidad_costos`, de dónde sale cada costo unitario y el factor de personas-día por dosis (D3) |
 
 Pide `Authorization: Bearer` de ANALISTA, EPIDEMIOLOGO o ADMINISTRADOR, los
 mismos roles que la pantalla Comparación del monolito, donde vive este cálculo.
@@ -26,8 +27,10 @@ Todo lo que impide comparar es 422 `DATOS_INVALIDOS`, con los motivos del monoli
 en `detail`: `runs` o `metric` inválidos, una corrida que no existe o no ha
 terminado, sin resultado guardado, o cuya versión ya no se puede simular.
 
-`base` es la corrida de referencia que elige el motor; si ninguna es "sin
-intervención", es `null`.
+`base` llega siempre en `null`: el servicio no pide una corrida de referencia, así que
+las filas no traen `impacto_evitado`, `costo_adicional` ni `costo_por_unidad_evitada`.
+El motor los calcula solo cuando se le da una base (`comparar(..., base=...)`), como
+hace `python -m procesamiento.motor`.
 
 En XML, cada fila es `<fila>`; los ids de `frontera` y `dominado_por`, `<corrida>`;
 el desglose, `<intervencion>`, y la trazabilidad, `<costo>`.
@@ -35,8 +38,9 @@ el desglose, `<intervencion>`, y la trazabilidad, `<costo>`.
 ## De dónde salen los datos
 
 Reusa `simulaciones.construir_comparacion_costo_impacto()` del monolito: arma el
-escenario de cada versión, lee los costos de `intervention_types` y el resultado
-guardado de cada corrida, y llama a `comparar()` del motor. Lee la base directo y no
+escenario de cada versión, lee los costos y el factor de personas-día por dosis de
+`intervention_types` (migración 040) y el resultado guardado de cada corrida, y llama a
+`comparar()` de `procesamiento.analitica`. Sin factor, una corrida con vacunación da 422. Lee la base directo y no
 llama a `resultados`, que todavía no existe (ver la nota en
 `docs/arquitectura/microservicios.md`).
 
@@ -57,4 +61,4 @@ curl -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:5245/api/v1/pareto?runs
 Como en `comparacion`, la base de la demostración no tiene resultados guardados:
 para probarlo con datos, ejecuta antes algunas corridas.
 
-Pendiente: su rol de PostgreSQL (migración 027) y la entrada en el compose (bloque J).
+Su rol de PostgreSQL lo crea la migración 028 y corre en `infra/docker-compose.yml`.

@@ -1,34 +1,53 @@
 # EPIDEMIA - Servicio corridas
 
 Lanza, consulta y cancela corridas de simulación. Lanzar crea el lote y la corrida en
-PostgreSQL (`encolado`) y la mete en la cola de Redis; la ejecuta el servicio `simulador`.
-Solo se simula una versión aprobada.
+PostgreSQL (`encolado`) y la mete en la cola de Redis de su motor; la ejecuta el `simulador`
+de ese motor. Solo se simula una versión aprobada.
 
 Puerto externo: 5241; puerto interno en Docker: 8000. Contrato en
 `docs/contratos/corridas/openapi.json`, con un ejemplo JSON y uno XML por ruta en
-`ejemplos/`.
+`ejemplos/`. Las respuestas XML validan contra `docs/contratos/corridas/corrida.xsd`.
 
 ## Rutas
 
 | Método | Ruta | Roles | Qué hace |
 |--------|------|-------|----------|
-| POST | `/api/v1/runs` | ANALISTA, ADMINISTRADOR | Cuerpo `{scenario_version_id, seed?, forzar_error?}`. Responde **202** con `id`, `batch_id`, `seed` y `status: encolado` |
-| GET | `/api/v1/runs?limit=20` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Las corridas más recientes (`limit` de 1 a 100) |
-| GET | `/api/v1/runs/{run_id}` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Estado, `progress` y `terminal` |
+| POST | `/api/v1/runs` | ANALISTA, ADMINISTRADOR | Cuerpo `{scenario_version_id, seed?, engine?, replicas?, forzar_error?}`. Responde **202** con `id`, `batch_id`, `seed`, `engine` y `status: encolado` |
+| GET | `/api/v1/runs?limit=20` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Las corridas más recientes, con su `engine` y su `scenario_version_id` (`limit` de 1 a 100). Filtros opcionales: `scenario_id`, `scenario_version_id`, `status`, `engine`, `from` y `to` |
+| GET | `/api/v1/runs/{run_id}` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Estado, `progress`, `engine` y `terminal` |
 | POST | `/api/v1/runs/{run_id}/cancel` | ANALISTA, ADMINISTRADOR | Cancela una corrida que sigue `encolado` |
 
 Los roles son los de la pantalla Simulaciones del monolito; cancelar es `simulations.delete`
 en la matriz de permisos (migración 010). CAPTURISTA recibe 403 en todas.
 
 - `seed` es un entero de 0 a 2³¹−1; si no llega, se elige al azar.
+- `replicas` es el tamaño del lote que el cliente está lanzando (D8): un entero de 1 a 100. Cada POST
+  crea una sola corrida y el valor no cambia nada más: se valida el tope (D8) y se rechaza el que
+  pasa de 100 (migración 036 baja el tope de la base de 200 a 100). Los lotes con varias réplicas
+  llegan con la app de escritorio.
+- `engine` es el motor: `seir-ref` si no llega. `abm-ref` y `abm-gpu` solo se aceptan si
+  `MOTORES_HABILITADOS` los nombra, porque sin un `simulador` de ese motor la corrida se
+  quedaría encolada para siempre; el compose trae los de `seir-ref` y `abm-ref`. Queda en
+  `simulation_batches.engine`. `engine_version` sale del registro de motores
+  (`procesamiento/motores.py`) al encolar; con un motor que no está implementado (`abm-gpu`)
+  queda vacía.
+- Los nombres de antes de D2 (`python-ref`, `numba` y `cuda`) se siguen aceptando en `engine`,
+  en el filtro `engine` de la lista y en `MOTORES_HABILITADOS`, y se traducen a `seir-ref`,
+  `abm-ref` y `abm-gpu`. Así un cliente de la v1 no se rompe; las respuestas usan los nombres
+  nuevos.
 - `forzar_error` solo cuenta si quien lo pide es ADMINISTRADOR; para otro rol se ignora, como
   en el monolito. La corrida termina en `fallido` y sirve para probar ese camino.
 - Mientras la corrida no termina, `progress` sale de Redis (`job:<id>:progress`, lo escribe el
   `simulador`); después, de PostgreSQL.
+- Los filtros de la lista se combinan. `from` y `to` son días `AAAA-MM-DD` de cuando se encoló
+  la corrida, en hora de Monterrey (`America/Monterrey`), los dos incluidos: una corrida de las
+  21:00 del 20 de octubre sale con `from=2026-10-20`, aunque en UTC ya sea el 21. `engine`
+  acepta los tres motores, habilitados o no; una corrida sin lote no tiene motor y no sale con
+  ese filtro.
 
 | Caso | Respuesta |
 |------|-----------|
-| Cuerpo o `limit` inválidos | 422 `DATOS_INVALIDOS` |
+| Cuerpo, `limit` o un filtro inválidos, `from` posterior a `to`, o lanzar con un `engine` no habilitado, o `replicas` mayor que 100 | 422 `DATOS_INVALIDOS` |
 | No existe la versión o la corrida | 404 `NO_ENCONTRADO` |
 | Versión no aprobada, o ya se está lanzando una corrida de la misma versión | 409 `CONFLICTO` |
 | Cancelar una corrida que ya empezó o terminó | 409 `CONFLICTO` |
@@ -40,9 +59,10 @@ en la matriz de permisos (migración 010). CAPTURISTA recibe 403 en todas.
    corridas.
 2. `queries.crear_corrida()` crea el lote y la corrida y audita el `RUN` en la misma
    transacción. La base vuelve a revisar que la versión esté aprobada (`fn_version_aprobada`).
-3. Mete `{"id": ..., "forzar_error": ...}` en `queue:simulaciones`. Si Redis falla en ese
-   momento, la corrida se cancela (`queries.cancelar_run()`), para que no quede encolada sin
-   nadie que la corra, y responde 503.
+3. Mete `{"id": ..., "forzar_error": ...}` en la cola de su motor,
+   `queue:simulaciones:<engine>`, que solo lee el `simulador` de ese motor. Si Redis falla en
+   ese momento, la corrida se cancela (`queries.cancelar_run()`), para que no quede encolada
+   sin nadie que la corra, y responde 503.
 
 Cancelar usa la misma transición condicionada que el `simulador` (`WHERE status =
 'encolado'`), así que los dos no se pisan, y queda en la bitácora como `CANCEL`.
@@ -50,7 +70,8 @@ Cancelar usa la misma transición condicionada que el `simulador` (`WHERE status
 ## Variables
 
 `DATABASE_URL` (rol `svc_corridas`, migración 029), `JWT_SECRET_KEY`, `REDIS_URL`; opcionales
-`JWT_ISSUER` y `JWT_AUDIENCE`.
+`JWT_ISSUER`, `JWT_AUDIENCE` y `MOTORES_HABILITADOS` (los motores además de `seir-ref` que
+tienen su `simulador` desplegado, separados por comas; en el compose, `abm-ref`).
 
 ## Probarlo
 

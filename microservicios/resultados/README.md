@@ -1,7 +1,8 @@
 # EPIDEMIA - Servicio resultados
 
-Curvas e indicadores de una corrida completada, tal como los guardó el `simulador`. Solo
-lectura. Cada respuesta lleva el aviso de que los resultados no son una predicción
+Curvas e indicadores de una corrida completada, tal como los guardó el `simulador`: el
+resumen, la huella y la trazabilidad en `simulation_runs` (migración 038) y la serie diaria en
+MongoDB (`series_corridas`, D28). Solo lectura. Cada respuesta lleva el aviso de que los resultados no son una predicción
 (`AVISO_SIMULACION`).
 
 Puerto externo: 5243; puerto interno en Docker: 8000. Contrato en
@@ -12,7 +13,7 @@ Puerto externo: 5243; puerto interno en Docker: 8000. Contrato en
 
 | Método | Ruta | Qué regresa |
 |--------|------|-------------|
-| GET | `/api/v1/runs/{run_id}/results` | `aviso`, `simplificaciones` del modelo, `corrida` (escenario, versión, semilla, población, horizonte), `engine_version`, `scenario_checksum`, `resumen`, `serie` y `trazabilidad` de los parámetros |
+| GET | `/api/v1/runs/{run_id}/results` | `aviso`, `simplificaciones` del modelo, `corrida` (escenario, versión, semilla, población, horizonte), `engine_version`, `scenario_checksum`, `resumen`, `serie`, `trazabilidad` de los parámetros y `escala` (D6: cuántos habitantes de la región representa cada agente, y los conteos del resumen llevados a habitantes) |
 | GET | `/api/v1/runs/{run_id}/curves` | `aviso`, `run_id` y `serie`: un punto por día |
 | GET | `/api/v1/runs/{run_id}/indicators` | `aviso`, `run_id` y `resumen`, con el desglose por grupo de edad |
 
@@ -23,6 +24,8 @@ una corrida del monolito. CAPTURISTA recibe 403.
 |------|-----------|
 | Id inválido | 422 `DATOS_INVALIDOS` |
 | No existe la corrida o no tiene resultado guardado | 404 `NO_ENCONTRADO` |
+| La corrida está completada, pero su serie no está en MongoDB (el simulador la reintenta) | 404 `NO_ENCONTRADO` en `/results` y `/curves` |
+| MongoDB no responde | 503 `SERVICIO_NO_DISPONIBLE` en `/results` y `/curves`; `/indicators` sigue, porque solo lee PostgreSQL |
 | La corrida no está completada | 409 `CONFLICTO`, con su estado en `detail` |
 
 En XML, cada día de la serie es un `<punto>`, cada grupo de edad un `<grupo_edad>` y cada
@@ -30,15 +33,16 @@ parámetro de la trazabilidad un `<parametro>`.
 
 ## Caché
 
-El resultado de una corrida completada ya no cambia: se guarda 300 s en
-`cache:resultados:run=<id>`. Las tres rutas comparten esa entrada. Lo que no está completado
-no entra a la caché. Si Redis se cae, las rutas responden 503 porque el token no se puede
+El resultado de una corrida completada ya no cambia: se guarda 300 s. Lo de PostgreSQL va en
+`cache:resultados:run=<id>`, que comparten las tres rutas, y la serie en
+`cache:resultados:serie=<id>`, que comparten `/results` y `/curves`. Lo que no está completado
+no entra a la caché, ni una serie que todavía no llega a MongoDB. Si Redis se cae, las rutas responden 503 porque el token no se puede
 verificar.
 
 ## Variables
 
-`DATABASE_URL` (rol `svc_resultados`, migración 029), `JWT_SECRET_KEY`, `REDIS_URL`;
-opcionales `JWT_ISSUER` y `JWT_AUDIENCE`.
+`DATABASE_URL` (rol `svc_resultados`, migración 029), `JWT_SECRET_KEY`, `REDIS_URL`,
+`MONGO_URL`; opcionales `JWT_ISSUER`, `JWT_AUDIENCE` y `MONGO_TIMEOUT_MS`.
 
 ## Probarlo
 

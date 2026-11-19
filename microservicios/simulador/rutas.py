@@ -1,4 +1,4 @@
-from epidemia_comun import cola, llaves
+from epidemia_comun import cola
 from epidemia_comun.errores import ErrorAPI, respuesta_error
 from epidemia_comun.formatos import responder
 from epidemia_comun.redis_compartido import RedisNoDisponible
@@ -17,5 +17,5 @@ def registrar(app):
     @app.get("/api/v1/worker/status")
     @requiere_token(roles=ROLES)
     def estado():
-        return responder(dict(trabajador.estado, pendientes=cola.pendientes(llaves.COLA_SIMULACIONES)),
+        return responder(dict(trabajador.estado, pendientes=cola.pendientes(trabajador.COLA)),
                          "trabajador")

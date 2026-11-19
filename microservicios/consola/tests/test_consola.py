@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from microservicios.consola import app as modulo
+from microservicios.estado_servicios.sondeo import SERVICIOS
 
 RAIZ = Path(__file__).resolve().parents[3]
 ESTATICO = RAIZ / "microservicios/consola/estatico"
@@ -63,7 +64,7 @@ def test_las_respuestas_se_pintan_como_texto(codigo, html):
 
 
 def test_el_recorrido_tiene_los_22_pasos_del_guion():
-    guion = (RAIZ / "docs/CHECKLIST_SEGUNDO_PARCIAL.md").read_text(encoding="utf-8")
+    guion = (RAIZ / "docs/parciales/parcial-2/checklist.md").read_text(encoding="utf-8")
     seccion = guion.split("## Prueba de aceptación", 1)[1].split("Verificaciones extra", 1)[0]
     del_guion = {int(n) for n in re.findall(r"^- \[[ x]\] (\d+)\. ", seccion, re.M)}
     assert del_guion == set(range(1, 23))
@@ -88,10 +89,10 @@ def test_dockerfile():
     assert "HEALTHCHECK" in docker and "USER epidemia" in docker
 
 
-def test_compose_publica_la_consola_y_le_abre_cors_en_los_26():
+def test_compose_publica_la_consola_y_le_abre_cors_en_todos():
     compose = (RAIZ / "infra/docker-compose.yml").read_text(encoding="utf-8")
     assert re.search(r'^  consola:\n(?:    .*\n)*?    profiles: \[plataforma\]\n    ports:\n'
                      r'      - "5260:8000"', compose, re.M)
     servicios = compose.count("      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0\n")
-    assert servicios == 26
+    assert servicios == len(SERVICIOS)
     assert compose.count("      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}\n") == servicios

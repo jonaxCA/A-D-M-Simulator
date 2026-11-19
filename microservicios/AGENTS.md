@@ -1,19 +1,19 @@
 # AGENTS.md — microservicios
 
-> **Estado: Vigente** · 2026-10-12 · Complementa el `AGENTS.md` de la raíz. Las decisiones de
-> esta etapa ya están tomadas (D9 a D16 de `docs/decisiones.md`); van resumidas al final.
+> **Estado: Vigente** · 2026-11-14 · Complementa el `AGENTS.md` de la raíz. Las decisiones que
+> afectan a los microservicios ya están tomadas (ver `docs/decisiones/decisiones.md`); van resumidas al final.
 
 ## Qué hay aquí
 
-Son 26 microservicios Flask pequeños, cada uno con una sola tarea, más una consola web para
-probarlos. Los usan **solo** las apps de escritorio (XML) y móvil (JSON), que llegan en el
-tercer parcial; en este, la consola hace sus veces. El sistema web (el monolito) sigue
+Son 29 microservicios Flask pequeños, cada uno con una sola tarea, más una consola web para
+probarlos. Los usan **solo** las apps de escritorio (XML, `frontend_desktop/`) y móvil (JSON,
+`frontend_movil/`). El sistema web (el monolito) sigue
 hablando directo con PostgreSQL y no los llama.
 
 - [`docs/arquitectura/microservicios.md`](../docs/arquitectura/microservicios.md) es la
   referencia de cada servicio: su tarea, rutas, las tablas que escribe y lee, a quién llama,
   su puerto y sus llaves de Redis. Si algo de aquí choca con el catálogo, gana el catálogo.
-- [`docs/CHECKLIST_SEGUNDO_PARCIAL.md`](../docs/CHECKLIST_SEGUNDO_PARCIAL.md) tiene las
+- [`docs/parciales/parcial-2/checklist.md`](../docs/parciales/parcial-2/checklist.md) tiene las
   tareas, quién las tiene y la **definición de terminado** de un servicio.
 - `docs/arquitectura/arquitectura_v1.md` describe el sistema final, con MongoDB, Cloud
   Storage y nginx. No lo sigas donde contradiga al catálogo.
@@ -22,7 +22,7 @@ hablando directo con PostgreSQL y no los llama.
 microservicios/
   comun/        paquete epidemia_comun: lo que todos los servicios repiten
   <servicio>/   uno por servicio del catálogo: app.py, rutas.py, Dockerfile, README.md, tests/
-  consola/      página tipo Swagger/Postman para probar los 26
+  consola/      página tipo Swagger/Postman para probar los 29
 infra/          imagen base de Docker y docker-compose.yml
 docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
 ```
@@ -93,8 +93,10 @@ docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
     catálogo. Un puerto no se cambia sin cambiar el catálogo.
 11. **Contratos.** Una ruta nueva o un cambio de forma se refleja en
     `docs/contratos/<servicio>/` en el mismo PR. Un cambio incompatible va a `/api/v2/`.
-12. **Dependencias.** Nada de MongoDB, Cloud Storage ni nginx. Una dependencia nueva se
-    acuerda con el equipo y va en los requerimientos de `comun`, no de un solo servicio.
+12. **Dependencias.** MongoDB solo con el cliente de `epidemia_comun` y solo para las
+    colecciones de D28. Google Cloud Storage solo en `evidencias` (D30). nginx es solo la
+    entrada de D25 (en `infra/`): ningún servicio lo llama. Una dependencia nueva se acuerda con
+    el equipo y va en los requerimientos de `comun`, no de un solo servicio.
 13. **Python.** Compatible con 3.9 (regla 11 de la raíz), aunque la imagen use una versión
     más nueva: el código de `backend_web` también lo corre el monolito.
 14. **El monolito no se toca para consumir servicios.** Si una tarea pide que la web llame a
@@ -129,12 +131,16 @@ Ya existen:
 - Pruebas de integración contra los contenedores, en su propio compose:
   `python infra/pruebas_integracion.py`
 - Contraseñas de `infra/.env`: `python infra/genera_env.py`
-- Levantar todo: `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait`
+- Levantar todo menos `simulador-gpu`:
+  `docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait`. No uses `--profile '*'`: activa el perfil `gpu`, que sin una GPU de NVIDIA falla con
+  `could not select device driver "nvidia"` y deja servicios en `Created`.
+- Bajar todo (aquí sí va `'*'`; sin `--profile` solo baja las bases):
+  `docker compose -f infra/docker-compose.yml --profile '*' down`
 - Solo un dominio: `docker compose -f infra/docker-compose.yml --profile escenarios up -d`
 - Reconstruir un servicio sin tocar los demás:
-  `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --no-deps <servicio>`
+  `docker compose -f infra/docker-compose.yml up -d --build --no-deps <servicio>` (nombrarlo activa su perfil)
 - Salud: `curl "http://localhost:<puerto>/health?format=json"`
-- Salud de los 26 y directorio: `curl "http://localhost:5262/api/v1/services/health?format=json"`
+- Salud de los 29 y directorio: `curl "http://localhost:5262/api/v1/services/health?format=json"`
   y `/api/v1/services` (`estado-servicios`)
 - Swagger: `http://localhost:<puerto>/docs`
 - Consola de pruebas: `http://localhost:5260`. Ábrela con `localhost`: los servicios solo abren
@@ -142,12 +148,12 @@ Ya existen:
 
 ## Decisiones tomadas
 
-Están en `docs/decisiones.md`; si algo de aquí choca con ese archivo, gana él.
+Están en `docs/decisiones/decisiones.md`; si algo de aquí choca con ese archivo, gana él.
 
 - **Formato (D9):** XML por defecto; JSON con `?format=json` o `Accept: application/json`.
   Si chocan, manda `?format`.
-- **Entregas (D10):** en este parcial, los 26 servicios con sus contratos. Las apps de
-  escritorio y móvil, en el tercero; mientras tanto, la consola hace sus veces.
+- **Entregas (D10):** los microservicios, en el segundo parcial, con sus contratos. Las apps de
+  escritorio y móvil, en el tercero.
 - **Rutas en inglés (D11)**, como en el catálogo (`/api/v1/scenarios`).
 - **Nombres de los servicios en español (D12)**, los del catálogo (`escenarios`,
   `corridas`).
@@ -155,15 +161,31 @@ Están en `docs/decisiones.md`; si algo de aquí choca con ese archivo, gana él
   de `estado-servicios`.
 - **Pruebas con `pytest` (D14)**, que también corre las de `unittest`.
 - **XSD con `xmlschema` y XML con `defusedxml` (D15).**
-- **Migraciones desde la 026 (D16).** Confirma el número antes de crear una.
+- **Migraciones desde la 026 (D16).** Las 031 a 033 son de los roles de D27 y la 035, de los nombres
+  de motores (D2); la 034 está reservada para D1. Confirma el número antes de crear una.
+- **Migraciones SQL numeradas (D17)**, sin Alembic (ver `datos/AGENTS.md`).
+- **Un rol de PostgreSQL por servicio (D18):** cada servicio lee todo y escribe solo en las
+  tablas de su dominio (regla 2).
+- **nginx como entrada única (D25):** termina TLS y enruta; no valida tokens ni tiene lógica de
+  negocio.
+- **Servicios de la app móvil (D27):** `dispositivos`, `evidencias` y `vacunas`, con su
+  contenedor, su rol, su contrato y sus pruebas.
+- **MongoDB (D28):** `historial_servicios` (el historial de `estado-servicios`, con TTL) y
+  `series_corridas` (un documento por día de cada corrida). Contenedor en `infra/`, cliente en
+  `epidemia_comun` (`mongo.py` y `series_corridas.py`) y `mongodb` en el `/health` de quien lo
+  usa. Ver «MongoDB» en `comun/README.md`.
+- **Cloud Storage (D30):** `evidencias` guarda los archivos en un bucket, con URLs firmadas para
+  los privados; PostgreSQL guarda solo los metadatos.
+- **Límites de consumo (D31):** contador `ratelimit:<usuario>:<ruta>` en Redis, en
+  `epidemia_comun`; más permisivo en `casos` y `sincronizacion`, más estricto en `corridas`.
 
-Si te piden algo que ninguna de estas cubre ni está en `docs/decisiones.md`, pregunta antes
+Si te piden algo que ninguna de estas cubre ni está en `docs/decisiones/decisiones.md`, pregunta antes
 de implementarlo.
 
 ## Qué manda dentro de `microservicios/`
 
 1. Lo que pida la persona en la sesión.
-2. `docs/decisiones.md`.
+2. `docs/decisiones/decisiones.md`.
 3. El catálogo (`docs/arquitectura/microservicios.md`).
 4. Este archivo.
 5. El `AGENTS.md` de la raíz.

@@ -1,10 +1,11 @@
 # AGENTS.md — docs/contratos
 
 > **Estado: Vigente** · 2026-10-12 · Complementa `microservicios/AGENTS.md`. Las tareas son
-> el bloque M del checklist (`docs/CHECKLIST_SEGUNDO_PARCIAL.md`).
+> el bloque M del checklist (`docs/parciales/parcial-2/checklist.md`).
 
 Aquí está el contrato de cada microservicio, en una carpeta por servicio:
-`docs/contratos/<servicio>/`. Las apps de escritorio y móvil se construyen a partir de estos
+`docs/contratos/<servicio>/`. La excepción es `motor/`: no es una API HTTP sino la interfaz en
+Python de los motores de simulación, y no lleva `openapi.json`. Las apps de escritorio y móvil se construyen a partir de estos
 archivos, así que un contrato que no coincide con el servicio es un error del servicio.
 
 ## Qué lleva cada carpeta
@@ -14,8 +15,18 @@ archivos, así que un contrato que no coincide con el servicio es un error del s
 - Un ejemplo de respuesta en JSON y otro en XML por ruta; en las rutas que reciben cuerpo,
   también un ejemplo de petición.
 - Un `.xsd` cuando el recurso viaja en XML como documento propio: escenario, resultado de
-  una corrida, enfermedad con sus parámetros, caso, lote de sincronización y el error
-  (`problem+xml`).
+  una corrida, enfermedad con sus parámetros, caso, lote de sincronización, el error
+  (`problem+xml`) y, para la app de escritorio, las respuestas de corridas, intervenciones,
+  aprobación, comparación y Pareto. Los tipos compartidos están en `comun/tipos.xsd` y la
+  serie diaria de una corrida, en `comun/serie.xsd`.
+
+## Rutas que no llevan contrato propio
+
+- `/health` de cada servicio (público, sin versión) responde `servicio`, `version`, `estado`,
+  `postgresql`, `redis`, `mongodb` y `bucket` (booleano, `no_usa` o `no_configurado`), más
+  `tiempos_ms` por dependencia y `tiempo_ms` total. Es 503 si algo usado falla.
+- Toda ruta protegida, y `auth` (captcha y login) y `regiones`, puede responder 429
+  `LIMITE_EXCEDIDO` con la cabecera `Retry-After`; cada contrato lo declara.
 
 ## Reglas
 

@@ -84,6 +84,9 @@
       <xs:element name="local_uuid" type="TUuid"/>
       <xs:element name="resultado" type="TResultadoCaso"/>
       <xs:element name="case_id" type="TEnteroNulo"/>
+      <xs:element name="codigo" type="TTexto" minOccurs="0">
+        <xs:annotation><xs:documentation>Codigo de casos si el caso salió rechazado: CONFLICTO (dispositivo revocado) o DATOS_INVALIDOS. Nulo si se creó o era duplicado. Opcional: los lotes guardados antes de este campo no lo traen.</xs:documentation></xs:annotation>
+      </xs:element>
       <xs:element name="errores">
         <xs:complexType><xs:sequence><xs:element name="item" type="TTexto" minOccurs="0" maxOccurs="unbounded"/></xs:sequence></xs:complexType>
       </xs:element>

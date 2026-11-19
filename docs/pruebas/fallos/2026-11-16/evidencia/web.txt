@@ -1,0 +1,14 @@
+# login web (302 = entro)
+302
+
+# /dashboard con la cookie
+200
+
+# GET /logout (estado, Location)
+302
+/
+
+# /dashboard reusando la cookie copiada antes del logout (estado, Location)
+302
+/login?next=/dashboard
+

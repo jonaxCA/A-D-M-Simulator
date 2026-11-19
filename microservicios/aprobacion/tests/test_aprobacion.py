@@ -1,12 +1,16 @@
 import logging
 from contextlib import contextmanager
+from pathlib import Path
 
 import jwt
 import pytest
+import xmlschema
 
 from backend_web import queries
 from epidemia_comun.errores import ErrorAPI
 from microservicios.aprobacion import rutas
+
+XSD = Path(__file__).resolve().parents[3] / "docs/contratos/aprobacion/aprobacion.xsd"
 
 AUTOR = 5      # quien armó el escenario
 TOKEN_ID = 7   # el "sub" que firma el fixture token()
@@ -235,12 +239,41 @@ def test_aprobar_audita_y_notifica(cliente, mundo, revisor):
     assert jwt.decode(kw["token"], options={"verify_signature": False})["aud"] == "epidemia-interno"
 
 
-def test_rechazar_con_comentario_no_notifica(cliente, mundo, revisor):
+def test_rechazar_con_comentario_avisa_al_autor(cliente, mundo, revisor):
     mundo.estado = "en_revision"
     r = revisar(cliente, revisor, {"decision": "rechazar", "comentario": "Faltan fuentes"})
     assert r.status_code == 200 and r.get_json()["status"] == "rechazado"
     assert mundo.bitacora[0][5]["review_comment"] == "Faltan fuentes"
-    assert mundo.llamadas == []
+    servicio, metodo, ruta, kw = mundo.llamadas[-1]
+    assert (servicio, metodo, ruta) == ("notificaciones", "POST", "/api/v1/notifications")
+    assert kw["cuerpo"]["user_id"] == AUTOR and kw["cuerpo"]["type"] == "SCENARIO_REJECTED"
+    assert "Faltan fuentes" in kw["cuerpo"]["body"]
+    assert kw["cuerpo"]["payload"] == {"scenario_id": 3, "version_id": 11, "version_number": 2}
+    assert jwt.decode(kw["token"], options={"verify_signature": False})["aud"] == "epidemia-interno"
+
+
+def test_enviar_a_revision_avisa_a_los_epidemiologos(cliente, mundo, dueno):
+    assert enviar(cliente, dueno).status_code == 200
+    servicio, metodo, ruta, kw = mundo.llamadas[-1]
+    assert (servicio, metodo, ruta) == ("notificaciones", "POST", "/api/v1/notifications")
+    assert kw["cuerpo"]["role"] == "EPIDEMIOLOGO" and "user_id" not in kw["cuerpo"]
+    assert kw["cuerpo"]["type"] == "SCENARIO_SUBMITTED"
+    assert kw["cuerpo"]["payload"] == {"scenario_id": 3, "version_id": 11, "version_number": 2}
+    assert jwt.decode(kw["token"], options={"verify_signature": False})["aud"] == "epidemia-interno"
+
+
+def test_envio_rechazado_no_avisa(cliente, mundo, dueno):
+    mundo.estado = "en_revision"
+    assert enviar(cliente, dueno).status_code == 409
+    assert [l[0] for l in mundo.llamadas] == []
+
+
+@pytest.mark.parametrize("falla", [ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "caído"), Resp(500)])
+def test_aviso_fallido_no_tumba_el_envio_ni_el_rechazo(cliente, mundo, dueno, revisor, falla):
+    mundo.notificaciones = falla
+    assert enviar(cliente, dueno).status_code == 200 and mundo.estado == "en_revision"
+    r = revisar(cliente, revisor, {"decision": "rechazar", "comentario": "No"})
+    assert r.status_code == 200 and mundo.estado == "rechazado"
 
 
 def test_rechazar_sin_comentario_422(cliente, mundo, revisor):
@@ -339,6 +372,19 @@ def test_bandeja_en_xml_por_defecto(cliente, token, monkeypatch):
     monkeypatch.setattr(queries, "get_pendientes_revision", lambda: PENDIENTES)
     r = cliente.get("/api/v1/reviews/pending", headers=token(roles=("EPIDEMIOLOGO",)))
     assert r.mimetype == "application/xml" and b"<bandeja>" in r.data and b"<item>" in r.data
+
+
+def test_las_respuestas_xml_validan_contra_el_xsd(cliente, mundo, dueno, revisor, token, monkeypatch):
+    monkeypatch.setattr(queries, "get_pendientes_revision", lambda: PENDIENTES)
+    xsd = xmlschema.XMLSchema(str(XSD))
+    respuestas = [
+        enviar(cliente, dueno, formato="xml"),
+        cliente.post("/api/v1/scenarios/3/review", json={"decision": "aprobar"}, headers=revisor),
+        cliente.get("/api/v1/reviews/pending", headers=token(roles=("EPIDEMIOLOGO",))),
+    ]
+    for r in respuestas:
+        assert r.status_code == 200 and r.mimetype == "application/xml", r.data
+        xsd.validate(r.data.decode("utf-8"))
 
 
 def test_bandeja_401_403(cliente, token):

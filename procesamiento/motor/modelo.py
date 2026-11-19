@@ -37,16 +37,16 @@ Simplificaciones declaradas (van en la salida como 'simplificaciones'):
   van marcados como supuesto (ver migracion 025).
 """
 
-import hashlib
-import json
 import math
 
 import numpy as np
 
+from procesamiento.contrato import huella
+
 from .indicadores import resumir
 from .parametros import resolver
 
-ENGINE_VERSION = "python-ref-0.1"
+ENGINE_VERSION = "seir-ref-0.1"
 
 AVISO_SIMULACION = (
     "Los resultados representan escenarios simulados basados en parametros y "
@@ -75,10 +75,10 @@ class ErrorMotor(RuntimeError):
 
 
 def huella_escenario(escenario):
-    """SHA-256 de la entrada canonica: identifica exactamente que se simulo."""
-    canonico = json.dumps(escenario, sort_keys=True, ensure_ascii=False,
-                          separators=(",", ":"), default=str)
-    return hashlib.sha256(canonico.encode("utf-8")).hexdigest()
+    """SHA-256 de la entrada canonica: identifica exactamente que se simulo. La definicion
+    es la del contrato de los motores (procesamiento/contrato.py), para que todos la
+    calculen igual."""
+    return huella(escenario)
 
 
 def _activa(iv, dia):

@@ -6,8 +6,10 @@ import pytest
 import xmlschema
 
 from backend_web import queries
+from epidemia_comun import series_corridas
 from microservicios.resultados import rutas
 from procesamiento.motor import AVISO_SIMULACION
+from procesamiento.motores import IMPLEMENTADOS
 
 RAIZ = Path(__file__).resolve().parents[3]
 XSD = RAIZ / "docs/contratos/resultados/resultado.xsd"
@@ -31,13 +33,16 @@ TRAZA = [{"parametro": "r0", "valor": 1.8, "fuente": "Biggerstaff et al. 2014", 
 def corrida(run_id, status):
     return {"id": run_id, "status": status, "scenario_version_id": 11, "scenario_id": 3,
             "version_number": 2, "scenario_name": "Ola Influenza ZMM",
-            "disease_name": "Influenza A", "region_name": "Monterrey", "seed": 982314,
+            "disease_name": "Influenza A", "region_name": "Monterrey", "region_population": 1142994,
+            "seed": 982314,
             "population_size": 200000, "horizon_days": 120, "requested_by": 7,
             "finished_at": datetime(2026, 10, 20, 15, 30, tzinfo=timezone.utc)}
 
 
 CORRIDAS = {42: corrida(42, "completado"), 43: corrida(43, "ejecutando"),
-            44: corrida(44, "completado")}
+            44: corrida(44, "completado"), 45: corrida(45, "completado")}
+GUARDADO = {"engine_version": "seir-ref-0.1", "scenario_checksum": "a" * 64,
+            "resumen": RESUMEN, "trazabilidad": TRAZA}
 
 
 @pytest.fixture
@@ -48,11 +53,9 @@ def consultas(monkeypatch):
         registro.append(run_id)
         return dict(CORRIDAS[run_id]) if run_id in CORRIDAS else None
 
+    # 44 no tiene resumen; 45 tiene resumen pero su serie no llegó a MongoDB.
     def get_resultado_run(run_id):
-        if run_id != 42:
-            return None
-        return {"run_id": 42, "engine_version": "python-ref-0.1", "scenario_checksum": "a" * 64,
-                "resumen": RESUMEN, "serie": SERIE, "trazabilidad": TRAZA}
+        return dict(GUARDADO, run_id=run_id) if run_id in (42, 45) else None
 
     monkeypatch.setattr(queries, "get_run", get_run)
     monkeypatch.setattr(queries, "get_resultado_run", get_resultado_run)
@@ -60,7 +63,10 @@ def consultas(monkeypatch):
 
 
 @pytest.fixture
-def cliente(crear_cliente, consultas):
+def cliente(crear_cliente, consultas, mongo_falso):
+    run = dict(CORRIDAS[42], batch_id=5)
+    series_corridas.guardar(series_corridas.documentos(
+        run, "seir-ref", {"engine_version": "seir-ref-0.1", "serie": SERIE}))
     return crear_cliente("resultados")
 
 
@@ -80,6 +86,27 @@ def test_resultado_completo_con_aviso(cliente, token, rol):
     assert datos["corrida"]["id"] == 42 and datos["corrida"]["finished_at"].startswith("2026-10-20")
     assert "requested_by" not in datos["corrida"]
     assert datos["resumen"] == RESUMEN and datos["serie"] == SERIE and datos["trazabilidad"] == TRAZA
+
+
+@pytest.mark.parametrize("version, motor", [("abm-ref-0.1", "abm-ref"),
+                                            ("python-ref-0.1", "seir-ref"),
+                                            ("otro-9.9", None)])
+def test_las_simplificaciones_son_las_del_motor_que_corrio(cliente, token, monkeypatch, version,
+                                                           motor):
+    guardado = dict(GUARDADO, run_id=42, engine_version=version)
+    monkeypatch.setattr(queries, "get_resultado_run", lambda run_id: dict(guardado))
+    datos = cliente.get("/api/v1/runs/42/results?format=json", headers=token()).get_json()
+    esperado = list(IMPLEMENTADOS[motor].simplificaciones) if motor else []
+    assert datos["engine_version"] == version and datos["simplificaciones"] == esperado
+
+
+def test_la_escala_de_d6_lleva_los_conteos_a_habitantes(cliente, token):
+    """200 000 agentes por los 1 142 994 habitantes de Monterrey: cada uno representa 5.71."""
+    escala = cliente.get("/api/v1/runs/42/results?format=json", headers=token()).get_json()["escala"]
+    assert (escala["agentes"], escala["habitantes"], escala["factor"]) == (200000, 1142994, 5.715)
+    assert escala["avisos"] == []
+    assert escala["representados"]["fallecimientos"] == round(RESUMEN["fallecimientos"] * 5.71497)
+    assert "tasa_ataque" not in escala["representados"]
 
 
 def test_curvas_e_indicadores_con_aviso(cliente, token):
@@ -105,6 +132,31 @@ def test_sin_terminar_es_409_y_no_entra_a_la_cache(cliente, token, consultas):
 def test_inexistente_o_sin_resultado_es_404(cliente, token):
     assert cliente.get("/api/v1/runs/99/results", headers=token()).status_code == 404
     assert cliente.get("/api/v1/runs/44/curves", headers=token()).status_code == 404
+
+
+def test_sin_serie_en_mongodb_es_404_pero_el_resumen_responde(cliente, token):
+    for ruta in ("results", "curves"):
+        r = cliente.get("/api/v1/runs/45/%s?format=json" % ruta, headers=token())
+        assert r.status_code == 404 and "serie" in r.get_json()["detail"]
+    assert cliente.get("/api/v1/runs/45/indicators", headers=token()).status_code == 200
+
+
+def test_mongodb_caido_solo_tumba_lo_que_lleva_la_serie(cliente, token, apagar_mongo):
+    apagar_mongo()
+    for ruta in ("results", "curves"):
+        r = cliente.get("/api/v1/runs/42/%s?format=json" % ruta, headers=token())
+        assert r.status_code == 503 and r.get_json()["codigo"] == "SERVICIO_NO_DISPONIBLE"
+    indicadores = cliente.get("/api/v1/runs/42/indicators?format=json", headers=token())
+    assert indicadores.status_code == 200 and indicadores.get_json()["resumen"] == RESUMEN
+
+
+def test_la_serie_no_se_cachea_vacia(cliente, token, mongo_falso):
+    assert cliente.get("/api/v1/runs/45/curves", headers=token()).status_code == 404
+    series_corridas.guardar(series_corridas.documentos(
+        dict(CORRIDAS[45], batch_id=6), "seir-ref", {"engine_version": "seir-ref-0.1",
+                                                     "serie": SERIE}))
+    curvas = cliente.get("/api/v1/runs/45/curves?format=json", headers=token()).get_json()
+    assert curvas["serie"] == SERIE
 
 
 def test_id_invalido_es_422(cliente, token):

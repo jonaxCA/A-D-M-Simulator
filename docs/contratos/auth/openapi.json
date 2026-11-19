@@ -73,7 +73,19 @@
             "description": "Solicitud inválida"
           },
           "503": {
-            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -220,7 +232,19 @@
             "description": "Falta un campo, o el captcha es incorrecto o venció (DATOS_INVALIDOS)"
           },
           "503": {
-            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }

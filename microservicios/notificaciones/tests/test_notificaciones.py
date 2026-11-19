@@ -17,6 +17,7 @@ class Bandeja:
     def __init__(self):
         self.filas = {1: self.fila(1, 7), 2: self.fila(2, 8)}
         self.contextos = []
+        self.a_rol = []
 
     @staticmethod
     def fila(notificacion_id, user_id):
@@ -37,6 +38,14 @@ class Bandeja:
         self.contextos.append(contexto)
         return dict(fila), None
 
+    def crear_a_rol(self, datos, rol, *, contexto):
+        errores = notificaciones.valida_notificacion(datos, a_rol=True)
+        if errores:
+            return None, " ".join(errores)
+        self.contextos.append(contexto)
+        self.a_rol.append((rol, datos))
+        return [10, 11], None
+
     def crear(self, datos, *, contexto):
         errores = notificaciones.valida_notificacion(datos)
         if errores:
@@ -55,6 +64,7 @@ def bandeja(monkeypatch):
     monkeypatch.setattr(notificaciones, "listar_notificaciones", b.listar)
     monkeypatch.setattr(notificaciones, "marcar_leida", b.marcar)
     monkeypatch.setattr(notificaciones, "crear_notificacion", b.crear)
+    monkeypatch.setattr(notificaciones, "crear_notificaciones_a_rol", b.crear_a_rol)
     return b
 
 
@@ -117,6 +127,24 @@ def test_crear_con_token_de_servicio(cliente, servicio, bandeja):
     assert r.get_json() == {"id": 3, "user_id": 7, "type": "RUN_FAILED"}
     contexto = bandeja.contextos[0]
     assert contexto.user_id is None and contexto.user_agent == "servicio simulador"
+
+
+def test_crear_para_un_rol(cliente, servicio, bandeja):
+    cuerpo = {k: v for k, v in AVISO.items() if k != "user_id"}
+    r = cliente.post("/api/v1/notifications?format=json", json=dict(cuerpo, role="EPIDEMIOLOGO", type="NEW_CASES"),
+                     headers=servicio)
+    assert r.status_code == 201
+    assert r.get_json() == {"role": "EPIDEMIOLOGO", "type": "NEW_CASES", "total": 2}
+    rol, datos = bandeja.a_rol[0]
+    assert rol == "EPIDEMIOLOGO" and "role" not in datos
+    assert bandeja.contextos[0].user_agent == "servicio simulador"
+
+
+@pytest.mark.parametrize("cuerpo", [dict(role="ADMINISTRADOR"), dict(role="EPIDEMIOLOGO", user_id=7)])
+def test_rol_invalido_o_con_user_id_es_422(cliente, servicio, bandeja, cuerpo):
+    base = {k: v for k, v in AVISO.items() if k != "user_id"}
+    r = cliente.post("/api/v1/notifications?format=json", json=dict(base, **cuerpo), headers=servicio)
+    assert r.status_code == 422 and bandeja.a_rol == []
 
 
 @pytest.mark.parametrize("roles", [("ADMINISTRADOR",), ("ANALISTA",)])

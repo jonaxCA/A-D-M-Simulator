@@ -7,6 +7,9 @@ name: epidemia
 # `python infra/genera_env.py`.
 x-servicio-base: &servicio-base
   restart: unless-stopped
+  # Límites de consumo (LIMITE_NORMAL, etc.); ver infra/limites.env. Todo va comentado por
+  # defecto y los servicios usan las cifras de epidemia_comun/limites.py.
+  env_file: limites.env
 
 # Todos los Dockerfile parten de epidemia/base (infra/docker/base.Dockerfile). Con
 # additional_contexts el compose construye primero el servicio base y nunca la busca en
@@ -58,6 +61,9 @@ services:
       DB_PASSWORD_APROBACION: ${DB_PASSWORD_APROBACION:-}
       DB_PASSWORD_AUTH: ${DB_PASSWORD_AUTH:-}
       DB_PASSWORD_CASOS: ${DB_PASSWORD_CASOS:-}
+      DB_PASSWORD_DISPOSITIVOS: ${DB_PASSWORD_DISPOSITIVOS:-}
+      DB_PASSWORD_EVIDENCIAS: ${DB_PASSWORD_EVIDENCIAS:-}
+      DB_PASSWORD_VACUNAS: ${DB_PASSWORD_VACUNAS:-}
       DB_PASSWORD_COMPARACION: ${DB_PASSWORD_COMPARACION:-}
       DB_PASSWORD_CORRIDAS: ${DB_PASSWORD_CORRIDAS:-}
       DB_PASSWORD_ENFERMEDADES: ${DB_PASSWORD_ENFERMEDADES:-}
@@ -94,6 +100,30 @@ services:
       interval: 5s
       timeout: 3s
       retries: 60
+    restart: unless-stopped
+
+  # MongoDB (D28): la serie diaria de cada corrida (series_corridas) y el historial de
+  # estado-servicios (historial_servicios). La primera vez (volumen vacío) mongo/10-usuario.js
+  # crea el usuario epidemia, el único que usan los servicios. Solo en 127.0.0.1, para mongosh.
+  mongodb:
+    image: mongo:7.0
+    # Poca caché: la VM y las máquinas del equipo comparten la memoria con 29 servicios.
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-}
+      MONGO_INITDB_DATABASE: epidemia
+      MONGO_PASSWORD: ${MONGO_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${MONGO_PUERTO_LOCAL:-27018}:27017"
+    volumes:
+      - mongo-datos:/data/db
+      - ./mongo:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' | grep -q 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     restart: unless-stopped
 
   base:
@@ -304,12 +334,71 @@ services:
       DATABASE_URL: ${DATABASE_URL_SINCRONIZACION:-postgresql://svc_sincronizacion:${DB_PASSWORD_SINCRONIZACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       SYNC_LOTE_TTL_SECONDS: ${SYNC_LOTE_TTL_SECONDS:-604800}
       SERVICIO_CASOS_URL: http://casos:8000
+      SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       casos:
+        condition: service_healthy
+  dispositivos:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/dispositivos/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5223:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_DISPOSITIVOS:-postgresql://svc_dispositivos:${DB_PASSWORD_DISPOSITIVOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  # Los archivos de las evidencias viven en su volumen; la base solo guarda su ruta y su huella.
+  evidencias:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/evidencias/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5224:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_EVIDENCIAS:-postgresql://svc_evidencias:${DB_PASSWORD_EVIDENCIAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      EVIDENCIAS_DIR: /var/lib/epidemia/evidencias
+    volumes:
+      - evidencias-datos:/var/lib/epidemia/evidencias
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  vacunas:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: microservicios/vacunas/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5225:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_VACUNAS:-postgresql://svc_vacunas:${DB_PASSWORD_VACUNAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   # --- Escenarios (perfil escenarios) -------------------------------------------------------
@@ -436,6 +525,8 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_CORRIDAS:-postgresql://svc_corridas:${DB_PASSWORD_CORRIDAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # abm-ref tiene su simulador en este compose (simulador-abm); abm-gpu no.
+      MOTORES_HABILITADOS: ${MOTORES_HABILITADOS:-abm-ref}
     depends_on:
       postgres:
         condition: service_healthy
@@ -454,6 +545,9 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_SIMULADOR:-postgresql://svc_simulador:${DB_PASSWORD_SIMULADOR:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # La serie diaria va a series_corridas. Si MongoDB no responde, la corrida termina igual
+      # con su resumen en PostgreSQL y la serie se reintenta.
+      MONGO_URL: mongodb://epidemia:${MONGO_PASSWORD:-}@mongodb:27017/epidemia?authSource=epidemia
       # Avisa al terminar o fallar una corrida. Best-effort: si notificaciones no está arriba
       # (perfil plataforma), la corrida termina igual y solo queda un aviso en el log.
       SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
@@ -462,6 +556,36 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy
+  # El simulador de abm-ref (D22): el mismo servicio, con otro motor y su propia cola, para que
+  # una corrida larga del ABM no detenga las del SEIR. No publica puerto: no es otro servicio del
+  # directorio, y su salud la revisa el healthcheck del compose.
+  simulador-abm:
+    extends:
+      service: simulador
+    ports: !reset []
+    environment:
+      SIMULADOR_MOTOR: abm-ref
+  # El simulador de abm-gpu (D23), con FLAME GPU 2. Necesita una GPU de NVIDIA y NVIDIA
+  # Container Toolkit (en Windows, Docker Desktop con WSL 2), así que va en su propio perfil:
+  #   docker compose --profile simulacion --profile gpu up -d
+  # y corridas lo acepta solo con MOTORES_HABILITADOS=abm-ref,abm-gpu.
+  simulador-gpu:
+    extends:
+      service: simulador
+    build:
+      <<: *construye
+      dockerfile: microservicios/simulador/gpu.Dockerfile
+    profiles: !override [gpu]
+    ports: !reset []
+    gpus:
+      - driver: nvidia
+        count: 1
+    environment:
+      SIMULADOR_MOTOR: abm-gpu
+    volumes:
+      - flamegpu-cache:/var/cache/flamegpu
   resultados:
     <<: *servicio-base
     build:
@@ -475,10 +599,13 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_RESULTADOS:-postgresql://svc_resultados:${DB_PASSWORD_RESULTADOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      MONGO_URL: mongodb://epidemia:${MONGO_PASSWORD:-}@mongodb:27017/epidemia?authSource=epidemia
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
   comparacion:
     <<: *servicio-base
@@ -493,6 +620,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_COMPARACION:-postgresql://svc_comparacion:${DB_PASSWORD_COMPARACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SERVICIO_RESULTADOS_URL: http://resultados:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -593,8 +721,8 @@ services:
       redis:
         condition: service_healthy
   # Sondea el /health de los 26 por la red interna y no depende de ellos: el que no está
-  # arriba aparece caído. URL_PUBLICA es la que da su directorio a las apps y a la consola
-  # (ver infra/.env.example).
+  # arriba aparece caído. Su directorio da a cada cliente las URL con el host por el que
+  # llegó, salvo que URL_PUBLICA diga otra cosa (ver infra/.env.example).
   estado-servicios:
     <<: *servicio-base
     build:
@@ -610,10 +738,14 @@ services:
       DATABASE_URL: ${DATABASE_URL_ESTADO_SERVICIOS:-postgresql://svc_estado_servicios:${DB_PASSWORD_ESTADO_SERVICIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       URL_SONDEO: "http://{servicio}:8000"
       URL_PUBLICA: ${URL_PUBLICA:-}
+      # El historial de los sondeos va a historial_servicios (30 días); el último, a Redis.
+      MONGO_URL: mongodb://epidemia:${MONGO_PASSWORD:-}@mongodb:27017/epidemia?authSource=epidemia
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
   # La consola es una página: el navegador llama a cada servicio con la URL que da el
   # directorio de estado-servicios, y cada servicio solo abre CORS para CONSOLE_ORIGIN.
@@ -630,5 +762,9 @@ services:
       URL_DIRECTORIO: ${URL_DIRECTORIO:-http://localhost:5262}
 
 volumes:
+  # Lo que FLAME GPU compila para cada tamaño de población (simulador-gpu).
+  flamegpu-cache:
   redis-datos:
   postgres-datos:
+  mongo-datos:
+  evidencias-datos:

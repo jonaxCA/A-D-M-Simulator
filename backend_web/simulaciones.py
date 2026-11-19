@@ -29,10 +29,13 @@ import time
 # atraparia lo que lanza el otro. backend_web/tests/test_integridad.py lo
 # vigila. (Las pruebas del motor usan `from motor import ...` porque corren
 # desde dentro de procesamiento/, en otro proceso.)
+from procesamiento.analitica import ComparacionInvalida, comparar as comparar_pareto
+from procesamiento.analitica import factor_de_escala, representados
 from procesamiento.motor import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular  # noqa: F401
 from procesamiento.motor.modelo import SIMPLIFICACIONES                      # noqa: F401
 from procesamiento.motor.parametros import EscenarioInvalido
-from procesamiento.motor.pareto import ComparacionInvalida, comparar as comparar_pareto
+from procesamiento.motores import MOTOR_REFERENCIA, de_version as motor_de_version
+from procesamiento.motores import del_nombre as motor_del_nombre
 
 from . import queries
 from .audit import log_audit
@@ -72,6 +75,24 @@ CLASE_BADGE_ESTADO = {
     "fallido": "badge-fallido",
     "cancelado": "badge-inactivo",
 }
+
+
+def motor_de_resultado(engine_version):
+    """(version actual, simplificaciones) del motor que produjo un resultado, para mostrarlas
+    junto a el. Si la version no se reconoce: (engine_version, [])."""
+    motor = motor_de_version(engine_version)
+    if motor is None:
+        return engine_version, []
+    return motor.version, list(motor.simplificaciones)
+
+
+def escala(habitantes, agentes, resumen=None):
+    """El factor de escala de D6 (habitantes de la region / agentes simulados) y, si llega un
+    resumen, sus conteos llevados a habitantes. Lo calcula procesamiento/analitica, fuera del
+    motor: el motor solo ve agentes."""
+    datos = factor_de_escala(habitantes, agentes)
+    datos["representados"] = representados(resumen, datos) if resumen else {}
+    return datos
 
 
 def estado_visible(status_db):
@@ -130,15 +151,21 @@ def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
     if len(run_ids) < 2:
         return None, ["Selecciona al menos dos corridas completadas."]
 
-    costos = {}
+    # Pesos por tipo y, para los tipos por dosis, personas-dia por dosis (D3).
+    costos, factores = {}, {}
     for tipo in queries.get_tipos_intervencion():
-        if tipo["unit_cost"] is None:
-            continue
-        costos[tipo["code"]] = {
-            "valor": float(tipo["unit_cost"]),
-            "fuente": tipo["cost_source"],
-            "supuesto": bool(tipo["cost_is_assumption"]),
-        }
+        if tipo["unit_cost"] is not None:
+            costos[tipo["code"]] = {
+                "valor": float(tipo["unit_cost"]),
+                "fuente": tipo["cost_source"],
+                "supuesto": bool(tipo["cost_is_assumption"]),
+            }
+        if tipo.get("person_days_per_unit") is not None:
+            factores[tipo["code"]] = {
+                "valor": float(tipo["person_days_per_unit"]),
+                "fuente": tipo["person_days_source"],
+                "supuesto": bool(tipo["person_days_is_assumption"]),
+            }
 
     entradas = []
     errores = []
@@ -181,7 +208,7 @@ def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
         return None, errores
 
     try:
-        return comparar_pareto(entradas, costos, metrica=metrica), []
+        return comparar_pareto(entradas, costos, metrica=metrica, factores=factores), []
     except ComparacionInvalida as exc:
         return None, exc.errores
 
@@ -189,20 +216,26 @@ def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
 # ---------------------------------------------------------------------------
 # Corrida en segundo plano
 # ---------------------------------------------------------------------------
-def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None):
-    """Cuerpo del hilo que corre una simulation_run ya encolada.
+def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None,
+                 guardar_serie=None, descartar_serie=None):
+    """Corre una simulation_run ya encolada. Lo llama el trabajador del
+    simulador (microservicios/simulador/trabajador.py) por cada corrida que
+    toma de la cola; la web ya no lanza corridas (D4).
 
     Cada paso usa su propia conexion a PostgreSQL (backend_web.db.get_conn
-    abre y cierra una por llamada dentro de queries.py), asi que no hace falta
-    compartir conexiones ni contexto de Flask entre el hilo y la peticion que
-    lo lanzo -- routes.py ya respondio con el redirect antes de que esto
-    termine.
+    abre y cierra una por llamada dentro de queries.py), asi que no comparte
+    conexiones con quien la encolo.
 
     `demora_seg` deja visible la transicion encolado -> ejecutando en la
     pantalla de detalle (que hace polling cada segundo); en pruebas se pasa 0.
 
     `al_avanzar(porcentaje)` recibe el avance de cada etapa; el microservicio
-    simulador lo escribe en Redis. Devuelve el estado en que esta llamada dejo
+    simulador lo escribe en Redis. `guardar_serie(run, motor, resultado)` se
+    llama ANTES de confirmar la corrida como completada; el simulador guarda
+    ahi la serie diaria en MongoDB (D28). Si falla, la corrida se confirma
+    igual con su resumen (RNF-C08). Si la confirmacion no ocurre porque la
+    corrida ya no estaba 'ejecutando', `descartar_serie(run_id)` quita la
+    serie que se guardo. Devuelve el estado en que esta llamada dejo
     la corrida ('completado' o 'fallido'), o None si no la llego a cerrar
     (no existia, otro proceso la tomo o la cerro antes).
     """
@@ -243,6 +276,10 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None):
             # proposito, no uno real del motor ni de los datos.
             raise ValueError(MENSAJE_ERROR_FORZADO)
 
+        # El motor es el del lote (D2): cada simulador toma de la cola solo los suyos, pero el
+        # que manda es el lote. Uno que no esta implementado aqui falla con su nombre.
+        motor = motor_del_nombre(queries.get_motor_run(run_id) or MOTOR_REFERENCIA)
+
         escenario, _version, errores = construir_escenario_desde_version(
             run["scenario_version_id"]
         )
@@ -250,8 +287,18 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None):
             raise ValueError("; ".join(errores))
         avanza(30)
 
-        resultado = simular(escenario, run["seed"])
+        resultado = motor.simular(escenario, run["seed"])
         avanza(90)
+        # La serie va antes de confirmar: si el proceso muere entre los dos
+        # pasos, la corrida se queda 'ejecutando' con su serie, nunca
+        # 'completado' sin ella.
+        if guardar_serie:
+            try:
+                guardar_serie(run, motor.nombre, resultado)
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "No se pudo guardar la serie de la corrida %s; se confirma con su "
+                    "resumen.", run_id)
         if not queries.guardar_resultado_run(run_id, resultado):
             # Alguien cerro la corrida mientras el motor trabajaba (otro
             # proceso que arranco y la dio por interrumpida). Su estado
@@ -260,6 +307,12 @@ def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None):
             logging.getLogger(__name__).warning(
                 "La corrida %s termino en el motor, pero ya no estaba en "
                 "'ejecutando'; el resultado se descarto.", run_id)
+            if descartar_serie:
+                try:
+                    descartar_serie(run_id)
+                except Exception:
+                    logging.getLogger(__name__).exception(
+                        "No se pudo descartar la serie de la corrida %s.", run_id)
             return None
         log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
                   data_after={
@@ -333,29 +386,27 @@ MENSAJE_INTERRUMPIDA = (
 )
 
 
-def recupera_corridas_interrumpidas(estados=("encolado", "ejecutando")):
+def recupera_corridas_interrumpidas(estados=("encolado", "ejecutando"), engine=None):
     """Cierra como 'fallido' las corridas que un proceso anterior dejo a medias.
 
-    _marca_fallido_y_audita protege contra cualquier error DENTRO del hilo,
-    pero no contra que el proceso entero muera: el hilo es daemon y se va con
-    el. Con `FLASK_DEBUG=1` eso pasa cada vez que se guarda un .py (el
-    recargador reinicia el servidor), y sin esto la corrida se quedaria en
-    'ejecutando' para siempre, con la pantalla de detalle consultando su
-    estado cada segundo.
+    _marca_fallido_y_audita protege contra cualquier error DENTRO de la
+    ejecucion, pero no contra que el proceso entero muera: sin esto la corrida
+    se quedaria en 'ejecutando' para siempre, con la pantalla de detalle
+    consultando su estado cada segundo.
 
-    Se llama desde frontend_web/run.py al arrancar, NO desde create_app():
-    las pruebas crean la app muchas veces y no deben cerrar corridas ajenas.
-    Supone un solo proceso sirviendo, que es como corre hoy la app. Con
-    varios procesos (gunicorn -w 4), uno que arranca cerraria corridas vivas
-    de los otros; ese caso lo resuelve la cola con worker del documento de
-    arquitectura, no este barrido.
+    Lo llama el simulador al arrancar (microservicios/simulador/__main__.py),
+    con estados=('ejecutando',): con la cola de Redis, una corrida encolada no
+    se perdio, solo sigue esperando. La web lo llamaba al arrancar, con el
+    valor por omision, mientras corria simulaciones en un hilo propio; desde
+    D4 no lanza corridas y ya no lo llama, porque cerraria las del simulador.
 
-    El microservicio simulador pasa estados=('ejecutando',): con la cola de
-    Redis, una corrida encolada no se perdio, solo sigue esperando.
+    Con `engine`, solo cierra las corridas de lotes de ese motor: hay un simulador por motor
+    (D2), y el que arranca no debe cerrar las que otro esta ejecutando.
 
     Devuelve cuantas corridas cerro.
     """
-    filas = queries.marca_corridas_interrumpidas(MENSAJE_INTERRUMPIDA, estados=estados)
+    filas = queries.marca_corridas_interrumpidas(MENSAJE_INTERRUMPIDA, estados=estados,
+                                                 engine=engine)
     for fila in filas:
         try:
             log_audit(Contexto.sin_peticion(fila["requested_by"]), "RUN", "simulation_run",
@@ -368,3 +419,10 @@ def recupera_corridas_interrumpidas(estados=("encolado", "ejecutando")):
                 "La corrida %s se cerro como interrumpida pero no se pudo auditar",
                 fila["id"])
     return len(filas)
+
+
+def corridas_encoladas(engine):
+    filas = queries.query("SELECT r.id FROM simulation_runs r"
+                       " JOIN simulation_batches b ON b.id = r.batch_id"
+                       " WHERE r.status = 'encolado' AND b.engine = %s ORDER BY r.id", (engine,))
+    return [fila["id"] for fila in filas]

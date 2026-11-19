@@ -1,0 +1,7 @@
+{
+  "id": 77,
+  "intervention_type_id": 2,
+  "person_days_per_unit": 0.5,
+  "person_days_source": "Supuesto del equipo, por validar",
+  "person_days_is_assumption": true
+}

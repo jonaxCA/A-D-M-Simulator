@@ -47,6 +47,6 @@ curl -X PUT -H "Authorization: Bearer <access>" -H "Content-Type: application/js
      -d '{"role_id": 2}' "http://127.0.0.1:5204/api/v1/roles/assignments/9?format=json"
 ```
 
-Pendiente: entrada en el compose (bloque J). Hoy cierra las sesiones con la biblioteca común,
+Corre en `infra/docker-compose.yml`. Hoy cierra las sesiones con la biblioteca común,
 sobre el mismo Redis; cuando exista el token de servicio (bloque L) puede hacerlo por HTTP con la
 ruta interna de `sesiones`.

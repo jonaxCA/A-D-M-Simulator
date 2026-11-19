@@ -183,7 +183,7 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         }
       }
@@ -283,7 +283,7 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         }
       }

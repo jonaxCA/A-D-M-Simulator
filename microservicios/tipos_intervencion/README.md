@@ -36,4 +36,4 @@ curl "http://127.0.0.1:5215/api/v1/intervention-types"               # XML
 curl "http://127.0.0.1:5215/api/v1/intervention-types/CUBREBOCAS?format=json"
 ```
 
-Pendiente: la entrada en el compose (bloque J). Evidencia de funcionamiento en `evidencias/servicios/tipos-intervencion/`.
+Corre en `infra/docker-compose.yml`.

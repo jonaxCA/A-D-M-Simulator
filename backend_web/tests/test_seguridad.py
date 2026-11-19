@@ -16,6 +16,7 @@ import secrets
 import unittest
 from unittest.mock import patch
 
+import jwt
 import psycopg2
 
 from backend_web.tests.base import escribe, requiere_base
@@ -38,6 +39,20 @@ class SecretoTests(unittest.TestCase):
             ajeno = auth.create_token({"id": 1, "username": "u", "full_name": "U",
                                        "roles": ["ADMINISTRADOR"]})
         self.assertIsNone(auth.decode_token(ajeno))
+
+    def test_un_token_de_servicio_o_de_otro_emisor_no_vale(self):
+        # Los tokens de servicio (aud epidemia-interno) se firman con el mismo secreto.
+        claims = jwt.decode(auth.create_token({"id": 1, "username": "u", "full_name": "U",
+                                               "roles": ["ADMINISTRADOR"]}),
+                            options={"verify_signature": False})
+        def firma(c):
+            return jwt.encode(c, auth.secreto_jwt(), algorithm="HS256")
+
+        self.assertIsNotNone(auth.decode_token(firma(claims)))
+        sin_aud = {k: v for k, v in claims.items() if k != "aud"}
+        for ajeno in (dict(claims, aud="epidemia-interno"), dict(claims, iss="otro-emisor"), sin_aud):
+            with self.subTest(ajeno=ajeno):
+                self.assertIsNone(auth.decode_token(firma(ajeno)))
 
     def test_sub_va_como_cadena(self):
         token = auth.create_token({"id": 42, "username": "u", "full_name": "U",

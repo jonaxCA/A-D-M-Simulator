@@ -17,4 +17,4 @@ Comprobar `/health`, `/docs` y peticiones GET en ambos formatos
 (XML por defecto y JSON con `?format=json`). Las rutas PUT/POST exigen un
 JWT del servicio de identidad, con sesión activa en Redis.
 
-Pendiente: la incorporación al compose (bloque J). Evidencia de funcionamiento en `evidencias/servicios/parametros/`.
+Corre en `infra/docker-compose.yml`.

@@ -1,0 +1,73 @@
+/* Paleta de disenios_figma/estilos.jpeg: primario #1E293B, secundario #3B82F6,
+   terciario #0F172A, neutro #F8FAFC. */
+QWidget { font-size: 13px; color: #0F172A; }
+QMainWindow, QDialog, #contenido { background: #F1F5F9; }
+
+#lateral { background: #0F172A; }
+#lateral QLabel { color: #CBD5E1; }
+#marca { color: #FFFFFF; font-size: 16px; font-weight: 700; }
+#submarca { color: #94A3B8; font-size: 11px; }
+#seccionLateral { color: #64748B; font-size: 11px; letter-spacing: 1px; margin-top: 14px; }
+#lateral QPushButton {
+    color: #CBD5E1; background: transparent; border: none; text-align: left;
+    padding: 8px 12px; border-radius: 4px;
+}
+#lateral QPushButton:hover { background: #1E293B; }
+#lateral QPushButton:checked { background: #1E293B; color: #FFFFFF; border-left: 3px solid #3B82F6; }
+#usuarioLateral { color: #FFFFFF; font-weight: 600; }
+
+#encabezado { background: #FFFFFF; border-bottom: 1px solid #E2E8F0; }
+#miga { color: #64748B; font-size: 11px; }
+#titulo { font-size: 18px; font-weight: 600; }
+
+#tarjeta, #panel { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; }
+#panel { border-radius: 0; border-top: none; border-bottom: none; border-right: none; }
+#tituloTarjeta { font-weight: 600; font-size: 13px; }
+#etiquetaDato { color: #64748B; font-size: 11px; }
+#valorDato { font-size: 15px; font-weight: 500; }
+#cifra { font-size: 26px; font-weight: 600; }
+#nota { color: #64748B; font-size: 11px; }
+
+#aviso { background: #FEF9C3; border: 1px solid #FACC15; color: #713F12; padding: 8px; border-radius: 4px; }
+#errores { background: #FFFFFF; border: 1px solid #E2E8F0; padding: 6px; }
+
+QLabel#pastilla { padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+QLabel#pastilla[tono="gris"] { color: #334155; background: #E2E8F0; }
+QLabel#pastilla[tono="azul"] { color: #1D4ED8; background: #DBEAFE; }
+QLabel#pastilla[tono="verde"] { color: #15803D; background: #DCFCE7; }
+QLabel#pastilla[tono="rojo"] { color: #B91C1C; background: #FEE2E2; }
+QLabel#pastilla[tono="ambar"] { color: #A16207; background: #FEF3C7; }
+
+QPushButton {
+    background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 4px; padding: 6px 12px;
+}
+QPushButton:hover { background: #F1F5F9; }
+QPushButton:disabled { color: #94A3B8; background: #F1F5F9; border-color: #E2E8F0; }
+QPushButton#primario { background: #0F172A; color: #FFFFFF; border: 1px solid #0F172A; }
+QPushButton#primario:hover { background: #1E293B; }
+QPushButton#primario:disabled { background: #94A3B8; border-color: #94A3B8; }
+QPushButton#peligro { background: #B91C1C; color: #FFFFFF; border: 1px solid #B91C1C; }
+QPushButton#peligro:disabled { background: #FCA5A5; border-color: #FCA5A5; }
+QPushButton#ficha { border: 1px solid #CBD5E1; background: #FFFFFF; }
+QPushButton#ficha:checked { border: 1px solid #3B82F6; background: #EFF6FF; color: #1D4ED8; }
+
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QPlainTextEdit {
+    background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 4px; padding: 4px 6px;
+}
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus { border-color: #3B82F6; }
+
+QTableWidget, QListWidget { background: #FFFFFF; border: 1px solid #E2E8F0; selection-background-color: #EFF6FF; selection-color: #0F172A; }
+QListWidget::item { padding: 8px; border-bottom: 1px solid #F1F5F9; }
+QListWidget::item:selected { background: #EFF6FF; border-left: 3px solid #3B82F6; }
+QHeaderView::section { background: #F8FAFC; color: #475569; border: none; border-bottom: 1px solid #E2E8F0; padding: 6px; }
+
+QTabBar::tab { padding: 8px 14px; background: transparent; border: none; color: #475569; }
+QTabBar::tab:selected { color: #0F172A; border-bottom: 2px solid #3B82F6; }
+QTabWidget::pane { border: none; }
+
+QProgressBar { background: #E2E8F0; border: none; border-radius: 3px; height: 8px; text-align: center; font-size: 10px; }
+QProgressBar::chunk { background: #3B82F6; border-radius: 3px; }
+
+QStatusBar { background: #0F172A; color: #CBD5E1; }
+QStatusBar QLabel { color: #CBD5E1; padding: 0 8px; }
+QStatusBar QPushButton { background: transparent; color: #CBD5E1; border: none; padding: 0 8px; }

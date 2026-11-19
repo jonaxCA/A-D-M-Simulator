@@ -2614,17 +2614,22 @@ def get_tipos_intervencion():
     """Tipos activos, con el esquema que describe sus parametros."""
     return [dict(r) for r in query(
         """SELECT id, code, name, description, target_layer, primitive, param_schema,
-                  unit_cost, cost_unit, cost_source, cost_is_assumption
+                  unit_cost, cost_unit, cost_source, cost_is_assumption,
+                  person_days_per_unit, person_days_source, person_days_is_assumption
            FROM intervention_types WHERE is_active ORDER BY name""")]
 
 
-def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption):
-    """Valida el importe antes de guardar el costo de una intervencion."""
+def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption, nombre="El importe"):
+    """Valida el importe antes de guardar el costo de una intervencion.
+
+    Tambien valida el factor de personas-dia por dosis (D3), con otro `nombre`:
+    las reglas son las mismas y las llaves del resultado tambien.
+    """
     errores = []
     texto = (unit_cost_raw or "").strip()
 
     if not texto:
-        errores.append("El importe es obligatorio.")
+        errores.append(f"{nombre} es obligatorio.")
         return None, errores
 
     try:
@@ -2633,16 +2638,17 @@ def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption):
         costo = None
     # "nan" e "inf" convierten sin error y la columna numeric los guardaria.
     if costo is None or not math.isfinite(costo):
-        errores.append("El importe debe ser numerico.")
+        errores.append(f"{nombre} debe ser numerico.")
         return None, errores
 
     if costo < 0:
-        errores.append("El importe no puede ser negativo.")
+        errores.append(f"{nombre} no puede ser negativo.")
 
     es_supuesto = bool(cost_is_assumption)
 
     if not es_supuesto and not (cost_source or "").strip():
-        errores.append("Un costo que no es supuesto debe incluir una fuente.")
+        que = "Un costo" if nombre == "El importe" else nombre
+        errores.append(f"{que} que no es supuesto debe incluir una fuente.")
 
     return {
         "unit_cost": costo,
@@ -2685,7 +2691,8 @@ def get_escenario_detalle(scenario_id, version_number=None):
     escenario = query(
         """SELECT s.id, s.name, s.description, s.status, s.owner_id, s.created_at,
                   d.id AS disease_id, d.name AS enfermedad, d.default_params,
-                  g.id AS region_id, g.name AS region, u.full_name AS autor
+                  g.id AS region_id, g.name AS region, g.population AS region_poblacion,
+                  u.full_name AS autor
            FROM scenarios s
            JOIN diseases d ON d.id = s.disease_id
            JOIN regions  g ON g.id = s.region_id
@@ -3331,8 +3338,9 @@ def resuelve_revision(scenario_id, decision, comentario, *, contexto):
 # ---------------------------------------------------------------------------
 # Todo lo de aqui es de SOLO LECTURA sobre scenarios/scenario_versions (los
 # escriben las secciones de escenarios, mas arriba). Lo unico que se escribe
-# en esta seccion son simulation_batches, simulation_runs y
-# simulation_results -- la corrida, no el escenario.
+# en esta seccion son simulation_batches y simulation_runs -- la corrida, no
+# el escenario. El resumen va en simulation_runs (038); la serie diaria la
+# guarda el simulador en MongoDB (series_corridas, D28) y la da resultados.
 #
 # La entrada del motor sale de escenario_de_version(), la misma traduccion que
 # usa la revision; backend_web.simulaciones solo la invoca.
@@ -3389,10 +3397,11 @@ def listar_versiones_escenario():
     )
 
 
-def crear_corrida(version_id, seed, user_id, engine_version, *, contexto=None,
-                  forzar_error=False):
-    """Encola una corrida: un lote de una sola replica (motor python-ref, una
-    corrida a la vez -- ver 014_simulacion_resultados.sql) y su run.
+def crear_corrida(version_id, seed, user_id, engine_version, *, engine="seir-ref",
+                  contexto=None, forzar_error=False):
+    """Encola una corrida: un lote de una sola replica (una corrida a la vez --
+    ver 014_simulacion_resultados.sql) y su run. `engine` queda en el lote; por
+    omision, seir-ref. El microservicio corridas deja elegirlo.
 
     Valida que la version este aprobada ANTES del INSERT, para poder devolver
     un mensaje claro. El trigger fn_version_aprobada (014) es la ULTIMA linea
@@ -3422,10 +3431,10 @@ def crear_corrida(version_id, seed, user_id, engine_version, *, contexto=None,
                     """
                     INSERT INTO simulation_batches
                         (scenario_version_id, requested_by, replicas, engine, status)
-                    VALUES (%s, %s, 1, 'python-ref', 'encolado')
+                    VALUES (%s, %s, 1, %s, 'encolado')
                     RETURNING id
                     """,
-                    (version_id, user_id),
+                    (version_id, user_id, engine),
                 )
                 batch_id = cur.fetchone()[0]
                 cur.execute(
@@ -3443,7 +3452,7 @@ def crear_corrida(version_id, seed, user_id, engine_version, *, contexto=None,
                     log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
                               data_after={"estado": "encolado", "seed": seed,
                                           "scenario_version_id": version_id,
-                                          "forzar_error": forzar_error},
+                                          "engine": engine, "forzar_error": forzar_error},
                               cur=cur)
             conn.commit()
         return run_id, batch_id, None
@@ -3464,7 +3473,7 @@ def get_run(run_id):
                sv.population_size, sv.horizon_days, sv.initial_infected,
                s.name AS scenario_name, s.disease_id, s.region_id,
                d.name AS disease_name,
-               reg.name AS region_name,
+               reg.name AS region_name, reg.population AS region_population,
                u.username AS requested_by_username, u.full_name AS requested_by_nombre
         FROM simulation_runs r
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
@@ -3479,23 +3488,63 @@ def get_run(run_id):
     )
 
 
-def get_runs_recientes(limit=20):
+# Los filtros de fecha de las corridas son dias de Nuevo Leon, no de UTC.
+ZONA_HORARIA = "America/Monterrey"
+
+
+def get_runs_recientes(limit=20, *, scenario_id=None, scenario_version_id=None, status=None,
+                       engine=None, desde=None, hasta=None):
     """Ultimas corridas de cualquier escenario, para la lista de la pantalla
-    de simulaciones."""
+    de simulaciones. Los filtros los usa el microservicio corridas: `desde` y
+    `hasta` son fechas (date) del encolado en ZONA_HORARIA, las dos incluidas.
+    Una corrida sin lote no tiene motor y no sale al filtrar por `engine`."""
+    condiciones, params = [], []
+    for columna, valor in (("sv.scenario_id", scenario_id),
+                           ("r.scenario_version_id", scenario_version_id),
+                           ("r.status", status), ("b.engine", engine)):
+        if valor is not None:
+            condiciones.append(f"{columna} = %s")
+            params.append(valor)
+    if desde is not None:
+        condiciones.append("r.queued_at >= %s::timestamp AT TIME ZONE %s")
+        params += [desde, ZONA_HORARIA]
+    if hasta is not None:
+        condiciones.append("r.queued_at < (%s::date + 1)::timestamp AT TIME ZONE %s")
+        params += [hasta, ZONA_HORARIA]
+
+    where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
+    params.append(limit)
     return query(
-        """
-        SELECT r.id, r.status, r.seed, r.queued_at, r.started_at, r.finished_at,
-               r.error_message, sv.scenario_id, sv.version_number,
+        f"""
+        SELECT r.id, r.status, r.seed, b.engine, r.queued_at, r.started_at, r.finished_at,
+               r.error_message, r.scenario_version_id, sv.scenario_id, sv.version_number,
                s.name AS scenario_name, u.username AS requested_by_username
         FROM simulation_runs r
+        LEFT JOIN simulation_batches b ON b.id = r.batch_id
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
         JOIN scenarios s ON s.id = sv.scenario_id
         JOIN users u     ON u.id = r.requested_by
+        {where}
         ORDER BY r.queued_at DESC
         LIMIT %s
         """,
-        (limit,),
+        tuple(params),
     )
+
+
+def get_motor_run(run_id):
+    """El motor del lote de una corrida. Va aparte de get_run porque el rol de
+    resultados, que tambien usa get_run, no lee simulation_batches (029)."""
+    fila = query(
+        """
+        SELECT b.engine FROM simulation_runs r
+        JOIN simulation_batches b ON b.id = r.batch_id
+        WHERE r.id = %s
+        """,
+        (run_id,),
+        one=True,
+    )
+    return fila["engine"] if fila else None
 
 
 def get_runs_completados_para_comparar(limit=50):
@@ -3507,19 +3556,18 @@ def get_runs_completados_para_comparar(limit=50):
                s.name AS scenario_name,
                d.name AS disease_name,
                reg.name AS region_name,
-               res.casos_acumulados,
-               res.hospitalizaciones,
-               res.fallecimientos,
-               res.pico_casos_activos,
-               res.dia_pico,
-               res.tasa_ataque
+               r.casos_acumulados,
+               r.hospitalizaciones,
+               r.fallecimientos,
+               r.pico_casos_activos,
+               r.dia_pico,
+               r.tasa_ataque
         FROM simulation_runs r
-        JOIN simulation_results res ON res.run_id = r.id
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
         JOIN scenarios s ON s.id = sv.scenario_id
         JOIN diseases d ON d.id = s.disease_id
         JOIN regions reg ON reg.id = s.region_id
-        WHERE r.status = 'completado'
+        WHERE r.status = 'completado' AND r.resumen IS NOT NULL
         ORDER BY r.finished_at DESC
         LIMIT %s
         """,
@@ -3528,8 +3576,9 @@ def get_runs_completados_para_comparar(limit=50):
 
 
 def get_corridas_para_comparar(run_ids):
-    """Devuelve corridas completadas seleccionadas con su serie diaria, en el
-    orden de `run_ids`: una lista de enteros sin repetir."""
+    """Devuelve corridas completadas seleccionadas con sus indicadores, en el
+    orden de `run_ids`: una lista de enteros sin repetir. Sin la serie diaria:
+    esa la da el servicio resultados (D28)."""
     if len(run_ids) < 2:
         return []
 
@@ -3539,16 +3588,14 @@ def get_corridas_para_comparar(run_ids):
                sv.scenario_id,
                sv.version_number,
                s.name AS scenario_name,
-               res.serie,
-               res.fallecimientos,
-               res.pico_casos_activos,
-               res.dia_pico,
-               res.tasa_ataque
+               r.fallecimientos,
+               r.pico_casos_activos,
+               r.dia_pico,
+               r.tasa_ataque
         FROM simulation_runs r
-        JOIN simulation_results res ON res.run_id = r.id
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
         JOIN scenarios s ON s.id = sv.scenario_id
-        WHERE r.status = 'completado'
+        WHERE r.status = 'completado' AND r.resumen IS NOT NULL
           AND r.id = ANY(%s)
         """,
         (run_ids,),
@@ -3559,15 +3606,16 @@ def get_corridas_para_comparar(run_ids):
 
 
 def get_resultado_run(run_id):
-    """Resultado guardado por motor.simular(): indicadores resumen, serie
-    diaria y trazabilidad de parametros. None si la corrida no ha terminado
-    (o termino en error, que no guarda resultado)."""
+    """Resultado guardado por motor.simular(): indicadores resumen, huella y
+    trazabilidad de parametros. None si la corrida no ha terminado (o termino
+    en error, que no guarda resultado). La serie diaria no esta aqui: vive en
+    MongoDB y la da el servicio resultados (D28)."""
     return query(
         """
-        SELECT run_id, engine_version, scenario_checksum, resumen, serie,
-               trazabilidad, created_at
-        FROM simulation_results
-        WHERE run_id = %s
+        SELECT id AS run_id, engine_version, scenario_checksum, resumen,
+               trazabilidad, finished_at
+        FROM simulation_runs
+        WHERE id = %s AND resumen IS NOT NULL
         """,
         (run_id,),
         one=True,
@@ -3631,20 +3679,20 @@ def marcar_run_ejecutando(run_id):
 
 
 def guardar_resultado_run(run_id, resultado):
-    """Guarda la salida de motor.simular() y cierra la corrida como
-    completada, en una sola transaccion: si el INSERT de simulation_results
-    fallara (por ejemplo por el CHECK de scenario_checksum), la corrida NO
-    debe quedar marcada 'completado' sin su resultado.
+    """Cierra la corrida como completada y guarda en simulation_runs el
+    resumen de motor.simular(), en un solo UPDATE: si el CHECK de
+    scenario_checksum lo rechazara, la corrida NO queda 'completado' sin su
+    resumen. La serie diaria no va aqui: la guarda el simulador en MongoDB
+    (D28), antes de este UPDATE (ver simulaciones.ejecutar_run).
 
     El json.dumps() se hace ANTES de abrir la conexion: si `resultado` trae
     algo no serializable, falla ahi (sin conexion ni transaccion abierta) en
-    vez de a mitad de una transaccion. Y si el INSERT/UPDATE fallan, se hace
+    vez de a mitad de una transaccion. Y si el UPDATE falla, se hace
     rollback explicito antes de relanzar la excepcion -- dejar la conexion
     cerrarse sola con una transaccion a medias no es lo mismo que garantizar
     que no quedo nada escrito.
     """
     resumen_json = json.dumps(resultado["resumen"], ensure_ascii=False, default=str)
-    serie_json = json.dumps(resultado["serie"], ensure_ascii=False, default=str)
     trazabilidad_json = json.dumps(
         resultado.get("trazabilidad_parametros", []), ensure_ascii=False, default=str
     )
@@ -3652,34 +3700,27 @@ def guardar_resultado_run(run_id, resultado):
     with get_conn() as conn:
         try:
             with conn.cursor() as cur:
-                # Primero se cierra la corrida, y solo si seguia 'ejecutando':
-                # si otro proceso ya la cerro, no se revive ni se guarda nada.
+                # Solo si seguia 'ejecutando': si otro proceso ya la cerro, no
+                # se revive ni se guarda nada.
                 cur.execute(
                     """
                     UPDATE simulation_runs
-                    SET status = 'completado', progress = 100, finished_at = now()
+                    SET status = 'completado', progress = 100, finished_at = now(),
+                        engine_version = %s, scenario_checksum = %s,
+                        resumen = %s::jsonb, trazabilidad = %s::jsonb
                     WHERE id = %s AND status = 'ejecutando'
                     """,
-                    (run_id,),
+                    (
+                        resultado["engine_version"],
+                        resultado["huella_escenario"],
+                        resumen_json,
+                        trazabilidad_json,
+                        run_id,
+                    ),
                 )
                 if cur.rowcount != 1:
                     conn.rollback()
                     return False
-                cur.execute(
-                    """
-                    INSERT INTO simulation_results
-                        (run_id, engine_version, scenario_checksum, resumen, serie, trazabilidad)
-                    VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb)
-                    """,
-                    (
-                        run_id,
-                        resultado["engine_version"],
-                        resultado["huella_escenario"],
-                        resumen_json,
-                        serie_json,
-                        trazabilidad_json,
-                    ),
-                )
                 _sincroniza_lote(cur, [run_id])
             conn.commit()
         except Exception:
@@ -3751,7 +3792,8 @@ def cancelar_run(run_id, *, contexto):
     return True
 
 
-def marca_corridas_interrumpidas(mensaje, run_ids=None, estados=("encolado", "ejecutando")):
+def marca_corridas_interrumpidas(mensaje, run_ids=None, estados=("encolado", "ejecutando"),
+                                 engine=None):
     """encolado/ejecutando -> fallido para las corridas cuyo hilo ya no existe.
 
     Solo tiene sentido al arrancar el servidor (backend_web.simulaciones.
@@ -3760,7 +3802,8 @@ def marca_corridas_interrumpidas(mensaje, run_ids=None, estados=("encolado", "ej
     iniciado era de uno que ya murio. `run_ids` acota el barrido; lo usan las
     pruebas para no tocar corridas ajenas a ellas. `estados` lo acota el
     microservicio simulador a 'ejecutando': sus corridas encoladas siguen
-    esperando en la cola de Redis.
+    esperando en la cola de Redis. `engine` acota a los lotes de ese motor: hay un
+    simulador por motor (D2), y el que arranca solo responde por las suyas.
 
     Devuelve las filas cerradas (id, requested_by, seed) para auditarlas.
     Las que seguian encoladas reciben started_at = finished_at, por la misma
@@ -3770,6 +3813,9 @@ def marca_corridas_interrumpidas(mensaje, run_ids=None, estados=("encolado", "ej
     if run_ids is not None:
         filtro = "AND id = ANY(%s)"
         params.append(list(run_ids))
+    if engine is not None:
+        filtro += " AND batch_id IN (SELECT id FROM simulation_batches WHERE engine = %s)"
+        params.append(engine)
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -3802,11 +3848,10 @@ def buscar_run_equivalente(run_id, scenario_version_id, seed, checksum):
         return None
     return query(
         """
-        SELECT r.id, res.resumen
+        SELECT r.id, r.resumen
         FROM simulation_runs r
-        JOIN simulation_results res ON res.run_id = r.id
         WHERE r.scenario_version_id = %s AND r.seed = %s AND r.id <> %s
-          AND res.scenario_checksum = %s AND r.status = 'completado'
+          AND r.scenario_checksum = %s AND r.status = 'completado'
         ORDER BY r.finished_at ASC
         LIMIT 1
         """,

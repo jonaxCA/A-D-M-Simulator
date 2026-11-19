@@ -24,6 +24,15 @@ SET client_encoding = 'UTF8';
 --                                                       028_roles_comparacion_pareto.sql
 --                                                       029_roles_simulacion_notificaciones.sql
 --                                                       030_rol_estado_servicios.sql
+--                                                       031_rol_dispositivos.sql
+--                                                       032_rol_evidencias.sql
+--                                                       033_rol_vacunas.sql
+--                                                       035_nombres_de_motores.sql
+--                                                       036_tope_de_replicas_100.sql
+--                                                       037_avisos_de_casos_y_revision.sql
+--                                                       040_personas_dia_por_dosis.sql
+--                                                       038_resumen_en_simulation_runs.sql
+--                                                       041_retira_simulation_results.sql
 --
 -- Cada bloque original conserva su propio BEGIN/COMMIT y su propio INSERT en
 -- schema_migrations, asi que este archivo se comporta exactamente igual que
@@ -3902,6 +3911,460 @@ COMMENT ON ROLE svc_estado_servicios IS 'Microservicio estado-servicios (5262): 
 
 INSERT INTO schema_migrations (version, description)
 VALUES ('030', 'Seguridad: rol de PostgreSQL de estado-servicios')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 031_rol_dispositivos.sql
+-- Un rol de PostgreSQL para el microservicio dispositivos (5223), dueño de devices, y la
+-- lectura de devices que necesita casos para no aceptar un caso de un dispositivo ajeno o
+-- revocado. Sigue el patrón de la 026 a la 030.
+--
+-- - El rol nace con LOGIN y sin contraseña. En el compose la fija
+--   infra/postgres/10-inicializa.sh; fuera de él: ALTER ROLE svc_dispositivos PASSWORD '...';
+--   y el servicio la recibe en su DATABASE_URL (ver infra/.env.example).
+-- - dispositivos registra, actualiza y revoca, pero nunca borra un dispositivo ni le cambia
+--   el dueño, el identificador o la plataforma: no tiene DELETE ni UPDATE sobre esas columnas.
+-- - casos solo lee id, user_id e is_revoked, lo que necesita para decidir si acepta un
+--   device_id. La 027 le revoca todo a svc_casos: si se vuelve a correr sola, hay que correr
+--   esta después (el dump las corre en orden).
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida revoca y vuelve a otorgar exactamente lo de abajo.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_dispositivos') THEN
+        CREATE ROLE svc_dispositivos LOGIN;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM svc_dispositivos;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM svc_dispositivos;
+GRANT USAGE ON SCHEMA public TO svc_dispositivos;
+
+-- dispositivos: dueño de devices.
+GRANT SELECT, INSERT ON devices TO svc_dispositivos;
+GRANT UPDATE (model, app_version, push_token, is_revoked, last_seen_at) ON devices TO svc_dispositivos;
+GRANT INSERT ON audit_log TO svc_dispositivos;
+
+DO $$
+DECLARE
+    tabla TEXT;
+    secuencia TEXT;
+BEGIN
+    FOREACH tabla IN ARRAY ARRAY['devices', 'audit_log']
+    LOOP
+        secuencia := pg_get_serial_sequence('public.' || tabla, 'id');
+        IF secuencia IS NOT NULL THEN
+            EXECUTE format('GRANT USAGE ON SEQUENCE %s TO svc_dispositivos', secuencia);
+        END IF;
+    END LOOP;
+END;
+$$;
+
+-- casos: de quién es un dispositivo y si está revocado.
+REVOKE ALL ON devices FROM svc_casos;
+GRANT SELECT (id, user_id, is_revoked) ON devices TO svc_casos;
+
+COMMENT ON ROLE svc_dispositivos IS 'Microservicio dispositivos (5223): duenio de devices.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('031', 'Seguridad: rol de dispositivos y lectura de devices para casos')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 032_rol_evidencias.sql
+-- Un rol de PostgreSQL para el microservicio evidencias (5224), dueño de
+-- case_attachments. Sigue el patrón de la 026 a la 031.
+--
+-- - El rol nace con LOGIN y sin contraseña. En el compose la fija
+--   infra/postgres/10-inicializa.sh; fuera de él: ALTER ROLE svc_evidencias PASSWORD '...';
+--   y el servicio la recibe en su DATABASE_URL (ver infra/.env.example).
+-- - El archivo vive en el volumen del servicio, no en la base: case_attachments guarda su
+--   ruta, tipo, tamaño y huella. Una evidencia no se edita: se sube o, solo ADMINISTRADOR,
+--   se borra. Por eso no recibe UPDATE.
+-- - De cases solo lee id y reported_by: si el caso existe y quién lo reportó, que es quien
+--   puede adjuntarle fotos (además de ADMINISTRADOR).
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida revoca y vuelve a otorgar exactamente lo de abajo.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_evidencias') THEN
+        CREATE ROLE svc_evidencias LOGIN;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM svc_evidencias;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM svc_evidencias;
+GRANT USAGE ON SCHEMA public TO svc_evidencias;
+
+GRANT SELECT, INSERT, DELETE ON case_attachments TO svc_evidencias;
+GRANT SELECT (id, reported_by) ON cases TO svc_evidencias;
+GRANT INSERT ON audit_log TO svc_evidencias;
+
+DO $$
+DECLARE
+    tabla TEXT;
+    secuencia TEXT;
+BEGIN
+    FOREACH tabla IN ARRAY ARRAY['case_attachments', 'audit_log']
+    LOOP
+        secuencia := pg_get_serial_sequence('public.' || tabla, 'id');
+        IF secuencia IS NOT NULL THEN
+            EXECUTE format('GRANT USAGE ON SEQUENCE %s TO svc_evidencias', secuencia);
+        END IF;
+    END LOOP;
+END;
+$$;
+
+COMMENT ON ROLE svc_evidencias IS 'Microservicio evidencias (5224): duenio de case_attachments.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('032', 'Seguridad: rol de PostgreSQL de evidencias')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 033_rol_vacunas.sql
+-- Un rol de PostgreSQL para el microservicio vacunas (5225), dueño de vaccine_lots: los
+-- lotes que la app móvil lee por QR o código de barras y las dosis que se les aplican.
+-- Sigue el patrón de la 026 a la 032.
+--
+-- - El rol nace con LOGIN y sin contraseña. En el compose la fija
+--   infra/postgres/10-inicializa.sh; fuera de él: ALTER ROLE svc_vacunas PASSWORD '...';
+--   y el servicio la recibe en su DATABASE_URL (ver infra/.env.example).
+-- - De un lote ya registrado solo cambia doses_used, al aplicar dosis; nunca lo borra. El
+--   tope lo garantiza ck_vaccine_lots_usadas (005), además del UPDATE condicionado.
+-- - Lee el nombre de la enfermedad y de la región para responder con ellos.
+-- - No liga dosis a casos: cases.vaccine_lot_id es de casos.
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida revoca y vuelve a otorgar exactamente lo de abajo.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_vacunas') THEN
+        CREATE ROLE svc_vacunas LOGIN;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM svc_vacunas;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM svc_vacunas;
+GRANT USAGE ON SCHEMA public TO svc_vacunas;
+
+GRANT SELECT, INSERT ON vaccine_lots TO svc_vacunas;
+GRANT UPDATE (doses_used) ON vaccine_lots TO svc_vacunas;
+GRANT SELECT (id, name) ON diseases, regions TO svc_vacunas;
+GRANT INSERT ON audit_log TO svc_vacunas;
+
+DO $$
+DECLARE
+    tabla TEXT;
+    secuencia TEXT;
+BEGIN
+    FOREACH tabla IN ARRAY ARRAY['vaccine_lots', 'audit_log']
+    LOOP
+        secuencia := pg_get_serial_sequence('public.' || tabla, 'id');
+        IF secuencia IS NOT NULL THEN
+            EXECUTE format('GRANT USAGE ON SEQUENCE %s TO svc_vacunas', secuencia);
+        END IF;
+    END LOOP;
+END;
+$$;
+
+COMMENT ON ROLE svc_vacunas IS 'Microservicio vacunas (5225): duenio de vaccine_lots.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('033', 'Seguridad: rol de PostgreSQL de vacunas')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 035_nombres_de_motores.sql
+-- Los motores cambian de nombre (D2): el SEIR queda como control experimental
+-- y los dos ABM se nombran por lo que son.
+--
+--   python-ref -> seir-ref    SEIR estocástico por edad (procesamiento/motor)
+--   numba      -> abm-ref     ABM en Python, en CPU
+--   cuda       -> abm-gpu     ABM en FLAME GPU 2
+--
+-- - La 034 queda reservada para D1 (permisos y auditoría).
+-- - El CHECK de la 014 tiene los nombres fijos. El orden es el de D2: soltar el
+--   CHECK, convertir los valores, poner el CHECK nuevo y cambiar el DEFAULT.
+-- - engine_version de las corridas que ya existen (python-ref-0.1) no se toca:
+--   registra qué versión del motor produjo cada resultado. seir-ref-0.1 es el
+--   mismo código con otro nombre.
+-- - motor_por_defecto (010) se traduce igual. Ningún código lo lee hoy.
+-- - La cola de Redis también cambia de llave (queue:simulaciones:<motor>): una
+--   corrida que esté esperando en la llave vieja al desplegar no la toma nadie.
+--   Se despliega con la cola vacía.
+-- - Idempotente (D7): correrla dos veces no cambia nada.
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE simulation_batches DROP CONSTRAINT IF EXISTS ck_simulation_batches_engine;
+
+UPDATE simulation_batches
+   SET engine = CASE engine
+                    WHEN 'python-ref' THEN 'seir-ref'
+                    WHEN 'numba'      THEN 'abm-ref'
+                    WHEN 'cuda'       THEN 'abm-gpu'
+                END
+ WHERE engine IN ('python-ref', 'numba', 'cuda');
+
+ALTER TABLE simulation_batches
+    ADD CONSTRAINT ck_simulation_batches_engine
+        CHECK (engine IN ('seir-ref', 'abm-ref', 'abm-gpu'));
+
+ALTER TABLE simulation_batches ALTER COLUMN engine SET DEFAULT 'seir-ref';
+
+COMMENT ON COLUMN simulation_batches.engine IS
+    'Motor que corre el lote (D2): seir-ref, abm-ref o abm-gpu.';
+
+UPDATE system_settings
+   SET value = CASE value #>> '{}'
+                   WHEN 'python-ref' THEN '"seir-ref"'::jsonb
+                   WHEN 'numba'      THEN '"abm-ref"'::jsonb
+                   WHEN 'cuda'       THEN '"abm-gpu"'::jsonb
+               END
+ WHERE key = 'motor_por_defecto'
+   AND value #>> '{}' IN ('python-ref', 'numba', 'cuda');
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('035', 'Simulacion: nombres de motores seir-ref, abm-ref y abm-gpu (D2)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 036_tope_de_replicas_100.sql
+-- El tope de réplicas de un lote baja de 200 a 100 (D8, RF-E03).
+--
+-- - D8: el escritorio ya topa en 100 y la base aceptaba 200; se documenta 100.
+-- - Cambia el CHECK de simulation_batches.replicas (esquema, 014) y el valor de
+--   max_replicas_por_lote en system_settings (dato, 010).
+-- - Los lotes que existen tienen 1 réplica, así que el CHECK nuevo los acepta.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE simulation_batches
+    DROP CONSTRAINT IF EXISTS ck_simulation_batches_replicas,
+    ADD  CONSTRAINT ck_simulation_batches_replicas
+        CHECK (replicas BETWEEN 1 AND 100);
+
+UPDATE system_settings
+   SET value = '100'::jsonb
+ WHERE key = 'max_replicas_por_lote'
+   AND value <> '100'::jsonb;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('036', 'Simulacion: el tope de replicas por lote baja de 200 a 100 (D8)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 037_avisos_de_casos_y_revision.sql
+-- Tres tipos de aviso nuevos y el permiso para avisar a un rol (bloque E1).
+--
+--   NEW_CASES          sincronizacion: un lote trajo casos nuevos (D32, RF-C19)
+--   SCENARIO_SUBMITTED aprobacion: una versión espera revisión (RF-D15)
+--   SCENARIO_REJECTED  aprobacion: se rechazó la versión de su autor (RF-D16)
+--
+-- - notificaciones crea un aviso por cada persona activa con un rol (los
+--   EPIDEMIOLOGO), así que su rol lee users, user_roles y roles, solo las
+--   columnas que necesita.
+-- - La 036 está reservada para otro cambio.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS ck_notifications_type;
+ALTER TABLE notifications ADD CONSTRAINT ck_notifications_type CHECK (type IN
+    ('RUN_FINISHED', 'RUN_FAILED', 'THRESHOLD_EXCEEDED', 'ASSIGNMENT',
+     'SCENARIO_PUBLISHED', 'SCENARIO_APPROVED', 'SCENARIO_SUBMITTED',
+     'SCENARIO_REJECTED', 'NEW_CASES', 'SYSTEM'));
+
+COMMENT ON COLUMN notifications.type IS
+    'Tipo: RUN_FINISHED, RUN_FAILED, THRESHOLD_EXCEEDED, ASSIGNMENT, SCENARIO_PUBLISHED, SCENARIO_APPROVED, SCENARIO_SUBMITTED, SCENARIO_REJECTED, NEW_CASES o SYSTEM.';
+
+GRANT SELECT (id, is_active) ON users TO svc_notificaciones;
+GRANT SELECT (user_id, role_id) ON user_roles TO svc_notificaciones;
+GRANT SELECT (id, code) ON roles TO svc_notificaciones;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('037', 'Avisos: NEW_CASES, SCENARIO_SUBMITTED y SCENARIO_REJECTED; notificaciones lee los roles')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 040_personas_dia_por_dosis.sql
+-- Lugar para el factor de personas-día por dosis de la frontera de Pareto (D3).
+--
+-- - D3: la frontera usa personas-día y los pesos van aparte. Las capas y el
+--   testeo cuentan sus personas-día por definición (habitante-día); la
+--   vacunación necesita un factor por dosis, que es un supuesto.
+-- - Mismas reglas que unit_cost (014): sin valor por omisión (regla 8) y, si se
+--   captura, con fuente o marcado como supuesto. Ninguna fila trae valor.
+-- - Lo fija el servicio intervenciones (PUT .../person-days), así que su rol
+--   puede actualizar estas tres columnas.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE intervention_types
+    ADD COLUMN IF NOT EXISTS person_days_per_unit      NUMERIC(12,4),
+    ADD COLUMN IF NOT EXISTS person_days_source        TEXT,
+    ADD COLUMN IF NOT EXISTS person_days_is_assumption BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE intervention_types
+    DROP CONSTRAINT IF EXISTS ck_intervention_types_person_days,
+    ADD  CONSTRAINT ck_intervention_types_person_days CHECK (
+        person_days_per_unit IS NULL
+        OR (person_days_per_unit >= 0
+            AND (person_days_is_assumption OR person_days_source IS NOT NULL))
+    );
+
+COMMENT ON COLUMN intervention_types.person_days_per_unit IS
+    'Personas-dia que cuenta cada unidad en la frontera de Pareto (D3). Solo la usan los tipos por_dosis (vacunacion). NULL = sin capturar: una comparacion con ese tipo no se calcula.';
+COMMENT ON COLUMN intervention_types.person_days_source IS
+    'De donde salio el factor. Obligatoria si no esta marcado como supuesto.';
+COMMENT ON COLUMN intervention_types.person_days_is_assumption IS
+    'TRUE si el factor es un supuesto del equipo y no un dato con respaldo.';
+
+GRANT UPDATE (person_days_per_unit, person_days_source, person_days_is_assumption)
+    ON intervention_types TO svc_intervenciones;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('040', 'Pareto: personas-dia por dosis en intervention_types (D3)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 038_resumen_en_simulation_runs.sql
+-- El resumen de cada corrida pasa a simulation_runs (D28).
+--
+-- - D28: la serie diaria va a MongoDB (series_corridas) y el resumen, la huella
+--   del escenario y la trazabilidad, a simulation_runs. simulation_results deja
+--   de usarse; la retira la 041.
+-- - Las columnas generadas son las mismas que tenia simulation_results (014):
+--   la comparacion las ordena y grafica sin abrir el JSON. Leen los nombres de
+--   la salida del motor (procesamiento/contrato.py).
+-- - Las llena el simulador al cerrar la corrida como completada; en las demas
+--   quedan en NULL.
+-- - Copia lo que hubiera en simulation_results, si la tabla sigue ahi.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE simulation_runs
+    ADD COLUMN IF NOT EXISTS scenario_checksum CHAR(64),
+    ADD COLUMN IF NOT EXISTS resumen           JSONB,
+    ADD COLUMN IF NOT EXISTS trazabilidad      JSONB;
+
+ALTER TABLE simulation_runs
+    ADD COLUMN IF NOT EXISTS casos_acumulados   INTEGER      GENERATED ALWAYS AS ((resumen->>'casos_acumulados')::integer)   STORED,
+    ADD COLUMN IF NOT EXISTS hospitalizaciones  INTEGER      GENERATED ALWAYS AS ((resumen->>'hospitalizaciones')::integer)  STORED,
+    ADD COLUMN IF NOT EXISTS fallecimientos     INTEGER      GENERATED ALWAYS AS ((resumen->>'fallecimientos')::integer)     STORED,
+    ADD COLUMN IF NOT EXISTS pico_casos_activos INTEGER      GENERATED ALWAYS AS ((resumen->>'pico_casos_activos')::integer) STORED,
+    ADD COLUMN IF NOT EXISTS dia_pico           SMALLINT     GENERATED ALWAYS AS ((resumen->>'dia_pico')::smallint)          STORED,
+    ADD COLUMN IF NOT EXISTS tasa_ataque        NUMERIC(8,6) GENERATED ALWAYS AS ((resumen->>'tasa_ataque')::numeric)        STORED;
+
+ALTER TABLE simulation_runs
+    DROP CONSTRAINT IF EXISTS ck_simulation_runs_resumen,
+    ADD  CONSTRAINT ck_simulation_runs_resumen
+        CHECK (resumen IS NULL OR jsonb_typeof(resumen) = 'object'),
+    DROP CONSTRAINT IF EXISTS ck_simulation_runs_traza,
+    ADD  CONSTRAINT ck_simulation_runs_traza
+        CHECK (trazabilidad IS NULL OR jsonb_typeof(trazabilidad) = 'array'),
+    DROP CONSTRAINT IF EXISTS ck_simulation_runs_checksum,
+    ADD  CONSTRAINT ck_simulation_runs_checksum
+        CHECK (scenario_checksum IS NULL OR scenario_checksum ~ '^[0-9a-f]{64}$');
+
+DO $$
+BEGIN
+    IF to_regclass('public.simulation_results') IS NOT NULL THEN
+        UPDATE simulation_runs r
+        SET    resumen = res.resumen,
+               scenario_checksum = res.scenario_checksum,
+               trazabilidad = res.trazabilidad
+        FROM   simulation_results res
+        WHERE  res.run_id = r.id AND r.resumen IS NULL;
+    END IF;
+END;
+$$;
+
+COMMENT ON COLUMN simulation_runs.resumen IS
+    'Indicadores de la corrida completada, tal como los da motor.simular(): casos_acumulados, pico, dia_pico, hospitalizaciones, fallecimientos, tasa_ataque y desglose por grupo de edad. La serie diaria esta en MongoDB (series_corridas, D28).';
+COMMENT ON COLUMN simulation_runs.trazabilidad IS
+    'Parametros usados, con su fuente o su marca de supuesto, tal como los reporto el motor.';
+COMMENT ON COLUMN simulation_runs.scenario_checksum IS
+    'SHA-256 de la entrada canonica del motor. Misma huella + misma semilla + mismo engine_version => mismo resultado.';
+
+-- El simulador cierra la corrida y, en el mismo UPDATE, guarda su resumen y la
+-- version del motor que la corrio (la que reporta motor.simular()).
+GRANT UPDATE (engine_version, resumen, scenario_checksum, trazabilidad)
+    ON simulation_runs TO svc_simulador;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('038', 'Simulacion: resumen, huella y trazabilidad de la corrida en simulation_runs (D28)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 041_retira_simulation_results.sql
+-- Retira simulation_results (D28).
+--
+-- - D28: la serie diaria de cada corrida esta en MongoDB (series_corridas) y su
+--   resumen, huella y trazabilidad, en simulation_runs (038). Nadie la escribe
+--   ni la lee: ni el simulador, ni resultados, ni pareto, ni la web.
+-- - La 038 ya copio a simulation_runs el resumen de las corridas que hubiera.
+--   La serie de esas corridas se pierde con la tabla; se recupera volviendo a
+--   correrlas con la misma semilla.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+DROP TABLE IF EXISTS simulation_results;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('041', 'Simulacion: retira simulation_results; la serie esta en MongoDB y el resumen en simulation_runs (D28)')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;

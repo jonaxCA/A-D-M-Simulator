@@ -9,7 +9,7 @@ Ejecutar:
 from frontend_web.tests.base import AppTestCase, requiere_base
 from backend_web import queries
 from backend_web.db import query
-from backend_web.tests.base import escribe, id_de_usuario, token_de
+from backend_web.tests.base import contexto_de_prueba, escribe, id_de_usuario, token_de
 from frontend_web.app.permisos import COOKIE_NAME
 
 NOMBRE = "ZZZ escenario de la prueba de contexto en rutas"
@@ -35,20 +35,32 @@ class ContextoDePeticionTests(AppTestCase):
                WHERE action = %s AND entity_type = %s AND entity_id = %s
                ORDER BY id DESC LIMIT 1""", (action, entity_type, str(entity_id)), one=True)
 
-    def test_el_alta_de_un_escenario_audita_al_usuario_y_su_navegador(self):
+    def test_el_dictamen_de_una_version_audita_al_usuario_y_su_navegador(self):
+        """Desde D4 el escenario se crea y se envia desde la app de escritorio;
+        la escritura que queda en la web es el dictamen."""
         regiones = queries.get_regiones_para_escenario()
         mty = next(r for r in regiones if r["code"] == "19039")
         enfermedad = next(e for e in queries.get_enfermedades_para_escenario() if e["simulable"])
+        datos, errores = queries.valida_escenario(
+            {"name": NOMBRE, "disease_id": str(enfermedad["id"]), "region_id": str(mty["id"]),
+             "population_size": "1000", "initial_infected": "5", "horizon_days": "90"},
+            regiones, queries.get_enfermedades_para_escenario())
+        self.assertEqual(errores, [])
+        autor = contexto_de_prueba(id_de_usuario("alex.cavazos"))
+        ok, error, sid = queries.crea_escenario(datos, contexto=autor)
+        self.assertTrue(ok, error)
+        ok, error = queries.envia_a_revision(sid, contexto=autor)
+        self.assertTrue(ok, error)
+        version_id = queries.get_escenario_detalle(sid)["version"]["id"]
+
         with self.app.test_client() as client:
-            client.set_cookie(COOKIE_NAME, token_de("alex.cavazos"))
-            resp = client.post("/escenarios/nuevo", headers={"User-Agent": NAVEGADOR}, data={
-                "name": NOMBRE, "disease_id": str(enfermedad["id"]), "region_id": str(mty["id"]),
-                "population_size": "1000", "initial_infected": "5", "horizon_days": "90"})
+            client.set_cookie(COOKIE_NAME, token_de("diana.flores"))
+            resp = client.post(f"/escenarios/{sid}/revisar", headers={"User-Agent": NAVEGADOR},
+                               data={"decision": "rechazar", "comentario": "Prueba de contexto."})
         self.assertEqual(resp.status_code, 302, resp.data[:300])
-        sid = query("SELECT id FROM scenarios WHERE name = %s", (NOMBRE,), one=True)["id"]
-        fila = self._ultima("CREATE", "scenarios", sid)
+        fila = self._ultima("UPDATE", "scenario_versions", version_id)
         self.assertEqual((fila["user_id"], fila["ip"], fila["user_agent"]),
-                         (id_de_usuario("alex.cavazos"), "127.0.0.1", NAVEGADOR))
+                         (id_de_usuario("diana.flores"), "127.0.0.1", NAVEGADOR))
 
     def test_un_login_fallido_se_audita_sin_usuario_pero_con_su_navegador(self):
         usuario = "nadie.de.la.prueba.de.contexto"

@@ -5,15 +5,17 @@ Se apoya en backend_web/tests/base.py, que fija JWT_SECRET_KEY antes de que
 aqui se importe la app. No contiene pruebas: ningun metodo se llama test_*.
 """
 import secrets
-import time
 import unittest
 from unittest.mock import patch
 
+import fakeredis
+from epidemia_comun import redis_compartido
+
 # Primero: fija JWT_SECRET_KEY antes de que db.py cargue el .env.
-from backend_web.tests.base import (escribe, id_de_usuario, requiere_base,
-                                    version_demo_aprobada)
+from backend_web.tests.base import (contexto_de_prueba, escribe, id_de_usuario,
+                                    requiere_base, version_demo_aprobada)
+from backend_web import queries, simulaciones
 from backend_web.auth import create_token, hash_password
-from backend_web.db import query
 from frontend_web.app import create_app
 
 # Cuenta CAPTURISTA de prueba. Activa, porque permisos.get_current_user
@@ -41,13 +43,29 @@ def capturista_de_prueba():
 
 
 class AppTestCase(unittest.TestCase):
-    """La app se crea una vez por clase."""
+    # La app se crea una vez por clase. Redis es fakeredis (self.redis).
+    # Los tokens que las pruebas firman a mano no traen sesion en Redis, asi que
+    # sesion_vigente se da por buena; con sesion_real = True la prueba usa la
+    # verificacion de verdad (login y logout por /login y /logout).
+
+    sesion_real = False
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.app = create_app()
         cls.app.testing = True
+
+    def setUp(self):
+        super().setUp()
+        self.servidor_redis = fakeredis.FakeServer()
+        self.redis = fakeredis.FakeRedis(server=self.servidor_redis, decode_responses=True)
+        redis_compartido.usar(self.redis)
+        self.addCleanup(redis_compartido.usar, None)
+        if not self.sesion_real:
+            simulado = patch("frontend_web.app.permisos.sesion_vigente", return_value=True)
+            simulado.start()
+            self.addCleanup(simulado.stop)
 
     def _login(self, client, usuario, password):
         resp = client.post("/login", data={"usuario": usuario, "password": password},
@@ -79,9 +97,11 @@ class ConUsuarioSimulado(AppTestCase):
 
 @requiere_base
 class RutasConCorridas(AppTestCase):
-    """Rutas que lanzan corridas reales sobre la version aprobada de la demo.
-    Los lotes que las pruebas registran en `_batches_creados` se borran al
-    terminar cada una (en cascada, con sus corridas y resultados)."""
+    """Rutas que muestran corridas reales sobre la version aprobada de la demo.
+    La web ya no las lanza (D4): `_corre` las crea por el mismo camino que el
+    escritorio y el simulador. Los lotes que las pruebas registran en
+    `_batches_creados` se borran al terminar cada una (en cascada, con sus
+    corridas y resultados)."""
 
     @classmethod
     def setUpClass(cls):
@@ -99,18 +119,21 @@ class RutasConCorridas(AppTestCase):
             escribe("DELETE FROM simulation_batches WHERE id = %s", (batch_id,))
         super().tearDown()
 
-    def _run_id_del_redirect(self, resp):
-        loc = resp.headers["Location"]
-        return int(loc.rstrip("/").split("/")[-1])
+    def _encola(self, semilla, usuario="alex.cavazos", forzar_error=False):
+        """Una corrida encolada, como la deja `corridas` al lanzarla el
+        escritorio: con su RUN «encolado» en la bitacora. Devuelve su id."""
+        user_id = id_de_usuario(usuario)
+        run_id, batch_id, error = queries.crear_corrida(
+            self.version_id, semilla, user_id, simulaciones.ENGINE_VERSION,
+            contexto=contexto_de_prueba(user_id), forzar_error=forzar_error)
+        self.assertIsNone(error, error)
+        self._batches_creados.append(batch_id)
+        return run_id
 
-    def _batch_del_run(self, run_id):
-        fila = query("SELECT batch_id FROM simulation_runs WHERE id = %s", (run_id,), one=True)
-        return fila["batch_id"]
-
-    def _espera_terminal(self, client, run_id, intentos=40):
-        for _ in range(intentos):
-            datos = client.get(f"/simulaciones/corridas/{run_id}/estado").get_json()
-            if datos["terminal"]:
-                return datos
-            time.sleep(0.25)
-        self.fail(f"La corrida {run_id} no termino a tiempo para la prueba.")
+    def _corre(self, semilla, usuario="alex.cavazos", forzar_error=False):
+        """Una corrida terminada: encolada y ejecutada como lo hace el
+        simulador al tomarla de la cola, aqui en el mismo hilo y sin pausa.
+        Devuelve su id."""
+        run_id = self._encola(semilla, usuario, forzar_error)
+        simulaciones.ejecutar_run(run_id, forzar_error=forzar_error, demora_seg=0)
+        return run_id

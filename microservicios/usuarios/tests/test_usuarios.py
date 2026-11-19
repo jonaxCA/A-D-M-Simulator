@@ -127,6 +127,22 @@ def test_detalle_en_xml_con_roles(cliente, admin, monkeypatch):
     assert cliente.get("/api/v1/users/5?format=json", headers=admin).status_code == 404
 
 
+@pytest.mark.parametrize("rol", ["CAPTURISTA", "ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR"])
+def test_perfil_es_la_cuenta_del_token(cliente, token, monkeypatch, rol):
+    monkeypatch.setattr(queries, "get_usuario", lambda i: {"id": i, "username": "karla"})
+    monkeypatch.setattr(rutas, "get_user_roles", lambda i: [rol])
+    r = cliente.get("/api/v1/users/me?format=json", headers=token(roles=(rol,), sub="12"))
+    assert r.status_code == 200
+    assert r.get_json() == {"id": 12, "username": "karla", "roles": [rol]}
+
+
+def test_perfil_sin_token_o_sin_cuenta(cliente, token, monkeypatch):
+    assert cliente.get("/api/v1/users/me?format=json").status_code == 401
+    monkeypatch.setattr(queries, "get_usuario", lambda i: None)
+    r = cliente.get("/api/v1/users/me?format=json", headers=token(roles=("CAPTURISTA",)))
+    assert r.status_code == 404
+
+
 def test_alta_audita_y_no_regresa_el_hash(cliente, admin, base, bitacora):
     r = cliente.post("/api/v1/users?format=json", headers=admin, json={
         "username": "Nuevo", "email": "Nuevo@Ejemplo.mx", "full_name": "Nuevo Usuario",
@@ -219,4 +235,5 @@ def test_contrato_servido_es_el_de_docs(cliente):
     r = cliente.get("/openapi.json")
     assert r.data == CONTRATO.read_bytes()
     assert set(r.get_json()["paths"]) == {
-        "/api/v1/users", "/api/v1/users/{user_id}", "/api/v1/users/{user_id}/{accion}"}
+        "/api/v1/users", "/api/v1/users/me", "/api/v1/users/{user_id}",
+        "/api/v1/users/{user_id}/{accion}"}

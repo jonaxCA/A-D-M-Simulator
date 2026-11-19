@@ -8,10 +8,12 @@ Puerto externo: 5203; puerto interno en Docker: 8000. Contrato en
 
 ## Rutas
 
-Todas piden token con rol `ADMINISTRADOR`, como las pantallas de usuarios del monolito.
+Todas piden token con rol `ADMINISTRADOR`, como las pantallas de usuarios del monolito, salvo
+`/users/me`: ahí cualquier cuenta consulta la suya (el perfil de la app móvil).
 
 | Método | Ruta                                     | Qué hace |
 |--------|------------------------------------------|----------|
+| GET    | `/api/v1/users/me`                       | La cuenta del token, con los mismos campos que `/users/{id}`. Los cuatro roles |
 | GET    | `/api/v1/users`                          | Lista con filtros `q`, `role_id` y `status` (`activo`, `pendiente`, `inactivo`) |
 | POST   | `/api/v1/users`                          | Alta con `username`, `email`, `full_name`, `password` e `is_active` (opcional); responde 201 |
 | GET    | `/api/v1/users/{id}`                     | Una cuenta con su `role_id` y sus `roles` |
@@ -54,6 +56,6 @@ curl -H "Authorization: Bearer <access>" "http://127.0.0.1:5203/api/v1/users?for
 curl -X POST -H "Authorization: Bearer <access>" "http://127.0.0.1:5203/api/v1/users/9/deactivate?format=json"
 ```
 
-Pendiente: entrada en el compose (bloque J). Hoy cierra las sesiones con la biblioteca común,
+Corre en `infra/docker-compose.yml`. Hoy cierra las sesiones con la biblioteca común,
 sobre el mismo Redis; cuando exista el token de servicio (bloque L) puede hacerlo por HTTP con la
 ruta interna de `sesiones`.

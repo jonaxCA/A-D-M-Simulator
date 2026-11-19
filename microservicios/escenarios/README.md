@@ -24,6 +24,7 @@ Escribe `scenarios` y `scenario_versions` (alta y contenido). Lee `diseases`, `r
 | Método y ruta | Qué hace | Roles |
 |---|---|---|
 | `GET /scenarios?q=` | Lista con la versión vigente | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR |
+| `GET /scenarios/versions?status=` | Versiones de todos los escenarios, aprobadas primero, con quién las creó y revisó (nombre completo); para la pantalla de simulaciones de la web (D36) | los mismos |
 | `GET /scenarios/{id}?version=` | Detalle de una versión (vigente por defecto) e intervenciones | los mismos |
 | `GET /scenarios/{id}/versions` | Historial | los mismos |
 | `POST /scenarios` (201) | Alta | los mismos |

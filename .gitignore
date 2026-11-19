@@ -81,6 +81,7 @@ desktop.ini
 # --- Android -----------------------------------------------------------------
 # build/ acotado a frontend_movil/ para no ocultar carpetas de otros componentes.
 .gradle/
+.kotlin/
 frontend_movil/**/build/
 local.properties
 captures/

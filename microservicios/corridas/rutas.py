@@ -1,23 +1,25 @@
 """Servicio corridas: lanza, consulta y cancela corridas.
 
 Las reglas son las del monolito (queries.crear_corrida, get_run,
-get_runs_recientes) más cancelar_run. La corrida la ejecuta el servicio
-simulador, que la toma de la cola de Redis.
+get_runs_recientes) más cancelar_run y get_motor_run. La corrida la ejecuta el
+simulador de su motor, que la toma de la cola de Redis de ese motor.
 """
 import json
 import logging
+import os
 import secrets
 
 from flask import g, request
 
-from backend_web import queries, simulaciones
+from backend_web import queries
 from epidemia_comun import candados, cola, llaves
 from epidemia_comun.candados import CandadoOcupado
 from epidemia_comun.errores import ErrorAPI, respuesta_error
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.redis_compartido import RedisNoDisponible, opcional
 from epidemia_comun.seguridad import requiere_token
-from epidemia_comun.validaciones import diccionario, entero_positivo
+from epidemia_comun.validaciones import diccionario, entero_positivo, fecha
+from procesamiento.motores import IMPLEMENTADOS
 
 log = logging.getLogger("corridas")
 
@@ -29,8 +31,65 @@ ROLES_CANCELAN = ("ANALISTA", "ADMINISTRADOR")
 # El mismo tope que la semilla del formulario del monolito.
 SEMILLA_MAX = 2**31 - 1
 LIMITE, LIMITE_MAX = 20, 100
+# D8: tope de réplicas de un lote (migración 036). Cada POST crea una corrida; replicas es el
+# tamaño del lote que el cliente está lanzando y aquí solo se valida.
+REPLICAS_MAX = 100
 CANDADO_TTL = 10
 TERMINALES = ("completado", "fallido", "cancelado")
+ESTADOS = ("encolado", "ejecutando") + TERMINALES
+# Los que acepta la base (ck_simulation_batches_engine, migración 035). seir-ref siempre;
+# los demás solo si MOTORES_HABILITADOS los nombra: sin un simulador de ese motor desplegado,
+# la corrida se quedaría encolada para siempre.
+MOTORES = ("seir-ref", "abm-ref", "abm-gpu")
+MOTOR_REFERENCIA = "seir-ref"
+# Los nombres de antes de D2. La v1 los sigue aceptando en lo que manda el cliente (el cuerpo
+# de POST /runs y el filtro engine) y en MOTORES_HABILITADOS, y los traduce; las respuestas ya
+# usan los nuevos.
+NOMBRES_ANTERIORES = {"python-ref": "seir-ref", "numba": "abm-ref", "cuda": "abm-gpu"}
+
+
+def nombre_actual(motor):
+    return NOMBRES_ANTERIORES.get(motor, motor) if isinstance(motor, str) else motor
+
+
+def motores_habilitados():
+    nombrados = {nombre_actual(m.strip())
+                 for m in (os.environ.get("MOTORES_HABILITADOS") or "").split(",")}
+    return [m for m in MOTORES if m == MOTOR_REFERENCIA or m in nombrados]
+
+
+def _motor(valor):
+    if valor is None or valor == "":
+        return MOTOR_REFERENCIA
+    valor = nombre_actual(valor)
+    habilitados = motores_habilitados()
+    if valor not in habilitados:
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "engine debe ser uno de: %s." % ", ".join(habilitados))
+    return valor
+
+
+def _filtros():
+    """Los filtros de la lista. engine acepta los tres motores, habilitados o no: una corrida
+    vieja de un motor que hoy está apagado se sigue pudiendo buscar."""
+    filtros = {}
+    for nombre in ("scenario_id", "scenario_version_id"):
+        if nombre in request.args:
+            filtros[nombre] = entero_positivo(request.args[nombre], nombre)
+    for nombre, validos in (("status", ESTADOS), ("engine", MOTORES)):
+        valor = request.args.get(nombre)
+        if nombre == "engine":
+            valor = nombre_actual(valor)
+        if valor is not None:
+            if valor not in validos:
+                raise ErrorAPI(422, "DATOS_INVALIDOS",
+                               "%s debe ser uno de: %s." % (nombre, ", ".join(validos)))
+            filtros[nombre] = valor
+    for nombre, clave in (("from", "desde"), ("to", "hasta")):
+        if nombre in request.args:
+            filtros[clave] = fecha(request.args[nombre], nombre)
+    if filtros.get("desde") and filtros.get("hasta") and filtros["desde"] > filtros["hasta"]:
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "from no puede ser posterior a to.")
+    return filtros
 
 
 def _semilla(valor):
@@ -84,24 +143,31 @@ def registrar(app):
         cuerpo = diccionario(leer_cuerpo())
         version_id = entero_positivo(cuerpo.get("scenario_version_id"), "scenario_version_id")
         semilla = _semilla(cuerpo.get("seed"))
+        motor = _motor(cuerpo.get("engine"))
+        if "replicas" in cuerpo and entero_positivo(cuerpo["replicas"], "replicas") > REPLICAS_MAX:
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "replicas no puede pasar de %d." % REPLICAS_MAX)
         # Como en el monolito: para otro rol se ignora, no se rechaza.
         forzar = (_booleano(cuerpo.get("forzar_error", False), "forzar_error")
                   and "ADMINISTRADOR" in g.usuario.get("roles", []))
         with candados.candado(llaves.candado_corrida(version_id), ttl=CANDADO_TTL):
+            # La versión del motor sale del registro de procesamiento/motores.py. Está aunque el
+            # motor no corra aquí: corridas no necesita GPU para encolar una de abm-gpu.
             run_id, batch_id, error = queries.crear_corrida(
-                version_id, semilla, g.contexto.user_id, simulaciones.ENGINE_VERSION,
-                contexto=g.contexto, forzar_error=forzar)
+                version_id, semilla, g.contexto.user_id,
+                IMPLEMENTADOS[motor].version if motor in IMPLEMENTADOS else None,
+                engine=motor, contexto=g.contexto, forzar_error=forzar)
             if error:
                 raise _error_al_crear(error)
             try:
-                cola.encolar(llaves.COLA_SIMULACIONES,
+                cola.encolar(llaves.cola_simulaciones(motor),
                              json.dumps({"id": run_id, "forzar_error": forzar}))
             except RedisNoDisponible:
                 # Sin entrada en la cola nadie la correría: se cierra en vez de dejarla colgada.
                 queries.cancelar_run(run_id, contexto=g.contexto)
                 raise
         return responder({"id": run_id, "batch_id": batch_id, "scenario_version_id": version_id,
-                          "seed": semilla, "forzar_error": forzar, "status": "encolado"},
+                          "seed": semilla, "engine": motor, "forzar_error": forzar,
+                          "status": "encolado"},
                          "corrida", estado=202)
 
     @app.get("/api/v1/runs")
@@ -111,13 +177,14 @@ def registrar(app):
         limite = LIMITE if limite is None else entero_positivo(limite, "limit")
         if limite > LIMITE_MAX:
             raise ErrorAPI(422, "DATOS_INVALIDOS", "limit no puede pasar de %d." % LIMITE_MAX)
-        filas = queries.get_runs_recientes(limite)
+        filas = queries.get_runs_recientes(limite, **_filtros())
         return responder({"total": len(filas), "corridas": filas}, "listado")
 
     @app.get("/api/v1/runs/<run_id>")
     @requiere_token(roles=ROLES_LEEN)
     def consultar(run_id):
         corrida = _corrida(run_id)
+        corrida["engine"] = queries.get_motor_run(corrida["id"])
         corrida["terminal"] = corrida["status"] in TERMINALES
         if not corrida["terminal"]:
             # El avance en vivo lo escribe el simulador en Redis; si no está, vale el de la base.

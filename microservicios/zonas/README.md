@@ -59,4 +59,4 @@ curl -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:5253/api/v1/zones?size=
 curl -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:5253/api/v1/zones/map?days=7"
 ```
 
-Pendiente: la entrada en el compose (bloque J). Evidencia de funcionamiento en `evidencias/servicios/zonas/`.
+Corre en `infra/docker-compose.yml`.

@@ -1,16 +1,17 @@
 import json
 import logging
 import os
+import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from xml.etree.ElementTree import ParseError
 
 import requests
 from defusedxml.common import DefusedXmlException
 
-from epidemia_comun import llaves
+from epidemia_comun import llaves, mongo
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import de_xml
 from epidemia_comun.http import llamar
@@ -18,7 +19,7 @@ from epidemia_comun.redis_compartido import opcional
 
 log = logging.getLogger(__name__)
 
-# Los 26 del catálogo (docs/arquitectura/microservicios.md), en su orden, con su perfil del
+# Los del catálogo (docs/arquitectura/microservicios.md), en su orden, con su perfil del
 # compose y su puerto. Una prueba revisa que coincidan con el catálogo y con el compose.
 SERVICIOS = {
     "auth": ("identidad", 5201),
@@ -32,6 +33,9 @@ SERVICIOS = {
     "tipos-intervencion": ("catalogos", 5215),
     "casos": ("vigilancia", 5221),
     "sincronizacion": ("vigilancia", 5222),
+    "dispositivos": ("vigilancia", 5223),
+    "evidencias": ("vigilancia", 5224),
+    "vacunas": ("vigilancia", 5225),
     "escenarios": ("escenarios", 5231),
     "intervenciones": ("escenarios", 5232),
     "aprobacion": ("escenarios", 5233),
@@ -54,7 +58,11 @@ INTERVALO = 10
 # detenido: con Redis caído, el /health de cada servicio tarda eso en responder 503.
 ESPERA = 5
 HISTORIAL = 30
-TTL_HISTORIAL = 3600
+# El historial vive en MongoDB (D28), 30 días por su índice TTL (epidemia_comun.mongo).
+COLECCION = "historial_servicios"
+VERSION_ESQUEMA = 1
+CONOCIDAS = [1]
+VENTANA_HORAS = 24
 
 
 def intervalo():
@@ -64,9 +72,22 @@ def intervalo():
         return INTERVALO
 
 
-def url_publica(nombre):
-    # La que usan las apps y la consola desde fuera de Docker.
-    plantilla = os.environ.get("URL_PUBLICA") or "http://localhost:{puerto}"
+HOST_VALIDO = re.compile(r"^(\[[0-9A-Fa-f:.]+\]|[A-Za-z0-9.-]+)$")
+
+
+def host_de(cabecera):
+    """El host con que llegó la petición, sin el puerto («[::1]» conserva los corchetes).
+    Lo que no parezca un nombre o una IP se descarta."""
+    host = (cabecera or "").strip()
+    host = host[:host.find("]") + 1] if host.startswith("[") else host.rsplit(":", 1)[0]
+    return host if HOST_VALIDO.match(host) else None
+
+
+def url_publica(nombre, host=None):
+    # La que usan las apps y la consola desde fuera de Docker. Si URL_PUBLICA no está, sale del
+    # host con que preguntaron: el emulador de Android llega por 10.0.2.2 y un celular por la IP
+    # de la PC, y cada uno recibe direcciones que puede alcanzar.
+    plantilla = os.environ.get("URL_PUBLICA") or "http://%s:{puerto}" % (host or "localhost")
     return plantilla.format(servicio=nombre, puerto=SERVICIOS[nombre][1])
 
 
@@ -76,10 +97,11 @@ def url_sondeo(nombre):
     return plantilla.format(servicio=nombre, puerto=SERVICIOS[nombre][1])
 
 
-def _registro(nombre, estado, causas=(), detalle=None, version=None, latencia_ms=None):
+def _registro(nombre, estado, causas=(), detalle=None, version=None, latencia_ms=None,
+              revisado=None):
     return {"nombre": nombre, "estado": estado, "causas": list(causas), "detalle": detalle,
             "version": version, "latencia_ms": latencia_ms,
-            "revisado": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+            "revisado": revisado or datetime.now(timezone.utc).isoformat(timespec="seconds")}
 
 
 def sondear(nombre):
@@ -99,7 +121,10 @@ def sondear(nombre):
     # Una página de error o la salud de otro servicio: el puerto no es el de ese servicio.
     if not isinstance(salud, dict) or salud.get("servicio") != nombre:
         return _registro(nombre, "caido", ["proceso"], "respuesta_invalida", latencia_ms=latencia)
-    causas = [c for c in ("postgresql", "redis") if salud.get(c) is False]
+    # MongoDB y el bucket valen "no_usa" si el servicio no los usa; un servicio que no trae
+    # esos campos (versión anterior de la biblioteca) tampoco se marca.
+    causas = [c for c in ("postgresql", "redis", "mongodb", "bucket")
+              if salud.get(c) is False or salud.get(c) == "no_configurado"]
     # Manda el código, como en el HEALTHCHECK de Docker: un 503 es degradado aunque no diga por qué.
     estado = "ok" if r.status_code == 200 else "degradado"
     return _registro(nombre, estado, causas, None, salud.get("version"), latencia)
@@ -114,14 +139,63 @@ def guardar(registros):
     def escribir(r):
         p = r.pipeline(transaction=False)
         for registro in registros:
-            valor = json.dumps(registro)
-            historial = llaves.historial_salud(registro["nombre"])
-            p.set(llaves.salud(registro["nombre"]), valor, ex=3 * intervalo())
-            p.lpush(historial, valor)
-            p.ltrim(historial, 0, HISTORIAL - 1)
-            p.expire(historial, TTL_HISTORIAL)
+            p.set(llaves.salud(registro["nombre"]), json.dumps(registro), ex=3 * intervalo())
         p.execute()
     opcional("estado-servicios: guardar la salud", escribir)
+    # Con MongoDB caído se pierde el historial de ese lapso: lo único que D19 admite perder.
+    documentos = [_documento(r) for r in registros]
+    mongo.opcional("estado-servicios: guardar el historial",
+                   lambda: mongo.coleccion(COLECCION).insert_many(documentos))
+
+
+def _documento(registro):
+    return {"servicio": registro["nombre"], "fecha": datetime.fromisoformat(registro["revisado"]),
+            "estado": registro["estado"], "latencia_ms": registro["latencia_ms"],
+            "version": registro["version"], "dependencias_caidas": registro["causas"],
+            "error": registro["detalle"], "version_esquema": VERSION_ESQUEMA}
+
+
+def historial(nombre):
+    """Los últimos sondeos de un servicio, del más reciente al más viejo, con la forma de
+    siempre (la del contrato)."""
+    cursor = mongo.coleccion(COLECCION).find(
+        {"servicio": nombre, "version_esquema": {"$in": CONOCIDAS}})
+    return [_registro(d["servicio"], d["estado"], d["dependencias_caidas"], d["error"],
+                      d["version"], d["latencia_ms"], _iso(d["fecha"]))
+            for d in cursor.sort([("fecha", -1), ("_id", -1)]).limit(HISTORIAL)]
+
+
+def disponibilidad(nombre, ahora=None):
+    """Sondeos, fracción en «ok» y latencia promedio de las últimas VENTANA_HORAS (RF-K03)."""
+    desde = (ahora or datetime.now(timezone.utc)) - timedelta(hours=VENTANA_HORAS)
+    filas = list(mongo.coleccion(COLECCION).aggregate([
+        {"$match": {"servicio": nombre, "fecha": {"$gte": desde},
+                    "version_esquema": {"$in": CONOCIDAS}}},
+        {"$group": {"_id": None, "sondeos": {"$sum": 1},
+                    "ok": {"$sum": {"$cond": [{"$eq": ["$estado", "ok"]}, 1, 0]}},
+                    "latencia": {"$avg": "$latencia_ms"}}},
+    ]))
+    resumen = {"horas": VENTANA_HORAS, "sondeos": 0, "disponibilidad": None,
+               "latencia_promedio_ms": None}
+    # Sin sondeos en la ventana no hay grupo (mongomock sí regresa uno vacío).
+    if filas and filas[0]["sondeos"]:
+        f = filas[0]
+        resumen.update(sondeos=f["sondeos"], disponibilidad=round(f["ok"] / f["sondeos"], 4),
+                       latencia_promedio_ms=None if f["latencia"] is None
+                       else round(f["latencia"], 1))
+    return resumen
+
+
+def _iso(fecha):
+    fecha = fecha if fecha.tzinfo else fecha.replace(tzinfo=timezone.utc)
+    return fecha.astimezone(timezone.utc).isoformat(timespec="seconds")
+
+
+def errores(nombres):
+    # Errores 5xx de las últimas 24 h por servicio; None si Redis no responde.
+    valores = opcional("estado-servicios: leer los errores",
+                       lambda r: r.mget([llaves.errores(n) for n in nombres]))
+    return None if valores is None else {n: int(v or 0) for n, v in zip(nombres, valores)}
 
 
 def ultimos(nombres):

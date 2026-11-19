@@ -1,0 +1,245 @@
+MongoDB sigue sin implementarse, la documentación señala expresamente que MongoDB queda fuera del alcance de este parcial, sin embargo, los lineamientos solicitaban almacenamiento real, incluyendo inserción, consulta, actualización, filtrado, agregaciones, índices y recuperación mediante identificadores relacionados. Deben de incorporar MongoDB como parte funcional del simulador, por ejemplo para almacenar resultados extensos de corridas, series temporales, historial de parámetros, salidas de algoritmos o eventos semiestructurados, además, deberán explicar qué información corresponde a PostgreSQL y qué información corresponde a MongoDB. No es suficiente instalar el contenedor de MongoDB ni agregar una conexión sin operaciones reales.
+
+Dependencia de reglas de negocio compartidas con el monolito, los microservicios reutilizan módulos de backend_web, lo que permite aprovechar lógica existente, pero introduce riesgos de acoplamiento. Si un cambio en el backend monolítico obliga a modificar simultáneamente varios servicios, la arquitectura pierde parte de su independencia, por lo que deben de establecer propietarios claros de las reglas de negocio, separar contratos de dominio y demostrar despliegues independientes. La biblioteca común debería concentrarse en funciones técnicas compartidas, no convertirse en una vía para acoplar todos los servicios al monolito.
+
+Hace falta validación científica del simulador, este es el problema más importante desde el punto de vista del propósito del proyecto. La plataforma puede crear escenarios, ejecutar simulaciones y generar resultados, pero para ofrecer información útil para salud pública debe demostrar que sus modelos epidemiológicos son matemáticamente consistentes y que sus resultados pueden interpretarse adecuadamente, que debe de presentar pruebas de sensibilidad de parámetros, reproducibilidad de corridas, validación frente a resultados esperados y una descripción de los supuestos y limitaciones. Deben distinguir claramente entre simulaciones exploratorias, predicciones y resultados validados. La visualización de una curva no demuestra por sí misma que el modelo sea epidemiológicamente correcto.
+
+Veo pruebas documentadas, pero no completamente cerradas, el reporte reconoce una prueba fallida en una ejecución global, atribuida a migraciones de una base de datos de pruebas desactualizada, también identifica pendientes relativos a validación de ejemplos de contratos y documentación complementaria, por lo que deben de ejecutar todas las pruebas sobre una base inicializada desde cero, consolidar el resultado final y entregar evidencia de una suite completa sin errores inesperados. No deben presentar pruebas de distintas versiones como si correspondieran a una sola ejecución.
+
+Hay evidencias de interoperabilidad pendientes, aunque existen contratos JSON/XML y esquemas XSD, el checklist todavía señala que deben revisarse algunos ejemplos y validaciones, deben corregir y demostrar que las aplicaciones cliente pueden consumir contratos reales sin depender de clases internas, código compartido del servidor o conexiones directas a PostgreSQL. Las pruebas deberán cubrir datos válidos, inválidos, respuestas de error, permisos, versiones y XML contra XSD.
+
+Falta una demostración operativa de usuarios finales y la consola de pruebas es una herramienta adecuada para desarrolladores, pero no sustituye la experiencia de un epidemiólogo o analista. Hay que demostrar un proceso completo mediante una interfaz de usuario que permita comprender, configurar, ejecutar y comparar escenarios sin requerir conocimientos de programación, el sistema debe mostrar progreso, errores comprensibles, resultados visuales, supuestos y limitaciones del modelo.
+
+Recuerden que la participación individual y separación entre grupos y no veo exactamente que hizo el otro equipo y que hicieron ustedes, deben definir exactamente que hizo cada equipo y diferenciar las entregas, así como lo entregan dificultan atribuir responsabilidades si no se documentan las contribuciones, deben de entregar una matriz individual de autoría y participación que identifique servicios implementados, pruebas, integración, documentación, incidencias y correcciones realizadas por cada estudiante. Durante la defensa técnica deberán poder ejecutar, explicar y modificar el código de los componentes bajo su responsabilidad.
+
+Recomiendo exigir una demostración con un escenario epidemiológico ficticio de Nuevo León, utilizando datos de prueba y parámetros documentados. La prueba deberá incluir la configuración de una enfermedad, población, escenarios alternativos e intervenciones sanitarias. Posteriormente, el sistema tendrá que ejecutar corridas, almacenar resultados, construir indicadores y comparar alternativas.
+
+Demostración integrada obligatoria
+
+1. Un analista inicia sesión y obtiene un JWT validado mediante Redis.
+
+2. Selecciona una enfermedad, región, población y parámetros epidemiológicos.
+
+3. Crea dos escenarios: uno sin intervención y otro con medidas sanitarias.
+
+4. El sistema valida y registra los escenarios en PostgreSQL.
+
+5. Un epidemiólogo autorizado aprueba las versiones correspondientes.
+
+6. Se solicitan dos corridas y se procesan mediante el motor de simulación.
+
+7. Los resultados extensos se almacenan en MongoDB y se relacionan con las corridas de PostgreSQL.
+
+8. El usuario consulta curvas, indicadores y resultados en la aplicación web.
+
+9. Se comparan las alternativas considerando consecuencias epidemiológicas y costos definidos en el modelo.
+
+10. Se presenta una frontera de Pareto cuando existan objetivos y resultados adecuados para calcularla.
+
+11. Se comprueba el funcionamiento de las APIs mediante JSON/XML, Swagger y XSD.
+
+12. Se fuerza un fallo controlado de un servicio y se verifica la recuperación sin duplicar corridas ni perder resultados confirmados.
+
+SIGUIENTE ENTREGA
+
+El equipo deberá evolucionar EPIDEMIA hasta convertirlo en una plataforma integral de vigilancia epidemiológica, simulación y apoyo a la toma de decisiones en salud pública, que permita a sus usuarios trabajar desde tres aplicaciones:
+
+- Aplicación web: administración regional, vigilancia, campañas, mapas epidemiológicos, indicadores, reportes y seguimiento de intervenciones.
+
+- Aplicación móvil Android (JSON): captura de casos en campo, seguimiento epidemiológico, consulta territorial, notificaciones y sincronización de información.
+
+- Aplicación de escritorio (XML): configuración de modelos, diseño y ejecución de escenarios, simulaciones, comparación de estrategias, análisis de sensibilidad y evaluación de decisiones.
+
+La entrega actual reúne 26 microservicios desarrollados por dos grupos, pero presenta tres limitaciones importantes que deberán resolverse prioritariamente: MongoDB no está integrado funcionalmente; el sistema web todavía no consume los microservicios; y falta demostrar la validez epidemiológica de los modelos de simulación. No recomiendo que los alumnos comiencen simplemente agregando más servicios. Primero deberán completar la integración y demostrar un proceso funcional de principio a fin. Después podrán ampliar la arquitectura para incorporar funciones avanzadas de vigilancia, modelado y evaluación.
+
+Microservicios existentes que deben completarse y fortalecerse
+
+Las responsabilidades actuales incluyen identidad, usuarios, catálogos, vigilancia, escenarios, simulación y análisis. Para que puedan proporcionar servicios completos a Android, escritorio y web, deberán ampliarse como sigue.
+
+# Microservicio, puerto y funcionalidades:
+
+1.- auth 5201 Autenticación JWT, renovación segura, revocación, control de intentos, bloqueo temporal, autenticación multifactor para perfiles críticos y acceso uniforme desde web, Android y escritorio.
+
+2.- sesiones 5202 Administración de sesiones mediante Redis, cierre remoto, expiración, dispositivos autorizados, control de sesiones concurrentes y rechazo de tokens revocados.
+
+3.- usuarios 5203 Administración de usuarios, asignación institucional y regional, perfiles de epidemiólogo, capturista, analista, investigador, administrador y autoridad sanitaria.
+
+4.- roles 5204 Roles, permisos y autorizaciones por recurso, región, institución y operación; auditoría de cambios y restricciones sobre la aprobación de escenarios.
+
+5.- enfermedades 5211 Catálogo de enfermedades, definiciones de caso versionadas, características epidemiológicas, clasificación, estado y fuentes de referencia.
+
+6.- parametros 5212 Parámetros de transmisión, incubación, recuperación, mortalidad y hospitalización; unidades, límites, fuentes, incertidumbre, versionamiento y validaciones epidemiológicas.
+
+7.- regiones 5213 Países, estados, municipios, áreas sanitarias, geometrías, jerarquías geográficas, búsqueda territorial y datos para mapas.
+
+8.- población 5214 Poblaciones por región, edad y otros grupos pertinentes; versiones, periodos de referencia, distribución demográfica, validación y consistencia poblacional.
+
+9.- tipos-intervencion 5215 Catálogo de intervenciones como vacunación, aislamiento, pruebas y medidas de reducción de contactos; parámetros permitidos, costos y supuestos de efectividad.
+
+10.- casos 5221 Registro, actualización y seguimiento de casos ficticios o autorizados; clasificación, fecha epidemiológica, región, estado, duplicados, validaciones y trazabilidad.
+
+11.- sincronizacion 5222 Sincronización Android offline, identificadores únicos, operaciones pendientes, reintentos, control de duplicados, conflictos y confirmación de recepción por servidor.
+
+12.- escenarios 5231 Creación, duplicación, consulta, edición versionada y archivado; asociación de enfermedad, población, condiciones iniciales y horizonte temporal.
+
+13.- intervenciones 5232 Programación temporal de intervenciones, intensidad, cobertura, duración, población objetivo, costos y relaciones con escenarios.
+
+14.- aprobacion 5233 Flujo de revisión y autorización de escenarios; comentarios, devolución, rechazo, aprobación, responsables y firma de versiones.
+
+15.- validacion 5234 Comprobación de parámetros y coherencia matemática, unidades, valores extremos, datos faltantes y compatibilidad de los escenarios con el motor seleccionado.
+
+16.- escenarios-xml 5235 Importación y exportación de escenarios mediante XML, validación XSD, reportes de errores y compatibilidad entre versiones de contratos.
+
+17.- corridas 5241 Creación de trabajos, colas, prioridades, cancelación, progreso, estados, tiempo estimado, manejo de fallos, reintentos seguros e idempotencia.
+
+18.- simulador 5242 Modelos SEIR y variantes justificadas; cálculos por región y grupos, semillas reproducibles, simulaciones estocásticas, paralelismo, versionamiento y manejo de recursos.
+
+19. resultados 5243 Consulta de resultados, series, indicadores, curvas epidémicas, intervalos de incertidumbre, metadatos y recuperación eficiente desde MongoDB.
+
+20.- comparacion 5244 Comparación de escenarios y corridas bajo condiciones equivalentes, diferencias absolutas y relativas, costos, incertidumbre y análisis contrafactual exploratorio.
+
+21- pareto 5245 Fronteras de Pareto basadas en objetivos explícitos, costos y resultados comparables; explicación de alternativas dominadas y no dominadas.
+
+22.- indicadores 5251 Incidencia, prevalencia cuando aplique, mortalidad, hospitalizaciones, capacidad utilizada y otros indicadores definidos con numerador, denominador y periodo.
+
+23.- series 5252 Series temporales por enfermedad, periodo, región y grupo; filtrado, paginación, agregaciones y formatos para Highcharts.
+
+24.- zonas 5253 Mapas temáticos, indicadores geoespaciales, agrupaciones territoriales, datos para mapas de calor y consultas espaciales optimizadas.
+
+25.- notificaciones 5261 Avisos de campañas, datos incompletos, escenarios por aprobar, corridas terminadas, errores operativos y alertas configurables por perfil.
+
+26.- estado-servicios 5262 Estado de APIs, bases de datos, simulador, colas, tiempos de respuesta, capacidad de procesamiento, errores y alertas técnicas.
+
+Los microservicios deberán representar reglas de negocio centralizadas. Ninguna aplicación cliente deberá conectarse directamente a PostgreSQL, MongoDB o Redis. Los siguientes servicios no forman parte del catálogo original de 26. Son una propuesta para ampliar el sistema hacia una plataforma de vigilancia y análisis más útil. Los puertos 5263–5274 son sugeridos.
+
+27.- calidad-datos 5263 Validar integridad, completitud, consistencia, duplicados, fechas epidemiológicas, datos atípicos, procedencia y calidad de registros.
+
+28.- importacion-datos 5264 Importar CSV, Excel, JSON y XML; mapear campos; validar estructura; procesar lotes; controlar errores; registrar fuentes y versiones.
+
+29.- laboratorios 5265 Registrar y consultar resultados de laboratorio autorizados; asociarlos con casos; gestionar estados de confirmación y trazabilidad de muestras.
+
+30.- alertas-epidemiologicas 5266 Detectar cambios inesperados, crecimiento acelerado y posibles conglomerados; generar alertas para revisión epidemiológica, sin declarar brotes automáticamente.
+
+31.- capacidad-sanitaria 5267 Administrar capacidad hospitalaria agregada, camas, personal, recursos y demanda simulada; detectar posibles escenarios de saturación.
+
+32.- vacunacion 5268 Registrar campañas y coberturas agregadas, poblaciones objetivo, dosis disponibles, simulaciones de distribución y efectos de intervenciones.
+
+33.- movilidad 5269 Incorporar matrices de movilidad, patrones de contacto, transporte y relaciones entre regiones, utilizando datos autorizados y agregados.
+
+34.- calibracion-modelos 5270 Ajustar parámetros a datos históricos, registrar métodos de calibración, funciones de pérdida, versiones y métricas de ajuste.
+
+35.- validacion-cientifica 5271 Evaluar modelos con datos independientes, sensibilidad, incertidumbre, reproducibilidad, errores y pruebas de regresión epidemiológica.
+
+36.- analisis-socioeconomico 5272 Estimar efectos económicos y sociales bajo supuestos explícitos: días laborales perdidos, costos de intervención y afectación de servicios.
+
+37.- reportes-ejecutivos 5273 Generar informes comparativos, supuestos, limitaciones, indicadores, gráficas, tablas y exportaciones PDF/Excel/CSV.
+
+38.- gobierno-datos 5274 Controlar fuentes, metadatos, versiones, autorización, retención, seudonimización, auditoría de acceso y calidad documental.
+
+Estos servicios deberán organizarse conforme a límites funcionales reales. Por ejemplo, calibracion-modelos y validacion-cientifica podrían ser módulos especializados de un mismo servicio de investigación y modelado si comparten las mismas dependencias y ciclo de despliegue. El requisito más importante es la validación científica, los CDC destacan que la utilidad de los modelos epidemiológicos depende de su adecuación al problema, calidad de las entradas, validación contra observaciones y tratamiento de la incertidumbre. Un modelo más complejo no necesariamente produce mejores resultados, por lo tanto, cada modelo desarrollado deberá contar con una ficha que indique su formulación matemática, población representada, variables, supuestos, fuentes de parámetros, límites de aplicación, versión del algoritmo, escenarios de prueba y resultados de validación.
+
+APLICACIÓN MÓVIL ANDROID
+
+La aplicación Android debe estar diseñada para capturistas epidemiológicos, personal de vigilancia, supervisores regionales y responsables de campañas autorizadas. No debe limitarse a mostrar las gráficas de la aplicación web ni convertirse en una versión reducida del simulador. Su función será recolectar, verificar y sincronizar información de campo que alimente los procesos epidemiológicos.
+
+Módulo y funcionalidades: 
+
+Inicio de sesión: JWT, renovación, almacenamiento seguro de credenciales, bloqueo y cierre de sesión.
+
+Panel del capturista: Casos pendientes, formularios, registros incompletos, sincronizaciones pendientes y avisos.
+
+Registro de casos: Captura de fecha epidemiológica, enfermedad, región, clasificación, datos autorizados y validaciones.
+
+Seguimiento: Actualización de estados, observaciones, historial y resultados autorizados.
+
+Geolocalización: GPS para registrar la ubicación pertinente con autorización; selección manual cuando no sea adecuada la captura automática.
+
+Formularios dinámicos: Campos definidos por enfermedad, versiones de formularios, validaciones y datos obligatorios.
+
+Evidencias: Fotografía o documentos cuando el protocolo lo autorice, con almacenamiento seguro.
+
+Sincronización offline: Captura de borradores, cola local cifrada, control de duplicados, conflictos y confirmación del servidor.
+
+Consulta epidemiológica: Información agregada por zona, periodo y enfermedad según los permisos del usuario.
+
+Alertas: Notificaciones de nuevas tareas, registros rechazados, campañas y eventos de vigilancia.
+
+Control de calidad: Advertencias por campos incompletos, fechas incoherentes y registros potencialmente duplicados.
+
+Perfil: Identificación del usuario, institución, región asignada y estado de conexión.
+
+Recomiendo desarrollar Android en Kotlin con Jetpack Compose y una arquitectura MVVM o equivalente. Deberá consumir exclusivamente APIs JSON sobre HTTPS y utilizar almacenamiento local cifrado para los datos permitidos. El sistema deberá prevenir la duplicación cuando el usuario reenvíe un registro, pierda conectividad o cierre inesperadamente la aplicación. La regla obligatoria es que un registro capturado offline no deberá considerarse recibido, validado o publicado hasta que el servidor lo confirme. Además, la sincronización no debe sobrescribir silenciosamente información modificada por otro profesional.
+
+APLICACIÓN DE ESCRITORIO
+
+Esta aplicación será el componente especializado de mayor importancia para el proyecto. Debe proporcionar un entorno profesional que permita a un epidemiólogo o analista construir modelos y evaluar estrategias sin escribir código ni interactuar directamente con PostgreSQL. El escritorio consumirá XML mediante APIs REST, validará las respuestas con XSD y podrá utilizar WebSockets o SSE para recibir el progreso de las simulaciones. El canal de progreso debe documentarse de forma independiente de los contratos XML.
+
+Módulo y funcionalidades: 
+
+Administración de proyectos: Crear investigaciones, seleccionar región, enfermedad, periodo y modelos.
+
+Gestión de datos: Importar conjuntos autorizados, verificar calidad, examinar series y registrar versiones.
+
+Configuración del modelo: Seleccionar SEIR u otro modelo implementado, ajustar parámetros y visualizar definiciones y unidades.
+
+Editor de escenarios: Crear, duplicar, editar y versionar escenarios de referencia e intervención.
+
+Configuración de intervenciones: Definir fecha de inicio, duración, cobertura, intensidad y costos.
+
+Calibración: Ajustar parámetros con series históricas y comparar los resultados de ajuste.
+
+Validación: Ejecutar escenarios de prueba, análisis de sensibilidad y comprobación de restricciones matemáticas.
+
+Ejecución de simulaciones: Iniciar, cancelar, monitorear y recuperar corridas asíncronas.
+
+Comparación: Visualizar escenarios simultáneos, diferencias, incertidumbre y métricas epidemiológicas.
+
+Análisis económico: Evaluar costos bajo supuestos explícitos y comparar costo-efectividad exploratoria.
+
+Análisis Pareto: Identificar alternativas no dominadas según objetivos comparables y documentados.
+
+Mapas regionales: Mostrar distribución geográfica, intensidad e indicadores por zona.
+
+Reportes: Exportar resultados, parámetros, versiones, gráficas, metodología y limitaciones.
+
+Reproducibilidad: Guardar semilla, versión del modelo, datos, parámetros y condiciones para repetir una corrida.
+
+Auditoría: Consultar quién creó, modificó, revisó o aprobó cada escenario.
+
+La aplicación debe permitir seleccionar cada curva, consultar el escenario que la produjo, examinar sus supuestos y reproducir la corrida. Las gráficas no podrán mostrarse sin identificar fuente, periodo, modelo, versión y unidades. MongoDB deberá incorporar referencias estables al run_id, scenario_id y a la versión del modelo almacenadas en PostgreSQL. Los resultados no deben quedar desconectados de la corrida que los produjo. Una corrida deberá conservar los parámetros exactos, identificador del dataset, versión del algoritmo, semilla aleatoria cuando aplique, fecha de ejecución, resultados y estado final. Para los trabajos asíncronos, el equipo deberá probar qué ocurre si un worker se detiene después de guardar resultados pero antes de confirmar que terminó el trabajo. El sistema debe evitar corridas duplicadas y recuperar estados de forma consistente.
+
+Para poder tener el sistema aceptable, deben de:
+
+Captura móvil: Registrar casos de prueba desde Android, con datos válidos e inválidos.
+
+Sincronización offline: Guardar registros sin Internet y sincronizarlos sin duplicados.
+
+Integración del portal web: Comprobar que una operación web consume realmente una API.
+
+Autorización: Impedir que un capturista modifique escenarios de otra institución.
+
+Escenario de referencia: Crear y versionar un escenario sin intervención.
+
+Escenario alternativo: Configurar intervenciones con fechas, intensidad y duración.
+
+Validación matemática: Rechazar parámetros epidemiológicos imposibles o incoherentes.
+
+Reproducibilidad: Repetir una corrida determinista con las mismas condiciones y obtener el mismo resultado.
+
+Modelo estocástico: Reproducir una ejecución usando la misma semilla y versión.
+
+Sensibilidad: Variar parámetros y comprobar el comportamiento esperado del modelo.
+
+Persistencia: Recuperar resultados relacionados entre PostgreSQL y MongoDB.
+
+Comparación: Comparar escenarios bajo una misma línea base y métricas.
+
+Incertidumbre: Mostrar intervalos o distribuciones apropiadas, con su interpretación.
+
+Fallo de worker: Interrumpir una corrida y recuperarla sin duplicar resultados.
+
+Contratos: Consumir JSON en Android y XML/XSD en escritorio.
+
+Prueba de usuarios: Completar tareas sin ayuda de los desarrolladores.
+
+Para la prueba de usabilidad, recomiendo contar con usuarios representativos de tres perfiles: capturista de campo, epidemiólogo y analista de simulación. De ser posible, deben incluirse al menos cinco participantes por perfil para identificar problemas iniciales de interacción; esta muestra no sustituye una validación científica o estadística más amplia.

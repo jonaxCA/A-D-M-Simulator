@@ -2,7 +2,9 @@
 # llave nueva se agrega aquí y en esa tabla; una prueba revisa que coincidan.
 import hashlib
 
-COLA_SIMULACIONES = "queue:simulaciones"
+
+def cola_simulaciones(motor):
+    return f"queue:simulaciones:{motor}"
 
 
 def huella(valor):
@@ -57,5 +59,9 @@ def salud(servicio):
     return f"health:{servicio}"
 
 
-def historial_salud(servicio):
-    return f"health:history:{servicio}"
+def limite(quien, ruta):
+    return f"ratelimit:{quien}:{ruta}"
+
+
+def errores(servicio):
+    return f"errors:{servicio}"

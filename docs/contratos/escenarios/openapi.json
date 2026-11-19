@@ -242,7 +242,7 @@
             }
           },
           "503": {
-            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -265,6 +265,18 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }
@@ -638,7 +650,7 @@
             }
           },
           "503": {
-            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -661,6 +673,251 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/versions": {
+      "get": {
+        "summary": "Versiones de todos los escenarios",
+        "description": "Todas las versiones de todos los escenarios en una sola llamada, con el nombre del escenario, la enfermedad, la región y quién la creó y revisó (nombre completo). Las aprobadas van primero, porque son las únicas que se pueden correr; después, de la más nueva a la más vieja. Filtro opcional status (borrador, en_revision, aprobado o rechazado). La usa la pantalla de simulaciones de la web (D36). ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
+        "operationId": "listar_versiones",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Solo las versiones en ese estado.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "borrador",
+                "en_revision",
+                "aprobado",
+                "rechazado"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de escenarios",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 1,
+                  "versiones": [
+                    {
+                      "id": 11,
+                      "scenario_id": 3,
+                      "version_number": 2,
+                      "status": "aprobado",
+                      "population_size": 200000,
+                      "horizon_days": 180,
+                      "initial_infected": 100,
+                      "created_at": "2026-10-18T16:00:00+00:00",
+                      "reviewed_at": "2026-10-19T17:30:00+00:00",
+                      "review_comment": "Parámetros con fuente.",
+                      "scenario_name": "Brote de influenza en Monterrey",
+                      "disease_name": "Influenza",
+                      "region_name": "Monterrey",
+                      "creado_por": "Ana Analista",
+                      "revisado_por": "Eva Epidemióloga"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "versiones"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<versiones><total tipo=\"numero\">1</total><versiones><item><id tipo=\"numero\">11</id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><status>aprobado</status><population_size tipo=\"numero\">200000</population_size><horizon_days tipo=\"numero\">180</horizon_days><initial_infected tipo=\"numero\">100</initial_infected><created_at>2026-10-18T16:00:00+00:00</created_at><reviewed_at>2026-10-19T17:30:00+00:00</reviewed_at><review_comment>Parámetros con fuente.</review_comment><scenario_name>Brote de influenza en Monterrey</scenario_name><disease_name>Influenza</disease_name><region_name>Monterrey</region_name><creado_por>Ana Analista</creado_por><revisado_por>Eva Epidemióloga</revisado_por></item></versiones></versiones>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/versions</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios/versions</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios/versions</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "status no es borrador, en_revision, aprobado ni rechazado (DATOS_INVALIDOS)."
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/versions</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }
@@ -955,7 +1212,7 @@
             }
           },
           "503": {
-            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -978,6 +1235,18 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }
@@ -1205,7 +1474,7 @@
             }
           },
           "503": {
-            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1228,6 +1497,18 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }
@@ -1594,7 +1875,7 @@
             }
           },
           "503": {
-            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1617,6 +1898,18 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }
@@ -1954,7 +2247,7 @@
             }
           },
           "503": {
-            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1977,6 +2270,18 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}/duplicate</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }

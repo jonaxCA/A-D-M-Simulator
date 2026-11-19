@@ -1,0 +1,76 @@
+
+== servicio ==
+  esperado : casos no responde; regiones sigue en 200; el panel marca casos como caído
+  observado: casos=0 (0 = sin conexión), regiones=200, panel=caído
+  => OK
+  esperado : casos vuelve a 200 con la misma sesión y el panel a ok
+  observado: recuperó
+  => OK
+
+== redis ==
+  esperado : ruta protegida 503 SERVICIO_NO_DISPONIBLE (falla cerrada); catálogo público 200
+  observado: protegida=503 SERVICIO_NO_DISPONIBLE, pública=200
+  => OK
+  esperado : una sesión abierta sigue en 200; entrar de nuevo da 503 con un mensaje amable, sin 500 (D33)
+  observado: sesión abierta /dashboard=200 (login previo=302), login nuevo=503, mensaje amable=True
+  => OK
+  esperado : la misma sesión vuelve a 200 sin reiniciar servicios
+  observado: recuperó
+  => OK
+  esperado : la sesión abierta sigue en 200 y se puede entrar de nuevo
+  observado: dashboard=200, login nuevo=302
+  => OK
+
+== mongodb ==
+  esperado : resultados: /health 503 degradado con mongodb en false; el panel lista mongodb en causas; los demás siguen
+  observado: resultados /health=503 estado=degradado mongodb=False; panel: estado=degradado causas=['mongodb']; regiones=200
+  => OK
+  esperado : /health de resultados vuelve a 200 y el panel a ok
+  observado: recuperó
+  => OK
+
+== postgres ==
+  esperado : /health en 503 y la lectura de casos da 503 SERVICIO_NO_DISPONIBLE (no 500), sin datos a medias
+  observado: /health=503, casos=503 SERVICIO_NO_DISPONIBLE
+  => OK
+  esperado : /health vuelve a 200 y casos responde
+  observado: recuperó
+  => OK
+
+== bucket ==
+  esperado : evidencias: /health 503 degradado con bucket en false; el panel lista bucket en causas; los demás siguen
+  observado: evidencias /health=503 estado=degradado bucket=False; panel: estado=degradado causas=['bucket']; regiones=200
+  => OK
+  esperado : /health de evidencias vuelve a 200 y el panel a ok
+  observado: recuperó
+  => OK
+
+== timeout ==
+  esperado : escenarios corta a los ~5 s y responde 503 SERVICIO_NO_DISPONIBLE
+  observado: 503 SERVICIO_NO_DISPONIBLE en 5.0 s
+  => OK
+  esperado : escenarios vuelve a responder
+  observado: recuperó
+  => OK
+
+== web ==
+  esperado : tras /logout, la cookie copiada ya no sirve: /dashboard redirige a /login
+  observado: login=302, /dashboard antes=200, con la cookie copiada después=302 -> /login?next=/dashboard
+  => OK
+
+Resumen
+  servicio caído                       OK
+  servicio caído (recuperación)        OK
+  Redis caído                          OK
+  Redis caído (web)                    OK
+  Redis caído (recuperación)           OK
+  Redis caído (web, recuperación)      OK
+  MongoDB caído                        OK
+  MongoDB caído (recuperación)         OK
+  PostgreSQL caído                     OK
+  PostgreSQL caído (recuperación)      OK
+  bucket caído                         OK
+  bucket caído (recuperación)          OK
+  timeout                              OK
+  timeout (recuperación)               OK
+  web: cierre de sesión                OK

@@ -125,6 +125,13 @@ de regiones que carga `dump_completo.sql`.
 > la semilla completa las bandas censales que falten en los 41 municipios
 > agregados después de la migración 021, y no pisa bandas que ya existan o hayan
 > sido corregidas manualmente.
+>
+> **Ojo: `simulation_results` se retira.** El dump incluye la migración `041`, que
+> borra la tabla `simulation_results` (`DROP TABLE IF EXISTS`). Si esta base tiene
+> series de corridas anteriores a D28, volver a correr el dump las pierde. El resumen
+> ya quedó en `simulation_runs` gracias a la `038`, y la serie se recupera volviendo a
+> lanzar la corrida con la misma semilla (ver la nota de compose más abajo). Ni la app
+> ni los servicios la leen.
 
 > **Corrección de bandas por municipio.** En Regiones, `ADMINISTRADOR` puede
 > abrir **Corregir bandas de edad**. La suma de las cinco bandas debe conservar
@@ -266,9 +273,8 @@ agrega al `.env` (o define en la terminal) lo que necesites:
 `FLASK_DEBUG=1` y `EPIDEMIA_HOST=0.0.0.0` juntos se rechazan: el depurador de
 Werkzeug ejecuta código Python desde el navegador y no debe quedar abierto a la red.
 
-Al arrancar, la app cierra como **FALLIDO** las corridas que un reinicio anterior
-dejó en *encolado* o *ejecutando* (su hilo murió con el proceso). El mensaje de
-cada una lo explica, y se pueden re-ejecutar con la misma semilla.
+La web no corre simulaciones (D4): consulta las corridas que lanza la app de escritorio y
+ejecuta el simulador. Por eso, al arrancar, ya no toca las corridas encoladas o en ejecución.
 
 ### Credenciales
 
@@ -276,6 +282,7 @@ cada una lo explica, y se pueden re-ejecutar con la misma semilla.
 |---|---|---|---|
 | `alex.cavazos` | `Epidemia2026!` | ANALISTA | Vigilancia, mapa, monitoreo y captura de casos |
 | `diana.flores` | `Epidemia2026!` | EPIDEMIOLOGO | Lo mismo por ahora |
+| `karla.trevino` | `Epidemia2026!` | CAPTURISTA | La cuenta de la app móvil: registra su teléfono, captura casos, sube sus fotos, escanea lotes de vacuna y sincroniza lotes de casos (servicios `dispositivos`, `casos`, `evidencias`, `vacunas` y `sincronizacion`). En la web, tablero, mapa, monitoreo y captura de casos; sin escenarios ni simulaciones |
 | `admin` | `Admin2026!` | ADMINISTRADOR | Además, **Usuarios** y **Auditoría** |
 
 > Los dos primeros son personas distintas a propósito: la migración `013`
@@ -284,7 +291,11 @@ cada una lo explica, y se pueden re-ejecutar con la misma semilla.
 > enviar a revisión, aprobar) son parte del siguiente avance, así que hoy ambos
 > usuarios ven lo mismo en la interfaz.
 
-> Las tres contraseñas las pone `datos/postgres/semillas/demo_datos_nl.sql`, así que con los
+> Si tu base se cargó antes de que existiera `karla.trevino`, créala como `admin` en
+> **Usuarios** con el rol CAPTURISTA. No vuelvas a cargar `demo_datos_nl.sql` sobre una base
+> en uso: empieza vaciando casos, escenarios y corridas.
+
+> Las cuatro contraseñas las pone `datos/postgres/semillas/demo_datos_nl.sql`, así que con los
 > tres comandos del Paso 2 ya puedes entrar con cualquiera. No hay archivos
 > extra que correr.
 >
@@ -374,7 +385,7 @@ python datos/scripts/prepara_base_pruebas.py
 ## Docker: microservicios del grupo 14:00
 
 Estos son los pasos exactos con que se levantaron los 12 servicios para las evidencias
-(`evidencias/servicios/`). PostgreSQL y Redis corren en contenedores; los servicios, con
+del segundo parcial (la carpeta `evidencias/` se retiró el 2026-10-30; sigue en el historial de git). PostgreSQL y Redis corren en contenedores; los servicios, con
 `waitress` en tu máquina, cada uno con su rol de la migración 026. Necesitas Docker Desktop
 (o Docker Engine en Linux), el cliente `psql` y el entorno de Python del paso 4 con las
 dependencias de abajo.
@@ -397,7 +408,7 @@ P="psql -h 127.0.0.1 -p 5433 -U postgres -v ON_ERROR_STOP=1"
 
 $P -c "CREATE DATABASE simulador_epidemico;"
 $P -c "CREATE ROLE epidemia_app LOGIN PASSWORD '<contraseña de epidemia_app>';"
-$P -d simulador_epidemico -f datos/postgres/dump_completo.sql          # trae de la 001 a la 026
+$P -d simulador_epidemico -f datos/postgres/dump_completo.sql          # trae de la 001 a la 041
 $P -d simulador_epidemico -f datos/postgres/semillas/nl_municipios_completos.sql
 $P -d simulador_epidemico -f datos/postgres/semillas/demo_datos_nl.sql
 $P -d simulador_epidemico -c "GRANT USAGE ON SCHEMA public TO epidemia_app;
@@ -457,23 +468,43 @@ construye la base antes que los servicios, y cada dominio es un perfil. Desde ce
 
 ```bash
 python infra/genera_env.py                    # crea infra/.env y llena las contraseñas vacías
-docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait
+docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait
 docker compose -f infra/docker-compose.yml ps # todo debe salir "healthy"
 ```
 
+Escribe el comando en una sola línea, así funciona igual en bash, PowerShell y cmd.
+
 `genera_env.py` no imprime ninguna contraseña ni cambia las que ya tienen valor. Para levantar
-solo un dominio, cambia `'*'` por su perfil (`--profile catalogos`); sin `--profile` solo
-arrancan PostgreSQL y Redis.
+solo un dominio, deja únicamente su perfil (`--profile catalogos`); sin `--profile` solo
+arrancan PostgreSQL, Redis y MongoDB.
+
+**No uses `--profile '*'` para levantar.** Activa también el perfil `gpu`, cuyo `simulador-gpu` (`abm-gpu`, D23)
+necesita una GPU de NVIDIA y NVIDIA Container Toolkit. Sin ellos falla con
+
+```
+Error response from daemon: could not select device driver "nvidia" with capabilities: [[gpu]]
+```
+
+y el compose se detiene a la mitad: algunos servicios (por ejemplo `escenarios`, `aprobacion`,
+`escenarios-xml` y `sincronizacion`) quedan en `Created` sin arrancar, y el panel los marca
+caídos. Se arregla corriendo el comando de arriba; si quieres, borra el contenedor que quedó
+creado con `docker rm epidemia-simulador-gpu-1`. Solo en una máquina con GPU se agrega
+`--profile gpu` (ver `procesamiento/abm_gpu/README.md`).
+
+**Para bajar todo, ahí sí va `'*'`:** `docker compose -f infra/docker-compose.yml --profile '*' down`. `down` sin `--profile` solo baja PostgreSQL, Redis y
+MongoDB; los servicios siguen arriba y falla con `Network epidemia_default Resource is still in
+use`. `down` no necesita la GPU, y de paso quita el `simulador-gpu` que haya quedado creado.
 
 | Perfil | Servicios |
 |---|---|
 | `identidad` | `auth`, `sesiones`, `usuarios`, `roles` |
 | `catalogos` | `enfermedades`, `parametros`, `regiones`, `poblacion`, `tipos-intervencion` |
-| `vigilancia` | `casos`, `sincronizacion` |
+| `vigilancia` | `casos`, `sincronizacion`, `dispositivos`, `evidencias`, `vacunas` |
 | `escenarios` | `escenarios`, `intervenciones`, `aprobacion`, `validacion`, `escenarios-xml` |
-| `simulacion` | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto` |
+| `simulacion` | `corridas`, `simulador`, `simulador-abm`, `resultados`, `comparacion`, `pareto` |
 | `analitica` | `indicadores`, `series`, `zonas` |
 | `plataforma` | `notificaciones`, `estado-servicios`, `consola` |
+| `gpu` | `simulador-gpu`: solo con GPU de NVIDIA; no entra en el comando de arriba |
 
 **La base.** El compose trae su propio PostgreSQL 16. La primera vez, con el volumen vacío,
 `infra/postgres/10-inicializa.sh` carga el dump (con todas las migraciones), las dos semillas y
@@ -487,8 +518,36 @@ DATABASE_URL=postgresql://epidemia_app:<EPIDEMIA_APP_PASSWORD de infra/.env>@127
 
 Cada servicio se conecta con su rol. Para apuntar uno a otra base, define su
 `DATABASE_URL_<SERVICIO>` completo (ver `infra/.env.example`). Una migración nueva entra en un
-volumen ya cargado corriéndola con `psql` contra el puerto 5433; `down -v` borra la base y la
-vuelve a cargar desde cero en el siguiente `up`.
+volumen ya cargado corriéndola con `psql` contra el puerto 5433; `down -v` borra la base (y
+los archivos de `evidencias`, que viven en su propio volumen) y la vuelve a cargar desde cero
+en el siguiente `up`. Si la migración crea el rol de un servicio nuevo (la 031 de
+`dispositivos`, la 032 de `evidencias` o la 033 de `vacunas`), corre antes `python infra/genera_env.py`, que agrega
+su `DB_PASSWORD_<SERVICIO>` a `infra/.env`, y ponle esa contraseña con
+`ALTER ROLE svc_<servicio> PASSWORD '...'`: `10-inicializa.sh` solo las pone la primera vez.
+
+**Si ya tenías el compose antes de MongoDB (D1, 2026-11-18).** Tu volumen de PostgreSQL no
+tiene las migraciones 038 y 041, y `infra/.env` no tiene las contraseñas de MongoDB. Sin la
+038, el simulador nuevo marca cada corrida como fallida y `resultados` no responde. En este
+orden:
+
+```bash
+python infra/genera_env.py
+docker compose -f infra/docker-compose.yml up -d postgres --wait
+docker compose -f infra/docker-compose.yml exec postgres psql -v ON_ERROR_STOP=1 -U postgres -d simulador_epidemico -f /datos/migraciones/038_resumen_en_simulation_runs.sql
+docker compose -f infra/docker-compose.yml exec postgres psql -v ON_ERROR_STOP=1 -U postgres -d simulador_epidemico -f /datos/migraciones/041_retira_simulation_results.sql
+docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait
+```
+
+1. `genera_env.py` agrega `MONGO_ROOT_PASSWORD` y `MONGO_PASSWORD` sin tocar las demás.
+2. La 038 copia a `simulation_runs` el resumen de las corridas que ya tenías.
+3. La 041 borra `simulation_results`, y con ella la serie de esas corridas: su detalle sigue
+   mostrando el resumen, pero sin curvas. Para recuperar las curvas de una, vuelve a lanzarla
+   con la misma semilla.
+4. El `up` crea MongoDB vacío y reconstruye la imagen base, que ahora trae `pymongo`.
+
+Comprueba que `curl "http://localhost:5243/health?format=json"` diga `"mongodb": true`. Si
+prefieres empezar de cero, `down -v` borra todos los volúmenes (también las corridas y los
+archivos de `evidencias`) y el siguiente `up` carga la base con todas las migraciones.
 
 Con todo arriba (los 26 servicios, PostgreSQL y Redis) son unos 1,100 MiB: de 32 a 51 MiB por
 servicio, 83 MiB PostgreSQL y 6 MiB Redis (medido el 21 de octubre).
@@ -512,7 +571,7 @@ done
 # cada uno: {"servicio": "...", "estado": "ok", "postgresql": true, "redis": true}
 ```
 
-Con `estado-servicios` arriba, una sola consulta trae la salud de los 26 (los que no están
+Con `estado-servicios` arriba, una sola consulta trae la salud de los 29 (los que no están
 arriba salen `caido`), y su directorio da la URL de cada uno:
 
 ```bash
@@ -539,7 +598,7 @@ deja `format` vacío y elige `application/xml` en **Media type**; para JSON, `fo
 
 **La consola de pruebas** queda en `http://localhost:5260` (perfil `plataforma`). Ábrela con
 `localhost`, no con `127.0.0.1`: cada servicio abre CORS solo para `CONSOLE_ORIGIN`, que en el
-compose es `http://localhost:5260`. Tiene el panel de salud de los 26, el inicio de sesión
+compose es `http://localhost:5260`. Tiene el panel de salud de los 29, el inicio de sesión
 (con captcha), Swagger de cada servicio con el token ya puesto y un probador que también
 exporta la petición como `curl`. La pestaña **Recorrido** tiene los pasos del guion de
 aceptación listos para correr en orden. El token vive solo en la memoria de la página:
@@ -548,11 +607,11 @@ su pestaña. Detalles en `microservicios/consola/README.md`.
 
 ### 5. Pruebas de los microservicios
 
-No necesitan Docker ni base: usan fakeredis y la base simulada.
+No necesitan Docker ni base: usan fakeredis, mongomock y la base simulada.
 
 ```bash
 pip install -r backend_web/requerimientos.txt -r procesamiento/requerimientos.txt \
-            -r microservicios/comun/requirements.txt "fakeredis>=2.20,<3" pytest
+            -r microservicios/comun/requirements.txt "fakeredis>=2.20,<3" "mongomock>=4.1,<5" pytest
 export PYTHONPATH="$PWD:$PWD/microservicios/comun"
 python -m pytest microservicios -q
 ```
@@ -628,7 +687,7 @@ autenticado, **monitoreo** (con *Compartir vista*), mapa, catálogo de enfermeda
 auditoría. **Simulaciones** y **Comparación** todavía son páginas "Próximamente".
 
 El **motor de simulación** y el **cálculo de la frontera de Pareto** ya existen como
-paquete de Python en `motor/`, con pruebas, pero aún no están conectados a la base
+paquetes de Python en `procesamiento/`, con pruebas, pero aún no están conectados a la base
 ni a las pantallas. Ver *Motor de simulación* más abajo.
 
 Los tres **"Exportar" sí son funcionales** — el del dashboard descarga el resumen
@@ -718,8 +777,9 @@ script y no en el archivo: `backend_web/tests/test_archivos_sql.py` falla si dej
 ## Motor de simulación
 
 `procesamiento/motor/` es un modelo SEIR estocástico con hospitalizados, fallecidos y vacunados,
-por grupo de edad y reproducible por semilla (`python-ref-0.1`), más el cálculo de
-costo y frontera de Pareto para comparar escenarios. No depende de Flask ni de la
+por grupo de edad y reproducible por semilla (`seir-ref-0.1`). El cálculo de costo y frontera
+de Pareto para comparar escenarios está aparte, en `procesamiento/analitica/`, porque sirve
+para cualquier motor. No depende de Flask ni de la
 base, y no trae valores epidemiológicos ni costos por defecto: cada parámetro debe
 venir con su fuente o marcado como supuesto.
 
@@ -754,7 +814,10 @@ frontend_web/app/static/css/styles.css        estilos
 frontend_web/app/static/js/nl_municipios.json geometria de los 51 municipios (generado)
 frontend_web/tests/          pruebas de las rutas
 
-procesamiento/motor/         motor de simulacion de referencia y frontera de Pareto
+procesamiento/motor/         motor de simulacion de referencia (seir-ref)
+procesamiento/abm/           modelo basado en agentes (abm-ref), con el mismo contrato
+procesamiento/analitica/     costo, impacto y frontera de Pareto, para cualquier motor
+procesamiento/contrato.py    lo que entra y sale de un motor (docs/contratos/motor/)
 procesamiento/tests/         pruebas del motor
 
 datos/postgres/dump_completo.sql   esquema completo (migraciones concatenadas)

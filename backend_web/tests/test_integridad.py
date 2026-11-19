@@ -155,7 +155,8 @@ class MotorUnaSolaVezTests(unittest.TestCase):
 
     def test_simulaciones_y_queries_comparten_las_clases_del_motor(self):
         from backend_web import queries, simulaciones  # noqa: F401
-        from procesamiento.motor import modelo, parametros, pareto
+        from procesamiento.analitica import pareto
+        from procesamiento.motor import modelo, parametros
 
         self.assertIs(simulaciones.EscenarioInvalido, parametros.EscenarioInvalido)
         self.assertIs(simulaciones.ComparacionInvalida, pareto.ComparacionInvalida)

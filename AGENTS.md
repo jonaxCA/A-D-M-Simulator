@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> **Estado: Vigente** · 2026-10-12
+> **Estado: Vigente** · 2026-11-14
 > Si algo aquí choca con lo que pide la persona en la sesión, pregunta antes de actuar.
 
 ## Contexto
@@ -9,28 +9,28 @@ Simulador de respuesta a epidemias (ver `README.md`). Proyecto universitario: se
 programan. Buena parte del código se generó con IA y el equipo no lo conoce a fondo. Prefiere
 cambios pequeños, legibles y fáciles de revisar.
 
-## Etapa actual: segundo parcial
+## Etapa actual: tercer parcial
 
 - **Sistema web:** el monolito Flask sigue conectado directo a PostgreSQL y **no llama a los
-  microservicios**.
-- **Microservicios:** 26 servicios Flask pequeños en `microservicios/`, cada uno en su
+  microservicios**; la única excepción, cuando exista MongoDB, serán las curvas de una corrida,
+  que pedirá a `resultados` (D20 y D28). Consulta escenarios y corridas y el epidemiólogo aprueba en ella; crear y
+  editar escenarios, enviarlos a revisión y lanzar corridas es de la app de escritorio (D4).
+- **Microservicios:** 29 servicios Flask pequeños en `microservicios/`, cada uno en su
   contenedor de Docker, con Redis y JWT. Son para las apps de escritorio (XML) y móvil
-  (JSON), que se entregan en el tercer parcial; mientras tanto, la consola de pruebas hace
-  sus veces.
+  (JSON). La móvil ya tiene código en `frontend_movil/`.
   - Antes de tocar esa carpeta, lee `microservicios/AGENTS.md`.
-  - El catálogo de servicios está en `docs/arquitectura/microservicios.md` y las tareas en
-    `docs/CHECKLIST_SEGUNDO_PARCIAL.md`.
-- **Motor:** un SEIR de prueba, sin agentes. Los documentos de arquitectura y de contexto
-  describen el sistema final (ABM, MongoDB, Cloud Storage, nginx); no es lo que se construye
-  ahora.
+  - El catálogo de servicios está en `docs/arquitectura/microservicios.md`.
+- **App de escritorio:** `frontend_desktop/`, en PySide6 y solo XML (MVP). Antes de tocarla, lee
+  su `AGENTS.md`.
+- **Motor:** el SEIR de referencia (`seir-ref`, antes `python-ref`; D2) y el modelo basado
+  en agentes (D22): `abm-ref`, en Python (`procesamiento/abm/`), corre en el contenedor
+  `simulador-abm`. FLAME GPU 2 (D23) solo si sobra tiempo.
+- **Por implementar en este parcial:** MongoDB (D28), el volumen de datos (D29), Cloud Storage
+  (D30), los límites de consumo (D31) y nginx con HTTPS (D25 y D26).
 
 ## Fuera de alcance
 
-MongoDB, Google Cloud Storage, nginx, CUDA/Numba/FLAME GPU, ABM, calibración, IA predictiva,
-visualización 3D, límites de consumo y un modelo económico sofisticado.
-
-Las apps de escritorio y móvil se entregan en el tercer parcial (D10 de `docs/decisiones.md`).
-En este no crees código en `frontend_movil/` ni en `frontend_desktop/`.
+Calibración (D24), IA predictiva, visualización 3D y un modelo económico sofisticado.
 
 ## Reglas
 
@@ -54,41 +54,29 @@ En este no crees código en `frontend_movil/` ni en `frontend_desktop/`.
 
 - Sitio: `python -m frontend_web.run`.
 - Microservicios: `python infra/genera_env.py` (crea `infra/.env` con las contraseñas) y
-  `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait`. Levanta
-  PostgreSQL con la base de la demostración, Redis y los servicios.
+  `docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait`. Levanta PostgreSQL con la base de la demostración, Redis, MongoDB y los servicios. No
+  levantes con `--profile '*'`: incluye el perfil `gpu`, que sin una GPU de NVIDIA falla y deja
+  servicios sin arrancar (ver `docs/INSTALACION.md`). Para bajar todo, en cambio, sí:
+  `docker compose -f infra/docker-compose.yml --profile '*' down`.
 - Pruebas de los microservicios y de la biblioteca común:
   `python -m pytest microservicios`.
+- App de escritorio: `pip install -r frontend_desktop/requerimientos.txt` y
+  `python -m frontend_desktop.run`. Sus pruebas: `python -m pytest frontend_desktop`.
 - Pruebas del motor: `python -m pytest procesamiento/tests`. Se corren desde la raíz, igual
   que todo lo demás.
 - Verificar que el dump coincide con las migraciones: `python datos/scripts/verifica_migraciones.py`.
 - Las pruebas corren contra `<base>_pruebas`, nunca contra la de la demostración. Se crea con
   `python datos/scripts/prepara_base_pruebas.py` (ver `docs/INSTALACION.md`).
 
-## Decisiones abiertas: pregunta antes de implementar
+## Decisiones
 
-Cada una tiene su número en `docs/decisiones.md`:
-
-- Quién captura casos, quién aprueba versiones y quién consulta la auditoría (D1).
-- El papel del SEIR (D2).
-- Unidad de costo: personas-día, pesos o ambos por separado (D3).
-- Qué parte del trabajo con escenarios queda en la web y qué en la app de escritorio (D4).
-- Si la población de un escenario son habitantes o agentes simulados (D6).
-- Política para corregir datos en migraciones aplicadas (D7).
-- Cuántas réplicas usa una comparación y cómo se resumen (D8; se revisa en el tercer
-  parcial).
-
-D5 ya se tomó: una versión es una fotografía. Guarda su población por grupo de edad y congela
-los parámetros de la enfermedad al enviarse a revisión (migraciones 023 y 024). Para una
-versión que ya salió de borrador, usa sus parámetros congelados, no los del catálogo.
-
-Las de los microservicios (formato, entregas, rutas, pasarela, pruebas, XSD y migraciones)
-ya están tomadas: son D9 a D16, resumidas en `microservicios/AGENTS.md`. Cuando se tome una
-de esta lista, se marca en `docs/decisiones.md` y se quita de aquí.
+Todas las registradas en `docs/decisiones/decisiones.md` (D1 a D35) están aceptadas. Si una
+tarea pide algo que ninguna cubre, pregunta antes de implementarlo y regístralo ahí.
 
 ## Qué manda cuando dos fuentes se contradicen
 
 1. Lo que pida la persona en la sesión.
-2. `docs/decisiones.md`.
+2. `docs/decisiones/decisiones.md`.
 3. Este archivo.
 4. `docs/arquitectura/arquitectura_v1.md`.
 5. `docs/contexto/simulador.md`.

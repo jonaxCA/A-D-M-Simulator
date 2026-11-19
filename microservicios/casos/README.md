@@ -7,7 +7,7 @@ epidemiológicos (tabla `cases`). Es el único servicio que escribe en ella.
 
 | Ruta | Roles | Qué hace |
 |---|---|---|
-| `POST /cases` | CAPTURISTA, ADMINISTRADOR | Valida con `queries.valida_caso` (catálogo vigente de enfermedades y municipios, fechas, rangos, coordenadas completas), inserta con `status = pendiente` y deja un `CREATE` en `audit_log`, en la misma transacción. `reported_by` sale del token. |
+| `POST /cases` | CAPTURISTA (D1: el ADMINISTRADOR no captura) | Valida con `queries.valida_caso` (catálogo vigente de enfermedades y municipios, fechas, rangos, coordenadas completas), inserta con `status = pendiente` y deja un `CREATE` en `audit_log`, en la misma transacción. `reported_by` sale del token. |
 | `GET /cases` | CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR | Lista paginada. Filtros: `disease_id`, `region_id` (municipio), `status`, `sex`, `from`, `to` (sobre `report_date`), `page` (1), `per_page` (20, máx. 100). Regresa `casos`, `total`, `pagina`, `por_pagina`, `paginas`. |
 | `GET /cases/{id}` | los cuatro roles | Un caso; 404 si no existe. |
 
@@ -23,6 +23,11 @@ Obligatorios: `disease_id`, `region_id`, `report_date`. Opcionales: `local_uuid`
 `onset_date`, `age`, `sex` (M/F/O), `latitude` y `longitude` (juntas o ninguna),
 `test_result`, `severity`. Un campo desconocido es 422.
 
+`device_id`, si llega, tiene que ser un dispositivo registrado de quien captura (servicio
+`dispositivos`): uno que no existe o es de otra cuenta es 422, y uno revocado, 409
+`CONFLICTO`, aunque el token siga vigente. Esa revisión no corre en el reintento de un caso
+que ya existe: lo que se sincronizó antes de revocar el teléfono se queda.
+
 ## Idempotencia (`local_uuid`)
 
 - `local_uuid` nuevo (o ausente, y el servicio genera uno): **201**, `duplicado: false`.
@@ -34,7 +39,8 @@ Obligatorios: `disease_id`, `region_id`, `report_date`. Opcionales: `local_uuid`
 ## Variables y base de datos
 
 `JWT_SECRET_KEY`, `REDIS_URL`, `DATABASE_URL` (rol `svc_casos`: SELECT en `diseases`,
-`regions`, `cases`; INSERT en `cases` y `audit_log`; USO de `cases_id_seq`).
+`regions`, `cases` y, desde la migración 031, `id`, `user_id` e `is_revoked` de `devices`;
+INSERT en `cases` y `audit_log`; USO de `cases_id_seq`).
 
 ## Cómo probar
 

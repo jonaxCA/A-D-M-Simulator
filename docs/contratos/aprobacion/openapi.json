@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - aprobacion",
     "version": "0.1.0",
-    "description": "Flujo de aprobación de escenarios: envío a revisión (pasando por validacion), aprobación y rechazo. Escribe solo las columnas de estado y revisión de scenario_versions. Ejemplos en docs/contratos/aprobacion/ejemplos."
+    "description": "Flujo de aprobación de escenarios: envío a revisión (pasando por validacion), aprobación y rechazo. Escribe solo las columnas de estado y revisión de scenario_versions. Ejemplos en docs/contratos/aprobacion/ejemplos. Sus respuestas XML validan contra docs/contratos/aprobacion/aprobacion.xsd."
   },
   "servers": [
     {
@@ -342,7 +342,7 @@
             }
           },
           "503": {
-            "description": "El servicio validacion (o Redis) no responde.",
+            "description": "El servicio validacion (o Redis) no responde. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -419,6 +419,18 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/...</instance></problem>"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }
@@ -713,7 +725,7 @@
             }
           },
           "503": {
-            "description": "Redis, la base o un servicio del que depende no responde.",
+            "description": "Redis, la base o un servicio del que depende no responde. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -736,6 +748,18 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>Redis no está disponible.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/...</instance></problem>"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }
@@ -872,7 +896,7 @@
             }
           },
           "503": {
-            "description": "Redis, la base o un servicio del que depende no responde.",
+            "description": "Redis, la base o un servicio del que depende no responde. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -895,6 +919,18 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>Redis no está disponible.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/...</instance></problem>"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }

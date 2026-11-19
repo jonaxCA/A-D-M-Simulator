@@ -1,0 +1,44 @@
+> **Estado: Borrador** · 2026-11-16 · Por validar en equipo
+
+# RF-C: Vigilancia epidemiológica (captura en campo)
+
+Es el proceso **P1** de [`procesos_v3.md`](../../arquitectura/procesos_v3.md): el CAPTURISTA registra casos con su ubicación y fotos desde la app Android, aunque no tenga conexión, y los manda después. Cómo leer la tabla: [`README.md`](../README.md).
+
+## Dependencias
+
+- RF-A (sesión y teléfono registrado), RF-B (catálogos) y RF-I (la app).
+- PostgreSQL: `cases`, `case_attachments`, `vaccine_lots`.
+- Redis: candado y resultado de cada lote.
+- Cloud Storage: las fotos (D30).
+- Servicios: `sincronizacion`, `casos`, `evidencias`, `vacunas`, `notificaciones`.
+
+## Requerimientos
+
+| ID | Requerimiento | Criterio de aceptación | Paso | Componente | Prioridad | Estado |
+|---|---|---|---|---|---|---|
+| RF-C01 | La app registra un caso con enfermedad, municipio, fecha, edad, sexo, resultado de la prueba y severidad. No se captura el nombre ni otro dato que identifique a la persona | El caso queda pendiente en el teléfono con su `local_uuid` | 1.4 | Móvil | Alta | Hecho |
+| RF-C02 | La app toma la ubicación del GPS al capturar | El caso guarda latitud y longitud | 1.4 | Móvil | Alta | Hecho |
+| RF-C03 | La app toma fotos del caso y las sube cuando el caso ya existe en el servidor | Las fotos se reducen a 1600 px y pierden el EXIF. `evidencias` guarda en `case_attachments` la ruta, el tipo, el tamaño, la huella, la privacidad, quién y cuándo; queda `CREATE` en la auditoría. El archivo va al bucket | 1.5, 1.7 | Móvil, Microservicios | Alta | En parte: el archivo va a un volumen del servicio; falta el bucket (D-3, D30) |
+| RF-C04 | La app lee el QR de un lote de vacuna y lo registra | `vacunas` da de alta el lote en `vaccine_lots`; queda `CREATE` en la auditoría. Un lote caducado no se registra (RN-10) | 1.8 | Móvil, Microservicios | Media | Hecho |
+| RF-C05 | La app lee también el código de barras de un lote de vacuna | Igual que RF-C04 | 1.8 | Móvil | Media | Hecho |
+| RF-C06 | El formulario se valida en el teléfono | Un campo obligatorio vacío o un valor fuera de rango no deja guardar y dice por qué | 1.4 | Móvil | Alta | Hecho |
+| RF-C07 | La captura funciona sin conexión | Sin red, el caso y sus fotos se guardan en el teléfono (Room) y no se pierden al cerrar la app | 1.4, 1.5 | Móvil | Alta | Hecho |
+| RF-C08 | Con red, la app manda sola los casos pendientes, en lotes de hasta 100 | `sincronizacion` crea los casos por medio de `casos`; quedan `SYNC` de `sync_batches` y `CREATE` de `cases` en la auditoría | 1.6 | Móvil, Microservicios | Alta | Hecho |
+| RF-C09 | Un caso no se duplica aunque el lote se mande dos veces | Un reintento usa el mismo lote. El servidor no repite un `local_uuid` y responde el resultado guardado del lote (7 días en Redis) | 1.6 | Microservicios, Bases de datos | Alta | Hecho |
+| RF-C10 | El servidor asigna su identificador a cada caso | La app guarda el `case_id` como comprobante del envío | 1.6 | Microservicios | Alta | Hecho |
+| RF-C12 | El servidor valida cada caso al recibirlo | Un caso con datos inválidos se rechaza con su motivo, sin detener el resto del lote; la app lo muestra como rechazado | 1.6 | Microservicios | Alta | Hecho |
+| RF-C13 | La app aplica dosis a un lote de vacuna | `vacunas` suma a `doses_used`; queda `UPDATE` en la auditoría. No se aplica a un lote caducado ni más dosis de las que tiene (RN-11, RN-30) | 1.8 | Móvil, Microservicios | Media | Hecho |
+| RF-C14 | La app muestra qué se envió, qué se rechazó y qué falta | Cada caso aparece como enviado, rechazado o pendiente | 1.6 | Móvil | Alta | Hecho |
+| RF-C19 | Cuando un lote trae casos nuevos, se avisa a los EPIDEMIOLOGO | `sincronizacion` crea un aviso por lote, no uno por caso, por medio de `notificaciones`. Un reintento del mismo lote no vuelve a avisar (D32) | 1.6 | Microservicios | Alta | Hecho |
+| RF-C20 | La web muestra la foto de un caso con una URL firmada | Solo un rol con permiso recibe la URL, y vence en minutos | 1.9 | Web, Microservicios | Alta | Falta (D-3) |
+| RF-C21 | Un teléfono revocado deja de sincronizar | `sincronizacion` rechaza el lote; los casos vuelven a pendientes en el teléfono y la app cierra la sesión | 1.6 | Microservicios, Móvil | Media | Hecho |
+
+## Fuera de alcance
+
+| ID | Qué pedía | Por qué sale |
+|---|---|---|
+| RF-C11 | Corregir un caso ya registrado | `casos` solo registra y consulta. D32 decidió que la app no edita casos |
+| RF-C15 | Marcar un caso como erróneo con su motivo | Ningún proceso lo pide; la web no valida ni descarta casos |
+| RF-C16 | Cargar series históricas para calibrar | La calibración queda fuera (D24) |
+| RF-C17 | Agregar casos por AGEB | El catálogo llega a municipio. El tablero y el mapa agregan por municipio (RF-G03) |
+| RF-C18 | No publicar zonas con menos de N casos | No hay umbral definido ni decisión que lo pida |

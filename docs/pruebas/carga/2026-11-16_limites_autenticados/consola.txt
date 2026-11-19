@@ -1,0 +1,33 @@
+[2026-11-16 16:48:36,616] Enriques-MacBook/INFO/locust.main: Starting Locust 2.47.0
+[2026-11-16 16:48:36,618] Enriques-MacBook/INFO/locust.main: Run time limit set to 130 seconds
+[2026-11-16 16:48:36,619] Enriques-MacBook/INFO/locust.runners: Ramping to 2 users at a rate of 2.00 per second
+[2026-11-16 16:48:36,619] Enriques-MacBook/INFO/locust.runners: All users spawned: {"LimiteCasos": 1, "LimiteCorridas": 1} (2 total users)
+[2026-11-16 16:50:46,482] Enriques-MacBook/INFO/locust.main: --run-time limit reached, shutting down
+[2026-11-16 16:50:46,539] Enriques-MacBook/INFO/locust.main: Shutting down (exit code 0)
+Type     Name                                                                          # reqs      # fails |    Avg     Min     Max    Med |   req/s  failures/s
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+GET      GET /auth/captcha                                                                  3     0(0.00%) |      6       2       8      8 |    0.02        0.00
+GET      GET /cases                                                                      1348     0(0.00%) |     12       5      34     12 |   10.38        0.00
+GET      GET /runs                                                                        272     0(0.00%) |     13       7      33     14 |    2.09        0.00
+POST     POST /auth/login                                                                   3     0(0.00%) |    213     198     221    220 |    0.02        0.00
+POST     POST /runs                                                                        30     0(0.00%) |     19      11      25     20 |    0.23        0.00
+GET      [429] GET /cases                                                                 692     0(0.00%) |      4       1      18      5 |    5.33        0.00
+GET      [429] GET /runs                                                                  173     0(0.00%) |      4       1       7      4 |    1.33        0.00
+POST     [429] POST /runs                                                                 137     0(0.00%) |      3       1       7      3 |    1.05        0.00
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+         Aggregated                                                                      2658     0(0.00%) |     10       1     221     10 |   20.46        0.00
+
+Response time percentiles (approximated)
+Type     Name                                                                                  50%    66%    75%    80%    90%    95%    98%    99%  99.9% 99.99%   100% # reqs
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+GET      GET /auth/captcha                                                                       8      8      9      9      9      9      9      9      9      9      9      3
+GET      GET /cases                                                                             12     14     15     16     18     19     20     21     29     34     34   1348
+GET      GET /runs                                                                              14     15     15     16     18     19     21     22     33     33     33    272
+POST     POST /auth/login                                                                      220    220    220    220    220    220    220    220    220    220    220      3
+POST     POST /runs                                                                             20     20     21     23     23     23     26     26     26     26     26     30
+GET      [429] GET /cases                                                                        5      5      5      6      6      6      7      8     18     18     18    692
+GET      [429] GET /runs                                                                         4      5      5      5      6      6      6      7      7      7      7    173
+POST     [429] POST /runs                                                                        3      4      5      5      6      6      7      7      8      8      8    137
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+         Aggregated                                                                             10     12     14     15     17     19     20     21    200    220    220   2658
+

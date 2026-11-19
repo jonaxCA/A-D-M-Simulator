@@ -1,9 +1,10 @@
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
+import xmlschema
 
 from backend_web import queries
 from epidemia_comun import llaves
@@ -15,13 +16,14 @@ VERSION_APROBADA, VERSION_BORRADOR = 11, 12
 
 
 class Base:
-    """Las corridas de una base simulada, con las reglas de crear_corrida y cancelar_run."""
+    """Las corridas de una base simulada, con las reglas de crear_corrida y cancelar_run.
+    `motores` guarda el motor y la versión con que se creó cada corrida."""
 
     def __init__(self):
-        self.corridas, self.creadas, self.canceladas = {}, [], []
+        self.corridas, self.creadas, self.canceladas, self.motores = {}, [], [], {}
 
-    def crear_corrida(self, version_id, seed, user_id, engine_version, *, contexto=None,
-                      forzar_error=False):
+    def crear_corrida(self, version_id, seed, user_id, engine_version, *, engine="seir-ref",
+                      contexto=None, forzar_error=False):
         if version_id not in (VERSION_APROBADA, VERSION_BORRADOR):
             return None, None, "La versión de escenario no existe."
         if version_id == VERSION_BORRADOR:
@@ -29,11 +31,17 @@ class Base:
                                 "ejecutar simulaciones sobre versiones aprobadas.")
         run_id = 40 + len(self.creadas)
         self.creadas.append((version_id, seed, user_id, contexto.user_id, forzar_error))
+        self.motores[run_id] = (engine, engine_version)
         self.corridas[run_id] = corrida(run_id, "encolado")
         return run_id, 90 + len(self.creadas), None
 
     def get_run(self, run_id):
         return dict(self.corridas[run_id]) if run_id in self.corridas else None
+
+    def get_motor_run(self, run_id):
+        if run_id not in self.corridas:
+            return None
+        return self.motores.get(run_id, ("seir-ref",))[0]
 
     def cancelar_run(self, run_id, *, contexto):
         if self.corridas.get(run_id, {}).get("status") != "encolado":
@@ -45,7 +53,7 @@ class Base:
 
 def corrida(run_id, status, progress=0):
     return {"id": run_id, "batch_id": 90, "scenario_version_id": VERSION_APROBADA, "seed": 982314,
-            "status": status, "progress": progress, "engine_version": "python-ref-0.1",
+            "status": status, "progress": progress, "engine_version": "seir-ref-0.1",
             "queued_at": datetime(2026, 10, 20, 15, tzinfo=timezone.utc), "started_at": None,
             "finished_at": None, "error_message": None, "requested_by": 7, "version_number": 2,
             "scenario_id": 3, "version_status": "aprobado", "population_size": 500000,
@@ -58,10 +66,15 @@ def corrida(run_id, status, progress=0):
 @pytest.fixture
 def base(monkeypatch):
     b = Base()
-    for nombre in ("crear_corrida", "get_run", "cancelar_run"):
+    for nombre in ("crear_corrida", "get_run", "cancelar_run", "get_motor_run"):
         monkeypatch.setattr(queries, nombre, getattr(b, nombre))
-    monkeypatch.setattr(queries, "get_runs_recientes",
-                        lambda limit=20: [{"id": i, "status": "completado"} for i in range(limit)])
+    b.filtros = []
+
+    def recientes(limit=20, **filtros):
+        b.filtros.append(filtros)
+        return [{"id": i, "status": "completado"} for i in range(limit)]
+
+    monkeypatch.setattr(queries, "get_runs_recientes", recientes)
     return b
 
 
@@ -74,9 +87,10 @@ def lanzar(cliente, cabeceras, cuerpo):
     return cliente.post("/api/v1/runs?format=json", json=cuerpo, headers=cabeceras)
 
 
-def en_cola(redis_falso):
+def en_cola(redis_falso, motor="seir-ref"):
     # LPUSH y BRPOP: el que se toma primero está al final de la lista.
-    return [json.loads(x) for x in reversed(redis_falso.lrange(llaves.COLA_SIMULACIONES, 0, -1))]
+    llave = llaves.cola_simulaciones(motor)
+    return [json.loads(x) for x in reversed(redis_falso.lrange(llave, 0, -1))]
 
 
 # ---- lanzar --------------------------------------------------------------------------
@@ -96,11 +110,77 @@ def test_lanzar_responde_202_y_encola(cliente, token, base, redis_falso, rol):
     r = lanzar(cliente, token((rol,)), {"scenario_version_id": VERSION_APROBADA, "seed": 0})
     assert r.status_code == 202
     assert r.get_json() == {"id": 40, "batch_id": 91, "scenario_version_id": 11, "seed": 0,
-                            "forzar_error": False, "status": "encolado"}
+                            "engine": "seir-ref", "forzar_error": False, "status": "encolado"}
     assert base.creadas == [(11, 0, 7, 7, False)]
+    assert base.motores == {40: ("seir-ref", "seir-ref-0.1")}
     assert en_cola(redis_falso) == [{"id": 40, "forzar_error": False}]
     # El candado se suelta al terminar.
     assert redis_falso.get(llaves.candado_corrida(11)) is None
+
+
+@pytest.mark.parametrize("replicas", [30, 100, "50"])
+def test_replicas_hasta_el_tope_se_aceptan(cliente, token, base, redis_falso, replicas):
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "replicas": replicas})
+    assert r.status_code == 202
+
+
+@pytest.mark.parametrize("replicas, detalle", [
+    (101, "replicas no puede pasar de 100."), (200, "replicas no puede pasar de 100."),
+    (0, "El campo replicas debe ser entero positivo."),
+    ("x", "El campo replicas debe ser entero positivo.")])
+def test_replicas_mas_del_tope_es_422(cliente, token, base, redis_falso, replicas, detalle):
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "replicas": replicas})
+    assert r.status_code == 422 and r.get_json()["codigo"] == "DATOS_INVALIDOS"
+    assert r.get_json()["detail"] == detalle
+    assert base.creadas == [] and en_cola(redis_falso) == []
+
+
+def test_un_motor_no_habilitado_es_422(cliente, token, base, redis_falso, monkeypatch):
+    monkeypatch.delenv("MOTORES_HABILITADOS", raising=False)
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "abm-gpu"})
+    assert r.status_code == 422 and r.get_json()["detail"] == "engine debe ser uno de: seir-ref."
+    assert base.creadas == [] and en_cola(redis_falso, "abm-gpu") == []
+
+
+def test_un_motor_habilitado_va_a_su_propia_cola(cliente, token, base, redis_falso, monkeypatch):
+    monkeypatch.setenv("MOTORES_HABILITADOS", " abm-gpu ,gpu")
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "abm-gpu"})
+    assert r.status_code == 202 and r.get_json()["engine"] == "abm-gpu"
+    # La versión sale del registro, aunque corridas no tenga GPU.
+    assert base.motores == {40: ("abm-gpu", "abm-gpu-0.1")}
+    assert en_cola(redis_falso, "abm-gpu") == [{"id": 40, "forzar_error": False}]
+    assert en_cola(redis_falso) == []
+    # Un nombre que la base no acepta no se habilita aunque venga en la variable.
+    assert rutas.motores_habilitados() == ["seir-ref", "abm-gpu"]
+    assert lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "gpu"}).status_code == 422
+
+
+def test_abm_ref_va_a_su_cola_con_su_version(cliente, token, base, redis_falso, monkeypatch):
+    """corridas conoce la versión de los motores implementados (procesamiento/motores.py)."""
+    monkeypatch.setenv("MOTORES_HABILITADOS", "abm-ref")
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": "abm-ref"})
+    assert r.status_code == 202 and r.get_json()["engine"] == "abm-ref"
+    assert base.motores == {40: ("abm-ref", "abm-ref-0.1")}
+    assert en_cola(redis_falso, "abm-ref") == [{"id": 40, "forzar_error": False}]
+    assert en_cola(redis_falso) == []
+
+
+@pytest.mark.parametrize("anterior, actual", [("python-ref", "seir-ref"), ("cuda", "abm-gpu")])
+def test_los_nombres_anteriores_a_d2_se_traducen(cliente, token, base, redis_falso, monkeypatch,
+                                                anterior, actual):
+    """Un cliente de la v1 que todavía manda los nombres viejos no se rompe (D2): se traducen,
+    también en MOTORES_HABILITADOS, y la respuesta lleva el nombre nuevo."""
+    monkeypatch.setenv("MOTORES_HABILITADOS", "cuda")
+    assert rutas.motores_habilitados() == ["seir-ref", "abm-gpu"]
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": anterior})
+    assert r.status_code == 202 and r.get_json()["engine"] == actual
+    assert base.motores[40][0] == actual
+    assert en_cola(redis_falso, actual) == [{"id": 40, "forzar_error": False}]
+
+
+def test_un_motor_que_no_es_texto_es_422(cliente, token, base):
+    r = lanzar(cliente, token(), {"scenario_version_id": 11, "engine": ["seir-ref"]})
+    assert r.status_code == 422 and base.creadas == []
 
 
 def test_semilla_aleatoria_si_no_llega(cliente, token, base):
@@ -118,9 +198,11 @@ def test_forzar_error_solo_para_administrador(cliente, token, base, redis_falso)
 def test_acepta_xml(cliente, token, base):
     r = cliente.post("/api/v1/runs", headers={**token(), "Content-Type": "application/xml"},
                      data=b"<solicitud><scenario_version_id>11</scenario_version_id>"
-                          b"<seed>5</seed><forzar_error>false</forzar_error></solicitud>")
+                          b"<seed>5</seed><engine>seir-ref</engine>"
+                          b"<forzar_error>false</forzar_error></solicitud>")
     assert r.status_code == 202 and r.mimetype == "application/xml"
     assert ET.fromstring(r.data).findtext("seed") == "5"
+    assert ET.fromstring(r.data).findtext("engine") == "seir-ref"
 
 
 @pytest.mark.parametrize("cuerpo", [{}, {"scenario_version_id": "x"}, {"scenario_version_id": 0},
@@ -128,6 +210,8 @@ def test_acepta_xml(cliente, token, base):
                                     {"scenario_version_id": 11, "seed": 2**31},
                                     {"scenario_version_id": 11, "seed": 1.5},
                                     {"scenario_version_id": 11, "seed": True},
+                                    {"scenario_version_id": 11, "engine": 5},
+                                    {"scenario_version_id": 11, "engine": "Python-Ref"},
                                     {"scenario_version_id": 11, "forzar_error": "si"}])
 def test_cuerpo_invalido_es_422(cliente, token, base, cuerpo):
     r = lanzar(cliente, token(), cuerpo)
@@ -170,14 +254,44 @@ def test_redis_caido_es_503_sin_crear_nada(cliente, token, base, apagar_redis):
 
 # ---- consultar ------------------------------------------------------------------------
 
-def test_lista_con_limite(cliente, token):
+def test_lista_con_limite(cliente, token, base):
     r = cliente.get("/api/v1/runs?limit=3&format=json", headers=token(("EPIDEMIOLOGO",)))
     assert r.status_code == 200 and r.get_json()["total"] == 3
+    assert base.filtros == [{}]
+
+
+def test_lista_con_todos_los_filtros(cliente, token, base):
+    r = cliente.get("/api/v1/runs?format=json&scenario_id=3&scenario_version_id=11&status=fallido"
+                    "&engine=abm-gpu&from=2026-10-01&to=2026-10-20", headers=token())
+    assert r.status_code == 200
+    # abm-gpu no está habilitado para lanzar, pero sus corridas se pueden buscar.
+    assert base.filtros == [{"scenario_id": 3, "scenario_version_id": 11, "status": "fallido",
+                             "engine": "abm-gpu", "desde": date(2026, 10, 1),
+                             "hasta": date(2026, 10, 20)}]
+
+
+def test_el_filtro_acepta_el_nombre_anterior_del_motor(cliente, token, base):
+    r = cliente.get("/api/v1/runs?format=json&engine=numba", headers=token())
+    assert r.status_code == 200 and base.filtros == [{"engine": "abm-ref"}]
+
+
+def test_un_solo_dia(cliente, token, base):
+    cliente.get("/api/v1/runs?from=2026-10-20&to=2026-10-20", headers=token())
+    assert base.filtros == [{"desde": date(2026, 10, 20), "hasta": date(2026, 10, 20)}]
 
 
 @pytest.mark.parametrize("limite", ["0", "x", str(rutas.LIMITE_MAX + 1)])
 def test_limite_invalido_es_422(cliente, token, limite):
     assert cliente.get("/api/v1/runs?limit=" + limite, headers=token()).status_code == 422
+
+
+@pytest.mark.parametrize("filtro", ["scenario_id=0", "scenario_version_id=x", "status=pausado",
+                                    "status=", "engine=gpu", "from=20-10-2026", "to=2026-13-01",
+                                    "from=2026-10-21&to=2026-10-20"])
+def test_filtro_invalido_es_422_sin_consultar(cliente, token, base, filtro):
+    r = cliente.get("/api/v1/runs?format=json&" + filtro, headers=token())
+    assert r.status_code == 422 and r.get_json()["codigo"] == "DATOS_INVALIDOS"
+    assert base.filtros == []
 
 
 def test_capturista_no_ve_corridas(cliente, token):
@@ -210,6 +324,12 @@ def test_consultar_en_xml_por_omision(cliente, token, base):
     assert ET.fromstring(r.data).findtext("status") == "encolado"
 
 
+def test_consultar_dice_el_motor(cliente, token, base):
+    base.corridas[40] = corrida(40, "encolado")
+    base.motores[40] = ("abm-gpu", None)
+    assert cliente.get("/api/v1/runs/40?format=json", headers=token()).get_json()["engine"] == "abm-gpu"
+
+
 def test_corrida_inexistente_es_404(cliente, token):
     assert cliente.get("/api/v1/runs/404", headers=token()).status_code == 404
 
@@ -238,3 +358,25 @@ def test_epidemiologo_no_cancela(cliente, token, base):
 def test_contrato_servido_es_el_del_repo(cliente):
     r = cliente.get("/openapi.json")
     assert r.data == (RAIZ / "docs/contratos/corridas/openapi.json").read_bytes()
+
+
+def test_las_respuestas_xml_validan_contra_el_xsd(cliente, token, base, monkeypatch):
+    # Las columnas de get_runs_recientes; una corrida sin lote no tiene motor.
+    reciente = {"id": 43, "status": "fallido", "seed": 7, "engine": "seir-ref",
+                "queued_at": datetime(2026, 10, 20, 15, tzinfo=timezone.utc),
+                "started_at": datetime(2026, 10, 20, 15, 1, tzinfo=timezone.utc),
+                "finished_at": datetime(2026, 10, 20, 15, 2, tzinfo=timezone.utc),
+                "error_message": "Error forzado de prueba.", "scenario_version_id": 11,
+                "scenario_id": 3, "version_number": 2, "scenario_name": "Ola Influenza ZMM",
+                "requested_by_username": "alex.cavazos"}
+    sin_lote = dict(reciente, id=41, status="encolado", engine=None, started_at=None,
+                    finished_at=None, error_message=None)
+    monkeypatch.setattr(queries, "get_runs_recientes", lambda limit=20: [reciente, sin_lote])
+    respuestas = [cliente.post("/api/v1/runs", json={"scenario_version_id": 11}, headers=token()),
+                  cliente.get("/api/v1/runs/40", headers=token()),
+                  cliente.post("/api/v1/runs/40/cancel", headers=token()),
+                  cliente.get("/api/v1/runs", headers=token())]
+    xsd = xmlschema.XMLSchema(str(RAIZ / "docs/contratos/corridas/corrida.xsd"))
+    for r in respuestas:
+        assert r.status_code in (200, 202) and r.mimetype == "application/xml", r.data
+        xsd.validate(r.data.decode("utf-8"))

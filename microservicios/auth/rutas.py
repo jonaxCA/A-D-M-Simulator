@@ -8,6 +8,7 @@ from flask import current_app, request
 from epidemia_comun import llaves, sesiones
 from epidemia_comun.errores import ErrorAPI, respuesta_error
 from epidemia_comun.formatos import leer_cuerpo, responder
+from epidemia_comun.limites import limitar
 from epidemia_comun.redis_compartido import RedisNoDisponible, requerido
 from epidemia_comun.validaciones import diccionario
 from backend_web import auth
@@ -67,10 +68,12 @@ def registrar(app):
         return respuesta_error(ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "Redis no está disponible."))
 
     @app.get("/api/v1/auth/captcha")
+    @limitar("normal")
     def captcha():
         return responder(nuevo_captcha(), "captcha")
 
     @app.post("/api/v1/auth/login")
+    @limitar()
     def login():
         datos = diccionario(leer_cuerpo())
         usuario = _texto(datos, "usuario").strip()

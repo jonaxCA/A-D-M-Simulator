@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<dispositivo><id tipo="numero">3</id><user_id tipo="numero">7</user_id><device_uid>3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21</device_uid><platform>android</platform><model>Pixel 7</model><app_version>0.1.0</app_version><is_revoked tipo="booleano">true</is_revoked><last_seen_at>2026-10-31T16:20:00+00:00</last_seen_at><created_at>2026-10-31T16:20:00+00:00</created_at><has_push_token tipo="booleano">false</has_push_token></dispositivo>

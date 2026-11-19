@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solo HTTPS. Además de las raíces del sistema, la app trae ISRG Root X1, la raíz de Let's
+     Encrypt (D26): Android la incluye de fábrica solo desde la 7.1.1 (API 25) y minSdk es 24, así
+     que sin ella un teléfono con Android 7.0 rechazaría el certificado del servidor. Debug
+     reemplaza este archivo (app/src/debug/res/xml/) y debe conservar las mismas raíces. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/isrg_root_x1" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -1,0 +1,4 @@
+Redis no disponible en token_verificar: Error 61 connecting to 127.0.0.1:6380. Connection refused.
+Redis no disponible: no se puede verificar la revocación de la sesión 1
+Redis no disponible en token_verificar: Error 61 connecting to 127.0.0.1:6380. Connection refused.
+Redis no disponible: no se puede verificar la revocación de la sesión 1

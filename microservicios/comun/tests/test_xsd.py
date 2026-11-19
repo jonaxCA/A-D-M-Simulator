@@ -52,6 +52,21 @@ def test_ejemplos_de_los_contratos(archivo):
     ESQUEMAS[ET.parse(archivo).getroot().tag].validate(str(archivo))
 
 
+# Raíces como <corrida> o <intervencion> se repiten entre servicios con otro contenido: estos
+# XSD se aplican por carpeta. Describen las respuestas; las peticiones las valida el servicio.
+POR_CARPETA = {carpeta: xmlschema.XMLSchema(str(CONTRATOS / carpeta / (xsd + ".xsd")))
+               for carpeta, xsd in [("corridas", "corrida"), ("intervenciones", "intervencion"),
+                                    ("aprobacion", "aprobacion"), ("comparacion", "comparacion"),
+                                    ("pareto", "pareto")]}
+RESPUESTAS = [a for carpeta in POR_CARPETA for a in sorted((CONTRATOS / carpeta / "ejemplos").glob("*.xml"))
+              if "peticion" not in a.name]
+
+
+@pytest.mark.parametrize("archivo", RESPUESTAS, ids=lambda a: "%s/%s" % (a.parent.parent.name, a.name))
+def test_respuestas_de_ejemplo_por_servicio(archivo):
+    POR_CARPETA[archivo.parent.parent.name].validate(str(archivo))
+
+
 def test_enfermedad_real(enfermedades):
     r = enfermedades.get("/api/v1/diseases/1")
     assert r.status_code == 200
@@ -87,6 +102,17 @@ def test_errores_reales(enfermedades, ruta, metodo, estado):
     (ENFERMEDAD, "<enfermedad><id>1</id></enfermedad>"),
     (PARAMETROS, "<parametros><disease_id tipo='numero'>1</disease_id><parametros>"
                  "<r0><valor tipo='numero'>alto</valor></r0></parametros></parametros>"),
+    (POR_CARPETA["corridas"], "<corrida><id tipo='numero'>1</id><status>pausado</status></corrida>"),
+    (POR_CARPETA["corridas"], "<corrida><id tipo='numero'>1</id><status>encolado</status>"
+                              "<engine>gpu</engine></corrida>"),
+    (POR_CARPETA["intervenciones"], "<intervencion><id tipo='numero'>1</id>"
+                                    "<target_layer>poblacion</target_layer></intervencion>"),
+    (POR_CARPETA["aprobacion"], "<revision><scenario_id tipo='numero'>3</scenario_id>"
+                                "<version_id tipo='numero'>11</version_id>"
+                                "<version_number tipo='numero'>2</version_number>"
+                                "<status>aprobado</status><decision>aceptar</decision></revision>"),
+    (POR_CARPETA["comparacion"], "<comparacion><aviso>x</aviso><corridas /></comparacion>"),
+    (POR_CARPETA["pareto"], "<pareto><aviso>x</aviso><metrica>felicidad</metrica></pareto>"),
 ])
 def test_documento_invalido_se_rechaza(esquema, documento):
     assert not esquema.is_valid(documento)
