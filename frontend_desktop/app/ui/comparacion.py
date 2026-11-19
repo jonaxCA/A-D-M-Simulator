@@ -95,7 +95,7 @@ class VistaComparacion(QWidget):
 
         graficas_fila = QHBoxLayout()
         izquierda, capa_izq = tarjeta("Frontera de eficiencia")
-        nota = QLabel("Menor es mejor en ambos ejes. Punto: mediana; barra: p5–p95. "
+        nota = QLabel("Eje X: personas-día; eje Y: impacto. Punto: mediana; barra: p5–p95. "
                       "Frontera sobre medianas (D8, propuesta).")
         nota.setObjectName("nota")
         nota.setWordWrap(True)
@@ -117,7 +117,7 @@ class VistaComparacion(QWidget):
         self.nota_tabla = QLabel()
         self.nota_tabla.setObjectName("nota")
         self.tabla = tabla(["Escenario", "Réplicas", "Muertes", "Pico de casos activos", "Día del pico",
-                            "Tasa de ataque", "Costo", "Frontera"], estirar=(0, 7))
+                            "Tasa de ataque", "Personas-día", "Costo (MXN)", "Frontera"], estirar=(0, 8))
         self.tabla.setMinimumHeight(180)
         self.tabla.itemSelectionChanged.connect(self._elegir)
         capa_ind.addWidget(self.nota_tabla)
@@ -231,10 +231,11 @@ class VistaComparacion(QWidget):
             ind = e["indicadores"]
             valores = (e["nombre"], e["n"], _rango(ind["fallecimientos"]), _rango(ind["pico_casos_activos"]),
                        _rango(ind["dia_pico"]), _rango(ind["tasa_ataque"], 0, True), num(e["costo"]),
+                       "Sin dato" if e.get("costo_pesos") is None else "$" + num(e["costo_pesos"], 2),
                        exportar.texto_frontera(e))
             for col, valor in enumerate(valores):
                 clave = None
-                if col == 7:
+                if col == 8:
                     clave = "aprobado" if e["dominado_por"] == [] else "borrador"
                 self.tabla.setItem(fila, col, celda(valor, clave))
         self.tabla.blockSignals(False)
@@ -252,18 +253,18 @@ class VistaComparacion(QWidget):
     def _lectura(self):
         escenarios = self.datos["escenarios"]
         if all(e["costo"] is None for e in escenarios):
-            self.lectura.setText("No hay frontera: el servicio pareto no calculó costos.\n\n"
+            self.lectura.setText("No hay frontera: el servicio pareto no calculó personas-día.\n\n"
                                  + "\n".join("• " + a for a in self.datos["avisos"]))
             return
         frente = [e["nombre"] for e in escenarios if e["dominado_por"] == []]
         lineas = ["%d de %d escenarios están en la frontera: %s." % (len(frente), len(escenarios), ", ".join(frente))]
         for e in escenarios:
             if e["dominado_por"]:
-                lineas.append("%s tiene igual o más %s con igual o más costo que %s." % (
+                lineas.append("%s tiene igual o más %s con igual o más personas-día que %s." % (
                     e["nombre"], dict(resumen.METRICAS)[self.datos["metrica"]].lower(),
                     ", ".join(e["dominado_por"])))
             elif e["dominado_por"] is None:
-                lineas.append("%s no tiene costo calculado y queda fuera de la frontera." % e["nombre"])
+                lineas.append("%s no tiene personas-día calculadas y queda fuera de la frontera." % e["nombre"])
         self.lectura.setText("\n\n".join(lineas))
 
     def _pintar(self):
@@ -279,7 +280,8 @@ class VistaComparacion(QWidget):
                  ("Pico de casos activos", _rango(ind["pico_casos_activos"])),
                  ("Día del pico", _rango(ind["dia_pico"])),
                  ("Tasa de ataque", _rango(ind["tasa_ataque"], 1, True)),
-                 ("Costo (mediana)", num(e["costo"])),
+                 ("Personas-día (mediana)", num(e["costo"])),
+                 ("Costo (MXN)", "Sin dato" if e.get("costo_pesos") is None else "$" + num(e["costo_pesos"], 2)),
                  ("Frontera", exportar.texto_frontera(e))]
         self.detalle.setText("<b>%s</b><br>%s" % (e["nombre"], "<br>".join(
             '<span style="color:#64748B">%s:</span> %s' % fila for fila in filas)))

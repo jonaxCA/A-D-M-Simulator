@@ -15,7 +15,7 @@ def guardar_csv(ruta, encabezados, filas):
 
 def texto_frontera(escenario):
     if escenario["dominado_por"] is None:
-        return "Sin costo"
+        return "Sin personas-día"
     if escenario["dominado_por"]:
         return "Dominado por " + ", ".join(escenario["dominado_por"])
     return "No dominado"
@@ -25,14 +25,15 @@ def tabla_comparacion(datos):
     encabezados = ["escenario", "replicas"]
     for clave, _ in resumen.INDICADORES:
         encabezados += [clave + "_media", clave + "_mediana", clave + "_p5", clave + "_p95"]
-    encabezados += ["costo", "frontera"]
+    encabezados += ["personas_dia", "costo_pesos_mxn", "frontera"]
     filas = []
     for e in datos["escenarios"]:
         fila = [e["nombre"], e["n"]]
         for clave, _ in resumen.INDICADORES:
             s = e["indicadores"][clave] or {}
             fila += [s.get("media"), s.get("mediana"), s.get("p5"), s.get("p95")]
-        filas.append(fila + [e["costo"], texto_frontera(e)])
+        filas.append(fila + [e["costo"], e.get("costo_pesos") if e.get("costo_pesos") is not None
+                                  else "Sin dato", texto_frontera(e)])
     return encabezados, filas
 
 
@@ -70,10 +71,12 @@ def reporte_html(datos, usuario, imagenes):
     filas = []
     for e in datos["escenarios"]:
         ind = e["indicadores"]
-        filas.append("<tr><td>%s</td><td>%d</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+        filas.append("<tr><td>%s</td><td>%d</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
             escape(e["nombre"]), e["n"], _rango(ind["fallecimientos"]), _rango(ind["pico_casos_activos"]),
             _rango(ind["dia_pico"]), _rango(ind["tasa_ataque"], 1, pct=True),
-            "—" if e["costo"] is None else "{:,.0f}".format(e["costo"]), escape(texto_frontera(e))))
+            "—" if e["costo"] is None else "{:,.0f}".format(e["costo"]),
+            "Sin dato" if e.get("costo_pesos") is None else "${:,.2f}".format(e["costo_pesos"]),
+            escape(texto_frontera(e))))
     costos = "".join("<li>%s: %s %s (%s, %s)</li>" % (
         escape(str(c.get("tipo"))), c.get("valor"), escape(str(c.get("unidad"))),
         escape(str(c.get("fuente") or "sin fuente")), escape(str(c.get("estado"))))
@@ -86,15 +89,14 @@ def reporte_html(datos, usuario, imagenes):
 <p style="background:#FEF9C3; padding:6px;"><b>Aviso:</b> %s</p>
 %s
 <h3>Indicadores por escenario</h3>
-<p>Mediana (p5–p95) y media de las réplicas. La frontera se calcula sobre las medianas de %s y el costo
-(D8, propuesta).</p>
+<p>Mediana (p5–p95) y media de las réplicas. La frontera compara medianas de %s y personas-día (D3/D8); los pesos se muestran aparte.</p>
 <table border="1" cellspacing="0" cellpadding="4">
 <tr><th>Escenario</th><th>Réplicas</th><th>Muertes</th><th>Pico de casos activos</th><th>Día del pico</th>
-<th>Tasa de ataque</th><th>Costo</th><th>Frontera</th></tr>
+<th>Tasa de ataque</th><th>Personas-día</th><th>Costo (MXN)</th><th>Frontera</th></tr>
 %s
 </table>
 <h3>Supuestos</h3>
-<p>Modelo de costo: %s</p>
+<p>Modelo de personas-día y costos: %s</p>
 <ul>%s</ul>
 <p>Elegir entre los escenarios de la frontera es una decisión humana; este reporte no recomienda ninguno.</p>
 </body></html>""" % (datetime.now().strftime("%Y-%m-%d %H:%M"), escape(usuario or ""), len(datos["escenarios"]),

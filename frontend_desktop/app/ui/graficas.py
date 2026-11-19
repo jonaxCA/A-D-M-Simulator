@@ -94,9 +94,9 @@ def _escala(maximo):
 def frontera(v, escenarios, nombre_metrica):
     puntos = [(i, e) for i, e in enumerate(escenarios) if e["costo"] is not None and e["impacto"]]
     divisor, unidad = _escala(max([e["costo"] for _, e in puntos] or [0]))
-    g, eje_x, eje_y = _grafica("Costo%s, según el servicio pareto" % unidad, "%s (mediana)" % nombre_metrica)
+    g, eje_x, eje_y = _grafica("Personas-día%s" % unidad, "%s (mediana)" % nombre_metrica)
     if not puntos:
-        g.setTitle("Sin costos calculados: no hay frontera")
+        g.setTitle("Sin personas-día calculadas: no hay frontera")
     eje_x.setLabelFormat("%.1f")
     en_frontera = sorted((e["costo"] / divisor, e["impacto"]["mediana"]) for _, e in puntos if not e["dominado_por"])
     if len(en_frontera) > 1:
