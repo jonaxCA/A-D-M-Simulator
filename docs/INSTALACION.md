@@ -630,6 +630,69 @@ PostgreSQL y Redis: nunca toca los de la demostración. Corre las pruebas y lo b
 no se sube. Publica los mismos puertos que el compose de la demostración, así que ese tiene que
 estar abajo; el script lo revisa antes de empezar.
 
+### 6. nginx como única entrada (D25, D26)
+
+En la nube solo se entra por nginx, en 443. En local se prueba igual sumando
+`infra/docker-compose.nginx.yml` al compose: nginx publica 80 (redirige a 443) y 443, y ningún
+servicio publica su puerto. PostgreSQL, Redis y MongoDB siguen solo en `127.0.0.1`.
+
+1. **El certificado**, una vez. Queda en `infra/nginx/certs/`, que no se sube a git:
+
+   ```bash
+   python infra/nginx/certificado_local.py
+   ```
+
+   Con [mkcert](https://github.com/FiloSottile/mkcert) instalado sale uno de confianza para el
+   navegador, el escritorio y el emulador. Antes, corre tú `mkcert -install` una vez: agrega la
+   autoridad de mkcert a los certificados en que confía tu sistema. Sin mkcert, el script usa
+   OpenSSL (el de Git sirve) y sale uno autofirmado: sirve para probar, pero el navegador avisa
+   y `curl` necesita `-k`. Para cambiar uno por otro, `--nuevo`.
+
+2. **Levantar** los servicios detrás de nginx (los mismos perfiles que arriba, sin `gpu`):
+
+   ```bash
+   docker compose -f infra/docker-compose.yml -f infra/docker-compose.nginx.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait
+   ```
+
+3. **Qué queda:**
+   - `https://localhost/<servicio>/api/v1/...`: cada servicio bajo su nombre, con las mismas
+     rutas. Swagger, en `https://localhost/<servicio>/docs`.
+   - `https://localhost/consola/`: la consola de pruebas.
+   - `https://localhost/`: la web, si corre en tu PC (`python -m frontend_web.run`, puerto 5000).
+   - `http://localhost/...` redirige a `https://`.
+   - El directorio (`https://localhost/estado-servicios/api/v1/services`) da
+     `https://localhost/<servicio>` como URL de cada servicio.
+
+4. **La web en tu PC** llama a cada servicio por su puerto (D36), que detrás de nginx ya no está
+   publicado. Apúntala a nginx antes de arrancarla:
+
+   ```bash
+   for s in auth sesiones usuarios roles enfermedades parametros regiones poblacion tipos-intervencion casos sincronizacion dispositivos evidencias vacunas escenarios intervenciones aprobacion validacion escenarios-xml corridas simulador resultados comparacion pareto indicadores series zonas notificaciones estado-servicios; do
+     export "SERVICIO_$(echo "$s" | tr 'a-z-' 'A-Z_')_URL=https://localhost/$s"
+   done
+   # Con mkcert -install no hace falta más: la web (urllib) confía en el almacén del sistema.
+   # Con el certificado autofirmado, que confíe en él:
+   export SSL_CERT_FILE="$PWD/infra/nginx/certs/epidemia.pem"
+   python -m frontend_web.run
+   ```
+
+5. **Variables**, todas con valor por omisión: `NGINX_PUERTO_HTTP` (80), `NGINX_PUERTO_HTTPS`
+   (443), `NGINX_TIEMPO_MAXIMO` (30 s, el tiempo máximo por petición), `WEB_DESTINO`
+   (`host.docker.internal:5000`) y `URL_PUBLICA_NGINX` (`https://localhost/{servicio}`; para el
+   emulador de Android, `https://10.0.2.2/{servicio}`).
+
+6. **Probarlo:** `python infra/pruebas_integracion.py --nginx` levanta el compose de pruebas con
+   nginx y corre `test_compose_nginx.py`: prefijos, Swagger, el directorio, que ningún servicio
+   publique su puerto, una llamada con token, que el límite cuente la IP real del cliente y el
+   tiempo máximo.
+
+**Por qué los servicios confían en nginx solo en este modo.** Con `DETRAS_DE_PROXY=1`, waitress
+(`epidemia_comun/servir.py`) y Flask (`ProxyFix`) toman la IP del cliente, el protocolo, el host
+y el prefijo de las cabeceras `X-Forwarded-*` que pone nginx, y nginx las sobrescribe siempre.
+Sin eso el servicio vería la IP de nginx, y el límite por IP de D31 sería uno solo para todos.
+La variable solo se prende cuando los servicios no publican su puerto: si alguien pudiera
+llegar directo, falsearía esas cabeceras.
+
 ---
 
 ## Problemas comunes

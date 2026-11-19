@@ -545,7 +545,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### E5. Detrás de nginx (D25)
 
-- [x] Cada servicio funciona detrás de `/<servicio>`: revisar `/docs`, `/openapi.json` y el CORS. `DETRAS_DE_PROXY=1` (ProxyFix); falta probarlo con el nginx real (F2).
+- [x] Cada servicio funciona detrás de `/<servicio>`: revisar `/docs`, `/openapi.json` y el CORS. `DETRAS_DE_PROXY=1` (ProxyFix). Probado con nginx el 2026-11-19 (`test_compose_nginx.py`); hizo falta que waitress también confíe en nginx (`epidemia_comun/servir.py`), porque borraba `X-Forwarded-For`, `-Proto` y `-Host` y el límite por IP contaba la de nginx.
 - [x] `estado-servicios` responde `https://<dominio>/<servicio>` (RF-K11), con `URL_PUBLICA=https://<dominio>/{servicio}`.
 
 ### E6. Verificar
@@ -607,12 +607,12 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### F2. nginx y HTTPS (D25, D26, S6)
 
-- [ ] nginx en `infra/`, como única entrada, con una ruta por servicio y la web (RNF-H16, RNF-L11).
-- [ ] En local, certificado de mkcert.
+- [x] nginx en `infra/`, como única entrada, con una ruta por servicio y la web (RNF-H16, RNF-L11). En local: `infra/docker-compose.nginx.yml` e `infra/nginx/` (2026-11-19); ningún servicio publica su puerto. Se prueba con `python infra/pruebas_integracion.py --nginx`.
+- [ ] En local, certificado de mkcert. El script está (`infra/nginx/certificado_local.py`): usa mkcert si está instalado y, si no, genera uno autofirmado con OpenSSL. Falta que cada quien instale mkcert y corra `mkcert -install` en su máquina.
 - [ ] Conseguir el dominio: elegir el proveedor, confirmar que permite Let's Encrypt y quién lo paga (D26).
 - [ ] Apuntar el dominio a la IP fija y obtener el certificado de Let's Encrypt con certbot (RNF-D01).
-- [ ] Renovación programada del certificado, y HTTP redirige a HTTPS (RNF-D09).
-- [ ] Tiempo máximo por petición en nginx, para la prueba del *timeout* (RNF-C10).
+- [ ] Renovación programada del certificado, y HTTP redirige a HTTPS (RNF-D09). La redirección ya está (`test_http_redirige_a_https`); falta la renovación, que va con el dominio.
+- [x] Tiempo máximo por petición en nginx, para la prueba del *timeout* (RNF-C10). `NGINX_TIEMPO_MAXIMO`, 30 s (8 s en las pruebas): un servicio congelado responde 504 (`test_nginx_corta_una_peticion_colgada`).
 
 ### F3. Registros y diagramas
 
@@ -636,7 +636,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### F6. Documentos
 
-- [ ] Guía de despliegue en GCP y `INSTALACION.md` al día, con MongoDB, el emulador y nginx.
+- [ ] Guía de despliegue en GCP y `INSTALACION.md` al día, con MongoDB, el emulador y nginx. nginx en local, hecho (§6 de los microservicios en `INSTALACION.md`).
 - [x] Resultados de Locust y de las pruebas de fallos en `docs/` (`docs/pruebas/carga` y `docs/pruebas/fallos/2026-11-16`).
 
 ### F7. Completar los servicios de vigilancia, analítica y plataforma

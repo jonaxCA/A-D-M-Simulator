@@ -17,7 +17,7 @@ Cada pieza lleva su estado:
 
 | Tema | v2 | v3 | Decisión | Estado |
 |---|---|---|---|---|
-| Entrada | Sin pasarela: cada servicio publica su puerto y el directorio da `host:puerto` | nginx en 80 y 443 con TLS; los servicios dejan de publicar puertos y el directorio da `https://<dominio>/<servicio>` | D25, D26 (ajustan D13) | Falta (N7, S6; bloque F) |
+| Entrada | Sin pasarela: cada servicio publica su puerto y el directorio da `host:puerto` | nginx en 80 y 443 con TLS; los servicios dejan de publicar puertos y el directorio da `https://<dominio>/<servicio>` | D25, D26 (ajustan D13) | **Hecho en local** (2026-11-19): `infra/docker-compose.nginx.yml`, probado con `--nginx`. Falta el dominio con Let's Encrypt (N7, S6; bloque F) |
 | Web | Crea escenarios y lanza corridas | Consulta y aprueba; el diseño y las corridas son del escritorio | D4 | **Hecho** |
 | Acceso a datos de la web | Directo a PostgreSQL con `backend_web` (D20) | Consume los microservicios por HTTP con el JWT de la sesión; no toca PostgreSQL, MongoDB ni Redis | D34, D36 (reemplaza D20 y D33) | En curso (C6): la sesión y la aprobación ya pasan por los servicios; los demás módulos, en el orden de D36 |
 | Microservicios | 26, más cinco opcionales | 29: entran `dispositivos`, `evidencias` y `vacunas` para la móvil | D27 | **Hecho** |
@@ -94,11 +94,12 @@ Android y escritorio atienden procesos distintos (P1 contra P2 y P3), y el escri
 
 El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [`microservicios.md`](microservicios.md). Las convenciones de la v2 (§4.2) no cambian: rutas `/api/v1/` en inglés, XML por defecto y JSON a pedido, RFC 7807 con `codigo` estable, XSD validado con `xmlschema`, `X-Correlation-ID`, OpenAPI en `/docs` y un rol de PostgreSQL por servicio. Lo que cambia:
 
-- **Detrás de nginx (D25, falta).**
+- **Detrás de nginx (D25, hecho en local; falta el dominio).**
   - `https://<dominio>/<servicio>/api/v1/...` llega a `<servicio>:8000/api/v1/...`, así que las rutas no cambian.
   - `estado-servicios` pasa a dar `https://<dominio>/<servicio>` en `URL_PUBLICA`.
   - Cada servicio tiene que funcionar detrás del prefijo: `/docs`, `/openapi.json` y el CORS de la consola.
-  - En desarrollo los puertos de cada servicio siguen publicados, para la consola y las pruebas.
+  - En desarrollo, sin `infra/docker-compose.nginx.yml`, los puertos de cada servicio siguen publicados, para la consola y las pruebas. Con él, ningún servicio publica puerto y todos llevan `DETRAS_DE_PROXY=1`.
+  - waitress confía en las cabeceras `X-Forwarded-For`, `-Proto` y `-Host` de nginx solo en ese modo (`epidemia_comun/servir.py`, el arranque de cada Dockerfile). Sin eso las borraba, y el servicio veía la IP de nginx: el límite por IP de D31 era uno solo para todos.
 - **Límites de consumo (D31, hecho en `epidemia_comun/limites.py`).**
   - Un contador `ratelimit:<usuario|ip>:<MÉTODO:regla>` en Redis, con ventana fija, así que lo heredan los 29 servicios. Detalle en §8.
   - Responde 429 con `Retry-After` y el código `LIMITE_EXCEDIDO`. Si Redis falla en el contador no se aplica límite: la ruta protegida ya respondió 503 por la sesión.
@@ -293,7 +294,7 @@ flowchart TB
 | MongoDB no responde | El panel lo marca como dependencia caída y se pierde el historial de ese lapso. La corrida termina con su resumen en `simulation_runs` (D28) y la serie se reintenta cada 30 s | La detección en `/health` y el panel, demostrada el 2026-11-16; el reintento, en `test_compose_mongo.py` |
 | PostgreSQL no responde | `/health` en 503, el panel los marca degradados, y las escrituras fallan sin dejar datos a medias (una transacción por escritura) | Demostrado el 2026-11-16; las lecturas responden 503 `SERVICIO_NO_DISPONIBLE` (la web, 503 con página amable) |
 | El bucket no está disponible | La subida responde 503 y la app conserva el archivo para reintentar; el caso ya creado no se pierde | La detección en `/health` y el panel, demostrada el 2026-11-16; falta la subida (bloque D) |
-| Una petición excede el tiempo | `llamar()` corta a los 5 s y responde 503; propuesta: un tiempo máximo también en nginx | Demostrado el 2026-11-16 (5.0 s); falta nginx |
+| Una petición excede el tiempo | `llamar()` corta a los 5 s y responde 503; nginx corta cualquier petición a los `NGINX_TIEMPO_MAXIMO` (30 s) con 504 | Demostrado el 2026-11-16 (5.0 s); nginx, en `test_compose_nginx.py` (2026-11-19) |
 
 **Plan de pruebas de fallos.** `python infra/demo_fallos.py` (demostración para humanos, contra el compose; `--lista` muestra los escenarios) detiene o pausa el contenedor, llama a las rutas, imprime lo esperado y lo observado, restaura y verifica la recuperación. La versión automática, `test_compose_fallos.py` y `test_compose_redis.py`, corre con `python infra/pruebas_integracion.py`. `demo_fallos.py` se ejecutó el 2026-11-16 contra el compose en local, con un MongoDB y un emulador del bucket de la demostración (`infra/docker-compose.fallos.yml`, hasta que el bloque D los agregue); evidencia en [`docs/pruebas/fallos/2026-11-16`](../pruebas/fallos/2026-11-16/LEEME.md). Las versiones automáticas (`test_compose_*.py`) no se han ejecutado en esta máquina.
 
