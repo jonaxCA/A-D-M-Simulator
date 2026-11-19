@@ -29,7 +29,7 @@ data class Tokens(
     @SerialName("sesion_expira") val sesionExpira: Long,
 )
 
-// El login responde los mismos tokens y además la cuenta, de la que basta el id.
+// El login responde los mismos tokens y además la cuenta: su id y sus roles.
 @Serializable
 data class Login(
     @SerialName("access_token") val access: String,
@@ -43,7 +43,7 @@ data class Login(
 }
 
 @Serializable
-data class Cuenta(val id: Long)
+data class Cuenta(val id: Long, val roles: List<String> = emptyList())
 
 @Serializable
 data class PedidoDispositivo(

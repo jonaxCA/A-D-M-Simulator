@@ -34,7 +34,7 @@ Qué puede hacer cada rol, según [D1](../decisiones/D01-permisos-y-auditoria.md
 | Revocar teléfonos y sesiones | Servicios | ✓ | — | — | — |
 | Consultar la bitácora de auditoría | Web | ✓ | — | — | — |
 
-La app de escritorio solo deja entrar a ANALISTA y ADMINISTRADOR. La app Android todavía muestra el mismo menú a cualquier rol (RF-I19).
+La app de escritorio solo deja entrar a ANALISTA y ADMINISTRADOR. En la app Android, la captura solo la ve el CAPTURISTA (RF-I19).
 
 ## Pendiente
 
