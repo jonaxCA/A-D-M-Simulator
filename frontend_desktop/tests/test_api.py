@@ -159,3 +159,35 @@ def test_peticion_publica_no_renueva(monkeypatch):
     assert r.status_code == 200
     assert [x[0] for x in c.http.llamadas] == ["GET"]
     assert "Authorization" not in c.http.llamadas[0][3]
+
+
+def test_403_oculta_detalles_tecnicos():
+    c = cliente(problema(403, "PERMISSION_DENIED", "Traceback: detalle interno"))
+    with pytest.raises(api.ErrorServicio) as error:
+        c.pedir("corridas", "GET", "/api/v1/runs")
+    assert error.value.status == 403
+    assert str(error.value) == "No tienes permiso para esta operación."
+
+
+def test_503_oculta_detalles_tecnicos():
+    c = cliente(problema(503, "SERVICIO_NO_DISPONIBLE", "Traceback: detalle interno"))
+    with pytest.raises(api.ErrorServicio) as error:
+        c.pedir("corridas", "GET", "/api/v1/runs")
+    assert error.value.status == 503
+    assert str(error.value) == "El servicio no está disponible. Intenta más tarde."
+
+
+def test_503_con_xml_invalido_es_seguro():
+    c = cliente(Respuesta(503, b"<html>Traceback: detalle interno</html>"))
+    with pytest.raises(api.ErrorServicio) as error:
+        c.pedir("corridas", "GET", "/api/v1/runs")
+    assert str(error.value) == "El servicio no está disponible. Intenta más tarde."
+
+
+def test_sesion_revocada_oculta_detalles():
+    c = cliente(problema(401, "TOKEN_REVOCADO", "Traceback: detalle interno"))
+    with pytest.raises(api.SesionCerrada) as error:
+        c.pedir("corridas", "GET", "/api/v1/runs")
+    assert str(error.value) == "La sesión terminó. Vuelve a iniciar sesión."
+    assert c.access is None
+    assert c.refresh is None

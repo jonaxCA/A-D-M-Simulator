@@ -56,11 +56,13 @@ def _problema(servicio, respuesta):
         esquemas.validar_con(esquemas.PROBLEMA, respuesta.content)
         datos = xmlio.leer(respuesta.content)
     except Exception:
+        if respuesta.status_code in MENSAJES:
+            return ErrorServicio(MENSAJES[respuesta.status_code], respuesta.status_code)
         return ErrorServicio("Respuesta inválida de %s (HTTP %s)." % (servicio, respuesta.status_code),
                              respuesta.status_code)
     detalle = datos.get("detail") or MENSAJES.get(respuesta.status_code) or datos.get("title")
-    if respuesta.status_code == 403:
-        detalle = MENSAJES[403]
+    if respuesta.status_code in MENSAJES:
+        detalle = MENSAJES[respuesta.status_code]
     return ErrorServicio(detalle, respuesta.status_code, datos.get("codigo"), datos.get("errores") or [])
 
 
@@ -121,13 +123,13 @@ class Cliente:
                 r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico)
             elif error.codigo in FIN_DE_SESION:
                 self.olvidar()
-                raise SesionCerrada(error.args[0], 401, error.codigo)
+                raise SesionCerrada("La sesión terminó. Vuelve a iniciar sesión.", 401, error.codigo)
         if r.status_code >= 400:
             error = _problema(servicio, r)
             bitacora.error("%s %s %s -> %s %s" % (servicio, metodo, ruta, r.status_code, error.codigo))
             if r.status_code == 401 and not publico:
                 self.olvidar()
-                raise SesionCerrada(error.args[0], 401, error.codigo)
+                raise SesionCerrada("La sesión terminó. Vuelve a iniciar sesión.", 401, error.codigo)
             raise error
         return r
 
