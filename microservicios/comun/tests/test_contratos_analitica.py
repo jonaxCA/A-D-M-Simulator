@@ -13,6 +13,11 @@ RAIZ = Path(__file__).resolve().parents[3]
 
 # (servicio del catálogo, paquete de Python, puerto, rutas públicas)
 SERVICIOS = [
+    # Identidad: sus ejemplos por ruta, pendientes del segundo parcial (E6).
+    ("auth", "auth", 5201, True),
+    ("sesiones", "sesiones", 5202, None),
+    ("usuarios", "usuarios", 5203, False),
+    ("roles", "roles", 5204, False),
     ("tipos-intervencion", "tipos_intervencion", 5215, True),
     # Pública salvo la exportación, que pide sesión para auditar quién exporta (D36).
     ("indicadores", "indicadores", 5251, None),

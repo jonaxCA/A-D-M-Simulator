@@ -1,0 +1,9 @@
+{
+  "usuario": 7,
+  "roles": [
+    "ANALISTA"
+  ],
+  "creada": 1791867008,
+  "expira": 1791895808,
+  "access_expira": 1791868208
+}
