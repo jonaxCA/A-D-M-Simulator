@@ -43,7 +43,7 @@ def texto_escala(escala):
         avisos = [avisos]
     lineas.extend("Aviso: %s" % aviso for aviso in avisos)
 
-    return "\\n".join(lineas)
+    return "\n".join(lineas)
 
 
 def _cargar(c, motor):

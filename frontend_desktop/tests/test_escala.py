@@ -37,3 +37,20 @@ def test_servicio_consulta_resultados_xml():
     )
     assert datos["escala"]["factor"] == 5
     assert datos["run_id"] == 42
+
+
+def test_escala_muestra_lineas_separadas():
+    texto = texto_escala({
+        "agentes": 10,
+        "habitantes": 50,
+        "factor": 5,
+        "fuente": "Censo",
+        "avisos": ["Valor de demostracion"],
+    })
+    assert texto.splitlines() == [
+        "Agentes simulados: 10",
+        "Habitantes representados: 50",
+        "1 agente representa aproximadamente 5.00 habitantes.",
+        "Fuente: Censo",
+        "Aviso: Valor de demostracion",
+    ]
