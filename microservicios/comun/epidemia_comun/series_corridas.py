@@ -39,11 +39,15 @@ def leer(run_id):
     return list(cursor.sort("dia", 1))
 
 
-def banda(scenario_version_id, motor, campo="casos_activos"):
-    """p5, mediana y p95 de `campo` por día, entre las corridas de una versión y un motor."""
+def banda(scenario_version_id, motor, campo="casos_activos", run_ids=None):
+    """p5, mediana y p95 de `campo` por día, entre las corridas de una versión y un motor.
+    `run_ids`: solo esas corridas, las completadas según PostgreSQL (D38)."""
+    filtro = {"scenario_version_id": scenario_version_id, "motor": motor,
+              "version_esquema": {"$in": CONOCIDAS}}
+    if run_ids is not None:
+        filtro["run_id"] = {"$in": list(run_ids)}
     tuberia = [
-        {"$match": {"scenario_version_id": scenario_version_id, "motor": motor,
-                    "version_esquema": {"$in": CONOCIDAS}}},
+        {"$match": filtro},
         {"$group": {"_id": "$dia", "corridas": {"$sum": 1},
                     "p": {"$percentile": {"input": "$" + campo, "p": [0.05, 0.5, 0.95],
                                           "method": "approximate"}}}},
