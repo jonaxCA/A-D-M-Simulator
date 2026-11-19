@@ -553,7 +553,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [x] Cada línea de registro trae la fecha, el servicio, el nivel y el identificador de correlación (RNF-J06). Formato en `epidemia_comun/registro.py`.
 - [x] Los contratos de `docs/contratos/` y la colección de Postman coinciden con las rutas nuevas (pruebas de contratos).
 - [x] `python -m pytest microservicios` y `python infra/pruebas_integracion.py` pasan (sin `--gpu`: 133 pasan, 1 se salta).
-- [ ] Pruebas de interoperabilidad: datos válidos e inválidos, respuestas de error, permisos, versiones y XML contra XSD [Retro: interoperabilidad].
+- [x] Pruebas de interoperabilidad: datos válidos e inválidos, respuestas de error, permisos, versiones y XML contra XSD [Retro: interoperabilidad]. `microservicios/comun/tests/test_interoperabilidad.py` recorre las rutas de todos los contratos: 401 en XML (contra `problem.xsd`) y en JSON, `/api/v2` 404, formato desconocido 400 y cuerpos inválidos sin 500 ni traza (332 casos). Encontró que un `?format` desconocido no se rechazaba antes de trabajar; se corrigió en `fabrica.py`. Datos válidos e inválidos por ruta y XML contra XSD: las pruebas de cada servicio y `test_xsd.py`.
 - [x] Revisar y corregir los ejemplos de contratos que quedaron pendientes en el segundo parcial [Retro: interoperabilidad]. Los cuatro servicios de identidad ya tienen `ejemplos/` (un JSON y un XML por ruta, iguales al contrato) y entran en `test_contratos_analitica.py`; el XML del captcha de `auth` no correspondía a su JSON y se corrigió. Revisión de todos los contratos: cada XML de ejemplo es el que `a_xml` genera de su JSON.
 
 ### E7. Completar los servicios de identidad y simulación

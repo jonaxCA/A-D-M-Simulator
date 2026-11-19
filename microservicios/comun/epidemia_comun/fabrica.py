@@ -33,6 +33,10 @@ def crear_app(nombre, contrato, registrar_rutas=None, dependencias=()):
     def inicio_peticion():
         g.inicio = monotonic()
         g.correlation_id = request.headers.get("X-Correlation-ID") or str(uuid4())
+        # Regla 4 de los contratos: un ?format desconocido es 400 antes de hacer nada, no al
+        # responder (E6).
+        if request.path.startswith("/api/") and request.args.get("format") not in (None, "json", "xml"):
+            raise ErrorAPI(400, "DATOS_INVALIDOS", "El formato debe ser json o xml.")
 
     @app.after_request
     def registro(respuesta):
