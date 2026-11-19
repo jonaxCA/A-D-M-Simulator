@@ -246,7 +246,14 @@ class VistaComparacion(QWidget):
             supuestos += " Costos sin fuente o marcados como supuesto: %s." % ", ".join(sin_fuente)
         for aviso in datos["avisos"]:
             supuestos += " " + aviso
-        self.aviso.setText("%s\n\nSupuestos: %s" % (datos["aviso"], supuestos))
+        bandas = resumen.avisos_bandas(datos["escenarios"])
+        advertencia = ""
+        if bandas:
+            metrica = dict(resumen.METRICAS).get(datos["metrica"], datos["metrica"])
+            advertencia = ("\n\nAdvertencia p5–p95 (%s):\n%s\n"
+                           "La superposición de intervalos no demuestra que los resultados sean equivalentes."
+                           % (metrica, "\n".join("• " + mensaje for mensaje in bandas)))
+        self.aviso.setText("%s%s\n\nSupuestos: %s" % (datos["aviso"], advertencia, supuestos))
         self._lectura()
         self._pintar()
 

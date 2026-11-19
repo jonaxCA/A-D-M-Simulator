@@ -97,6 +97,14 @@ def test_la_ventana_carga_con_respuestas_de_ejemplo(tmp_path):
     assert comparacion.tabla.rowCount() == 2
     assert "No es una predicción." in comparacion.aviso.text()
     assert "2 de 2 escenarios están en la frontera" in comparacion.lectura.text()
+
+    assert "se enciman" not in comparacion.aviso.text()
+    datos_solapados = datos_comparacion()
+    datos_solapados["escenarios"][1]["impacto"] = {
+        "p5": 105, "mediana": 110, "p95": 115
+    }
+    comparacion._mostrar(datos_solapados)
+    assert "se enciman" in comparacion.aviso.text()
     imagenes = comparacion._imagenes()
     pdf = tmp_path / "reporte.pdf"
     exportar.guardar_pdf(pdf, comparacion._html(imagenes), imagenes)

@@ -54,6 +54,26 @@ def marcar_frontera(escenarios):
     return escenarios
 
 
+
+def avisos_bandas(escenarios):
+    """Detecta superposición de bandas p5-p95 del impacto."""
+    avisos = []
+    for i, primero in enumerate(escenarios):
+        a = primero.get("impacto") or {}
+        if a.get("p5") is None or a.get("p95") is None:
+            continue
+        for segundo in escenarios[i + 1:]:
+            b = segundo.get("impacto") or {}
+            if b.get("p5") is None or b.get("p95") is None:
+                continue
+            if max(a["p5"], b["p5"]) <= min(a["p95"], b["p95"]):
+                avisos.append(
+                    "Las bandas p5–p95 de %s y %s se enciman."
+                    % (primero["nombre"], segundo["nombre"])
+                )
+    return avisos
+
+
 def armar(elegidas, comparadas, datos_pareto, metrica, aviso):
     por_id = {x["id"]: x for x in comparadas}
     costos = {f["id"]: f.get("costo") for f in datos_pareto.get("filas") or []}
