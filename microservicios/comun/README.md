@@ -10,6 +10,9 @@ plantilla (bloque A), y **Redis** (bloque K).
 - `responder(datos, raiz)` y `leer_cuerpo()`: XML por defecto, JSON con `?format=json`, lectura segura de XML.
 - `ErrorAPI` y `respuesta_error`: errores estándar JSON/XML sin revelar trazas.
 - `requiere_token(roles=...)` y `solo_servicios`: verifican JWT HS256, audiencia, vencimiento, sesión en Redis y rol.
+  Cuando el rol no alcanza, `requiere_token` responde 403 y anota `PERMISSION_DENIED` en la bitácora
+  (servicio, ruta, método y roles pedidos; RF-A05, D36). Si la base no responde, el 403 sale igual.
+  En las pruebas, el fixture `negados` de `microservicios/conftest.py` recoge esos eventos.
 - `token_servicio(app.config, "simulador")`: firma un token de servicio (audiencia interna, 60 s) para
   llamar con `llamar(..., token=...)` a una ruta con `@solo_servicios` cuando no hay persona detrás.
 - `crear_app(nombre, contrato, registrar_rutas, dependencias=())`: Flask con `/health`, `/docs` y

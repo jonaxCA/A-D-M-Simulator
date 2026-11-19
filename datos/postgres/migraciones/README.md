@@ -37,6 +37,7 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `036_tope_de_replicas_100.sql` | El tope de réplicas por lote baja de 200 a 100 (D8): CHECK de `simulation_batches.replicas` y `max_replicas_por_lote` de `system_settings` |
 | `037_avisos_de_casos_y_revision.sql` | Tipos de aviso `NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED` en el CHECK, y lectura de `users`, `user_roles` y `roles` para `svc_notificaciones`. La 036 queda reservada |
 | `040_personas_dia_por_dosis.sql` | `intervention_types` gana el factor de personas-día por dosis de la frontera de Pareto (D3): valor, fuente y marca de supuesto, sin valor por omisión. `svc_intervenciones` puede actualizarlo |
+| `046_bitacora_de_servicios.sql` | Los diez roles `svc_*` que no escribían en `audit_log` reciben INSERT, para anotar el `PERMISSION_DENIED` de sus 403 (D36), y `svc_roles` lee `audit_log` para la consulta de la bitácora (D37) |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.
@@ -55,7 +56,8 @@ problema: ya falta la 018.
 | 040 | E | Lugar del factor de día-persona por dosis, con fuente o marca de supuesto (D3) |
 | 041 | D | Retira `simulation_results`, cuando la web ya no la lea (D28) |
 | 042–044 | D | Reserva |
-| 045–046 | E | Reserva |
+| 045 | E | `simulation_runs.attempts`: intentos de una corrida interrumpida que se reencola (D38) |
+| 046 | E | INSERT en `audit_log` para los roles que no lo tenían y lectura para `svc_roles` (D36, D37) |
 | 047 | C | Reserva |
 | 048–049 | 0 | Reserva del líder (por ejemplo, `cost_unit` en pesos, D3) |
 | 050 en adelante | — | Se piden al líder |
