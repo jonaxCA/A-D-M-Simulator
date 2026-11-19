@@ -230,6 +230,12 @@ Tasa de ataque media de 5 semillas, con 100 000 agentes, 180 días y sin interve
 
 - **Sin calibración (D24):** no hay serie histórica ni fuente para ajustar los parámetros. Los que no tienen fuente van marcados como supuesto, y los resultados se leen como escenarios.
 - **Duraciones geométricas** en pasos de un día: de cada distribución solo se usa la media.
+- **El R0 que corre no es el nominal (§13):**
+  - Quien entra a I se queda en promedio 1 / (1 − e^(−1/D)) días, no D. Con D = 5 son 5.52 días.
+  - Con β = R0 / D, cada caso contagia en promedio β · 5.52, unos 10 % más que el R0 capturado (`r0_efectivo` en `procesamiento/mediciones.py`).
+  - Afecta a los tres motores, porque comparten las probabilidades diarias.
+  - Corregirlo (por ejemplo, con β = R0 · p_sale_I) cambia los resultados, así que pide subir `engine_version`. Es una decisión del equipo, pendiente.
+  - Mientras tanto, el R0 de un escenario se lee como «R0 nominal», y la ficha da el efectivo.
 - **Mezcla homogénea:** en `seir-ref` entre toda la población; en `abm-ref`, dentro de cada grupo de contacto y en la comunidad.
 - **Estructura supuesta en `abm-ref`:** los tamaños de hogar, salón y trabajo y los pesos de las capas son supuestos, y los hogares se arman al azar, sin la composición por edad real. Quién estudia o trabaja sale del grupo de edad.
 - **Testeo y aislamiento** como un factor sobre todos los infecciosos; no se aísla a personas concretas.
@@ -271,3 +277,45 @@ Medido con `python -m procesamiento.mediciones tiempos`: el escenario del contra
 - Nuevo León completo en `abm-gpu`, medido: 7.7 s por corrida y unos 1 324 MiB de memoria de la GPU (230 MiB con un millón). 30 réplicas son unos 4 minutos, contra unos 45 de `abm-ref`.
 - La primera corrida de cada tamaño suma la compilación (de 9 a 17 s); las tablas la dejan fuera con la mediana. El renglón de 100 000 agentes de `abm-gpu` se volvió a medir, porque en la primera pasada dos de las tres corridas compilaron.
 - El máximo del validador, 20 millones de agentes, necesitaría por extrapolación unos 4.6 GB de la GPU: cabe en la de 6 GB, pero justo.
+
+## 13. Validación contra resultados esperados
+
+[Retro: «validación frente a resultados esperados»]. Lo que el modelo debe dar por matemáticas, sin datos observados:
+- el tamaño final de un brote SEIR;
+- que la letalidad y la tasa de hospitalización acumuladas sean las que entran;
+- los casos límite.
+
+Se repite con `python -m procesamiento.mediciones esperados`, y lo esencial lo revisa `procesamiento/tests/test_validacion_cientifica.py`. `abm-ref` contra `seir-ref` está en la §10: con un solo grupo por capa dan la misma tasa de ataque.
+
+**Tamaño final.**
+- En un SEIR con mezcla homogénea y sin intervenciones, la fracción que se contagia es la z de z = 1 − e^(−R0·z) (Kermack y McKendrick, 1927).
+- El periodo latente no la cambia, y los hospitalizados y fallecidos ya salieron de I.
+- `seir-ref` la reproduce con una diferencia de 0.001 o menos, **con el R0 efectivo** (§11).
+- Con el nominal se queda corto: por ejemplo, 0.642 contra 0.720.
+
+<!-- python -m procesamiento.mediciones esperados · Python 3.14.4, NumPy 2.5.5, WSL 2 (Linux) -->
+| R0 nominal | R0 efectivo | z con R0 nominal | z con R0 efectivo | seir-ref | Diferencia con el efectivo |
+|---|---|---|---|---|---|
+| 0.8 | 0.883 | 0.000 | 0.000 | 0.003 | +0.003 |
+| 1.3 | 1.434 | 0.423 | 0.537 | 0.537 | +0.000 |
+| 1.6 | 1.765 | 0.642 | 0.719 | 0.720 | +0.001 |
+| 2.5 | 2.758 | 0.893 | 0.921 | 0.922 | +0.000 |
+
+Tasa de ataque media de 5 semillas, con 1 000 000 de agentes, 365 días, sin intervenciones y el resto de los parámetros del escenario del contrato (D = 5 días).
+
+**Letalidad y hospitalización acumuladas.**
+- Con R0 2.5 y 365 días, casi todos los contagiados terminan su curso.
+- Los fallecimientos deben ser Σ casos_g · IFR_g, y las hospitalizaciones, Σ casos_g · IHR_g.
+- Resultado: de 0.94 a 1.07 en fallecimientos (unos 380 esperados, cuyo ruido de Poisson es de ±5 %) y de 0.99 a 1.03 en hospitalizaciones, en 5 semillas.
+- El modelo entrega la IFR y la IHR que recibe.
+
+**Casos límite.**
+
+| Caso | Esperado | seir-ref (5 semillas) |
+|---|---|---|
+| Letalidad 0 | 0 fallecimientos | 0 |
+| Letalidad y hospitalización 0 | 0 hospitalizaciones | 0 |
+| R0 0.8 (bajo el umbral) | Sin brote: el total de una ramificación subcrítica, I0/N / (1 − R0 efectivo) = 0.0034 | 0.0034 |
+| R0 menor que 1, más R0 más ataque, población conservada cada día, dosis que no pasan la cobertura | Lo que dice cada prueba | `test_motor.py` (§9) |
+
+**Qué demuestra y qué no.** Esto muestra que el modelo es *matemáticamente consistente*: está verificado. No muestra que reproduzca un brote real, porque eso exige compararlo con datos observados, y no los hay (§11). Por eso sus corridas se presentan como exploratorias (§17 y D39).

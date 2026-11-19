@@ -223,7 +223,7 @@ Cada una reemplaza o amplía una decisión vigente (ver [«Lo que la retroalimen
 
 - [ ] Ficha de cada modelo (`seir-ref`, `abm-ref` y `abm-gpu`): formulación matemática, población representada, variables, supuestos, fuentes de parámetros, límites de aplicación, versión del algoritmo, escenarios de prueba y resultados de validación. Se amplía [`ficha_simulador.md`](../../arquitectura/ficha_simulador.md).
 - [ ] Investigar una fuente de datos observados para validar y calibrar: qué serie, de qué periodo y con qué licencia. Con D (D6).
-- [ ] Validación contra resultados esperados: soluciones conocidas (por ejemplo, el tamaño final de un brote SEIR), casos límite y `abm-ref` contra `seir-ref` (ya medido en la ficha).
+- [x] Validación contra resultados esperados: soluciones conocidas (por ejemplo, el tamaño final de un brote SEIR), casos límite y `abm-ref` contra `seir-ref` (ya medido en la ficha). §13 de la ficha, `python -m procesamiento.mediciones esperados` y `test_validacion_cientifica.py`. Encontró que el R0 efectivo es ~10 % mayor que el nominal (§11): corregirlo queda como decisión del equipo.
 - [ ] Validación contra los datos observados.
 - [ ] Análisis de sensibilidad: variar cada parámetro y comprobar que el modelo responde como se espera (RF-F12, reabierto). El escritorio lo muestra (A4).
 - [ ] Calibración: el algoritmo en `procesamiento/`, con su función de pérdida, sus métricas de ajuste y sus versiones. El escritorio la muestra (A4) y un servicio la expone (E7).
