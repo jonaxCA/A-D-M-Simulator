@@ -3670,8 +3670,9 @@ def marcar_run_ejecutando(run_id):
     """
     return len(_transiciona_run(
         """
-        UPDATE simulation_runs SET status = 'ejecutando', started_at = now()
-        WHERE id = %s AND status = 'encolado'
+        UPDATE simulation_runs SET status = 'ejecutando', started_at = now(),
+               attempts = attempts + 1
+        WHERE id = %s AND status = 'encolado' AND attempts < 3
         RETURNING id
         """,
         (run_id,),
@@ -3790,6 +3791,30 @@ def cancelar_run(run_id, *, contexto):
             conn.rollback()
             raise
     return True
+
+
+def reencola_corridas_interrumpidas(engine, engine_version, max_intentos=3):
+    """ejecutando -> encolado para las corridas de ese motor que un trabajador dejó a medias
+    (D38), si les quedan intentos y su versión de motor es la que corre ahora (NULL: el
+    lote no la anotó). Devuelve las filas (id, requested_by, seed, attempts)."""
+    with get_conn() as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """UPDATE simulation_runs SET status = 'encolado', started_at = NULL
+                       WHERE status = 'ejecutando' AND attempts < %s
+                         AND (engine_version IS NULL OR engine_version = %s)
+                         AND batch_id IN (SELECT id FROM simulation_batches WHERE engine = %s)
+                       RETURNING id, requested_by, seed, attempts""",
+                    (max_intentos, engine_version, engine))
+                filas = [dict(zip(("id", "requested_by", "seed", "attempts"), f))
+                         for f in cur.fetchall()]
+                _sincroniza_lote(cur, [f["id"] for f in filas])
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return filas
 
 
 def marca_corridas_interrumpidas(mensaje, run_ids=None, estados=("encolado", "ejecutando"),

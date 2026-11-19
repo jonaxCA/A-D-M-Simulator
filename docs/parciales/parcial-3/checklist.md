@@ -573,7 +573,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 **Simulación**
 
 - [ ] `corridas`: prioridades, tiempo estimado y reintentos seguros (RF-E07, RF-E08 y RF-E14, reabiertos).
-- [ ] Una corrida interrumpida se recupera sin duplicar resultados, en lugar de cerrarse como fallida (RNF-C03; decisión del bloque 0).
+- [x] Una corrida interrumpida se recupera sin duplicar resultados, en lugar de cerrarse como fallida (RNF-C03; decisión del bloque 0). D38: el simulador la reencola con la misma semilla, hasta 3 intentos (migración 045, `attempts`); sin intentos o con otra versión de motor se cierra como `fallido`.
 - [ ] `resultados`: intervalos de incertidumbre de las réplicas, con la banda p5–p95 de `series_corridas` (D8, reabierto).
 - [ ] `comparacion`: diferencias absolutas y relativas, incertidumbre y análisis contrafactual exploratorio.
 - [ ] `pareto`: explica por qué cada alternativa queda dominada o no.

@@ -69,18 +69,25 @@ def reencolar():
 
 
 def recuperar():
-    # Las ejecutando se cierran como fallidas; las encoladas se vuelven a meter a la cola
-    # (D19). Solo las de su motor: las de otro las atiende el simulador de ese motor.
-    cerradas = simulaciones.recupera_corridas_interrumpidas(estados=("ejecutando",),
-                                                           engine=MOTOR)
+    # D38: las 'ejecutando' que dejó un trabajador muerto vuelven a 'encolado' y se repiten con
+    # la misma semilla (su serie se reescribe por {run_id, dia}); sin intentos o con otra
+    # versión de motor se cierran como fallidas y su serie se borra. Luego las encoladas se
+    # meten a la cola (D19). Solo las de su motor: las de otro las atiende su simulador.
+    reencoladas, cerradas = simulaciones.reencola_corridas_interrumpidas(
+        MOTOR, del_nombre(MOTOR).version)
+    if reencoladas:
+        log.warning("Se reencolaron %d corridas que quedaron a medias.", len(reencoladas))
+    for run_id in cerradas:
+        descartar_serie(run_id)
     if cerradas:
-        log.warning("Se cerraron como fallidas %d corridas que quedaron a medias.", cerradas)
+        log.warning("Se cerraron como fallidas %d corridas sin intentos o de otra versión.",
+                    len(cerradas))
     try:
         reencolar()
     except RedisNoDisponible:
         pendiente.append(True)
         log.warning("Redis no responde: se reintentará reencolar dentro del ciclo.")
-    return cerradas
+    return reencoladas, cerradas
 
 
 def guardar_serie(run, motor, resultado):

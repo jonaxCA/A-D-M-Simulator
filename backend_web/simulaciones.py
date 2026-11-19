@@ -421,6 +421,38 @@ def recupera_corridas_interrumpidas(estados=("encolado", "ejecutando"), engine=N
     return len(filas)
 
 
+def reencola_corridas_interrumpidas(engine, engine_version, max_intentos=3):
+    """D38: las corridas 'ejecutando' de ese motor que un trabajador dejó a medias vuelven a
+    'encolado' si les quedan intentos y su versión de motor es la de ahora; se repiten con la
+    misma semilla, así que su serie se reescribe igual. Las demás se cierran como 'fallido'.
+
+    Devuelve (ids reencolados, ids cerrados)."""
+    reencoladas = queries.reencola_corridas_interrumpidas(engine, engine_version, max_intentos)
+    for fila in reencoladas:
+        try:
+            log_audit(Contexto.sin_peticion(fila["requested_by"]), "RUN", "simulation_run",
+                      entity_id=str(fila["id"]),
+                      data_after={"estado": "encolado", "seed": fila["seed"],
+                                  "intento": fila["attempts"],
+                                  "motivo": "reinicio del trabajador (D38)"})
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "La corrida %s se reencoló pero no se pudo auditar", fila["id"])
+    cerradas = queries.marca_corridas_interrumpidas(MENSAJE_INTERRUMPIDA, estados=("ejecutando",),
+                                                    engine=engine)
+    for fila in cerradas:
+        try:
+            log_audit(Contexto.sin_peticion(fila["requested_by"]), "RUN", "simulation_run",
+                      entity_id=str(fila["id"]),
+                      data_after={"estado": "fallido", "seed": fila["seed"],
+                                  "error": MENSAJE_INTERRUMPIDA[:500],
+                                  "motivo": "sin intentos o con otra versión de motor (D38)"})
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "La corrida %s se cerró como interrumpida pero no se pudo auditar", fila["id"])
+    return [f["id"] for f in reencoladas], [f["id"] for f in cerradas]
+
+
 def corridas_encoladas(engine):
     filas = queries.query("SELECT r.id FROM simulation_runs r"
                        " JOIN simulation_batches b ON b.id = r.batch_id"
