@@ -23,12 +23,12 @@ Cada pieza lleva su estado:
 | Motor | SEIR por edad; FLAME GPU después | Tres motores con el mismo contrato: `seir-ref`, `abm-ref` y `abm-gpu`, cada uno con su simulador y su cola | D2, D22, D23 | **Hecho** |
 | Población de un escenario | Habitantes | Agentes; el factor de escala se calcula fuera del motor | D6 | **Hecho** |
 | Réplicas | — | 30 por omisión, semillas 1..N; el escritorio resume | D8 | **Hecho**, menos el aviso de bandas encimadas (integrante 6) |
-| MongoDB | Fuera de la etapa | `historial_servicios` y `series_corridas` | D28 | Falta (D-1; integrante 2) |
+| MongoDB | Fuera de la etapa | `historial_servicios` y `series_corridas` | D28 | **Hecho** (D-1); ver §6 |
 | Archivos | Volumen de Docker de `evidencias` | Cloud Storage con URLs firmadas | D30 | Falta (D-3; integrante 3) |
 | Límites de consumo | Fuera de la etapa | Un contador por usuario y regla en Redis, en `epidemia_comun` | D31 | Hecho en la biblioteca (S2); ver §8 |
 | Salud y panel | `/health` con PostgreSQL y Redis; historial en Redis | Más MongoDB, bucket y tiempo de respuesta; historial en MongoDB y número de errores | D28 | Falta, en parte (N3, N4; integrante 7) |
 | Despliegue | Pendiente | Compute Engine: una VM principal y una con GPU que se enciende solo cuando hace falta | D23, D25, D26 | Falta (N1, N2, N6; integrante 7) |
-| Volumen de datos | — | Unas 10 000 corridas de 180 días, alrededor de 1.8 millones de documentos | D29 | Falta (D-6) |
+| Volumen de datos | — | 10 000 corridas de 180 días, 1.81 millones de documentos | D29 | **Hecho** (D-6), medido el 2026-11-18; ver §9. La cifra sigue por confirmar con el profesor |
 | Pruebas de carga | Pendiente | Locust por perfil de uso | — | Falta (A4, A5) |
 | Redis en el login de la web | No | La web también registra y revisa su sesión en Redis | Por decidir | Falta (I3); ver §5 |
 
@@ -111,7 +111,7 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
 |---|---|---|
 | PostgreSQL | La fuente de verdad: usuarios y roles, catálogos, casos, escenarios y versiones, corridas y sus resúmenes, avisos, auditoría y los metadatos de cada archivo. Esquema: migraciones `datos/postgres/migraciones/` hasta la 035; la 034 está reservada para D1 y la siguiente libre es la 036 | **Hecho** |
 | Redis | Lo temporal y reconstruible (v2 §5.2): sesiones, revocaciones, captcha, caché, candados, resultado de lotes, avance de corridas y una cola por motor. Nuevo: `ratelimit:<usuario>:<ruta>` (D31) | **Hecho**, menos los límites |
-| MongoDB | El historial de salud de los servicios y las series diarias de las corridas (D28) | Falta (integrante 2) |
+| MongoDB | El historial de salud de los servicios y las series diarias de las corridas (D28). Cliente e índices en `epidemia_comun/mongo.py` | **Hecho** |
 | Cloud Storage | Fotos y evidencias, reportes exportados y, opcional, el XML de intercambio (D30) | Falta (integrante 3) |
 
 **Diseño de MongoDB (D-1, D28).**
@@ -122,8 +122,8 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
 | `series_corridas` | Un día de una corrida | `run_id`, `batch_id`, `scenario_version_id`, `motor`, `engine_version`, `semilla`, `dia`, los compartimentos totales del día (sin desglose por grupo, D28), `version_esquema` | `{run_id, dia}` único; `{scenario_version_id, motor, dia}` | Lo que viva la corrida |
 
 - **Versionamiento:** cada documento lleva `version_esquema`. Un cambio de forma sube el número, y quien lee acepta las versiones que conoce.
-- **Crecimiento:** con D29 son unas 10 000 corridas de 180 días, alrededor de 1.8 millones de documentos en `series_corridas`. El tamaño en disco se mide al cargarlos (§9). El historial no crece sin fin, por el TTL.
-- **Qué se demuestra:** inserción, consulta, actualización, agregación (disponibilidad y latencia por servicio; curvas por lote), índices y recuperación por `run_id`.
+- **Crecimiento:** cada corrida suma `dias + 1` documentos a `series_corridas`, que no tiene TTL: con D29, 10 000 corridas de 180 días son 1.81 millones de documentos (tamaño en disco medido en §9). El historial no crece sin fin: 29 servicios cada 10 s son unos 250 000 documentos al día, y el TTL lo deja en unos 7.5 millones.
+- **Qué se demuestra:** inserción, consulta, actualización, agregación (disponibilidad y latencia por servicio; la banda p5–p95 por día de una versión y un motor), índices y recuperación por `run_id`, en `microservicios/comun/tests/test_mongo_real.py` contra un MongoDB real.
 - **Lotes crudos de `sincronizacion`:** son una tercera colección solo si sobra tiempo (§10).
 
 **Archivos en Cloud Storage (D-3, D30).**
@@ -255,7 +255,7 @@ flowchart TB
 |---|---|---|
 | Un microservicio se detiene | El panel lo marca caído; quien lo llama responde 503 `SERVICIO_NO_DISPONIBLE`; los demás siguen | Hecho; demostrado el 2026-11-16 |
 | Redis no responde | Las rutas protegidas responden 503 (fallan cerradas); las públicas y la caché de analítica siguen contra PostgreSQL; `corridas` no deja una corrida colgada; la web sigue (I2) | **Hecho** (`test_redis_caido.py`) |
-| MongoDB no responde | El panel lo marca como dependencia caída y se pierde el historial de ese lapso. La corrida termina con su resumen en `simulation_runs` (D28). Propuesta: la serie se reintenta (integrante 2) | La detección en `/health` y el panel, demostrada el 2026-11-16; falta el reintento (bloque D) |
+| MongoDB no responde | El panel lo marca como dependencia caída y se pierde el historial de ese lapso. La corrida termina con su resumen en `simulation_runs` (D28) y la serie se reintenta cada 30 s | La detección en `/health` y el panel, demostrada el 2026-11-16; el reintento, en `test_compose_mongo.py` |
 | PostgreSQL no responde | `/health` en 503, el panel los marca degradados, y las escrituras fallan sin dejar datos a medias (una transacción por escritura) | Demostrado el 2026-11-16; las lecturas responden 503 `SERVICIO_NO_DISPONIBLE` (la web, 503 con página amable) |
 | El bucket no está disponible | La subida responde 503 y la app conserva el archivo para reintentar; el caso ya creado no se pierde | La detección en `/health` y el panel, demostrada el 2026-11-16; falta la subida (bloque D) |
 | Una petición excede el tiempo | `llamar()` corta a los 5 s y responde 503; propuesta: un tiempo máximo también en nginx | Demostrado el 2026-11-16 (5.0 s); falta nginx |
@@ -275,15 +275,16 @@ flowchart TB
 | Sin permisos | Llamar con un rol no permitido | 403 y registro en auditoría | Pruebas de cada servicio; en la web, probar un rol que entra y otro que no | Automatizado en servicios; web, manual |
 | Reinicio del trabajador | Reiniciar `simulador` con corridas `encolado` | Se reencolan y terminan; las `ejecutando` quedan `fallido` | Pruebas de `microservicios/simulador` | Automatizado (sin contenedor) |
 
-**Volumen de datos (D-6, D29).** Unas 10 000 corridas de 180 días con el SEIR, alrededor de 1.8 millones de documentos en `series_corridas`; con el ABM, sus corridas entran a la misma colección. Del lado de PostgreSQL, `gen_demo_data.py` genera cientos de miles de casos. Se mide:
+**Volumen de datos (D-6, D29).** 10 000 corridas de 180 días con el SEIR, 1.81 millones de documentos en `series_corridas`; con el ABM, sus corridas entran a la misma colección. Del lado de PostgreSQL, `gen_demo_data.py` genera cientos de miles de casos. Medido el 2026-11-18 con `datos/scripts/volumen_mongo.py` (detalle y cómo repetirlo en [`docs/pruebas/volumen/2026-11-18`](../pruebas/volumen/2026-11-18/LEEME.md)):
 
-- tiempo de inserción;
-- consultas con y sin índice;
-- consultas con y sin la caché de Redis;
-- uso de CPU, memoria y disco;
-- cómo escala con el número de corridas.
+| Medición | Con | Sin |
+|---|---|---|
+| Serie de una corrida, índice `{run_id, dia}` | 5.0 ms | 849 ms |
+| Banda p5–p95 de una versión, índice `{scenario_version_id, motor, dia}` | 38 ms | 995 ms |
+| Serie de una corrida, caché de Redis | 1.1 ms | 4.8 ms |
+| Inserción en bloque, con los dos índices | 62 mil documentos/s | 98 mil documentos/s |
 
-La cifra se confirma con el profesor.
+En disco ocupan 114 MB comprimidos más 49 MB de índices, unos 17 KB por corrida; MongoDB se quedó en 339 MiB de memoria. Con índice, la consulta de una corrida no crece con el número de corridas; sin él, crece en línea recta. La cifra se confirma con el profesor.
 
 **Pruebas de carga (A4, A5).** Locust con un perfil por uso real:
 
