@@ -76,8 +76,9 @@ class PuenteServicios:
                              "roles": payload.get("roles") or []}, sid=sid, jti=jti)
 
     def __call__(self, servicio, metodo, ruta, token=None, params=None, cuerpo=None, correlacion=None):
-        from backend_web.servicios import ErrorServicio, ServicioNoDisponible, cabeceras_de_la_persona
-        cabeceras = dict(cabeceras_de_la_persona(), Accept="application/json")
+        from backend_web import servicios
+        from backend_web.servicios import ErrorServicio, ServicioNoDisponible
+        cabeceras = dict(servicios.cabeceras_de_la_persona(), Accept="application/json")
         if token:
             cabeceras["Authorization"] = "Bearer " + self._con_sesion(token)
         consulta = {k: v for k, v in dict(params or {}, format="json").items() if v is not None}

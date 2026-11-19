@@ -1,8 +1,8 @@
 import os
 
-from flask import Flask
+from flask import Flask, has_request_context, request
 
-from backend_web import simulaciones
+from backend_web import servicios, simulaciones
 from backend_web.auth import secreto_jwt
 
 from . import presentacion
@@ -10,7 +10,15 @@ from . import presentacion
 from ..config import Config
 
 
+def navegador_de_la_peticion():
+    """El User-Agent de quien usa la web, para la bitácora de los servicios (D36)."""
+    if not has_request_context() or not request.headers.get("User-Agent"):
+        return {}
+    return {"User-Agent": request.headers["User-Agent"][:255]}
+
+
 def create_app():
+    servicios.cabeceras_de_la_persona = navegador_de_la_peticion
     app = Flask(__name__)
     app.config.from_object(Config)
     # Falla aqui, al arrancar, con un mensaje que dice que falta: no en la

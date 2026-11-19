@@ -42,16 +42,14 @@ class ErrorServicio(Exception):
         self.servicio, self.estado, self.codigo, self.detalle = servicio, estado, codigo, detalle
 
 
-def cabeceras_de_la_persona():
-    """El navegador de quien usa la web, para que la bitácora del servicio anote el suyo y no el
-    del servidor web (D36)."""
-    try:
-        from flask import has_request_context, request
-    except ImportError:
-        return {}
-    if not has_request_context() or not request.headers.get("User-Agent"):
-        return {}
-    return {"User-Agent": request.headers["User-Agent"][:255]}
+def _sin_cabeceras():
+    return {}
+
+
+# Las cabeceras de la persona que usa la web (su navegador), para que la bitácora del servicio
+# anote el suyo y no el del servidor web (D36). Las pone frontend_web al crear la app: esta capa
+# no conoce Flask.
+cabeceras_de_la_persona = _sin_cabeceras
 
 
 def url_base(servicio):
