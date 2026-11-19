@@ -279,12 +279,12 @@ Antes de empezar: `frontend_desktop/AGENTS.md`. La app solo habla XML.
 
 ### A2. Funciones que faltan
 
-- [ ] Avisar cuando las bandas p5–p95 de dos escenarios se enciman (A3, RF-H22, RF-F23).
-- [ ] Mostrar la escala que ya responde `resultados`: habitantes por agente (D6, RF-H21, RF-F20).
+- [x] Avisar cuando las bandas p5–p95 de dos escenarios se enciman (A3, RF-H22, RF-F23).
+- [x] Mostrar la escala que ya responde `resultados`: habitantes por agente (D6, RF-H21, RF-F20).
 - [ ] Ofrecer `abm-gpu` en el selector de motor solo si `corridas` lo acepta (D23, RF-H20, RF-E15).
 - [ ] Subir el reporte exportado al bucket y mostrar su URL firmada (D30, RF-F17). Espera a D.
-- [ ] Leer `exp` del token sin verificar la firma y renovarlo antes de que venza (D35, RF-H23).
-- [ ] La comparación dice «Personas-día» donde hoy dice «Costo», y muestra y exporta `costo_pesos` aparte, como «sin dato» cuando es nulo (D3, `ui/comparacion.py` y `exportar.py`). Desde el 2026-11-17 `pareto` ya manda personas-día en `costo`: hasta este cambio, la pantalla las rotula como costo.
+- [x] Leer `exp` del token sin verificar la firma y renovarlo antes de que venza (D35, RF-H23).
+- [x] La comparación dice «Personas-día» donde hoy dice «Costo», y muestra y exporta `costo_pesos` aparte, como «sin dato» cuando es nulo (D3, `ui/comparacion.py` y `exportar.py`). Desde el 2026-11-17 `pareto` ya manda personas-día en `costo`: hasta este cambio, la pantalla las rotula como costo.
 
 ### A3. Verificar
 
