@@ -7,6 +7,7 @@
                                                                     y movida
        PUT    /api/v1/versions/{vid}/interventions/{id}/cost       raíz <costo_intervencion>
        PUT    /api/v1/versions/{vid}/interventions/{id}/person-days raíz <factor_personas_dia>
+       PUT    /api/v1/intervention-types/{id}/cost                 raíz <costo_tipo>
      Como <intervencion> tiene tres formas, solo id es obligatorio en la raíz; dentro de
      <intervenciones_version> cada intervención va completa. Los cuerpos de las peticiones los
      valida el servicio. -->
@@ -109,6 +110,17 @@
     <xs:complexType>
       <xs:all>
         <xs:element name="id" type="Entero"/>
+        <xs:element name="intervention_type_id" type="Entero"/>
+        <xs:element name="unit_cost" type="NumeroONulo"/>
+        <xs:element name="cost_source" type="TextoONulo"/>
+        <xs:element name="cost_is_assumption" type="Booleano"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="costo_tipo">
+    <xs:complexType>
+      <xs:all>
         <xs:element name="intervention_type_id" type="Entero"/>
         <xs:element name="unit_cost" type="NumeroONulo"/>
         <xs:element name="cost_source" type="TextoONulo"/>

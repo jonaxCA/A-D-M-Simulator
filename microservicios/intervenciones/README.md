@@ -27,6 +27,7 @@ Escribe `scenario_interventions` y, solo en las rutas de costo y de personas-dí
 | `POST /versions/{id}/interventions/{iid}/move` | `{"direction": "subir"\|"bajar"}` | los mismos |
 | `PUT /versions/{id}/interventions/{iid}/cost` | `unit_cost`, `cost_source`, `cost_is_assumption` | EPIDEMIOLOGO, ADMINISTRADOR |
 | `PUT /versions/{id}/interventions/{iid}/person-days` | `person_days_per_unit`, `person_days_source`, `person_days_is_assumption`; solo tipos por dosis (si no, 422) | EPIDEMIOLOGO, ADMINISTRADOR |
+| `PUT /intervention-types/{id}/cost` | El mismo costo, fijado desde el catálogo de tipos sin pasar por una versión (pantalla de costos de la web, D36); 404 si el tipo no existe o está inactivo | EPIDEMIOLOGO, ADMINISTRADOR |
 
 Reglas (las del monolito): agregar, quitar y mover solo si la versión es la vigente y está en
 borrador (si no, 409 `CONFLICTO`), y solo quien creó el escenario o un ADMINISTRADOR (403).
