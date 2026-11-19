@@ -20,5 +20,6 @@ Opción A. nginx es el terminador TLS y el proxy inverso, sin validar JWT ni ten
 - Los servicios deben funcionar detrás de un prefijo: revisar `/docs`, `/openapi.json` y el CORS de `CONSOLE_ORIGIN`.
 - Los límites de consumo siguen en Redis. `limit_req` de nginx puede ser una capa extra, no la única.
 - D26 decide de dónde sale el certificado.
+- Implementado en local el 2026-11-19: `infra/docker-compose.nginx.yml` e `infra/nginx/` (guía en `docs/INSTALACION.md`). Detrás de nginx, cada servicio confía en sus cabeceras `X-Forwarded-*` solo con `DETRAS_DE_PROXY=1`, y esa variable solo va donde los servicios no publican su puerto. waitress también tiene que confiar en ellas (`epidemia_comun/servir.py`): por omisión las borra, y el servicio veía la IP de nginx en lugar de la del cliente.
 
 Depende de: D13

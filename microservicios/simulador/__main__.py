@@ -4,7 +4,7 @@
 import sys
 import threading
 
-from waitress import serve
+from epidemia_comun.servir import ESCUCHA, servir
 
 from . import trabajador
 from .app import app
@@ -12,4 +12,4 @@ from .app import app
 trabajador.recuperar()
 threading.Thread(target=trabajador.ciclo, args=(app.config, threading.Event()),
                  name="trabajador", daemon=True).start()
-serve(app, listen=sys.argv[1] if len(sys.argv) > 1 else "0.0.0.0:8000")
+servir(app, sys.argv[1] if len(sys.argv) > 1 else ESCUCHA)

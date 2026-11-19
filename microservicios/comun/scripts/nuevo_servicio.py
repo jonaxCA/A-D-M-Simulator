@@ -36,7 +36,7 @@ def crear_archivos(raiz_repo, nombre, puerto):
         "HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD python -c "
         "\"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health?format=json',"
         "timeout=3)\" || exit 1\n"
-        f"CMD [\"waitress-serve\", \"--listen=0.0.0.0:8000\", \"microservicios.{nombre}.app:app\"]\n",
+        f"CMD [\"python\", \"-m\", \"epidemia_comun.servir\", \"microservicios.{nombre}.app:app\"]\n",
         encoding="utf-8")
     (carpeta / "README.md").write_text(
         f"# {nombre} — plantilla inicial\n\nPuerto externo previsto: {puerto}; puerto interno: 8000.\n"
