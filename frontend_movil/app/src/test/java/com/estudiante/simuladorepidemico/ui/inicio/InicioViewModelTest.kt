@@ -16,6 +16,8 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -66,6 +68,23 @@ class InicioViewModelTest {
         assertEquals(0, modelo.porEnviar.value)
         assertEquals(null, modelo.noLeidos.value)
         assertEquals(1, envios)
+        // Sin roles guardados ni red, la captura se queda: el servidor es quien niega.
+        assertTrue(modelo.capturista.value)
+    }
+
+    @Test
+    fun la_captura_es_solo_del_capturista() = runBlocking<Unit> {
+        contenedor.almacen.abrir(tokens("a1", "r1"), cuenta = 12, roles = setOf("EPIDEMIOLOGO"))
+
+        assertFalse(withTimeout(5_000) { modelo().capturista.first { !it } })
+    }
+
+    @Test
+    fun una_sesion_sin_roles_guardados_los_pregunta_al_perfil() = runBlocking<Unit> {
+        contenedor.almacen.guardar(tokens("nuevo", "r1"))
+
+        assertEquals(setOf("CAPTURISTA"), contenedor.sesion.roles())
+        assertEquals(1, servidor.pedidosA("/api/v1/users/me").size)
     }
 
     @Test

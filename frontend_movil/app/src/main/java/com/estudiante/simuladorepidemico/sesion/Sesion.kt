@@ -23,7 +23,7 @@ class Sesion(
     // (README, sección 6). Si no se puede, la sesión sigue: Mi perfil lo dice y deja reintentarlo.
     suspend fun iniciar(usuario: String, password: String, captcha: Captcha, respuesta: String) {
         val login = apis.auth().iniciar(PedidoLogin(usuario, password, captcha.id, respuesta))
-        almacen.abrir(login.tokens, login.usuario.id)
+        almacen.abrir(login.tokens, login.usuario.id, login.usuario.roles.toSet())
         try {
             almacen.guardarDispositivo(telefono.registrar(login.usuario.id, otroSiChoca = true))
         } catch (e: CancellationException) {
@@ -35,6 +35,10 @@ class Sesion(
 
     // La cuenta de la sesión, sin red. null si no hay sesión.
     suspend fun cuenta(): Long? = almacen.cuenta()
+
+    // Los roles de la cuenta, sin red. Una sesión abierta antes de que la app los guardara los
+    // pregunta a /users/me.
+    suspend fun roles(): Set<String> = almacen.roles() ?: perfil().roles.toSet()
 
     // El id de este teléfono en dispositivos (el device_id de los casos), o null si en esta
     // sesión no se ha podido registrar.
