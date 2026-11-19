@@ -22,10 +22,10 @@ el de redis también revisa la web (D33).
 Necesita el compose arriba y una cuenta de la demostración: DEMO_USUARIO (por defecto admin) y
 DEMO_PASSWORD (si falta, la pide). Por escenario: detiene o pausa un contenedor, llama a las
 rutas, imprime lo esperado contra lo observado, restaura y verifica que todo regrese.
-MongoDB y el bucket aún no están en el compose principal (bloque D); para la demostración
-existe infra/docker-compose.fallos.yml (MongoDB y un emulador del bucket, declarados en
-resultados y evidencias). Se usa con DEMO_COMPOSE_FILES=infra/docker-compose.yml,infra/docker-compose.fallos.yml
-(y se levanta el compose con esos mismos archivos). Sin él, esos escenarios quedan PENDIENTES.'''
+MongoDB ya está en el compose principal (D1). El bucket todavía no (bloque D2); para la demostración
+existe infra/docker-compose.fallos.yml (un emulador del bucket, declarado en evidencias). Se usa con
+DEMO_COMPOSE_FILES=infra/docker-compose.yml,infra/docker-compose.fallos.yml (y se levanta el compose
+con esos mismos archivos). Sin él, el escenario del bucket queda PENDIENTE.'''
 
 RAIZ = Path(__file__).resolve().parent.parent
 HOST = os.environ.get("DEMO_HOST", "127.0.0.1")

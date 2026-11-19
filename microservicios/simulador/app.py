@@ -5,7 +5,7 @@ from .rutas import registrar
 
 CONTRATO = Path(__file__).resolve().parents[2] / "docs/contratos/simulador/openapi.json"
 
-app = crear_app("simulador", CONTRATO, registrar)
+app = crear_app("simulador", CONTRATO, registrar, dependencias=("mongodb",))
 
 
 if __name__ == "__main__":

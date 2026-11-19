@@ -54,8 +54,10 @@ Calibración (D24), IA predictiva, visualización 3D y un modelo económico sofi
 
 - Sitio: `python -m frontend_web.run`.
 - Microservicios: `python infra/genera_env.py` (crea `infra/.env` con las contraseñas) y
-  `docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait`. Levanta
-  PostgreSQL con la base de la demostración, Redis y los servicios.
+  `docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait`. Levanta PostgreSQL con la base de la demostración, Redis, MongoDB y los servicios. No
+  levantes con `--profile '*'`: incluye el perfil `gpu`, que sin una GPU de NVIDIA falla y deja
+  servicios sin arrancar (ver `docs/INSTALACION.md`). Para bajar todo, en cambio, sí:
+  `docker compose -f infra/docker-compose.yml --profile '*' down`.
 - Pruebas de los microservicios y de la biblioteca común:
   `python -m pytest microservicios`.
 - App de escritorio: `pip install -r frontend_desktop/requerimientos.txt` y

@@ -20,8 +20,10 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
    (`docs/arquitectura/microservicios.md`). No inventes puertos.
 3. Cada servicio tiene `HEALTHCHECK` a `/health`, y sus dependencias van con
    `depends_on: condition: service_healthy`.
-4. PostgreSQL y Redis quedan en la red interna; no publiques sus puertos fuera de la
-   máquina.
+4. PostgreSQL, Redis y MongoDB quedan en la red interna; no publiques sus puertos fuera de la
+   máquina. MongoDB (D28) se publica solo en `127.0.0.1:27018`; los servicios lo alcanzan como
+   `mongodb:27017` con el usuario `epidemia`, que crea `mongo/10-usuario.js` con el volumen
+   vacío. Un servicio que lo use lleva `MONGO_URL` y `depends_on: mongodb`.
 5. Los secretos van en el `.env` del compose, que no se versiona; solo `.env.example`.
    Nunca escribas un secreto en un `Dockerfile`, en el compose ni en una imagen.
 6. Redis ya está en el compose, con contraseña, `appendonly yes`, `maxmemory 256mb` y

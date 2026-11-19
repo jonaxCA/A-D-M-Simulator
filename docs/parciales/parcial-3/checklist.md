@@ -370,8 +370,8 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 
 ### C3. Resultados y archivos
 
-- [ ] La corrida muestra su resumen desde `simulation_runs` y pide las curvas a `resultados`. Si `resultados` no responde, se ve el resumen sin curvas (D28, D20, RF-F21). Espera a D y a E.
-- [ ] La web deja de leer `simulation_results`.
+- [x] La corrida muestra su resumen desde `simulation_runs` y pide las curvas a `resultados`. Si `resultados` no responde, se ve el resumen sin curvas (D28, D20, RF-F21). Espera a D y a E.
+- [x] La web deja de leer `simulation_results`. Hecho en D1 (2026-11-18), también en `/comparacion`.
 - [ ] La web muestra la foto de un caso con una URL firmada que vence en minutos (D30, RF-C20). Espera a D.
 - [ ] La web abre el reporte de una comparación con su URL firmada (RF-F17). Espera a D.
 - [ ] La web recibe el reporte de una comparación (ANALISTA y ADMINISTRADOR, `reports.upload`), lo valida por su contenido, su tamaño y su huella, y lo manda al bucket con la misma tabla y la misma interfaz que el escritorio (D35, RF-G16). Espera a D.
@@ -424,17 +424,17 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### D1. MongoDB (D28, D-1)
 
-- [ ] Contenedor de MongoDB en `infra/docker-compose.yml`, con su contraseña en `genera_env.py`.
-- [ ] Cliente de MongoDB en `epidemia_comun`, para que ningún servicio lo arme por su cuenta (RNF-L07).
-- [ ] Colección `series_corridas`: un documento por día de cada corrida, con los totales del día (sin desglose por grupo), `scenario_version_id`, motor y `version_esquema`. Índices `{run_id, dia}` y `{scenario_version_id, motor, dia}` (D28, RF-E20, RNF-K03, RNF-K14).
-- [ ] Colección `historial_servicios`, con TTL de 30 días (RF-K03, RNF-K17).
-- [ ] `simulador` guarda la serie en MongoDB y el resumen en `simulation_runs` (RF-E20).
-- [ ] Migración 038 con las columnas del resumen en `simulation_runs`.
-- [ ] `resultados` lee la serie de MongoDB y conserva su caché de Redis.
-- [ ] `estado-servicios` pasa su historial de Redis a MongoDB (RF-K03).
-- [ ] Demostrar inserción, consulta, actualización y agregación, cada una con su prueba. La agregación: la banda p5–p95 por día de una versión y un motor (D28).
-- [ ] `simulation_results` deja de usarse. Retirarla con la migración 041, cuando la web (C) ya no la lea.
-- [ ] Si MongoDB no responde, la corrida termina con su resumen y la captura de casos sigue (RNF-C08).
+- [x] Contenedor de MongoDB en `infra/docker-compose.yml`, con su contraseña en `genera_env.py`. `mongo:7.0`, usuario `epidemia` creado por `infra/mongo/10-usuario.js`; puerto local 27018.
+- [x] Cliente de MongoDB en `epidemia_comun`, para que ningún servicio lo arme por su cuenta (RNF-L07). `mongo.py`; `/health` hace `ping`.
+- [x] Colección `series_corridas`: un documento por día de cada corrida, con los totales del día (sin desglose por grupo), `scenario_version_id`, motor y `version_esquema`. Índices `{run_id, dia}` y `{scenario_version_id, motor, dia}` (D28, RF-E20, RNF-K03, RNF-K14).
+- [x] Colección `historial_servicios`, con TTL de 30 días (RF-K03, RNF-K17).
+- [x] `simulador` guarda la serie en MongoDB y el resumen en `simulation_runs` (RF-E20).
+- [x] Migración 038 con las columnas del resumen en `simulation_runs`.
+- [x] `resultados` lee la serie de MongoDB y conserva su caché de Redis.
+- [x] `estado-servicios` pasa su historial de Redis a MongoDB (RF-K03). `/history` agrega además la disponibilidad y la latencia de 24 h.
+- [x] Demostrar inserción, consulta, actualización y agregación, cada una con su prueba. La agregación: la banda p5–p95 por día de una versión y un motor (D28).
+- [x] `simulation_results` deja de usarse. Retirarla con la migración 041, cuando la web (C) ya no la lea. Corte inmediato (2026-11-18): D1 también cambió la web (ver C3).
+- [x] Si MongoDB no responde, la corrida termina con su resumen y la captura de casos sigue (RNF-C08). La serie se reintenta cada 30 s (`test_compose_mongo.py`).
 
 ### D2. Cloud Storage (D30, D-3)
 

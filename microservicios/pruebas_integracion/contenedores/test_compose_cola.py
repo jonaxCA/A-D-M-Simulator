@@ -23,7 +23,8 @@ def test_dos_simuladores_y_diez_corridas(api, analista, base, compose, crea_esce
                        WHERE action = 'RUN' AND entity_id = ANY(%s) AND data_after->>'estado' = 'ejecutando'
                        GROUP BY entity_id""", ([str(i) for i in ids],))
         arranques = dict(cur.fetchall())
-        cur.execute("SELECT count(*) FROM simulation_results WHERE run_id = ANY(%s)", (ids,))
+        cur.execute("SELECT count(*) FROM simulation_runs WHERE id = ANY(%s) AND resumen IS NOT NULL",
+                    (ids,))
         resultados = cur.fetchone()[0]
     conexion.close()
     assert arranques == {str(i): 1 for i in ids}

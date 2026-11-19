@@ -1,5 +1,4 @@
 import json
-import socket
 from pathlib import Path
 
 import pytest
@@ -48,16 +47,12 @@ def test_declarada_y_sin_url_es_no_configurado_y_degrada(nueva_app, monkeypatch)
     assert datos["bucket"] == "no_usa"
 
 
-def test_mongodb_arriba_y_caido_con_tcp(nueva_app):
-    with socket.socket() as servidor:
-        servidor.bind(("127.0.0.1", 0))
-        servidor.listen()
-        puerto = servidor.getsockname()[1]
-        estado, datos = salud_de(nueva_app(dependencias=("mongodb",),
-                                           MONGO_URL="mongodb://127.0.0.1:%d" % puerto))
-        assert estado == 200 and datos["mongodb"] is True and "mongodb" in datos["tiempos_ms"]
-    estado, datos = salud_de(nueva_app(dependencias=("mongodb",),
-                                       MONGO_URL="mongodb://127.0.0.1:%d" % puerto))
+def test_mongodb_arriba_y_caido_con_ping(nueva_app, apagar_mongo):
+    app = nueva_app(dependencias=("mongodb",), MONGO_URL="mongodb://mongodb:27017/epidemia")
+    estado, datos = salud_de(app)
+    assert estado == 200 and datos["mongodb"] is True and "mongodb" in datos["tiempos_ms"]
+    apagar_mongo()
+    estado, datos = salud_de(app)
     assert estado == 503 and datos["mongodb"] is False
 
 

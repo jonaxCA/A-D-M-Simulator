@@ -53,7 +53,7 @@ En cada servicio, `CONSOLE_ORIGIN` es el origen de la consola. El compose lo pon
 
 ```bash
 python -m pytest microservicios/consola
-docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait
+docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait
 ```
 
 Fuera de Docker: `python -m microservicios.consola.app` (en `127.0.0.1:5260`), y cada servicio

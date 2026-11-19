@@ -62,7 +62,7 @@ Antes de probar, levanta el compose en la PC (`docs/INSTALACION.md`):
 
 ```bash
 python infra/genera_env.py
-docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait
+docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait
 ```
 
 ## 1. Encontrar los servicios

@@ -35,8 +35,8 @@ sale de cualquier motor (`seir-ref`, `abm-ref`, `abm-gpu`) está en `contrato.py
   actualiza la ficha.
 
 - No renombres los campos de la salida (`resumen`, `serie`, …). Las columnas generadas de
-  `simulation_results` (migración 014) leen esos nombres: un cambio no da error, deja
-  columnas vacías.
+  `simulation_runs` (migración 038) leen los del resumen, y `series_corridas` en MongoDB guarda
+  los de la serie (`CAMPOS_SERIE`): un cambio no da error, deja columnas o campos vacíos.
 - Si un cambio altera los números, sube `ENGINE_VERSION` en `motor/modelo.py`.
 - Todo el azar sale de `np.random.default_rng(semilla)`.
 - Toda simplificación nueva del modelo se agrega a la lista `simplificaciones` de la salida.

@@ -48,6 +48,41 @@ def apagar_redis(servidor_redis):
 
 
 @pytest.fixture
+def mongo_falso():
+    """Una base de mongomock para epidemia_comun.mongo; se descarta al terminar."""
+    import mongomock
+    from epidemia_comun import mongo
+    # tz_aware, como el cliente de epidemia_comun.mongo: las fechas regresan en UTC.
+    base = mongomock.MongoClient(tz_aware=True)["epidemia_pruebas"]
+    mongo.usar(base)
+    yield base
+    mongo.usar(None)
+
+
+class _MongoCaido:
+    def __getitem__(self, nombre):
+        from pymongo.errors import ServerSelectionTimeoutError
+        raise ServerSelectionTimeoutError("MongoDB apagado en la prueba")
+
+    def command(self, *args, **kwargs):
+        return self[""]
+
+
+@pytest.fixture
+def apagar_mongo(mongo_falso):
+    """apagar_mongo() hace que toda operación de MongoDB falle; encender() lo regresa."""
+    from epidemia_comun import mongo
+
+    def apagar():
+        mongo.usar(_MongoCaido())
+
+    def encender():
+        mongo.usar(mongo_falso)
+    apagar.encender = encender
+    return apagar
+
+
+@pytest.fixture
 def crear_cliente(redis_falso):
     """crear_cliente("series") regresa el cliente de prueba de ese servicio."""
     def crear(paquete):

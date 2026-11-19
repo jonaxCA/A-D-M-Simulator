@@ -3338,8 +3338,9 @@ def resuelve_revision(scenario_id, decision, comentario, *, contexto):
 # ---------------------------------------------------------------------------
 # Todo lo de aqui es de SOLO LECTURA sobre scenarios/scenario_versions (los
 # escriben las secciones de escenarios, mas arriba). Lo unico que se escribe
-# en esta seccion son simulation_batches, simulation_runs y
-# simulation_results -- la corrida, no el escenario.
+# en esta seccion son simulation_batches y simulation_runs -- la corrida, no
+# el escenario. El resumen va en simulation_runs (038); la serie diaria la
+# guarda el simulador en MongoDB (series_corridas, D28) y la da resultados.
 #
 # La entrada del motor sale de escenario_de_version(), la misma traduccion que
 # usa la revision; backend_web.simulaciones solo la invoca.
@@ -3555,19 +3556,18 @@ def get_runs_completados_para_comparar(limit=50):
                s.name AS scenario_name,
                d.name AS disease_name,
                reg.name AS region_name,
-               res.casos_acumulados,
-               res.hospitalizaciones,
-               res.fallecimientos,
-               res.pico_casos_activos,
-               res.dia_pico,
-               res.tasa_ataque
+               r.casos_acumulados,
+               r.hospitalizaciones,
+               r.fallecimientos,
+               r.pico_casos_activos,
+               r.dia_pico,
+               r.tasa_ataque
         FROM simulation_runs r
-        JOIN simulation_results res ON res.run_id = r.id
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
         JOIN scenarios s ON s.id = sv.scenario_id
         JOIN diseases d ON d.id = s.disease_id
         JOIN regions reg ON reg.id = s.region_id
-        WHERE r.status = 'completado'
+        WHERE r.status = 'completado' AND r.resumen IS NOT NULL
         ORDER BY r.finished_at DESC
         LIMIT %s
         """,
@@ -3576,8 +3576,9 @@ def get_runs_completados_para_comparar(limit=50):
 
 
 def get_corridas_para_comparar(run_ids):
-    """Devuelve corridas completadas seleccionadas con su serie diaria, en el
-    orden de `run_ids`: una lista de enteros sin repetir."""
+    """Devuelve corridas completadas seleccionadas con sus indicadores, en el
+    orden de `run_ids`: una lista de enteros sin repetir. Sin la serie diaria:
+    esa la da el servicio resultados (D28)."""
     if len(run_ids) < 2:
         return []
 
@@ -3587,16 +3588,14 @@ def get_corridas_para_comparar(run_ids):
                sv.scenario_id,
                sv.version_number,
                s.name AS scenario_name,
-               res.serie,
-               res.fallecimientos,
-               res.pico_casos_activos,
-               res.dia_pico,
-               res.tasa_ataque
+               r.fallecimientos,
+               r.pico_casos_activos,
+               r.dia_pico,
+               r.tasa_ataque
         FROM simulation_runs r
-        JOIN simulation_results res ON res.run_id = r.id
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
         JOIN scenarios s ON s.id = sv.scenario_id
-        WHERE r.status = 'completado'
+        WHERE r.status = 'completado' AND r.resumen IS NOT NULL
           AND r.id = ANY(%s)
         """,
         (run_ids,),
@@ -3607,15 +3606,16 @@ def get_corridas_para_comparar(run_ids):
 
 
 def get_resultado_run(run_id):
-    """Resultado guardado por motor.simular(): indicadores resumen, serie
-    diaria y trazabilidad de parametros. None si la corrida no ha terminado
-    (o termino en error, que no guarda resultado)."""
+    """Resultado guardado por motor.simular(): indicadores resumen, huella y
+    trazabilidad de parametros. None si la corrida no ha terminado (o termino
+    en error, que no guarda resultado). La serie diaria no esta aqui: vive en
+    MongoDB y la da el servicio resultados (D28)."""
     return query(
         """
-        SELECT run_id, engine_version, scenario_checksum, resumen, serie,
-               trazabilidad, created_at
-        FROM simulation_results
-        WHERE run_id = %s
+        SELECT id AS run_id, engine_version, scenario_checksum, resumen,
+               trazabilidad, finished_at
+        FROM simulation_runs
+        WHERE id = %s AND resumen IS NOT NULL
         """,
         (run_id,),
         one=True,
@@ -3679,20 +3679,20 @@ def marcar_run_ejecutando(run_id):
 
 
 def guardar_resultado_run(run_id, resultado):
-    """Guarda la salida de motor.simular() y cierra la corrida como
-    completada, en una sola transaccion: si el INSERT de simulation_results
-    fallara (por ejemplo por el CHECK de scenario_checksum), la corrida NO
-    debe quedar marcada 'completado' sin su resultado.
+    """Cierra la corrida como completada y guarda en simulation_runs el
+    resumen de motor.simular(), en un solo UPDATE: si el CHECK de
+    scenario_checksum lo rechazara, la corrida NO queda 'completado' sin su
+    resumen. La serie diaria no va aqui: la guarda el simulador en MongoDB
+    (D28), despues de este commit.
 
     El json.dumps() se hace ANTES de abrir la conexion: si `resultado` trae
     algo no serializable, falla ahi (sin conexion ni transaccion abierta) en
-    vez de a mitad de una transaccion. Y si el INSERT/UPDATE fallan, se hace
+    vez de a mitad de una transaccion. Y si el UPDATE falla, se hace
     rollback explicito antes de relanzar la excepcion -- dejar la conexion
     cerrarse sola con una transaccion a medias no es lo mismo que garantizar
     que no quedo nada escrito.
     """
     resumen_json = json.dumps(resultado["resumen"], ensure_ascii=False, default=str)
-    serie_json = json.dumps(resultado["serie"], ensure_ascii=False, default=str)
     trazabilidad_json = json.dumps(
         resultado.get("trazabilidad_parametros", []), ensure_ascii=False, default=str
     )
@@ -3700,34 +3700,27 @@ def guardar_resultado_run(run_id, resultado):
     with get_conn() as conn:
         try:
             with conn.cursor() as cur:
-                # Primero se cierra la corrida, y solo si seguia 'ejecutando':
-                # si otro proceso ya la cerro, no se revive ni se guarda nada.
+                # Solo si seguia 'ejecutando': si otro proceso ya la cerro, no
+                # se revive ni se guarda nada.
                 cur.execute(
                     """
                     UPDATE simulation_runs
-                    SET status = 'completado', progress = 100, finished_at = now()
+                    SET status = 'completado', progress = 100, finished_at = now(),
+                        engine_version = %s, scenario_checksum = %s,
+                        resumen = %s::jsonb, trazabilidad = %s::jsonb
                     WHERE id = %s AND status = 'ejecutando'
                     """,
-                    (run_id,),
+                    (
+                        resultado["engine_version"],
+                        resultado["huella_escenario"],
+                        resumen_json,
+                        trazabilidad_json,
+                        run_id,
+                    ),
                 )
                 if cur.rowcount != 1:
                     conn.rollback()
                     return False
-                cur.execute(
-                    """
-                    INSERT INTO simulation_results
-                        (run_id, engine_version, scenario_checksum, resumen, serie, trazabilidad)
-                    VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb)
-                    """,
-                    (
-                        run_id,
-                        resultado["engine_version"],
-                        resultado["huella_escenario"],
-                        resumen_json,
-                        serie_json,
-                        trazabilidad_json,
-                    ),
-                )
                 _sincroniza_lote(cur, [run_id])
             conn.commit()
         except Exception:
@@ -3855,11 +3848,10 @@ def buscar_run_equivalente(run_id, scenario_version_id, seed, checksum):
         return None
     return query(
         """
-        SELECT r.id, res.resumen
+        SELECT r.id, r.resumen
         FROM simulation_runs r
-        JOIN simulation_results res ON res.run_id = r.id
         WHERE r.scenario_version_id = %s AND r.seed = %s AND r.id <> %s
-          AND res.scenario_checksum = %s AND r.status = 'completado'
+          AND r.scenario_checksum = %s AND r.status = 'completado'
         ORDER BY r.finished_at ASC
         LIMIT 1
         """,

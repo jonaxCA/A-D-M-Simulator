@@ -40,7 +40,7 @@ class CurvasDeCorridaTests(unittest.TestCase):
             serie = resultados.curvas_de_corrida("tok", 7, "abc")
         peticion = abre.call_args[0][0]
         self.assertEqual(serie, [{"dia": 0}])
-        self.assertEqual(peticion.full_url, "http://r:8000/api/v1/runs/7/results")
+        self.assertEqual(peticion.full_url, "http://r:8000/api/v1/runs/7/curves")
         self.assertEqual(peticion.get_header("Authorization"), "Bearer tok")
         self.assertEqual(peticion.get_header("X-correlation-id"), "abc")
         self.assertEqual(peticion.get_header("Accept"), "application/json")
@@ -56,7 +56,7 @@ class CurvasDeCorridaTests(unittest.TestCase):
             with patch("urllib.request.urlopen", side_effect=error):
                 self.assertIsNone(resultados.curvas_de_corrida("tok", 7))
 
-    def test_401_y_403_no_caen_a_postgres(self):
+    def test_401_y_403_no_se_tratan_como_caida(self):
         for codigo in (401, 403):
             with patch("urllib.request.urlopen", side_effect=http(codigo)):
                 with self.assertRaises(resultados.SinAcceso):

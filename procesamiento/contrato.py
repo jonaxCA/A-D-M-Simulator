@@ -34,7 +34,7 @@ CAMPOS_SERIE = ("dia",) + COMPARTIMENTOS + (
     "casos_activos", "nuevos_casos", "nuevas_hospitalizaciones", "nuevas_defunciones",
     "dosis_aplicadas",
 )
-# Las columnas generadas de simulation_results (014) leen casos_acumulados,
+# Las columnas generadas de simulation_runs (038) leen casos_acumulados,
 # hospitalizaciones, fallecimientos, pico_casos_activos, dia_pico y tasa_ataque: si faltan,
 # la base no da error, deja columnas vacías.
 CAMPOS_RESUMEN = (

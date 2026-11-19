@@ -13,7 +13,7 @@ Resultados medidos el 2026-11-16 sobre el compose de `infra/`, con un proceso de
 
 ## Cómo repetirlas
 
-1. Levanta el compose (`docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait`).
+1. Levanta el compose (`docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait`; ver `docs/INSTALACION.md`).
 2. Con el entorno de Python activo, desde la raíz: `RESULTADOS=<carpeta> locust -f pruebas_carga/locustfile.py <Clase> --headless -u <usuarios> -r <rampa> -t <duracion> --csv <carpeta>/locust --csv-full-history --html <carpeta>/reporte.html`. La clase y los valores exactos de cada escenario están en su `LEEME.md`.
 3. Las cuentas son las de demostración de `docs/INSTALACION.md`; se cambian con `PRUEBAS_CUENTAS="usuario:contraseña,..."`.
 4. Para otras cifras de límite, edita `infra/limites.env` y recrea los contenedores.
