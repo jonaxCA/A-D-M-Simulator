@@ -66,11 +66,11 @@ def datos_comparacion():
     return resumen.armar(elegidas, comparadas, pareto, "fallecimientos", "")
 
 
-def test_la_ventana_carga_con_respuestas_de_ejemplo(tmp_path):
+def test_la_ventana_carga_con_respuestas_de_ejemplo(tmp_path, monkeypatch):
     from frontend_desktop.app.ui.ventana import Ventana
     app = QApplication.instance() or QApplication([])
     errores = []
-    Ventana.mostrar_error = lambda self, exc: errores.append(exc)
+    monkeypatch.setattr(Ventana, 'mostrar_error', lambda self, exc: errores.append(exc))
     cliente = ClienteDeEjemplos()
     ventana = Ventana(cliente)
     esperar(app)
@@ -97,6 +97,14 @@ def test_la_ventana_carga_con_respuestas_de_ejemplo(tmp_path):
     assert comparacion.tabla.rowCount() == 2
     assert "No es una predicción." in comparacion.aviso.text()
     assert "2 de 2 escenarios están en la frontera" in comparacion.lectura.text()
+
+    assert "se enciman" not in comparacion.aviso.text()
+    datos_solapados = datos_comparacion()
+    datos_solapados["escenarios"][1]["impacto"] = {
+        "p5": 105, "mediana": 110, "p95": 115
+    }
+    comparacion._mostrar(datos_solapados)
+    assert "se enciman" in comparacion.aviso.text()
     imagenes = comparacion._imagenes()
     pdf = tmp_path / "reporte.pdf"
     exportar.guardar_pdf(pdf, comparacion._html(imagenes), imagenes)

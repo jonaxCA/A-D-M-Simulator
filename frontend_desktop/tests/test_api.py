@@ -1,3 +1,5 @@
+import base64
+import json
 import logging
 
 import pytest
@@ -108,3 +110,84 @@ def test_la_bitacora_no_guarda_tokens_ni_contrasenas(caplog):
     assert "inició sesión" in caplog.text
     for secreto in ("secreto-acceso", "secreto-refresh", "Epidemia2026!"):
         assert secreto not in caplog.text
+
+
+def jwt_de_prueba(exp):
+    payload = json.dumps({"exp": exp}).encode("utf-8")
+    codificado = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+    return "e30." + codificado + ".firma"
+
+
+def test_jwt_renueva_anticipadamente(monkeypatch):
+    ahora = 1700000000
+    monkeypatch.setattr(api.time, "time", lambda: ahora)
+    viejo = jwt_de_prueba(ahora + 30)
+    nuevo = jwt_de_prueba(ahora + 3600)
+
+    c = cliente(sesion(nuevo, "refresh-nuevo"), Respuesta(200, CORRIDA))
+    c.access = viejo
+
+    assert c.pedir("corridas", "GET", "/api/v1/runs/43")["id"] == 43
+    assert [x[0] for x in c.http.llamadas] == ["POST", "GET"]
+    assert c.http.llamadas[-1][3]["Authorization"] == "Bearer " + nuevo
+    assert c.refresh == "refresh-nuevo"
+
+
+def test_jwt_vigente_no_se_renueva(monkeypatch):
+    ahora = 1700000000
+    monkeypatch.setattr(api.time, "time", lambda: ahora)
+    c = cliente(Respuesta(200, CORRIDA))
+    c.access = jwt_de_prueba(ahora + 3600)
+
+    assert c.pedir("corridas", "GET", "/api/v1/runs/43")["id"] == 43
+    assert [x[0] for x in c.http.llamadas] == ["GET"]
+
+
+def test_jwt_invalido_no_rompe_la_lectura():
+    assert api._expiracion_jwt("token-invalido") is None
+    assert api._expiracion_jwt(jwt_de_prueba("invalido")) is None
+    assert api._expiracion_jwt(jwt_de_prueba(True)) is None
+
+
+def test_peticion_publica_no_renueva(monkeypatch):
+    ahora = 1700000000
+    monkeypatch.setattr(api.time, "time", lambda: ahora)
+    c = cliente(Respuesta(200))
+    c.access = jwt_de_prueba(ahora + 10)
+
+    r = c.enviar("auth", "GET", "/api/v1/auth/captcha", publico=True)
+    assert r.status_code == 200
+    assert [x[0] for x in c.http.llamadas] == ["GET"]
+    assert "Authorization" not in c.http.llamadas[0][3]
+
+
+def test_403_oculta_detalles_tecnicos():
+    c = cliente(problema(403, "PERMISSION_DENIED", "Traceback: detalle interno"))
+    with pytest.raises(api.ErrorServicio) as error:
+        c.pedir("corridas", "GET", "/api/v1/runs")
+    assert error.value.status == 403
+    assert str(error.value) == "No tienes permiso para esta operación."
+
+
+def test_503_oculta_detalles_tecnicos():
+    c = cliente(problema(503, "SERVICIO_NO_DISPONIBLE", "Traceback: detalle interno"))
+    with pytest.raises(api.ErrorServicio) as error:
+        c.pedir("corridas", "GET", "/api/v1/runs")
+    assert error.value.status == 503
+    assert str(error.value) == "El servicio no está disponible. Intenta más tarde."
+
+
+def test_503_con_xml_invalido_es_seguro():
+    c = cliente(Respuesta(503, b"<html>Traceback: detalle interno</html>"))
+    with pytest.raises(api.ErrorServicio) as error:
+        c.pedir("corridas", "GET", "/api/v1/runs")
+    assert str(error.value) == "El servicio no está disponible. Intenta más tarde."
+
+
+def test_sesion_revocada_oculta_detalles():
+    c = cliente(problema(401, "TOKEN_REVOCADO", "Traceback: detalle interno"))
+    with pytest.raises(api.SesionCerrada) as error:
+        c.pedir("corridas", "GET", "/api/v1/runs")
+    assert str(error.value) == "La sesión terminó. Vuelve a iniciar sesión."
+    assert c.access is None
+    assert c.refresh is None

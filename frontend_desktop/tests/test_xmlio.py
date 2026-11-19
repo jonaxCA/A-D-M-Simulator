@@ -32,7 +32,8 @@ def test_tipos_numero_nulo_y_frontera():
     assert datos["base"] is None
     assert datos["frontera"] == [12, 14, 13, 15]
     assert datos["filas"][0]["desglose_costo"] == []
-    assert datos["filas"][1]["costo"] == 292500000
+    assert datos["filas"][1]["costo"] == 19500000
+    assert datos["filas"][1]["costo_pesos"] == 292500000
 
 
 def test_esquema_de_parametros():

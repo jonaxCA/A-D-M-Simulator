@@ -1,3 +1,7 @@
+import base64
+import binascii
+import json
+import math
 import threading
 import time
 import uuid
@@ -9,6 +13,30 @@ from . import bitacora, config, esquemas, xmlio
 FIN_DE_SESION = ("TOKEN_AUSENTE", "TOKEN_INVALIDO", "TOKEN_REVOCADO")
 MENSAJES = {403: "No tienes permiso para esta operación.",
             503: "El servicio no está disponible. Intenta más tarde."}
+
+
+MARGEN_RENOVACION_SEGUNDOS = 120
+
+
+def _expiracion_jwt(token):
+    """Lee exp para anticipar la renovación; no verifica la firma."""
+    if not isinstance(token, str):
+        return None
+    partes = token.split(".")
+    if len(partes) != 3:
+        return None
+    try:
+        payload = partes[1]
+        relleno = "=" * (-len(payload) % 4)
+        datos = json.loads(base64.urlsafe_b64decode(payload + relleno))
+        if not isinstance(datos, dict):
+            return None
+        exp = datos.get("exp")
+        if isinstance(exp, bool) or not isinstance(exp, (int, float)):
+            return None
+        return float(exp) if math.isfinite(exp) else None
+    except (ValueError, TypeError, UnicodeError, binascii.Error, OverflowError):
+        return None
 
 
 class ErrorServicio(Exception):
@@ -28,11 +56,13 @@ def _problema(servicio, respuesta):
         esquemas.validar_con(esquemas.PROBLEMA, respuesta.content)
         datos = xmlio.leer(respuesta.content)
     except Exception:
+        if respuesta.status_code in MENSAJES:
+            return ErrorServicio(MENSAJES[respuesta.status_code], respuesta.status_code)
         return ErrorServicio("Respuesta inválida de %s (HTTP %s)." % (servicio, respuesta.status_code),
                              respuesta.status_code)
     detalle = datos.get("detail") or MENSAJES.get(respuesta.status_code) or datos.get("title")
-    if respuesta.status_code == 403:
-        detalle = MENSAJES[403]
+    if respuesta.status_code in MENSAJES:
+        detalle = MENSAJES[respuesta.status_code]
     return ErrorServicio(detalle, respuesta.status_code, datos.get("codigo"), datos.get("errores") or [])
 
 
@@ -80,6 +110,10 @@ class Cliente:
         return r
 
     def enviar(self, servicio, metodo, ruta, cuerpo=None, params=None, publico=False):
+        if not publico and self.access and ruta != "/api/v1/sessions/logout":
+            exp = _expiracion_jwt(self.access)
+            if exp is not None and exp <= time.time() + MARGEN_RENOVACION_SEGUNDOS:
+                self._renovar(self.access)
         token = self.access
         r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico)
         if r.status_code == 401 and not publico:
@@ -89,13 +123,13 @@ class Cliente:
                 r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico)
             elif error.codigo in FIN_DE_SESION:
                 self.olvidar()
-                raise SesionCerrada(error.args[0], 401, error.codigo)
+                raise SesionCerrada("La sesión terminó. Vuelve a iniciar sesión.", 401, error.codigo)
         if r.status_code >= 400:
             error = _problema(servicio, r)
             bitacora.error("%s %s %s -> %s %s" % (servicio, metodo, ruta, r.status_code, error.codigo))
             if r.status_code == 401 and not publico:
                 self.olvidar()
-                raise SesionCerrada(error.args[0], 401, error.codigo)
+                raise SesionCerrada("La sesión terminó. Vuelve a iniciar sesión.", 401, error.codigo)
             raise error
         return r
 

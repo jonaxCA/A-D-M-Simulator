@@ -130,6 +130,11 @@ def corrida(c, corrida_id):
     return c.pedir("corridas", "GET", "/api/v1/runs/%s" % corrida_id)
 
 
+def escala_corrida(c, corrida_id):
+    datos = c.pedir("resultados", "GET", "/api/v1/runs/%s/results" % corrida_id)
+    return {"run_id": corrida_id, "escala": datos.get("escala")}
+
+
 def cancelar_corrida(c, corrida_id):
     return c.pedir("corridas", "POST", "/api/v1/runs/%s/cancel" % corrida_id)
 

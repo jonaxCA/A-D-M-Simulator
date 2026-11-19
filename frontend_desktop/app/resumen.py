@@ -54,14 +54,37 @@ def marcar_frontera(escenarios):
     return escenarios
 
 
+
+def avisos_bandas(escenarios):
+    """Detecta superposición de bandas p5-p95 del impacto."""
+    avisos = []
+    for i, primero in enumerate(escenarios):
+        a = primero.get("impacto") or {}
+        if a.get("p5") is None or a.get("p95") is None:
+            continue
+        for segundo in escenarios[i + 1:]:
+            b = segundo.get("impacto") or {}
+            if b.get("p5") is None or b.get("p95") is None:
+                continue
+            if max(a["p5"], b["p5"]) <= min(a["p95"], b["p95"]):
+                avisos.append(
+                    "Las bandas p5–p95 de %s y %s se enciman."
+                    % (primero["nombre"], segundo["nombre"])
+                )
+    return avisos
+
+
 def armar(elegidas, comparadas, datos_pareto, metrica, aviso):
     por_id = {x["id"]: x for x in comparadas}
     costos = {f["id"]: f.get("costo") for f in datos_pareto.get("filas") or []}
+    pesos = {f["id"]: f.get("costo_pesos") for f in datos_pareto.get("filas") or []}
     escenarios = []
     for vid, corridas in elegidas.items():
         primera = corridas[0]
         datos = [por_id[x["id"]] for x in corridas if x["id"] in por_id]
         costo = estadisticas([costos.get(x["id"]) for x in corridas])
+        valores_pesos = [pesos.get(x["id"]) for x in corridas]
+        total_pesos = estadisticas(valores_pesos) if all(v is not None for v in valores_pesos) else None
         escenarios.append({
             "version_id": vid,
             "nombre": "%s · v%s" % (primera["scenario_name"], primera["version_number"]),
@@ -70,6 +93,7 @@ def armar(elegidas, comparadas, datos_pareto, metrica, aviso):
             "indicadores": {clave: estadisticas([d.get(clave) for d in datos]) for clave, _ in INDICADORES},
             "impacto": estadisticas([d.get(metrica) for d in datos]),
             "costo": costo["mediana"] if costo else None,
+            "costo_pesos": total_pesos["mediana"] if total_pesos else None,
             "curva": curva([d["serie"] for d in datos]) if datos else [],
         })
     return {"aviso": aviso or datos_pareto.get("aviso", ""), "metrica": metrica,
