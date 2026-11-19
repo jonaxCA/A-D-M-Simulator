@@ -163,6 +163,83 @@
         }
       }
     },
+    "/api/v1/regions/state": {
+      "get": {
+        "summary": "Consultar el estado",
+        "operationId": "consultar_estado",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 1,
+                  "code": "19",
+                  "nombre": "Nuevo Leon",
+                  "poblacion": 5784442,
+                  "poblacion_60": 654050,
+                  "fuente_poblacion": {
+                    "tipo": "agregado"
+                  },
+                  "fuente_poblacion_60": {
+                    "tipo": "derivado",
+                    "fuente": "Grupos 60-79 y 80+ del Censo 2020"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "estado"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<estado><id tipo=\"numero\">1</id><code>19</code><nombre>Nuevo Leon</nombre><poblacion tipo=\"numero\">5784442</poblacion><poblacion_60 tipo=\"numero\">654050</poblacion_60><fuente_poblacion><tipo>agregado</tipo></fuente_poblacion><fuente_poblacion_60><tipo>derivado</tipo><fuente>Grupos 60-79 y 80+ del Censo 2020</fuente></fuente_poblacion_60></estado>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "No se encontró el estado. (NO_ENCONTRADO)"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "description": "Nuevo León como fila única, para el encabezado de la pantalla de regiones: su población es el agregado de sus municipios y nunca se edita aparte (fuente_poblacion tipo agregado). fuente_poblacion_60 es derivado de los grupos de edad del Censo 2020 o, si alguien corrigió los de 60-79 u 80+, manual con motivo, fecha y por. Pública, como el catálogo."
+      }
+    },
     "/api/v1/regions/{region_id}": {
       "get": {
         "summary": "Consultar municipio",
