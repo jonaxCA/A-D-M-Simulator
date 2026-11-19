@@ -15,6 +15,7 @@ Puerto externo: 5241; puerto interno en Docker: 8000. Contrato en
 | POST | `/api/v1/runs` | ANALISTA, ADMINISTRADOR | Cuerpo `{scenario_version_id, seed?, engine?, replicas?, forzar_error?}`. Responde **202** con `id`, `batch_id`, `seed`, `engine` y `status: encolado` |
 | GET | `/api/v1/runs?limit=20` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Las corridas más recientes, con su `engine` y su `scenario_version_id` (`limit` de 1 a 100). Filtros opcionales: `scenario_id`, `scenario_version_id`, `status`, `engine`, `from` y `to` |
 | GET | `/api/v1/runs/{run_id}` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Estado, `progress`, `engine` y `terminal` |
+| GET | `/api/v1/runs/{run_id}/equivalent` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Otra corrida completada con la misma versión, semilla y huella, con su `resumen` (`null` si no hay): la demostración de reproducibilidad |
 | POST | `/api/v1/runs/{run_id}/cancel` | ANALISTA, ADMINISTRADOR | Cancela una corrida que sigue `encolado` |
 
 Los roles son los de la pantalla Simulaciones del monolito; cancelar es `simulations.delete`

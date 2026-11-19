@@ -5,7 +5,8 @@
                                        forzar_error y status (encolado)
        GET  /api/v1/runs/{id}          el detalle completo, con progress, engine y terminal
        POST /api/v1/runs/{id}/cancel   id y status (cancelado)
-     Por eso solo id y status son obligatorios. La raíz <listado> es GET /api/v1/runs.
+     Por eso solo id y status son obligatorios. La raíz <listado> es GET /api/v1/runs, y
+     <equivalencia>, GET /api/v1/runs/{id}/equivalent.
      El cuerpo de POST /api/v1/runs (raíz <solicitud>) lo valida el servicio. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
 
@@ -116,6 +117,36 @@
             </xs:sequence>
           </xs:complexType>
         </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- El resumen de simulation_runs (indicadores, desglose por grupo de edad…): su forma es la
+       del motor, así que no se fija aquí. -->
+  <xs:complexType name="ResumenLibre" mixed="true">
+    <xs:sequence>
+      <xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:anyAttribute processContents="skip"/>
+  </xs:complexType>
+
+  <!-- La corrida equivalente, o <equivalente nil="true"/> si es la primera con esa combinación. -->
+  <xs:complexType name="EquivalenteONulo">
+    <xs:sequence minOccurs="0">
+      <xs:element name="id" type="Entero"/>
+      <xs:element name="resumen" type="ResumenLibre"/>
+    </xs:sequence>
+    <xs:attribute name="nil" type="xs:string" fixed="true"/>
+  </xs:complexType>
+
+  <xs:element name="equivalencia">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="run_id" type="Entero"/>
+        <xs:element name="scenario_version_id" type="Entero"/>
+        <xs:element name="seed" type="Entero"/>
+        <xs:element name="scenario_checksum" type="TextoONulo"/>
+        <xs:element name="equivalente" type="EquivalenteONulo"/>
       </xs:all>
     </xs:complexType>
   </xs:element>

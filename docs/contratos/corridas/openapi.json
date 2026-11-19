@@ -480,6 +480,112 @@
         }
       }
     },
+    "/api/v1/runs/{run_id}/equivalent": {
+      "get": {
+        "summary": "Corrida equivalente",
+        "operationId": "corrida_equivalente",
+        "description": "La demostración de reproducibilidad: otra corrida completada con la misma versión, la misma semilla y la misma huella del escenario (scenario_checksum). Si existe, su resumen debe ser idéntico al de esta corrida. equivalente es null si es la primera con esa combinación o si la corrida todavía no tiene huella (no ha terminado). Raíz XML <equivalencia> de corrida.xsd. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la corrida"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "run_id": 43,
+                  "scenario_version_id": 11,
+                  "seed": 982314,
+                  "scenario_checksum": "5f2c0a9e7b1d4c3a8e6f0b2d9c7a1e4f3b5d8c0a2e6f9b1d4c7a0e3f5b8d2c6a",
+                  "equivalente": {
+                    "id": 40,
+                    "resumen": {
+                      "casos_acumulados": 61240,
+                      "hospitalizaciones": 1873,
+                      "fallecimientos": 212,
+                      "pico_casos_activos": 9105,
+                      "dia_pico": 47,
+                      "tasa_ataque": 0.3062
+                    }
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "equivalencia"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<equivalencia><run_id tipo=\"numero\">43</run_id><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed><scenario_checksum>5f2c0a9e7b1d4c3a8e6f0b2d9c7a1e4f3b5d8c0a2e6f9b1d4c7a0e3f5b8d2c6a</scenario_checksum><equivalente><id tipo=\"numero\">40</id><resumen><casos_acumulados tipo=\"numero\">61240</casos_acumulados><hospitalizaciones tipo=\"numero\">1873</hospitalizaciones><fallecimientos tipo=\"numero\">212</fallecimientos><pico_casos_activos tipo=\"numero\">9105</pico_casos_activos><dia_pico tipo=\"numero\">47</dia_pico><tasa_ataque tipo=\"numero\">0.3062</tasa_ataque></resumen></equivalente></equivalencia>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE): solo ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR. Queda en la bitácora como PERMISSION_DENIED."
+          },
+          "404": {
+            "description": "No existe la corrida"
+          },
+          "422": {
+            "description": "run_id no es un entero positivo (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/runs/{run_id}/cancel": {
       "post": {
         "summary": "Cancelar una corrida encolada",
