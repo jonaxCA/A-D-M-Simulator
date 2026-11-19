@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- El indicador de conexión de todas las pantallas (RF-I20). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Android 17: sin este permiso no hay conexión a direcciones de la red local, que es
          donde corren los servicios (la PC con el compose, o 10.0.2.2 desde el emulador). -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
