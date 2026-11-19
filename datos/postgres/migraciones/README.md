@@ -55,7 +55,8 @@ problema: ya falta la 018.
 | 040 | E | Lugar del factor de día-persona por dosis, con fuente o marca de supuesto (D3) |
 | 041 | D | Retira `simulation_results`, cuando la web ya no la lea (D28) |
 | 042–044 | D | Reserva |
-| 045–046 | E | Reserva |
+| 045 | E | `simulation_runs.attempts`: intentos de una corrida interrumpida que se reencola (D38) |
+| 046 | E | Reserva |
 | 047 | C | Reserva |
 | 048–049 | 0 | Reserva del líder (por ejemplo, `cost_unit` en pesos, D3) |
 | 050 en adelante | — | Se piden al líder |
