@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.estudiante.simuladorepidemico.red.Tokens
 import com.estudiante.simuladorepidemico.red.json
 import kotlinx.coroutines.flow.Flow
@@ -14,8 +15,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 // Los tokens se guardan cifrados; en memoria queda una copia para no descifrar en cada petición.
-// Con ellos van el id de la cuenta y el del teléfono en dispositivos, que son de esta sesión y se
-// borran con ella. La cuenta se sabe sin red: los casos capturados sin conexión son de ella y solo
+// Con ellos van el id de la cuenta, sus roles y el del teléfono en dispositivos, que son de esta
+// sesión y se borran con ella. La cuenta y sus roles se saben sin red: los casos capturados sin conexión son de ella y solo
 // se mandan con una sesión suya.
 class AlmacenSesion(private val datos: DataStore<Preferences>, private val cifrador: Cifrador) {
     private val candado = Mutex()
@@ -33,10 +34,12 @@ class AlmacenSesion(private val datos: DataStore<Preferences>, private val cifra
     }
 
     // Al iniciar sesión, en un solo cambio: nunca quedan los tokens de una cuenta con el id de otra.
-    suspend fun abrir(tokens: Tokens, cuenta: Long) = candado.withLock {
+    // Sin roles (una sesión de antes de guardarlos), roles() es null.
+    suspend fun abrir(tokens: Tokens, cuenta: Long, roles: Set<String>? = null) = candado.withLock {
         datos.edit {
             it[TOKENS] = cifrador.cifrar(json.encodeToString(tokens))
             it[CUENTA] = cuenta
+            if (roles == null) it.remove(ROLES) else it[ROLES] = roles
             it.remove(DISPOSITIVO)
         }
         actuales = tokens
@@ -52,6 +55,8 @@ class AlmacenSesion(private val datos: DataStore<Preferences>, private val cifra
 
     suspend fun cuenta(): Long? = datos.data.first()[CUENTA]
 
+    suspend fun roles(): Set<String>? = datos.data.first()[ROLES]
+
     suspend fun dispositivo(): Long? = datos.data.first()[DISPOSITIVO]
 
     // Solo con sesión: si se cerró mientras el teléfono se registraba, no queda el id suelto.
@@ -63,6 +68,7 @@ class AlmacenSesion(private val datos: DataStore<Preferences>, private val cifra
         datos.edit {
             it.remove(TOKENS)
             it.remove(CUENTA)
+            it.remove(ROLES)
             it.remove(DISPOSITIVO)
         }
         actuales = null
@@ -76,6 +82,7 @@ class AlmacenSesion(private val datos: DataStore<Preferences>, private val cifra
     private companion object {
         val TOKENS = stringPreferencesKey("tokens")
         val CUENTA = longPreferencesKey("cuenta")
+        val ROLES = stringSetPreferencesKey("roles")
         val DISPOSITIVO = longPreferencesKey("dispositivo")
     }
 }

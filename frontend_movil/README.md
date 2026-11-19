@@ -40,7 +40,7 @@ Dónde va cada cosa dentro de `app/src/main/java/com/estudiante/simuladorepidemi
 | `avisos/` | Los avisos de `notificaciones` (`Avisos`) y la notificación del teléfono (`Notificador`) |
 | `local/` | Room (`epidemia.db`): los casos capturados, sus fotos por subir y los catálogos de enfermedades y municipios (secciones 5 y 7), y los archivos de las fotos (`Fotos.kt`). El esquema de cada versión queda en `app/schemas/` |
 | `trabajos/` | El `Sincronizador`, que manda los casos en lotes y sube sus fotos, y `TrabajoSincronizar`, que WorkManager corre cuando hay red; `TrabajoAvisos`, que consulta los avisos cada 15 minutos |
-| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio`, `casos` (Capturar caso y Mis casos, con sus fotos), `vacunas` (lectura del QR, registro del lote y aplicación de dosis), `avisos`, `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde y pide el permiso de red local. `ui/Formato.kt` da formato a fechas, roles y los valores de un caso, y `ui/Campos.kt` tiene los campos que comparten los formularios |
+| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio`, `casos` (Capturar caso y Mis casos, con sus fotos), `vacunas` (lectura del QR, registro del lote y aplicación de dosis), `avisos`, `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde, pide el permiso de red local y pone arriba de todas las pantallas la franja que dice si hay conexión (`IndicadorConexion.kt`, RF-I20). `ui/Formato.kt` da formato a fechas, roles y los valores de un caso, y `ui/Campos.kt` tiene los campos que comparten los formularios |
 
 `app/src/debug/` lleva lo que solo vale en desarrollo, como el permiso de HTTP sin cifrar
 (sección 2). La raíz de Let's Encrypt que trae la app está en `app/src/main/res/raw/` (también
@@ -146,6 +146,12 @@ La semilla de demostración trae una cuenta CAPTURISTA, el rol de la app:
 Con ese rol la app registra su teléfono (`dispositivos`), registra y consulta casos (`casos`),
 sube sus fotos (`evidencias`), escanea lotes de vacuna (`vacunas`) y envía y consulta sus
 lotes de casos (`sincronizacion`). Es una cuenta de demostración: solo sirve en el entorno local.
+
+Los otros roles también pueden entrar, pero el inicio no les muestra «Capturar caso» ni «Mis
+casos» (RF-I19): solo los lotes de vacuna, los avisos y su perfil. La app guarda los roles que
+regresa el login con la sesión, para saberlos sin red; una sesión abierta antes de guardarlos los
+pregunta a `/users/me`. Ocultar el botón no es el candado: `casos` y `sincronizacion` rechazan a
+cualquier rol que no sea CAPTURISTA.
 
 El inicio de sesión lleva captcha, que la app muestra y la persona contesta:
 

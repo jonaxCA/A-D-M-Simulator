@@ -38,6 +38,9 @@ class SesionTest {
         assertNull(pedido.getHeader("Authorization"))
         assertEquals(tokens("a1", "r1"), contenedor.almacen.tokens())
         assertTrue(sesion.activa.first())
+        // Los roles del login quedan con la sesión, para el menú sin red (RF-I19).
+        assertEquals(setOf("CAPTURISTA"), sesion.roles())
+        assertTrue(servidor.pedidosA("/api/v1/users/me").isEmpty())
     }
 
     @Test
@@ -67,13 +70,14 @@ class SesionTest {
 
     @Test
     fun cerrar_avisa_al_servidor_y_borra() = runBlocking<Unit> {
-        contenedor.almacen.guardar(tokens("nuevo", "r1"))
+        contenedor.almacen.abrir(tokens("nuevo", "r1"), cuenta = 12, roles = setOf("CAPTURISTA"))
 
         sesion.cerrar()
 
         val pedido = servidor.pedidosA("/api/v1/sessions/logout").single()
         assertEquals("Bearer nuevo", pedido.getHeader("Authorization"))
         assertNull(contenedor.almacen.tokens())
+        assertNull(contenedor.almacen.roles())
         assertFalse(sesion.activa.first())
     }
 

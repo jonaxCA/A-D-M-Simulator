@@ -181,6 +181,27 @@ class SincronizadorTest {
         assertTrue(servidor.pedidosA("/api/v1/sync/cases").isEmpty())
         assertEquals(EstadoCaso.PENDIENTE, casos.caso(uuid(1)).estado)
     }
+
+    // D19, RF-I21: cerrar sesión no borra lo pendiente; otra cuenta no lo manda y la misma sí.
+    @Test
+    fun lo_pendiente_se_queda_al_salir_y_se_manda_cuando_vuelve_la_misma_cuenta() {
+        entrar()
+        capturar(uuid(1))
+        runBlocking { sesion.cerrar() }
+        assertEquals(EstadoCaso.PENDIENTE, casos.caso(uuid(1)).estado)
+
+        servidor.login = ServidorFalso.respuesta(200, ServidorFalso.cuerpoLogin("a2", "r2", cuenta = 13))
+        entrar()
+        enviar()
+        assertTrue(servidor.lotesEnviados().isEmpty())
+        runBlocking { sesion.cerrar() }
+
+        servidor.login = ServidorFalso.respuesta(200, ServidorFalso.cuerpoLogin("a3", "r3", cuenta = 12))
+        entrar()
+        assertEquals(Envio.LISTO, enviar())
+        assertEquals(EstadoCaso.ENVIADO, casos.caso(uuid(1)).estado)
+    }
+
     // Un caso con dos fotos, ya guardadas como las deja el formulario.
     private fun capturarConFotos(uuid: String, vararg contenidos: String): List<String> = runBlocking {
         val ids = contenidos.mapIndexed { i, contenido ->

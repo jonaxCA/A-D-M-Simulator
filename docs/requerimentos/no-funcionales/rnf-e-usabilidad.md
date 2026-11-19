@@ -12,7 +12,7 @@ Lo que se le pide a las tres interfaces. Cómo leer la tabla: [`README.md`](../R
 | RNF-E03 | La web se adapta al tamaño de la pantalla | El tablero y el mapa se leen en un teléfono | Web | Verificar |
 | RNF-E06 | Los errores se explican | Cada cliente dice qué pasó y qué se puede hacer, sin mostrar la traza (ver RF-H24 y RF-I22) | Web, Móvil, Escritorio | Verificar |
 | RNF-E08 | Cada aplicación tiene su manual de usuario | Hay un manual por aplicación en [`docs/manuales/`](../../manuales/) | Web, Móvil, Escritorio | En parte: está el del escritorio; faltan el de la web y el de la móvil |
-| RNF-E11 | La app móvil dice siempre si hay conexión | Ver RF-I20 | Móvil | Falta (C3) |
+| RNF-E11 | La app móvil dice siempre si hay conexión | Ver RF-I20 | Móvil | Hecho |
 
 ## Fuera de alcance
 

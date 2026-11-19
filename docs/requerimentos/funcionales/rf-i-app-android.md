@@ -30,8 +30,8 @@ La app de `frontend_movil/` atiende el proceso **P1** de [`procesos_v3.md`](../.
 | RF-I16 | Una cuenta usa un solo teléfono | Ver RF-A09 | 1.2 | Móvil | Media | Hecho |
 | RF-I17 | La app descarga los catálogos que usa el formulario | Enfermedades y regiones quedan en el teléfono y sirven sin conexión | 1.3 | Móvil | Alta | Hecho |
 | RF-I18 | La app muestra el perfil del usuario | Se ven el nombre, el rol y cuántos casos faltan por enviar | Soporte | Móvil | Alta | Hecho |
-| RF-I19 | El menú depende del rol | Un rol distinto del CAPTURISTA no ve la captura | Soporte | Móvil, Seguridad | Alta | Falta (C8): hoy muestra el mismo menú a cualquier rol |
-| RF-I20 | La app tiene un indicador de conexión fijo | Se ve en todas las pantallas si hay red o no | Soporte | Móvil | Alta | Falta (C3): hoy solo hay mensajes de «Sin conexión» en cada pantalla |
+| RF-I19 | El menú depende del rol | Un rol distinto del CAPTURISTA no ve la captura | Soporte | Móvil, Seguridad | Alta | Hecho: los roles del login quedan con la sesión; sin CAPTURISTA, el inicio no muestra «Capturar caso» ni «Mis casos» (`InicioViewModelTest`) |
+| RF-I20 | La app tiene un indicador de conexión fijo | Se ve en todas las pantallas si hay red o no | Soporte | Móvil | Alta | Hecho: una franja arriba de todas las pantallas dice «Con conexión» o «Sin conexión» (`ui/navegacion/IndicadorConexion.kt`) |
 | RF-I21 | La app cierra la sesión y borra las credenciales | Al cerrar o perder la sesión se borran los tokens. Los casos sin enviar se quedan y se mandan cuando esa cuenta vuelve a entrar; otra cuenta en el mismo teléfono no los ve (D19) | Soporte | Móvil, Seguridad | Alta | Hecho |
 | RF-I22 | La app muestra los errores con un mensaje entendible | Sin red, un rechazo del servidor o una sesión vencida se explican sin cerrar la app | Todos | Móvil | Alta | Verificar: ningún paso lo describe |
 

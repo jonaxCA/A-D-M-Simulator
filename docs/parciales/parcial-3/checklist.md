@@ -322,23 +322,23 @@ La app solo habla JSON.
 
 ### B1. Funciones que faltan
 
-- [ ] Indicador de conexión fijo, visible en todas las pantallas (C3, RF-I20, RNF-E11).
-- [ ] Menú por rol: un rol distinto del CAPTURISTA no ve la captura (C8, RF-I19).
+- [x] Indicador de conexión fijo, visible en todas las pantallas (C3, RF-I20, RNF-E11). `ui/navegacion/IndicadorConexion.kt`.
+- [x] Menú por rol: un rol distinto del CAPTURISTA no ve la captura (C8, RF-I19). Los roles del login quedan con la sesión (`InicioViewModelTest`).
 - [ ] Las fotos se suben y se bajan con la `evidencias` del bucket (D30, RF-C03). Espera a D.
 - [ ] Probar que el aviso por lote no se repite cuando la app reintenta el mismo lote (D32, RF-C19). Espera a E.
-- [ ] Mostrar los tipos de aviso de la migración 037 (`NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED`) en `Formato.kt` (D32).
+- [x] Mostrar los tipos de aviso de la migración 037 (`NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED`) en `Formato.kt` (D32).
 
 ### B2. Verificar
 
 - [ ] Sin red, con un rechazo del servidor y con la sesión vencida, la app explica qué pasó sin cerrarse (RF-I22, RNF-E06).
-- [ ] Los casos sin enviar se quedan al cerrar sesión y se mandan cuando esa cuenta vuelve a entrar (D19, RF-I21).
+- [x] Los casos sin enviar se quedan al cerrar sesión y se mandan cuando esa cuenta vuelve a entrar (D19, RF-I21). `SincronizadorTest`.
 - [ ] La app pasa la lista de la rúbrica para Android: perfil, consulta, registro, actualización (dosis y avisos, D32) y borrado local de credenciales.
 - [ ] La app funciona contra el dominio real con su certificado, de preferencia también en un Android 7.0 (D26). Espera a F.
 - [ ] Las pruebas de `frontend_movil` pasan.
 
 ### B3. Entregables
 
-- [ ] Manual de usuario de la app móvil en `docs/manuales/` (RNF-E08).
+- [x] Manual de usuario de la app móvil en `docs/manuales/` (RNF-E08). `manual_usuario_movil.md`, sin capturas todavía.
 - [ ] APK de la demostración, apuntando al dominio de la nube.
 
 ### B4. Módulos que pide la retroalimentación
@@ -461,16 +461,16 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### D3. Volumen (D29, D-6)
 
-- [ ] Generar el conjunto de alto volumen: unas 10,000 corridas de 180 días. La cifra se confirma con el profesor (RNF-A17).
-- [ ] Medir el tiempo de inserción y el de consulta, con y sin índice.
-- [ ] Medir la consulta de resultados con y sin la caché de Redis (RNF-A09).
-- [ ] Medir CPU, memoria y disco durante la carga.
-- [ ] Escribir los resultados en `docs/`, con la forma de repetirlos.
+- [x] Generar el conjunto de alto volumen: unas 10,000 corridas de 180 días. La cifra se confirma con el profesor (RNF-A17).
+- [x] Medir el tiempo de inserción y el de consulta, con y sin índice.
+- [x] Medir la consulta de resultados con y sin la caché de Redis (RNF-A09).
+- [x] Medir CPU, memoria y disco durante la carga.
+- [x] Escribir los resultados en `docs/`, con la forma de repetirlos. `docs/pruebas/volumen/2026-11-18` y `datos/scripts/volumen_mongo.py` (2026-11-18); la cifra sigue por confirmar con el profesor.
 
 ### D4. Documentos
 
-- [ ] Diseño de MongoDB y de los buckets en la arquitectura v3, con qué información va a PostgreSQL y cuál a MongoDB [Retro: MongoDB]. La parte de MongoDB está hecha (§6 de `arquitectura_v3.md`: criterio, tabla por dato, cómo se relacionan y consistencia); falta la de los buckets, que espera a D2.
-- [ ] Llenar la retención de cada dato en `matrices_v3.md`: hoy hay 48 «Por definir» (RNF-K07).
+- [ ] Diseño de MongoDB y de los buckets en la arquitectura v3, con qué información va a PostgreSQL y cuál a MongoDB [Retro: MongoDB]. La parte de MongoDB está hecha (§6 y §9 de `arquitectura_v3.md`: criterio, tabla por dato, cómo se relacionan, consistencia y volumen medido); falta la de los buckets, que espera a D2.
+- [ ] Llenar la retención de cada dato en `matrices_v3.md`: hoy hay 48 «Por definir» (RNF-K07). Hechas las de MongoDB, `simulation_runs` y `simulation_results` (2026-11-18).
 - [ ] Actualizar `docs/arquitectura/microservicios.md` con lo que cada servicio escribe ahora.
 
 ### D5. MongoDB después de D1
