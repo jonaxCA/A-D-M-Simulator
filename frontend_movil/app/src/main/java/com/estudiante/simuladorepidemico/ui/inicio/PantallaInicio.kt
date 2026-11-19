@@ -39,13 +39,14 @@ fun PantallaInicio(
 ) {
     val porEnviar by modelo.porEnviar.collectAsStateWithLifecycle()
     val noLeidos by modelo.noLeidos.collectAsStateWithLifecycle()
+    val capturista by modelo.capturista.collectAsStateWithLifecycle()
     // Al llegar y al volver (de los avisos, por ejemplo).
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { modelo.contarAvisos() }
-    MenuInicio(porEnviar, noLeidos, AccionesInicio(alCapturar, alVerCasos, alVerLotes, alVerAvisos, alAbrirPerfil))
+    MenuInicio(porEnviar, noLeidos, capturista, AccionesInicio(alCapturar, alVerCasos, alVerLotes, alVerAvisos, alAbrirPerfil))
 }
 
 @Composable
-fun MenuInicio(porEnviar: Int, noLeidos: Int?, acciones: AccionesInicio) {
+fun MenuInicio(porEnviar: Int, noLeidos: Int?, capturista: Boolean, acciones: AccionesInicio) {
     Scaffold { relleno ->
         Column(
             modifier = Modifier.fillMaxSize().padding(relleno).padding(24.dp),
@@ -53,17 +54,19 @@ fun MenuInicio(porEnviar: Int, noLeidos: Int?, acciones: AccionesInicio) {
         ) {
             Text("EPIDEMIA", style = MaterialTheme.typography.headlineMedium)
             Text("Sesión iniciada.", style = MaterialTheme.typography.bodyLarge)
-            Text(
-                when (porEnviar) {
-                    0 -> "No hay casos por enviar."
-                    1 -> "1 caso por enviar."
-                    else -> "$porEnviar casos por enviar."
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(onClick = acciones.capturar, modifier = Modifier.fillMaxWidth()) { Text("Capturar caso") }
-            OutlinedButton(onClick = acciones.verCasos, modifier = Modifier.fillMaxWidth()) { Text("Mis casos") }
+            if (capturista) {
+                Text(
+                    when (porEnviar) {
+                        0 -> "No hay casos por enviar."
+                        1 -> "1 caso por enviar."
+                        else -> "$porEnviar casos por enviar."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(onClick = acciones.capturar, modifier = Modifier.fillMaxWidth()) { Text("Capturar caso") }
+                OutlinedButton(onClick = acciones.verCasos, modifier = Modifier.fillMaxWidth()) { Text("Mis casos") }
+            }
             OutlinedButton(onClick = acciones.verLotes, modifier = Modifier.fillMaxWidth()) { Text("Lotes de vacuna") }
             OutlinedButton(onClick = acciones.verAvisos, modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -82,5 +85,5 @@ fun MenuInicio(porEnviar: Int, noLeidos: Int?, acciones: AccionesInicio) {
 @Preview(showBackground = true)
 @Composable
 private fun VistaInicio() {
-    TemaEpidemia { MenuInicio(porEnviar = 3, noLeidos = 2, acciones = AccionesInicio()) }
+    TemaEpidemia { MenuInicio(porEnviar = 3, noLeidos = 2, capturista = true, acciones = AccionesInicio()) }
 }

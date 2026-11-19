@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 // red, todo espera sin molestar.
 @OptIn(ExperimentalCoroutinesApi::class)
 class InicioViewModel(
-    sesion: Sesion,
+    private val sesion: Sesion,
     casos: CasosDao,
     catalogos: Catalogos,
     private val avisos: Avisos,
@@ -38,9 +38,23 @@ class InicioViewModel(
     private val avisosNoLeidos = MutableStateFlow<Int?>(null)
     val noLeidos: StateFlow<Int?> = avisosNoLeidos.asStateFlow()
 
+    // RF-I19: la captura es solo del CAPTURISTA. Mientras no se sabe, se muestra: el servidor es
+    // quien niega a los demás roles, y un CAPTURISTA sin red no se queda sin capturar.
+    private val esCapturista = MutableStateFlow(true)
+    val capturista: StateFlow<Boolean> = esCapturista.asStateFlow()
+
     init {
         programarEnvio()
         programarAvisos()
+        viewModelScope.launch {
+            try {
+                esCapturista.value = "CAPTURISTA" in sesion.roles()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Una sesión sin roles guardados y sin red: se queda como estaba.
+            }
+        }
         viewModelScope.launch {
             try {
                 catalogos.actualizar()
