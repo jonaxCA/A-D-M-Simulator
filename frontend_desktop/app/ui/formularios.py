@@ -157,6 +157,7 @@ class FormIntervencion(QWidget):
         self.tipos = []
         self.lectores = {}
         self.tipo = QComboBox()
+        self.tipo.setMinimumWidth(210)
         self.tipo.currentIndexChanged.connect(self._parametros)
         self.descripcion = QLabel()
         self.descripcion.setWordWrap(True)

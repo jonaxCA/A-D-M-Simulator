@@ -97,6 +97,7 @@ class VistaEscenarios(QWidget):
 
     def _centro(self):
         contenido = QWidget()
+        contenido.setObjectName("contenido")
         capa = QVBoxLayout(contenido)
         capa.setContentsMargins(16, 16, 16, 16)
         datos, rejilla = tarjeta()

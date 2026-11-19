@@ -116,8 +116,9 @@ def documento(html, imagenes):
 
 
 def guardar_pdf(ruta, html, imagenes):
-    from PySide6.QtGui import QPageSize, QPdfWriter
+    from PySide6.QtGui import QPageLayout, QPageSize, QPdfWriter
     escritor = QPdfWriter(str(ruta))
     escritor.setPageSize(QPageSize(QPageSize.A4))
+    escritor.setPageOrientation(QPageLayout.Orientation.Landscape)
     escritor.setResolution(96)
     documento(html, imagenes).print_(escritor)
