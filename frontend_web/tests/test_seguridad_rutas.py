@@ -49,13 +49,14 @@ class LoginRedireccionTests(AppTestCase):
 
     def setUp(self):
         super().setUp()
-        # Sin credenciales reales ni filas de bitacora: lo que se prueba es a
-        # donde manda el redirect, no la autenticacion.
+        # Sin auth ni captcha reales (D36): lo que se prueba es a donde manda el redirect, no
+        # la autenticacion.
         for objetivo, valor in (
-            ("frontend_web.app.routes.attempt_login",
-             ({"id": 5, "username": "prueba", "full_name": "Prueba",
-               "roles": ["ANALISTA"]}, None)),
-            ("frontend_web.app.routes.log_audit", None),
+            ("frontend_web.app.sesion_servicios.iniciar",
+             {"access_token": "a", "refresh_token": "r",
+              "usuario": {"id": 5, "username": "prueba", "full_name": "Prueba",
+                          "roles": ["ANALISTA"]}}),
+            ("frontend_web.app.sesion_servicios.captcha", None),
         ):
             simulado = patch(objetivo, return_value=valor)
             simulado.start()

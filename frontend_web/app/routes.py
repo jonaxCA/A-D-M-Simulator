@@ -30,13 +30,13 @@ from flask import (Blueprint, current_app, jsonify, render_template, request, re
 
 from backend_web import queries, resultados, simulaciones
 from backend_web.audit import log_audit
-from backend_web.auth import attempt_login, hash_password
-from epidemia_comun.redis_compartido import RedisNoDisponible
+from backend_web.auth import hash_password
+from backend_web.servicios import ErrorServicio, ServicioNoDisponible
 
-from . import formularios, presentacion
-from .sesion_redis import MENSAJE_SIN_REDIS, abre_sesion, cierra_sesion
+from . import formularios, presentacion, sesion_servicios
+from .sesion_servicios import COOKIE_REFRESH, MENSAJE_CREDENCIALES, MENSAJE_SIN_SESIONES
 from .permisos import (login_required, admin_required, roles_required, tiene_rol, MENSAJE_SIN_PERMISO,
-                       get_current_user, contexto_de_peticion, COOKIE_NAME)
+                       get_current_user, contexto_de_peticion, token_de_sesion, COOKIE_NAME)
 
 bp = Blueprint("main", __name__)
 
@@ -125,41 +125,50 @@ def destino_seguro(destino):
     return destino
 
 
+def _pantalla_login(error, usuario, estado=200):
+    # Cada intento lleva su captcha nuevo: auth lo borra al usarse, acierte o no.
+    return render_template("login.html", error=error, usuario=usuario,
+                           captcha=sesion_servicios.captcha()), estado
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
+    # D36: auth revisa captcha y contraseña y audita LOGIN y LOGIN_FAILED; la web solo guarda
+    # los tokens que regresa.
     if request.method == "GET":
-        if get_current_user():
-            return redirect(url_for("main.dashboard"))
-        return render_template("login.html", error=None, usuario="")
+        try:
+            if get_current_user():
+                return redirect(url_for("main.dashboard"))
+        except ServicioNoDisponible:
+            pass
+        return _pantalla_login(None, "")
 
     usuario = (request.form.get("usuario") or "").strip()
-    password = request.form.get("password") or ""
-    user, error = attempt_login(usuario, password)
-    if error:
-        log_audit(contexto_de_peticion(None), "LOGIN_FAILED", "users", entity_id=usuario)
-        return render_template("login.html", error=error, usuario=usuario), 401
-
     try:
-        token = abre_sesion(user)
-    except RedisNoDisponible:
-        return render_template("login.html", error=MENSAJE_SIN_REDIS, usuario=usuario), 503
-    log_audit(contexto_de_peticion(user["id"]), "LOGIN", "users", entity_id=str(user["id"]))
+        datos = sesion_servicios.iniciar(usuario, request.form.get("password") or "",
+                                         request.form.get("captcha_id") or "",
+                                         request.form.get("captcha_respuesta") or "")
+    except ServicioNoDisponible:
+        return _pantalla_login(MENSAJE_SIN_SESIONES, usuario, 503)
+    except ErrorServicio as exc:
+        mensaje = MENSAJE_CREDENCIALES if exc.estado in (400, 401, 422) else (exc.detalle or MENSAJE_CREDENCIALES)
+        return _pantalla_login(mensaje, usuario, 401 if exc.estado in (400, 401, 422) else exc.estado)
     next_url = destino_seguro(request.args.get("next")) or url_for("main.dashboard")
     resp = make_response(redirect(next_url))
-    resp.set_cookie(
-        COOKIE_NAME, token, httponly=True, samesite="Lax", max_age=60 * 60 * 8
-    )
+    resp.set_cookie(COOKIE_NAME, datos["access_token"], httponly=True, samesite="Lax",
+                    max_age=60 * 60 * 8)
+    resp.set_cookie(COOKIE_REFRESH, datos["refresh_token"], httponly=True, samesite="Lax",
+                    max_age=60 * 60 * 8)
     return resp
 
 
 @bp.route("/logout")
 def logout():
-    user = get_current_user()
-    if user:
-        log_audit(contexto_de_peticion(user["sub"]), "LOGOUT", "users", entity_id=str(user["sub"]))
-    cierra_sesion(request.cookies.get(COOKIE_NAME))
+    # sesiones revoca el access, cierra la sesión y audita LOGOUT.
+    sesion_servicios.cerrar(request.cookies.get(COOKIE_NAME))
     resp = make_response(redirect(url_for("main.dashboard_publico")))
     resp.delete_cookie(COOKIE_NAME)
+    resp.delete_cookie(COOKIE_REFRESH)
     return resp
 
 
@@ -1283,6 +1292,42 @@ def no_encontrado(_):
         "error.html", codigo="404", titulo="Esta página no existe",
         mensaje="Revisa la dirección o vuelve al panorama epidemiológico.",
     ), 404
+
+
+@bp.app_errorhandler(ServicioNoDisponible)
+def servicio_caido(exc):
+    # D36: la pantalla dice qué servicio falta; si era una escritura, que no se guardó.
+    current_app.logger.warning("Servicio no disponible: %s", exc.servicio)
+    g._usuario_actual = None
+    escritura = request.method not in ("GET", "HEAD")
+    return render_template(
+        "error.html", codigo="503", titulo="Este dato no está disponible por ahora",
+        mensaje="El servicio «%s» no respondió. %sIntenta de nuevo en unos minutos."
+                % (exc.servicio, "El cambio no se guardó. " if escritura else ""),
+    ), 503
+
+
+@bp.app_errorhandler(ErrorServicio)
+def error_de_servicio(exc):
+    if exc.estado == 401:
+        return redirect(url_for("main.login", next=request.path))
+    if exc.estado == 403:
+        return sin_permiso(exc)
+    if exc.estado == 404:
+        return no_encontrado(exc)
+    return render_template(
+        "error.html", codigo=str(exc.estado), titulo="No se pudo completar la operación",
+        mensaje=exc.detalle or "El servicio rechazó la petición.",
+    ), exc.estado
+
+
+@bp.after_app_request
+def guarda_tokens_renovados(respuesta):
+    nuevos = g.get("tokens_nuevos")
+    if nuevos:
+        respuesta.set_cookie(COOKIE_NAME, nuevos[0], httponly=True, samesite="Lax", max_age=60 * 60 * 8)
+        respuesta.set_cookie(COOKIE_REFRESH, nuevos[1], httponly=True, samesite="Lax", max_age=60 * 60 * 8)
+    return respuesta
 
 
 @bp.app_errorhandler(psycopg2.OperationalError)

@@ -42,11 +42,22 @@ def capturista_de_prueba():
     return id_de_usuario(CAPTURISTA_PRUEBA)
 
 
+def sesion_simulada(token):
+    """Lo que responderia el servicio sesiones (D36) por un token que la prueba firmo a mano."""
+    from backend_web.auth import decode_token
+    from backend_web.servicios import ErrorServicio
+    payload = decode_token(token)
+    if not payload:
+        raise ErrorServicio("sesiones", 401, "TOKEN_INVALIDO")
+    return {"sub": int(payload["sub"]), "roles": payload.get("roles") or [],
+            "username": payload.get("username"), "full_name": payload.get("full_name")}
+
+
 class AppTestCase(unittest.TestCase):
     # La app se crea una vez por clase. Redis es fakeredis (self.redis).
-    # Los tokens que las pruebas firman a mano no traen sesion en Redis, asi que
-    # sesion_vigente se da por buena; con sesion_real = True la prueba usa la
-    # verificacion de verdad (login y logout por /login y /logout).
+    # Con D36 la sesion la valida el servicio sesiones: aqui se simula leyendo el token que la
+    # prueba firmo. Con sesion_real = True la prueba usa la verificacion de verdad (login y
+    # logout por /login y /logout, contra auth y sesiones).
 
     sesion_real = False
 
@@ -63,7 +74,7 @@ class AppTestCase(unittest.TestCase):
         redis_compartido.usar(self.redis)
         self.addCleanup(redis_compartido.usar, None)
         if not self.sesion_real:
-            simulado = patch("frontend_web.app.permisos.sesion_vigente", return_value=True)
+            simulado = patch("frontend_web.app.sesion_servicios._actual", side_effect=sesion_simulada)
             simulado.start()
             self.addCleanup(simulado.stop)
 
@@ -75,16 +86,7 @@ class AppTestCase(unittest.TestCase):
 
 class ConUsuarioSimulado(AppTestCase):
     """Para pruebas con las consultas simuladas: el token es de un usuario
-    inventado (id 999), asi que la revalidacion contra `users` tambien se
-    simula. Devuelve el usuario del token tal cual, con `sub` como entero,
-    igual que backend_web.auth.usuario_vigente con una cuenta activa."""
-
-    def setUp(self):
-        super().setUp()
-        simulado = patch("frontend_web.app.permisos.usuario_vigente",
-                         side_effect=lambda u: {**u, "sub": int(u["sub"])})
-        simulado.start()
-        self.addCleanup(simulado.stop)
+    inventado (id 999); sesion_simulada lo da por vigente."""
 
     def _token(self, rol="ANALISTA"):
         return create_token({

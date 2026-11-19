@@ -1,16 +1,16 @@
-"""Sesion web: cookie con el JWT y decoradores de acceso por rol.
-La parte de credenciales (usuarios, bcrypt, firma del JWT) vive en backend_web.auth.
+"""Sesion web: cookies con el JWT de auth y decoradores de acceso por rol.
+Las credenciales y la sesion las llevan los servicios auth y sesiones (D36).
 """
 from functools import wraps
 
 from flask import request, redirect, url_for, g, flash
 
-from backend_web.auth import decode_token, usuario_vigente
 from backend_web.contexto import Contexto
 
-from .sesion_redis import sesion_vigente
+from . import sesion_servicios
+from .sesion_servicios import COOKIE_ACCESS, COOKIE_REFRESH
 
-COOKIE_NAME = "access_token"
+COOKIE_NAME = COOKIE_ACCESS
 
 # Mismo texto en todos los candados, para que el rechazo se vea igual en
 # cualquier pantalla.
@@ -34,24 +34,26 @@ def contexto_de_peticion(user_id=_USUARIO_DE_LA_SESION):
 
 
 def get_current_user():
-    """El usuario de la peticion, revalidado contra la base.
+    """El usuario de la peticion, segun el servicio sesiones (D36).
 
-    Una firma valida solo prueba que el token lo emitimos nosotros, no que la
-    cuenta siga activa ni que conserve sus roles: eso lo contesta
-    usuario_vigente(). Se calcula una vez por peticion y se guarda en `g`,
-    porque la llaman el decorador y el context_processor de cada plantilla.
+    sesiones revisa la firma, la revocacion y que la sesion siga abierta; cerrar
+    la cuenta o cambiarle el rol cierra sus sesiones. Se calcula una vez por
+    peticion y se guarda en `g`, porque la llaman el decorador y el
+    context_processor de cada plantilla. Si sesiones no responde, sube
+    ServicioNoDisponible: la web no deja pasar sin poder revisar la sesion.
     """
     en_cache = g.get("_usuario_actual", _SIN_CALCULAR)
     if en_cache is not _SIN_CALCULAR:
         return en_cache
-    usuario = None
-    token = request.cookies.get(COOKIE_NAME)
-    if token:
-        payload = decode_token(token)
-        if payload and sesion_vigente(payload):
-            usuario = usuario_vigente(payload)
-    g._usuario_actual = usuario
-    return usuario
+    g.access = request.cookies.get(COOKIE_ACCESS)
+    g._usuario_actual = sesion_servicios.usuario(g.access, request.cookies.get(COOKIE_REFRESH))
+    return g._usuario_actual
+
+
+def token_de_sesion():
+    """El access vigente de la peticion, para reenviarlo a los servicios (D34)."""
+    get_current_user()
+    return g.get("access")
 
 
 def login_required(view):

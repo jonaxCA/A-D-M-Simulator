@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask
 
 from backend_web import simulaciones
@@ -12,8 +14,9 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     # Falla aqui, al arrancar, con un mensaje que dice que falta: no en la
-    # primera peticion que necesite firmar algo.
-    app.config["SECRET_KEY"] = secreto_jwt()
+    # primera peticion que necesite firmar algo. Con D36 la web ya no firma JWT; su cookie usa
+    # SECRET_KEY y, mientras no lo haya, JWT_SECRET_KEY (que secreto_jwt revisa).
+    app.config["SECRET_KEY"] = (os.environ.get("SECRET_KEY") or "").strip() or secreto_jwt()
 
     from .routes import bp
     app.register_blueprint(bp)
