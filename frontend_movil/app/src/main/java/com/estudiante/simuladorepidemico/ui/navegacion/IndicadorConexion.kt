@@ -4,22 +4,29 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -27,7 +34,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.estudiante.simuladorepidemico.ui.tema.MARINO
 import com.estudiante.simuladorepidemico.ui.tema.TemaEpidemia
+import com.estudiante.simuladorepidemico.ui.tema.VERDE
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -63,22 +72,21 @@ fun ConIndicadorDeConexion(contenido: @Composable () -> Unit) {
     }
 }
 
+// En el azul marino de la barra lateral de la web, con su punto de estado.
 @Composable
 fun IndicadorConexion(enLinea: Boolean) {
-    val colores = MaterialTheme.colorScheme
-    Surface(
-        color = if (enLinea) colores.secondaryContainer else colores.errorContainer,
-        contentColor = if (enLinea) colores.onSecondaryContainer else colores.onErrorContainer,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(
-            if (enLinea) "Con conexión" else "Sin conexión",
-            style = MaterialTheme.typography.labelMedium,
+    Surface(color = MARINO, contentColor = Color.White, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
                 .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-                .semantics { liveRegion = LiveRegionMode.Polite },
-        )
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        ) {
+            Box(Modifier.size(8.dp).background(if (enLinea) VERDE else MaterialTheme.colorScheme.error, CircleShape))
+            Text(if (enLinea) "Con conexión" else "Sin conexión", style = MaterialTheme.typography.labelMedium)
+        }
     }
 }
 
