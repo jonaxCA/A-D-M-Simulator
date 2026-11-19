@@ -406,7 +406,7 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 
 [Retro: «Ninguna aplicación cliente deberá conectarse directamente a PostgreSQL, MongoDB o Redis»]. Va con la decisión que reemplaza D20 (bloque 0).
 
-- [ ] Inventario: cada pantalla de la web y cada consulta de `backend_web` que usa, con el servicio que debe atenderla. Lo que no tenga servicio se le pide a su dueño (E9).
+- [x] Inventario: cada pantalla de la web y cada consulta de `backend_web` que usa, con el servicio que debe atenderla. Lo que no tenga servicio se le pide a su dueño (E9). En [`inventario_web_servicios.md`](../../arquitectura/inventario_web_servicios.md): 20 de 32 pantallas ya tienen su servicio; faltan 11 rutas (4 de D, 4 de E y 3 de F).
 - [ ] Iniciar y cerrar sesión con `auth` y `sesiones`, sin leer Redis.
 - [ ] Pasar cada módulo a su servicio, en el orden que fije la decisión.
 - [ ] Cuando un servicio no responde, la pantalla lo explica y lo demás sigue.
