@@ -335,13 +335,13 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
         run_id = self._encola(seed=55555)
         guardadas = []
 
-        def al_guardar(run, motor, resultado):
-            # La serie se entrega con la corrida ya cerrada y su resumen en la base.
-            guardadas.append((run["id"], motor, len(resultado["serie"]),
+        def guardar_serie(run, motor, resultado):
+            # La serie se entrega antes de confirmar: la corrida sigue 'ejecutando'.
+            guardadas.append((run["id"], run["scenario_id"], motor, len(resultado["serie"]),
                               queries.get_run(run_id)["status"]))
 
-        self.assertEqual(simulaciones.ejecutar_run(run_id, demora_seg=0, al_guardar=al_guardar),
-                         "completado")
+        self.assertEqual(simulaciones.ejecutar_run(run_id, demora_seg=0,
+                                                   guardar_serie=guardar_serie), "completado")
 
         run = queries.get_run(run_id)
         self.assertEqual(run["status"], "completado")
@@ -354,20 +354,37 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
                      "dia_pico", "hospitalizaciones", "fallecimientos", "tasa_ataque"):
             self.assertIn(clave, resultado["resumen"])
         self.assertNotIn("serie", resultado)
-        self.assertEqual(guardadas, [(run_id, "seir-ref", run["horizon_days"] + 1, "completado")])
+        self.assertEqual(guardadas, [(run_id, run["scenario_id"], "seir-ref",
+                                      run["horizon_days"] + 1, "ejecutando")])
 
     def test_si_guardar_la_serie_falla_la_corrida_sigue_completada(self):
         """RNF-C08: con MongoDB caido, la corrida termina con su resumen."""
         run_id = self._encola(seed=55558)
 
-        def al_guardar(run, motor, resultado):
+        def guardar_serie(run, motor, resultado):
             raise RuntimeError("MongoDB no responde (prueba)")
 
         with self.assertLogs("backend_web.simulaciones", level="ERROR"):
-            final = simulaciones.ejecutar_run(run_id, demora_seg=0, al_guardar=al_guardar)
+            final = simulaciones.ejecutar_run(run_id, demora_seg=0, guardar_serie=guardar_serie)
         self.assertEqual(final, "completado")
         self.assertEqual(queries.get_run(run_id)["status"], "completado")
         self.assertIsNotNone(queries.get_resultado_run(run_id))
+
+    def test_si_la_corrida_ya_no_esta_ejecutando_se_descarta_su_serie(self):
+        run_id = self._encola(seed=55559)
+        descartadas = []
+
+        def guardar_serie(run, motor, resultado):
+            # Otro proceso la cierra entre que se guarda la serie y que se confirma.
+            queries.marca_corridas_interrumpidas("cerrada por otro proceso", run_ids=[run_id])
+
+        with self.assertLogs("backend_web.simulaciones", level="WARNING"):
+            final = simulaciones.ejecutar_run(run_id, demora_seg=0, guardar_serie=guardar_serie,
+                                              descartar_serie=descartadas.append)
+        self.assertIsNone(final)
+        self.assertEqual(descartadas, [run_id])
+        self.assertEqual(queries.get_run(run_id)["status"], "fallido")
+        self.assertIsNone(queries.get_resultado_run(run_id))
 
     def test_ejecutar_run_forzado_queda_en_error_con_mensaje(self):
         run_id = self._encola(seed=55556)

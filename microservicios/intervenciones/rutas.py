@@ -233,6 +233,31 @@ def registrar(app):
         return responder({"id": intervention_id, "intervention_type_id": tipo_id, **nuevo},
                          "costo_intervencion")
 
+    # El mismo costo, fijado desde el catálogo de tipos y sin pasar por una versión: la
+    # pantalla de costos de la web (D36).
+    @app.put("/api/v1/intervention-types/<int:type_id>/cost")
+    @requiere_token(roles=ROLES_COSTO)
+    def costo_de_tipo(type_id):
+        nuevo = _valor_con_fuente(("unit_cost", "cost_source", "cost_is_assumption"), "El importe")
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""SELECT unit_cost, cost_source, cost_is_assumption
+                               FROM intervention_types WHERE id = %s AND is_active
+                               FOR UPDATE""", (type_id,))
+                fila = cur.fetchone()
+                if fila is None:
+                    raise ErrorAPI(404, "NO_ENCONTRADO", "No existe ese tipo de intervención activo.")
+                antes = dict(zip(("unit_cost", "cost_source", "cost_is_assumption"), fila))
+                cur.execute("""UPDATE intervention_types
+                               SET unit_cost = %s, cost_source = %s, cost_is_assumption = %s
+                               WHERE id = %s""",
+                            (nuevo["unit_cost"], nuevo["cost_source"], nuevo["cost_is_assumption"],
+                             type_id))
+                log_audit(g.contexto, "UPDATE", "intervention_types", type_id,
+                          data_before=antes, data_after=nuevo, cur=cur)
+            conn.commit()
+        return responder({"intervention_type_id": type_id, **nuevo}, "costo_tipo")
+
     @app.put("/api/v1/versions/<int:version_id>/interventions/<int:intervention_id>/person-days")
     @requiere_token(roles=ROLES_COSTO)
     def personas_dia(version_id, intervention_id):

@@ -6,6 +6,11 @@ El servicio reutiliza las consultas y reglas existentes de `backend_web`.
 Sus rutas quedan bajo `/api/v1` y tienen contrato en
 `docs/contratos/enfermedades/openapi.json`.
 
+`GET /api/v1/diseases/stats` (pública, como el catálogo) da las tarjetas de la pantalla de
+enfermedades de la web: registradas, activas, inactivas, altas en 30 días y `detectadas_30d`
+(con un caso pendiente o validado en Nuevo León en 30 días). Su consulta vive en el servicio
+(D37).
+
 ## Ejecución en desarrollo
 
 Instalar los requerimientos de `backend_web` y `microservicios/comun`,

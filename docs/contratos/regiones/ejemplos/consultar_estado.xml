@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<estado><id tipo="numero">1</id><code>19</code><nombre>Nuevo Leon</nombre><poblacion tipo="numero">5784442</poblacion><poblacion_60 tipo="numero">654050</poblacion_60><fuente_poblacion><tipo>agregado</tipo></fuente_poblacion><fuente_poblacion_60><tipo>derivado</tipo><fuente>Grupos 60-79 y 80+ del Censo 2020</fuente></fuente_poblacion_60></estado>

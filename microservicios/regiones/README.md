@@ -4,6 +4,9 @@
 **Público:** consulta de municipios de Nuevo León (no exige JWT porque debe responder si Redis cae).
 
 - `GET /api/v1/regions` lista municipios, búsqueda `q`, orden `order`, dirección `direction`.
+- `GET /api/v1/regions/state` el estado (Nuevo León) como fila única: población agregada de sus
+  municipios y la fuente de su 60+ (derivado del censo o la última corrección manual). 404 si no
+  está cargado.
 - `GET /api/v1/regions/{id}` detalle de un municipio o 404.
 - `/health`, `/docs`, `/openapi.json` se obtienen de `epidemia_comun`.
 - XML predeterminado; JSON con `?format=json`.

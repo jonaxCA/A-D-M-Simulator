@@ -415,3 +415,48 @@ def test_las_peticiones_de_ejemplo_se_aceptan(cliente, token, mundo):
             datos = (CONTRATO / "ejemplos" / ("%s_peticion.%s" % (op, ext))).read_bytes()
             r = cliente.post(ruta + "?format=json", headers=token(), data=datos, content_type=tipo)
             assert r.status_code == 201, (op, ext, r.data)
+
+
+VERSION = {"id": 11, "scenario_id": 3, "version_number": 2, "status": "aprobado",
+           "population_size": 200000, "horizon_days": 180, "initial_infected": 100,
+           "created_at": "2026-10-18T16:00:00+00:00", "reviewed_at": None, "review_comment": None,
+           "scenario_name": "Brote", "disease_name": "Influenza", "region_name": "Monterrey",
+           "creado_por": "Ana Analista", "revisado_por": None}
+
+
+@pytest.fixture
+def versiones(monkeypatch):
+    consultas = []
+
+    def query(sql, params=(), one=False):
+        consultas.append((" ".join(sql.split()), params))
+        return [dict(VERSION)]
+    monkeypatch.setattr(rutas, "query", query)
+    return consultas
+
+
+def test_versiones_de_todos_los_escenarios(cliente, token, versiones):
+    r = cliente.get("/api/v1/scenarios/versions?format=json", headers=token(("EPIDEMIOLOGO",)))
+    assert r.status_code == 200 and r.get_json() == {"total": 1, "versiones": [VERSION]}
+    sql, params = versiones[0]
+    assert "ORDER BY (sv.status = 'aprobado') DESC" in sql and params == (None, None)
+    raiz = ET.fromstring(cliente.get("/api/v1/scenarios/versions", headers=token()).data)
+    assert raiz.tag == "versiones" and raiz.findtext("total") == "1"
+
+
+def test_versiones_filtradas_por_estado(cliente, token, versiones):
+    cliente.get("/api/v1/scenarios/versions?format=json&status=en_revision", headers=token())
+    assert versiones[0][1] == ("en_revision", "en_revision")
+    r = cliente.get("/api/v1/scenarios/versions?format=json&status=vigente", headers=token())
+    assert r.status_code == 422 and len(versiones) == 1
+
+
+def test_versiones_con_candado(cliente, token, versiones):
+    assert cliente.get("/api/v1/scenarios/versions?format=json").status_code == 401
+    r = cliente.get("/api/v1/scenarios/versions?format=json", headers=token(("CAPTURISTA",)))
+    assert r.status_code == 403 and versiones == []
+
+
+def test_versiones_no_chocan_con_un_escenario(cliente, token, mundo, versiones):
+    assert cliente.get("/api/v1/scenarios/versions?format=json", headers=token()).status_code == 200
+    assert cliente.get("/api/v1/scenarios/99?format=json", headers=token()).status_code == 404

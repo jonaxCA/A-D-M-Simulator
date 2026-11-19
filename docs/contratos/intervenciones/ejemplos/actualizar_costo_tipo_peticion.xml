@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<costo><unit_cost tipo="numero">1500.0</unit_cost><cost_source>SSNL 2025</cost_source><cost_is_assumption tipo="booleano">false</cost_is_assumption></costo>

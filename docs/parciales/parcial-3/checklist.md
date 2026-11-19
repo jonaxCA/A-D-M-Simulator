@@ -469,7 +469,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### D4. Documentos
 
-- [ ] Diseño de MongoDB y de los buckets en la arquitectura v3, con qué información va a PostgreSQL y cuál a MongoDB [Retro: MongoDB].
+- [ ] Diseño de MongoDB y de los buckets en la arquitectura v3, con qué información va a PostgreSQL y cuál a MongoDB [Retro: MongoDB]. La parte de MongoDB está hecha (§6 de `arquitectura_v3.md`: criterio, tabla por dato, cómo se relacionan y consistencia); falta la de los buckets, que espera a D2.
 - [ ] Llenar la retención de cada dato en `matrices_v3.md`: hoy hay 48 «Por definir» (RNF-K07).
 - [ ] Actualizar `docs/arquitectura/microservicios.md` con lo que cada servicio escribe ahora.
 
@@ -477,8 +477,8 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 [Retro: «MongoDB deberá incorporar referencias estables…» y «Fallo de worker»].
 
-- [ ] Cada documento de `series_corridas` trae `scenario_id`, además de `run_id`, `scenario_version_id` y la versión del motor. Hecho en `feat/bloque-D` (2026-11-18); se marca al integrarse.
-- [ ] La serie se guarda antes de confirmar la corrida: si el proceso muere entre los dos pasos, la corrida no queda completada sin curvas. Hecho en `feat/bloque-D` (2026-11-18); se marca al integrarse.
+- [x] Cada documento de `series_corridas` trae `scenario_id`, además de `run_id`, `scenario_version_id` y la versión del motor. Hecho en `feat/bloque-D` (2026-11-18, `2ceadf8`); vale al integrarse el PR del bloque D.
+- [x] La serie se guarda antes de confirmar la corrida: si el proceso muere entre los dos pasos, la corrida no queda completada sin curvas. Hecho en `feat/bloque-D` (2026-11-18, `2ceadf8`); vale al integrarse el PR del bloque D.
 - [ ] La serie de una corrida que el arranque cierra como fallida no se queda en MongoDB, o `banda()` la ignora. Va con la decisión de corridas interrumpidas (0).
 - [ ] Con MongoDB caído y el simulador muerto después de confirmar, la serie se regenera con la misma semilla, comprobando la huella del escenario y el resumen. Va con la misma decisión.
 

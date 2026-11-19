@@ -82,6 +82,57 @@ def test_responde_aunque_redis_este_caido(cliente, apagar_redis):
     assert cliente.get("/api/v1/regions/39").status_code == 200
 
 
+ESTADO = {"id": 1, "code": "19", "name": "Nuevo Leon", "population": 5784442,
+          "population_60plus": 654050}
+
+
+@pytest.fixture
+def base_estado(monkeypatch):
+    from microservicios.regiones import rutas
+    base = {"estado": dict(ESTADO), "correccion": None, "consultas": []}
+
+    def query(sql, params=(), one=False):
+        base["consultas"].append((" ".join(sql.split()), params))
+        return base["estado"] if "FROM regions" in sql else base["correccion"]
+    monkeypatch.setattr(rutas, "query", query)
+    return base
+
+
+def test_estado_con_su_fuente_derivada(cliente, base_estado):
+    r = cliente.get("/api/v1/regions/state?format=json")
+    assert r.status_code == 200
+    assert r.get_json() == {"id": 1, "code": "19", "nombre": "Nuevo Leon", "poblacion": 5784442,
+                            "poblacion_60": 654050, "fuente_poblacion": {"tipo": "agregado"},
+                            "fuente_poblacion_60": {"tipo": "derivado",
+                                                    "fuente": "Grupos 60-79 y 80+ del Censo 2020"}}
+    assert base_estado["consultas"][0][1] == ("19",) and base_estado["consultas"][1][1] == ("1",)
+    assert ET.fromstring(cliente.get("/api/v1/regions/state").data).tag == "estado"
+
+
+def test_estado_con_una_correccion_manual_del_60(cliente, base_estado):
+    base_estado["correccion"] = {"motivo": "Conteo rápido 2025", "fecha": "2026-11-10T10:00:00+00:00",
+                                 "por": "Admin"}
+    fuente = cliente.get("/api/v1/regions/state?format=json").get_json()["fuente_poblacion_60"]
+    assert fuente == {"tipo": "manual", "motivo": "Conteo rápido 2025",
+                      "fecha": "2026-11-10T10:00:00+00:00", "por": "Admin"}
+    base_estado["correccion"] = {"motivo": None, "fecha": "2026-11-10T10:00:00+00:00", "por": "Admin"}
+    fuente = cliente.get("/api/v1/regions/state?format=json").get_json()["fuente_poblacion_60"]
+    assert fuente["tipo"] == "censal"
+
+
+def test_estado_inexistente_es_404_y_no_choca_con_el_municipio(cliente, base_estado):
+    assert cliente.get("/api/v1/regions/39?format=json").get_json()["population"] == 1142994
+    base_estado["estado"] = None
+    r = cliente.get("/api/v1/regions/state?format=json")
+    assert r.status_code == 404 and r.get_json()["codigo"] == "NO_ENCONTRADO"
+
+
+def test_estado_publico_aunque_redis_este_caido(cliente, base_estado, apagar_redis):
+    apagar_redis()
+    assert cliente.get("/api/v1/regions/state?format=json").status_code == 200
+    assert cliente.post("/api/v1/regions/state?format=json", json={}).status_code == 405
+
+
 def test_el_catalogo_publico_limita_por_ip(cliente, monkeypatch):
     monkeypatch.setenv("LIMITE_NORMAL", "2/60")
     estados = [cliente.get("/api/v1/regions").status_code for _ in range(3)]

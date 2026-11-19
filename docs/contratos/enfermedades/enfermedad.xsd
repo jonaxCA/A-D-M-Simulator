@@ -1,10 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Una enfermedad del servicio enfermedades (raíz <enfermedad>).
      GET /api/v1/diseases/{id} trae la ficha completa; el alta regresa solo id,
-     la edición id y actualizada, y activar o desactivar id e is_active. -->
+     la edición id y actualizada, y activar o desactivar id e is_active.
+     GET /api/v1/diseases/stats responde la raíz <estadisticas_enfermedades>. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
 
   <xs:include schemaLocation="../comun/tipos.xsd"/>
+
+  <xs:element name="estadisticas_enfermedades">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="registradas" type="Entero"/>
+        <xs:element name="activas" type="Entero"/>
+        <xs:element name="inactivas" type="Entero"/>
+        <xs:element name="altas_30d" type="Entero"/>
+        <xs:element name="detectadas_30d" type="Entero"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
 
   <xs:element name="enfermedad">
     <xs:complexType>
