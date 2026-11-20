@@ -150,12 +150,26 @@ Pulsa **+**, junto al buscador.
 
 El escenario nace como **Borrador v1** y se abre solo.
 
+En el resumen del escenario, **Consultar parámetros de la enfermedad** muestra el estado del
+catálogo vigente, con unidades, rangos, fuentes, supuestos y los parámetros que faltan. Pasa
+el puntero sobre el nombre de un parámetro para leer su definición. Para consultar los
+valores guardados de una corrida, abre su ficha en Simulaciones.
+
+**Indicadores municipales** abre los datos registrados por el servicio `zonas` para la enfermedad.
+Elige 7, 30 o 60 días. Cada punto representa las coordenadas de un municipio y su color indica
+el nivel de incidencia informado. Selecciona un municipio y abre **Serie registrada** para ver
+sus fechas, casos acumulados e incidencia por 100 000 habitantes.
+
+![Indicadores con el XML de ejemplo del servicio zonas](img/escritorio/indicadores_municipales.png)
+
 ### 5.3 Intervenciones
 
 En el panel derecho, pestaña **Intervención**:
 
-1. Elige el **tipo de intervención**. Debajo aparece qué hace.
-2. Indica los **días**: inicio y fin, o marca **Hasta el final**.
+1. Elige el **tipo de intervención**. Debajo aparece qué hace y el costo unitario del catálogo,
+   con su unidad, fuente o marca de supuesto cuando esté disponible.
+2. Indica los **días**: inicio y fin, o marca **Hasta el final**. Debajo se calcula la duración
+   del intervalo definido con ambos días incluidos.
 3. Ajusta la **cobertura** (qué fracción de la población alcanza, de 0 a 1) y el
    **cumplimiento** (qué fracción la respeta, de 0 a 1).
 4. Llena los parámetros del tipo. Los que tienen casilla son opcionales: márcala para usarlos.
@@ -267,8 +281,9 @@ En **Nuevo lote** (parte inferior):
 Cada escenario usa las semillas **1, 2, …, N**. Todos los escenarios del lote usan las
 **mismas semillas**, así las diferencias se deben a las intervenciones y no al azar.
 
-Mientras se encolan, una barra muestra el avance. **Detener** deja de encolar las que faltan;
-las que ya se encolaron siguen su curso.
+El diálogo de progreso se abre al comenzar el envío y permite seguir usando la ventana.
+**Detener** evita que se envíen más solicitudes. Si ya hay una solicitud en curso, puede
+terminar y se cuenta en el resumen final. Las corridas ya encoladas siguen su curso.
 
 ### 6.2 Seguir la cola
 
@@ -305,13 +320,19 @@ Botones del panel:
 
 **Exportar historial** guarda en CSV las corridas que estás viendo.
 
+En una corrida completada, **Ver ficha de la corrida** muestra los indicadores, la serie diaria
+cuando tiene procedencia completa, la versión del motor, la semilla, la huella del escenario,
+los parámetros y las limitaciones guardadas. Desde ahí puedes abrir la versión exacta del
+escenario o **Exportar ficha PDF**. **Encolar con la misma semilla** solicita la misma versión del
+escenario, semilla y motor con la configuración vigente. Usa **Ver nueva corrida** para seguirla.
+**Buscar corrida equivalente** consulta otro resultado con la misma huella e indica si coincide
+el resumen. Abre su ficha para comprobar el motor y la versión de ese resultado.
+
 ## 7. Comparación
 
 ![Comparación de escenarios](img/escritorio/comparacion.png)
 
-*En este ejemplo, el cierre escolar con cubrebocas retrasa el pico de casos activos del día
-136 al 199. Las muertes y la tasa de ataque al final del horizonte son parecidas, porque las
-medidas terminan (días 45 y 90) antes de la ola.*
+*Captura con datos ilustrativos. Las curvas y los costos se usan para demostrar la interfaz.*
 
 ### 7.1 Elegir qué comparar
 
@@ -319,6 +340,8 @@ medidas terminan (días 45 y 90) antes de la ola.*
   desde Simulaciones con **Comparar esta versión**.
 - Necesitas **al menos dos versiones**. Quita una con la **✕** de su ficha.
 - Elige la **métrica** de impacto: muertes o pico de casos activos.
+- Usa el filtro **Motor** para comparar corridas de un mismo modelo. Revisa las versiones y
+  los horizontes informados antes de interpretar las diferencias.
 - Pulsa **Comparar**.
 
 ### 7.2 Cómo se calculan los números
@@ -327,6 +350,13 @@ medidas terminan (días 45 y 90) antes de la ola.*
   veces, se usa la más reciente.
 - Solo se usan las **semillas comunes** a todas las versiones elegidas. Si no hay ninguna en
   común, la app lo avisa: lanza un lote con las mismas réplicas para todas.
+- Si el servicio omite el resultado de una semilla, la app la descarta de todos los escenarios.
+- En **Diferencias**, elige la referencia. La diferencia absoluta es la resta con signo entre
+  medianas. La relativa expresa esa resta como porcentaje de la mediana de referencia.
+  Con una referencia de cero, la relativa dice **No aplica**. La resta de tasas se expresa en
+  puntos porcentuales. Personas-día y pesos se comparan en renglones separados.
+
+![Diferencias entre escenarios de demostración](img/escritorio/diferencias.png)
 - Por escenario se muestra la **mediana** y, entre paréntesis, el rango del **percentil 5 al
   95** de las réplicas. El panel derecho agrega la **media**.
 
@@ -335,9 +365,13 @@ medidas terminan (días 45 y 90) antes de la ola.*
 
 ### 7.3 Curvas de casos activos
 
-Hay una línea por escenario, con la mediana de casos activos por día. El escenario que
-selecciones en la tabla muestra además su **banda p5–p95**: el rango donde cayó el 90 % de sus
-réplicas.
+Hay una línea por escenario, con la mediana de casos activos por día. Selecciona el escenario
+en la leyenda o en la tabla para ver su **banda p5–p95**, el intervalo entre los percentiles
+5 y 95 de sus réplicas. En el panel derecho, elige una réplica y pulsa **Abrir ficha de la
+corrida** para consultar su escenario, versión del motor y parámetros. Debajo de las gráficas
+se indican los servicios de origen, el periodo simulado, los motores y sus versiones. Las
+gráficas se omiten cuando faltan estos datos de procedencia. Las curvas se alinean por día
+simulado; el CSV deja las celdas vacías cuando un escenario carece de ese día.
 
 ### 7.4 Frontera de eficiencia
 
@@ -371,10 +405,12 @@ Los costos los registra un epidemiólogo o un administrador.
 
 ### 7.5 Exportar e imprimir
 
-- **Exportar CSV:** guarda dos archivos. `comparacion.csv` tiene la tabla, con media, mediana,
-  p5 y p95 de cada indicador. `comparacion_curvas.csv` tiene las curvas día por día.
-- **Exportar PDF:** reporte con las dos gráficas, la tabla, las semillas usadas, el aviso de que
-  no es predicción y los supuestos de costo.
+- **Exportar CSV:** guarda la tabla de indicadores, las curvas por día y las diferencias con
+  respecto a la referencia elegida.
+- **Exportar PDF:** reporte en A4 horizontal con las dos gráficas, la tabla, las semillas,
+  el aviso de simulación exploratoria, las diferencias, los supuestos de costo y las corridas de origen.
+  Si se enciman bandas p5–p95, el reporte incluye la advertencia. La ficha PDF individual
+  contiene la versión del motor y los parámetros guardados de la réplica.
 - **Imprimir:** el mismo reporte, a la impresora que elijas.
 
 ## 8. Avisos
@@ -404,6 +440,10 @@ ni tokens.
 
 La ruta exacta se imprime en la terminal al abrir la app. Además, el servidor guarda su propia
 bitácora de auditoría de todo lo que cambias.
+
+En Escenarios, **Versiones** muestra el autor y la fecha de cada versión. Para la versión
+seleccionada muestra, cuando el servidor los informa, el envío, la fecha y la persona que revisó
+o aprobó el escenario. El historial de cambios por operación se consulta en la auditoría del servidor.
 
 ## 10. Problemas frecuentes
 

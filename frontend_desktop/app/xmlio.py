@@ -38,7 +38,12 @@ def _valor(nodo):
 
 
 def _es_lista(nodo, hijos):
-    return nodo.tag in SINGULARES or nodo.tag in LISTAS_DE_ITEM or (hijos and all(h.tag == "item" for h in hijos))
+    if hijos and all(h.tag == "item" for h in hijos):
+        return True
+    etiqueta = SINGULARES.get(nodo.tag)
+    if etiqueta:
+        return all(h.tag == etiqueta for h in hijos)
+    return nodo.tag in LISTAS_DE_ITEM
 
 
 def _leer(nodo, es_raiz=False):
