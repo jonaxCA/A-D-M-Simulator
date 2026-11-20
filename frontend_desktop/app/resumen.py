@@ -4,6 +4,10 @@ import statistics
 INDICADORES = (("fallecimientos", "Muertes"), ("pico_casos_activos", "Pico de casos activos"),
                ("dia_pico", "Día del pico"), ("tasa_ataque", "Tasa de ataque"))
 METRICAS = (("fallecimientos", "Muertes"), ("pico_casos_activos", "Pico de casos activos"))
+UNIDADES = {"fallecimientos": "personas simuladas", "pico_casos_activos": "personas simuladas",
+            "dia_pico": "días", "tasa_ataque": "puntos porcentuales"}
+METODO_DIFERENCIAS = ("Diferencias entre medianas descriptivas. Absoluta: escenario menos referencia, con su signo. "
+                      "Relativa: la resta dividida entre la mediana de referencia. Con referencia cero, no aplica.")
 
 
 def una_por_semilla(corridas):
@@ -33,11 +37,12 @@ def estadisticas(valores):
 
 
 def curva(series, campo="casos_activos"):
-    dias = min(len(s) for s in series)
+    por_dia = [{p["dia"]: p[campo] for p in s} for s in series]
+    dias = sorted(set.intersection(*(set(s) for s in por_dia))) if por_dia else []
     salida = []
-    for i in range(dias):
-        e = estadisticas([s[i][campo] for s in series])
-        salida.append({"dia": series[0][i]["dia"], "mediana": e["mediana"], "p5": e["p5"], "p95": e["p95"]})
+    for dia in dias:
+        e = estadisticas([s[dia] for s in por_dia])
+        salida.append({"dia": dia, "mediana": e["mediana"], "p5": e["p5"], "p95": e["p95"]})
     return salida
 
 
@@ -105,12 +110,47 @@ def armar(elegidas, comparadas, datos_pareto, metrica, aviso):
             "escenarios": marcar_frontera(escenarios)}
 
 
+def diferencias(base, escenario):
+    filas = []
+    for clave, nombre in INDICADORES:
+        inicial = base["indicadores"].get(clave)
+        final = escenario["indicadores"].get(clave)
+        a = inicial["mediana"] if inicial else None
+        b = final["mediana"] if final else None
+        filas.append((nombre, UNIDADES[clave], *_delta(a, b, 100 if clave == "tasa_ataque" else 1)))
+    for clave, nombre, unidad in (("costo", "Costo de intervención", "personas-día"),
+                                   ("costo_pesos", "Costo monetario", "MXN")):
+        filas.append((nombre, unidad, *_delta(base.get(clave), escenario.get(clave), 1)))
+    return filas
+
+
+def _delta(a, b, escala):
+    if a is None or b is None:
+        return None, None
+    diferencia = b - a
+    return diferencia * escala, diferencia / a if a else None
+
+
+def modelos_corridas(escenarios):
+    return {(r.get("engine"), r.get("engine_version"))
+            for e in escenarios for r in e.get("replicas", [])}
+
+
+def trazable(escenario):
+    modelos = modelos_corridas([escenario])
+    periodo = escenario.get("curva") or all(r.get("horizon_days") for r in escenario.get("replicas", []))
+    return bool(periodo and modelos) and all(motor and version for motor, version in modelos)
+
+
+def horizontes_corridas(escenarios):
+    return {r["horizon_days"] for e in escenarios for r in e.get("replicas", []) if r.get("horizon_days")}
+
+
 def fuentes_graficas(escenarios):
     periodos = {(e["curva"][0]["dia"], e["curva"][-1]["dia"]) for e in escenarios if e["curva"]}
-    replicas = [r for e in escenarios for r in e.get("replicas", [])]
-    motores = sorted({r["engine"] for r in replicas if r.get("engine")})
-    if any(not r.get("engine") for r in replicas) or not motores:
-        motores.append("sin dato")
+    motores = sorted("%s (%s)" % (motor or "motor sin dato", version or "versión sin dato")
+                     for motor, version in modelos_corridas(escenarios))
     periodo = ", ".join("día %s a %s" % x for x in sorted(periodos)) or "sin serie"
-    return ("Periodo simulado: %s. Motores: %s. La versión exacta del motor se consulta en la ficha de cada corrida."
-            % (periodo, ", ".join(motores)))
+    horizontes = horizontes_corridas(escenarios)
+    horizonte = " Horizontes originales: %s días." % ", ".join(map(str, sorted(horizontes))) if horizontes else ""
+    return "Periodo simulado: %s. Motores y versiones: %s.%s" % (periodo, ", ".join(motores) or "sin dato", horizonte)

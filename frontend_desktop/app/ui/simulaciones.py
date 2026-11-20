@@ -344,9 +344,12 @@ class VistaSimulaciones(QWidget):
     def pintar(self):
         estados = PESTANAS[self.pestanas.currentIndex()][1]
         texto = self.filtro.text().strip().lower()
+        codigo = texto.removeprefix("sim-")
+        corrida_id = int(codigo) if codigo.isascii() and codigo.isdigit() and len(codigo) < 20 else None
         self.visibles = [x for x in self.corridas if (estados is None or x["status"] in estados)
-                         and (not texto or texto in (x.get("scenario_name") or "").lower()
-                              or texto in sim(x["id"]).lower() or texto == str(x["id"]))]
+                         and (x["id"] == corrida_id if corrida_id is not None else
+                              not texto or texto in (x.get("scenario_name") or "").lower()
+                              or texto in sim(x["id"]).lower())]
         self.tabla.blockSignals(True)
         self.tabla.setRowCount(0)
         for x in self.visibles:
@@ -376,7 +379,14 @@ class VistaSimulaciones(QWidget):
             self._mostrar_detalle()
 
     def _corrida_elegida(self):
-        return next((x for x in self.corridas if x["id"] == self.elegida), None)
+        return next((x for x in self.visibles if x["id"] == self.elegida), None)
+
+    def seguir(self, corrida_id):
+        self.motor.setCurrentIndex(0)
+        self.pestanas.setCurrentIndex(len(PESTANAS) - 1)
+        self.elegida = corrida_id
+        self.filtro.setText(sim(corrida_id))
+        self.pintar()
 
     def _mostrar_detalle(self):
         x = self._corrida_elegida()
@@ -409,7 +419,8 @@ class VistaSimulaciones(QWidget):
             elif clave.endswith("_at"):
                 etiqueta.setText(fecha(x.get(clave)))
             else:
-                etiqueta.setText(str(x.get(clave) or "—"))
+                valor = x.get(clave)
+                etiqueta.setText("—" if valor is None or valor == "" else str(valor))
         self.d_error.setText(x.get("error_message") or "")
         self.b_cancelar.setEnabled(x["status"] == "encolado")
         self.b_cancelar_lote.setEnabled(any(y["status"] == "encolado" for y in hermanas))
@@ -457,7 +468,8 @@ class VistaSimulaciones(QWidget):
     def cancelar_lote(self):
         x = self._corrida_elegida()
         ids = [y["id"] for y in self.corridas
-               if y["scenario_version_id"] == x["scenario_version_id"] and y["status"] == "encolado"]
+               if y["scenario_version_id"] == x["scenario_version_id"] and y.get("engine") == x.get("engine")
+               and y["status"] == "encolado"]
         pregunta = "¿Cancelar las %d corridas en espera de %s · v%s?" % (len(ids), x.get("scenario_name"),
                                                                        x.get("version_number"))
         if ids and QMessageBox.question(self, "Cancelar", pregunta) == QMessageBox.Yes:
