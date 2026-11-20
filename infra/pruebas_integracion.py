@@ -5,6 +5,7 @@
 #     python infra/pruebas_integracion.py -- -k flujo  lo que va después de -- es para pytest
 #     python infra/pruebas_integracion.py --gpu        también levanta simulador-gpu (abm-gpu)
 #     python infra/pruebas_integracion.py --nginx      los servicios detrás de nginx (D25)
+#     python infra/pruebas_integracion.py --gpu-remoto abm-gpu desde un simulador fuera del compose (D23)
 #
 # Sin --gpu se levantan todos los perfiles menos gpu, que necesita una GPU de NVIDIA y NVIDIA
 # Container Toolkit (en Windows, Docker Desktop con WSL 2). Con --gpu, corridas acepta además
@@ -15,6 +16,12 @@
 # solo corre test_compose_nginx.py. Si no existe el certificado de infra/nginx/certs/, se crea
 # con infra/nginx/certificado_local.py.
 #
+# Con --gpu-remoto el compose de pruebas hace de máquina de la nube, sin simulador-gpu, y el
+# simulador de abm-gpu corre aparte, con infra/docker-compose.gpu-remoto.yml, como en una PC
+# con GPU. Lo conecta un túnel simulado en los mismos puertos que el de verdad
+# (infra/tunel_gpu.py): 15433, 16380 y 17018 en el 127.0.0.1 de esta máquina. Corre
+# test_compose_gpu_remoto.py. Necesita una GPU de NVIDIA, como --gpu.
+#
 # Usa su propio proyecto (epidemia-pruebas), con sus propios volúmenes de PostgreSQL, Redis y MongoDB,
 # y la base se llama simulador_epidemico_pruebas: nunca toca la base ni el Redis de la
 # demostración. Sus contraseñas, aleatorias, van en infra/.env.pruebas (fuera de git). Publica
@@ -23,6 +30,7 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
@@ -41,10 +49,18 @@ PUERTOS = [5201, 5202, 5203, 5204, 5211, 5212, 5213, 5214, 5215, 5221, 5222, 522
            5231, 5232, 5233, 5234, 5235, 5241, 5242, 5243, 5244, 5245, 5251, 5252, 5253, 5260,
            5261, 5262, 6382, 5435, 27019]
 PUERTOS_NGINX = [80, 443]
+# --gpu-remoto: el simulador de abm-gpu en su propio proyecto, y el túnel simulado. Cada puerto
+# del túnel (los de infra/tunel_gpu.py) lleva al local de la base del compose de pruebas.
+PROYECTO_REMOTO = "epidemia-pruebas-gpu-remoto"
+ENTORNO_REMOTO = AQUI / ".env.gpu-remoto.pruebas"
+ARCHIVO_REMOTO = AQUI / "docker-compose.gpu-remoto.yml"
+TUNEL_SIMULADO = {15433: int(FIJOS["POSTGRES_PUERTO_LOCAL"]), 16380: int(FIJOS["REDIS_PUERTO_LOCAL"]),
+                  17018: int(FIJOS["MONGO_PUERTO_LOCAL"])}
 
 
-def prepara_entorno(gpu, nginx=False):
-    fijos = dict(FIJOS, MOTORES_HABILITADOS="abm-ref,abm-gpu" if gpu else "abm-ref")
+def prepara_entorno(gpu, nginx=False, gpu_remoto=False):
+    motores = "abm-ref,abm-gpu" if gpu or gpu_remoto else "abm-ref"
+    fijos = dict(FIJOS, MOTORES_HABILITADOS=motores)
     if nginx:
         fijos.update(FIJOS_NGINX)
     subprocess.run([sys.executable, str(AQUI / "genera_env.py"), str(ENTORNO)], check=True)
@@ -52,6 +68,66 @@ def prepara_entorno(gpu, nginx=False):
               if l.split("=", 1)[0] not in fijos]
     lineas += ["%s=%s" % par for par in fijos.items()]
     ENTORNO.write_text("\n".join(lineas) + "\n", encoding="utf-8", newline="\n")
+
+
+def prepara_entorno_remoto():
+    """El .env del simulador remoto, como lo llenaría alguien con los secretos de la nube: aquí
+    salen del .env.pruebas. notificaciones se alcanza por su puerto, en vez de por nginx."""
+    valores = dict(l.split("=", 1) for l in ENTORNO.read_text(encoding="utf-8").splitlines()
+                   if "=" in l and not l.startswith("#"))
+    remoto = {clave: valores[clave] for clave in ("JWT_SECRET_KEY", "REDIS_PASSWORD",
+                                                  "DB_PASSWORD_SIMULADOR", "MONGO_PASSWORD")}
+    remoto["POSTGRES_DB"] = FIJOS["POSTGRES_DB"]
+    remoto["SERVICIO_NOTIFICACIONES_URL"] = "http://host.docker.internal:5261"
+    ENTORNO_REMOTO.write_text("".join("%s=%s\n" % par for par in remoto.items()),
+                              encoding="utf-8", newline="\n")
+
+
+def comando_remoto():
+    return ["docker", "compose", "-p", PROYECTO_REMOTO, "--env-file", str(ENTORNO_REMOTO),
+            "-f", str(ARCHIVO_REMOTO)]
+
+
+def _canaliza(origen, destino):
+    try:
+        while True:
+            datos = origen.recv(65536)
+            if not datos:
+                break
+            destino.sendall(datos)
+    except OSError:
+        pass
+    finally:
+        for s in (origen, destino):
+            try:
+                s.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+
+
+def tunel_simulado(pares=TUNEL_SIMULADO):
+    """Reenvía cada puerto del 127.0.0.1 local a otro, como el -L de SSH. Regresa los sockets
+    que escuchan; cerrarlos lo detiene."""
+    servidores = []
+    for local, destino in pares.items():
+        servidor = socket.create_server(("127.0.0.1", local))
+
+        def acepta(servidor=servidor, destino=destino):
+            while True:
+                try:
+                    cliente, _ = servidor.accept()
+                    remoto = socket.create_connection(("127.0.0.1", destino), timeout=5)
+                    remoto.settimeout(None)
+                except OSError:
+                    if servidor.fileno() == -1:
+                        return
+                    continue
+                for a, b in ((cliente, remoto), (remoto, cliente)):
+                    threading.Thread(target=_canaliza, args=(a, b), daemon=True).start()
+
+        threading.Thread(target=acepta, daemon=True).start()
+        servidores.append(servidor)
+    return servidores
 
 
 def comando_compose(gpu, nginx=False):
@@ -63,9 +139,10 @@ def comando_compose(gpu, nginx=False):
     return base + [arg for p in perfiles if gpu or p != "gpu" for arg in ("--profile", p)]
 
 
-def ocupados(nginx=False):
+def ocupados(nginx=False, gpu_remoto=False):
     resultado = []
-    for puerto in PUERTOS + (PUERTOS_NGINX if nginx else []):
+    extra = (PUERTOS_NGINX if nginx else []) + (list(TUNEL_SIMULADO) if gpu_remoto else [])
+    for puerto in PUERTOS + extra:
         with socket.socket() as s:
             s.settimeout(0.3)
             if s.connect_ex(("127.0.0.1", puerto)) == 0:
@@ -78,16 +155,18 @@ def main(argumentos):
     conservar = "--conservar" in propios
     gpu = "--gpu" in propios
     nginx = "--nginx" in propios
+    gpu_remoto = "--gpu-remoto" in propios
     para_pytest = argumentos[argumentos.index("--") + 1:] if "--" in argumentos else []
-    en_uso = ocupados(nginx)
+    en_uso = ocupados(nginx, gpu_remoto)
     if en_uso:
         sys.exit("Puertos ocupados: %s. Detén el compose de la demostración "
                  "(docker compose -f infra/docker-compose.yml down) y vuelve a correr esto."
                  % ", ".join(map(str, en_uso)))
     if nginx:
         subprocess.run([sys.executable, str(AQUI / "nginx" / "certificado_local.py")], check=True)
-    prepara_entorno(gpu, nginx)
+    prepara_entorno(gpu, nginx, gpu_remoto)
     COMPOSE = comando_compose(gpu, nginx)
+    tunel = []
     try:
         if subprocess.run(COMPOSE + ["up", "-d", "--build", "--wait"]).returncode:
             subprocess.run(COMPOSE + ["ps", "-a"])
@@ -98,9 +177,23 @@ def main(argumentos):
         if nginx:
             entorno["EPIDEMIA_PRUEBAS_NGINX"] = "https://localhost"
             destino = [str(CONTENEDORES / "test_compose_nginx.py")]
+        if gpu_remoto:
+            tunel = tunel_simulado()
+            prepara_entorno_remoto()
+            if subprocess.run(comando_remoto() + ["up", "-d", "--build", "--wait"]).returncode:
+                subprocess.run(comando_remoto() + ["logs", "--tail", "40"])
+                sys.exit("El simulador remoto no quedó healthy.")
+            entorno["EPIDEMIA_PRUEBAS_GPU_REMOTO"] = PROYECTO_REMOTO
+            destino = [str(CONTENEDORES / "test_compose_gpu_remoto.py")]
         codigo = subprocess.run([sys.executable, "-m", "pytest", "-p", "no:cacheprovider"]
                                 + destino + para_pytest, cwd=RAIZ, env=entorno).returncode
     finally:
+        if gpu_remoto and not conservar:
+            if ENTORNO_REMOTO.exists():
+                subprocess.run(comando_remoto() + ["down", "-v", "--remove-orphans"])
+            ENTORNO_REMOTO.unlink(missing_ok=True)
+        for servidor in tunel:
+            servidor.close()
         if not conservar:
             subprocess.run(COMPOSE + ["down", "-v", "--remove-orphans"])
     sys.exit(codigo)

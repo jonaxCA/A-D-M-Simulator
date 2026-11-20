@@ -741,6 +741,65 @@ nginx arranca, sirve `/.well-known/acme-challenge/` por el 80 sin redirigir y to
 certificado renovado al recargar. El certificado real solo se puede sacar en la máquina, con
 su IP pública.
 
+### 8. El simulador de abm-gpu en tu PC (D23)
+
+No alcanzaron los créditos para una máquina con GPU en GCP. El simulador de `abm-gpu` corre en
+una PC con GPU de NVIDIA y toma las corridas de la cola de la máquina de la nube, como
+cualquier otro simulador: la cola no sabe dónde corre quien la atiende.
+
+```
+PC con GPU                                    Máquina de GCP
+simulador-gpu ── túnel SSH por IAP ─────────▶ Redis, PostgreSQL y MongoDB (en su 127.0.0.1)
+              ── HTTPS ─────────────────────▶ nginx → notificaciones
+```
+
+El túnel lo abre la PC hacia la máquina, así que funciona detrás de un módem, y en la máquina
+no se abre ningún puerto a internet: las bases siguen escuchando solo en su `127.0.0.1`. El
+simulador entra con el rol `svc_simulador`, que solo puede escribir lo suyo (D18). Si la PC
+está apagada, las corridas de `abm-gpu` esperan `encolado` en la cola, y las que quedaron a
+medias se reencolan (D38).
+
+**Una vez, en la nube:**
+
+1. En `infra/.env` de la máquina, `MOTORES_HABILITADOS=abm-ref,abm-gpu`, y vuelve a levantar
+   `corridas`. La máquina no levanta `simulador-gpu` (perfil `gpu`).
+2. Una regla de firewall que deje entrar a IAP al puerto 22 (la corres tú, en la consola o con
+   `gcloud`):
+
+   ```bash
+   gcloud compute firewall-rules create permitir-ssh-iap --network=default --direction=INGRESS --action=allow --rules=tcp:22 --source-ranges=35.235.240.0/20
+   ```
+
+   Con ella puedes borrar `default-allow-ssh`, que abre el 22 a todo internet.
+
+**En tu PC** (Docker Desktop con la GPU, como en «En el contenedor» de
+`procesamiento/abm_gpu/README.md`, y el SDK de Google Cloud con tu sesión, `gcloud auth login`):
+
+1. Copia `infra/gpu-remoto.env.example` como `infra/.env.gpu-remoto` (no entra a git) y pon los
+   valores de `infra/.env` de la máquina. Son secretos: los copias tú.
+2. Abre el túnel y déjalo abierto (Ctrl+C lo cierra):
+
+   ```bash
+   python infra/tunel_gpu.py --vm <nombre-de-la-maquina> --zona us-central1-a
+   ```
+
+3. Levanta el simulador:
+
+   ```bash
+   docker compose --env-file infra/.env.gpu-remoto -f infra/docker-compose.gpu-remoto.yml up -d --build
+   ```
+
+   Queda `healthy` cuando alcanza Redis y PostgreSQL por el túnel. Desde ahí, cada corrida de
+   `abm-gpu` que se lance en la nube la corre tu GPU.
+
+La serie de una corrida se guarda en dos operaciones (borrar e insertar), no una por día: con
+el simulador lejos de MongoDB, eso es lo que más pesa.
+
+Probado en local el 2026-11-20 con `python infra/pruebas_integracion.py --gpu-remoto`: el
+compose de pruebas hace de nube sin `simulador-gpu`, y el simulador corre en otro proyecto de
+Docker conectado solo por un túnel simulado en los mismos puertos. Una corrida de `abm-gpu`
+termina, con su serie en MongoDB, su resumen en PostgreSQL y el aviso en `notificaciones`.
+
 ---
 
 ## Problemas comunes

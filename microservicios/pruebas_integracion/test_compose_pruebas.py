@@ -89,3 +89,37 @@ def test_cada_variable_de_la_plantilla_de_nginx_tiene_valor():
         assert "      %s: " % variable in letsencrypt
     assert "${DOMINIO:?" in letsencrypt
     assert "/etc/letsencrypt/live/${DOMINIO}/fullchain.pem" in letsencrypt
+
+
+def test_los_puertos_del_tunel_de_gpu_cuadran_en_todos_lados():
+    """infra/tunel_gpu.py, docker-compose.gpu-remoto.yml, su plantilla y el túnel simulado de
+    las pruebas usan los mismos puertos, y cada uno lleva al que la máquina publica en su
+    127.0.0.1 (el compose principal)."""
+    espec = importlib.util.spec_from_file_location("tunel_gpu", RAIZ / "infra/tunel_gpu.py")
+    tunel = importlib.util.module_from_spec(espec)
+    espec.loader.exec_module(tunel)
+    locales = {nombre: local for nombre, local, _ in tunel.PUERTOS}
+    remotos = {nombre: remoto for nombre, _, remoto in tunel.PUERTOS}
+
+    remoto_yml = (RAIZ / "infra/docker-compose.gpu-remoto.yml").read_text(encoding="utf-8")
+    plantilla = (RAIZ / "infra/gpu-remoto.env.example").read_text(encoding="utf-8")
+    for nombre, variable in (("Redis", "TUNEL_REDIS"), ("PostgreSQL", "TUNEL_POSTGRES"),
+                             ("MongoDB", "TUNEL_MONGO")):
+        assert "${%s:-%d}" % (variable, locales[nombre]) in remoto_yml
+        assert "%s=%d\n" % (variable, locales[nombre]) in plantilla
+    assert set(SCRIPT.TUNEL_SIMULADO) == set(locales.values())
+
+    for nombre, variable in (("Redis", "REDIS_PUERTO_LOCAL"), ("PostgreSQL", "POSTGRES_PUERTO_LOCAL"),
+                             ("MongoDB", "MONGO_PUERTO_LOCAL")):
+        assert "127.0.0.1:${%s:-%d}:" % (variable, remotos[nombre]) in COMPOSE
+
+
+def test_el_tunel_usa_iap_y_solo_reenvia_puertos():
+    espec = importlib.util.spec_from_file_location("tunel_gpu", RAIZ / "infra/tunel_gpu.py")
+    tunel = importlib.util.module_from_spec(espec)
+    espec.loader.exec_module(tunel)
+    cmd = tunel.comando("epidemia", "us-central1-a", "proyecto", windows=False)
+    assert "--tunnel-through-iap" in cmd and cmd[cmd.index("--") + 1] == "-N"
+    assert "15433:127.0.0.1:5433" in cmd and "16380:127.0.0.1:6380" in cmd
+    # En Windows gcloud usa plink, que no entiende las opciones -o de OpenSSH.
+    assert "-o" not in tunel.comando("epidemia", "us-central1-a", windows=True)

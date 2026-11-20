@@ -21,10 +21,16 @@ def documentos(run, motor, resultado):
 
 
 def guardar(docs):
-    # Reemplaza por {run_id, dia}: un reintento de la misma corrida actualiza, no duplica.
+    # Reemplaza la serie de cada corrida: borra lo que haya de su run_id y la inserta completa
+    # (D38), así que un reintento no duplica días. Son dos idas y vueltas a MongoDB, no una por
+    # día: importa cuando el simulador está lejos, como el de abm-gpu en una PC (D23). Se
+    # insertan copias porque insert_many agrega _id a cada documento.
+    if not docs:
+        return 0
     coleccion = mongo.coleccion(COLECCION)
-    for d in docs:
-        coleccion.replace_one({"run_id": d["run_id"], "dia": d["dia"]}, d, upsert=True)
+    for run_id in sorted({d["run_id"] for d in docs}):
+        coleccion.delete_many({"run_id": run_id})
+    coleccion.insert_many([dict(d) for d in docs], ordered=True)
     return len(docs)
 
 

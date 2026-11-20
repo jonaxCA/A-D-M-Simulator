@@ -37,6 +37,37 @@ def test_cada_dia_de_la_serie_lleva_sus_referencias_y_se_borra_por_corrida(mongo
     assert series_corridas.leer(42) == [] and len(series_corridas.leer(43)) == 3
 
 
+def test_guardar_reemplaza_la_serie_con_pocas_idas_y_vueltas(mongo_falso, monkeypatch):
+    """Volver a guardar una corrida reemplaza sus días sin duplicarlos, en dos operaciones sin
+    importar cuántos días tenga: el simulador de abm-gpu puede estar lejos de MongoDB (D23)."""
+    def serie(escala):
+        filas = [dict(dict.fromkeys(CAMPOS_SERIE, 0), dia=d, casos_activos=d * escala)
+                 for d in range(181)]
+        run = {"id": 7, "batch_id": 7, "scenario_id": 3, "scenario_version_id": 11, "seed": 7}
+        return series_corridas.documentos(run, "seir-ref", {"engine_version": "seir-ref-0.1",
+                                                             "serie": filas})
+    original = mongo.coleccion
+    llamadas = []
+
+    class Contada:
+        def __init__(self, coleccion):
+            self.coleccion = coleccion
+
+        def __getattr__(self, nombre):
+            llamadas.append(nombre)
+            return getattr(self.coleccion, nombre)
+
+    monkeypatch.setattr(mongo, "coleccion", lambda nombre: Contada(original(nombre)))
+    series_corridas.guardar(serie(1))
+    llamadas.clear()
+    docs = serie(10)
+    assert series_corridas.guardar(docs) == 181
+    assert "_id" not in docs[0]
+    assert llamadas == ["delete_many", "insert_many"]
+    assert mongo_falso["series_corridas"].count_documents({"run_id": 7}) == 181
+    assert mongo_falso["series_corridas"].find_one({"run_id": 7, "dia": 5})["casos_activos"] == 50
+
+
 def test_ping(mongo_falso):
     assert mongo.ping() is True
 

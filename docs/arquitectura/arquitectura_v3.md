@@ -104,7 +104,7 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
   - Un contador `ratelimit:<usuario|ip>:<MÉTODO:regla>` en Redis, con ventana fija, así que lo heredan los 29 servicios. Detalle en §8.
   - Responde 429 con `Retry-After` y el código `LIMITE_EXCEDIDO`. Si Redis falla en el contador no se aplica límite: la ruta protegida ya respondió 503 por la sesión.
 - **Simuladores por motor (hecho).**
-  - `simulador` corre `seir-ref`, `simulador-abm` corre `abm-ref` y `simulador-gpu` corre `abm-gpu` (perfil `gpu`).
+  - `simulador` corre `seir-ref`, `simulador-abm` corre `abm-ref` y `simulador-gpu` corre `abm-gpu` (perfil `gpu`). En la nube, `simulador-gpu` corre en una PC con GPU y toma su cola por un túnel (D23, §8).
   - Cada uno toma solo su cola, `queue:simulaciones:<motor>`, y `corridas` acepta un motor solo si `MOTORES_HABILITADOS` lo nombra.
   - Un simulador cuyo motor no corre en esa máquina no arranca.
 - **Corridas interrumpidas (D38, hecho; migración 045).** Al arrancar, el simulador regresa a `encolado` las `ejecutando` de su motor y las reencola, hasta 3 intentos; si cambió la versión del motor o se llega al tope, se cierran como `fallido` y su serie se borra. Las `encolado` se vuelven a meter a la cola sin duplicar (D19). Detalle en §8.
@@ -192,7 +192,7 @@ Todo el algoritmo está en [`ficha_simulador.md`](ficha_simulador.md), que cierr
 - **Calibración (D24, reabierta):** D24 la dejó fuera, pero la retroalimentación la hace obligatoria. El método, la función de pérdida, las métricas de ajuste y los datos observados los decide el bloque 0. Ya están en la ficha la verificación contra resultados esperados (tamaño final de un SEIR, casos límite, `abm-ref` contra `seir-ref`), el análisis de sensibilidad de `seir-ref` y la evidencia de reproducibilidad.
 - **Dónde corre:**
   - `simulador` y `simulador-abm` van en la VM principal.
-  - `simulador-gpu` va en la VM con GPU (§8). Nuevo León completo tarda 7.7 s por corrida en una RTX 4050, contra 80 a 90 s de `abm-ref`.
+  - `simulador-gpu` corre en una PC con GPU, fuera de GCP, y toma las corridas de su cola por un túnel SSH por IAP (D23, §8): los créditos no alcanzaron para una VM con GPU. Nuevo León completo tarda 7.7 s por corrida en una RTX 4050, contra 80 a 90 s de `abm-ref`.
   - Sin GPU, `abm-ref` es el respaldo y ningún otro componente se entera.
 
 ## 8. Despliegue y seguridad
@@ -211,20 +211,20 @@ flowchart TB
             RD[(Redis)]
             MG[(MongoDB)]
         end
-        subgraph VM2[VM con GPU · se enciende al usarla]
-            SG[simulador-gpu]
-        end
+    end
+    subgraph PC[PC con GPU · fuera de GCP]
+        SG[simulador-gpu]
     end
     FW --> NG
     NG --> WEB & MS
-    SG -->|IP interna: 5432 y 6379| PG & RD
+    SG -->|túnel SSH por IAP| PG & RD & MG
     MS -->|cuenta de servicio| GCS[(Cloud Storage)]
-    VM1 & VM2 -->|logs de Docker| LOG[Cloud Logging]
+    VM1 -->|logs de Docker| LOG[Cloud Logging]
 ```
 
 - **Máquinas:**
   - La VM principal corre el mismo `infra/docker-compose.yml` que en local, con nginx enfrente.
-  - La VM con GPU corre solo `simulador-gpu` (perfil `gpu`), con NVIDIA Container Toolkit, y se apaga cuando no hay corridas de `abm-gpu`. El costo de las horas encendidas está por estimar contra los créditos (D23).
+  - No hay VM con GPU: los créditos no alcanzaron (D23). `simulador-gpu` corre en una PC con GPU (`infra/docker-compose.gpu-remoto.yml`) y toma las corridas de `abm-gpu` por un túnel SSH por IAP que abre la PC (`infra/tunel_gpu.py`): las bases siguen solo en el `127.0.0.1` de la VM y no se abre ningún puerto. Si la PC está apagada, las corridas esperan en la cola.
   - Los tipos de máquina se fijan con las mediciones de Locust (§9).
 - **Bases en la VM, no administradas.** PostgreSQL, Redis y MongoDB corren en contenedores en la VM principal: el mismo compose que en desarrollo, sin costo extra sobre los créditos. La rúbrica lo permite si se justifica. Cloud SQL o MongoDB Atlas quedan como alternativa si la VM no da.
 - **Firewall:**
@@ -232,8 +232,7 @@ flowchart TB
   | Regla | Origen | Puertos | Destino |
   |---|---|---|---|
   | Web pública | Cualquiera | 80, 443 | VM principal |
-  | Administración | Las IP del equipo, o IAP | 22 | Las dos VM |
-  | Simulador GPU | VM con GPU (etiqueta de red) | 5432, 6379 | VM principal |
+  | Administración y túnel de la GPU | IAP (35.235.240.0/20) | 22 | VM principal |
   | Todo lo demás | — | — | Denegado |
 
 - **HTTPS (D26):** Let's Encrypt, gratuito, para `<ip-con-guiones>.sslip.io`, que resuelve a la IP fija sin comprar un dominio (respaldo: DuckDNS). `infra/nginx/letsencrypt.sh` saca el primero; `infra/docker-compose.letsencrypt.yml` lo renueva (certbot cada 12 h, nginx recarga cada 6 h). En local, nginx usa un certificado de mkcert o uno autofirmado.
@@ -342,7 +341,7 @@ Se reportan usuarios concurrentes, peticiones por segundo, tiempo medio, p95, p9
 
 Ya no están aquí:
 
-- **FLAME GPU:** `abm-gpu` está implementado y probado en contenedor (§7). Solo falta la VM con GPU en GCP.
+- **FLAME GPU:** `abm-gpu` está implementado y probado en contenedor (§7). En la nube lo atiende una PC con GPU por un túnel (D23).
 - **La calibración (D24) y el resumen de réplicas en el servidor (D8):** la retroalimentación los vuelve a pedir (§1 y §7). Ver «Lo que la retroalimentación reabre» en el checklist.
 
 ## 11. Cotejo con la rúbrica
