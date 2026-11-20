@@ -67,6 +67,48 @@ def _rango(s, decimales=0, pct=False):
     return "%s (%s–%s), media %s" % (f(s["mediana"]), f(s["p5"]), f(s["p95"]), f(s["media"]))
 
 
+def reporte_corrida(resultado, motor):
+    corrida = resultado["corrida"]
+    filas = (
+        ("Escenario", corrida.get("scenario_name")), ("Versión del escenario", corrida.get("version_number")),
+        ("Región", corrida.get("region_name")), ("Enfermedad", corrida.get("disease_name")),
+        ("Motor", motor), ("Versión del motor", resultado.get("engine_version")),
+        ("Semilla", corrida.get("seed")), ("Población simulada (agentes)", corrida.get("population_size")),
+        ("Horizonte (días)", corrida.get("horizon_days")), ("Finalizada (ISO 8601)", corrida.get("finished_at")),
+        ("Huella del escenario", resultado.get("scenario_checksum")),
+    )
+    detalle = "".join("<tr><th>%s</th><td>%s</td></tr>" % (campo, _dato(valor)) for campo, valor in filas)
+    trazas = resultado.get("trazabilidad") or []
+    parametros = "".join(
+        "<tr>%s</tr>" % "".join("<td>%s</td>" % _dato(t.get(k)) for k in ("parametro", "valor", "fuente", "estado"))
+        for t in trazas
+    ) or '<tr><td colspan="4">El servicio no informó parámetros.</td></tr>'
+    indicadores = resultado.get("resumen") or {}
+    metricas = "".join("<tr><th>%s</th><td>%s</td></tr>" % (
+        nombre, _dato("{:.1%}".format(indicadores[clave]) if clave == "tasa_ataque"
+                     and indicadores.get(clave) is not None else indicadores.get(clave))
+    ) for clave, nombre in resumen.INDICADORES)
+    categoria = (resultado.get("categoria") or {}).get("texto")
+    limites = "".join("<li>%s</li>" % _dato(texto) for texto in resultado.get("simplificaciones") or [])
+    return """<html><body>
+<h2>Ficha de la corrida SIM-%04d</h2>
+<p>%s</p><p>%s</p>
+<table cellspacing="0" cellpadding="4">%s</table>
+<h3>Indicadores de la corrida</h3>
+<table cellspacing="0" cellpadding="4">%s</table>
+<h3>Parámetros de la corrida</h3>
+<table border="1" cellspacing="0" cellpadding="4">
+<thead><tr><th>Parámetro</th><th>Valor</th><th>Fuente</th><th>Estado</th></tr></thead>%s</table>
+<h3>Limitaciones del motor</h3><ul>%s</ul>
+<p>Fuente: resultado guardado por el servicio <b>resultados</b>.</p>
+</body></html>""" % (corrida["id"], _dato(resultado.get("aviso")), _dato(categoria), detalle, metricas, parametros,
+                      limites or "<li>El servicio no informó limitaciones.</li>")
+
+
+def _dato(valor):
+    return "Sin dato" if valor is None or valor == "" else escape(str(valor))
+
+
 def reporte_html(datos, usuario, imagenes):
     filas = []
     for e in datos["escenarios"]:
@@ -107,6 +149,16 @@ def reporte_html(datos, usuario, imagenes):
         '<p><img src="%s" width="300"></p>' % escape(nombre, quote=True)
         for nombre in imagenes[2:]
     )
+    graficas += "<p>Fuentes: comparación (series e indicadores) y Pareto (costos). %s</p>" % escape(
+        resumen.fuentes_graficas(datos["escenarios"]))
+    corridas = "".join(
+        "<li>%s: %s</li>" % (escape(e["nombre"]), ", ".join(
+            "SIM-%04d (semilla %s)" % (r["id"], _dato(r.get("seed"))) for r in e.get("replicas", [])))
+        for e in datos["escenarios"] if e.get("replicas")
+    )
+    referencias = ("<h3>Corridas de origen</h3><ul>%s</ul>"
+                   "<p>La ficha PDF de cada corrida contiene la versión del motor y los parámetros guardados.</p>"
+                   % corridas) if corridas else ""
     semillas = datos["semillas"]
     return """<html><body style="font-family: sans-serif; font-size: 10pt;">
 <h2>Comparación de escenarios</h2>
@@ -123,11 +175,13 @@ def reporte_html(datos, usuario, imagenes):
 <h3>Supuestos</h3>
 <p>Modelo de personas-día y costos: %s</p>
 <ul>%s</ul>
+%s
 <p>Elegir entre los escenarios de la frontera es una decisión humana; este reporte no recomienda ninguno.</p>
 </body></html>""" % (datetime.now().strftime("%Y-%m-%d %H:%M"), escape(usuario or ""), len(datos["escenarios"]),
                       len(semillas), semillas[0], semillas[-1], escape(datos["aviso"] or ""), graficas,
                       escape(dict(resumen.METRICAS).get(datos["metrica"], datos["metrica"]).lower()),
-                      "\n".join(filas), escape(datos.get("modelo_costo") or "—"), costos or "<li>—</li>")
+                      "\n".join(filas), escape(datos.get("modelo_costo") or "—"), costos or "<li>—</li>",
+                      referencias)
 
 
 def documento(html, imagenes):

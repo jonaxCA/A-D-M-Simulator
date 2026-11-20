@@ -1,5 +1,5 @@
 from PySide6.QtCharts import QAreaSeries, QChart, QChartView, QLineSeries, QScatterSeries, QValueAxis
-from PySide6.QtCore import QMargins, QPointF, Qt
+from PySide6.QtCore import QMargins, QPointF, Qt, QTimer
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 
 COLORES = ["#64748B", "#2563EB", "#0F766E", "#9333EA", "#C2410C", "#DB2777", "#65A30D", "#0891B2"]
@@ -52,7 +52,7 @@ def _rango(eje, valores, margen=0.05):
     eje.setRange(0 if bajo >= 0 else bajo - holgura, alto + holgura)
 
 
-def curvas(v, escenarios, elegido):
+def curvas(v, escenarios, elegido, seleccionar):
     g, eje_x, eje_y = _grafica("Día de simulación", "Casos activos")
     valores_x, valores_y = [], []
     for i, e in enumerate(escenarios):
@@ -79,6 +79,8 @@ def curvas(v, escenarios, elegido):
             valores_x.append(p["dia"])
             valores_y.append(p["mediana"])
         _agregar(g, linea, (eje_x, eje_y))
+        g.legend().markers(linea)[0].clicked.connect(
+            lambda i=i: QTimer.singleShot(0, v, lambda: seleccionar(i)))
     _rango(eje_x, valores_x, 0)
     _rango(eje_y, valores_y)
     _poner(v, g)

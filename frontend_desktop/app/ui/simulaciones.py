@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, Q
 
 from .. import api, config, exportar, servicios
 from .comun import celda, encabezado, estado, fecha, limpiar, num, pastilla, sim, tabla, tarjeta
+from .corrida import DialogoCorrida
 from .tareas import en_hilo
 
 PESTANAS = (("Cola", ("encolado", "ejecutando")), ("Completadas", ("completado",)),
@@ -271,6 +272,8 @@ class VistaSimulaciones(QWidget):
         self.b_comparar.clicked.connect(self.comparar)
         self.b_escala = QPushButton("Ver escala poblacional")
         self.b_escala.clicked.connect(self.consultar_escala)
+        self.b_ficha = QPushButton("Ver ficha de la corrida")
+        self.b_ficha.clicked.connect(self.abrir_ficha)
         reproducibilidad = QLabel("Reproducibilidad")
         reproducibilidad.setObjectName("tituloTarjeta")
         capa.addWidget(self.d_titulo)
@@ -284,7 +287,7 @@ class VistaSimulaciones(QWidget):
         capa.addLayout(self.d_forma)
         capa.addWidget(self.d_error)
         capa.addStretch(1)
-        for b in (self.b_cancelar, self.b_cancelar_lote, self.b_comparar, self.b_escala):
+        for b in (self.b_cancelar, self.b_cancelar_lote, self.b_comparar, self.b_ficha, self.b_escala):
             capa.addWidget(b)
         self._mostrar_detalle()
         return marco
@@ -377,6 +380,7 @@ class VistaSimulaciones(QWidget):
 
     def _mostrar_detalle(self):
         x = self._corrida_elegida()
+        self.b_ficha.setEnabled(bool(x and x["status"] == "completado"))
         self.b_escala.setEnabled(bool(x and x["status"] == "completado"
                                       and not self._escala_pendiente))
         limpiar(self.d_estado)
@@ -410,6 +414,11 @@ class VistaSimulaciones(QWidget):
         self.b_cancelar.setEnabled(x["status"] == "encolado")
         self.b_cancelar_lote.setEnabled(any(y["status"] == "encolado" for y in hermanas))
 
+
+    def abrir_ficha(self):
+        corrida = self._corrida_elegida()
+        if corrida and corrida["status"] == "completado":
+            DialogoCorrida(self, self.v, corrida).open()
 
     def consultar_escala(self):
         corrida = self._corrida_elegida()

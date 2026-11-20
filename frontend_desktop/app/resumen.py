@@ -89,6 +89,7 @@ def armar(elegidas, comparadas, datos_pareto, metrica, aviso):
             "version_id": vid,
             "nombre": "%s · v%s" % (primera["scenario_name"], primera["version_number"]),
             "corridas": [x["id"] for x in corridas],
+            "replicas": [x for x in corridas if x["id"] in por_id],
             "n": len(datos),
             "indicadores": {clave: estadisticas([d.get(clave) for d in datos]) for clave, _ in INDICADORES},
             "impacto": estadisticas([d.get(metrica) for d in datos]),
@@ -102,3 +103,14 @@ def armar(elegidas, comparadas, datos_pareto, metrica, aviso):
             "trazabilidad_costos": datos_pareto.get("trazabilidad_costos") or [],
             "avisos": datos_pareto.get("avisos") or [],
             "escenarios": marcar_frontera(escenarios)}
+
+
+def fuentes_graficas(escenarios):
+    periodos = {(e["curva"][0]["dia"], e["curva"][-1]["dia"]) for e in escenarios if e["curva"]}
+    replicas = [r for e in escenarios for r in e.get("replicas", [])]
+    motores = sorted({r["engine"] for r in replicas if r.get("engine")})
+    if any(not r.get("engine") for r in replicas) or not motores:
+        motores.append("sin dato")
+    periodo = ", ".join("día %s a %s" % x for x in sorted(periodos)) or "sin serie"
+    return ("Periodo simulado: %s. Motores: %s. La versión exacta del motor se consulta en la ficha de cada corrida."
+            % (periodo, ", ".join(motores)))

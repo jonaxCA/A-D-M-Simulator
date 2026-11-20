@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFileDialog, QFrame, Q
 
 from .. import esquemas, servicios
 from .comun import celda, dato_vertical, encabezado, estado, num, tabla, tarjeta
-from .formularios import DialogoEscenario, DialogoVersion, FormIntervencion
+from .formularios import DialogoEscenario, DialogoVersion, FormIntervencion, mostrar_parametros
 from .linea_tiempo import LineaTiempo
 from .tareas import en_hilo
 
@@ -110,6 +110,9 @@ class VistaEscenarios(QWidget):
             self.valores[clave] = valor
             cuadro.addWidget(caja, 0, i, Qt.AlignTop)
         rejilla.addLayout(cuadro)
+        self.b_parametros = QPushButton("Consultar parámetros de la enfermedad")
+        self.b_parametros.clicked.connect(self.consultar_parametros)
+        rejilla.addWidget(self.b_parametros, alignment=Qt.AlignLeft)
         capa.addWidget(datos)
 
         linea, capa_linea = tarjeta("Línea de tiempo de intervenciones")
@@ -160,9 +163,12 @@ class VistaEscenarios(QWidget):
         self.b_agregar = QPushButton("Agregar intervención")
         self.b_agregar.setObjectName("primario")
         self.b_agregar.clicked.connect(self.agregar)
-        capa_nueva.addWidget(self.form)
+        desplazar = QScrollArea()
+        desplazar.setWidgetResizable(True)
+        desplazar.setFrameShape(QFrame.NoFrame)
+        desplazar.setWidget(self.form)
+        capa_nueva.addWidget(desplazar, 1)
         capa_nueva.addWidget(self.b_agregar)
-        capa_nueva.addStretch(1)
         historial = QWidget()
         capa_historial = QVBoxLayout(historial)
         self.versiones = QListWidget()
@@ -271,6 +277,7 @@ class VistaEscenarios(QWidget):
         editable = self._editable()
         for b in (self.b_validar, self.b_exportar, self.b_duplicar):
             b.setEnabled(hay)
+        self.b_parametros.setEnabled(bool(hay and self.detalle.get("disease_id")))
         self.b_version.setEnabled(hay and self._propio() and bool(self._version().get("is_current"))
                                   and self._version().get("status") != "borrador")
         for b in (self.b_enviar, self.b_agregar, self.b_subir, self.b_bajar, self.b_quitar):
@@ -337,6 +344,12 @@ class VistaEscenarios(QWidget):
 
     def validar(self):
         en_hilo(servicios.validar_version, self.c, self._version()["id"], listo=self._mostrar_validacion)
+
+    def consultar_parametros(self):
+        enfermedad_id = self.detalle["disease_id"]
+        nombre = self.detalle.get("enfermedad") or "Enfermedad %s" % enfermedad_id
+        en_hilo(servicios.parametros_enfermedad, self.c, enfermedad_id,
+                listo=lambda datos: mostrar_parametros(self, nombre, datos))
 
     def enviar(self):
         pregunta = ("Al enviarla, la versión %s queda congelada y un epidemiólogo la revisa en la web. ¿Enviar?"
