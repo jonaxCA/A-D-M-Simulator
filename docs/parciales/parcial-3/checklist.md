@@ -196,7 +196,7 @@ Ninguna se implementa sin respuesta. Cada respuesta se anota en `decisiones/`. E
 - [x] ¿El aviso de casos nuevos usa el tipo `SYSTEM` o lleva una migración con un tipo propio? (D32). **Frena a E.** Migración 037 con `NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED` (D32).
 - [x] ¿«Validación del JWT» pide que el escritorio revise `exp`? (C10, RF-H23). **Frena a A.** Sí (D35).
 - [x] ¿La serie diaria lleva el desglose por grupo de edad? (RF-F02, D28). **Frena a D.** No (D28).
-- [ ] ¿Quién consigue el dominio y con qué proveedor? (D26). **Frena a F.** Delegada al bloque F (F2).
+- [x] ¿Quién consigue el dominio y con qué proveedor? (D26). **Frena a F.** Delegada al bloque F (F2). Gratuito: `<ip-con-guiones>.sslip.io`, sin proveedor ni pago; respaldo, DuckDNS (D26, 2026-11-20).
 - [x] ¿Qué archivo recibe la web? (D-5, RF-G16). **Frena a C.** El reporte de una comparación (D35).
 - [x] ¿Cómo entra la vacunación a la frontera de Pareto? (D3). Como fracción de día-persona por dosis (D3).
 - [x] ¿Se retiran los roles `app_*` de la migración 009, y qué rol de base usa el monolito? (D18). No; la web sigue con `epidemia_app` (D18).
@@ -618,9 +618,9 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 - [x] nginx en `infra/`, como única entrada, con una ruta por servicio y la web (RNF-H16, RNF-L11). En local: `infra/docker-compose.nginx.yml` e `infra/nginx/` (2026-11-19); ningún servicio publica su puerto. Se prueba con `python infra/pruebas_integracion.py --nginx`.
 - [ ] En local, certificado de mkcert. El script está (`infra/nginx/certificado_local.py`): usa mkcert si está instalado y, si no, genera uno autofirmado con OpenSSL. Falta que cada quien instale mkcert y corra `mkcert -install` en su máquina.
-- [ ] Conseguir el dominio: elegir el proveedor, confirmar que permite Let's Encrypt y quién lo paga (D26).
-- [ ] Apuntar el dominio a la IP fija y obtener el certificado de Let's Encrypt con certbot (RNF-D01).
-- [ ] Renovación programada del certificado, y HTTP redirige a HTTPS (RNF-D09). La redirección ya está (`test_http_redirige_a_https`); falta la renovación, que va con el dominio.
+- [x] Conseguir el dominio: elegir el proveedor, confirmar que permite Let's Encrypt y quién lo paga (D26). `<ip-con-guiones>.sslip.io`, gratuito y compatible con Let's Encrypt; si se agota su límite semanal, DuckDNS (2026-11-20).
+- [ ] Apuntar el dominio a la IP fija y obtener el certificado de Let's Encrypt con certbot (RNF-D01). Con sslip.io no hay que apuntar nada; el certificado lo saca `infra/nginx/letsencrypt.sh` en la máquina. Espera a F1.
+- [ ] Renovación programada del certificado, y HTTP redirige a HTTPS (RNF-D09). La redirección ya está (`test_http_redirige_a_https`). La renovación está en `infra/docker-compose.letsencrypt.yml`: certbot cada 12 h y nginx recarga cada 6 h (la recarga, probada en local). Falta verla en la máquina.
 - [x] Tiempo máximo por petición en nginx, para la prueba del *timeout* (RNF-C10). `NGINX_TIEMPO_MAXIMO`, 30 s (8 s en las pruebas): un servicio congelado responde 504 (`test_nginx_corta_una_peticion_colgada`).
 
 ### F3. Registros y diagramas

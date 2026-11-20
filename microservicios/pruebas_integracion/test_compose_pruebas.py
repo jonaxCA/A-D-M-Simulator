@@ -74,3 +74,18 @@ def test_el_modo_nginx_revisa_sus_puertos_y_corre_su_prueba():
     assert SCRIPT.PUERTOS_NGINX == [80, 443]
     assert (SCRIPT.CONTENEDORES / "test_compose_nginx.py").exists()
     assert SCRIPT.ARCHIVO_NGINX[-1].endswith("docker-compose.nginx.yml")
+
+
+def test_cada_variable_de_la_plantilla_de_nginx_tiene_valor():
+    """La imagen de nginx solo sustituye las variables definidas: una que falte quedaría como
+    ${...} en la configuración y nginx no arrancaría. Let's Encrypt cambia las del certificado."""
+    plantilla = (RAIZ / "infra/nginx/templates/default.conf.template").read_text(encoding="utf-8")
+    usadas = set(re.findall(r"\$\{([A-Z_]+)\}", plantilla))
+    nginx = (RAIZ / "infra/docker-compose.nginx.yml").read_text(encoding="utf-8")
+    definidas = set(re.findall(r"^      ([A-Z_]+): ", nginx, re.M))
+    assert usadas <= definidas, usadas - definidas
+    letsencrypt = (RAIZ / "infra/docker-compose.letsencrypt.yml").read_text(encoding="utf-8")
+    for variable in ("NGINX_DOMINIO", "NGINX_CERTIFICADO", "NGINX_LLAVE"):
+        assert "      %s: " % variable in letsencrypt
+    assert "${DOMINIO:?" in letsencrypt
+    assert "/etc/letsencrypt/live/${DOMINIO}/fullchain.pem" in letsencrypt

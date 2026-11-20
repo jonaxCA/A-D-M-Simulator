@@ -693,6 +693,54 @@ Sin eso el servicio vería la IP de nginx, y el límite por IP de D31 sería uno
 La variable solo se prende cuando los servicios no publican su puerto: si alguien pudiera
 llegar directo, falsearía esas cabeceras.
 
+### 7. HTTPS con Let's Encrypt en la máquina (D26)
+
+En la nube el certificado es de Let's Encrypt, gratuito y de confianza para el navegador, la
+app de escritorio y la móvil (que trae la raíz ISRG Root X1). No hace falta comprar un dominio:
+con la IP fija de la máquina, `34-56-78-90.sslip.io` resuelve solo a `34.56.78.90`.
+
+**Antes:** la máquina de Compute Engine con IP externa fija y el firewall abierto en 80 y 443
+(F1); Docker con Compose, `openssl` y `curl`; el repositorio y su `infra/.env`.
+
+1. **La primera vez**, desde la raíz del repositorio en la máquina:
+
+   ```bash
+   sudo LETSENCRYPT_PRUEBA=1 bash infra/nginx/letsencrypt.sh   # ensayo, sin límites
+   sudo NUEVO=1 bash infra/nginx/letsencrypt.sh                 # el certificado real
+   ```
+
+   Sin `DOMINIO`, el script arma el nombre con la IP externa de la máquina
+   (`<ip-con-guiones>.sslip.io`). Pone un certificado provisional para que nginx arranque, lo
+   levanta, pide el real por HTTP (puerto 80, `/.well-known/acme-challenge/`) y recarga nginx.
+   Correrlo acepta los términos de Let's Encrypt. Con `LETSENCRYPT_CORREO` llegan los avisos de
+   vencimiento; sin él, se registra sin correo.
+
+2. **Anota el dominio en `infra/.env`** (`DOMINIO=34-56-78-90.sslip.io`), para que el compose lo
+   tome siempre, y levanta todo con los tres archivos y los perfiles de arriba:
+
+   ```bash
+   docker compose -f infra/docker-compose.yml -f infra/docker-compose.nginx.yml -f infra/docker-compose.letsencrypt.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait
+   ```
+
+3. **Renovación:** sola. certbot intenta renovar cada 12 h y solo renueva cuando al certificado
+   le quedan menos de 30 días; nginx recarga cada 6 h para tomar el nuevo sin cortar
+   conexiones.
+
+4. **Las apps** apuntan al directorio `https://<DOMINIO>/estado-servicios/api/v1/services`, que
+   ya da `https://<DOMINIO>/<servicio>` como URL de cada servicio.
+
+**Si Let's Encrypt responde «too many certificates already issued for sslip.io».** `sslip.io`
+no está en la Public Suffix List, así que todos sus usuarios comparten el límite semanal de
+certificados nuevos. Las renovaciones no cuentan, pero el primero puede fallar. La salida es un
+subdominio gratuito de [DuckDNS](https://www.duckdns.org), que sí está en la lista y cuenta
+aparte: se crea en su página, se apunta a la IP fija y se corre el script con
+`DOMINIO=<nombre>.duckdns.org`.
+
+Probado en local el 2026-11-20 con un certificado de prueba en las rutas de Let's Encrypt:
+nginx arranca, sirve `/.well-known/acme-challenge/` por el 80 sin redirigir y toma el
+certificado renovado al recargar. El certificado real solo se puede sacar en la máquina, con
+su IP pública.
+
 ---
 
 ## Problemas comunes

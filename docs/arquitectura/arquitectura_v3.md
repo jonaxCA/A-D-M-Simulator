@@ -17,7 +17,7 @@ Cada pieza lleva su estado:
 
 | Tema | v2 | v3 | Decisión | Estado |
 |---|---|---|---|---|
-| Entrada | Sin pasarela: cada servicio publica su puerto y el directorio da `host:puerto` | nginx en 80 y 443 con TLS; los servicios dejan de publicar puertos y el directorio da `https://<dominio>/<servicio>` | D25, D26 (ajustan D13) | **Hecho en local** (2026-11-19): `infra/docker-compose.nginx.yml`, probado con `--nginx`. Falta el dominio con Let's Encrypt (N7, S6; bloque F) |
+| Entrada | Sin pasarela: cada servicio publica su puerto y el directorio da `host:puerto` | nginx en 80 y 443 con TLS; los servicios dejan de publicar puertos y el directorio da `https://<dominio>/<servicio>` | D25, D26 (ajustan D13) | **Hecho en local** (2026-11-19): `infra/docker-compose.nginx.yml`, probado con `--nginx`. HTTPS gratuito listo para la máquina: Let's Encrypt con `<ip>.sslip.io` (`infra/nginx/letsencrypt.sh`); falta correrlo en la VM (N1, S6; bloque F) |
 | Web | Crea escenarios y lanza corridas | Consulta y aprueba; el diseño y las corridas son del escritorio | D4 | **Hecho** |
 | Acceso a datos de la web | Directo a PostgreSQL con `backend_web` (D20) | Consume los microservicios por HTTP con el JWT de la sesión; no toca PostgreSQL, MongoDB ni Redis | D34, D36 (reemplaza D20 y D33) | En curso (C6): la sesión y la aprobación ya pasan por los servicios; los demás módulos, en el orden de D36 |
 | Microservicios | 26, más cinco opcionales | 29: entran `dispositivos`, `evidencias` y `vacunas` para la móvil | D27 | **Hecho** |
@@ -94,7 +94,7 @@ Android y escritorio atienden procesos distintos (P1 contra P2 y P3), y el escri
 
 El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [`microservicios.md`](microservicios.md). Las convenciones de la v2 (§4.2) no cambian: rutas `/api/v1/` en inglés, XML por defecto y JSON a pedido, RFC 7807 con `codigo` estable, XSD validado con `xmlschema`, `X-Correlation-ID`, OpenAPI en `/docs` y un rol de PostgreSQL por servicio. Lo que cambia:
 
-- **Detrás de nginx (D25, hecho en local; falta el dominio).**
+- **Detrás de nginx (D25, hecho en local; en la nube falta la VM).**
   - `https://<dominio>/<servicio>/api/v1/...` llega a `<servicio>:8000/api/v1/...`, así que las rutas no cambian.
   - `estado-servicios` pasa a dar `https://<dominio>/<servicio>` en `URL_PUBLICA`.
   - Cada servicio tiene que funcionar detrás del prefijo: `/docs`, `/openapi.json` y el CORS de la consola.
@@ -236,7 +236,7 @@ flowchart TB
   | Simulador GPU | VM con GPU (etiqueta de red) | 5432, 6379 | VM principal |
   | Todo lo demás | — | — | Denegado |
 
-- **HTTPS (D26):** Let's Encrypt para un dominio que apunta a la IP fija, y certbot renueva. En local, nginx usa un certificado de mkcert.
+- **HTTPS (D26):** Let's Encrypt, gratuito, para `<ip-con-guiones>.sslip.io`, que resuelve a la IP fija sin comprar un dominio (respaldo: DuckDNS). `infra/nginx/letsencrypt.sh` saca el primero; `infra/docker-compose.letsencrypt.yml` lo renueva (certbot cada 12 h, nginx recarga cada 6 h). En local, nginx usa un certificado de mkcert o uno autofirmado.
 - **Secretos (S5):** los `.env` se arman en cada VM, con permisos 600 y fuera del repositorio, como hoy. Propuesta: guardarlos en Secret Manager y que la VM los lea al arrancar con su cuenta de servicio. La cuenta de servicio del bucket solo tiene permisos sobre ese bucket.
 - **Logs (N6):** propuesta: el driver `gcplogs` de Docker manda los registros de cada contenedor a Cloud Logging, con el `X-Correlation-ID` que ya llevan.
 
