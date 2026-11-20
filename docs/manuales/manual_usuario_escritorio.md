@@ -267,8 +267,9 @@ En **Nuevo lote** (parte inferior):
 Cada escenario usa las semillas **1, 2, …, N**. Todos los escenarios del lote usan las
 **mismas semillas**, así las diferencias se deben a las intervenciones y no al azar.
 
-Mientras se encolan, una barra muestra el avance. **Detener** deja de encolar las que faltan;
-las que ya se encolaron siguen su curso.
+El diálogo de progreso se abre al comenzar el envío y permite seguir usando la ventana.
+**Detener** evita que se envíen más solicitudes. Si ya hay una solicitud en curso, puede
+terminar y se cuenta en el resumen final. Las corridas ya encoladas siguen su curso.
 
 ### 6.2 Seguir la cola
 
@@ -373,8 +374,9 @@ Los costos los registra un epidemiólogo o un administrador.
 
 - **Exportar CSV:** guarda dos archivos. `comparacion.csv` tiene la tabla, con media, mediana,
   p5 y p95 de cada indicador. `comparacion_curvas.csv` tiene las curvas día por día.
-- **Exportar PDF:** reporte con las dos gráficas, la tabla, las semillas usadas, el aviso de que
-  no es predicción y los supuestos de costo.
+- **Exportar PDF:** reporte en A4 horizontal con las dos gráficas, la tabla, las semillas,
+  el aviso de simulación exploratoria y los supuestos de costo. Si se enciman bandas p5–p95,
+  el reporte incluye la advertencia.
 - **Imprimir:** el mismo reporte, a la impresora que elijas.
 
 ## 8. Avisos

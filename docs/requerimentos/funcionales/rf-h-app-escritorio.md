@@ -29,9 +29,9 @@ La app de `frontend_desktop/` (PySide6) atiende los procesos **P2** y **P3** de 
 | RF-H18 | La app cierra la sesión | Al cerrar, la app olvida los tokens y regresa al inicio de sesión | Soporte | Escritorio | Alta | Hecho |
 | RF-H19 | La barra de estado muestra la salud de los servicios y la cola | El estado sale de `estado-servicios` | Soporte | Escritorio, Monitoreo | Media | Hecho |
 | RF-H20 | El selector de motor ofrece `abm-gpu` cuando `corridas` lo acepta | El motor aparece solo si está habilitado en ese despliegue | 3.1 | Escritorio | Media | Falta |
-| RF-H21 | La app muestra la escala de los resultados (D6) | Junto a los conteos se ve el factor de habitantes por agente | 3.5 | Escritorio | Media | Falta |
-| RF-H22 | La app avisa cuando las bandas de dos escenarios se enciman (D8) | Ver RF-F23 | 3.5 | Escritorio | Media | Falta (A3) |
-| RF-H23 | La app revisa la expiración del token antes de usarlo | Un token vencido se renueva sin esperar el rechazo del servidor | 2.1 | Escritorio, Seguridad | Baja | Falta (D35): la app lee `exp` sin verificar la firma y renueva antes de que venza. Hoy renueva cuando recibe `TOKEN_EXPIRADO` |
+| RF-H21 | La app muestra la escala de los resultados (D6) | Junto a los conteos se ve el factor de habitantes por agente | 3.5 | Escritorio | Media | Hecho: el diálogo de escala de una corrida completada muestra los conteos y el factor de `resultados` |
+| RF-H22 | La app avisa cuando las bandas de dos escenarios se enciman (D8) | Ver RF-F23 | 3.5 | Escritorio | Media | Hecho: aviso en la vista de comparación y en el PDF |
+| RF-H23 | La app revisa la expiración del token antes de usarlo | Un token vencido se renueva sin esperar el rechazo del servidor | 2.1 | Escritorio, Seguridad | Baja | Hecho: lee `exp` y renueva antes de que venza (D35) |
 | RF-H24 | La app muestra los errores del servidor con un mensaje entendible | Un error llega con su `codigo`, y la app dice qué pasó sin mostrar la traza. Sin red, lo dice y deja reintentar | Todos | Escritorio | Alta | Verificar: ningún paso lo describe |
 
 ## Fuera de alcance
