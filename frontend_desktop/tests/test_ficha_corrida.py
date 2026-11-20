@@ -78,7 +78,8 @@ def test_ficha_lee_xml_y_exporta_pdf(qt, monkeypatch, tmp_path):
     pdf = QPdfDocument()
     assert pdf.load(str(ruta)) == QPdfDocument.Error.None_
     paginas = " ".join(pdf.getAllText(i).text() for i in range(pdf.pageCount()))
-    assert all(valor in paginas for valor in ("Ficha de la corrida SIM-0042", "seir-ref-0.1", "r0"))
+    assert all(valor in paginas for valor in ("Ficha de la corrida SIM-0042", "seir-ref-0.1", "r0",
+                                               "Casos activos de la corrida", "Metodología"))
 
     monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.No)
     ficha.repetir.click()
@@ -101,6 +102,7 @@ def test_comparacion_muestra_corridas_de_la_curva_elegida(qt, monkeypatch):
     for e in datos["escenarios"]:
         for r in e["replicas"]:
             r["engine"] = "seir-ref"
+            r["engine_version"] = "seir-ref-0.1"
     comparacion._mostrar(datos)
     assert comparacion.replicas.currentText() == "SIM-0011 · Semilla 1"
     marcador = next(m for m in comparacion.g_curvas.chart().legend().markers() if m.label() == "Cierre · v1")

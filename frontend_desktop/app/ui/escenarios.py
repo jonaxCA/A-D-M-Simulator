@@ -6,17 +6,17 @@ from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFileDialog, QFrame, Q
                                QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMessageBox,
                                QPlainTextEdit, QPushButton, QScrollArea, QTabWidget, QVBoxLayout, QWidget)
 
-from .. import esquemas, servicios
-from .comun import celda, dato_vertical, encabezado, estado, num, tabla, tarjeta
+from .. import api, esquemas, servicios
+from .comun import celda, dato_vertical, encabezado, estado, fecha, num, tabla, tarjeta
 from .formularios import DialogoEscenario, DialogoVersion, FormIntervencion, mostrar_parametros
 from .linea_tiempo import LineaTiempo
 from .tareas import en_hilo
+from .zonas import DialogoZonas
 
 
 def _detalle_completo(c, escenario_id, version):
     detalle = servicios.escenario(c, escenario_id, version)
-    validacion = servicios.validar_version(c, detalle["version"]["id"])
-    return detalle, servicios.versiones(c, escenario_id), validacion
+    return detalle, servicios.versiones(c, escenario_id)
 
 
 def _catalogos(c):
@@ -33,6 +33,8 @@ class VistaEscenarios(QWidget):
         self.v = ventana
         self.c = ventana.cliente
         self.detalle = None
+        self._solicitud = 0
+        self._cargando_detalle = False
         self.tipos = []
         self.cargado = False
 
@@ -112,7 +114,13 @@ class VistaEscenarios(QWidget):
         rejilla.addLayout(cuadro)
         self.b_parametros = QPushButton("Consultar parámetros de la enfermedad")
         self.b_parametros.clicked.connect(self.consultar_parametros)
-        rejilla.addWidget(self.b_parametros, alignment=Qt.AlignLeft)
+        self.b_zonas = QPushButton("Indicadores municipales")
+        self.b_zonas.clicked.connect(self.abrir_zonas)
+        accesos = QHBoxLayout()
+        accesos.addWidget(self.b_parametros)
+        accesos.addWidget(self.b_zonas)
+        accesos.addStretch(1)
+        rejilla.addLayout(accesos)
         capa.addWidget(datos)
 
         linea, capa_linea = tarjeta("Línea de tiempo de intervenciones")
@@ -180,6 +188,10 @@ class VistaEscenarios(QWidget):
         nota.setWordWrap(True)
         capa_historial.addWidget(self.versiones)
         capa_historial.addWidget(nota)
+        self.ficha_version = QLabel()
+        self.ficha_version.setTextFormat(Qt.PlainText)
+        self.ficha_version.setWordWrap(True)
+        capa_historial.addWidget(self.ficha_version)
         pestanas.addTab(nueva, "Intervención")
         pestanas.addTab(historial, "Versiones")
         capa.addWidget(pestanas)
@@ -214,13 +226,31 @@ class VistaEscenarios(QWidget):
             self.abrir(seleccionar)
 
     def abrir(self, escenario_id, version=None):
-        en_hilo(_detalle_completo, self.c, escenario_id, version, listo=self._mostrar)
+        self._solicitud += 1
+        solicitud = self._solicitud
+        self._cargando_detalle = True
+        self.validacion.setText("Cargando la versión solicitada…")
+        self._habilitar()
+        en_hilo(_detalle_completo, self.c, escenario_id, version,
+                listo=lambda datos: self._mostrar(datos, solicitud),
+                fallo=lambda exc: self._fallo_detalle(exc, solicitud))
+
+    def _fallo_detalle(self, exc, solicitud):
+        if solicitud != self._solicitud:
+            return
+        self._cargando_detalle = False
+        self.validacion.setText("No se pudo abrir la versión solicitada.")
+        self._habilitar()
+        self.v.mostrar_error(exc)
 
     def _version(self):
         return (self.detalle or {}).get("version") or {}
 
-    def _mostrar(self, resultado):
-        self.detalle, versiones, validacion = resultado
+    def _mostrar(self, resultado, solicitud):
+        if solicitud != self._solicitud:
+            return
+        self._cargando_detalle = False
+        self.detalle, versiones = resultado
         d, v = self.detalle, self._version()
         self.titulo.setText("%s · %s v%s" % (d["name"], estado(v.get("status"))[0], v.get("version_number")))
         self.valores["enfermedad"].setText(d.get("enfermedad") or "—")
@@ -241,15 +271,18 @@ class VistaEscenarios(QWidget):
                 self.intervenciones.setItem(fila, col, celda(valor, dato=iv["id"] if col == 0 else None))
         self.versiones.clear()
         for ver in versiones:
-            item = QListWidgetItem("v%s · %s%s\n%s" % (ver["version_number"], estado(ver["status"])[0],
-                                                      " · vigente" if ver.get("is_current") else "",
-                                                      ver.get("notes") or ""))
+            item = QListWidgetItem("v%s · %s%s\n%s · %s\n%s" % (
+                ver["version_number"], estado(ver["status"])[0], " · vigente" if ver.get("is_current") else "",
+                ver.get("autor") or "Autor sin dato", fecha(ver.get("created_at")), ver.get("notes") or ""))
             item.setData(Qt.UserRole, ver["version_number"])
             self.versiones.addItem(item)
-        self._mostrar_validacion(validacion)
+        self.ficha_version.setText("Versión seleccionada: v%s\nAutor: %s\nEnvío: %s\nRevisión: %s\nRevisor: %s" % (
+            v.get("version_number") or "—", v.get("autor") or d.get("autor") or "—",
+            fecha(v.get("submitted_at")), fecha(v.get("reviewed_at")), v.get("revisor") or "—"))
         if self.tipos:
             self.form.poner_tipos(self.tipos, v.get("horizon_days") or 1095)
         self._habilitar()
+        self.validar()
 
     def _mostrar_validacion(self, datos):
         errores = datos.get("errores") or []
@@ -257,13 +290,17 @@ class VistaEscenarios(QWidget):
         partes = ['<span style="background:%s;padding:2px">%d errores</span>' % (
                       "#FEE2E2" if errores else "#DCFCE7", len(errores)),
                   '<span style="background:#FEF3C7;padding:2px">%d advertencias</span>' % len(avisos)]
-        detalle = "".join("<br>• %s" % escape(str(e)) for e in errores + avisos)
+        detalle = "".join("<br>• %s" % escape(
+            "%s: %s" % (e.get("ruta") or "Campo", e.get("mensaje") or "Sin detalle")
+            if isinstance(e, dict) else str(e)) for e in errores + avisos)
         revision = ""
         v = self._version()
         if v.get("review_comment"):
             revision = "<b>Comentario de la revisión%s:</b> %s<br><br>" % (
                 " (%s)" % escape(v["revisor"]) if v.get("revisor") else "", escape(v["review_comment"]))
-        self.validacion.setText("%sValidación del servidor: %s%s" % (revision, " ".join(partes), detalle))
+        resultado = {True: "Válida", False: "Con errores"}.get(datos.get("valido"), "Estado sin dato")
+        self.validacion.setText("%sValidación del escenario: <b>%s</b> · %s%s"
+                               % (revision, resultado, " ".join(partes), detalle))
 
     def _propio(self):
         dueno = (self.detalle or {}).get("owner_id")
@@ -273,11 +310,12 @@ class VistaEscenarios(QWidget):
         return bool(self.detalle and self.detalle.get("editable") and self._propio())
 
     def _habilitar(self):
-        hay = self.detalle is not None
-        editable = self._editable()
+        hay = self.detalle is not None and not self._cargando_detalle
+        editable = hay and self._editable()
         for b in (self.b_validar, self.b_exportar, self.b_duplicar):
             b.setEnabled(hay)
         self.b_parametros.setEnabled(bool(hay and self.detalle.get("disease_id")))
+        self.b_zonas.setEnabled(self.b_parametros.isEnabled())
         self.b_version.setEnabled(hay and self._propio() and bool(self._version().get("is_current"))
                                   and self._version().get("status") != "borrador")
         for b in (self.b_enviar, self.b_agregar, self.b_subir, self.b_bajar, self.b_quitar):
@@ -343,13 +381,36 @@ class VistaEscenarios(QWidget):
                     listo=self._recargar)
 
     def validar(self):
-        en_hilo(servicios.validar_version, self.c, self._version()["id"], listo=self._mostrar_validacion)
+        version_id = self._version().get("id")
+        if not version_id:
+            self.validacion.setText("El escenario todavía no tiene una versión para validar.")
+            return
+        solicitud = self._solicitud
+        self.validacion.setText("Consultando la validación del servidor…")
+        en_hilo(servicios.validar_version, self.c, version_id,
+                listo=lambda datos: self._validada(datos, solicitud),
+                fallo=lambda exc: self._fallo_validacion(exc, solicitud))
+
+    def _validada(self, datos, solicitud):
+        if solicitud == self._solicitud:
+            self._mostrar_validacion(datos)
+
+    def _fallo_validacion(self, exc, solicitud):
+        if solicitud != self._solicitud:
+            return
+        self.validacion.setText("Validación del servidor no disponible. Usa Validar para reintentar.")
+        if isinstance(exc, api.SesionCerrada):
+            self.v.mostrar_error(exc)
 
     def consultar_parametros(self):
         enfermedad_id = self.detalle["disease_id"]
         nombre = self.detalle.get("enfermedad") or "Enfermedad %s" % enfermedad_id
-        en_hilo(servicios.parametros_enfermedad, self.c, enfermedad_id,
+        en_hilo(servicios.estado_parametros, self.c, enfermedad_id,
                 listo=lambda datos: mostrar_parametros(self, nombre, datos))
+
+    def abrir_zonas(self):
+        d = self.detalle
+        DialogoZonas(self, self.v, d["disease_id"], d.get("enfermedad") or "Enfermedad").open()
 
     def enviar(self):
         pregunta = ("Al enviarla, la versión %s queda congelada y un epidemiólogo la revisa en la web. ¿Enviar?"

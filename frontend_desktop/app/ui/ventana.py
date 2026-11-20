@@ -122,6 +122,10 @@ class Ventana(QMainWindow):
         self.ir(0)
         self.escenarios.abrir(escenario_id, version)
 
+    def seguir_corrida(self, corrida_id):
+        self.simulaciones.seguir(corrida_id)
+        self.ir(1)
+
     def lanzar_corridas(self, version):
         self.ir(1)
         self.simulaciones.preseleccionar(version)
