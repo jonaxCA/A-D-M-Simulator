@@ -320,7 +320,13 @@ class VistaComparacion(QWidget):
         ruta, _ = QFileDialog.getSaveFileName(self, "Exportar PDF", "comparacion.pdf", "PDF (*.pdf)")
         if ruta:
             imagenes = self._imagenes()
-            exportar.guardar_pdf(ruta, self._html(imagenes), imagenes)
+            try:
+                exportar.guardar_pdf(ruta, self._html(imagenes), imagenes)
+            except OSError:
+                self.v.mostrar_error(
+                    OSError("No se pudo guardar el reporte PDF. Elige otra ubicación e inténtalo de nuevo.")
+                )
+                return
             self.v.accion("exporta el reporte de comparación a %s" % ruta)
             QMessageBox.information(self, "Exportar", "Reporte guardado en %s." % ruta)
 
