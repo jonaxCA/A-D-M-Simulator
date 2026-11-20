@@ -101,3 +101,6 @@ google-services.json
 
 # Certificados y llaves de nginx en local (infra/nginx/certificado_local.py).
 infra/nginx/certs/
+# Let's Encrypt en la nube (infra/nginx/letsencrypt.sh): la llave privada nunca se versiona.
+infra/letsencrypt/
+infra/certbot-www/

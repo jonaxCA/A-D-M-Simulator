@@ -34,6 +34,11 @@ services:
       - "${NGINX_PUERTO_HTTP:-80}:80"
       - "${NGINX_PUERTO_HTTPS:-443}:443"
     environment:
+      # El certificado de infra/nginx/certs/ (certificado_local.py). En la nube los cambia
+      # docker-compose.letsencrypt.yml por los de Let's Encrypt.
+      NGINX_DOMINIO: "_"
+      NGINX_CERTIFICADO: /etc/nginx/certs/epidemia.pem
+      NGINX_LLAVE: /etc/nginx/certs/epidemia-key.pem
       NGINX_TIEMPO_MAXIMO: ${NGINX_TIEMPO_MAXIMO:-30s}
       NGINX_PUERTO_HTTPS: ${NGINX_PUERTO_HTTPS:-443}
       WEB_DESTINO: ${WEB_DESTINO:-host.docker.internal:5000}
