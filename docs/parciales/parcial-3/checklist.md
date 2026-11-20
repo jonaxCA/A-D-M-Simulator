@@ -275,7 +275,7 @@ Antes de empezar: `frontend_desktop/AGENTS.md`. La app solo habla XML.
 
 - [ ] Proponer los cambios, pantalla por pantalla, y acordarlos con el líder.
 - [ ] Implementar los cambios acordados.
-- [ ] Rehacer las capturas de `docs/manuales/manual_usuario_escritorio.md`.
+- [ ] Rehacer las capturas de `docs/manuales/manual_usuario_escritorio.md`. Se renovaron Escenarios, Simulaciones y Comparación con datos de demostración.
 
 Propuesta para revisar en el PR #173: en Escenarios se distingue el fondo del editor y
 se ensancha el selector de intervención. En Simulaciones se mantiene la cola para monitorear
@@ -306,9 +306,9 @@ y el PDF pone las gráficas y el aviso de incertidumbre antes de la tabla.
 - [ ] Revisar la app contra esta lista y marcar lo que ya cumple. La revisión del PR #173 se resume en las notas de cada punto; el cierre requiere la revisión del equipo y la integración.
 - [ ] Proyectos: crear una investigación con su región, su enfermedad, su periodo y sus modelos. Espera a la decisión (0) y a D (D7).
 - [ ] Gestión de datos: importar conjuntos autorizados, verificar su calidad, examinar sus series y registrar versiones. Espera a D (D6).
-- [ ] Configuración del modelo: elegir el modelo, ajustar parámetros y ver sus definiciones y unidades. Parcial: se elige el motor y se ajustan población, infecciones iniciales y horizonte. Falta un editor de parámetros del modelo con definiciones y unidades.
+- [ ] Configuración del modelo: elegir el modelo, ajustar parámetros y ver sus definiciones y unidades. Se elige el motor, se ajustan población, infecciones iniciales y horizonte, y se consultan definiciones, unidades y fuentes del catálogo. Falta un contrato para ajustar parámetros por versión del escenario.
 - [ ] Editor de escenarios: crear, duplicar, editar y versionar escenarios de referencia y de intervención. Cubierto por el editor, con historial, edición según estado y validación vía XML.
-- [ ] Intervenciones con fecha de inicio, duración, cobertura, intensidad y costos. Parcial: hay intervalo, cobertura, cumplimiento y campos por tipo. Los costos se consultan en el análisis y se administran fuera de este formulario.
+- [ ] Intervenciones con fecha de inicio, duración, cobertura, intensidad y costos. El formulario muestra el costo unitario y su fuente o supuesto, además del intervalo, cobertura, cumplimiento y campos por tipo. Los costos se administran en el catálogo.
 - [ ] Calibración: ajustar parámetros con series históricas y comparar el ajuste. Espera a 0 y a E.
 - [ ] Validación: escenarios de prueba, análisis de sensibilidad y restricciones matemáticas. El editor muestra la validación del servicio; falta mostrar la validación científica y la sensibilidad. Espera a 0.
 - [ ] Ejecución: iniciar, cancelar, monitorear y recuperar corridas asíncronas. Se encolan lotes, se monitorea la cola y se cancelan corridas en espera. Falta verificar la recuperación del trabajador de punta a punta (D38).
@@ -316,11 +316,11 @@ y el PDF pone las gráficas y el aviso de incertidumbre antes de la tabla.
 - [ ] Análisis económico: costos bajo supuestos explícitos y costo-efectividad exploratoria (D3). Hay una comparación exploratoria de personas-día contra el impacto, con costos en pesos aparte y supuestos trazables.
 - [ ] Análisis de Pareto con objetivos comparables y documentados. Se muestra la frontera sobre medianas y se indican las alternativas dominadas y las que quedan fuera por falta de costos.
 - [ ] Mapas regionales: distribución, intensidad e indicadores por zona (RF-H12, reabierto).
-- [ ] Reportes: resultados, parámetros, versiones, gráficas, metodología y limitaciones. El PDF incluye versiones de escenarios, semillas, gráficas, indicadores y supuestos de costo. Faltan los parámetros exactos y la versión del modelo.
-- [ ] Reproducibilidad: guardar la semilla, la versión del modelo, los datos, los parámetros y las condiciones, y repetir la corrida. La cola muestra la semilla y el motor. Falta exponer la ficha de reproducibilidad y repetir una corrida a partir de ella.
+- [ ] Reportes: resultados, parámetros, versiones, gráficas, metodología y limitaciones. El PDF de comparación identifica las réplicas de origen. Cada ficha PDF individual muestra indicadores, versión del motor, huella, parámetros y limitaciones devueltos por `resultados`.
+- [ ] Reproducibilidad: guardar la semilla, la versión del modelo, los datos, los parámetros y las condiciones, y repetir la corrida. La ficha permite encolar con la misma versión de escenario, semilla y motor, y consultar equivalencia por huella. El despliegue usa su configuración vigente; queda pendiente recuperar un conjunto de datos y una configuración histórica para la repetición exacta.
 - [ ] Auditoría: quién creó, modificó, revisó o aprobó cada escenario. Espera a D (D7).
-- [ ] Cada curva lleva a su escenario, a sus supuestos y a su corrida, que se puede reproducir. La leyenda identifica el escenario y su versión; falta la navegación a la ficha de la corrida.
-- [ ] Ninguna gráfica sin fuente, periodo, modelo, versión y unidades. Los ejes muestran magnitudes y el tiempo en días de simulación; faltan fuente, modelo y versión del algoritmo en las gráficas.
+- [ ] Cada curva lleva a su escenario, a sus supuestos y a su corrida, que se puede reproducir. Seleccionar una curva en la leyenda o la tabla permite abrir la ficha de cada réplica y desde ahí la versión exacta del escenario.
+- [ ] Ninguna gráfica sin fuente, periodo, modelo, versión y unidades. Comparación y su PDF incluyen fuentes, periodo, motores y unidades. La versión exacta está en las fichas de origen; la respuesta agregada aún no la trae.
 
 ## B. App Android · `frontend_movil/`
 

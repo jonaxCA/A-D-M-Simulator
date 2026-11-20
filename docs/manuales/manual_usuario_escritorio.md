@@ -150,11 +150,16 @@ Pulsa **+**, junto al buscador.
 
 El escenario nace como **Borrador v1** y se abre solo.
 
+En el resumen del escenario, **Consultar parámetros de la enfermedad** muestra el catálogo
+vigente con las definiciones, unidades, fuentes y supuestos. Para consultar los valores
+guardados de una corrida, abre su ficha en Simulaciones.
+
 ### 5.3 Intervenciones
 
 En el panel derecho, pestaña **Intervención**:
 
-1. Elige el **tipo de intervención**. Debajo aparece qué hace.
+1. Elige el **tipo de intervención**. Debajo aparece qué hace y el costo unitario del catálogo,
+   con su unidad, fuente o marca de supuesto cuando esté disponible.
 2. Indica los **días**: inicio y fin, o marca **Hasta el final**.
 3. Ajusta la **cobertura** (qué fracción de la población alcanza, de 0 a 1) y el
    **cumplimiento** (qué fracción la respeta, de 0 a 1).
@@ -306,13 +311,18 @@ Botones del panel:
 
 **Exportar historial** guarda en CSV las corridas que estás viendo.
 
+En una corrida completada, **Ver ficha de la corrida** muestra los indicadores, la versión del
+motor, la semilla, la huella del escenario, los parámetros y las limitaciones guardadas. Desde
+ahí puedes abrir la versión exacta del escenario o **Exportar ficha PDF**. **Encolar con la misma
+semilla** vuelve a solicitar la misma versión de escenario, semilla y motor con la configuración
+disponible en el servidor. **Buscar corrida equivalente** consulta si ya existe un resultado con
+la misma huella e indica si coincide el resumen.
+
 ## 7. Comparación
 
 ![Comparación de escenarios](img/escritorio/comparacion.png)
 
-*En este ejemplo, el cierre escolar con cubrebocas retrasa el pico de casos activos del día
-136 al 199. Las muertes y la tasa de ataque al final del horizonte son parecidas, porque las
-medidas terminan (días 45 y 90) antes de la ola.*
+*Captura con datos ilustrativos. Las curvas y los costos se usan para demostrar la interfaz.*
 
 ### 7.1 Elegir qué comparar
 
@@ -336,9 +346,11 @@ medidas terminan (días 45 y 90) antes de la ola.*
 
 ### 7.3 Curvas de casos activos
 
-Hay una línea por escenario, con la mediana de casos activos por día. El escenario que
-selecciones en la tabla muestra además su **banda p5–p95**: el rango donde cayó el 90 % de sus
-réplicas.
+Hay una línea por escenario, con la mediana de casos activos por día. Selecciona el escenario
+en la leyenda o en la tabla para ver su **banda p5–p95**, el intervalo entre los percentiles
+5 y 95 de sus réplicas. En el panel derecho, elige una réplica y pulsa **Abrir ficha de la
+corrida** para consultar su escenario, versión del motor y parámetros. Debajo de las gráficas
+se indican los servicios de origen, el periodo simulado y los motores.
 
 ### 7.4 Frontera de eficiencia
 
@@ -375,8 +387,9 @@ Los costos los registra un epidemiólogo o un administrador.
 - **Exportar CSV:** guarda dos archivos. `comparacion.csv` tiene la tabla, con media, mediana,
   p5 y p95 de cada indicador. `comparacion_curvas.csv` tiene las curvas día por día.
 - **Exportar PDF:** reporte en A4 horizontal con las dos gráficas, la tabla, las semillas,
-  el aviso de simulación exploratoria y los supuestos de costo. Si se enciman bandas p5–p95,
-  el reporte incluye la advertencia.
+  el aviso de simulación exploratoria, los supuestos de costo y las corridas de origen.
+  Si se enciman bandas p5–p95, el reporte incluye la advertencia. La ficha PDF individual
+  contiene la versión del motor y los parámetros guardados de la réplica.
 - **Imprimir:** el mismo reporte, a la impresora que elijas.
 
 ## 8. Avisos
