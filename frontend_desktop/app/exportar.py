@@ -91,9 +91,10 @@ def reporte_html(datos, usuario, imagenes):
             'La superposición no demuestra equivalencia.</p>' % mensajes
         )
 
+    titulos = {"frontera.png": "Frontera de eficiencia", "curvas.png": "Casos activos por escenario"}
     celdas = "".join(
-        '<td width="50%%" valign="top"><img src="%s" width="300"></td>'
-        % escape(nombre, quote=True)
+        '<td width="50%%" valign="top" align="center"><b>%s</b><br><img src="%s" width="420"></td>'
+        % (titulos.get(nombre, ""), escape(nombre, quote=True))
         for nombre in imagenes[:2]
     )
     graficas = advertencia
@@ -140,9 +141,19 @@ def documento(html, imagenes):
 
 
 def guardar_pdf(ruta, html, imagenes):
+    from PySide6.QtCore import QIODevice, QSaveFile
     from PySide6.QtGui import QPageLayout, QPageSize, QPdfWriter
-    escritor = QPdfWriter(str(ruta))
+
+    archivo = QSaveFile(str(ruta))
+    if not archivo.open(QIODevice.OpenModeFlag.WriteOnly):
+        raise OSError(archivo.errorString())
+    escritor = QPdfWriter(archivo)
     escritor.setPageSize(QPageSize(QPageSize.A4))
     escritor.setPageOrientation(QPageLayout.Orientation.Landscape)
     escritor.setResolution(96)
     documento(html, imagenes).print_(escritor)
+    del escritor
+    if not archivo.size():
+        raise OSError("No se pudo generar el contenido del reporte.")
+    if not archivo.commit():
+        raise OSError(archivo.errorString())

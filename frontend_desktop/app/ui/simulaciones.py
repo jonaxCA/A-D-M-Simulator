@@ -524,21 +524,31 @@ class VistaSimulaciones(QWidget):
         dialogo.setAutoClose(False)
         dialogo.setAutoReset(False)
         dialogo.canceled.connect(alto.set)
+        dialogo.setValue(0)
+        dialogo.show()
         motor = self.motor_lote.currentText()
         forzar = self.forzar.isChecked() and self.v.es_admin()
         self.v.accion("encola %d corridas (%d réplicas, motor %s) de las versiones %s"
                       % (total, replicas, motor, [v["version_id"] for v in versiones]))
 
         def avance(hechas, nombre):
+            if alto.is_set():
+                return
             dialogo.setValue(hechas)
             dialogo.setLabelText("Encolando %s (%d de %d)…" % (nombre, hechas, total))
 
-        def listo(resultado):
-            dialogo.close()
+        def terminar():
+            dialogo.hide()
+            dialogo.deleteLater()
             self._encolando = False
             self._estimar()
+
+        def listo(resultado):
+            terminar()
             hechas, errores = resultado
             texto = "Se encolaron %d de %d corridas." % (hechas, total)
+            if alto.is_set() and hechas + len(errores) < total:
+                texto += "\nSe detuvo el envío. Las corridas ya encoladas siguen su curso."
             if errores:
                 texto += "\n\nFallaron %d:\n%s" % (len(errores), "\n".join(errores[:10]))
             QMessageBox.information(self, "Nuevo lote", texto)
@@ -546,9 +556,7 @@ class VistaSimulaciones(QWidget):
             self.refrescar()
 
         def fallo(exc):
-            dialogo.close()
-            self._encolando = False
-            self._estimar()
+            terminar()
             self.v.mostrar_error(exc)
 
         en_hilo(_lanzar_lote, self.c, versiones, replicas, motor, forzar, alto,
