@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, Q
 
 from .. import api, config, exportar, servicios
 from .comun import celda, encabezado, estado, fecha, limpiar, num, pastilla, sim, tabla, tarjeta
+from .corrida import DialogoCorrida
 from .tareas import en_hilo
 
 PESTANAS = (("Cola", ("encolado", "ejecutando")), ("Completadas", ("completado",)),
@@ -128,6 +129,7 @@ class VistaSimulaciones(QWidget):
         self.datos_fichas = {}
         self.pendiente = None
         self._escala_pendiente = False
+        self._encolando = False
         self.reloj = QTimer(self)
         self.reloj.timeout.connect(self.refrescar)
 
@@ -148,6 +150,7 @@ class VistaSimulaciones(QWidget):
 
     def _centro(self):
         caja = QWidget()
+        caja.setObjectName("contenido")
         capa = QVBoxLayout(caja)
         capa.setContentsMargins(16, 16, 16, 16)
         marco, interior = tarjeta()
@@ -194,12 +197,14 @@ class VistaSimulaciones(QWidget):
         arriba.addWidget(actualizar)
         interior.addLayout(arriba)
         self.contenedor_fichas = QWidget()
+        self.contenedor_fichas.setObjectName("fichasSimulaciones")
         self.capa_fichas = QHBoxLayout(self.contenedor_fichas)
         self.capa_fichas.setContentsMargins(0, 0, 0, 0)
         desplazar = QScrollArea()
         desplazar.setWidgetResizable(True)
         desplazar.setFrameShape(QFrame.NoFrame)
         desplazar.setFixedHeight(48)
+        desplazar.viewport().setStyleSheet("background-color: #FFFFFF;")
         desplazar.setWidget(self.contenedor_fichas)
         interior.addWidget(desplazar)
         fila = QHBoxLayout()
@@ -267,6 +272,8 @@ class VistaSimulaciones(QWidget):
         self.b_comparar.clicked.connect(self.comparar)
         self.b_escala = QPushButton("Ver escala poblacional")
         self.b_escala.clicked.connect(self.consultar_escala)
+        self.b_ficha = QPushButton("Ver ficha de la corrida")
+        self.b_ficha.clicked.connect(self.abrir_ficha)
         reproducibilidad = QLabel("Reproducibilidad")
         reproducibilidad.setObjectName("tituloTarjeta")
         capa.addWidget(self.d_titulo)
@@ -280,7 +287,7 @@ class VistaSimulaciones(QWidget):
         capa.addLayout(self.d_forma)
         capa.addWidget(self.d_error)
         capa.addStretch(1)
-        for b in (self.b_cancelar, self.b_cancelar_lote, self.b_comparar, self.b_escala):
+        for b in (self.b_cancelar, self.b_cancelar_lote, self.b_comparar, self.b_ficha, self.b_escala):
             capa.addWidget(b)
         self._mostrar_detalle()
         return marco
@@ -337,9 +344,12 @@ class VistaSimulaciones(QWidget):
     def pintar(self):
         estados = PESTANAS[self.pestanas.currentIndex()][1]
         texto = self.filtro.text().strip().lower()
+        codigo = texto.removeprefix("sim-")
+        corrida_id = int(codigo) if codigo.isascii() and codigo.isdigit() and len(codigo) < 20 else None
         self.visibles = [x for x in self.corridas if (estados is None or x["status"] in estados)
-                         and (not texto or texto in (x.get("scenario_name") or "").lower()
-                              or texto in sim(x["id"]).lower() or texto == str(x["id"]))]
+                         and (x["id"] == corrida_id if corrida_id is not None else
+                              not texto or texto in (x.get("scenario_name") or "").lower()
+                              or texto in sim(x["id"]).lower())]
         self.tabla.blockSignals(True)
         self.tabla.setRowCount(0)
         for x in self.visibles:
@@ -369,10 +379,18 @@ class VistaSimulaciones(QWidget):
             self._mostrar_detalle()
 
     def _corrida_elegida(self):
-        return next((x for x in self.corridas if x["id"] == self.elegida), None)
+        return next((x for x in self.visibles if x["id"] == self.elegida), None)
+
+    def seguir(self, corrida_id):
+        self.motor.setCurrentIndex(0)
+        self.pestanas.setCurrentIndex(len(PESTANAS) - 1)
+        self.elegida = corrida_id
+        self.filtro.setText(sim(corrida_id))
+        self.pintar()
 
     def _mostrar_detalle(self):
         x = self._corrida_elegida()
+        self.b_ficha.setEnabled(bool(x and x["status"] == "completado"))
         self.b_escala.setEnabled(bool(x and x["status"] == "completado"
                                       and not self._escala_pendiente))
         limpiar(self.d_estado)
@@ -401,11 +419,17 @@ class VistaSimulaciones(QWidget):
             elif clave.endswith("_at"):
                 etiqueta.setText(fecha(x.get(clave)))
             else:
-                etiqueta.setText(str(x.get(clave) or "—"))
+                valor = x.get(clave)
+                etiqueta.setText("—" if valor is None or valor == "" else str(valor))
         self.d_error.setText(x.get("error_message") or "")
         self.b_cancelar.setEnabled(x["status"] == "encolado")
         self.b_cancelar_lote.setEnabled(any(y["status"] == "encolado" for y in hermanas))
 
+
+    def abrir_ficha(self):
+        corrida = self._corrida_elegida()
+        if corrida and corrida["status"] == "completado":
+            DialogoCorrida(self, self.v, corrida).open()
 
     def consultar_escala(self):
         corrida = self._corrida_elegida()
@@ -444,7 +468,8 @@ class VistaSimulaciones(QWidget):
     def cancelar_lote(self):
         x = self._corrida_elegida()
         ids = [y["id"] for y in self.corridas
-               if y["scenario_version_id"] == x["scenario_version_id"] and y["status"] == "encolado"]
+               if y["scenario_version_id"] == x["scenario_version_id"] and y.get("engine") == x.get("engine")
+               and y["status"] == "encolado"]
         pregunta = "¿Cancelar las %d corridas en espera de %s · v%s?" % (len(ids), x.get("scenario_name"),
                                                                        x.get("version_number"))
         if ids and QMessageBox.question(self, "Cancelar", pregunta) == QMessageBox.Yes:
@@ -496,10 +521,14 @@ class VistaSimulaciones(QWidget):
         self.estimacion.setText("%d escenarios × %d réplicas = %d corridas" % (n, self.replicas.value(),
                                                                                n * self.replicas.value()))
         self.encolar.setText("Encolar %d escenarios" % n if n else "Encolar")
-        self.encolar.setEnabled(n > 0)
+        self.encolar.setEnabled(n > 0 and not self._encolando)
 
     def lanzar(self):
+        if self._encolando:
+            return
         versiones = self._elegidas()
+        if not versiones:
+            return
         replicas = self.replicas.value()
         if replicas < config.REPLICAS_DEFECTO:
             pregunta = ("¿Seguro que quieres bajar de %d réplicas? Con menos réplicas la comparación entre "
@@ -507,24 +536,40 @@ class VistaSimulaciones(QWidget):
             if QMessageBox.question(self, "Réplicas", pregunta) != QMessageBox.Yes:
                 return
         total = len(versiones) * replicas
+        self._encolando = True
+        self._estimar()
         alto = threading.Event()
         dialogo = QProgressDialog("Encolando corridas…", "Detener", 0, total, self)
-        dialogo.setWindowModality(Qt.WindowModal)
+        dialogo.setWindowModality(Qt.NonModal)
         dialogo.setMinimumDuration(0)
+        dialogo.setAutoClose(False)
+        dialogo.setAutoReset(False)
         dialogo.canceled.connect(alto.set)
+        dialogo.setValue(0)
+        dialogo.show()
         motor = self.motor_lote.currentText()
         forzar = self.forzar.isChecked() and self.v.es_admin()
         self.v.accion("encola %d corridas (%d réplicas, motor %s) de las versiones %s"
                       % (total, replicas, motor, [v["version_id"] for v in versiones]))
 
         def avance(hechas, nombre):
+            if alto.is_set():
+                return
             dialogo.setValue(hechas)
             dialogo.setLabelText("Encolando %s (%d de %d)…" % (nombre, hechas, total))
 
+        def terminar():
+            dialogo.hide()
+            dialogo.deleteLater()
+            self._encolando = False
+            self._estimar()
+
         def listo(resultado):
-            dialogo.close()
+            terminar()
             hechas, errores = resultado
             texto = "Se encolaron %d de %d corridas." % (hechas, total)
+            if alto.is_set() and hechas + len(errores) < total:
+                texto += "\nSe detuvo el envío. Las corridas ya encoladas siguen su curso."
             if errores:
                 texto += "\n\nFallaron %d:\n%s" % (len(errores), "\n".join(errores[:10]))
             QMessageBox.information(self, "Nuevo lote", texto)
@@ -532,7 +577,7 @@ class VistaSimulaciones(QWidget):
             self.refrescar()
 
         def fallo(exc):
-            dialogo.close()
+            terminar()
             self.v.mostrar_error(exc)
 
         en_hilo(_lanzar_lote, self.c, versiones, replicas, motor, forzar, alto,

@@ -28,6 +28,8 @@ El script está en [`pruebas_carga/locustfile.py`](../../pruebas_carga/locustfil
 
 [validacion/2026-11-19](validacion/2026-11-19/LEEME.md): resultados esperados (tamaño final de un SEIR, letalidad, casos límite), sensibilidad y reproducibilidad de los motores, con el comando que repite cada tabla.
 
+[Bloque A de escritorio](bloque_a_escritorio.md) reúne pruebas de regresión, pasos de demostración y límites de la verificación.
+
 ## Volumen de datos
 
 [volumen/2026-11-18](volumen/2026-11-18/LEEME.md): 10,000 corridas de 180 días en `series_corridas` (D29), con la inserción, las consultas con y sin índice, con y sin la caché de Redis, y el uso de CPU, memoria y disco de MongoDB. Se repite con `python datos/scripts/volumen_mongo.py` (ver su LEEME).

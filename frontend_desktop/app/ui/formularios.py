@@ -1,9 +1,52 @@
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
                                QFormLayout, QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit, QSpinBox,
                                QVBoxLayout, QWidget)
 
+from .comun import celda, tabla
+
 POLITICAS = (("excluir", "Excluir a quienes no tienen edad"), ("prorratear", "Repartir según la estructura"))
 POBLACION_MAX = 20_000_000
+def mostrar_parametros(padre, enfermedad, datos):
+    dialogo = QDialog(padre)
+    dialogo.setWindowTitle("Parámetros de %s" % enfermedad)
+    dialogo.resize(900, 420)
+    capa = QVBoxLayout(dialogo)
+    if datos.get("simulable") is True:
+        estado = "El catálogo indica que la enfermedad es simulable."
+    elif datos.get("simulable") is False:
+        estado = "El catálogo indica que la enfermedad todavía no es simulable."
+    else:
+        estado = "El catálogo no informó si la enfermedad es simulable."
+    nota = QLabel(estado + " Estos valores son del catálogo vigente. Los valores históricos están en la ficha de corrida.")
+    nota.setTextFormat(Qt.PlainText)
+    nota.setWordWrap(True)
+    capa.addWidget(nota)
+    detalle = (datos.get("detalle") or []) + (datos.get("informativos") or [])
+    if detalle:
+        listado = tabla(["Parámetro", "Unidad", "Valor", "Rango", "Fuente", "Estado"], estirar=(0, 4))
+        listado.setRowCount(len(detalle))
+        estados = {"supuesto": "Supuesto", "con_fuente": "Con fuente", "sin_fuente": "Sin fuente",
+                   "falta": "Falta", "por_grupo": "Por grupo de edad"}
+        for fila, p in enumerate(detalle):
+            rango = "%s a %s" % (p["min"], p["max"]) if p.get("min") is not None and p.get("max") is not None else None
+            estado = estados.get(p.get("estado"), "Supuesto" if p.get("supuesto") else "Informativo")
+            valor = p.get("valor_form") or p.get("valor")
+            if isinstance(valor, dict):
+                valor = "; ".join("%s: %s" % item for item in valor.items())
+            valores = (p.get("etiqueta") or p.get("clave"), p.get("unidad"), valor, rango,
+                       p.get("fuente") or None, estado)
+            for col, dato in enumerate(valores):
+                listado.setItem(fila, col, celda(dato))
+            listado.item(fila, 0).setToolTip(p.get("ayuda") or "")
+        capa.addWidget(listado)
+    else:
+        capa.addWidget(QLabel("El catálogo no devolvió parámetros para esta enfermedad."))
+    botones = QDialogButtonBox(QDialogButtonBox.Close)
+    botones.button(QDialogButtonBox.Close).setText("Cerrar")
+    botones.rejected.connect(dialogo.reject)
+    capa.addWidget(botones)
+    dialogo.exec()
 
 
 def _entero(minimo, maximo, valor):
@@ -157,14 +200,25 @@ class FormIntervencion(QWidget):
         self.tipos = []
         self.lectores = {}
         self.tipo = QComboBox()
+        self.tipo.setMinimumWidth(210)
         self.tipo.currentIndexChanged.connect(self._parametros)
         self.descripcion = QLabel()
         self.descripcion.setWordWrap(True)
         self.descripcion.setObjectName("nota")
+        self.costo = QLabel()
+        self.costo.setTextFormat(Qt.PlainText)
+        self.costo.setWordWrap(True)
+        self.costo.setObjectName("nota")
         self.inicio = _entero(0, 1095, 0)
         self.fin = _entero(0, 1095, 30)
         self.hasta_el_final = QCheckBox("Hasta el final")
         self.hasta_el_final.toggled.connect(lambda si: self.fin.setEnabled(not si))
+        self.duracion = QLabel()
+        self.duracion.setWordWrap(True)
+        self.duracion.setObjectName("nota")
+        self.inicio.valueChanged.connect(self._duracion)
+        self.fin.valueChanged.connect(self._duracion)
+        self.hasta_el_final.toggled.connect(self._duracion)
         self.cobertura = _fraccion()
         self.cumplimiento = _fraccion()
         dias = QHBoxLayout()
@@ -177,13 +231,16 @@ class FormIntervencion(QWidget):
         self.forma.setRowWrapPolicy(QFormLayout.WrapAllRows)
         self.forma.addRow("Tipo de intervención", self.tipo)
         self.forma.addRow(self.descripcion)
+        self.forma.addRow(self.costo)
         self.forma.addRow("Días", dias)
+        self.forma.addRow(self.duracion)
         self.forma.addRow("Cobertura (0–1)", self.cobertura)
         self.forma.addRow("Cumplimiento (0–1)", self.cumplimiento)
         self.filas_fijas = self.forma.rowCount()
         capa = QVBoxLayout(self)
         capa.setContentsMargins(0, 0, 0, 0)
         capa.addLayout(self.forma)
+        self._duracion()
 
     def poner_tipos(self, tipos, horizonte):
         self.tipos = tipos
@@ -195,19 +252,40 @@ class FormIntervencion(QWidget):
             self.tipo.addItem(t["name"], t["code"])
         self.tipo.blockSignals(False)
         self._parametros()
+        self._duracion()
+
+    def _duracion(self):
+        fin = self.inicio.maximum() if self.hasta_el_final.isChecked() else self.fin.value()
+        dias = fin - self.inicio.value() + 1
+        unidad = "día" if dias == 1 else "días"
+        texto = ("Intervalo definido: %d %s (inicio y fin incluidos)." % (dias, unidad) if dias > 0
+                 else "El día final debe ser igual o posterior al inicial.")
+        self.duracion.setText(texto)
 
     def _parametros(self):
         while self.forma.rowCount() > self.filas_fijas:
             self.forma.removeRow(self.filas_fijas)
         self.lectores = {}
         if not self.tipos:
+            self.descripcion.clear()
+            self.costo.clear()
             return
         tipo = self.tipos[self.tipo.currentIndex()]
         self.descripcion.setText(tipo.get("description") or "")
+        costo = tipo.get("unit_cost")
+        if costo is None:
+            self.costo.setText("Costo unitario del catálogo: sin dato.")
+        else:
+            unidad = (tipo.get("cost_unit") or "unidad sin dato").replace("_", " ")
+            fuente = tipo.get("cost_source") or "sin fuente"
+            supuesto = " · supuesto" if tipo.get("cost_is_assumption") else ""
+            self.costo.setText("Costo unitario del catálogo: ${:,.2f} MXN ({}) · {}{}"
+                               .format(costo, unidad, fuente, supuesto))
         esquema = tipo.get("param_schema") or {}
         requeridos = set(esquema.get("required") or [])
         for nombre, propiedad in (esquema.get("properties") or {}).items():
             campo, leer = _campo_parametro(propiedad)
+            campo.setToolTip(propiedad.get("description") or "")
             if nombre in requeridos or "default" in propiedad:
                 self.forma.addRow(nombre, campo)
                 self.lectores[nombre] = leer

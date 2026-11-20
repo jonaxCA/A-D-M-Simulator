@@ -1,4 +1,5 @@
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 from . import api, config, esquemas, resumen, xmlio
 
@@ -43,6 +44,19 @@ def enfermedades(c):
 
 def regiones(c):
     return c.pedir("regiones", "GET", "/api/v1/regions", publico=True).get("municipios") or []
+
+
+def parametros_enfermedad(c, enfermedad_id):
+    datos = c.pedir("parametros", "GET", "/api/v1/diseases/%s/parameters" % enfermedad_id, publico=True)
+    return datos.get("parametros") or {}
+
+
+def estado_parametros(c, enfermedad_id):
+    return c.pedir("parametros", "GET", "/api/v1/diseases/%s/parameters/status" % enfermedad_id, publico=True)
+
+
+def zonas_mapa(c, enfermedad_id, dias):
+    return c.pedir("zonas", "GET", "/api/v1/zones/map", params={"disease_id": enfermedad_id, "days": dias})
 
 
 def tipos_intervencion(c):
@@ -130,9 +144,17 @@ def corrida(c, corrida_id):
     return c.pedir("corridas", "GET", "/api/v1/runs/%s" % corrida_id)
 
 
+def resultado_corrida(c, corrida_id):
+    return c.pedir("resultados", "GET", "/api/v1/runs/%s/results" % corrida_id)
+
+
 def escala_corrida(c, corrida_id):
-    datos = c.pedir("resultados", "GET", "/api/v1/runs/%s/results" % corrida_id)
+    datos = resultado_corrida(c, corrida_id)
     return {"run_id": corrida_id, "escala": datos.get("escala")}
+
+
+def corrida_equivalente(c, corrida_id):
+    return c.pedir("corridas", "GET", "/api/v1/runs/%s/equivalent" % corrida_id)
 
 
 def cancelar_corrida(c, corrida_id):
@@ -175,16 +197,42 @@ def marcar_leido(c, aviso_id):
     return c.pedir("notificaciones", "POST", "/api/v1/notifications/%s/read" % aviso_id)
 
 
-def cargar_comparacion(c, version_ids, metrica):
+def _versiones_motor(c, elegidas):
+    pendientes = [r for lista in elegidas.values() for r in lista if r.get("engine") and not r.get("engine_version")]
+    if not pendientes:
+        return
+    with ThreadPoolExecutor(max_workers=6) as grupo:
+        for i in range(0, len(pendientes), 6):
+            lote = pendientes[i:i + 6]
+            trabajos = [grupo.submit(corrida, c, r["id"]) for r in lote]
+            for r, trabajo in zip(lote, trabajos):
+                try:
+                    detalle = trabajo.result()
+                    r["engine_version"] = detalle.get("engine_version")
+                    r["horizon_days"] = detalle.get("horizon_days")
+                except api.SesionCerrada:
+                    raise
+                except api.ErrorServicio as exc:
+                    if exc.status != 404:
+                        return
+
+
+def cargar_comparacion(c, version_ids, metrica, motor=None):
     grupos = {}
     for vid in version_ids:
-        grupos[vid] = resumen.una_por_semilla(corridas(c, scenario_version_id=vid, status="completado"))
+        grupos[vid] = resumen.una_por_semilla(corridas(c, scenario_version_id=vid, status="completado", engine=motor))
     semillas = resumen.semillas_comunes(grupos)
     if not semillas:
         raise ValueError("Las versiones elegidas no tienen corridas completadas con la misma semilla.")
     elegidas = {vid: [g[s] for s in semillas] for vid, g in grupos.items()}
     ids = [x["id"] for lista in elegidas.values() for x in lista]
     aviso, comparadas = comparar(c, ids)
+    recibidas = {x["id"] for x in comparadas}
+    semillas = [s for s in semillas if all(g[s]["id"] in recibidas for g in grupos.values())]
+    if not semillas:
+        raise ValueError("El servicio no devolvió resultados completos para ninguna semilla compartida.")
+    elegidas = {vid: [g[s] for s in semillas] for vid, g in grupos.items()}
+    ids = [x["id"] for lista in elegidas.values() for x in lista]
     try:
         datos_pareto = pareto(c, ids, metrica)
     except api.ErrorServicio as exc:
@@ -192,6 +240,7 @@ def cargar_comparacion(c, version_ids, metrica):
         if exc.status != 422:
             raise
         datos_pareto = {"filas": [], "avisos": motivos_sin_costo(str(exc))}
+    _versiones_motor(c, elegidas)
     return resumen.armar(elegidas, comparadas, datos_pareto, metrica, aviso)
 
 

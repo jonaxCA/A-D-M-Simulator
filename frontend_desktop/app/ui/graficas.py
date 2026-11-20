@@ -1,6 +1,8 @@
 from PySide6.QtCharts import QAreaSeries, QChart, QChartView, QLineSeries, QScatterSeries, QValueAxis
-from PySide6.QtCore import QMargins, QPointF, Qt
+from PySide6.QtCore import QMargins, QPointF, Qt, QTimer
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
+
+from .. import resumen
 
 COLORES = ["#64748B", "#2563EB", "#0F766E", "#9333EA", "#C2410C", "#DB2777", "#65A30D", "#0891B2"]
 
@@ -44,6 +46,56 @@ def _poner(v, grafica):
     v.grafica = grafica
 
 
+def sin_datos(v, mensaje):
+    g = QChart()
+    g.setTitle(mensaje)
+    g.legend().hide()
+    _poner(v, g)
+
+
+def municipios(v, filas):
+    puntos = [x for x in filas if x.get("lat") is not None and x.get("lon") is not None]
+    if not puntos:
+        sin_datos(v, "El servicio no informó coordenadas para este periodo")
+        return
+    g, x, y = _grafica("Longitud (°)", "Latitud (°)")
+    x.setLabelFormat("%.2f")
+    y.setLabelFormat("%.2f")
+    niveles = {"baja": ("Baja", "#15803D"), "moderada": ("Moderada", "#954809"),
+               "alta": ("Alta", "#C2410C"), "muy_alta": ("Muy alta", "#B91C1C"),
+               "critica": ("Crítica", "#86185E"), "sin dato": ("Sin dato", "#64748B")}
+    grupos = {}
+    for p in puntos:
+        nivel = p.get("nivel")
+        etiqueta = nivel if nivel in niveles else "sin dato"
+        if etiqueta not in grupos:
+            serie = QScatterSeries()
+            nombre, tono = niveles[etiqueta]
+            serie.setName(nombre)
+            serie.setColor(QColor(tono))
+            serie.setMarkerSize(10)
+            grupos[etiqueta] = serie
+        grupos[etiqueta].append(p["lon"], p["lat"])
+    for serie in grupos.values():
+        _agregar(g, serie, (x, y))
+    for eje, campo in ((x, "lon"), (y, "lat")):
+        minimo, maximo = min(p[campo] for p in puntos), max(p[campo] for p in puntos)
+        margen = (maximo - minimo) * 0.08 or 0.1
+        eje.setRange(minimo - margen, maximo + margen)
+    _poner(v, g)
+
+
+def serie_corrida(v, serie):
+    grafica, x, y = _grafica("Día simulado", "Casos activos")
+    linea = QLineSeries()
+    for punto in serie:
+        linea.append(punto["dia"], punto["casos_activos"])
+    _agregar(grafica, linea, (x, y), en_leyenda=False)
+    _rango(x, [p["dia"] for p in serie], 0)
+    _rango(y, [p["casos_activos"] for p in serie])
+    _poner(v, grafica)
+
+
 def _rango(eje, valores, margen=0.05):
     if not valores:
         return
@@ -52,10 +104,12 @@ def _rango(eje, valores, margen=0.05):
     eje.setRange(0 if bajo >= 0 else bajo - holgura, alto + holgura)
 
 
-def curvas(v, escenarios, elegido):
+def curvas(v, escenarios, elegido, seleccionar):
     g, eje_x, eje_y = _grafica("Día de simulación", "Casos activos")
     valores_x, valores_y = [], []
     for i, e in enumerate(escenarios):
+        if not resumen.trazable(e) or not e["curva"]:
+            continue
         if i == elegido and e["curva"]:
             alto, bajo = QLineSeries(), QLineSeries()
             for p in e["curva"]:
@@ -79,6 +133,8 @@ def curvas(v, escenarios, elegido):
             valores_x.append(p["dia"])
             valores_y.append(p["mediana"])
         _agregar(g, linea, (eje_x, eje_y))
+        g.legend().markers(linea)[0].clicked.connect(
+            lambda i=i: QTimer.singleShot(0, v, lambda: seleccionar(i)))
     _rango(eje_x, valores_x, 0)
     _rango(eje_y, valores_y)
     _poner(v, g)
@@ -94,7 +150,7 @@ def _escala(maximo):
 def frontera(v, escenarios, nombre_metrica):
     puntos = [(i, e) for i, e in enumerate(escenarios) if e["costo"] is not None and e["impacto"]]
     divisor, unidad = _escala(max([e["costo"] for _, e in puntos] or [0]))
-    g, eje_x, eje_y = _grafica("Personas-día%s" % unidad, "%s (mediana)" % nombre_metrica)
+    g, eje_x, eje_y = _grafica("Personas-día%s" % unidad, nombre_metrica)
     if not puntos:
         g.setTitle("Sin personas-día calculadas: no hay frontera")
     eje_x.setLabelFormat("%.1f")

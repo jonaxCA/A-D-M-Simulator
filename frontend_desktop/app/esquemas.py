@@ -9,6 +9,8 @@ from . import config
 POR_RESPUESTA = {
     ("corridas", "corrida"): "corridas/corrida.xsd",
     ("corridas", "listado"): "corridas/corrida.xsd",
+    ("corridas", "equivalencia"): "corridas/corrida.xsd",
+    ("parametros", "parametros"): "parametros/parametros.xsd",
     ("intervenciones", "intervenciones_version"): "intervenciones/intervencion.xsd",
     ("intervenciones", "intervencion"): "intervenciones/intervencion.xsd",
     ("aprobacion", "envio"): "aprobacion/aprobacion.xsd",
