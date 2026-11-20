@@ -277,6 +277,12 @@ Antes de empezar: `frontend_desktop/AGENTS.md`. La app solo habla XML.
 - [ ] Implementar los cambios acordados.
 - [ ] Rehacer las capturas de `docs/manuales/manual_usuario_escritorio.md`.
 
+Propuesta para revisar en el PR #173: en Escenarios se distingue el fondo del editor y
+se ensancha el selector de intervención. En Simulaciones se mantiene la cola para monitorear
+y cancelar corridas en espera. El diálogo de envío abre en cero, permite seguir usando la
+ventana e indica qué pasó al detenerlo. En Comparación se distinguen las fichas de escenarios
+y el PDF pone las gráficas y el aviso de incertidumbre antes de la tabla.
+
 ### A2. Funciones que faltan
 
 - [x] Avisar cuando las bandas p5–p95 de dos escenarios se enciman (A3, RF-H22, RF-F23).
@@ -288,8 +294,8 @@ Antes de empezar: `frontend_desktop/AGENTS.md`. La app solo habla XML.
 
 ### A3. Verificar
 
-- [ ] Sin red, con un rechazo del servidor y con la sesión vencida, la app explica qué pasó sin mostrar la traza (RF-H24, RNF-E06).
-- [ ] La app pasa la lista de la rúbrica para el escritorio: búsqueda, filtros, tabla de resultados, validación con XSD y exportación.
+- [ ] Sin red, con un rechazo del servidor y con la sesión vencida, la app explica qué pasó sin mostrar la traza (RF-H24, RNF-E06). Verificado con respuestas controladas en `test_api.py` y `test_mensajes_ui.py`.
+- [ ] La app pasa la lista de la rúbrica para el escritorio: búsqueda, filtros, tabla de resultados, validación con XSD y exportación. Verificación local con ejemplos XML del repositorio y un PDF generado desde la vista de comparación. Con respuestas controladas, entraron ANALISTA y ADMINISTRADOR y se rechazó EPIDEMIOLOGO.
 - [ ] La app funciona contra el dominio con HTTPS y con el directorio de `estado-servicios` detrás de nginx (D25, D26). Espera a F.
 - [ ] `python -m pytest frontend_desktop` pasa.
 
@@ -297,24 +303,24 @@ Antes de empezar: `frontend_desktop/AGENTS.md`. La app solo habla XML.
 
 [Retro: «Aplicación de escritorio»]. Todos son obligatorios. Algunos ya existen en parte (el editor, la comparación y Pareto): la primera casilla es revisarlos.
 
-- [ ] Revisar la app contra esta lista y marcar lo que ya cumple.
+- [ ] Revisar la app contra esta lista y marcar lo que ya cumple. La revisión del PR #173 se resume en las notas de cada punto; el cierre requiere la revisión del equipo y la integración.
 - [ ] Proyectos: crear una investigación con su región, su enfermedad, su periodo y sus modelos. Espera a la decisión (0) y a D (D7).
 - [ ] Gestión de datos: importar conjuntos autorizados, verificar su calidad, examinar sus series y registrar versiones. Espera a D (D6).
-- [ ] Configuración del modelo: elegir el modelo, ajustar parámetros y ver sus definiciones y unidades.
-- [ ] Editor de escenarios: crear, duplicar, editar y versionar escenarios de referencia y de intervención.
-- [ ] Intervenciones con fecha de inicio, duración, cobertura, intensidad y costos.
+- [ ] Configuración del modelo: elegir el modelo, ajustar parámetros y ver sus definiciones y unidades. Parcial: se elige el motor y se ajustan población, infecciones iniciales y horizonte. Falta un editor de parámetros del modelo con definiciones y unidades.
+- [ ] Editor de escenarios: crear, duplicar, editar y versionar escenarios de referencia y de intervención. Cubierto por el editor, con historial, edición según estado y validación vía XML.
+- [ ] Intervenciones con fecha de inicio, duración, cobertura, intensidad y costos. Parcial: hay intervalo, cobertura, cumplimiento y campos por tipo. Los costos se consultan en el análisis y se administran fuera de este formulario.
 - [ ] Calibración: ajustar parámetros con series históricas y comparar el ajuste. Espera a 0 y a E.
-- [ ] Validación: escenarios de prueba, análisis de sensibilidad y restricciones matemáticas. Espera a 0.
-- [ ] Ejecución: iniciar, cancelar, monitorear y recuperar corridas asíncronas.
-- [ ] Comparación: escenarios a la vez, diferencias, incertidumbre y métricas epidemiológicas.
-- [ ] Análisis económico: costos bajo supuestos explícitos y costo-efectividad exploratoria (D3).
-- [ ] Análisis de Pareto con objetivos comparables y documentados.
+- [ ] Validación: escenarios de prueba, análisis de sensibilidad y restricciones matemáticas. El editor muestra la validación del servicio; falta mostrar la validación científica y la sensibilidad. Espera a 0.
+- [ ] Ejecución: iniciar, cancelar, monitorear y recuperar corridas asíncronas. Se encolan lotes, se monitorea la cola y se cancelan corridas en espera. Falta verificar la recuperación del trabajador de punta a punta (D38).
+- [ ] Comparación: escenarios a la vez, diferencias, incertidumbre y métricas epidemiológicas. Hay curvas superpuestas, mediana, p5–p95 y tabla por escenario. Faltan diferencias absolutas y relativas explícitas.
+- [ ] Análisis económico: costos bajo supuestos explícitos y costo-efectividad exploratoria (D3). Hay una comparación exploratoria de personas-día contra el impacto, con costos en pesos aparte y supuestos trazables.
+- [ ] Análisis de Pareto con objetivos comparables y documentados. Se muestra la frontera sobre medianas y se indican las alternativas dominadas y las que quedan fuera por falta de costos.
 - [ ] Mapas regionales: distribución, intensidad e indicadores por zona (RF-H12, reabierto).
-- [ ] Reportes: resultados, parámetros, versiones, gráficas, metodología y limitaciones.
-- [ ] Reproducibilidad: guardar la semilla, la versión del modelo, los datos, los parámetros y las condiciones, y repetir la corrida.
+- [ ] Reportes: resultados, parámetros, versiones, gráficas, metodología y limitaciones. El PDF incluye versiones de escenarios, semillas, gráficas, indicadores y supuestos de costo. Faltan los parámetros exactos y la versión del modelo.
+- [ ] Reproducibilidad: guardar la semilla, la versión del modelo, los datos, los parámetros y las condiciones, y repetir la corrida. La cola muestra la semilla y el motor. Falta exponer la ficha de reproducibilidad y repetir una corrida a partir de ella.
 - [ ] Auditoría: quién creó, modificó, revisó o aprobó cada escenario. Espera a D (D7).
-- [ ] Cada curva lleva a su escenario, a sus supuestos y a su corrida, que se puede reproducir.
-- [ ] Ninguna gráfica sin fuente, periodo, modelo, versión y unidades.
+- [ ] Cada curva lleva a su escenario, a sus supuestos y a su corrida, que se puede reproducir. La leyenda identifica el escenario y su versión; falta la navegación a la ficha de la corrida.
+- [ ] Ninguna gráfica sin fuente, periodo, modelo, versión y unidades. Los ejes muestran magnitudes y el tiempo en días de simulación; faltan fuente, modelo y versión del algoritmo en las gráficas.
 
 ## B. App Android · `frontend_movil/`
 
