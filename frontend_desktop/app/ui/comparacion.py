@@ -5,7 +5,8 @@ from PySide6.QtWidgets import (QComboBox, QFileDialog, QFrame, QHBoxLayout, QLab
 
 from .. import exportar, resumen, servicios
 from . import graficas
-from .comun import celda, encabezado, limpiar, num, pct, tabla, tarjeta
+from .comun import celda, encabezado, limpiar, num, pct, sim, tabla, tarjeta
+from .corrida import DialogoCorrida
 from .tareas import en_hilo
 
 
@@ -106,7 +107,7 @@ class VistaComparacion(QWidget):
         capa_izq.addWidget(nota)
         capa_izq.addWidget(self.g_frontera)
         derecha, capa_der = tarjeta("Casos activos superpuestos")
-        nota = QLabel("Mediana de cada escenario; banda p5–p95 del seleccionado en la tabla.")
+        nota = QLabel("Mediana de cada escenario. Elige uno en la leyenda o en la tabla para ver su banda p5–p95.")
         nota.setObjectName("nota")
         nota.setWordWrap(True)
         self.g_curvas = graficas.vista()
@@ -115,6 +116,12 @@ class VistaComparacion(QWidget):
         graficas_fila.addWidget(izquierda)
         graficas_fila.addWidget(derecha)
         capa.addLayout(graficas_fila)
+
+        self.fuentes = QLabel()
+        self.fuentes.setObjectName("nota")
+        self.fuentes.setTextFormat(Qt.PlainText)
+        self.fuentes.setWordWrap(True)
+        capa.addWidget(self.fuentes)
 
         indicadores, capa_ind = tarjeta("Indicadores por escenario")
         self.nota_tabla = QLabel()
@@ -151,6 +158,10 @@ class VistaComparacion(QWidget):
         self.detalle = QLabel("—")
         self.detalle.setWordWrap(True)
         self.detalle.setTextFormat(Qt.RichText)
+        self.replicas = QComboBox()
+        self.b_ficha = QPushButton("Abrir ficha de la corrida")
+        self.b_ficha.setEnabled(False)
+        self.b_ficha.clicked.connect(self.abrir_ficha)
         pie = QLabel("Elegir entre los escenarios de la frontera es una decisión humana; este análisis no "
                      "recomienda ninguno ni constituye asesoría sanitaria.")
         pie.setObjectName("nota")
@@ -160,6 +171,9 @@ class VistaComparacion(QWidget):
         capa.addSpacing(12)
         capa.addWidget(seleccionado)
         capa.addWidget(self.detalle)
+        capa.addWidget(QLabel("Réplicas de la curva seleccionada"))
+        capa.addWidget(self.replicas)
+        capa.addWidget(self.b_ficha)
         capa.addStretch(1)
         capa.addWidget(pie)
         return marco
@@ -281,8 +295,14 @@ class VistaComparacion(QWidget):
         escenarios = self.datos["escenarios"]
         nombre = dict(resumen.METRICAS)[self.datos["metrica"]]
         graficas.frontera(self.g_frontera, escenarios, nombre)
-        graficas.curvas(self.g_curvas, escenarios, self.seleccion)
+        graficas.curvas(self.g_curvas, escenarios, self.seleccion, self.tabla.selectRow)
+        self.fuentes.setText("Fuentes: comparación (series e indicadores) y Pareto (costos). "
+                             + resumen.fuentes_graficas(escenarios))
         e = escenarios[self.seleccion]
+        self.replicas.clear()
+        for r in e.get("replicas", []):
+            self.replicas.addItem("%s · Semilla %s" % (sim(r["id"]), r.get("seed", "—")), r)
+        self.b_ficha.setEnabled(self.replicas.count() > 0)
         ind = e["indicadores"]
         filas = [("Réplicas", e["n"]),
                  ("Muertes (media)", num(ind["fallecimientos"]["media"]) if ind["fallecimientos"] else "—"),
@@ -301,6 +321,11 @@ class VistaComparacion(QWidget):
         if self.datos and 0 <= fila < len(self.datos["escenarios"]) and fila != self.seleccion:
             self.seleccion = fila
             self._pintar()
+
+    def abrir_ficha(self):
+        corrida = self.replicas.currentData()
+        if corrida:
+            DialogoCorrida(self, self.v, corrida).open()
 
     def _imagenes(self):
         return {"frontera.png": self.g_frontera.grab().toImage(), "curvas.png": self.g_curvas.grab().toImage()}

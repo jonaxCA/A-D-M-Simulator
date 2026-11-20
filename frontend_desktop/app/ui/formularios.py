@@ -1,9 +1,51 @@
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
                                QFormLayout, QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit, QSpinBox,
                                QVBoxLayout, QWidget)
 
+from .comun import celda, tabla
+
 POLITICAS = (("excluir", "Excluir a quienes no tienen edad"), ("prorratear", "Repartir según la estructura"))
 POBLACION_MAX = 20_000_000
+PARAMETROS = {
+    "r0": ("Número reproductivo básico", "Sin unidad"),
+    "incubacion_dias": ("Duración de la incubación", "Días"),
+    "infeccioso_dias": ("Duración del periodo infeccioso", "Días"),
+    "dias_hospitalizacion": ("Duración de la hospitalización", "Días"),
+    "tasa_hospitalizacion": ("Proporción de infecciones que requieren hospitalización", "Fracción (0–1)"),
+    "letalidad": ("Proporción de infecciones que terminan en fallecimiento", "Fracción (0–1)"),
+    "letalidad_por_edad": ("Letalidad por grupo de edad", "Fracción (0–1)"),
+}
+
+
+def mostrar_parametros(padre, enfermedad, datos):
+    dialogo = QDialog(padre)
+    dialogo.setWindowTitle("Parámetros de %s" % enfermedad)
+    dialogo.resize(900, 420)
+    capa = QVBoxLayout(dialogo)
+    nota = QLabel("Valores del catálogo vigente. Para ver los parámetros que se usaron en una corrida, abre su ficha.")
+    nota.setWordWrap(True)
+    capa.addWidget(nota)
+    if datos:
+        listado = tabla(["Parámetro", "Unidad", "Valor", "Fuente", "Estado"], estirar=(0, 3))
+        listado.setRowCount(len(datos))
+        for fila, (clave, parametro) in enumerate(datos.items()):
+            nombre, unidad = PARAMETROS.get(clave, (clave, "Sin dato"))
+            ficha = parametro if isinstance(parametro, dict) else {}
+            valor = ficha.get("valor", parametro)
+            if isinstance(valor, dict):
+                valor = "; ".join("%s: %s" % (k, v) for k, v in valor.items())
+            fuente = ficha.get("fuente")
+            estado = "Supuesto" if ficha.get("supuesto") else ("Con fuente" if fuente else "Sin fuente")
+            for col, dato in enumerate((nombre, unidad, valor, fuente, estado)):
+                listado.setItem(fila, col, celda(dato))
+        capa.addWidget(listado)
+    else:
+        capa.addWidget(QLabel("El catálogo no devolvió parámetros para esta enfermedad."))
+    botones = QDialogButtonBox(QDialogButtonBox.Close)
+    botones.rejected.connect(dialogo.reject)
+    capa.addWidget(botones)
+    dialogo.exec()
 
 
 def _entero(minimo, maximo, valor):
@@ -162,6 +204,10 @@ class FormIntervencion(QWidget):
         self.descripcion = QLabel()
         self.descripcion.setWordWrap(True)
         self.descripcion.setObjectName("nota")
+        self.costo = QLabel()
+        self.costo.setTextFormat(Qt.PlainText)
+        self.costo.setWordWrap(True)
+        self.costo.setObjectName("nota")
         self.inicio = _entero(0, 1095, 0)
         self.fin = _entero(0, 1095, 30)
         self.hasta_el_final = QCheckBox("Hasta el final")
@@ -178,6 +224,7 @@ class FormIntervencion(QWidget):
         self.forma.setRowWrapPolicy(QFormLayout.WrapAllRows)
         self.forma.addRow("Tipo de intervención", self.tipo)
         self.forma.addRow(self.descripcion)
+        self.forma.addRow(self.costo)
         self.forma.addRow("Días", dias)
         self.forma.addRow("Cobertura (0–1)", self.cobertura)
         self.forma.addRow("Cumplimiento (0–1)", self.cumplimiento)
@@ -202,9 +249,20 @@ class FormIntervencion(QWidget):
             self.forma.removeRow(self.filas_fijas)
         self.lectores = {}
         if not self.tipos:
+            self.descripcion.clear()
+            self.costo.clear()
             return
         tipo = self.tipos[self.tipo.currentIndex()]
         self.descripcion.setText(tipo.get("description") or "")
+        costo = tipo.get("unit_cost")
+        if costo is None:
+            self.costo.setText("Costo unitario del catálogo: sin dato.")
+        else:
+            unidad = (tipo.get("cost_unit") or "unidad sin dato").replace("_", " ")
+            fuente = tipo.get("cost_source") or "sin fuente"
+            supuesto = " · supuesto" if tipo.get("cost_is_assumption") else ""
+            self.costo.setText("Costo unitario del catálogo: ${:,.2f} MXN ({}) · {}{}"
+                               .format(costo, unidad, fuente, supuesto))
         esquema = tipo.get("param_schema") or {}
         requeridos = set(esquema.get("required") or [])
         for nombre, propiedad in (esquema.get("properties") or {}).items():

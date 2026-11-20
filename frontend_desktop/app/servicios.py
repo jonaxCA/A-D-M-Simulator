@@ -45,6 +45,11 @@ def regiones(c):
     return c.pedir("regiones", "GET", "/api/v1/regions", publico=True).get("municipios") or []
 
 
+def parametros_enfermedad(c, enfermedad_id):
+    datos = c.pedir("parametros", "GET", "/api/v1/diseases/%s/parameters" % enfermedad_id, publico=True)
+    return datos.get("parametros") or {}
+
+
 def tipos_intervencion(c):
     return c.pedir("tipos-intervencion", "GET", "/api/v1/intervention-types", publico=True).get("tipos") or []
 
@@ -130,9 +135,17 @@ def corrida(c, corrida_id):
     return c.pedir("corridas", "GET", "/api/v1/runs/%s" % corrida_id)
 
 
+def resultado_corrida(c, corrida_id):
+    return c.pedir("resultados", "GET", "/api/v1/runs/%s/results" % corrida_id)
+
+
 def escala_corrida(c, corrida_id):
-    datos = c.pedir("resultados", "GET", "/api/v1/runs/%s/results" % corrida_id)
+    datos = resultado_corrida(c, corrida_id)
     return {"run_id": corrida_id, "escala": datos.get("escala")}
+
+
+def corrida_equivalente(c, corrida_id):
+    return c.pedir("corridas", "GET", "/api/v1/runs/%s/equivalent" % corrida_id)
 
 
 def cancelar_corrida(c, corrida_id):
