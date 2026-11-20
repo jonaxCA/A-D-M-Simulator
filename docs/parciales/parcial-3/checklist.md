@@ -270,8 +270,8 @@ Cada una reemplaza o amplía una decisión vigente (ver [«Lo que la retroalimen
 Antes de empezar: `frontend_desktop/AGENTS.md`. La app solo habla XML.
 
 La [evidencia del bloque A](../../pruebas/bloque_a_escritorio.md) incluye los flujos, los
-comandos de prueba y los pasos de defensa. «Terminado en la rama» indica que se implementó
-y se verificó en escritorio. El cierre del bloque requiere la revisión e integración del equipo.
+comandos de prueba y los pasos de defensa. Lo marcado se implementó y se verificó en el
+escritorio, y se integró en `feat/tercer-parcial` el 2026-11-20 (PR #173).
 
 ### A1. Interfaz más intuitiva y usable
 
@@ -279,7 +279,7 @@ y se verificó en escritorio. El cierre del bloque requiere la revisión e integ
 
 - [ ] Proponer los cambios, pantalla por pantalla, y acordarlos con el líder.
 - [ ] **Parcial.** Implementar los cambios acordados. La rama ordena la comparación por pestañas, evita resultados tardíos al cambiar de versión y agrega accesos directos a la ficha, el seguimiento y los indicadores.
-- [x] **Terminado en la rama.** Actualizar el [manual](../../manuales/manual_usuario_escritorio.md) y las capturas de Escenarios, Simulaciones, Comparación, Diferencias e Indicadores municipales con datos de demostración.
+- [x] Actualizar el [manual](../../manuales/manual_usuario_escritorio.md) y las capturas de Escenarios, Simulaciones, Comparación, Diferencias e Indicadores municipales con datos de demostración.
 
 Propuesta para revisar en el PR #173: en Escenarios se distingue el fondo del editor y
 se ensancha el selector de intervención. En Simulaciones se mantiene la cola para monitorear
@@ -298,32 +298,32 @@ y el PDF pone las gráficas y el aviso de incertidumbre antes de la tabla.
 
 ### A3. Verificar
 
-- [x] **Terminado en la rama.** Sin red, con rechazo o sesión vencida, la app explica el problema (RF-H24, RNF-E06). Evidencia en `test_api.py` y `test_mensajes_ui.py`.
-- [x] **Terminado en la rama.** Búsqueda, filtros, tabla, XSD y exportación verificados localmente con ejemplos XML y PDF. Se conserva la evidencia previa de roles ANALISTA, ADMINISTRADOR y EPIDEMIOLOGO con respuestas controladas.
-- [ ] **Bloqueado (F).** Verificar el dominio con HTTPS y el directorio `estado-servicios` detrás de nginx (D25, D26).
-- [x] **Terminado en la rama.** `python -m pytest frontend_desktop` pasó la suite completa. Ver [reproducción y resultados](../../pruebas/bloque_a_escritorio.md).
+- [x] Sin red, con rechazo o sesión vencida, la app explica el problema (RF-H24, RNF-E06). Evidencia en `test_api.py` y `test_mensajes_ui.py`.
+- [x] Búsqueda, filtros, tabla, XSD y exportación verificados localmente con ejemplos XML y PDF. Se conserva la evidencia previa de roles ANALISTA, ADMINISTRADOR y EPIDEMIOLOGO con respuestas controladas.
+- [ ] **Parcial (F).** Verificar el escritorio detrás de nginx y contra el dominio con HTTPS (D25, D26). nginx en local ya está (F2, `infra/docker-compose.nginx.yml`): se puede probar con el directorio en `https://localhost`. El dominio sigue esperando a F.
+- [x] `python -m pytest frontend_desktop` pasó la suite completa. Ver [reproducción y resultados](../../pruebas/bloque_a_escritorio.md).
 
 ### A4. Módulos que pide la retroalimentación
 
 [Retro: «Aplicación de escritorio»]. Todos son obligatorios. Algunos ya existen en parte (el editor, la comparación y Pareto): la primera casilla es revisarlos.
 
-- [x] **Terminado en la rama.** Contrastar esta lista con el código y las pruebas de cada pantalla.
+- [x] Contrastar esta lista con el código y las pruebas de cada pantalla.
 - [ ] **Bloqueado (0 y D).** Proyectos. El escritorio ya selecciona región, enfermedad, horizonte y motor de escenarios y corridas. Faltan la definición, permisos y persistencia del proyecto (D7).
 - [ ] **Parcial (D).** Gestión de datos. Se consultan las series guardadas de corridas y las series de casos municipales de `zonas`. Faltan importación autorizada, verificación de calidad y versiones de conjuntos (D6).
 - [ ] **Parcial (D y 0).** Configuración del modelo. Se elige el motor al lanzar, se ajustan población, infecciones iniciales y horizonte. `parametros/status` aporta definiciones, unidades, rangos, fuentes y estado. Falta el ajuste de parámetros por versión del escenario.
-- [x] **Terminado en la rama.** Editor de escenarios. Alta, duplicado, nuevas versiones, historial y edición del borrador por XML. La prueba del bloque A verifica que una respuesta tardía no reemplaza la versión que pidió el usuario.
-- [x] **Terminado en la rama.** Configuración de intervenciones. Intervalo y duración inclusiva, cobertura, cumplimiento, parámetros por tipo y consulta del costo unitario con su procedencia. Cambiar el costo del catálogo es una operación compartida de administración.
+- [x] Editor de escenarios. Alta, duplicado, nuevas versiones, historial y edición del borrador por XML. La prueba del bloque A verifica que una respuesta tardía no reemplaza la versión que pidió el usuario.
+- [x] Configuración de intervenciones. Intervalo y duración inclusiva, cobertura, cumplimiento, parámetros por tipo y consulta del costo unitario con su procedencia. Cambiar el costo del catálogo es una operación compartida de administración.
 - [ ] **Bloqueado (0 y E).** Calibración. Falta la decisión sobre el método y el servicio de calibración con series y métricas de ajuste.
 - [ ] **Parcial (0 y E).** Validación. El escritorio muestra errores y advertencias del escenario y el motivo de la categoría científica devuelta por `resultados`. Faltan las rutas del estudio de sensibilidad y la validación científica.
 - [ ] **Parcial (E).** Ejecución asíncrona. La app encola, monitorea, sigue la nueva corrida y cancela en espera por versión y motor. Falta demostrar la recuperación del trabajador de punta a punta (D38).
-- [x] **Terminado en la rama.** Comparación descriptiva. Mediana, p5–p95, diferencias absolutas y relativas contra referencia, semillas completas y curvas alineadas por día. Se avisa si cambian motor, versión u horizonte.
-- [x] **Terminado en la rama.** Análisis económico exploratorio y Pareto (D3/D8). Se ven supuestos y diferencias de costos en personas-día y pesos. La frontera sobre medianas muestra dominancia y alternativas fuera por falta de datos.
+- [x] Comparación descriptiva. Mediana, p5–p95, diferencias absolutas y relativas contra referencia, semillas completas y curvas alineadas por día. Se avisa si cambian motor, versión u horizonte.
+- [x] Análisis económico exploratorio y Pareto (D3/D8). Se ven supuestos y diferencias de costos en personas-día y pesos. La frontera sobre medianas muestra dominancia y alternativas fuera por falta de datos.
 - [ ] **Parcial (D y F).** Mapa regional. `zonas/map` aporta coordenadas, casos, incidencia, semáforo y serie por municipio. El escritorio dibuja marcadores sin polígonos; falta geometría oficial si se exigen límites municipales.
-- [x] **Terminado en la rama.** Reportes. El comparativo exporta gráficas, metodología, diferencias, advertencias, costos e identificadores de origen. La ficha PDF por réplica exporta serie, indicadores, parámetros con procedencia, versión y limitaciones devueltos por `resultados`.
+- [x] Reportes. El comparativo exporta gráficas, metodología, diferencias, advertencias, costos e identificadores de origen. La ficha PDF por réplica exporta serie, indicadores, parámetros con procedencia, versión y limitaciones devueltos por `resultados`.
 - [ ] **Parcial (D y E).** Reproducibilidad. Misma versión del escenario, semilla y motor al reencolar; consulta de huella y resumen, acceso al equivalente y seguimiento. Faltan ID/versionado del conjunto y un contrato para repetir con configuración histórica.
 - [ ] **Parcial (D y E).** Auditoría. Versiones muestra autor, fechas y revisor del servidor cuando existen. Falta la consulta de eventos por operación y modificación (D7/E7).
-- [x] **Terminado en la rama.** Seleccionar una curva por leyenda o tabla, escoger una réplica y abrir su ficha, sus supuestos y su versión del escenario. La repetición histórica sigue en el requisito de reproducibilidad.
-- [x] **Terminado en la rama.** Trazabilidad gráfica. `corridas` aporta versión del motor y horizonte; `comparacion` y `resultados`, las series e indicadores; `pareto`, los costos. Los ejes muestran unidades. Si faltan datos de procedencia, se muestran tablas y se omite la gráfica afectada.
+- [x] Seleccionar una curva por leyenda o tabla, escoger una réplica y abrir su ficha, sus supuestos y su versión del escenario. La repetición histórica sigue en el requisito de reproducibilidad.
+- [x] Trazabilidad gráfica. `corridas` aporta versión del motor y horizonte; `comparacion` y `resultados`, las series e indicadores; `pareto`, los costos. Los ejes muestran unidades. Si faltan datos de procedencia, se muestran tablas y se omite la gráfica afectada.
 
 ## B. App Android · `frontend_movil/`
 
@@ -664,7 +664,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 - [ ] `indicadores`: cada indicador con su numerador, su denominador y su periodo; capacidad utilizada, con su fuente (RF-G07, reabierto).
 - [ ] `series`: filtrado, paginación y agregaciones por enfermedad, periodo, región y grupo.
-- [ ] `zonas`: mapas de calor y agrupaciones territoriales.
+- [ ] `zonas`: mapas de calor y agrupaciones territoriales. El mapa del escritorio (A4) espera además la geometría oficial de los municipios: hoy dibuja marcadores sin polígonos.
 
 **Plataforma**
 
