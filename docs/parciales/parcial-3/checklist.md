@@ -610,9 +610,9 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [ ] Firewall: solo los puertos 80 y 443 abiertos (RNF-D10).
 - [ ] Compose de producción: ningún servicio ni base publica su puerto fuera de nginx (RNF-H07, RNF-H18).
 - [ ] Desplegar la web, los 29 servicios, PostgreSQL, MongoDB y Redis, con la base de la demostración (RNF-L09). La web usa el rol `epidemia_app` (D18).
-- [ ] Pedir desde ya el aumento de cuota de GPU del proyecto, y confirmar qué cuenta de facturación paga la máquina: los cupones no se juntan (D23).
+- [x] ~~Pedir desde ya el aumento de cuota de GPU del proyecto, y confirmar qué cuenta de facturación paga la máquina: los cupones no se juntan (D23).~~ Ya no hace falta: la GPU es la de una PC (D23, 2026-11-20).
 - [ ] Secretos fuera del repositorio y de la imagen, protegidos en GCP (S5, RNF-D03).
-- [ ] Solo si sobra tiempo: máquina con GPU para `abm-gpu`, con su costo comparado contra los créditos y anotado en D23. Se enciende solo cuando hay corridas de `abm-gpu` (RNF-B09).
+- [ ] ~~Solo si sobra tiempo: máquina con GPU para `abm-gpu`, con su costo comparado contra los créditos y anotado en D23. Se enciende solo cuando hay corridas de `abm-gpu` (RNF-B09).~~ No alcanzaron los créditos: el simulador de `abm-gpu` corre en una PC con GPU, conectado a la máquina por un túnel SSH por IAP (`infra/docker-compose.gpu-remoto.yml`, `infra/tunel_gpu.py`; D23). Probado en local con `python infra/pruebas_integracion.py --gpu-remoto` (2026-11-20); falta con la máquina real.
 
 ### F2. nginx y HTTPS (D25, D26, S6)
 
