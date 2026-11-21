@@ -10,7 +10,7 @@ La columna **Prueba** dice dónde están las pruebas que tocan ese paso, no que 
 
 | Paso | RF | RNF | Componente | Servicio | Prueba |
 |---|---|---|---|---|---|
-| 1.1 | RF-A01, RF-A02, RF-I01, RF-I13 | RNF-D11, RNF-D12, RNF-G02 | Móvil, Microservicios, Seguridad | `estado-servicios`, `auth`, `sesiones` | `microservicios/auth/tests`, `microservicios/sesiones/tests`; móvil: `sesion/`, `red/` |
+| 1.1 | RF-A01, RF-A02, RF-A08, RF-A14, RF-I01, RF-I13 | RNF-D11, RNF-D12, RNF-G02 | Móvil, Microservicios, Seguridad | `estado-servicios`, `auth`, `sesiones` | `microservicios/auth/tests`, `microservicios/sesiones/tests`; móvil: `sesion/`, `red/` |
 | 1.2 | RF-A09, RF-I14, RF-I16 | RNF-D14 | Móvil, Microservicios | `dispositivos` | `microservicios/dispositivos/tests` |
 | 1.3 | RF-B01, RF-B02, RF-I17 | RNF-G02 | Móvil, Microservicios | `enfermedades`, `regiones` | `microservicios/enfermedades/tests`, `microservicios/regiones/tests` |
 | 1.4 | RF-C01, RF-C02, RF-C06, RF-C07, RF-I03, RF-I04, RF-I07 | RNF-D15 | Móvil | — (local) | Móvil: `local/`, `ui/` |
@@ -19,7 +19,7 @@ La columna **Prueba** dice dónde están las pruebas que tocan ese paso, no que 
 | 1.7 | RF-C03 | RNF-C09, RNF-C19, RNF-D24, RNF-D27, RNF-K12 | Móvil, Microservicios | `evidencias` | `microservicios/evidencias/tests` |
 | 1.8 | RF-C04, RF-C05, RF-C13, RF-I06 | RNF-L19 | Móvil, Microservicios | `vacunas` | `microservicios/vacunas/tests` |
 | 1.9 | RF-G01, RF-G02, RF-G03, RF-G11, RF-C20 | RNF-A07, RNF-D17, RNF-L12 | Web | — (directo a PostgreSQL, D20) | `backend_web/tests` |
-| 2.1 | RF-A01, RF-A02, RF-H01, RF-H17 | RNF-D11, RNF-D12, RNF-G03 | Escritorio, Microservicios, Seguridad | `estado-servicios`, `auth`, `sesiones`, `usuarios` | `frontend_desktop/tests/test_api.py` |
+| 2.1 | RF-A01, RF-A02, RF-A08, RF-A14, RF-H01, RF-H17 | RNF-D11, RNF-D12, RNF-G03 | Escritorio, Microservicios, Seguridad | `estado-servicios`, `auth`, `sesiones`, `usuarios` | `frontend_desktop/tests/test_api.py` |
 | 2.2 | RF-H02, RF-B01, RF-B02, RF-B03 | RNF-G03 | Escritorio, Microservicios | `escenarios`, `enfermedades`, `regiones`, `tipos-intervencion` | `microservicios/escenarios/tests`, `frontend_desktop/tests/test_servicios.py` |
 | 2.3 | RF-D01, RF-D04, RF-D08 | RNF-K02 | Escritorio, Microservicios | `escenarios` | `microservicios/escenarios/tests` |
 | 2.4 | RF-D02, RF-H03, RF-H04 | RNF-G06 | Escritorio, Microservicios | `intervenciones` | `microservicios/intervenciones/tests` |

@@ -22,6 +22,9 @@ Es la primera mitad del proceso **P3** de [`procesos_v3.md`](../../arquitectura/
 | RF-E04 | Las réplicas usan las semillas 1 a N, las mismas en todas las versiones comparadas (D8) | Dos versiones lanzadas con N réplicas tienen las mismas N semillas | 3.1 | Microservicios | Alta | Hecho |
 | RF-E05 | El avance de cada corrida se puede seguir | El simulador publica el avance en Redis y `corridas` lo entrega junto con el estado | 3.2, 3.3 | Microservicios, Escritorio | Alta | Hecho |
 | RF-E06 | El ANALISTA cancela una corrida, o todas las que esperan de una versión | La corrida pasa a `cancelado`; queda `CANCEL` en la auditoría | 3.3 | Escritorio, Microservicios | Media | Hecho |
+| RF-E07 | El ANALISTA reintenta una corrida fallida sin duplicar resultados (D44) | `POST /api/v1/runs/{id}/retry` regresa la misma corrida a `encolado`, con su semilla y prioridad, solo si estaba `fallido` (409 en otro caso); queda `RUN` en la auditoría y la serie se reescribe por `{run_id, dia}` (D38). Un reintento automático no aplica: con la misma semilla repetiría el mismo error | 3.3 | Microservicios | Media | Hecho (servicio); el escritorio todavía no ofrece «Reintentar» |
+| RF-E08 | Prioridad en la cola (D44) | `priority` `baja`, `normal` o `alta` (migración 054); el simulador toma antes las altas, y dentro de cada prioridad en orden de llegada. Solo el ADMINISTRADOR pide `alta`. No hay reparto entre usuarios (RNF-B08 sigue fuera) | 3.1 | Microservicios | Media | Hecho (servicio); el escritorio todavía no la ofrece |
+| RF-E14 | Tiempo estimado para terminar (D44) | `GET /api/v1/runs/{id}` da `queue_position` y `estimated_seconds`, la mediana de las últimas 50 corridas completadas con el mismo motor, población y horizonte; sin historial, `null` con `estimate_reason` | 3.3 | Microservicios | Baja | Hecho (servicio); el escritorio todavía no lo muestra |
 | RF-E09 | Un lote lanza N réplicas por cada versión aprobada elegida | Cada réplica es una corrida en `simulation_runs` | 3.1 | Escritorio, Microservicios | Alta | Hecho |
 | RF-E11 | Al terminar o fallar una corrida, se avisa a quien la pidió | El simulador crea el aviso por medio de `notificaciones`. No hay notificaciones push | 3.2, 3.4 | Microservicios | Alta | Hecho |
 | RF-E12 | Toda corrida se puede repetir | La corrida guarda la versión congelada, la semilla y la versión del motor (`engine_version`); queda `RUN` en la auditoría al empezar y al cerrar | 3.2 | Microservicios, Bases de datos | Alta | Hecho |
@@ -36,10 +39,7 @@ Las corridas pasan por los estados de la base: `encolado`, `ejecutando`, `comple
 
 | ID | Qué pedía | Por qué sale |
 |---|---|---|
-| RF-E07 | Reintentar sola una corrida fallida | Ningún servicio lleva la cuenta de reintentos. Lo que se recupera es lo que quedó a medias (RF-E19) |
-| RF-E08 | Prioridad en la cola | La cola por motor atiende en orden de llegada |
 | RF-E13 | Límite de corridas a la vez | Cada simulador toma una corrida de su cola; el tope por lote ya está en RF-E03 |
-| RF-E14 | Tiempo estimado para terminar | Ningún servicio tiene ese dato |
 | RF-E16 | Rechazar corridas que no caben en memoria | El límite de población ya lo ponen el XSD y la validación (RF-D03) |
-| RF-E17 | Barrido de calibración | La calibración queda fuera (D24) |
+| RF-E17 | Barrido de calibración | D24 está reabierta: `pareto` solo informa el estado de calibración; la ejecución espera el método del bloque 0 (D46) |
 | RF-E18 | Guardar resultados parciales | Una corrida interrumpida se cierra como fallida y se vuelve a lanzar |

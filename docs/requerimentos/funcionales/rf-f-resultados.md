@@ -32,6 +32,8 @@ Es la segunda mitad del proceso **P3** de [`procesos_v3.md`](../../arquitectura/
 | RF-F21 | La web consulta una corrida: su resumen y sus curvas | EPIDEMIOLOGO, ANALISTA y ADMINISTRADOR ven la corrida. Con D28, el resumen sale de `simulation_runs` y las curvas se piden a `resultados`; si `resultados` no responde, se ve el resumen sin curvas (D20) | 3.7 | Web | Alta | Hecho (D-1): el resumen sale de `simulation_runs` y las curvas de `resultados` con el JWT de la sesión (D34); sin `resultados`, el resumen sin curvas |
 | RF-F22 | `comparacion` pide los resultados a `resultados` y aprovecha su caché | Una comparación repetida no vuelve a leer la serie completa | 3.5 | Microservicios | Media | Hecho |
 | RF-F23 | La pantalla avisa cuando las bandas de dos escenarios se enciman (D8) | Si las bandas se cruzan, la comparación lo dice junto a la frontera | 3.5 | Escritorio | Media | Hecho: la comparación y su PDF muestran el aviso (RF-H22) |
+| RF-F24 | `resultados` entrega la banda p5, mediana y p95 de las réplicas de una versión (D8) | `GET /api/v1/runs/{id}/band`, con `categoria` (D39) | 3.5 | Microservicios | Media | Hecho (servicio): ningún cliente la consume todavía |
+| RF-F25 | `comparacion` entrega diferencias absolutas y relativas contra una base, la incertidumbre de las réplicas con el aviso de bandas encimadas y un contrafactual exploratorio | Costos en personas-día y pesos cuando `pareto` los da; el contrafactual solo usa las corridas indicadas y no recomienda (RN-36) | 3.5 | Microservicios | Media | Hecho (servicio): ningún cliente lo consume todavía |
 
 ## Fuera de alcance
 
@@ -39,7 +41,7 @@ Es la segunda mitad del proceso **P3** de [`procesos_v3.md`](../../arquitectura/
 |---|---|---|
 | RF-F03 | Resultados por municipio | Un escenario es de una sola región |
 | RF-F10 | Exportar las gráficas en PNG | Se cubre con el PDF (RF-F11) |
-| RF-F12 | Análisis de sensibilidad | Ningún proceso lo pide |
+| RF-F12 | Análisis de sensibilidad | Reabierto: `pareto` ofrece una sensibilidad exploratoria de un factor a la vez (D46); falta que el escritorio la muestre (A4) |
 | RF-F13 | Encimar la curva simulada con datos reales | La calibración queda fuera (D24): los resultados son escenarios, no pronósticos |
 | RF-F14 | Error cuadrático y R² contra datos reales | Igual que RF-F13 |
 | RF-F15 | Mapa de incidencia | Es el mapa de casos del tablero web (RF-G03) |
