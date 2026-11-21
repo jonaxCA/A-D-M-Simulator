@@ -1,4 +1,4 @@
-FROM epidemia/base
+FROM epidemia/base-identidad
 COPY microservicios/sesiones/ /app/microservicios/sesiones/
 COPY docs/contratos/sesiones/ /app/docs/contratos/sesiones/
 USER epidemia

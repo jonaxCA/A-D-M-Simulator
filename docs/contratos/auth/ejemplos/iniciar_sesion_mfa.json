@@ -1,0 +1,6 @@
+{
+  "mfa_requerido": true,
+  "mfa_enrolado": false,
+  "mfa_token": "MFA_TOKEN_DE_EJEMPLO",
+  "mfa_expira": 1791864000
+}
