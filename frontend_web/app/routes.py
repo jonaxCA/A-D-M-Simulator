@@ -82,6 +82,13 @@ def inject_globals():
 
 
 
+@bp.route("/health")
+def salud():
+    """Para el healthcheck del contenedor (frontend_web/Dockerfile): el proceso responde. No toca
+    la base ni los servicios, para que la web no se reinicie cuando uno de ellos cae."""
+    return {"servicio": "web", "estado": "ok"}
+
+
 # ---------------------------------------------------------------------------
 # 1. Dashboard publico -- sin login
 # ---------------------------------------------------------------------------
@@ -155,9 +162,9 @@ def login():
         return _pantalla_login(mensaje, usuario, 401 if exc.estado in (400, 401, 422) else exc.estado)
     next_url = destino_seguro(request.args.get("next")) or url_for("main.dashboard")
     resp = make_response(redirect(next_url))
-    resp.set_cookie(COOKIE_NAME, datos["access_token"], httponly=True, samesite="Lax",
+    resp.set_cookie(COOKIE_NAME, datos["access_token"], httponly=True, secure=request.is_secure, samesite="Lax",
                     max_age=60 * 60 * 8)
-    resp.set_cookie(COOKIE_REFRESH, datos["refresh_token"], httponly=True, samesite="Lax",
+    resp.set_cookie(COOKIE_REFRESH, datos["refresh_token"], httponly=True, secure=request.is_secure, samesite="Lax",
                     max_age=60 * 60 * 8)
     return resp
 
@@ -893,7 +900,7 @@ def _curvas(run_id):
     """La serie de una corrida, que vive en MongoDB y solo la da resultados (D28); None si
     resultados no responde. Lanza SinAcceso con un 401 o un 403."""
     return resultados.curvas_de_corrida(request.cookies.get(COOKIE_NAME), run_id,
-                                        request.headers.get("X-Correlation-ID"))
+                                        getattr(g, "correlation_id", None))
 
 
 @bp.route("/simulaciones/corridas/<int:run_id>")
@@ -1328,8 +1335,8 @@ def error_de_servicio(exc):
 def guarda_tokens_renovados(respuesta):
     nuevos = g.get("tokens_nuevos")
     if nuevos:
-        respuesta.set_cookie(COOKIE_NAME, nuevos[0], httponly=True, samesite="Lax", max_age=60 * 60 * 8)
-        respuesta.set_cookie(COOKIE_REFRESH, nuevos[1], httponly=True, samesite="Lax", max_age=60 * 60 * 8)
+        respuesta.set_cookie(COOKIE_NAME, nuevos[0], httponly=True, secure=request.is_secure, samesite="Lax", max_age=60 * 60 * 8)
+        respuesta.set_cookie(COOKIE_REFRESH, nuevos[1], httponly=True, secure=request.is_secure, samesite="Lax", max_age=60 * 60 * 8)
     return respuesta
 
 

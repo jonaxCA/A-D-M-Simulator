@@ -761,6 +761,29 @@ services:
     environment:
       URL_DIRECTORIO: ${URL_DIRECTORIO:-http://localhost:5262}
 
+  # --- La web (perfil web) -------------------------------------------------------------------
+  # El sitio (D36) en contenedor, para la nube (F1). En local también se puede correr fuera de
+  # Docker (python -m frontend_web.run, mismo puerto 5000), pero no los dos a la vez. Llama a
+  # cada servicio por la red interna (URL_SERVICIOS) y todavía lee PostgreSQL con el rol
+  # epidemia_app en los módulos que no pasaron a los servicios (D18, D36). Su cookie se firma
+  # con SECRET_KEY_WEB, no con la firma de los tokens: la web ya no la necesita.
+  web:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: frontend_web/Dockerfile
+    profiles: [web]
+    ports:
+      - "5000:8000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY_WEB:-}
+      URL_SERVICIOS: "http://{servicio}:8000"
+      SERVICIO_RESULTADOS_URL: http://resultados:8000
+      DATABASE_URL: ${DATABASE_URL_WEB:-postgresql://epidemia_app:${EPIDEMIA_APP_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   # Lo que FLAME GPU compila para cada tamaño de población (simulador-gpu).
   flamegpu-cache:

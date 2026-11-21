@@ -504,6 +504,7 @@ use`. `down` no necesita la GPU, y de paso quita el `simulador-gpu` que haya que
 | `simulacion` | `corridas`, `simulador`, `simulador-abm`, `resultados`, `comparacion`, `pareto` |
 | `analitica` | `indicadores`, `series`, `zonas` |
 | `plataforma` | `notificaciones`, `estado-servicios`, `consola` |
+| `web` | `web`: el sitio en contenedor, en `http://localhost:5000` (el mismo puerto que `python -m frontend_web.run`: uno u otro). Se agrega con `--profile web` |
 | `gpu` | `simulador-gpu`: solo con GPU de NVIDIA; no entra en el comando de arriba |
 
 **La base.** El compose trae su propio PostgreSQL 16. La primera vez, con el volumen vacío,
@@ -648,23 +649,28 @@ servicio publica su puerto. PostgreSQL, Redis y MongoDB siguen solo en `127.0.0.
    OpenSSL (el de Git sirve) y sale uno autofirmado: sirve para probar, pero el navegador avisa
    y `curl` necesita `-k`. Para cambiar uno por otro, `--nuevo`.
 
-2. **Levantar** los servicios detrás de nginx (los mismos perfiles que arriba, sin `gpu`):
+2. **Levantar** los servicios y la web detrás de nginx (los mismos perfiles que arriba más
+   `web`, sin `gpu`):
 
    ```bash
-   docker compose -f infra/docker-compose.yml -f infra/docker-compose.nginx.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait
+   docker compose -f infra/docker-compose.yml -f infra/docker-compose.nginx.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma --profile web up -d --build --wait
    ```
 
 3. **Qué queda:**
    - `https://localhost/<servicio>/api/v1/...`: cada servicio bajo su nombre, con las mismas
      rutas. Swagger, en `https://localhost/<servicio>/docs`.
    - `https://localhost/consola/`: la consola de pruebas.
-   - `https://localhost/`: la web, si corre en tu PC (`python -m frontend_web.run`, puerto 5000).
+   - `https://localhost/`: la web (contenedor `web`). Llama a cada servicio por la red interna
+     (`URL_SERVICIOS=http://{servicio}:8000`) y les pasa la IP de quien la usa, para que el
+     límite por IP de D31 cuente a cada persona y no a la web.
    - `http://localhost/...` redirige a `https://`.
    - El directorio (`https://localhost/estado-servicios/api/v1/services`) da
      `https://localhost/<servicio>` como URL de cada servicio.
 
-4. **La web en tu PC** llama a cada servicio por su puerto (D36), que detrás de nginx ya no está
-   publicado. Apúntala a nginx antes de arrancarla:
+4. **La web en tu PC, para desarrollarla** con recarga automática: levanta sin `--profile web`
+   y con `WEB_DESTINO=host.docker.internal:5000`, para que nginx la busque en tu PC. La web
+   llama a cada servicio por su puerto (D36), que detrás de nginx ya no está publicado.
+   Apúntala a nginx antes de arrancarla:
 
    ```bash
    for s in auth sesiones usuarios roles enfermedades parametros regiones poblacion tipos-intervencion casos sincronizacion dispositivos evidencias vacunas escenarios intervenciones aprobacion validacion escenarios-xml corridas simulador resultados comparacion pareto indicadores series zonas notificaciones estado-servicios; do
@@ -678,13 +684,13 @@ servicio publica su puerto. PostgreSQL, Redis y MongoDB siguen solo en `127.0.0.
 
 5. **Variables**, todas con valor por omisión: `NGINX_PUERTO_HTTP` (80), `NGINX_PUERTO_HTTPS`
    (443), `NGINX_TIEMPO_MAXIMO` (30 s, el tiempo máximo por petición), `WEB_DESTINO`
-   (`host.docker.internal:5000`) y `URL_PUBLICA_NGINX` (`https://localhost/{servicio}`; para el
+   (`web:8000`, el contenedor) y `URL_PUBLICA_NGINX` (`https://localhost/{servicio}`; para el
    emulador de Android, `https://10.0.2.2/{servicio}`).
 
 6. **Probarlo:** `python infra/pruebas_integracion.py --nginx` levanta el compose de pruebas con
    nginx y corre `test_compose_nginx.py`: prefijos, Swagger, el directorio, que ningún servicio
-   publique su puerto, una llamada con token, que el límite cuente la IP real del cliente y el
-   tiempo máximo.
+   ni la web publique su puerto, la web en la raíz, una llamada con token, que el límite cuente
+   la IP real del cliente y el tiempo máximo.
 
 **Por qué los servicios confían en nginx solo en este modo.** Con `DETRAS_DE_PROXY=1`, waitress
 (`epidemia_comun/servir.py`) y Flask (`ProxyFix`) toman la IP del cliente, el protocolo, el host
@@ -716,10 +722,23 @@ con la IP fija de la máquina, `34-56-78-90.sslip.io` resuelve solo a `34.56.78.
    vencimiento; sin él, se registra sin correo.
 
 2. **Anota el dominio en `infra/.env`** (`DOMINIO=34-56-78-90.sslip.io`), para que el compose lo
-   tome siempre, y levanta todo con los tres archivos y los perfiles de arriba:
+   tome siempre, y levanta todo con los tres archivos, los perfiles de arriba y la web:
 
    ```bash
-   docker compose -f infra/docker-compose.yml -f infra/docker-compose.nginx.yml -f infra/docker-compose.letsencrypt.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait
+   python3 infra/genera_env.py   # agrega SECRET_KEY_WEB si tu infra/.env es anterior a la web
+   docker compose -f infra/docker-compose.yml -f infra/docker-compose.nginx.yml -f infra/docker-compose.letsencrypt.yml -f infra/docker-compose.cloud-logging.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma --profile web up -d --build --wait
+   ```
+
+   `docker-compose.cloud-logging.yml` manda los registros de cada contenedor a Cloud Logging
+   (N6) con el driver `gcplogs`. Solo funciona en Compute Engine, con los alcances por omisión
+   de la cuenta de servicio (incluyen `logging.write`): en una PC no lo sumes. Se ven en la
+   consola, en **Logging → Explorador de registros**, con la consulta
+   `logName="projects/<proyecto>/logs/gcplogs-docker-driver"`. La web y los servicios anotan
+   cada petición con su `X-Correlation-ID`, y la web pasa el suyo a cada servicio al que llama:
+   buscándolo se sigue una petición de punta a punta. Desde la terminal:
+
+   ```bash
+   gcloud logging read 'logName="projects/<proyecto>/logs/gcplogs-docker-driver" AND jsonPayload.container.name="/epidemia-web-1"' --limit 20 --freshness 1h
    ```
 
 3. **Renovación:** sola. certbot intenta renovar cada 12 h y solo renueva cuando al certificado

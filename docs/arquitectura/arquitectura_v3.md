@@ -29,7 +29,7 @@ Cada pieza lleva su estado:
 | Archivos | Volumen de Docker de `evidencias` | Cloud Storage con URLs firmadas | D30, D35 | Falta (D-3; bloque D) |
 | Límites de consumo | Fuera de la etapa | Un contador por usuario y regla en Redis, en `epidemia_comun` | D31 | Hecho en la biblioteca (S2); ver §8 |
 | Salud y panel | `/health` con PostgreSQL y Redis; historial en Redis | Más MongoDB, bucket y tiempo de respuesta; historial en MongoDB y número de errores | D28 | Falta, en parte (N3, N4; bloque F) |
-| Despliegue | Pendiente | Compute Engine: una VM principal; la GPU, en una PC conectada por un túnel (D23) | D23, D25, D26 | **En curso** (2026-11-20): los 29 servicios y las bases corren en la VM detrás de nginx con Let's Encrypt, y el firewall solo deja 80 y 443. Faltan la web y los registros en Cloud Logging (N1, N6; bloque F) |
+| Despliegue | Pendiente | Compute Engine: una VM principal; la GPU, en una PC conectada por un túnel (D23) | D23, D25, D26 | **Hecho** (2026-11-20): la web, los 29 servicios y las bases corren en la VM detrás de nginx con Let's Encrypt, el firewall solo deja 80 y 443 y los registros de cada contenedor van a Cloud Logging (N1, N6). Aparte quedan el diagrama de distribución (N2) y decidir Secret Manager (S5) |
 | Volumen de datos | — | 10 000 corridas de 180 días, 1.81 millones de documentos | D29 | **Hecho** (D-6), medido el 2026-11-18; la inserción y el disco se repiten con `scenario_id` (§9). La cifra sigue por confirmar con el profesor |
 | Pruebas de carga | Pendiente | Locust por perfil de uso | — | **Hecho** en local el 2026-11-16 (A4, A5); falta en la nube (bloque F) |
 | Sesión de la web | Firma su propio JWT y lo revisa contra PostgreSQL | Inicia y cierra sesión con `auth` y `sesiones`; cada servicio revisa la sesión en Redis, y la web ya no lee Redis | D36 (reemplaza D33) | **Hecho** (C6; cierra I3) |
@@ -237,7 +237,7 @@ flowchart TB
 
 - **HTTPS (D26):** Let's Encrypt, gratuito, para `<ip-con-guiones>.sslip.io`, que resuelve a la IP fija sin comprar un dominio (respaldo: DuckDNS). `infra/nginx/letsencrypt.sh` saca el primero; `infra/docker-compose.letsencrypt.yml` lo renueva (certbot cada 12 h, nginx recarga cada 6 h). En local, nginx usa un certificado de mkcert o uno autofirmado.
 - **Secretos (S5):** los `.env` se arman en cada VM, con permisos 600 y fuera del repositorio, como hoy. Propuesta: guardarlos en Secret Manager y que la VM los lea al arrancar con su cuenta de servicio. La cuenta de servicio del bucket solo tiene permisos sobre ese bucket.
-- **Logs (N6):** propuesta: el driver `gcplogs` de Docker manda los registros de cada contenedor a Cloud Logging, con el `X-Correlation-ID` que ya llevan.
+- **Logs (N6):** el driver `gcplogs` de Docker manda los registros de cada contenedor a Cloud Logging, con el `X-Correlation-ID` que ya llevan (`infra/docker-compose.cloud-logging.yml`, desde el 2026-11-20).
 
 **Seguridad contra la rúbrica.**
 
