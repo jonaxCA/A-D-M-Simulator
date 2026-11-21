@@ -244,6 +244,21 @@ def test_casos_caido_503_y_no_se_guarda(cliente, captura, casos, redis_falso):
     assert enviar(cliente, captura).get_json()["creados"] == 1
 
 
+def test_el_limite_de_casos_llega_como_429_con_su_espera(cliente, captura, casos, redis_falso):
+    """La prueba de carga (F4) encontró que un 429 de casos salía como 503 y la app reintentaba de
+    inmediato contra el mismo límite. Ahora llega el 429 con el Retry-After de casos, y el lote
+    no se guarda, para que el reenvío lo procese completo."""
+    limite = Resp(429, {"codigo": "LIMITE_EXCEDIDO",
+                        "detail": "Demasiadas peticiones; intenta de nuevo en 42 segundos."})
+    limite.headers = {"Retry-After": "42"}
+    casos.respuesta_fija = limite
+    r = enviar(cliente, captura)
+    assert r.status_code == 429 and r.headers["Retry-After"] == "42"
+    assert r.get_json()["codigo"] == "LIMITE_EXCEDIDO"
+    assert redis_falso.exists(llaves.lote(LOTE)) == 0
+    assert redis_falso.exists(rutas.llave_candado(LOTE)) == 0
+
+
 def test_casos_con_500_es_503(cliente, captura, casos):
     casos.respuesta_fija = Resp(500, None)
     assert enviar(cliente, captura).status_code == 503

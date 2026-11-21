@@ -630,9 +630,10 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### F4. Locust (A4, A5)
 
-- [ ] Un perfil por tipo de uso: consulta en la web, captura desde la móvil, reportes desde el escritorio y corridas automáticas (RNF-L14).
-- [ ] Medir usuarios concurrentes, peticiones por segundo, tiempo medio, p95, p99 y errores (RNF-A01, RNF-A05 a RNF-A08).
-- [ ] Encontrar el punto de saturación y medir cuánto tarda en recuperarse (RNF-A14, RNF-A16).
+- [x] Un perfil por tipo de uso: consulta en la web, captura desde la móvil, reportes desde el escritorio y corridas automáticas (RNF-L14). `pruebas_carga/perfiles.py` (2026-11-21): cinco perfiles, con el panel de administración que pide RNF-A16 y las fotos de la móvil. `escalones.py` da la forma de carga y `analiza.py` el resumen. Probados contra el compose de pruebas. Guía: `pruebas_carga/README.md`.
+- [ ] Medir usuarios concurrentes, peticiones por segundo, tiempo medio, p95, p99 y errores (RNF-A01, RNF-A05 a RNF-A08). `analiza.py` los da por escalón y por perfil. Falta la corrida en la nube, en una ventana que respalda y restaura la base (`pruebas_carga/ventana_nube.sh`, ensayada en local el 2026-11-21).
+- [ ] Encontrar el punto de saturación y medir cuánto tarda en recuperarse (RNF-A14, RNF-A16). Los calcula `analiza.py` (criterios en `pruebas_carga/README.md`); falta la corrida en la nube.
+- [x] Hallazgo de la primera corrida local: `sincronizacion` convertía el 429 por cuenta de `casos` en un 503 para todo el lote, y la app reintentaba de inmediato contra el mismo límite. Ahora pasa el 429 con su `Retry-After` (contrato y prueba al día). La app ya lo trata como un 503: reintenta con la espera de WorkManager.
 - [ ] Listar los endpoints más lentos.
 - [ ] Confirmar o corregir las metas de rendimiento de los requerimientos con lo medido.
 
