@@ -35,6 +35,8 @@ SET client_encoding = 'UTF8';
 --                                                       041_retira_simulation_results.sql
 --                                                       046_bitacora_de_servicios.sql
 --                                                       045_intentos_de_corridas.sql
+--                                                       050_dispositivos_de_sesion.sql
+--                                                       051_mfa.sql
 --
 -- Cada bloque original conserva su propio BEGIN/COMMIT y su propio INSERT en
 -- schema_migrations, asi que este archivo se comporta exactamente igual que
@@ -4432,6 +4434,328 @@ GRANT UPDATE (attempts) ON simulation_runs TO svc_simulador;
 
 INSERT INTO schema_migrations (version, description)
 VALUES ('045', 'Simulacion: intentos de una corrida interrumpida que se reencola (D38)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+-- =============================================================================
+-- 050_dispositivos_de_sesion.sql
+-- Dispositivos desde los que una cuenta puede iniciar sesión (D41, RF-A08).
+--
+-- - session_devices guarda, por cuenta, el SHA-256 del identificador que envía el
+--   cliente en cada login y su estado: pendiente, autorizado o revocado. No es la
+--   tabla devices (teléfonos que sincronizan, RF-A09).
+-- - Dueño: sesiones (svc_sesiones). Registra, autoriza, revoca y anota el último uso;
+--   nunca borra ni cambia el dueño o el identificador.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS session_devices (
+    id            BIGSERIAL    PRIMARY KEY,
+    user_id       BIGINT       NOT NULL,
+    device_hash   CHAR(64)     NOT NULL,
+    label         VARCHAR(80),
+    status        VARCHAR(12)  NOT NULL DEFAULT 'pendiente',
+    authorized_by BIGINT,
+    authorized_at TIMESTAMPTZ,
+    last_seen_at  TIMESTAMPTZ,
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_session_devices      UNIQUE (user_id, device_hash),
+    CONSTRAINT fk_session_devices_user
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_session_devices_auth
+        FOREIGN KEY (authorized_by) REFERENCES users (id) ON DELETE SET NULL,
+    CONSTRAINT ck_session_devices_estado
+        CHECK (status IN ('pendiente', 'autorizado', 'revocado')),
+    CONSTRAINT ck_session_devices_hash
+        CHECK (device_hash ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_session_devices_autorizado
+        CHECK (status <> 'autorizado' OR authorized_at IS NOT NULL)
+);
+
+COMMENT ON TABLE session_devices IS 'Dispositivos desde los que una cuenta inicia sesion (D41). Uno nuevo queda pendiente hasta que la persona o un ADMINISTRADOR lo autoriza. [sesiones]';
+COMMENT ON COLUMN session_devices.id IS 'Identificador interno. [llave primaria]';
+COMMENT ON COLUMN session_devices.user_id IS 'Cuenta duenia. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN session_devices.device_hash IS 'SHA-256 en hexadecimal del identificador que envia el cliente; el identificador no se guarda.';
+COMMENT ON COLUMN session_devices.label IS 'Nombre que el cliente da al dispositivo, para reconocerlo en la lista.';
+COMMENT ON COLUMN session_devices.status IS 'pendiente, autorizado o revocado. Solo un autorizado puede abrir sesion.';
+COMMENT ON COLUMN session_devices.authorized_by IS 'Quien lo autorizo (la propia cuenta o un ADMINISTRADOR). Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN session_devices.authorized_at IS 'Cuando se autorizo.';
+COMMENT ON COLUMN session_devices.last_seen_at IS 'Ultimo inicio de sesion aceptado desde el dispositivo.';
+COMMENT ON COLUMN session_devices.created_at IS 'Primera vez que se vio el dispositivo.';
+
+CREATE INDEX IF NOT EXISTS ix_session_devices_user ON session_devices (user_id);
+
+REVOKE ALL ON session_devices FROM svc_sesiones;
+GRANT SELECT, INSERT ON session_devices TO svc_sesiones;
+GRANT UPDATE (label, status, authorized_by, authorized_at, last_seen_at)
+    ON session_devices TO svc_sesiones;
+GRANT USAGE ON SEQUENCE session_devices_id_seq TO svc_sesiones;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('050', 'Sesiones: dispositivos autorizados por cuenta (D41, RF-A08)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+-- =============================================================================
+-- 051_mfa.sql
+-- Segundo factor (TOTP, RFC 6238) para los perfiles críticos (D40).
+--
+-- - user_mfa: el secreto de cada cuenta. enabled pasa a TRUE cuando la persona confirma
+--   su primer código; last_counter impide reutilizar un código ya aceptado.
+-- - mfa_backup_codes: códigos de respaldo de un solo uso; solo se guarda su SHA-256.
+-- - Dueño: auth (svc_auth). Restablecer el MFA de una cuenta borra sus dos filas.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS user_mfa (
+    user_id      BIGINT       PRIMARY KEY,
+    secret       VARCHAR(64)  NOT NULL,
+    enabled      BOOLEAN      NOT NULL DEFAULT FALSE,
+    last_counter BIGINT,
+    enrolled_at  TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_user_mfa_user
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT ck_user_mfa_habilitado
+        CHECK (NOT enabled OR enrolled_at IS NOT NULL)
+);
+
+DROP TRIGGER IF EXISTS tg_user_mfa_updated_at ON user_mfa;
+CREATE TRIGGER tg_user_mfa_updated_at
+    BEFORE UPDATE ON user_mfa
+    FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+CREATE TABLE IF NOT EXISTS mfa_backup_codes (
+    id         BIGSERIAL    PRIMARY KEY,
+    user_id    BIGINT       NOT NULL,
+    code_hash  CHAR(64)     NOT NULL,
+    used_at    TIMESTAMPTZ,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_mfa_backup_codes UNIQUE (user_id, code_hash),
+    CONSTRAINT fk_mfa_backup_codes_user
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE user_mfa IS 'Secreto TOTP de cada cuenta con segundo factor (D40). [auth]';
+COMMENT ON COLUMN user_mfa.user_id IS 'Cuenta. Referencia a users.id. [llave primaria] [llave foranea]';
+COMMENT ON COLUMN user_mfa.secret IS 'Secreto compartido en base32. Solo lo lee svc_auth; nunca sale en una respuesta salvo al enrolarse.';
+COMMENT ON COLUMN user_mfa.enabled IS 'TRUE cuando la persona confirmo su primer codigo. Pendiente de confirmar, FALSE.';
+COMMENT ON COLUMN user_mfa.last_counter IS 'Paso de 30 s del ultimo codigo aceptado; un codigo del mismo paso o anterior se rechaza.';
+COMMENT ON COLUMN user_mfa.enrolled_at IS 'Cuando se confirmo el enrolamiento.';
+COMMENT ON COLUMN user_mfa.created_at IS 'Cuando se genero el secreto.';
+COMMENT ON COLUMN user_mfa.updated_at IS 'Ultima modificacion. La mantiene un trigger.';
+
+COMMENT ON TABLE mfa_backup_codes IS 'Codigos de respaldo de un solo uso del segundo factor (D40). [auth]';
+COMMENT ON COLUMN mfa_backup_codes.id IS 'Identificador interno. [llave primaria]';
+COMMENT ON COLUMN mfa_backup_codes.user_id IS 'Cuenta. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN mfa_backup_codes.code_hash IS 'SHA-256 en hexadecimal del codigo; el codigo solo se muestra al generarlo.';
+COMMENT ON COLUMN mfa_backup_codes.used_at IS 'Cuando se uso; un codigo usado no sirve otra vez.';
+COMMENT ON COLUMN mfa_backup_codes.created_at IS 'Cuando se genero.';
+
+REVOKE ALL ON user_mfa, mfa_backup_codes FROM svc_auth;
+GRANT SELECT, INSERT, DELETE ON user_mfa, mfa_backup_codes TO svc_auth;
+GRANT UPDATE (secret, enabled, last_counter, enrolled_at) ON user_mfa TO svc_auth;
+GRANT UPDATE (used_at) ON mfa_backup_codes TO svc_auth;
+GRANT USAGE ON SEQUENCE mfa_backup_codes_id_seq TO svc_auth;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('051', 'Auth: segundo factor TOTP y codigos de respaldo para los perfiles criticos (D40)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 052_instituciones_y_perfiles.sql
+-- Institución y región de cada cuenta, y los perfiles nuevos (D42).
+--
+-- - institutions: catálogo de instituciones. Empieza vacío: no se inventan
+--   instituciones; el ADMINISTRADOR las da de alta (servicio usuarios).
+-- - users.institution_id y users.region_id: opcionales. Dicen a qué institución
+--   y a qué región pertenece la cuenta (perfil). No restringen por sí solos lo
+--   que ve: eso es el alcance de la 053 (D43).
+-- - Roles INVESTIGADOR y AUTORIDAD_SANITARIA (RF de usuarios, retroalimentación).
+--   Sus permisos son un supuesto de solo lectura, a validar con el líder.
+-- - svc_usuarios es dueño de institutions.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS institutions (
+    id         SERIAL       PRIMARY KEY,
+    code       VARCHAR(30)  NOT NULL,
+    name       VARCHAR(160) NOT NULL,
+    is_active  BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_institutions_code UNIQUE (code),
+    CONSTRAINT uq_institutions_name UNIQUE (name),
+    CONSTRAINT ck_institutions_code CHECK (code = upper(code))
+);
+
+COMMENT ON TABLE institutions IS 'Catalogo de instituciones a las que pertenece una cuenta (D42).';
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS institution_id INTEGER,
+    ADD COLUMN IF NOT EXISTS region_id      INTEGER;
+
+ALTER TABLE users
+    DROP CONSTRAINT IF EXISTS fk_users_institution,
+    ADD  CONSTRAINT fk_users_institution
+        FOREIGN KEY (institution_id) REFERENCES institutions (id) ON DELETE SET NULL,
+    DROP CONSTRAINT IF EXISTS fk_users_region,
+    ADD  CONSTRAINT fk_users_region
+        FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS ix_users_institution ON users (institution_id);
+CREATE INDEX IF NOT EXISTS ix_users_region      ON users (region_id);
+
+COMMENT ON COLUMN users.institution_id IS 'Institucion de la cuenta; opcional (D42).';
+COMMENT ON COLUMN users.region_id IS 'Region asignada a la cuenta; opcional (D42). El alcance que limita datos esta en user_scopes (D43).';
+
+INSERT INTO roles (code, name, description, is_system) VALUES
+    ('INVESTIGADOR', 'Investigador',
+     'Consulta escenarios, corridas, casos y reportes, y exporta escenarios. Solo lectura (supuesto D42).', TRUE),
+    ('AUTORIDAD_SANITARIA', 'Autoridad sanitaria',
+     'Consulta escenarios, corridas, casos y reportes. Solo lectura (supuesto D42).', TRUE)
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r JOIN permissions p ON p.code IN
+    ('catalogs.read', 'scenarios.read', 'simulations.read', 'cases.read',
+     'reports.read', 'reports.export')
+WHERE r.code IN ('INVESTIGADOR', 'AUTORIDAD_SANITARIA')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r JOIN permissions p ON p.code = 'scenarios.export'
+WHERE r.code = 'INVESTIGADOR'
+ON CONFLICT DO NOTHING;
+
+GRANT SELECT, INSERT, UPDATE ON institutions TO svc_usuarios;
+GRANT USAGE ON SEQUENCE institutions_id_seq TO svc_usuarios;
+GRANT SELECT ON institutions TO svc_roles;
+GRANT SELECT ON regions TO svc_usuarios;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('052', 'Identidad: institutions, users.institution_id y users.region_id, roles INVESTIGADOR y AUTORIDAD_SANITARIA (D42)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 053_alcances_de_usuario.sql
+-- Permisos con alcance por región o institución (D43).
+--
+-- - user_scopes: una fila por región o por institución a las que se limita una
+--   cuenta. Sin filas, la cuenta es nacional (sin límite). El permiso por
+--   recurso y operación sigue en role_permissions; esto solo recorta los datos.
+-- - La región cubre también a sus hijas (regions.parent_region_id); lo expande
+--   el servicio roles al responder.
+-- - svc_roles es dueño de user_scopes y lee regions e institutions.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS user_scopes (
+    id             BIGSERIAL   PRIMARY KEY,
+    user_id        BIGINT      NOT NULL,
+    region_id      INTEGER,
+    institution_id INTEGER,
+    assigned_by    BIGINT,
+    assigned_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_user_scopes_user
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_scopes_region
+        FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_scopes_institution
+        FOREIGN KEY (institution_id) REFERENCES institutions (id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_scopes_assigned_by
+        FOREIGN KEY (assigned_by) REFERENCES users (id) ON DELETE SET NULL,
+    CONSTRAINT ck_user_scopes_uno CHECK ((region_id IS NULL) <> (institution_id IS NULL))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_scopes_region
+    ON user_scopes (user_id, region_id) WHERE region_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_scopes_institution
+    ON user_scopes (user_id, institution_id) WHERE institution_id IS NOT NULL;
+
+COMMENT ON TABLE user_scopes IS 'Region o institucion a la que se limita una cuenta; sin filas la cuenta es nacional (D43).';
+
+GRANT SELECT, INSERT, DELETE ON user_scopes TO svc_roles;
+GRANT USAGE ON SEQUENCE user_scopes_id_seq TO svc_roles;
+GRANT SELECT ON regions TO svc_roles;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('053', 'Identidad: user_scopes, alcance por region o institucion de una cuenta (D43)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 054_prioridad_de_corridas.sql
+-- Prioridad en la cola de corridas y reintento manual de una fallida (RF-E07,
+-- RF-E08, D44).
+--
+-- - priority: 'baja', 'normal' (por omisión) o 'alta'. El simulador toma antes las
+--   altas y luego las normales; dentro de cada una, en orden de llegada.
+-- - Reintentar una fallida la regresa a 'encolado' con la misma semilla, así que
+--   svc_corridas necesita limpiar error_message, progress y attempts.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE simulation_runs
+    ADD COLUMN IF NOT EXISTS priority VARCHAR(10) NOT NULL DEFAULT 'normal';
+
+ALTER TABLE simulation_runs
+    DROP CONSTRAINT IF EXISTS ck_simulation_runs_priority,
+    ADD  CONSTRAINT ck_simulation_runs_priority CHECK (priority IN ('baja', 'normal', 'alta'));
+
+COMMENT ON COLUMN simulation_runs.priority IS
+    'Prioridad en la cola de su motor: baja, normal o alta. Solo el ADMINISTRADOR pide alta (D44).';
+
+GRANT UPDATE (error_message, progress, attempts) ON simulation_runs TO svc_corridas;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('054', 'Simulacion: prioridad de la corrida en la cola y permisos para reintentar una fallida (D44)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 055_historial_con_alcance.sql
+-- El historial de un escenario aplica el alcance por región (D43).
+--
+-- - svc_roles lee scenarios, scenario_versions y scenario_interventions solo para
+--   saber la región de la entidad cuyo historial se consulta.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+GRANT SELECT ON scenarios, scenario_versions, scenario_interventions TO svc_roles;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('055', 'Identidad: svc_roles lee escenarios para aplicar el alcance regional al historial (D43)')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;

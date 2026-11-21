@@ -39,6 +39,12 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `040_personas_dia_por_dosis.sql` | `intervention_types` gana el factor de personas-día por dosis de la frontera de Pareto (D3): valor, fuente y marca de supuesto, sin valor por omisión. `svc_intervenciones` puede actualizarlo |
 | `045_intentos_de_corridas.sql` | `simulation_runs.attempts` (0 a 3): las veces que una corrida pasó a `ejecutando`. Una interrumpida se reencola mientras le queden intentos (D38); `svc_simulador` lo actualiza |
 | `046_bitacora_de_servicios.sql` | Los diez roles `svc_*` que no escribían en `audit_log` reciben INSERT, para anotar el `PERMISSION_DENIED` de sus 403 (D36), y `svc_roles` lee `audit_log` para la consulta de la bitácora (D37) |
+| `050_dispositivos_de_sesion.sql` | `session_devices`: los dispositivos desde los que una cuenta inicia sesión, con su estado (`pendiente`, `autorizado`, `revocado`) (D41, RF-A08). `svc_sesiones` es dueño |
+| `051_mfa.sql` | `user_mfa` y `mfa_backup_codes`: el secreto TOTP y los códigos de respaldo de los perfiles críticos (D40). `svc_auth` es dueño |
+| `054_prioridad_de_corridas.sql` | `simulation_runs.priority` (`baja`, `normal`, `alta`) para la cola con prioridades, y los permisos de `svc_corridas` para reintentar una corrida fallida (D44) |
+| `052_instituciones_y_perfiles.sql` | `institutions`, `users.institution_id` y `users.region_id` (opcionales), y los roles INVESTIGADOR y AUTORIDAD_SANITARIA con permisos de solo lectura como supuesto (D42). `svc_usuarios` es dueño de `institutions` |
+| `055_historial_con_alcance.sql` | `svc_roles` lee `scenarios`, `scenario_versions` y `scenario_interventions` para aplicar el alcance regional (D43) al historial de un escenario |
+| `053_alcances_de_usuario.sql` | `user_scopes`: la región o institución a la que se limita una cuenta; sin filas es nacional (D43). `svc_roles` es dueño |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.
@@ -59,9 +65,13 @@ problema: ya falta la 018.
 | 042–044 | D | Reserva |
 | 045 | E | `simulation_runs.attempts`: intentos de una corrida interrumpida que se reencola (D38) |
 | 046 | E | INSERT en `audit_log` para los roles que no lo tenían y lectura para `svc_roles` (D36, D37) |
+| 054 | E | `simulation_runs.priority`: prioridad de la corrida en la cola y permisos para reintentarla (D44) |
 | 047 | C | Reserva |
 | 048–049 | 0 | Reserva del líder (por ejemplo, `cost_unit` en pesos, D3) |
-| 050 en adelante | — | Se piden al líder |
+| 052 | E | Instituciones, región de cada cuenta y los perfiles nuevos (D42) |
+| 053 | E | Alcance por región o institución de cada cuenta (D43) |
+| 055 | E | `svc_roles` lee escenarios para el alcance regional del historial (D43) |
+| 056 en adelante | — | Se piden al líder |
 
 1. **Cada migración corre en cualquier orden.** El dump las tiene en el orden en
    que se integran, y una instalación limpia las corre por número: la 034 llegará
