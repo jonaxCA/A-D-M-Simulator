@@ -24,7 +24,7 @@
       "get": {
         "summary": "Comparar corridas",
         "operationId": "comparar_corridas",
-        "description": "Indicadores (fallecimientos, pico de casos activos, día del pico y tasa de ataque) y la serie diaria de cada corrida, en el orden pedido y sin repetidas. Las curvas superpuestas se arman con `serie`. Incluye el aviso de que los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR, como la pantalla Comparación del monolito.",
+        "description": "Indicadores (fallecimientos, pico de casos activos, día del pico y tasa de ataque) y la serie diaria de cada corrida, en el orden pedido y sin repetidas. Las curvas superpuestas se arman con `serie`. Además: `diferencias` absolutas y relativas de cada corrida contra la base (la primera de `runs`, o `base`), con el costo en personas-día y en pesos cuando `pareto` lo entrega (`costos_disponibles`, `costos_motivo`); `incertidumbre` con la banda p5–p95 de las réplicas de cada versión (D8, pedida a `resultados`), las corridas sin réplicas y el aviso de bandas encimadas; y, si se pasa `sin_intervencion`, un `contrafactual` exploratorio que solo compara las corridas indicadas. No recomienda ningún escenario. Incluye el aviso de que los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (D42), como la pantalla Comparación del monolito.",
         "parameters": [
           {
             "in": "query",
@@ -36,6 +36,28 @@
             },
             "example": "12,15",
             "description": "Ids de 2 a 50 corridas completadas, separados por comas"
+          },
+          {
+            "in": "query",
+            "name": "base",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 12,
+            "description": "Corrida de referencia de las diferencias; una de las de `runs`. Por omisión, la primera"
+          },
+          {
+            "in": "query",
+            "name": "sin_intervencion",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 12,
+            "description": "Corrida sin la intervención a evaluar, una de las de `runs`; activa el contrafactual exploratorio"
           }
         ],
         "security": [
@@ -94,7 +116,8 @@
                       "fallecimientos": 100,
                       "pico_casos_activos": 56052,
                       "dia_pico": 98,
-                      "tasa_ataque": 0.650094
+                      "tasa_ataque": 0.650094,
+                      "scenario_version_id": 10
                     },
                     {
                       "id": 15,
@@ -136,9 +159,198 @@
                       "fallecimientos": 51,
                       "pico_casos_activos": 46880,
                       "dia_pico": 111,
-                      "tasa_ataque": 0.478136
+                      "tasa_ataque": 0.478136,
+                      "scenario_version_id": 11
                     }
-                  ]
+                  ],
+                  "base_id": 12,
+                  "diferencias": {
+                    "nota": "Absoluta: la corrida menos la de referencia, con su signo. Relativa: la absoluta entre la de referencia; sin valor si la referencia es cero. Son diferencias descriptivas entre corridas simuladas; no recomiendan un escenario.",
+                    "costos_disponibles": true,
+                    "costos_motivo": null,
+                    "corridas": [
+                      {
+                        "corrida_id": 15,
+                        "contra_id": 12,
+                        "metricas": [
+                          {
+                            "metrica": "tasa_ataque",
+                            "unidad": "tasa de ataque (fracción)",
+                            "base": 0.650094,
+                            "valor": 0.478136,
+                            "absoluta": -0.171958,
+                            "relativa": -0.264513
+                          },
+                          {
+                            "metrica": "pico_casos_activos",
+                            "unidad": "personas simuladas",
+                            "base": 56052,
+                            "valor": 46880,
+                            "absoluta": -9172,
+                            "relativa": -0.163634
+                          },
+                          {
+                            "metrica": "dia_pico",
+                            "unidad": "día",
+                            "base": 98,
+                            "valor": 111,
+                            "absoluta": 13,
+                            "relativa": 0.132653
+                          },
+                          {
+                            "metrica": "fallecimientos",
+                            "unidad": "personas simuladas",
+                            "base": 100,
+                            "valor": 51,
+                            "absoluta": -49,
+                            "relativa": -0.49
+                          },
+                          {
+                            "metrica": "costo",
+                            "unidad": "personas-día",
+                            "base": 0,
+                            "valor": 19849.0,
+                            "absoluta": 19849.0,
+                            "relativa": null
+                          },
+                          {
+                            "metrica": "costo_pesos",
+                            "unidad": "pesos",
+                            "base": 0,
+                            "valor": 15879200.0,
+                            "absoluta": 15879200.0,
+                            "relativa": null
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "incertidumbre": {
+                    "nota": "Banda p5 a p95 de los casos activos por día entre las réplicas completadas de la versión (D8). El pico es el día de mayor mediana. Las bandas se enciman si los intervalos p5 a p95 de sus picos se cruzan.",
+                    "corridas": [
+                      {
+                        "id": 12,
+                        "replicas": 30,
+                        "pico": {
+                          "dia": 1,
+                          "p5": 104,
+                          "p50": 107,
+                          "p95": 111
+                        },
+                        "banda": [
+                          {
+                            "dia": 0,
+                            "corridas": 30,
+                            "p5": 100,
+                            "p50": 100,
+                            "p95": 100
+                          },
+                          {
+                            "dia": 1,
+                            "corridas": 30,
+                            "p5": 104,
+                            "p50": 107,
+                            "p95": 111
+                          }
+                        ]
+                      },
+                      {
+                        "id": 15,
+                        "replicas": 30,
+                        "pico": {
+                          "dia": 1,
+                          "p5": 103,
+                          "p50": 106,
+                          "p95": 109
+                        },
+                        "banda": [
+                          {
+                            "dia": 0,
+                            "corridas": 30,
+                            "p5": 100,
+                            "p50": 100,
+                            "p95": 100
+                          },
+                          {
+                            "dia": 1,
+                            "corridas": 30,
+                            "p5": 103,
+                            "p50": 106,
+                            "p95": 109
+                          }
+                        ]
+                      }
+                    ],
+                    "sin_replicas": [],
+                    "bandas_encimadas": [
+                      {
+                        "corrida_id": 12,
+                        "contra_id": 15
+                      }
+                    ]
+                  },
+                  "contrafactual": {
+                    "exploratorio": true,
+                    "nota": "Exploratorio: compara lo que simularon las corridas indicadas, no estima lo que habría pasado en la realidad. Las dos corridas pueden diferir en más que la intervención; revisa su escenario y versión. No recomienda un escenario.",
+                    "sin_intervencion_id": 12,
+                    "corridas": [
+                      {
+                        "corrida_id": 15,
+                        "scenario_name": "Ola Influenza ZMM - con vacunacion",
+                        "mismo_escenario": true,
+                        "metricas": [
+                          {
+                            "metrica": "tasa_ataque",
+                            "unidad": "tasa de ataque (fracción)",
+                            "sin": 0.650094,
+                            "con": 0.478136,
+                            "absoluta": -0.171958,
+                            "relativa": -0.264513
+                          },
+                          {
+                            "metrica": "pico_casos_activos",
+                            "unidad": "personas simuladas",
+                            "sin": 56052,
+                            "con": 46880,
+                            "absoluta": -9172,
+                            "relativa": -0.163634
+                          },
+                          {
+                            "metrica": "dia_pico",
+                            "unidad": "día",
+                            "sin": 98,
+                            "con": 111,
+                            "absoluta": 13,
+                            "relativa": 0.132653
+                          },
+                          {
+                            "metrica": "fallecimientos",
+                            "unidad": "personas simuladas",
+                            "sin": 100,
+                            "con": 51,
+                            "absoluta": -49,
+                            "relativa": -0.49
+                          },
+                          {
+                            "metrica": "costo",
+                            "unidad": "personas-día",
+                            "sin": 0,
+                            "con": 19849.0,
+                            "absoluta": 19849.0,
+                            "relativa": null
+                          },
+                          {
+                            "metrica": "costo_pesos",
+                            "unidad": "pesos",
+                            "sin": 0,
+                            "con": 15879200.0,
+                            "absoluta": 15879200.0,
+                            "relativa": null
+                          }
+                        ]
+                      }
+                    ]
+                  }
                 }
               },
               "application/xml": {
@@ -150,7 +362,7 @@
                 },
                 "examples": {
                   "respuesta": {
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<comparacion><aviso>Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.</aviso><corridas><corrida><id tipo=\"numero\">12</id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">1</version_number><scenario_name>Ola Influenza ZMM - sin intervencion</scenario_name><serie><punto><dia tipo=\"numero\">0</dia><S tipo=\"numero\">499900</S><E tipo=\"numero\">0</E><I tipo=\"numero\">100</I><R tipo=\"numero\">0</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">100</casos_activos><nuevos_casos tipo=\"numero\">0</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">1</dia><S tipo=\"numero\">499879</S><E tipo=\"numero\">21</E><I tipo=\"numero\">86</I><R tipo=\"numero\">14</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">107</casos_activos><nuevos_casos tipo=\"numero\">21</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto></serie><fallecimientos tipo=\"numero\">100</fallecimientos><pico_casos_activos tipo=\"numero\">56052</pico_casos_activos><dia_pico tipo=\"numero\">98</dia_pico><tasa_ataque tipo=\"numero\">0.650094</tasa_ataque></corrida><corrida><id tipo=\"numero\">15</id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Ola Influenza ZMM - con vacunacion</scenario_name><serie><punto><dia tipo=\"numero\">0</dia><S tipo=\"numero\">499900</S><E tipo=\"numero\">0</E><I tipo=\"numero\">100</I><R tipo=\"numero\">0</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">100</casos_activos><nuevos_casos tipo=\"numero\">0</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">1</dia><S tipo=\"numero\">499879</S><E tipo=\"numero\">21</E><I tipo=\"numero\">86</I><R tipo=\"numero\">14</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">107</casos_activos><nuevos_casos tipo=\"numero\">21</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto></serie><fallecimientos tipo=\"numero\">51</fallecimientos><pico_casos_activos tipo=\"numero\">46880</pico_casos_activos><dia_pico tipo=\"numero\">111</dia_pico><tasa_ataque tipo=\"numero\">0.478136</tasa_ataque></corrida></corridas></comparacion>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<comparacion><aviso>Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.</aviso><corridas><corrida><id tipo=\"numero\">12</id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">1</version_number><scenario_name>Ola Influenza ZMM - sin intervencion</scenario_name><serie><punto><dia tipo=\"numero\">0</dia><S tipo=\"numero\">499900</S><E tipo=\"numero\">0</E><I tipo=\"numero\">100</I><R tipo=\"numero\">0</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">100</casos_activos><nuevos_casos tipo=\"numero\">0</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">1</dia><S tipo=\"numero\">499879</S><E tipo=\"numero\">21</E><I tipo=\"numero\">86</I><R tipo=\"numero\">14</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">107</casos_activos><nuevos_casos tipo=\"numero\">21</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto></serie><fallecimientos tipo=\"numero\">100</fallecimientos><pico_casos_activos tipo=\"numero\">56052</pico_casos_activos><dia_pico tipo=\"numero\">98</dia_pico><tasa_ataque tipo=\"numero\">0.650094</tasa_ataque><scenario_version_id tipo=\"numero\">10</scenario_version_id></corrida><corrida><id tipo=\"numero\">15</id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Ola Influenza ZMM - con vacunacion</scenario_name><serie><punto><dia tipo=\"numero\">0</dia><S tipo=\"numero\">499900</S><E tipo=\"numero\">0</E><I tipo=\"numero\">100</I><R tipo=\"numero\">0</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">100</casos_activos><nuevos_casos tipo=\"numero\">0</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto><punto><dia tipo=\"numero\">1</dia><S tipo=\"numero\">499879</S><E tipo=\"numero\">21</E><I tipo=\"numero\">86</I><R tipo=\"numero\">14</R><H tipo=\"numero\">0</H><D tipo=\"numero\">0</D><V tipo=\"numero\">0</V><casos_activos tipo=\"numero\">107</casos_activos><nuevos_casos tipo=\"numero\">21</nuevos_casos><nuevas_hospitalizaciones tipo=\"numero\">0</nuevas_hospitalizaciones><nuevas_defunciones tipo=\"numero\">0</nuevas_defunciones><dosis_aplicadas tipo=\"numero\">0</dosis_aplicadas></punto></serie><fallecimientos tipo=\"numero\">51</fallecimientos><pico_casos_activos tipo=\"numero\">46880</pico_casos_activos><dia_pico tipo=\"numero\">111</dia_pico><tasa_ataque tipo=\"numero\">0.478136</tasa_ataque><scenario_version_id tipo=\"numero\">11</scenario_version_id></corrida></corridas><base_id tipo=\"numero\">12</base_id><diferencias><nota>Absoluta: la corrida menos la de referencia, con su signo. Relativa: la absoluta entre la de referencia; sin valor si la referencia es cero. Son diferencias descriptivas entre corridas simuladas; no recomiendan un escenario.</nota><costos_disponibles tipo=\"booleano\">true</costos_disponibles><costos_motivo nil=\"true\" /><corridas><corrida><corrida_id tipo=\"numero\">15</corrida_id><contra_id tipo=\"numero\">12</contra_id><metricas><metrica><metrica>tasa_ataque</metrica><unidad>tasa de ataque (fracción)</unidad><base tipo=\"numero\">0.650094</base><valor tipo=\"numero\">0.478136</valor><absoluta tipo=\"numero\">-0.171958</absoluta><relativa tipo=\"numero\">-0.264513</relativa></metrica><metrica><metrica>pico_casos_activos</metrica><unidad>personas simuladas</unidad><base tipo=\"numero\">56052</base><valor tipo=\"numero\">46880</valor><absoluta tipo=\"numero\">-9172</absoluta><relativa tipo=\"numero\">-0.163634</relativa></metrica><metrica><metrica>dia_pico</metrica><unidad>día</unidad><base tipo=\"numero\">98</base><valor tipo=\"numero\">111</valor><absoluta tipo=\"numero\">13</absoluta><relativa tipo=\"numero\">0.132653</relativa></metrica><metrica><metrica>fallecimientos</metrica><unidad>personas simuladas</unidad><base tipo=\"numero\">100</base><valor tipo=\"numero\">51</valor><absoluta tipo=\"numero\">-49</absoluta><relativa tipo=\"numero\">-0.49</relativa></metrica><metrica><metrica>costo</metrica><unidad>personas-día</unidad><base tipo=\"numero\">0</base><valor tipo=\"numero\">19849.0</valor><absoluta tipo=\"numero\">19849.0</absoluta><relativa nil=\"true\" /></metrica><metrica><metrica>costo_pesos</metrica><unidad>pesos</unidad><base tipo=\"numero\">0</base><valor tipo=\"numero\">15879200.0</valor><absoluta tipo=\"numero\">15879200.0</absoluta><relativa nil=\"true\" /></metrica></metricas></corrida></corridas></diferencias><incertidumbre><nota>Banda p5 a p95 de los casos activos por día entre las réplicas completadas de la versión (D8). El pico es el día de mayor mediana. Las bandas se enciman si los intervalos p5 a p95 de sus picos se cruzan.</nota><corridas><corrida><id tipo=\"numero\">12</id><replicas tipo=\"numero\">30</replicas><pico><dia tipo=\"numero\">1</dia><p5 tipo=\"numero\">104</p5><p50 tipo=\"numero\">107</p50><p95 tipo=\"numero\">111</p95></pico><banda><punto><dia tipo=\"numero\">0</dia><corridas tipo=\"numero\">30</corridas><p5 tipo=\"numero\">100</p5><p50 tipo=\"numero\">100</p50><p95 tipo=\"numero\">100</p95></punto><punto><dia tipo=\"numero\">1</dia><corridas tipo=\"numero\">30</corridas><p5 tipo=\"numero\">104</p5><p50 tipo=\"numero\">107</p50><p95 tipo=\"numero\">111</p95></punto></banda></corrida><corrida><id tipo=\"numero\">15</id><replicas tipo=\"numero\">30</replicas><pico><dia tipo=\"numero\">1</dia><p5 tipo=\"numero\">103</p5><p50 tipo=\"numero\">106</p50><p95 tipo=\"numero\">109</p95></pico><banda><punto><dia tipo=\"numero\">0</dia><corridas tipo=\"numero\">30</corridas><p5 tipo=\"numero\">100</p5><p50 tipo=\"numero\">100</p50><p95 tipo=\"numero\">100</p95></punto><punto><dia tipo=\"numero\">1</dia><corridas tipo=\"numero\">30</corridas><p5 tipo=\"numero\">103</p5><p50 tipo=\"numero\">106</p50><p95 tipo=\"numero\">109</p95></punto></banda></corrida></corridas><sin_replicas /><bandas_encimadas><encimada><corrida_id tipo=\"numero\">12</corrida_id><contra_id tipo=\"numero\">15</contra_id></encimada></bandas_encimadas></incertidumbre><contrafactual><exploratorio tipo=\"booleano\">true</exploratorio><nota>Exploratorio: compara lo que simularon las corridas indicadas, no estima lo que habría pasado en la realidad. Las dos corridas pueden diferir en más que la intervención; revisa su escenario y versión. No recomienda un escenario.</nota><sin_intervencion_id tipo=\"numero\">12</sin_intervencion_id><corridas><corrida><corrida_id tipo=\"numero\">15</corrida_id><scenario_name>Ola Influenza ZMM - con vacunacion</scenario_name><mismo_escenario tipo=\"booleano\">true</mismo_escenario><metricas><metrica><metrica>tasa_ataque</metrica><unidad>tasa de ataque (fracción)</unidad><sin tipo=\"numero\">0.650094</sin><con tipo=\"numero\">0.478136</con><absoluta tipo=\"numero\">-0.171958</absoluta><relativa tipo=\"numero\">-0.264513</relativa></metrica><metrica><metrica>pico_casos_activos</metrica><unidad>personas simuladas</unidad><sin tipo=\"numero\">56052</sin><con tipo=\"numero\">46880</con><absoluta tipo=\"numero\">-9172</absoluta><relativa tipo=\"numero\">-0.163634</relativa></metrica><metrica><metrica>dia_pico</metrica><unidad>día</unidad><sin tipo=\"numero\">98</sin><con tipo=\"numero\">111</con><absoluta tipo=\"numero\">13</absoluta><relativa tipo=\"numero\">0.132653</relativa></metrica><metrica><metrica>fallecimientos</metrica><unidad>personas simuladas</unidad><sin tipo=\"numero\">100</sin><con tipo=\"numero\">51</con><absoluta tipo=\"numero\">-49</absoluta><relativa tipo=\"numero\">-0.49</relativa></metrica><metrica><metrica>costo</metrica><unidad>personas-día</unidad><sin tipo=\"numero\">0</sin><con tipo=\"numero\">19849.0</con><absoluta tipo=\"numero\">19849.0</absoluta><relativa nil=\"true\" /></metrica><metrica><metrica>costo_pesos</metrica><unidad>pesos</unidad><sin tipo=\"numero\">0</sin><con tipo=\"numero\">15879200.0</con><absoluta tipo=\"numero\">15879200.0</absoluta><relativa nil=\"true\" /></metrica></metricas></corrida></corridas></contrafactual></comparacion>\n"
                   }
                 }
               }
@@ -169,7 +381,7 @@
             "description": "Alguna corrida no existe, no ha terminado o no tiene resultados"
           },
           "422": {
-            "description": "Datos inválidos"
+            "description": "Datos inválidos. También `base` o `sin_intervencion` que no estén en `runs`."
           },
           "503": {
             "description": "SERVICIO_NO_DISPONIBLE: Redis o el servicio resultados no responden. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."

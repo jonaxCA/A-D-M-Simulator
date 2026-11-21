@@ -32,7 +32,11 @@ SINGULARES = {"regiones": "region", "enfermedades": "enfermedad",
               "evidencias": "evidencia", "lotes": "lote",
               "desglose_por_grupo": "grupo_edad", "trazabilidad": "parametro",
               "simplificaciones": "simplificacion", "servicios": "servicio",
-              "causas": "causa", "sondeos": "sondeo"}
+              "causas": "causa", "sondeos": "sondeo", "banda": "punto", "metricas": "metrica",
+              "sin_replicas": "corrida_id", "bandas_encimadas": "encimada",
+              "dominada_por": "alternativa", "compromisos": "compromiso", "empatada_con": "corrida",
+              "criterios": "criterio", "semillas": "semilla", "modelos": "modelo",
+              "calibrado": "enfermedad_region", "validado": "enfermedad_region"}
 
 
 # Un nombre de etiqueta XML no puede iniciar con numero ni contener "+".

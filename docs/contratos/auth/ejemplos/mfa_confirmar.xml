@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<sesion><access_token>JWT_DE_EJEMPLO</access_token><refresh_token>REFRESH_DE_EJEMPLO</refresh_token><token_type>Bearer</token_type><expires_in tipo="numero">1200</expires_in><sesion_expira tipo="numero">1791895491</sesion_expira><usuario><id tipo="numero">1</id><username>admin</username><full_name>Administrador</full_name><roles><item>ADMINISTRADOR</item></roles></usuario><codigos_respaldo><item>CODIGO-DE-RESPALDO-1</item><item>CODIGO-DE-RESPALDO-2</item></codigos_respaldo></sesion>

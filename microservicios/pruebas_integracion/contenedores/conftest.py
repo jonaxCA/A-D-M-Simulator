@@ -102,7 +102,8 @@ def sesion(entorno, base):
     """sesion("analista") abre una sesión en el Redis de pruebas: {"access", "refresh", "id"}."""
     import jwt
     import redis
-    from epidemia_comun import redis_compartido, sesiones
+    from epidemia_comun import redis_compartido
+    from microservicios.sesiones import almacen as sesiones
 
     conexion = base()
     with conexion.cursor() as cur:

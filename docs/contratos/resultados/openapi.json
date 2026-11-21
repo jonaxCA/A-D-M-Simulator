@@ -25,7 +25,7 @@
       "get": {
         "summary": "Resultado completo de una corrida",
         "operationId": "consultar_resultado",
-        "description": "La corrida, el resumen de indicadores (con el desglose por grupo de edad), la serie diaria, la trazabilidad de los parámetros las simplificaciones del motor que la corrió y la escala (D6): cuántos habitantes de la región representa cada agente simulado, con los conteos del resumen llevados a habitantes. Siempre incluye aviso: los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR. Se guarda 300 s en la caché de Redis. categoria (D39): exploratoria, prediccion o validada, con modelo_verificado, el motivo y el texto para mostrar; hoy todas son exploratorias.",
+        "description": "La corrida, el resumen de indicadores (con el desglose por grupo de edad), la serie diaria, la trazabilidad de los parámetros las simplificaciones del motor que la corrió y la escala (D6): cuántos habitantes de la región representa cada agente simulado, con los conteos del resumen llevados a habitantes. Siempre incluye aviso: los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (D42). Se guarda 300 s en la caché de Redis. categoria (D39): exploratoria, prediccion o validada, con modelo_verificado, el motivo y el texto para mostrar; hoy todas son exploratorias.",
         "parameters": [
           {
             "in": "path",
@@ -307,7 +307,7 @@
       "get": {
         "summary": "Serie diaria de una corrida",
         "operationId": "consultar_curvas",
-        "description": "Un punto por día con S, E, I, R, H, D, V, casos activos y los nuevos casos, hospitalizaciones, defunciones y dosis. Siempre incluye aviso: los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR. Se guarda 300 s en la caché de Redis. categoria (D39): exploratoria, prediccion o validada, con modelo_verificado, el motivo y el texto para mostrar; hoy todas son exploratorias.",
+        "description": "Un punto por día con S, E, I, R, H, D, V, casos activos y los nuevos casos, hospitalizaciones, defunciones y dosis. Siempre incluye aviso: los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (D42). Se guarda 300 s en la caché de Redis. categoria (D39): exploratoria, prediccion o validada, con modelo_verificado, el motivo y el texto para mostrar; hoy todas son exploratorias.",
         "parameters": [
           {
             "in": "path",
@@ -488,7 +488,7 @@
       "get": {
         "summary": "Indicadores de una corrida",
         "operationId": "consultar_indicadores",
-        "description": "Casos acumulados, picos, hospitalizaciones, fallecimientos, tasa de ataque y el desglose por grupo de edad. Siempre incluye aviso: los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR. Se guarda 300 s en la caché de Redis. Sale solo de PostgreSQL: responde aunque MongoDB esté caído. categoria (D39): exploratoria, prediccion o validada, con modelo_verificado, el motivo y el texto para mostrar; hoy todas son exploratorias.",
+        "description": "Casos acumulados, picos, hospitalizaciones, fallecimientos, tasa de ataque y el desglose por grupo de edad. Siempre incluye aviso: los resultados no son una predicción. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (D42). Se guarda 300 s en la caché de Redis. Sale solo de PostgreSQL: responde aunque MongoDB esté caído. categoria (D39): exploratoria, prediccion o validada, con modelo_verificado, el motivo y el texto para mostrar; hoy todas son exploratorias.",
         "parameters": [
           {
             "in": "path",
@@ -598,6 +598,140 @@
           },
           "422": {
             "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/band": {
+      "get": {
+        "summary": "Banda de incertidumbre de las réplicas",
+        "operationId": "consultar_banda",
+        "description": "Por día, la mediana (p50) y los percentiles 5 y 95 (p5, p95) de un compartimento o de los casos activos entre las réplicas completadas de la misma versión con el mismo motor que tienen su serie en MongoDB (replicas cuenta solo esas) de la corrida indicada (D8, series_corridas en MongoDB). `replicas` dice cuántas hay; con una sola, la banda se reduce a la propia curva. Incluye aviso y categoria (D39: exploratoria, prediccion o validada, con su motivo y texto). ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (D42). Se guarda 300 s en la caché de Redis, con una llave que cambia al completarse otra réplica.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de una corrida completada"
+          },
+          {
+            "in": "query",
+            "name": "campo",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "casos_activos",
+              "enum": [
+                "S",
+                "E",
+                "I",
+                "R",
+                "H",
+                "D",
+                "V",
+                "casos_activos",
+                "nuevos_casos",
+                "nuevas_hospitalizaciones",
+                "nuevas_defunciones",
+                "dosis_aplicadas"
+              ]
+            },
+            "description": "Compartimento o total diario del que se calcula la banda"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+                  "categoria": {
+                    "categoria": "exploratoria",
+                    "modelo_verificado": true,
+                    "motivo": "El modelo seir-ref-0.1 no está calibrado para esta enfermedad y región.",
+                    "texto": "Simulación exploratoria: sirve para comparar escenarios entre sí, no para anticipar cifras reales. El modelo no está calibrado ni validado con datos observados de esta enfermedad y región."
+                  },
+                  "run_id": 42,
+                  "scenario_version_id": 11,
+                  "motor": "seir-ref",
+                  "campo": "casos_activos",
+                  "replicas": 30,
+                  "metodo": "Mediana y percentiles 5 y 95 por día entre las réplicas completadas de la versión con el mismo motor (D8).",
+                  "banda": [
+                    {
+                      "dia": 0,
+                      "corridas": 30,
+                      "p5": 100,
+                      "p50": 100,
+                      "p95": 100
+                    },
+                    {
+                      "dia": 1,
+                      "corridas": 30,
+                      "p5": 104,
+                      "p50": 107,
+                      "p95": 111
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "banda"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<banda><aviso>Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.</aviso><categoria><categoria>exploratoria</categoria><modelo_verificado tipo=\"booleano\">true</modelo_verificado><motivo>El modelo seir-ref-0.1 no está calibrado para esta enfermedad y región.</motivo><texto>Simulación exploratoria: sirve para comparar escenarios entre sí, no para anticipar cifras reales. El modelo no está calibrado ni validado con datos observados de esta enfermedad y región.</texto></categoria><run_id tipo=\"numero\">42</run_id><scenario_version_id tipo=\"numero\">11</scenario_version_id><motor>seir-ref</motor><campo>casos_activos</campo><replicas tipo=\"numero\">30</replicas><metodo>Mediana y percentiles 5 y 95 por día entre las réplicas completadas de la versión con el mismo motor (D8).</metodo><banda><punto><dia tipo=\"numero\">0</dia><corridas tipo=\"numero\">30</corridas><p5 tipo=\"numero\">100</p5><p50 tipo=\"numero\">100</p50><p95 tipo=\"numero\">100</p95></punto><punto><dia tipo=\"numero\">1</dia><corridas tipo=\"numero\">30</corridas><p5 tipo=\"numero\">104</p5><p50 tipo=\"numero\">107</p50><p95 tipo=\"numero\">111</p95></punto></banda></banda>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde o si MongoDB, donde están las series (D28), no responde."
+          },
+          "404": {
+            "description": "No existe la corrida, no tiene resultados guardados, no se reconoce su motor o la versión no tiene series en MongoDB"
+          },
+          "409": {
+            "description": "La corrida no está completada"
+          },
+          "422": {
+            "description": "Id o campo inválido"
           },
           "429": {
             "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",

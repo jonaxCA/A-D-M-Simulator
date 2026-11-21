@@ -42,6 +42,16 @@ class Cola(ConRedis):
         self.assertEqual(cola.tomar(self.LLAVE), "2")
         self.assertEqual(cola.pendientes(self.LLAVE), 0)
 
+    def test_con_varias_colas_sale_primero_la_de_mayor_prioridad(self):
+        alta, baja = (llaves.cola_con_prioridad("seir-ref", p) for p in ("alta", "baja"))
+        colas = [llaves.cola_con_prioridad("seir-ref", p) for p in ("alta", "normal", "baja")]
+        cola.encolar(baja, 1)
+        cola.encolar(self.LLAVE, 2)
+        cola.encolar(alta, 3)
+        cola.encolar(alta, 4)
+        self.assertEqual(cola.pendientes(colas), 4)
+        self.assertEqual([cola.tomar(colas) for _ in range(4)], ["3", "4", "2", "1"])
+
     def test_vacia_regresa_none_al_terminar_la_espera(self):
         with mock.patch.object(cola, "ESPERA", 1):
             self.assertIsNone(cola.tomar(self.LLAVE))

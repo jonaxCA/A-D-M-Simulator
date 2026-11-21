@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mfa><mfa_requerido tipo="booleano">true</mfa_requerido><mfa_enrolado tipo="booleano">false</mfa_enrolado><mfa_token>MFA_TOKEN_DE_EJEMPLO</mfa_token><mfa_expira tipo="numero">1791864000</mfa_expira></mfa>

@@ -9,5 +9,9 @@
   "role_id": 3,
   "roles": [
     "ANALISTA"
-  ]
+  ],
+  "institution_id": 1,
+  "institucion": "Secretaría de Salud de Nuevo León",
+  "region_id": 19,
+  "region": "Monterrey"
 }

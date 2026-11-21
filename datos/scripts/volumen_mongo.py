@@ -3,7 +3,7 @@ Volumen de datos (D29): llena series_corridas con corridas del SEIR y mide.
 
 Genera VERSIONES x REPLICAS corridas de DIAS días (por omisión 100 x 100 x 180: 10,000
 corridas, 1.81 millones de documentos) con seir-ref y las mismas funciones que usan el simulador
-y resultados (epidemia_comun.series_corridas). Cada versión cambia la R0 del escenario de ejemplo
+y resultados (microservicios.simulador.serie y microservicios.resultados.serie). Cada versión cambia la R0 del escenario de ejemplo
 del contrato del motor, cuyos parámetros son supuestos; cada réplica, la semilla.
 
 Mide: inserción con y sin índices, la serie de una corrida y la banda p5-p95 con y sin su
@@ -30,7 +30,9 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(RAIZ), str(RAIZ / "microservicios" / "comun")]
 
-from epidemia_comun import cache, mongo, redis_compartido, series_corridas  # noqa: E402
+from epidemia_comun import cache, mongo, redis_compartido  # noqa: E402
+from microservicios.resultados import serie as lee  # noqa: E402
+from microservicios.simulador import serie as escribe  # noqa: E402
 from procesamiento.contrato import ESCENARIO_EJEMPLO  # noqa: E402
 from procesamiento.motor import simular  # noqa: E402
 
@@ -52,7 +54,7 @@ def corridas(version, replicas, dias):
         # checklist, cada documento de series_corridas lleva scenario_id.
         run = {"id": run_id, "batch_id": run_id, "scenario_id": version + 1,
                "scenario_version_id": version + 1, "seed": run_id}
-        yield series_corridas.documentos(run, MOTOR, simular(escenario, run_id))
+        yield escribe.documentos(run, MOTOR, simular(escenario, run_id))
 
 
 class Recursos(threading.Thread):
@@ -94,7 +96,7 @@ def mediana_ms(funcion, argumentos):
 
 def sin_indice(col, campos, funcion, argumentos):
     nombre = "_".join("%s_%s" % c for c in campos)
-    opciones = next(o for c, o in mongo.INDICES[series_corridas.COLECCION] if c == campos)
+    opciones = next(o for c, o in mongo.INDICES[escribe.COLECCION] if c == campos)
     col.drop_index(nombre)
     try:
         return mediana_ms(funcion, argumentos)
@@ -118,9 +120,9 @@ def principal():
     if base.name == "epidemia":
         sys.exit("MONGO_URL apunta a la base de la demostración: usa epidemia_pruebas.")
     redis_compartido.cliente().ping()
-    base.drop_collection(series_corridas.COLECCION)
+    base.drop_collection(escribe.COLECCION)
     base.drop_collection("series_sin_indices")
-    col = mongo.coleccion(series_corridas.COLECCION)
+    col = mongo.coleccion(escribe.COLECCION)
     versiones, replicas = opciones.versiones, opciones.replicas
 
     # La inserción con índices, de todo el volumen; sin índices, de las primeras versiones.
@@ -143,12 +145,12 @@ def principal():
     total = time.perf_counter() - inicio_total
     uso = recursos.resumen()
     base.drop_collection("series_sin_indices")
-    estadisticas = base.command("collStats", series_corridas.COLECCION)
+    estadisticas = base.command("collStats", escribe.COLECCION)
 
-    # El simulador guarda con replace_one por día (series_corridas.guardar): una corrida.
+    # El simulador guarda con replace_one por día (serie.guardar): una corrida.
     muestra = next(corridas(versiones, 1, opciones.dias))
     inicio = time.perf_counter()
-    series_corridas.guardar(muestra)
+    escribe.guardar(muestra)
     guardar_ms = (time.perf_counter() - inicio) * 1000
     col.delete_many({"run_id": muestra[0]["run_id"]})
 
@@ -156,8 +158,8 @@ def principal():
     total_corridas = versiones * replicas
     run_ids = [1 + (i * 7919) % total_corridas for i in range(n)]
     version_ids = [1 + (i * 31) % versiones for i in range(n)]
-    serie = lambda r: series_corridas.leer(r)
-    banda = lambda v: series_corridas.banda(v, MOTOR)
+    serie = lambda r: lee.leer(r)
+    banda = lambda v: lee.banda(v, MOTOR)
     serie_con = mediana_ms(serie, run_ids)
     serie_sin = sin_indice(col, [("run_id", 1), ("dia", 1)], serie, run_ids)
     banda_con = mediana_ms(banda, version_ids)
@@ -165,7 +167,7 @@ def principal():
 
     # Lo mismo que resultados (_serie), con otro prefijo para no tocar su caché.
     def con_cache(r):
-        return cache.obtener("volumen", "serie=%d" % r, 300, lambda: series_corridas.leer(r))
+        return cache.obtener("volumen", "serie=%d" % r, 300, lambda: lee.leer(r))
 
     llaves = ["cache:volumen:serie=%d" % r for r in run_ids]
     redis_compartido.cliente().delete(*llaves)

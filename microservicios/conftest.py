@@ -100,7 +100,7 @@ def crear_cliente(redis_falso):
 @pytest.fixture(autouse=True)
 def negados(monkeypatch):
     """Los PERMISSION_DENIED que anota requiere_token; así un 403 nunca escribe en una base."""
-    from backend_web import audit
+    from epidemia_comun import auditoria as audit
     eventos = []
     monkeypatch.setattr(audit, "log_audit",
                         lambda ctx, accion, entidad, entity_id=None, data_after=None, **_:
@@ -126,3 +126,56 @@ def token(redis_falso):
         return {"Authorization": "Bearer " + jwt.encode(claims, SECRETO_PRUEBAS,
                                                         algorithm="HS256")}
     return firmar
+
+
+class _RespuestaAlcance:
+    def __init__(self, alcance):
+        self.status_code, self._alcance = 200, alcance
+
+    def json(self):
+        return self._alcance
+
+
+@pytest.fixture(autouse=True)
+def alcance_falso(monkeypatch):
+    """El alcance (D43) que `roles` regresa en GET /scopes/me: nacional, salvo que la prueba lo
+    cambie con alcance_falso["regiones"] = [ids]. Las llamadas a roles quedan en ["llamadas"]."""
+    from epidemia_comun import alcance
+    estado = {"regiones": None, "llamadas": []}
+
+    def llamar(servicio, metodo, ruta, **kw):
+        estado["llamadas"].append((servicio, metodo, ruta))
+        regiones = estado["regiones"]
+        return _RespuestaAlcance({"nacional": regiones is None, "region_ids": regiones or [],
+                                  "regiones_cubiertas": regiones or [], "institution_ids": []})
+
+    monkeypatch.setattr(alcance, "llamar", llamar)
+    return estado
+
+
+class _RespuestaServicio:
+    def __init__(self, respuesta):
+        self.status_code, self._respuesta = respuesta.status_code, respuesta
+
+    def json(self):
+        return self._respuesta.get_json()
+
+
+@pytest.fixture
+def llamar_a_sesiones(crear_cliente):
+    """Un `llamar` que atiende en proceso lo dirigido a `sesiones`, con su app real y el Redis falso."""
+    cliente = crear_cliente("sesiones")
+
+    def llamar(servicio, metodo, ruta, cuerpo=None, token=None, **_):
+        assert servicio == "sesiones"
+        return _RespuestaServicio(cliente.open(
+            ruta, method=metodo, json=cuerpo, headers={"Authorization": "Bearer " + token,
+                                                       "Accept": "application/json"}))
+    return llamar
+
+
+@pytest.fixture
+def sesiones_en_proceso(monkeypatch, llamar_a_sesiones):
+    """Para usuarios y roles: cerrar sesiones llega a la app de `sesiones` sin red."""
+    from epidemia_comun import sesiones
+    monkeypatch.setattr(sesiones, "llamar", llamar_a_sesiones)

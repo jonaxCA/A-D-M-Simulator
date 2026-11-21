@@ -11,7 +11,9 @@ import os
 import pytest
 from pymongo.errors import DuplicateKeyError
 
-from epidemia_comun import mongo, series_corridas
+from epidemia_comun import mongo
+from microservicios.resultados import serie as lee
+from microservicios.simulador import serie as escribe
 
 URL = os.environ.get("MONGO_URL_PRUEBAS")
 pytestmark = pytest.mark.skipif(not URL, reason="Sin MONGO_URL_PRUEBAS")
@@ -40,43 +42,43 @@ def corrida(run_id, version=11, escala=1, dias=5):
     serie = [dict(FILA, dia=d, casos_activos=(d + 1) * escala) for d in range(dias)]
     run = {"id": run_id, "batch_id": run_id, "scenario_id": 3, "scenario_version_id": version,
            "seed": run_id}
-    return series_corridas.documentos(run, "seir-ref", {"engine_version": "seir-ref-0.1",
+    return escribe.documentos(run, "seir-ref", {"engine_version": "seir-ref-0.1",
                                                          "serie": serie})
 
 
 def test_insercion_consulta_y_actualizacion(base):
-    assert series_corridas.guardar(corrida(1)) == 5
-    assert [f["casos_activos"] for f in series_corridas.leer(1)] == [1, 2, 3, 4, 5]
+    assert escribe.guardar(corrida(1)) == 5
+    assert [f["casos_activos"] for f in lee.leer(1)] == [1, 2, 3, 4, 5]
     # Volver a guardar la misma corrida reemplaza sus días: no los duplica.
-    series_corridas.guardar(corrida(1, escala=10))
+    escribe.guardar(corrida(1, escala=10))
     assert base["series_corridas"].count_documents({"run_id": 1}) == 5
-    assert [f["casos_activos"] for f in series_corridas.leer(1)] == [10, 20, 30, 40, 50]
+    assert [f["casos_activos"] for f in lee.leer(1)] == [10, 20, 30, 40, 50]
     assert base["series_corridas"].find_one({"run_id": 1})["scenario_id"] == 3
-    assert series_corridas.borrar(1) == 5 and series_corridas.leer(1) == []
+    assert escribe.borrar(1) == 5 and lee.leer(1) == []
 
 
 def test_el_indice_unico_no_deja_repetir_un_dia(base):
-    series_corridas.guardar(corrida(2))
+    escribe.guardar(corrida(2))
     with pytest.raises(DuplicateKeyError):
         base["series_corridas"].insert_one(corrida(2)[0])
 
 
 def test_la_banda_p5_p95_por_dia_de_una_version_y_un_motor(base):
     for run_id in range(1, 21):
-        series_corridas.guardar(corrida(run_id, escala=run_id))
-    series_corridas.guardar(corrida(99, version=12, escala=1000))
-    banda = series_corridas.banda(11, "seir-ref")
+        escribe.guardar(corrida(run_id, escala=run_id))
+    escribe.guardar(corrida(99, version=12, escala=1000))
+    banda = lee.banda(11, "seir-ref")
     assert [b["dia"] for b in banda] == [0, 1, 2, 3, 4]
     assert all(b["corridas"] == 20 for b in banda)
     # El día 0 vale 1, 2, …, 20 en las veinte corridas de la versión 11.
     dia0 = banda[0]
     assert 1 <= dia0["p5"] <= 2 and 10 <= dia0["p50"] <= 11 and 19 <= dia0["p95"] <= 20
-    assert series_corridas.banda(12, "seir-ref")[0]["corridas"] == 1
-    assert series_corridas.banda(11, "abm-ref") == []
+    assert lee.banda(12, "seir-ref")[0]["corridas"] == 1
+    assert lee.banda(11, "abm-ref") == []
 
 
 def test_las_consultas_usan_sus_indices(base):
-    series_corridas.guardar(corrida(3))
+    escribe.guardar(corrida(3))
     por_corrida = base["series_corridas"].find({"run_id": 3}).sort("dia", 1).explain()
     assert "run_id_1_dia_1" in str(por_corrida["queryPlanner"]["winningPlan"])
     por_version = base["series_corridas"].find(

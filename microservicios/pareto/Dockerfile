@@ -1,4 +1,4 @@
-FROM epidemia/base
+FROM epidemia/base-simulacion
 COPY microservicios/pareto/ /app/microservicios/pareto/
 COPY docs/contratos/pareto/ /app/docs/contratos/pareto/
 USER epidemia

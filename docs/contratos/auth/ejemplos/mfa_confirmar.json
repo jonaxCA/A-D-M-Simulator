@@ -1,0 +1,19 @@
+{
+  "access_token": "JWT_DE_EJEMPLO",
+  "refresh_token": "REFRESH_DE_EJEMPLO",
+  "token_type": "Bearer",
+  "expires_in": 1200,
+  "sesion_expira": 1791895491,
+  "usuario": {
+    "id": 1,
+    "username": "admin",
+    "full_name": "Administrador",
+    "roles": [
+      "ADMINISTRADOR"
+    ]
+  },
+  "codigos_respaldo": [
+    "CODIGO-DE-RESPALDO-1",
+    "CODIGO-DE-RESPALDO-2"
+  ]
+}

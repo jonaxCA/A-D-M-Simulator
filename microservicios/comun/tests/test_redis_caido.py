@@ -5,6 +5,7 @@ from unittest import mock
 import fakeredis
 
 from epidemia_comun import cache, candados, cola, llaves, redis_compartido, sesiones
+from microservicios.sesiones import almacen
 
 
 class RedisCaido(unittest.TestCase):
@@ -16,12 +17,12 @@ class RedisCaido(unittest.TestCase):
 
     def test_lo_protegido_responde_503(self):
         operaciones = {
-            "abrir sesión": lambda: sesiones.abrir(7, ["admin"], 3600),
-            "leer sesión": lambda: sesiones.obtener("sid"),
-            "renovar": lambda: sesiones.renovar("sid.refresh"),
-            "cerrar": lambda: sesiones.cerrar("sid"),
-            "cerrar todas": lambda: sesiones.cerrar_todas(7),
-            "revocar": lambda: sesiones.revocar("jti", 0),
+            "abrir sesión": lambda: almacen.abrir(7, ["admin"], 3600),
+            "leer sesión": lambda: almacen.obtener("sid"),
+            "renovar": lambda: almacen.renovar("sid.refresh"),
+            "cerrar": lambda: almacen.cerrar("sid"),
+            "cerrar todas": lambda: almacen.cerrar_todas(7),
+            "revocar": lambda: almacen.revocar("jti", 0),
             "verificar token": lambda: sesiones.verificar("sid", "jti"),
             "candado": lambda: candados.candado(llaves.candado_corrida(1), 30).__enter__(),
             "encolar": lambda: cola.encolar(llaves.cola_simulaciones("seir-ref"), 1),
@@ -43,7 +44,7 @@ class RedisCaido(unittest.TestCase):
 
     def test_al_volver_redis_las_sesiones_funcionan(self):
         self.servidor.connected = True
-        s = sesiones.abrir(7, ["admin"], 3600)
+        s = almacen.abrir(7, ["admin"], 3600)
         self.assertEqual(sesiones.verificar(s["sid"], "jti"), "vigente")
 
     def test_salud(self):

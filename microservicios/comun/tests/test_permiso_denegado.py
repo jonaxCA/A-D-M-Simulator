@@ -1,4 +1,4 @@
-from backend_web import audit
+from epidemia_comun import auditoria as audit
 
 
 def test_un_403_queda_en_la_bitacora(crear_cliente, token, negados):
@@ -10,8 +10,8 @@ def test_un_403_queda_en_la_bitacora(crear_cliente, token, negados):
 
 
 def test_con_el_rol_no_se_anota_nada(crear_cliente, token, negados, monkeypatch):
-    from backend_web import queries
-    monkeypatch.setattr(queries, "get_roles_catalogo", lambda: [])
+    from microservicios.roles import rutas
+    monkeypatch.setattr(rutas, "catalogo_roles", lambda: [])
     cliente = crear_cliente("roles")
     assert cliente.get("/api/v1/roles?format=json",
                        headers=token(roles=("ADMINISTRADOR",))).status_code == 200
