@@ -8,6 +8,9 @@ Ejecutar:
 """
 from datetime import date
 
+from microservicios.corridas import datos as corridas_datos
+from microservicios.simulador import datos as simulador_datos
+from microservicios.simulador import ejecucion
 from backend_web import queries, simulaciones
 from backend_web.contexto import Contexto
 from backend_web.db import query
@@ -22,7 +25,7 @@ def _bitacora(run_id, accion):
 
 class CorridasDelServicioTests(ConCorridasDePrueba):
     def _encola_auditada(self, seed, forzar_error=False):
-        run_id, batch_id, error = queries.crear_corrida(
+        run_id, batch_id, error = corridas_datos.crear_corrida(
             self.version_id, seed, self.user_id, simulaciones.ENGINE_VERSION,
             contexto=Contexto(self.user_id, "10.0.0.5", "pruebas"), forzar_error=forzar_error)
         self.assertIsNone(error, error)
@@ -44,21 +47,21 @@ class CorridasDelServicioTests(ConCorridasDePrueba):
 
     def test_el_motor_queda_en_el_lote(self):
         por_omision = self._encola_auditada(404)
-        run_id, batch_id, error = queries.crear_corrida(
+        run_id, batch_id, error = corridas_datos.crear_corrida(
             self.version_id, 405, self.user_id, None, engine="abm-gpu",
             contexto=Contexto(self.user_id, "10.0.0.5", "pruebas"))
         self.assertIsNone(error, error)
         self._batches_creados.append(batch_id)
-        self.assertEqual(queries.get_motor_run(por_omision), "seir-ref")
-        self.assertEqual(queries.get_motor_run(run_id), "abm-gpu")
-        self.assertIsNone(queries.get_motor_run(-1))
+        self.assertEqual(corridas_datos.get_motor_run(por_omision), "seir-ref")
+        self.assertEqual(corridas_datos.get_motor_run(run_id), "abm-gpu")
+        self.assertIsNone(corridas_datos.get_motor_run(-1))
         recientes = {r["id"]: r["engine"] for r in queries.get_runs_recientes(100)}
         self.assertEqual((recientes[por_omision], recientes[run_id]), ("seir-ref", "abm-gpu"))
         self.assertEqual(_bitacora(run_id, "RUN")[0]["data_after"]["engine"], "abm-gpu")
 
     def test_los_filtros_de_la_lista(self):
         seir = self._encola_auditada(406)
-        gpu, batch_id, error = queries.crear_corrida(
+        gpu, batch_id, error = corridas_datos.crear_corrida(
             self.version_id, 407, self.user_id, None, engine="abm-gpu",
             contexto=Contexto(self.user_id, "10.0.0.5", "pruebas"))
         self.assertIsNone(error, error)
@@ -89,7 +92,7 @@ class CorridasDelServicioTests(ConCorridasDePrueba):
 
     def test_cancelar_una_encolada(self):
         run_id = self._encola_auditada(402)
-        self.assertTrue(queries.cancelar_run(run_id, contexto=Contexto.sin_peticion(self.user_id)))
+        self.assertTrue(corridas_datos.cancelar_run(run_id, contexto=Contexto.sin_peticion(self.user_id)))
         fila = self._estado(run_id)
         self.assertEqual(fila["status"], "cancelado")
         self.assertEqual(fila["started_at"], fila["finished_at"])
@@ -103,33 +106,33 @@ class CorridasDelServicioTests(ConCorridasDePrueba):
 
     def test_no_cancela_una_que_ya_empezo(self):
         run_id = self._encola_auditada(403)
-        self.assertTrue(queries.marcar_run_ejecutando(run_id))
-        self.assertFalse(queries.cancelar_run(run_id, contexto=Contexto.sin_peticion(self.user_id)))
+        self.assertTrue(simulador_datos.marcar_run_ejecutando(run_id))
+        self.assertFalse(corridas_datos.cancelar_run(run_id, contexto=Contexto.sin_peticion(self.user_id)))
         self.assertEqual(self._estado(run_id)["status"], "ejecutando")
         self.assertEqual(_bitacora(run_id, "CANCEL"), [])
 
     def test_una_cancelada_ya_no_se_ejecuta(self):
         run_id = self._encola_auditada(404)
-        queries.cancelar_run(run_id, contexto=Contexto.sin_peticion(self.user_id))
-        self.assertIsNone(simulaciones.ejecutar_run(run_id, demora_seg=0))
+        corridas_datos.cancelar_run(run_id, contexto=Contexto.sin_peticion(self.user_id))
+        self.assertIsNone(ejecucion.ejecutar_run(run_id, demora_seg=0))
         self.assertEqual(self._estado(run_id)["status"], "cancelado")
 
     def test_ejecutar_run_informa_su_avance_y_regresa_completado(self):
         run_id = self._encola_auditada(405)
         avance = []
-        estado = simulaciones.ejecutar_run(run_id, demora_seg=0, al_avanzar=avance.append)
+        estado = ejecucion.ejecutar_run(run_id, demora_seg=0, al_avanzar=avance.append)
         self.assertEqual(estado, "completado")
         self.assertEqual(avance, [10, 30, 90, 100])
 
     def test_ejecutar_run_forzado_regresa_fallido(self):
         run_id = self._encola_auditada(406)
         avance = []
-        estado = simulaciones.ejecutar_run(run_id, forzar_error=True, demora_seg=0,
+        estado = ejecucion.ejecutar_run(run_id, forzar_error=True, demora_seg=0,
                                            al_avanzar=avance.append)
         self.assertEqual(estado, "fallido")
         self.assertEqual(avance, [10])
 
     def test_ejecutar_run_regresa_none_si_otro_la_tomo(self):
         run_id = self._encola_auditada(407)
-        self.assertTrue(queries.marcar_run_ejecutando(run_id))
-        self.assertIsNone(simulaciones.ejecutar_run(run_id, demora_seg=0))
+        self.assertTrue(simulador_datos.marcar_run_ejecutando(run_id))
+        self.assertIsNone(ejecucion.ejecutar_run(run_id, demora_seg=0))

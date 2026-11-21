@@ -13,7 +13,10 @@ import os
 import unittest
 
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
+os.environ.setdefault("REDIS_URL", "redis://127.0.0.1:6379/15")
+os.environ.setdefault("MFA_PERFILES", "")
 
+from microservicios.corridas import datos as corridas_datos
 from backend_web import queries, simulaciones  # noqa: E402
 from backend_web.auth import create_token  # noqa: E402
 from backend_web.contexto import Contexto  # noqa: E402
@@ -124,7 +127,7 @@ class ConCorridasDePrueba(unittest.TestCase):
     def _encola(self, seed, engine="seir-ref"):
         # La version, como la pone corridas: la del registro, o vacia si no esta implementado.
         motor = motores.IMPLEMENTADOS.get(engine)
-        run_id, batch_id, error = queries.crear_corrida(
+        run_id, batch_id, error = corridas_datos.crear_corrida(
             self.version_id, seed, self.user_id, motor.version if motor else None,
             engine=engine)
         self.assertIsNone(error, error)

@@ -59,7 +59,7 @@ def _audita_negado(contexto, roles):
     # RF-A05: el 403 queda en la bitácora del servicio que lo responde (D36). Si la base no
     # responde, el 403 sale igual: negar no depende de poder anotarlo.
     from flask import current_app, request
-    from backend_web.audit import log_audit
+    from .auditoria import log_audit
     try:
         log_audit(contexto, "PERMISSION_DENIED", current_app.name[:60], entity_id=request.path[:64],
                   data_after={"metodo": request.method, "roles_requeridos": list(roles)})
@@ -78,7 +78,7 @@ def requiere_token(roles=()):
             usuario = verificar_token(cabecera[7:].strip(), current_app.config,
                                      current_app.extensions["epidemia_redis"])
             g.usuario = usuario
-            from backend_web.contexto import Contexto
+            from .auditoria import Contexto
             try:
                 user_id = int(usuario["sub"])
             except (TypeError, ValueError):
@@ -94,14 +94,23 @@ def requiere_token(roles=()):
     return decorador
 
 
-def solo_servicios(funcion):
+def solo_servicios(*permitidos):
+    # @solo_servicios acepta a cualquier servicio; @solo_servicios("auth") solo a los nombrados.
     from flask import current_app, g, request
-    @wraps(funcion)
-    def ejecutar(*args, **kwargs):
-        cabecera = request.headers.get("Authorization", "")
-        if not cabecera.startswith("Bearer "):
-            raise ErrorAPI(401, "TOKEN_AUSENTE", "Falta Authorization: Bearer.")
-        g.servicio = verificar_token(cabecera[7:].strip(), current_app.config,
-                                    current_app.extensions["epidemia_redis"], interno=True)
-        return funcion(*args, **kwargs)
-    return ejecutar
+
+    def decorador(funcion):
+        @wraps(funcion)
+        def ejecutar(*args, **kwargs):
+            cabecera = request.headers.get("Authorization", "")
+            if not cabecera.startswith("Bearer "):
+                raise ErrorAPI(401, "TOKEN_AUSENTE", "Falta Authorization: Bearer.")
+            g.servicio = verificar_token(cabecera[7:].strip(), current_app.config,
+                                        current_app.extensions["epidemia_redis"], interno=True)
+            if permitidos and g.servicio["sub"] not in permitidos:
+                raise ErrorAPI(403, "PERMISO_INSUFICIENTE", "Este servicio no puede usar esta ruta.")
+            return funcion(*args, **kwargs)
+        return ejecutar
+    if len(permitidos) == 1 and callable(permitidos[0]):
+        funcion, permitidos = permitidos[0], ()
+        return decorador(funcion)
+    return decorador

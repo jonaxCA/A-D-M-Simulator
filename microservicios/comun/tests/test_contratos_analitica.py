@@ -14,7 +14,8 @@ RAIZ = Path(__file__).resolve().parents[3]
 # (servicio del catálogo, paquete de Python, puerto, rutas públicas)
 SERVICIOS = [
     # Identidad: sus ejemplos por ruta, pendientes del segundo parcial (E6).
-    ("auth", "auth", 5201, True),
+    # Pública salvo el restablecimiento del MFA de una cuenta, que es de ADMINISTRADOR (D40).
+    ("auth", "auth", 5201, None),
     ("sesiones", "sesiones", 5202, None),
     ("usuarios", "usuarios", 5203, False),
     ("roles", "roles", 5204, False),

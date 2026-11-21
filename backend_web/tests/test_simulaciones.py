@@ -28,6 +28,9 @@ import unittest
 from decimal import Decimal
 from unittest import mock
 
+from microservicios.corridas import datos as corridas_datos
+from microservicios.simulador import datos as simulador_datos
+from microservicios.simulador import ejecucion
 from backend_web.tests.base import ConCorridasDePrueba
 from backend_web import queries, simulaciones
 from backend_web.db import get_conn, query
@@ -184,7 +187,7 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
     def test_una_corrida_de_abm_ref_la_corre_el_abm(self):
         """El motor es el del lote (D2), no el SEIR de siempre."""
         run_id = self._encola(31, engine="abm-ref")
-        self.assertEqual(simulaciones.ejecutar_run(run_id, demora_seg=0), "completado")
+        self.assertEqual(ejecucion.ejecutar_run(run_id, demora_seg=0), "completado")
         guardado = queries.get_resultado_run(run_id)
         self.assertEqual(guardado["engine_version"], "abm-ref-0.1")
         version, simplificaciones = simulaciones.motor_de_resultado(guardado["engine_version"])
@@ -196,7 +199,7 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
                                       disponible=lambda: (False, "no hay GPU"))
         run_id = self._encola(32, engine="abm-gpu")
         with mock.patch.dict(motores.IMPLEMENTADOS, {"abm-gpu": sin_gpu}):
-            self.assertEqual(simulaciones.ejecutar_run(run_id, demora_seg=0), "fallido")
+            self.assertEqual(ejecucion.ejecutar_run(run_id, demora_seg=0), "fallido")
         fila = query("SELECT error_message FROM simulation_runs WHERE id = %s", (run_id,),
                      one=True)
         self.assertIn("abm-gpu", fila["error_message"])
@@ -319,7 +322,7 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
             conn.commit()
         nueva = {"id": nueva_id}
         try:
-            run_id, batch_id, error = queries.crear_corrida(
+            run_id, batch_id, error = corridas_datos.crear_corrida(
                 nueva["id"], 1, self.user_id, simulaciones.ENGINE_VERSION,
             )
             self.assertIsNone(run_id)
@@ -340,7 +343,7 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
             guardadas.append((run["id"], run["scenario_id"], motor, len(resultado["serie"]),
                               queries.get_run(run_id)["status"]))
 
-        self.assertEqual(simulaciones.ejecutar_run(run_id, demora_seg=0,
+        self.assertEqual(ejecucion.ejecutar_run(run_id, demora_seg=0,
                                                    guardar_serie=guardar_serie), "completado")
 
         run = queries.get_run(run_id)
@@ -364,8 +367,8 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
         def guardar_serie(run, motor, resultado):
             raise RuntimeError("MongoDB no responde (prueba)")
 
-        with self.assertLogs("backend_web.simulaciones", level="ERROR"):
-            final = simulaciones.ejecutar_run(run_id, demora_seg=0, guardar_serie=guardar_serie)
+        with self.assertLogs("microservicios.simulador.ejecucion", level="ERROR"):
+            final = ejecucion.ejecutar_run(run_id, demora_seg=0, guardar_serie=guardar_serie)
         self.assertEqual(final, "completado")
         self.assertEqual(queries.get_run(run_id)["status"], "completado")
         self.assertIsNotNone(queries.get_resultado_run(run_id))
@@ -376,10 +379,10 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
 
         def guardar_serie(run, motor, resultado):
             # Otro proceso la cierra entre que se guarda la serie y que se confirma.
-            queries.marca_corridas_interrumpidas("cerrada por otro proceso", run_ids=[run_id])
+            simulador_datos.marca_corridas_interrumpidas("cerrada por otro proceso", run_ids=[run_id])
 
-        with self.assertLogs("backend_web.simulaciones", level="WARNING"):
-            final = simulaciones.ejecutar_run(run_id, demora_seg=0, guardar_serie=guardar_serie,
+        with self.assertLogs("microservicios.simulador.ejecucion", level="WARNING"):
+            final = ejecucion.ejecutar_run(run_id, demora_seg=0, guardar_serie=guardar_serie,
                                               descartar_serie=descartadas.append)
         self.assertIsNone(final)
         self.assertEqual(descartadas, [run_id])
@@ -388,7 +391,7 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
 
     def test_ejecutar_run_forzado_queda_en_error_con_mensaje(self):
         run_id = self._encola(seed=55556)
-        simulaciones.ejecutar_run(run_id, forzar_error=True, demora_seg=0)
+        ejecucion.ejecutar_run(run_id, forzar_error=True, demora_seg=0)
 
         run = queries.get_run(run_id)
         self.assertEqual(run["status"], "fallido")
@@ -399,11 +402,11 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
     def test_misma_semilla_produce_run_equivalente(self):
         seed = 55557
         run_id_1 = self._encola(seed=seed)
-        simulaciones.ejecutar_run(run_id_1, demora_seg=0)
+        ejecucion.ejecutar_run(run_id_1, demora_seg=0)
         resultado_1 = queries.get_resultado_run(run_id_1)
 
         run_id_2 = self._encola(seed=seed)
-        simulaciones.ejecutar_run(run_id_2, demora_seg=0)
+        ejecucion.ejecutar_run(run_id_2, demora_seg=0)
         resultado_2 = queries.get_resultado_run(run_id_2)
 
         self.assertEqual(resultado_1["scenario_checksum"], resultado_2["scenario_checksum"])
@@ -418,11 +421,11 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
 
     def test_distinta_semilla_no_se_marca_como_equivalente(self):
         run_id_1 = self._encola(seed=1111)
-        simulaciones.ejecutar_run(run_id_1, demora_seg=0)
+        ejecucion.ejecutar_run(run_id_1, demora_seg=0)
         resultado_1 = queries.get_resultado_run(run_id_1)
 
         run_id_2 = self._encola(seed=2222)
-        simulaciones.ejecutar_run(run_id_2, demora_seg=0)
+        ejecucion.ejecutar_run(run_id_2, demora_seg=0)
         resultado_2 = queries.get_resultado_run(run_id_2)
 
         equivalente = queries.buscar_run_equivalente(
@@ -436,21 +439,21 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
     # -- rowcount, y que guardar_resultado_run nunca deje una corrida a medias
     def test_marcar_run_ejecutando_da_false_si_la_corrida_ya_no_esta_encolada(self):
         run_id = self._encola(seed=90001)
-        self.assertTrue(queries.marcar_run_ejecutando(run_id))  # 1a vez: encolado -> ejecutando
+        self.assertTrue(simulador_datos.marcar_run_ejecutando(run_id))  # 1a vez: encolado -> ejecutando
         # 2a vez: ya no esta 'encolado' (esto es lo que evita que dos hilos
         # corran la misma simulation_run a la vez).
-        self.assertFalse(queries.marcar_run_ejecutando(run_id))
+        self.assertFalse(simulador_datos.marcar_run_ejecutando(run_id))
         self.assertEqual(queries.get_run(run_id)["status"], "ejecutando")
 
     def test_marcar_run_fallido_no_pisa_un_estado_terminal(self):
         run_id = self._encola(seed=90002)
-        queries.marcar_run_ejecutando(run_id)
-        self.assertTrue(queries.marcar_run_fallido(run_id, "primer error"))
+        simulador_datos.marcar_run_ejecutando(run_id)
+        self.assertTrue(simulador_datos.marcar_run_fallido(run_id, "primer error"))
         self.assertEqual(queries.get_run(run_id)["error_message"], "primer error")
 
         # La corrida ya quedo en 'fallido' (estado terminal): una segunda
         # llamada no debe pisar el mensaje ni reportar que hizo la transicion.
-        self.assertFalse(queries.marcar_run_fallido(run_id, "segundo error, no deberia aplicar"))
+        self.assertFalse(simulador_datos.marcar_run_fallido(run_id, "segundo error, no deberia aplicar"))
         self.assertEqual(queries.get_run(run_id)["error_message"], "primer error")
 
     def test_ejecutar_run_no_hace_nada_si_otro_hilo_ya_la_arranco(self):
@@ -459,9 +462,9 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
         'encolado'), ejecutar_run tiene que abortar sin auditar 'ejecutando'
         ni tocar el resultado -- no seguir de largo como si nada."""
         run_id = self._encola(seed=90003)
-        self.assertTrue(queries.marcar_run_ejecutando(run_id))  # simula que otro hilo la arranco primero
+        self.assertTrue(simulador_datos.marcar_run_ejecutando(run_id))  # simula que otro hilo la arranco primero
 
-        simulaciones.ejecutar_run(run_id, demora_seg=0)  # ya no esta 'encolado' -> debe abortar
+        ejecucion.ejecutar_run(run_id, demora_seg=0)  # ya no esta 'encolado' -> debe abortar
 
         run = queries.get_run(run_id)
         self.assertEqual(run["status"], "ejecutando")  # sin cambios: ni completado ni fallido
@@ -474,7 +477,7 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
         la corrida marcada 'completado' (ver el fix de guardar_resultado_run en
         queries.py: rollback explicito antes de relanzar)."""
         run_id = self._encola(seed=90004)
-        queries.marcar_run_ejecutando(run_id)
+        simulador_datos.marcar_run_ejecutando(run_id)
         resultado_invalido = {
             "engine_version": simulaciones.ENGINE_VERSION,
             "huella_escenario": "esto-no-es-un-checksum-sha256",
@@ -483,7 +486,7 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
             "trazabilidad_parametros": [],
         }
         with self.assertRaises(Exception):
-            queries.guardar_resultado_run(run_id, resultado_invalido)
+            simulador_datos.guardar_resultado_run(run_id, resultado_invalido)
 
         self.assertIsNone(queries.get_resultado_run(run_id))
         self.assertEqual(queries.get_run(run_id)["status"], "ejecutando")
@@ -491,20 +494,20 @@ class SimulacionesIntegracionTests(ConCorridasDePrueba):
     def test_ejecutar_run_marca_fallido_si_guardar_resultado_run_truena(self):
         """Ninguna corrida debe quedar atascada en 'ejecutando' -- ni siquiera
         si el fallo ocurre DESPUES de que el motor ya calculo el resultado.
-        Se reemplaza queries.guardar_resultado_run (no hay mocks en el resto
+        Se reemplaza simulador_datos.guardar_resultado_run (no hay mocks en el resto
         del proyecto, pero forzar esta falla real por otra via requeriria
         romper el propio motor) y se restaura siempre en el finally."""
         run_id = self._encola(seed=90005)
-        original = queries.guardar_resultado_run
+        original = simulador_datos.guardar_resultado_run
 
         def _guardar_roto(run_id, resultado):
             raise RuntimeError("fallo simulado de guardar_resultado_run (prueba)")
 
-        queries.guardar_resultado_run = _guardar_roto
+        simulador_datos.guardar_resultado_run = _guardar_roto
         try:
-            simulaciones.ejecutar_run(run_id, demora_seg=0)
+            ejecucion.ejecutar_run(run_id, demora_seg=0)
         finally:
-            queries.guardar_resultado_run = original
+            simulador_datos.guardar_resultado_run = original
 
         run = queries.get_run(run_id)
         self.assertEqual(run["status"], "fallido")

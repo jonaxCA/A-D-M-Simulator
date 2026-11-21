@@ -6,12 +6,15 @@ aqui se importe la app. No contiene pruebas: ningun metodo se llama test_*.
 """
 import secrets
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import fakeredis
 from epidemia_comun import redis_compartido
 
 # Primero: fija JWT_SECRET_KEY antes de que db.py cargue el .env.
+from microservicios.corridas import datos as corridas_datos
+from microservicios.simulador import ejecucion
 from backend_web.tests.base import (contexto_de_prueba, escribe, id_de_usuario,
                                     requiere_base, version_demo_aprobada)
 from backend_web import queries, simulaciones
@@ -133,10 +136,21 @@ class AppTestCase(unittest.TestCase):
                 simulado = patch(objetivo, side_effect=self.puente)
                 simulado.start()
                 self.addCleanup(simulado.stop)
+            for objetivo in ("microservicios.auth.rutas.llamar", "epidemia_comun.sesiones.llamar"):
+                simulado = patch(objetivo, side_effect=self._entre_servicios)
+                simulado.start()
+                self.addCleanup(simulado.stop)
         if not self.sesion_real:
             simulado = patch("frontend_web.app.sesion_servicios._actual", side_effect=sesion_simulada)
             simulado.start()
             self.addCleanup(simulado.stop)
+
+    def _entre_servicios(self, servicio, metodo, ruta, cuerpo=None, token=None, **_):
+        # Lo que un servicio le pide a otro (auth o usuarios a sesiones) por HTTP, aquí contra su app en el proceso.
+        r = self.puente._cliente(servicio).open(
+            ruta, method=metodo.upper(), json=cuerpo,
+            headers=dict({"Accept": "application/json"}, **({"Authorization": "Bearer " + token} if token else {})))
+        return SimpleNamespace(status_code=r.status_code, json=r.get_json)
 
     def _captcha(self):
         """Los campos del captcha de auth, ya contestado (D36)."""
@@ -192,7 +206,7 @@ class RutasConCorridas(AppTestCase):
         """Una corrida encolada, como la deja `corridas` al lanzarla el
         escritorio: con su RUN «encolado» en la bitacora. Devuelve su id."""
         user_id = id_de_usuario(usuario)
-        run_id, batch_id, error = queries.crear_corrida(
+        run_id, batch_id, error = corridas_datos.crear_corrida(
             self.version_id, semilla, user_id, simulaciones.ENGINE_VERSION,
             contexto=contexto_de_prueba(user_id), forzar_error=forzar_error)
         self.assertIsNone(error, error)
@@ -204,5 +218,5 @@ class RutasConCorridas(AppTestCase):
         simulador al tomarla de la cola, aqui en el mismo hilo y sin pausa.
         Devuelve su id."""
         run_id = self._encola(semilla, usuario, forzar_error)
-        simulaciones.ejecutar_run(run_id, forzar_error=forzar_error, demora_seg=0)
+        ejecucion.ejecutar_run(run_id, forzar_error=forzar_error, demora_seg=0)
         return run_id

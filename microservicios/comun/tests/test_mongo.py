@@ -2,8 +2,7 @@ import time
 
 import pytest
 
-from epidemia_comun import mongo, series_corridas
-from procesamiento.contrato import CAMPOS_SERIE
+from epidemia_comun import mongo
 
 
 def _llaves(coleccion):
@@ -19,53 +18,6 @@ def test_crea_los_indices_de_d28(mongo_falso):
     historial = _llaves(mongo_falso["historial_servicios"])
     assert (("servicio", 1), ("fecha", -1)) in historial
     assert historial[(("fecha", 1),)]["expireAfterSeconds"] == 30 * 86400
-
-
-def test_cada_dia_de_la_serie_lleva_sus_referencias_y_se_borra_por_corrida(mongo_falso):
-    serie = [dict(dict.fromkeys(CAMPOS_SERIE, 0), dia=d) for d in range(3)]
-    for run_id in (42, 43):
-        run = {"id": run_id, "batch_id": 8, "scenario_id": 3, "scenario_version_id": 11,
-               "seed": 7}
-        series_corridas.guardar(series_corridas.documentos(
-            run, "seir-ref", {"engine_version": "seir-ref-0.1", "serie": serie}))
-    doc = mongo_falso["series_corridas"].find_one({"run_id": 42, "dia": 0}, {"_id": 0})
-    assert {c: doc[c] for c in ("run_id", "batch_id", "scenario_id", "scenario_version_id",
-                                "motor", "engine_version", "semilla", "version_esquema")} == {
-        "run_id": 42, "batch_id": 8, "scenario_id": 3, "scenario_version_id": 11,
-        "motor": "seir-ref", "engine_version": "seir-ref-0.1", "semilla": 7, "version_esquema": 1}
-    assert series_corridas.borrar(42) == 3
-    assert series_corridas.leer(42) == [] and len(series_corridas.leer(43)) == 3
-
-
-def test_guardar_reemplaza_la_serie_con_pocas_idas_y_vueltas(mongo_falso, monkeypatch):
-    """Volver a guardar una corrida reemplaza sus días sin duplicarlos, en dos operaciones sin
-    importar cuántos días tenga: el simulador de abm-gpu puede estar lejos de MongoDB (D23)."""
-    def serie(escala):
-        filas = [dict(dict.fromkeys(CAMPOS_SERIE, 0), dia=d, casos_activos=d * escala)
-                 for d in range(181)]
-        run = {"id": 7, "batch_id": 7, "scenario_id": 3, "scenario_version_id": 11, "seed": 7}
-        return series_corridas.documentos(run, "seir-ref", {"engine_version": "seir-ref-0.1",
-                                                             "serie": filas})
-    original = mongo.coleccion
-    llamadas = []
-
-    class Contada:
-        def __init__(self, coleccion):
-            self.coleccion = coleccion
-
-        def __getattr__(self, nombre):
-            llamadas.append(nombre)
-            return getattr(self.coleccion, nombre)
-
-    monkeypatch.setattr(mongo, "coleccion", lambda nombre: Contada(original(nombre)))
-    series_corridas.guardar(serie(1))
-    llamadas.clear()
-    docs = serie(10)
-    assert series_corridas.guardar(docs) == 181
-    assert "_id" not in docs[0]
-    assert llamadas == ["delete_many", "insert_many"]
-    assert mongo_falso["series_corridas"].count_documents({"run_id": 7}) == 181
-    assert mongo_falso["series_corridas"].find_one({"run_id": 7, "dia": 5})["casos_activos"] == 50
 
 
 def test_ping(mongo_falso):
