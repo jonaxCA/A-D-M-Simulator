@@ -658,7 +658,9 @@ servicio publica su puerto. PostgreSQL, Redis y MongoDB siguen solo en `127.0.0.
 
 3. **Qué queda:**
    - `https://localhost/<servicio>/api/v1/...`: cada servicio bajo su nombre, con las mismas
-     rutas. Swagger, en `https://localhost/<servicio>/docs`.
+     rutas. Swagger, en `https://localhost/<servicio>/docs`. A un servicio solo van sus rutas
+     (`/api/...`, `/health`, `/docs` y `/openapi.json`): `/usuarios` o `/escenarios/3` son
+     páginas de la web.
    - `https://localhost/consola/`: la consola de pruebas.
    - `https://localhost/`: la web (contenedor `web`). Llama a cada servicio por la red interna
      (`URL_SERVICIOS=http://{servicio}:8000`) y les pasa la IP de quien la usa, para que el
