@@ -14,6 +14,10 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
    - El compose la construye primero: es el servicio `base`, con cero réplicas, y cada
      servicio la pide con `additional_contexts` (`epidemia/base: service:base`). Así nunca
      se busca en Docker Hub. No la publiques ahí.
+   - Los servicios de simulación (`corridas`, `simulador`, `resultados`, `comparacion` y `pareto`)
+     parten de `epidemia/base-simulacion` (`docker/base-simulacion.Dockerfile`): lo mismo, sin
+     `backend_web` (E8). Los de identidad, de `epidemia/base-identidad`. Los demás siguen en
+     `epidemia/base` mientras no se les quite `backend_web`.
    - El `Dockerfile` de un servicio solo copia su carpeta y su contrato. Úsalo igual que los
      demás, o el que genera `nuevo_servicio.py`.
 2. Cada servicio escucha en 8000 dentro de su contenedor y publica el puerto del catálogo

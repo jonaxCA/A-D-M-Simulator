@@ -12,7 +12,7 @@ CONTRATO = Path(__file__).resolve().parents[3] / "docs/contratos/zonas/openapi.j
 
 @pytest.fixture
 def nueva_app(redis_falso, monkeypatch):
-    import backend_web.db as db
+    from epidemia_comun import bd as db
     monkeypatch.setattr(db, "query", lambda *a, **k: {"ok": 1})
 
     def crear(dependencias=(), **entorno):

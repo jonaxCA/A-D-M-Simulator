@@ -88,7 +88,7 @@ def crear_app(nombre, contrato, registrar_rutas=None, dependencias=()):
 
     @app.route("/health")
     def health():
-        from backend_web.db import query
+        from .bd import query
 
         def ping():
             app.extensions["epidemia_redis"].ping()

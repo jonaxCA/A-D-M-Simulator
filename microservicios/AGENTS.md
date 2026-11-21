@@ -101,6 +101,10 @@ docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
 14. **Sin `backend_web`.** Ningún servicio ni `epidemia_comun` importa `backend_web` ni a otro
     servicio; se conocen por sus contratos (D37). La web consume los servicios por HTTP (D36):
     si una pantalla necesita un dato sin ruta, la ruta la agrega el bloque dueño (E9).
+15. **Contratos de dominio.** `epidemia_comun` solo guarda lo técnico; las reglas de negocio viven
+    en su servicio dueño (`docs/arquitectura/duenos_de_reglas.md`). Una respuesta se arma con los
+    campos del contrato, no con la fila de la base: si la consulta trae más columnas, recórtala
+    con `contratos.proyectar(fila, CAMPOS)` y prueba que las claves coincidan con el ejemplo.
 
 ## Agregar o cambiar un servicio
 
@@ -178,6 +182,9 @@ Están en `docs/decisiones/decisiones.md`; si algo de aquí choca con ese archiv
   los privados; PostgreSQL guarda solo los metadatos.
 - **Límites de consumo (D31):** contador `ratelimit:<usuario>:<ruta>` en Redis, en
   `epidemia_comun`; más permisivo en `casos` y `sincronizacion`, más estricto en `corridas`.
+- **MFA y dispositivos (D40, D41):** `auth` pide TOTP a ADMINISTRADOR y EPIDEMIOLOGO y es dueño de
+  `user_mfa` y `mfa_backup_codes`; `sesiones` limita las sesiones por cuenta y es dueño de
+  `session_devices`. Migraciones 050 y 051.
 
 Si te piden algo que ninguna de estas cubre ni está en `docs/decisiones/decisiones.md`, pregunta antes
 de implementarlo.

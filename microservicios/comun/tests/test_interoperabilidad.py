@@ -37,6 +37,7 @@ OPERACIONES = list(_operaciones())
 def sin_base(monkeypatch):
     # Una base que no responde: lo que llegue a ella es 503, nunca 500 ni la traza.
     from backend_web import db
+    monkeypatch.setenv("DATABASE_URL", "postgresql://nadie:nada@127.0.0.1:1/ninguna")
     monkeypatch.setattr(db, "DATABASE_URL", "postgresql://nadie:nada@127.0.0.1:1/ninguna")
 
 

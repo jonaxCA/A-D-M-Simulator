@@ -19,6 +19,18 @@ x-construye: &construye
   additional_contexts:
     epidemia/base: service:base
 
+# Los servicios de identidad parten de epidemia/base-identidad, sin backend_web (E8).
+x-construye-identidad: &construye-identidad
+  context: ..
+  additional_contexts:
+    epidemia/base-identidad: service:base-identidad
+
+# Los de simulación parten de epidemia/base-simulacion, sin backend_web (E8).
+x-construye-simulacion: &construye-simulacion
+  context: ..
+  additional_contexts:
+    epidemia/base-simulacion: service:base-simulacion
+
 services:
   redis:
     image: redis:7.4-alpine
@@ -134,11 +146,27 @@ services:
     deploy:
       replicas: 0
 
+  base-simulacion:
+    image: epidemia/base-simulacion
+    build:
+      context: ..
+      dockerfile: infra/docker/base-simulacion.Dockerfile
+    deploy:
+      replicas: 0
+
+  base-identidad:
+    image: epidemia/base-identidad
+    build:
+      context: ..
+      dockerfile: infra/docker/base-identidad.Dockerfile
+    deploy:
+      replicas: 0
+
   # --- Identidad (perfil identidad) ---------------------------------------------------------
   auth:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-identidad
       dockerfile: microservicios/auth/Dockerfile
     profiles: [identidad]
     ports:
@@ -148,6 +176,12 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_AUTH:-postgresql://svc_auth:${DB_PASSWORD_AUTH:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SERVICIO_SESIONES_URL: http://sesiones:8000
+      # Supuestos de D40 y D41. El MFA arranca apagado hasta que los clientes tengan los dos pasos;
+      # se activa con MFA_PERFILES=ADMINISTRADOR,EPIDEMIOLOGO.
+      MFA_PERFILES: ${MFA_PERFILES:-}
+      DISPOSITIVO_OBLIGATORIO: ${DISPOSITIVO_OBLIGATORIO:-0}
+      MFA_ENROLAMIENTO_LIBRE: ${MFA_ENROLAMIENTO_LIBRE:-0}
     depends_on:
       postgres:
         condition: service_healthy
@@ -156,7 +190,7 @@ services:
   sesiones:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-identidad
       dockerfile: microservicios/sesiones/Dockerfile
     profiles: [identidad]
     ports:
@@ -166,6 +200,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_SESIONES:-postgresql://svc_sesiones:${DB_PASSWORD_SESIONES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      MAX_SESIONES_POR_USUARIO: ${MAX_SESIONES_POR_USUARIO:-3}
     depends_on:
       postgres:
         condition: service_healthy
@@ -174,7 +209,7 @@ services:
   usuarios:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-identidad
       dockerfile: microservicios/usuarios/Dockerfile
     profiles: [identidad]
     ports:
@@ -184,6 +219,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_USUARIOS:-postgresql://svc_usuarios:${DB_PASSWORD_USUARIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SERVICIO_SESIONES_URL: http://sesiones:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -192,7 +228,7 @@ services:
   roles:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-identidad
       dockerfile: microservicios/roles/Dockerfile
     profiles: [identidad]
     ports:
@@ -202,6 +238,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_ROLES:-postgresql://svc_roles:${DB_PASSWORD_ROLES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SERVICIO_SESIONES_URL: http://sesiones:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -515,7 +552,7 @@ services:
   corridas:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/corridas/Dockerfile
     profiles: [simulacion]
     ports:
@@ -524,6 +561,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      SERVICIO_ROLES_URL: http://roles:8000
       DATABASE_URL: ${DATABASE_URL_CORRIDAS:-postgresql://svc_corridas:${DB_PASSWORD_CORRIDAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       # abm-ref tiene su simulador en este compose (simulador-abm); abm-gpu no.
       MOTORES_HABILITADOS: ${MOTORES_HABILITADOS:-abm-ref}
@@ -535,7 +573,7 @@ services:
   simulador:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/simulador/Dockerfile
     profiles: [simulacion]
     ports:
@@ -575,7 +613,7 @@ services:
     extends:
       service: simulador
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/simulador/gpu.Dockerfile
     profiles: !override [gpu]
     ports: !reset []
@@ -589,7 +627,7 @@ services:
   resultados:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/resultados/Dockerfile
     profiles: [simulacion]
     ports:
@@ -598,6 +636,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      SERVICIO_ROLES_URL: http://roles:8000
       DATABASE_URL: ${DATABASE_URL_RESULTADOS:-postgresql://svc_resultados:${DB_PASSWORD_RESULTADOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       MONGO_URL: mongodb://epidemia:${MONGO_PASSWORD:-}@mongodb:27017/epidemia?authSource=epidemia
     depends_on:
@@ -610,7 +649,7 @@ services:
   comparacion:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/comparacion/Dockerfile
     profiles: [simulacion]
     ports:
@@ -621,6 +660,7 @@ services:
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_COMPARACION:-postgresql://svc_comparacion:${DB_PASSWORD_COMPARACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       SERVICIO_RESULTADOS_URL: http://resultados:8000
+      SERVICIO_PARETO_URL: http://pareto:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -629,7 +669,7 @@ services:
   pareto:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/pareto/Dockerfile
     profiles: [simulacion]
     ports:
@@ -638,6 +678,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      SERVICIO_ROLES_URL: http://roles:8000
       DATABASE_URL: ${DATABASE_URL_PARETO:-postgresql://svc_pareto:${DB_PASSWORD_PARETO:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:

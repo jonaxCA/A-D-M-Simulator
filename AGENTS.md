@@ -73,7 +73,7 @@ Calibración (D24), IA predictiva, visualización 3D y un modelo económico sofi
 
 ## Decisiones
 
-Las registradas en `docs/decisiones/decisiones.md` (D1 a D39) están aceptadas, salvo las
+Las registradas en `docs/decisiones/decisiones.md` (D1 a D46) están aceptadas, salvo las
 marcadas como reemplazadas (D20 y D33, por D36). Si una
 tarea pide algo que ninguna cubre, pregunta antes de implementarlo y regístralo ahí.
 

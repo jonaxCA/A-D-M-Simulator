@@ -1,7 +1,7 @@
 """
 Ejecucion, estados y resultados de simulaciones.
 
-Tres responsabilidades que viven aqui a proposito, separadas de queries.py
+Responsabilidades que viven aqui a proposito, separadas de queries.py
 (que solo habla SQL) y de routes.py (que solo habla HTTP):
 
   1. Obtener la entrada del motor de una version de escenario aprobada. La
@@ -12,15 +12,12 @@ Tres responsabilidades que viven aqui a proposito, separadas de queries.py
      deliberadamente independiente de Flask y de la base de datos.
   2. Formato de los identificadores visibles ESC-003 / SIM-00042 y de los
      estados, que se muestran tal como estan en la base (regla 7 de AGENTS.md).
-  3. La corrida en segundo plano: lo que un hilo ejecuta despues de que la
-     ruta ya respondio con el redirect al detalle.
+  3. La comparacion costo vs impacto de la pantalla.
 
-Nada de lo de aqui importa Flask. `ejecutar_run` corre en un hilo, sin
-peticion HTTP detras, asi que audita con Contexto.sin_peticion(): el usuario
-que pidio la corrida, sin IP.
+La corrida en segundo plano (ejecutar_run) y las transiciones de estado ya no
+estan aqui: son del servicio simulador (microservicios/simulador/ejecucion.py).
+Nada de lo de aqui importa Flask.
 """
-import logging
-import time
 
 # El motor se importa como `procesamiento.motor`, igual que en queries.py.
 # Con otro nombre (por ejemplo, metiendo procesamiento/ en sys.path e
@@ -33,20 +30,10 @@ from procesamiento.analitica import ComparacionInvalida, comparar as comparar_pa
 from procesamiento.analitica import factor_de_escala, representados
 from procesamiento.motor import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular  # noqa: F401
 from procesamiento.motor.modelo import SIMPLIFICACIONES                      # noqa: F401
-from procesamiento.motor.parametros import EscenarioInvalido
-from procesamiento.motores import MOTOR_REFERENCIA, de_version as motor_de_version
-from procesamiento.motores import del_nombre as motor_del_nombre
+from procesamiento.motor.parametros import EscenarioInvalido                  # noqa: F401
+from procesamiento.motores import de_version as motor_de_version
 
 from . import queries
-from .audit import log_audit
-from .contexto import Contexto
-
-MENSAJE_ERROR_FORZADO = (
-    "Error forzado de prueba: se solicito explicitamente desde la pantalla de "
-    "simulaciones (opcion visible solo para ADMINISTRADOR). Demuestra el "
-    "camino encolado -> ejecutando -> fallido sin depender de que un escenario "
-    "real este incompleto."
-)
 
 
 # ---------------------------------------------------------------------------
@@ -211,250 +198,3 @@ def construir_comparacion_costo_impacto(run_ids, metrica="fallecimientos"):
         return comparar_pareto(entradas, costos, metrica=metrica, factores=factores), []
     except ComparacionInvalida as exc:
         return None, exc.errores
-
-
-# ---------------------------------------------------------------------------
-# Corrida en segundo plano
-# ---------------------------------------------------------------------------
-def ejecutar_run(run_id, forzar_error=False, demora_seg=1.5, al_avanzar=None,
-                 guardar_serie=None, descartar_serie=None):
-    """Corre una simulation_run ya encolada. Lo llama el trabajador del
-    simulador (microservicios/simulador/trabajador.py) por cada corrida que
-    toma de la cola; la web ya no lanza corridas (D4).
-
-    Cada paso usa su propia conexion a PostgreSQL (backend_web.db.get_conn
-    abre y cierra una por llamada dentro de queries.py), asi que no comparte
-    conexiones con quien la encolo.
-
-    `demora_seg` deja visible la transicion encolado -> ejecutando en la
-    pantalla de detalle (que hace polling cada segundo); en pruebas se pasa 0.
-
-    `al_avanzar(porcentaje)` recibe el avance de cada etapa; el microservicio
-    simulador lo escribe en Redis. `guardar_serie(run, motor, resultado)` se
-    llama ANTES de confirmar la corrida como completada; el simulador guarda
-    ahi la serie diaria en MongoDB (D28). Si falla, la corrida se confirma
-    igual con su resumen (RNF-C08). Si la confirmacion no ocurre porque la
-    corrida ya no estaba 'ejecutando', `descartar_serie(run_id)` quita la
-    serie que se guardo. Devuelve el estado en que esta llamada dejo
-    la corrida ('completado' o 'fallido'), o None si no la llego a cerrar
-    (no existia, otro proceso la tomo o la cerro antes).
-    """
-    run = queries.get_run(run_id)
-    if not run:
-        return None
-    contexto = Contexto.sin_peticion(run["requested_by"])
-    avanza = al_avanzar or (lambda porcentaje: None)
-
-    try:
-        if not queries.marcar_run_ejecutando(run_id):
-            # rowcount == 0: la fila ya no estaba en 'encolado' (otro hilo ya
-            # la arranco, o alguien la cancelo entre que se encolo y que este
-            # hilo empezo). No hay transicion encolado -> ejecutando que
-            # auditar, y seguir de todos modos correria el motor sobre una
-            # corrida que este hilo ya no es duenio de avanzar.
-            log_audit(
-                contexto, "RUN", "simulation_run", entity_id=str(run_id),
-                data_after={
-                    "estado": "abortado_antes_de_ejecutar",
-                    "seed": run["seed"],
-                    "motivo": "marcar_run_ejecutando no encontro la corrida en "
-                              "estado 'encolado' (rowcount 0)",
-                },
-            )
-            return None
-        log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
-                  data_after={"estado": "ejecutando", "seed": run["seed"],
-                              "engine_version": run["engine_version"]})
-        avanza(10)
-
-        if demora_seg:
-            time.sleep(demora_seg)
-
-        if forzar_error:
-            # Camino de ERROR deliberado -- ver MENSAJE_ERROR_FORZADO. No se
-            # llega ni a construir el escenario: es un fallo pedido a
-            # proposito, no uno real del motor ni de los datos.
-            raise ValueError(MENSAJE_ERROR_FORZADO)
-
-        # El motor es el del lote (D2): cada simulador toma de la cola solo los suyos, pero el
-        # que manda es el lote. Uno que no esta implementado aqui falla con su nombre.
-        motor = motor_del_nombre(queries.get_motor_run(run_id) or MOTOR_REFERENCIA)
-
-        escenario, _version, errores = construir_escenario_desde_version(
-            run["scenario_version_id"]
-        )
-        if errores:
-            raise ValueError("; ".join(errores))
-        avanza(30)
-
-        resultado = motor.simular(escenario, run["seed"])
-        avanza(90)
-        # La serie va antes de confirmar: si el proceso muere entre los dos
-        # pasos, la corrida se queda 'ejecutando' con su serie, nunca
-        # 'completado' sin ella.
-        if guardar_serie:
-            try:
-                guardar_serie(run, motor.nombre, resultado)
-            except Exception:
-                logging.getLogger(__name__).exception(
-                    "No se pudo guardar la serie de la corrida %s; se confirma con su "
-                    "resumen.", run_id)
-        if not queries.guardar_resultado_run(run_id, resultado):
-            # Alguien cerro la corrida mientras el motor trabajaba (otro
-            # proceso que arranco y la dio por interrumpida). Su estado
-            # actual manda: no se guarda un resultado que lo contradiga ni se
-            # audita un 'completado' que no ocurrio.
-            logging.getLogger(__name__).warning(
-                "La corrida %s termino en el motor, pero ya no estaba en "
-                "'ejecutando'; el resultado se descarto.", run_id)
-            if descartar_serie:
-                try:
-                    descartar_serie(run_id)
-                except Exception:
-                    logging.getLogger(__name__).exception(
-                        "No se pudo descartar la serie de la corrida %s.", run_id)
-            return None
-        log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
-                  data_after={
-                      "estado": "completado", "seed": run["seed"],
-                      "engine_version": resultado["engine_version"],
-                      "indicadores": resultado["resumen"],
-                  })
-        avanza(100)
-        return "completado"
-
-    except EscenarioInvalido as exc:
-        mensaje = "; ".join(exc.errores)
-        cerrada = _marca_fallido_y_audita(run, mensaje)
-    except (ValueError, ErrorMotor) as exc:
-        cerrada = _marca_fallido_y_audita(run, str(exc))
-    except Exception as exc:  # pragma: no cover - red de seguridad del hilo
-        # Cualquier otra falla (conexion caida, bug del motor, etc.) tiene que
-        # quedar en error_message y en la bitacora, no perderse en el hilo:
-        # un hilo que muere en silencio deja la corrida en 'ejecutando' para
-        # siempre, sin explicacion.
-        cerrada = _marca_fallido_y_audita(run, f"Error inesperado del motor: {exc}")
-    return "fallido" if cerrada else None
-
-
-def _marca_fallido_y_audita(run, mensaje):
-    """Ultima linea de defensa de ejecutar_run: se llama desde CADA except de
-    ese try, asi que una corrida jamas puede quedar atascada en 'ejecutando'.
-    Por eso esta funcion misma esta blindada -- si marcar_run_fallido() o
-    log_audit() lanzaran (conexion caida, etc.), se atrapa y se deja
-    constancia en el logger de la app en vez de perder el hilo en silencio
-    sin que quede ningun rastro de que la corrida se quedo sin cerrar.
-
-    Devuelve True si esta llamada la dejo en 'fallido'.
-    """
-    mensaje = (mensaje or "Error desconocido en la simulacion.")[:2000]
-    try:
-        cambio = queries.marcar_run_fallido(run["id"], mensaje)
-    except Exception:
-        logging.getLogger(__name__).exception(
-            "No se pudo marcar la corrida %s como fallida (mensaje original: %s)",
-            run["id"], mensaje,
-        )
-        return False
-
-    if not cambio:
-        # rowcount == 0: la corrida ya estaba en un estado terminal
-        # (completado/fallido/cancelado). No hubo transicion real a
-        # 'fallido' -- auditarla como si hubiera ocurrido seria mentir en la
-        # bitacora.
-        return False
-
-    try:
-        log_audit(Contexto.sin_peticion(run["requested_by"]), "RUN", "simulation_run",
-                  entity_id=str(run["id"]),
-                  data_after={"estado": "fallido", "seed": run["seed"], "error": mensaje[:500]})
-    except Exception:
-        logging.getLogger(__name__).exception(
-            "La corrida %s se marco 'fallido' en DB pero no se pudo registrar "
-            "la auditoria (mensaje: %s)", run["id"], mensaje,
-        )
-    return True
-
-
-# ---------------------------------------------------------------------------
-# Corridas que se quedaron sin hilo
-# ---------------------------------------------------------------------------
-MENSAJE_INTERRUMPIDA = (
-    "Interrumpida: el servidor se reinicio antes de que la corrida terminara, "
-    "y con el se perdio el hilo que la ejecutaba. No es un error del motor ni "
-    "del escenario: re-ejecutala con la misma semilla y dara el mismo resultado."
-)
-
-
-def recupera_corridas_interrumpidas(estados=("encolado", "ejecutando"), engine=None):
-    """Cierra como 'fallido' las corridas que un proceso anterior dejo a medias.
-
-    _marca_fallido_y_audita protege contra cualquier error DENTRO de la
-    ejecucion, pero no contra que el proceso entero muera: sin esto la corrida
-    se quedaria en 'ejecutando' para siempre, con la pantalla de detalle
-    consultando su estado cada segundo.
-
-    Lo llama el simulador al arrancar (microservicios/simulador/__main__.py),
-    con estados=('ejecutando',): con la cola de Redis, una corrida encolada no
-    se perdio, solo sigue esperando. La web lo llamaba al arrancar, con el
-    valor por omision, mientras corria simulaciones en un hilo propio; desde
-    D4 no lanza corridas y ya no lo llama, porque cerraria las del simulador.
-
-    Con `engine`, solo cierra las corridas de lotes de ese motor: hay un simulador por motor
-    (D2), y el que arranca no debe cerrar las que otro esta ejecutando.
-
-    Devuelve cuantas corridas cerro.
-    """
-    filas = queries.marca_corridas_interrumpidas(MENSAJE_INTERRUMPIDA, estados=estados,
-                                                 engine=engine)
-    for fila in filas:
-        try:
-            log_audit(Contexto.sin_peticion(fila["requested_by"]), "RUN", "simulation_run",
-                      entity_id=str(fila["id"]),
-                      data_after={"estado": "fallido", "seed": fila["seed"],
-                                  "error": MENSAJE_INTERRUMPIDA[:500],
-                                  "motivo": "reinicio del servidor"})
-        except Exception:
-            logging.getLogger(__name__).exception(
-                "La corrida %s se cerro como interrumpida pero no se pudo auditar",
-                fila["id"])
-    return len(filas)
-
-
-def reencola_corridas_interrumpidas(engine, engine_version, max_intentos=3):
-    """D38: las corridas 'ejecutando' de ese motor que un trabajador dejó a medias vuelven a
-    'encolado' si les quedan intentos y su versión de motor es la de ahora; se repiten con la
-    misma semilla, así que su serie se reescribe igual. Las demás se cierran como 'fallido'.
-
-    Devuelve (ids reencolados, ids cerrados)."""
-    reencoladas = queries.reencola_corridas_interrumpidas(engine, engine_version, max_intentos)
-    for fila in reencoladas:
-        try:
-            log_audit(Contexto.sin_peticion(fila["requested_by"]), "RUN", "simulation_run",
-                      entity_id=str(fila["id"]),
-                      data_after={"estado": "encolado", "seed": fila["seed"],
-                                  "intento": fila["attempts"],
-                                  "motivo": "reinicio del trabajador (D38)"})
-        except Exception:
-            logging.getLogger(__name__).exception(
-                "La corrida %s se reencoló pero no se pudo auditar", fila["id"])
-    cerradas = queries.marca_corridas_interrumpidas(MENSAJE_INTERRUMPIDA, estados=("ejecutando",),
-                                                    engine=engine)
-    for fila in cerradas:
-        try:
-            log_audit(Contexto.sin_peticion(fila["requested_by"]), "RUN", "simulation_run",
-                      entity_id=str(fila["id"]),
-                      data_after={"estado": "fallido", "seed": fila["seed"],
-                                  "error": MENSAJE_INTERRUMPIDA[:500],
-                                  "motivo": "sin intentos o con otra versión de motor (D38)"})
-        except Exception:
-            logging.getLogger(__name__).exception(
-                "La corrida %s se cerró como interrumpida pero no se pudo auditar", fila["id"])
-    return [f["id"] for f in reencoladas], [f["id"] for f in cerradas]
-
-
-def corridas_encoladas(engine):
-    filas = queries.query("SELECT r.id FROM simulation_runs r"
-                       " JOIN simulation_batches b ON b.id = r.batch_id"
-                       " WHERE r.status = 'encolado' AND b.engine = %s ORDER BY r.id", (engine,))
-    return [fila["id"] for fila in filas]
