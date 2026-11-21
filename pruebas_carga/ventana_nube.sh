@@ -71,7 +71,7 @@ cierra() {
     done
     echo "Al cerrar: $(conteos)" | tee "$RESPALDO/conteos_al_cerrar.txt"
 
-    servicios=$("${COMPOSE[@]}" config --services | grep -vxE 'postgres|mongodb|redis|nginx|certbot|base|simulador-gpu')
+    servicios=$("${COMPOSE[@]}" config --services | grep -vxE 'postgres|mongodb|redis|nginx|certbot|base(-[a-z]+)?|simulador-gpu')
     echo "Deteniendo los servicios..."
     # shellcheck disable=SC2086
     "${COMPOSE[@]}" stop $servicios

@@ -65,11 +65,13 @@ problema: ya falta la 018.
 | 042–044 | D | Reserva |
 | 045 | E | `simulation_runs.attempts`: intentos de una corrida interrumpida que se reencola (D38) |
 | 046 | E | INSERT en `audit_log` para los roles que no lo tenían y lectura para `svc_roles` (D36, D37) |
-| 054 | E | `simulation_runs.priority`: prioridad de la corrida en la cola y permisos para reintentarla (D44) |
 | 047 | C | Reserva |
 | 048–049 | 0 | Reserva del líder (por ejemplo, `cost_unit` en pesos, D3) |
+| 050 | E | Dispositivos desde los que una cuenta inicia sesión, `session_devices` (D41) |
+| 051 | E | MFA: `user_mfa` y `mfa_backup_codes` (D40) |
 | 052 | E | Instituciones, región de cada cuenta y los perfiles nuevos (D42) |
 | 053 | E | Alcance por región o institución de cada cuenta (D43) |
+| 054 | E | `simulation_runs.priority`: prioridad de la corrida en la cola y permisos para reintentarla (D44) |
 | 055 | E | `svc_roles` lee escenarios para el alcance regional del historial (D43) |
 | 056 en adelante | — | Se piden al líder |
 
@@ -157,3 +159,19 @@ se espera.
   calibrar. La calibración contra la ola histórica los sustituye.
 - **Particionamiento.** Si `audit_log` o `simulation_runs` crecen mucho durante
   las pruebas de carga, evaluar partición por rango de fecha.
+
+## Aplicar migraciones a una base que ya existe
+
+`infra/postgres/10-inicializa.sh` solo corre la primera vez, con el volumen vacío. A una base que
+ya existe (la de la máquina de GCP, o la del compose en tu PC) las migraciones nuevas se le aplican
+con `infra/postgres/aplica_migraciones.sh`, que primero la respalda:
+
+```bash
+sudo bash infra/postgres/aplica_migraciones.sh 050 051 052 053 054 055
+```
+
+La base de la máquina se creó el 2026-11-20 con el dump de entonces: le faltan las 050 a 055 del
+bloque E. Se aplican **antes** de desplegar ese código, porque `corridas` ya escribe `priority`
+(054), `auth` y `sesiones` usan `session_devices` y el MFA (050 y 051) y `usuarios` lee
+`institution_id` (052). La base de pruebas de tu PC se rehace con
+`python datos/scripts/prepara_base_pruebas.py`.

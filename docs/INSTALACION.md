@@ -781,7 +781,9 @@ medias se reencolan (D38).
 **Una vez, en la nube:**
 
 1. En `infra/.env` de la máquina, `MOTORES_HABILITADOS=abm-ref,abm-gpu`, y vuelve a levantar
-   `corridas`. La máquina no levanta `simulador-gpu` (perfil `gpu`).
+   `corridas`. La máquina no levanta `simulador-gpu` (perfil `gpu`). Después de cada
+   `git pull`, vuelve a correr el `up -d --build`: el simulador cambia con la máquina (por
+   ejemplo, con D44 lee tres colas por motor y parte de `epidemia/base-simulacion`).
 2. La API de IAP activada en el proyecto (`gcloud services enable iap.googleapis.com`; es
    gratuita) y una regla de firewall que deje entrar a IAP al puerto 22 (la corres tú, en la
    consola o con `gcloud`):
