@@ -123,3 +123,20 @@ def test_el_tunel_usa_iap_y_solo_reenvia_puertos():
     assert "15433:127.0.0.1:5433" in cmd and "16380:127.0.0.1:6380" in cmd
     # En Windows gcloud usa plink, que no entiende las opciones -o de OpenSSH.
     assert "-o" not in tunel.comando("epidemia", "us-central1-a", windows=True)
+
+
+def test_el_tunel_le_pasa_a_gcloud_el_python_del_sdk(tmp_path, monkeypatch):
+    espec = importlib.util.spec_from_file_location("tunel_gpu", RAIZ / "infra/tunel_gpu.py")
+    tunel = importlib.util.module_from_spec(espec)
+    espec.loader.exec_module(tunel)
+    # Un SDK falso: bin/gcloud y platform/bundledpython/python.exe.
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "gcloud").write_text("")
+    propio = tmp_path / "platform" / "bundledpython" / "python.exe"
+    propio.parent.mkdir(parents=True)
+    propio.write_text("")
+    monkeypatch.setattr(tunel.shutil, "which", lambda _: str(tmp_path / "bin" / "gcloud"))
+    entorno = tunel.entorno_gcloud({"PATH": "x"})
+    assert Path(entorno["CLOUDSDK_PYTHON"]) == propio.resolve() and entorno["PATH"] == "x"
+    # Si CLOUDSDK_PYTHON ya viene puesto, se respeta.
+    assert tunel.entorno_gcloud({"CLOUDSDK_PYTHON": "otro"})["CLOUDSDK_PYTHON"] == "otro"

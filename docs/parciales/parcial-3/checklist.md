@@ -606,12 +606,12 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### F1. Compute Engine (N1)
 
-- [ ] Crear la máquina y reservar una IP externa fija (RNF-H02, RNF-H17).
-- [ ] Firewall: solo los puertos 80 y 443 abiertos (RNF-D10).
-- [ ] Compose de producción: ningún servicio ni base publica su puerto fuera de nginx (RNF-H07, RNF-H18).
-- [ ] Desplegar la web, los 29 servicios, PostgreSQL, MongoDB y Redis, con la base de la demostración (RNF-L09). La web usa el rol `epidemia_app` (D18).
+- [x] Crear la máquina y reservar una IP externa fija (RNF-H02, RNF-H17). e2-highmem-2 (2 vCPU, 16 GB), Debian 13, disco de 50 GB, us-central1-c, IP estática 35.222.19.202 (2026-11-20). Con todo levantado usa unos 2.6 GB.
+- [x] Firewall: solo los puertos 80 y 443 abiertos (RNF-D10). Se borraron `default-allow-ssh` y `default-allow-rdp`; SSH solo entra por IAP (`permitir-ssh-iap`, 35.235.240.0/20). Comprobado desde fuera: 22, 3389, los de los servicios y los de las bases, cerrados (2026-11-20).
+- [x] Compose de producción: ningún servicio ni base publica su puerto fuera de nginx (RNF-H07, RNF-H18). Compose principal + `docker-compose.nginx.yml` + `docker-compose.letsencrypt.yml`. Las bases siguen solo en el 127.0.0.1 de la máquina, para el túnel del simulador de GPU (D23); desde internet no se alcanzan.
+- [ ] Desplegar la web, los 29 servicios, PostgreSQL, MongoDB y Redis, con la base de la demostración (RNF-L09). La web usa el rol `epidemia_app` (D18). Los 29 servicios y las bases corren en la máquina y responden por HTTPS (2026-11-20). Falta la web: todavía no tiene contenedor, y `/` responde 502.
 - [x] ~~Pedir desde ya el aumento de cuota de GPU del proyecto, y confirmar qué cuenta de facturación paga la máquina: los cupones no se juntan (D23).~~ Ya no hace falta: la GPU es la de una PC (D23, 2026-11-20).
-- [ ] Secretos fuera del repositorio y de la imagen, protegidos en GCP (S5, RNF-D03).
+- [ ] Secretos fuera del repositorio y de la imagen, protegidos en GCP (S5, RNF-D03). Hoy, `infra/.env` generado en la máquina con `genera_env.py` (permisos 600, nunca impreso). Falta decidir si pasan a Secret Manager.
 - [ ] ~~Solo si sobra tiempo: máquina con GPU para `abm-gpu`, con su costo comparado contra los créditos y anotado en D23. Se enciende solo cuando hay corridas de `abm-gpu` (RNF-B09).~~ No alcanzaron los créditos: el simulador de `abm-gpu` corre en una PC con GPU, conectado a la máquina por un túnel SSH por IAP (`infra/docker-compose.gpu-remoto.yml`, `infra/tunel_gpu.py`; D23). Probado en local con `python infra/pruebas_integracion.py --gpu-remoto` (2026-11-20); falta con la máquina real.
 
 ### F2. nginx y HTTPS (D25, D26, S6)
@@ -619,8 +619,8 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [x] nginx en `infra/`, como única entrada, con una ruta por servicio y la web (RNF-H16, RNF-L11). En local: `infra/docker-compose.nginx.yml` e `infra/nginx/` (2026-11-19); ningún servicio publica su puerto. Se prueba con `python infra/pruebas_integracion.py --nginx`.
 - [ ] En local, certificado de mkcert. El script está (`infra/nginx/certificado_local.py`): usa mkcert si está instalado y, si no, genera uno autofirmado con OpenSSL. Falta que cada quien instale mkcert y corra `mkcert -install` en su máquina.
 - [x] Conseguir el dominio: elegir el proveedor, confirmar que permite Let's Encrypt y quién lo paga (D26). `<ip-con-guiones>.sslip.io`, gratuito y compatible con Let's Encrypt; si se agota su límite semanal, DuckDNS (2026-11-20).
-- [ ] Apuntar el dominio a la IP fija y obtener el certificado de Let's Encrypt con certbot (RNF-D01). Con sslip.io no hay que apuntar nada; el certificado lo saca `infra/nginx/letsencrypt.sh` en la máquina. Espera a F1.
-- [ ] Renovación programada del certificado, y HTTP redirige a HTTPS (RNF-D09). La redirección ya está (`test_http_redirige_a_https`). La renovación está en `infra/docker-compose.letsencrypt.yml`: certbot cada 12 h y nginx recarga cada 6 h (la recarga, probada en local). Falta verla en la máquina.
+- [x] Apuntar el dominio a la IP fija y obtener el certificado de Let's Encrypt con certbot (RNF-D01). `https://35-222-19-202.sslip.io`, emitido el 2026-11-20 y vigente hasta el 2027-02-18. La cadena llega a ISRG Root X1, la raíz que trae la app móvil.
+- [x] Renovación programada del certificado, y HTTP redirige a HTTPS (RNF-D09). La redirección ya está (`test_http_redirige_a_https`). La renovación está en `infra/docker-compose.letsencrypt.yml`: certbot cada 12 h y nginx recarga cada 6 h. En la máquina, los dos ciclos corren y `certbot renew --dry-run` salió bien (2026-11-20).
 - [x] Tiempo máximo por petición en nginx, para la prueba del *timeout* (RNF-C10). `NGINX_TIEMPO_MAXIMO`, 30 s (8 s en las pruebas): un servicio congelado responde 504 (`test_nginx_corta_una_peticion_colgada`).
 
 ### F3. Registros y diagramas

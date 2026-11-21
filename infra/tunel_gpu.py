@@ -51,6 +51,22 @@ def comando(vm, zona, proyecto=None, iap=True, windows=os.name == "nt"):
     return cmd + ["--"] + extra
 
 
+def entorno_gcloud(entorno=None):
+    """En Windows, gcloud lanza un Python para el túnel de IAP que pasa por PuTTY. Si toma el
+    primero del PATH (por ejemplo, el de MSYS2 de Git), ese no maneja la entrada de PuTTY y la
+    conexión se cierra sola. Se usa el Python que trae el SDK, salvo que CLOUDSDK_PYTHON diga otro."""
+    entorno = dict(os.environ if entorno is None else entorno)
+    gcloud = shutil.which("gcloud")
+    if gcloud and not entorno.get("CLOUDSDK_PYTHON"):
+        sdk = os.path.dirname(os.path.dirname(os.path.realpath(gcloud)))
+        for nombre in ("python.exe", "python3", "python"):
+            propio = os.path.join(sdk, "platform", "bundledpython", nombre)
+            if os.path.exists(propio):
+                entorno["CLOUDSDK_PYTHON"] = propio
+                break
+    return entorno
+
+
 def abierto(puerto):
     with socket.socket() as s:
         s.settimeout(0.5)
@@ -71,7 +87,7 @@ def main(argumentos):
         sys.exit("Ya hay algo escuchando en %s: ¿otro túnel abierto?" % ocupados)
     cmd = comando(args.vm, args.zona, args.proyecto, iap=not args.sin_iap)
     print("Abriendo el túnel:", " ".join(cmd))
-    proceso = subprocess.Popen(cmd)
+    proceso = subprocess.Popen(cmd, env=entorno_gcloud())
     try:
         for _ in range(60):
             if proceso.poll() is not None:
