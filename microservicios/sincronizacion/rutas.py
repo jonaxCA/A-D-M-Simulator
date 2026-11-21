@@ -115,6 +115,12 @@ def _resultado_de_caso(indice, local_uuid, respuesta):
         codigo = cuerpo.get("codigo") or ("CONFLICTO" if estado == 409 else "DATOS_INVALIDOS")
         return {"indice": indice, "local_uuid": local_uuid, "resultado": "rechazado",
                 "case_id": None, "codigo": codigo, "errores": [detalle]}
+    if estado == 429:
+        # El límite por cuenta de casos (D31) llega tal cual, con su Retry-After: la app espera y
+        # reenvía el lote, y local_uuid evita duplicar lo que ya se creó. Como 503, la app
+        # reintentaba de inmediato contra el mismo límite (lo encontró la prueba de carga, F4).
+        espera = getattr(respuesta, "headers", {}).get("Retry-After") or "60"
+        raise ErrorAPI(429, "LIMITE_EXCEDIDO", detalle, {"Retry-After": espera})
     # 401/403 (el token ya no sirve o no alcanza), 5xx u otra cosa: no es culpa del caso.
     codigo = cuerpo.get("codigo") or "TOKEN_INVALIDO"
     if estado in (401, 403):

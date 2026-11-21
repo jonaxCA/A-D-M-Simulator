@@ -428,6 +428,18 @@
               }
             }
           },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO): la cuenta pasó su límite en sincronizacion o en casos (D31). No se guarda el lote; se reenvía igual después de los segundos de Retry-After, y local_uuid evita duplicar los casos que ya se hubieran creado.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
           "401": {
             "description": "Unauthorized. RFC 7807; en XML, application/problem+xml.",
             "content": {
