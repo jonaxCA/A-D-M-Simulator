@@ -6,7 +6,7 @@ Función de soporte: la usan los tres procesos (pasos 1.1 y 2.1 de [`procesos_v3
 
 ## Dependencias
 
-- PostgreSQL: `users`, `user_roles`, `role_permissions`, `devices`, `audit_log`.
+- PostgreSQL: `users`, `user_roles`, `role_permissions`, `devices`, `session_devices`, `user_mfa`, `mfa_backup_codes`, `audit_log`.
 - Redis: captcha, sesión y tokens revocados.
 - Servicios: `auth`, `sesiones`, `usuarios`, `roles`, `dispositivos`.
 
@@ -20,14 +20,15 @@ Función de soporte: la usan los tres procesos (pasos 1.1 y 2.1 de [`procesos_v3
 | RF-A04 | El sistema tiene cuatro roles: ADMINISTRADOR, EPIDEMIOLOGO, ANALISTA y CAPTURISTA. El sitio público no pide sesión | Toda cuenta tiene un rol (RN-01). El token lleva los roles | Soporte | Seguridad, Bases de datos | Alta | Hecho |
 | RF-A05 | Cada ruta lleva un candado por rol, según la [matriz de permisos](../matriz-permisos.md) | Un rol sin permiso recibe 403 y un mensaje; ocultar el botón no basta. Se prueba con un rol que entra y con uno que no | Soporte | Seguridad | Alta | En parte: falta la migración 034 y los candados por permiso en la web (D1) |
 | RF-A06 | Todo cambio de datos queda en la auditoría | `audit_log` guarda quién, qué acción, sobre qué entidad, cuándo, la IP y el identificador de correlación, en la misma transacción que el cambio | Todos | Seguridad, Bases de datos | Alta | Hecho |
+| RF-A08 | Número máximo de sesiones por usuario, configurable, y solo dispositivos autorizados (D41) | Al abrir una sesión por encima del tope (`MAX_SESIONES_POR_USUARIO`, 3 por omisión, supuesto) se cierra la más antigua. Cada login envía `dispositivo_id`: el primero de la cuenta nace autorizado, los siguientes quedan pendientes (403 `DISPOSITIVO_NO_AUTORIZADO`) hasta que la persona o un ADMINISTRADOR los autoriza; ADMINISTRADOR revoca y revocar cierra las sesiones de ese dispositivo | Soporte | Microservicios, Seguridad | Media | Hecho en `auth` y `sesiones`; los clientes aún no envían `dispositivo_id` |
 | RF-A09 | La app móvil registra el teléfono, uno por cuenta | `dispositivos` crea o actualiza el registro en `devices`; queda `CREATE` o `UPDATE` en la auditoría. Un teléfono revocado no sincroniza | 1.2 | Móvil, Microservicios | Media | Hecho |
 | RF-A11 | La web inicia sesión con usuario y contraseña, y guarda su token en una cookie | Con datos correctos entra al tablero; con datos incorrectos no entra y queda `LOGIN_FAILED`. Después de entrar solo redirige a rutas del propio sitio | Soporte | Web, Seguridad | Alta | Hecho |
 | RF-A12 | La web registra y revisa su sesión en Redis, igual que las apps | Cerrar sesión en la web deja el token sin valor antes de que venza | Soporte | Web, Seguridad | Alta | Hecho (I3), verificado el 2026-11-16; con Redis caído la web conserva las sesiones abiertas y no deja entrar (D33) |
-| RF-A13 | Cada usuario consulta su perfil | `usuarios` responde el nombre, el usuario y los roles de quien pregunta (`GET /api/v1/users/me`) | Soporte | Microservicios | Media | Hecho |
+| RF-A13 | Cada usuario consulta su perfil | `usuarios` responde el nombre, el usuario, los roles, la institución y la región de quien pregunta (`GET /api/v1/users/me`) | Soporte | Microservicios | Media | Hecho |
+| RF-A14 | Segundo factor para los perfiles críticos (D40) | ADMINISTRADOR y EPIDEMIOLOGO no reciben tokens con solo la contraseña: `auth` regresa un token temporal de MFA (5 min, 5 intentos) que se cambia por la sesión con un código TOTP (RFC 6238) o uno de respaldo. Sin MFA, enrolan con `/mfa/enroll` y `/mfa/confirm`. Un ADMINISTRADOR restablece el de otra cuenta; todo queda en la auditoría | Soporte | Microservicios, Seguridad | Alta | Hecho en `auth`; los clientes aún no implementan los dos pasos |
 
 ## Fuera de alcance
 
 | ID | Qué pedía | Por qué sale |
 |---|---|---|
-| RF-A08 | Número máximo de sesiones por usuario, configurable | Ningún proceso lo pide |
 | RF-A10 | Recuperar la contraseña | El servicio `recuperacion` era opcional y no se construyó; la contraseña la cambia el ADMINISTRADOR (RF-L01) |

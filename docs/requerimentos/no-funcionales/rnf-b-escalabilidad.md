@@ -21,5 +21,5 @@ Qué tan lejos llega el sistema con un solo `docker-compose` en una máquina, qu
 | RNF-B03 | Partición de tablas por fecha o región | El volumen de D29 no lo pide |
 | RNF-B06 | Resultados que se agregan sin reescribir | Se cubre con un documento por día en `series_corridas` (RNF-K03) |
 | RNF-B07 | Índices para 10 millones de casos | Los índices que se miden son los de D29 (RNF-K14) |
-| RNF-B08 | Cola con prioridades y reparto entre usuarios | La cola atiende en orden de llegada (ver RF-E08) |
+| RNF-B08 | Cola con prioridades y reparto entre usuarios | Hay prioridades (RF-E08, D44) pero no reparto entre usuarios: la cola atiende en orden de llegada dentro de cada prioridad |
 | RNF-B10 | Redis con réplicas y particiones | Redis no guarda nada que no se pueda reconstruir (D19); una sola instancia basta |

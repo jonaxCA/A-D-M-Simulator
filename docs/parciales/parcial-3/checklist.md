@@ -569,34 +569,34 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 [Retro: «Microservicios existentes que deben completarse y fortalecerse»]. Los servicios de E en [«Dueños de los servicios»](#dueños-de-los-servicios). La lista es lo que pide la retroalimentación, no lo que falta: lo que ya se cumpla se marca al revisarlo. Lo que dice «reabierto» o «hoy no existe» ya se revisó.
 
-- [ ] Revisar cada servicio contra su lista de la retroalimentación y marcar aquí lo que ya cumple.
+- [x] Revisar cada servicio contra su lista de la retroalimentación y marcar aquí lo que ya cumple. Revisado el 2026-11-20 contra `RETROALIMENTACION_SEGUNDO_PARCIAL.txt`, servicio por servicio. `auth`: JWT, renovación, revocación, intentos y bloqueo ya estaban; se agregó MFA (D40). `sesiones`: Redis, cierre remoto, expiración y tokens revocados ya estaban; se agregaron concurrentes y dispositivos (D41). `usuarios`: altas y bajas ya estaban; se agregaron institución, región y perfiles (D42). `roles`: roles y auditoría de cambios ya estaban; se agregaron alcance (D43) y la bitácora. `corridas`: cola, cancelación, progreso, estados e idempotencia ya estaban; se agregaron prioridad, estimación y reintento (D44). `simulador`: SEIR, semillas, estocástico y recuperación (D38) ya estaban; nada nuevo pedido. `resultados`: se agregó la banda p5-p95. `comparacion`: se agregaron diferencias, incertidumbre y contrafactual. `pareto`: se agregó la explicación, la sensibilidad y el estado de calibración (D46). Evidencia: [`docs/pruebas/bloque_e/2026-11-20/`](../../pruebas/bloque_e/2026-11-20/LEEME.md).
 
 **Identidad**
 
-- [ ] `auth`: MFA para los perfiles críticos (decisión del bloque 0). El bloqueo temporal ya existe (15 min, `backend_web/auth.py`).
-- [ ] `sesiones`: control de sesiones concurrentes y solo dispositivos autorizados (RF-A08, reabierto).
-- [ ] `usuarios`: institución y región de cada cuenta, y los perfiles nuevos (decisión del bloque 0).
-- [ ] `roles`: permisos por recurso, región, institución y operación (decisión del bloque 0).
-- [ ] Consultar la bitácora: hoy no existe en ningún servicio. La necesitan la web (`/auditoria`) y el escritorio (historial de un escenario).
+- [x] `auth`: MFA para los perfiles críticos (decisión del bloque 0). TOTP y códigos de respaldo en `microservicios/auth/mfa.py`, migración 051, D40. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: el MFA arranca apagado (`MFA_PERFILES` vacía) hasta que los clientes (web, escritorio, Android) implementen el flujo de segundo factor; se probó encendido a mano con ADMINISTRADOR y EPIDEMIOLOGO.  El bloqueo temporal ya existe (15 min, `backend_web/auth.py`).
+- [x] `sesiones`: control de sesiones concurrentes y solo dispositivos autorizados (RF-A08, reabierto). Tope de sesiones y lista de dispositivos en `microservicios/sesiones/almacen.py` y `dispositivos.py`, migración 050, D41. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: el control de dispositivos autorizados viene apagado por omisión hasta que los clientes envíen `dispositivo_id`.
+- [x] `usuarios`: institución y región de cada cuenta, y los perfiles nuevos (decisión del bloque 0). Migración 052, D42. Decisión tomada por el orquestador, pendiente de validación del líder.
+- [x] `roles`: permisos por recurso, región, institución y operación (decisión del bloque 0). Alcance por región en `microservicios/roles/rutas.py` y cliente `epidemia_comun/alcance.py`, migración 053, D43. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: el alcance por institución no se aplica a los datos de E porque estos no traen institución (D43); solo se aplica el de región.
+- [x] Consultar la bitácora. La nota de que «hoy no existe» estaba desactualizada: `roles` ya la tenía (`/api/v1/audit`) y se extendió con resumen e historial de una entidad con alcance por región (migraciones 046, 053 y 055, D43). Probada en vivo: `GET /api/v1/audit?entity_id=130`.
 
 **Simulación**
 
-- [ ] `corridas`: prioridades, tiempo estimado y reintentos seguros (RF-E07, RF-E08 y RF-E14, reabiertos).
+- [x] `corridas`: prioridades, tiempo estimado y reintentos seguros (RF-E07, RF-E08 y RF-E14, reabiertos). Prioridad, posición en la cola, estimación y `POST /runs/{id}/retry` en `microservicios/corridas/`, migración 054, D44. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: el reintento es solo manual; no hay reintento automático de corridas fallidas.
 - [x] Una corrida interrumpida se recupera sin duplicar resultados, en lugar de cerrarse como fallida (RNF-C03; decisión del bloque 0). D38: el simulador la reencola con la misma semilla, hasta 3 intentos (migración 045, `attempts`); sin intentos o con otra versión de motor se cierra como `fallido`.
-- [ ] `resultados`: intervalos de incertidumbre de las réplicas, con la banda p5–p95 de `series_corridas` (D8, reabierto).
-- [ ] `comparacion`: diferencias absolutas y relativas, incertidumbre y análisis contrafactual exploratorio.
-- [ ] `pareto`: explica por qué cada alternativa queda dominada o no.
-- [ ] Rutas para la calibración y la sensibilidad (con el bloque 0).
+- [x] `resultados`: intervalos de incertidumbre de las réplicas, con la banda p5–p95 de `series_corridas` (D8, reabierto). `GET /api/v1/runs/{id}/band` en `microservicios/resultados/`. Salvedad: `replicas` cuenta las corridas completadas de la versión, no las que tienen series en MongoDB.
+- [x] `comparacion`: diferencias absolutas y relativas, incertidumbre y análisis contrafactual exploratorio. En `microservicios/comparacion/rutas.py`; contrato y ejemplos actualizados. Es exploratorio y no recomienda un escenario (regla 10).
+- [x] `pareto`: explica por qué cada alternativa queda dominada o no. Campo `explicacion` por fila en `microservicios/pareto/dominio.py`. Probado en vivo.
+- [x] Rutas para la calibración y la sensibilidad (con el bloque 0). En `pareto`, D46. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: la calibración solo informa su estado (fuera de alcance, D24 y D46); la sensibilidad es exploratoria.
 
 ### E8. Reglas de negocio y despliegue independiente
 
 [Retro: «Dependencia de reglas de negocio compartidas con el monolito»]. Va con la decisión de dueños (bloque 0).
 
-- [ ] Tabla de dueños: cada regla de negocio con el servicio que la posee.
-- [ ] Los servicios dejan de importar `backend_web`: cada regla vive con su dueño. Cada bloque lo hace en sus servicios (D, E y F).
-- [ ] `epidemia_comun` queda solo con funciones técnicas. Revisar `sesiones` y `series_corridas`.
-- [ ] Contratos de dominio separados de las clases internas.
-- [ ] Demostrar que un servicio se construye y se despliega sin tocar a los demás.
+- [x] Tabla de dueños: cada regla de negocio con el servicio que la posee. [`docs/arquitectura/duenos_de_reglas.md`](../../arquitectura/duenos_de_reglas.md) (D37). Las copias de `get_run`, `_sincroniza_lote` y la selección de corridas quedan documentadas ahí.
+- [ ] Los servicios dejan de importar `backend_web`: cada regla vive con su dueño. Cada bloque lo hace en sus servicios (D, E y F). Parte de E hecha: ningún servicio de E importa `backend_web` (`test_sin_backend_web.py`, `test_simulacion_sin_backend_web.py`). Sigue abierta porque `series`, `notificaciones`, `regiones`, `dispositivos` e `intervenciones` (D y F) todavía lo importan, y `epidemia_comun/ambito.py` (F) y `validaciones.py` (D) esperan a su dueño.
+- [ ] `epidemia_comun` queda solo con funciones técnicas. Revisar `sesiones` y `series_corridas`. Parte de E hecha: las curvas de corridas pasaron a `simulador/serie.py` y `resultados/serie.py`, y abrir sesiones a `sesiones` (auth la llama por HTTP). Sigue abierta: `ambito.py` y `validaciones.py` pendientes de F y D, y quedan copias documentadas (`get_run`, `_sincroniza_lote`, entrada del motor).
+- [x] Contratos de dominio separados de las clases internas. Las respuestas se arman con los campos del contrato (`epidemia_comun.contratos.proyectar`); ver «Contratos de dominio» en `duenos_de_reglas.md`. Aplicado en los servicios de E; D y F por su bloque.
+- [x] Demostrar que un servicio se construye y se despliega sin tocar a los demás. `usuarios` y `corridas` se reconstruyeron con `--no-deps` y los otros 32 contenedores no cambiaron; las imágenes no traen `backend_web`. Evidencia: [`docs/pruebas/despliegue_independiente/2026-11-20/`](../../pruebas/despliegue_independiente/2026-11-20/LEEME.md).
 
 ### E9. Rutas para la web
 
