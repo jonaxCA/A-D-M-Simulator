@@ -5,9 +5,8 @@ from xml.etree import ElementTree as ET
 import pytest
 import xmlschema
 
-from backend_web import queries
-from epidemia_comun import series_corridas
-from microservicios.resultados import rutas
+from epidemia_comun import mongo
+from microservicios.resultados import datos as consultas_sql, rutas, serie as series
 from procesamiento.motor import AVISO_SIMULACION
 from procesamiento.motores import IMPLEMENTADOS
 
@@ -46,6 +45,15 @@ GUARDADO = {"engine_version": "seir-ref-0.1", "scenario_checksum": "a" * 64,
             "resumen": RESUMEN, "trazabilidad": TRAZA}
 
 
+def guarda_serie(run, motor, serie):
+    # Lo que escribe el simulador, según docs/contratos/series_corridas/.
+    mongo.coleccion("series_corridas").insert_many([
+        dict(fila, run_id=run["id"], batch_id=run["batch_id"], scenario_id=run["scenario_id"],
+             scenario_version_id=run["scenario_version_id"], motor=motor,
+             engine_version="seir-ref-0.1", semilla=run["seed"], version_esquema=1)
+        for fila in serie])
+
+
 @pytest.fixture
 def consultas(monkeypatch):
     registro = []
@@ -58,16 +66,15 @@ def consultas(monkeypatch):
     def get_resultado_run(run_id):
         return dict(GUARDADO, run_id=run_id) if run_id in (42, 45) else None
 
-    monkeypatch.setattr(queries, "get_run", get_run)
-    monkeypatch.setattr(queries, "get_resultado_run", get_resultado_run)
+    monkeypatch.setattr(consultas_sql, "get_run", get_run)
+    monkeypatch.setattr(consultas_sql, "get_resultado_run", get_resultado_run)
     return registro
 
 
 @pytest.fixture
 def cliente(crear_cliente, consultas, mongo_falso):
     run = dict(CORRIDAS[42], batch_id=5)
-    series_corridas.guardar(series_corridas.documentos(
-        run, "seir-ref", {"engine_version": "seir-ref-0.1", "serie": SERIE}))
+    guarda_serie(run, "seir-ref", SERIE)
     return crear_cliente("resultados")
 
 
@@ -98,7 +105,7 @@ def test_resultado_completo_con_aviso(cliente, token, rol):
 def test_las_simplificaciones_son_las_del_motor_que_corrio(cliente, token, monkeypatch, version,
                                                            motor):
     guardado = dict(GUARDADO, run_id=42, engine_version=version)
-    monkeypatch.setattr(queries, "get_resultado_run", lambda run_id: dict(guardado))
+    monkeypatch.setattr(consultas_sql, "get_resultado_run", lambda run_id: dict(guardado))
     datos = cliente.get("/api/v1/runs/42/results?format=json", headers=token()).get_json()
     esperado = list(IMPLEMENTADOS[motor].simplificaciones) if motor else []
     assert datos["engine_version"] == version and datos["simplificaciones"] == esperado
@@ -158,11 +165,91 @@ def test_mongodb_caido_solo_tumba_lo_que_lleva_la_serie(cliente, token, apagar_m
 
 def test_la_serie_no_se_cachea_vacia(cliente, token, mongo_falso):
     assert cliente.get("/api/v1/runs/45/curves", headers=token()).status_code == 404
-    series_corridas.guardar(series_corridas.documentos(
-        dict(CORRIDAS[45], batch_id=6), "seir-ref", {"engine_version": "seir-ref-0.1",
-                                                     "serie": SERIE}))
+    guarda_serie(dict(CORRIDAS[45], batch_id=6), "seir-ref", SERIE)
     curvas = cliente.get("/api/v1/runs/45/curves?format=json", headers=token()).get_json()
     assert curvas["serie"] == SERIE
+
+
+BANDA = [{"dia": 0, "corridas": 3, "p5": 100, "p50": 100, "p95": 100},
+         {"dia": 1, "corridas": 3, "p5": 90.0, "p50": 107.0, "p95": 125.0}]
+
+
+@pytest.fixture
+def banda(monkeypatch):
+    llamadas = []
+
+    def calcular(version, motor, campo="casos_activos", run_ids=None):
+        llamadas.append((version, motor, campo, run_ids))
+        return list(BANDA)
+
+    monkeypatch.setattr(series, "banda", calcular)
+    monkeypatch.setattr(series, "con_serie", lambda v, m, ids: sorted(ids))
+    monkeypatch.setattr(consultas_sql, "get_run_ids_completados", lambda v, e: [40, 41, 42])
+    return llamadas
+
+
+@pytest.mark.parametrize("rol", rutas.ROLES)
+def test_banda_de_las_replicas_de_la_version(cliente, token, banda, rol):
+    datos = cliente.get("/api/v1/runs/42/band?format=json", headers=token((rol,))).get_json()
+    assert datos["aviso"] == AVISO_SIMULACION and datos["categoria"]["categoria"] == "exploratoria"
+    assert (datos["run_id"], datos["scenario_version_id"], datos["motor"], datos["campo"],
+            datos["replicas"]) == (42, 11, "seir-ref", "casos_activos", 3)
+    assert datos["banda"] == BANDA
+    assert banda == [(11, "seir-ref", "casos_activos", [40, 41, 42])]
+
+
+def test_replicas_son_solo_las_corridas_con_serie_en_mongodb(cliente, token, monkeypatch):
+    run = dict(CORRIDAS[42], batch_id=5)
+    guarda_serie(dict(run, id=40), "seir-ref", SERIE)
+    guarda_serie(dict(run, id=99), "abm-ref", SERIE)
+    usadas = []
+    monkeypatch.setattr(series, "banda", lambda v, m, campo, ids: usadas.append(ids) or list(BANDA))
+    monkeypatch.setattr(consultas_sql, "get_run_ids_completados", lambda v, e: [40, 41, 42, 43, 44])
+    datos = cliente.get("/api/v1/runs/42/band?format=json", headers=token()).get_json()
+    assert datos["replicas"] == 2 and usadas == [[40, 42]]
+
+
+def test_banda_de_otro_compartimento_y_campo_invalido(cliente, token, banda):
+    assert cliente.get("/api/v1/runs/42/band?campo=H&format=json", headers=token()).get_json()["campo"] == "H"
+    r = cliente.get("/api/v1/runs/42/band?campo=dia", headers=token())
+    assert r.status_code == 422 and r.mimetype == "application/problem+xml"
+    assert cliente.get("/api/v1/runs/42/band?campo=x", headers=token()).status_code == 422
+
+
+def test_banda_sale_de_la_cache_y_se_recalcula_con_otra_replica(cliente, token, banda, monkeypatch):
+    for _ in range(2):
+        assert cliente.get("/api/v1/runs/42/band", headers=token()).status_code == 200
+    assert len(banda) == 1
+    monkeypatch.setattr(consultas_sql, "get_run_ids_completados", lambda v, e: [40, 41, 42, 46])
+    cliente.get("/api/v1/runs/42/band", headers=token())
+    assert len(banda) == 2
+
+
+def test_banda_sin_series_es_404_y_sin_completar_es_409(cliente, token, banda, monkeypatch):
+    assert cliente.get("/api/v1/runs/43/band", headers=token()).status_code == 409
+    monkeypatch.setattr(series, "banda", lambda *a, **k: [])
+    assert cliente.get("/api/v1/runs/42/band", headers=token()).status_code == 404
+
+
+def test_banda_con_mongodb_caido_es_503(cliente, token, banda, monkeypatch):
+    def cae(*a, **k):
+        from pymongo.errors import ServerSelectionTimeoutError
+        raise ServerSelectionTimeoutError("apagado")
+
+    monkeypatch.setattr(series, "banda", cae)
+    r = cliente.get("/api/v1/runs/42/band?format=json", headers=token())
+    assert r.status_code == 503 and r.get_json()["codigo"] == "SERVICIO_NO_DISPONIBLE"
+
+
+def test_banda_sin_token_o_con_capturista(cliente, token):
+    assert cliente.get("/api/v1/runs/42/band").status_code == 401
+    assert cliente.get("/api/v1/runs/42/band", headers=token(("CAPTURISTA",))).status_code == 403
+
+
+def test_banda_en_xml(cliente, token, banda):
+    raiz = ET.fromstring(cliente.get("/api/v1/runs/42/band", headers=token()).data)
+    assert raiz.tag == "banda"
+    assert [p.findtext("p95") for p in raiz.findall("banda/punto")] == ["100", "125.0"]
 
 
 def test_id_invalido_es_422(cliente, token):
@@ -187,3 +274,21 @@ def test_redis_caido_es_503(cliente, token, apagar_redis):
 def test_contrato_servido_es_el_del_repo(cliente):
     r = cliente.get("/openapi.json")
     assert r.data == (RAIZ / "docs/contratos/resultados/openapi.json").read_bytes()
+
+
+@pytest.mark.parametrize("rol", ["INVESTIGADOR", "AUTORIDAD_SANITARIA"])
+def test_los_perfiles_de_lectura_ven_resultados(cliente, token, rol):
+    assert cliente.get("/api/v1/runs/42/indicators?format=json", headers=token((rol,))).status_code == 200
+
+
+def test_el_alcance_se_revisa_aunque_la_corrida_este_en_cache(cliente, token, alcance_falso):
+    # La región de la corrida de las pruebas es 39.
+    ruta = "/api/v1/runs/42/%s?format=json"
+    assert cliente.get(ruta % "results", headers=token()).status_code == 200
+    alcance_falso["regiones"] = [10]
+    for parte in ("results", "curves", "indicators", "band"):
+        r = cliente.get(ruta % parte, headers=token())
+        assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE", parte
+    alcance_falso["regiones"] = [39]
+    assert cliente.get(ruta % "results", headers=token()).status_code == 200
+    assert "region_id" not in cliente.get(ruta % "results", headers=token()).get_json()

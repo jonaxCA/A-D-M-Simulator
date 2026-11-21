@@ -1,7 +1,7 @@
 # EPIDEMIA - Servicio simulador
 
-Proceso trabajador: toma las corridas de su motor de su cola de Redis
-(`queue:simulaciones:<motor>`), ejecuta el motor, guarda el resumen en `simulation_runs` y la
+Proceso trabajador: toma las corridas de su motor de sus colas de Redis
+(`queue:simulaciones:<motor>`, `:alta` y `:baja`; primero las altas, D44), ejecuta el motor, guarda el resumen en `simulation_runs` y la
 serie diaria en MongoDB (`series_corridas`, D28), y avisa a `notificaciones` al terminar o
 fallar. Su única ruta propia es el estado del trabajador.
 
@@ -26,7 +26,7 @@ Puerto externo: 5242; puerto interno en Docker: 8000. Contrato en
 
 | Método | Ruta | Roles | Qué regresa |
 |--------|------|-------|-------------|
-| GET | `/api/v1/worker/status` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | `trabajador` (nombre del contenedor), `motor`, `activo`, `corrida_actual`, `procesadas`, `ultima` y `pendientes` en la cola de su motor |
+| GET | `/api/v1/worker/status` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | `trabajador` (nombre del contenedor), `motor`, `activo`, `corrida_actual`, `procesadas`, `ultima` y `pendientes` en las colas de su motor |
 
 Más `/health`, `/docs` y `/openapi.json`, como todos.
 
@@ -35,14 +35,14 @@ Más `/health`, `/docs` y `/openapi.json`, como todos.
 `python -m microservicios.simulador` (`__main__.py`) hace tres cosas en un solo proceso:
 
 1. **Al arrancar** regresa a `encolado` las corridas de su motor que quedaron en `ejecutando`
-   (D38, `simulaciones.reencola_corridas_interrumpidas`), si tienen menos de 3 intentos
+   (D38, `ejecucion.reencola_corridas_interrumpidas`), si tienen menos de 3 intentos
    (`attempts`, migración 045) y la versión de motor es la que corre ahora. Las demás las
    cierra como `fallido` y borra su serie. Luego vuelve a meter a su cola las que están
-   `encolado` en PostgreSQL, en orden de id y sin repetir las que ya estén en la cola (D19). Las de otro motor las atiende su
+   `encolado` en PostgreSQL, en orden de id, cada una en la cola de su prioridad y sin repetir las que ya estén en la cola (D19). Las de otro motor las atiende su
    propio simulador. Si Redis no responde, el arranque no falla: el ciclo reintenta. La
    corrida reencolada pierde `forzar_error` (no se guarda en la base).
 2. **Lanza el hilo trabajador** (`trabajador.ciclo`). Espera en la cola y, por cada corrida,
-   llama a `simulaciones.ejecutar_run()`, la misma del monolito:
+   llama a `ejecucion.ejecutar_run()` (SQL en `datos.py`; ya no importa `backend_web`, E8):
    - marca `ejecutando` con la transición condicionada, así que dos contenedores nunca corren
      la misma corrida;
    - arma la entrada del motor desde la versión aprobada y corre el motor;

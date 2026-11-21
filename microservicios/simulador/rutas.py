@@ -17,5 +17,5 @@ def registrar(app):
     @app.get("/api/v1/worker/status")
     @requiere_token(roles=ROLES)
     def estado():
-        return responder(dict(trabajador.estado, pendientes=cola.pendientes(trabajador.COLA)),
+        return responder(dict(trabajador.estado, pendientes=cola.pendientes(trabajador.COLAS)),
                          "trabajador")

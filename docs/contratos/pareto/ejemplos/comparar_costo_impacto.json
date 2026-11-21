@@ -15,7 +15,33 @@
       "dias": 120,
       "poblacion": 500000,
       "dominado": false,
-      "dominado_por": []
+      "dominado_por": [],
+      "explicacion": {
+        "dominado": false,
+        "dominada_por": [],
+        "compromisos": [
+          {
+            "id": 13,
+            "nombre": "SIM-00013 - B - Cierre escolar",
+            "mejor_en": "impacto",
+            "diferencia": 33
+          },
+          {
+            "id": 14,
+            "nombre": "SIM-00014 - C - Vacunacion 60+",
+            "mejor_en": "impacto",
+            "diferencia": 29
+          },
+          {
+            "id": 15,
+            "nombre": "SIM-00015 - D - Cierre + vacuna",
+            "mejor_en": "impacto",
+            "diferencia": 49
+          }
+        ],
+        "empatada_con": [],
+        "texto": "En la frontera: ninguna otra alternativa cuesta lo mismo o menos y tiene lo mismo o menos de fallecimientos. Frente a las demas, cada una es menor solo en un criterio: SIM-00013 - B - Cierre escolar tiene 33 menos de fallecimientos; SIM-00014 - C - Vacunacion 60+ tiene 29 menos de fallecimientos; SIM-00015 - D - Cierre + vacuna tiene 49 menos de fallecimientos."
+      }
     },
     {
       "id": 13,
@@ -41,7 +67,33 @@
       "dias": 120,
       "poblacion": 500000,
       "dominado": false,
-      "dominado_por": []
+      "dominado_por": [],
+      "explicacion": {
+        "dominado": false,
+        "dominada_por": [],
+        "compromisos": [
+          {
+            "id": 12,
+            "nombre": "SIM-00012 - A - Sin intervencion",
+            "mejor_en": "costo",
+            "diferencia": 19500000.0
+          },
+          {
+            "id": 14,
+            "nombre": "SIM-00014 - C - Vacunacion 60+",
+            "mejor_en": "costo",
+            "diferencia": 19480151.0
+          },
+          {
+            "id": 15,
+            "nombre": "SIM-00015 - D - Cierre + vacuna",
+            "mejor_en": "impacto",
+            "diferencia": 16
+          }
+        ],
+        "empatada_con": [],
+        "texto": "En la frontera: ninguna otra alternativa cuesta lo mismo o menos y tiene lo mismo o menos de fallecimientos. Frente a las demas, cada una es menor solo en un criterio: SIM-00012 - A - Sin intervencion cuesta 19,500,000 personas-dia menos; SIM-00014 - C - Vacunacion 60+ cuesta 19,480,151 personas-dia menos; SIM-00015 - D - Cierre + vacuna tiene 16 menos de fallecimientos."
+      }
     },
     {
       "id": 14,
@@ -67,7 +119,33 @@
       "dias": 120,
       "poblacion": 500000,
       "dominado": false,
-      "dominado_por": []
+      "dominado_por": [],
+      "explicacion": {
+        "dominado": false,
+        "dominada_por": [],
+        "compromisos": [
+          {
+            "id": 12,
+            "nombre": "SIM-00012 - A - Sin intervencion",
+            "mejor_en": "costo",
+            "diferencia": 19849.0
+          },
+          {
+            "id": 13,
+            "nombre": "SIM-00013 - B - Cierre escolar",
+            "mejor_en": "impacto",
+            "diferencia": 4
+          },
+          {
+            "id": 15,
+            "nombre": "SIM-00015 - D - Cierre + vacuna",
+            "mejor_en": "impacto",
+            "diferencia": 20
+          }
+        ],
+        "empatada_con": [],
+        "texto": "En la frontera: ninguna otra alternativa cuesta lo mismo o menos y tiene lo mismo o menos de fallecimientos. Frente a las demas, cada una es menor solo en un criterio: SIM-00012 - A - Sin intervencion cuesta 19,849 personas-dia menos; SIM-00013 - B - Cierre escolar tiene 4 menos de fallecimientos; SIM-00015 - D - Cierre + vacuna tiene 20 menos de fallecimientos."
+      }
     },
     {
       "id": 15,
@@ -104,7 +182,33 @@
       "dias": 120,
       "poblacion": 500000,
       "dominado": false,
-      "dominado_por": []
+      "dominado_por": [],
+      "explicacion": {
+        "dominado": false,
+        "dominada_por": [],
+        "compromisos": [
+          {
+            "id": 12,
+            "nombre": "SIM-00012 - A - Sin intervencion",
+            "mejor_en": "costo",
+            "diferencia": 19519849.0
+          },
+          {
+            "id": 13,
+            "nombre": "SIM-00013 - B - Cierre escolar",
+            "mejor_en": "costo",
+            "diferencia": 19849.0
+          },
+          {
+            "id": 14,
+            "nombre": "SIM-00014 - C - Vacunacion 60+",
+            "mejor_en": "costo",
+            "diferencia": 19500000.0
+          }
+        ],
+        "empatada_con": [],
+        "texto": "En la frontera: ninguna otra alternativa cuesta lo mismo o menos y tiene lo mismo o menos de fallecimientos. Frente a las demas, cada una es menor solo en un criterio: SIM-00012 - A - Sin intervencion cuesta 19,519,849 personas-dia menos; SIM-00013 - B - Cierre escolar cuesta 19,849 personas-dia menos; SIM-00014 - C - Vacunacion 60+ cuesta 19,500,000 personas-dia menos."
+      }
     }
   ],
   "frontera": [

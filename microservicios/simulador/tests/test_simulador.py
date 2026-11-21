@@ -10,11 +10,10 @@ import jwt
 import psycopg2
 import pytest
 
-from backend_web import queries, simulaciones
 from epidemia_comun import llaves
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.redis_compartido import RedisNoDisponible
-from microservicios.simulador import rutas, trabajador
+from microservicios.simulador import datos, ejecucion, rutas, trabajador
 from procesamiento import motores
 from procesamiento.motores import MotorNoDisponible
 
@@ -29,7 +28,7 @@ FILA = {"S": 990, "E": 0, "I": 10, "R": 0, "H": 0, "D": 0, "V": 0, "casos_activo
 RESULTADO = {"engine_version": "seir-ref-0.1", "resumen": {},
              "serie": [dict(FILA, dia=0), dict(FILA, dia=1, casos_activos=12, E=2, S=988)]}
 # La de verdad, antes de que el fixture mundo la cambie.
-EJECUTAR_RUN = simulaciones.ejecutar_run
+EJECUTAR_RUN = ejecucion.ejecutar_run
 
 
 class Resp:
@@ -55,8 +54,8 @@ def mundo(monkeypatch, redis_falso, mongo_falso):
             raise m["respuesta"]
         return m["respuesta"]
 
-    monkeypatch.setattr(simulaciones, "ejecutar_run", ejecutar_run)
-    monkeypatch.setattr(queries, "get_run", lambda run_id: {
+    monkeypatch.setattr(ejecucion, "ejecutar_run", ejecutar_run)
+    monkeypatch.setattr(datos, "get_run", lambda run_id: {
         "id": run_id, "batch_id": 8, "requested_by": 5, "scenario_id": 3,
         "scenario_version_id": 11, "seed": 7, "engine_version": "seir-ref-0.1",
         "scenario_name": "Ola Influenza ZMM", "version_number": 2,
@@ -89,14 +88,14 @@ def sin_base(mundo, monkeypatch, mongo_falso):
         return e["confirma"]
 
     motor = motores.Motor("seir-ref", "seir-ref-0.1", lambda escenario, semilla: RESULTADO, ())
-    monkeypatch.setattr(simulaciones, "ejecutar_run", functools.partial(EJECUTAR_RUN, demora_seg=0))
-    monkeypatch.setattr(simulaciones, "construir_escenario_desde_version",
+    monkeypatch.setattr(ejecucion, "ejecutar_run", functools.partial(EJECUTAR_RUN, demora_seg=0))
+    monkeypatch.setattr(ejecucion, "escenario_de_version",
                         lambda version_id: ({}, None, []))
-    monkeypatch.setattr(simulaciones, "motor_del_nombre", lambda nombre: motor)
-    monkeypatch.setattr(simulaciones, "log_audit", lambda *args, **kwargs: None)
-    monkeypatch.setattr(queries, "marcar_run_ejecutando", lambda run_id: True)
-    monkeypatch.setattr(queries, "get_motor_run", lambda run_id: "seir-ref")
-    monkeypatch.setattr(queries, "guardar_resultado_run", guardar_resultado_run)
+    monkeypatch.setattr(ejecucion, "del_nombre", lambda nombre: motor)
+    monkeypatch.setattr(ejecucion, "log_audit", lambda *args, **kwargs: None)
+    monkeypatch.setattr(datos, "marcar_run_ejecutando", lambda run_id: True)
+    monkeypatch.setattr(datos, "get_motor_run", lambda run_id: "seir-ref")
+    monkeypatch.setattr(datos, "guardar_resultado_run", guardar_resultado_run)
     return e
 
 
@@ -200,8 +199,8 @@ def test_recuperar_reencola_las_de_su_motor_y_borra_la_serie_de_las_cerradas(mon
                                                                              redis_falso,
                                                                              mongo_falso):
     pedidos = []
-    monkeypatch.setattr(simulaciones, "corridas_encoladas", lambda engine: [])
-    monkeypatch.setattr(simulaciones, "reencola_corridas_interrumpidas",
+    monkeypatch.setattr(datos, "corridas_encoladas", lambda engine: [])
+    monkeypatch.setattr(ejecucion, "reencola_corridas_interrumpidas",
                         lambda engine, version: pedidos.append((engine, version)) or ([4], [6]))
     mongo_falso["series_corridas"].insert_many([{"run_id": 6, "dia": 0}, {"run_id": 4, "dia": 0}])
     assert trabajador.recuperar() == ([4], [6])
@@ -212,8 +211,8 @@ def test_recuperar_reencola_las_de_su_motor_y_borra_la_serie_de_las_cerradas(mon
 
 def test_recuperar_reencola_en_orden_sin_duplicar(monkeypatch, redis_falso):
     pedidos = []
-    monkeypatch.setattr(simulaciones, "reencola_corridas_interrumpidas", lambda *a: ([], []))
-    monkeypatch.setattr(simulaciones, "corridas_encoladas",
+    monkeypatch.setattr(ejecucion, "reencola_corridas_interrumpidas", lambda *a: ([], []))
+    monkeypatch.setattr(datos, "corridas_encoladas",
                         lambda engine: pedidos.append(engine) or [3, 5, 8])
     redis_falso.lpush(trabajador.COLA, json.dumps({"id": 5, "forzar_error": True}))
     trabajador.recuperar()
@@ -225,10 +224,24 @@ def test_recuperar_reencola_en_orden_sin_duplicar(monkeypatch, redis_falso):
     assert trabajador.cola.pendientes(trabajador.COLA) == 3
 
 
+@pytest.fixture(autouse=True)
+def _sin_prioridades(monkeypatch):
+    monkeypatch.setattr(datos, "prioridades", lambda ids: {})
+
+
+def test_reencolar_manda_cada_corrida_a_la_cola_de_su_prioridad(monkeypatch, redis_falso):
+    monkeypatch.setattr(datos, "corridas_encoladas", lambda engine: [3, 5, 8])
+    monkeypatch.setattr(datos, "prioridades", lambda ids: {5: "alta", 8: "baja"})
+    trabajador.reencolar()
+    tomadas = [json.loads(trabajador.cola.tomar(trabajador.COLAS))["id"] for _ in range(3)]
+    assert tomadas == [5, 3, 8]
+    assert trabajador.reencolar() == 0 or trabajador.cola.pendientes(trabajador.COLAS) == 3
+
+
 def test_recuperar_con_redis_caido_no_falla_y_el_ciclo_reintenta(monkeypatch, redis_falso,
                                                                   apagar_redis):
-    monkeypatch.setattr(simulaciones, "reencola_corridas_interrumpidas", lambda *a: ([], []))
-    monkeypatch.setattr(simulaciones, "corridas_encoladas", lambda engine: [7])
+    monkeypatch.setattr(ejecucion, "reencola_corridas_interrumpidas", lambda *a: ([], []))
+    monkeypatch.setattr(datos, "corridas_encoladas", lambda engine: [7])
     monkeypatch.setattr(trabajador, "pendiente", [])
     apagar_redis()
     assert trabajador.recuperar() == ([], [])
@@ -280,23 +293,23 @@ def test_f5_el_trabajador_muere_entre_guardar_la_serie_y_confirmar(sin_base, mun
                                                                     redis_falso, monkeypatch):
     # [Retro: «Fallo de worker»] y D38: después de guardar la serie y antes de confirmar.
     corridas = Corridas()
-    monkeypatch.setattr(queries, "marcar_run_ejecutando", corridas.marcar)
-    monkeypatch.setattr(queries, "reencola_corridas_interrumpidas", corridas.reencolar)
-    monkeypatch.setattr(queries, "marca_corridas_interrumpidas", corridas.cerrar)
-    monkeypatch.setattr(queries, "guardar_resultado_run", corridas.confirmar)
-    monkeypatch.setattr(simulaciones, "corridas_encoladas",
+    monkeypatch.setattr(datos, "marcar_run_ejecutando", corridas.marcar)
+    monkeypatch.setattr(datos, "reencola_corridas_interrumpidas", corridas.reencolar)
+    monkeypatch.setattr(datos, "marca_corridas_interrumpidas", corridas.cerrar)
+    monkeypatch.setattr(datos, "guardar_resultado_run", corridas.confirmar)
+    monkeypatch.setattr(datos, "corridas_encoladas",
                         lambda engine: [i for i, f in corridas.filas.items() if f["status"] == "encolado"])
 
     def muere(run_id, resultado):
         raise TrabajadorMuerto()
-    monkeypatch.setattr(queries, "guardar_resultado_run", muere)
+    monkeypatch.setattr(datos, "guardar_resultado_run", muere)
     with pytest.raises(TrabajadorMuerto):
         trabajador.procesar(json.dumps({"id": 42}), AJUSTES)
     assert corridas.filas[42] == {"status": "ejecutando", "attempts": 1}
     assert mongo_falso["series_corridas"].count_documents({"run_id": 42}) == 2
 
     # Arranca otro trabajador: la corrida vuelve a la cola, no se cierra como fallida.
-    monkeypatch.setattr(queries, "guardar_resultado_run", corridas.confirmar)
+    monkeypatch.setattr(datos, "guardar_resultado_run", corridas.confirmar)
     assert trabajador.recuperar() == ([42], [])
     assert corridas.filas[42]["status"] == "encolado"
     assert trabajador.cola.pendientes(trabajador.COLA) == 1
@@ -312,9 +325,9 @@ def test_f5_sin_intentos_se_cierra_como_fallida_sin_serie(sin_base, mundo, mongo
                                                          monkeypatch):
     corridas = Corridas()
     corridas.filas[42] = {"status": "ejecutando", "attempts": 3}
-    monkeypatch.setattr(queries, "reencola_corridas_interrumpidas", corridas.reencolar)
-    monkeypatch.setattr(queries, "marca_corridas_interrumpidas", corridas.cerrar)
-    monkeypatch.setattr(simulaciones, "corridas_encoladas", lambda engine: [])
+    monkeypatch.setattr(datos, "reencola_corridas_interrumpidas", corridas.reencolar)
+    monkeypatch.setattr(datos, "marca_corridas_interrumpidas", corridas.cerrar)
+    monkeypatch.setattr(datos, "corridas_encoladas", lambda engine: [])
     mongo_falso["series_corridas"].insert_one({"run_id": 42, "dia": 0})
     assert trabajador.recuperar() == ([], [42])
     assert corridas.filas[42]["status"] == "fallido"
@@ -405,7 +418,7 @@ def test_el_ciclo_sobrevive_a_redis_caido_y_a_un_pedido_ilegible(mundo, monkeypa
     entregas = [RedisNoDisponible("caído"), "no es json", json.dumps({"id": 42}), None]
 
     def tomar(llave):
-        assert llave == trabajador.COLA == "queue:simulaciones:seir-ref"
+        assert llave == trabajador.COLAS and trabajador.COLA == "queue:simulaciones:seir-ref"
         entrega = entregas.pop(0)
         if not entregas:
             detener.set()
