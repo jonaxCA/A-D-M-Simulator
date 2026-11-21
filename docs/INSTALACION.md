@@ -763,14 +763,21 @@ medias se reencolan (D38).
 
 1. En `infra/.env` de la máquina, `MOTORES_HABILITADOS=abm-ref,abm-gpu`, y vuelve a levantar
    `corridas`. La máquina no levanta `simulador-gpu` (perfil `gpu`).
-2. Una regla de firewall que deje entrar a IAP al puerto 22 (la corres tú, en la consola o con
-   `gcloud`):
+2. La API de IAP activada en el proyecto (`gcloud services enable iap.googleapis.com`; es
+   gratuita) y una regla de firewall que deje entrar a IAP al puerto 22 (la corres tú, en la
+   consola o con `gcloud`):
 
    ```bash
    gcloud compute firewall-rules create permitir-ssh-iap --network=default --direction=INGRESS --action=allow --rules=tcp:22 --source-ranges=35.235.240.0/20
    ```
 
    Con ella puedes borrar `default-allow-ssh`, que abre el 22 a todo internet.
+
+   En Windows, gcloud lanza un Python para el túnel de IAP; si toma el primero del PATH (por
+   ejemplo, el de MSYS2 que trae Git), la conexión se cierra con «Remote side unexpectedly
+   closed network connection». `infra/tunel_gpu.py` le pasa el Python del SDK; para un
+   `gcloud compute ssh --tunnel-through-iap` a mano, pon `CLOUDSDK_PYTHON` con la ruta de
+   `google-cloud-sdk/platform/bundledpython/python.exe`.
 
 **En tu PC** (Docker Desktop con la GPU, como en «En el contenedor» de
 `procesamiento/abm_gpu/README.md`, y el SDK de Google Cloud con tu sesión, `gcloud auth login`):

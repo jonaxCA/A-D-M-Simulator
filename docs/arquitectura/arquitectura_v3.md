@@ -29,7 +29,7 @@ Cada pieza lleva su estado:
 | Archivos | Volumen de Docker de `evidencias` | Cloud Storage con URLs firmadas | D30, D35 | Falta (D-3; bloque D) |
 | Límites de consumo | Fuera de la etapa | Un contador por usuario y regla en Redis, en `epidemia_comun` | D31 | Hecho en la biblioteca (S2); ver §8 |
 | Salud y panel | `/health` con PostgreSQL y Redis; historial en Redis | Más MongoDB, bucket y tiempo de respuesta; historial en MongoDB y número de errores | D28 | Falta, en parte (N3, N4; bloque F) |
-| Despliegue | Pendiente | Compute Engine: una VM principal y una con GPU que se enciende solo cuando hace falta | D23, D25, D26 | Falta (N1, N2, N6; bloque F) |
+| Despliegue | Pendiente | Compute Engine: una VM principal; la GPU, en una PC conectada por un túnel (D23) | D23, D25, D26 | **En curso** (2026-11-20): los 29 servicios y las bases corren en la VM detrás de nginx con Let's Encrypt, y el firewall solo deja 80 y 443. Faltan la web y los registros en Cloud Logging (N1, N6; bloque F) |
 | Volumen de datos | — | 10 000 corridas de 180 días, 1.81 millones de documentos | D29 | **Hecho** (D-6), medido el 2026-11-18; la inserción y el disco se repiten con `scenario_id` (§9). La cifra sigue por confirmar con el profesor |
 | Pruebas de carga | Pendiente | Locust por perfil de uso | — | **Hecho** en local el 2026-11-16 (A4, A5); falta en la nube (bloque F) |
 | Sesión de la web | Firma su propio JWT y lo revisa contra PostgreSQL | Inicia y cierra sesión con `auth` y `sesiones`; cada servicio revisa la sesión en Redis, y la web ya no lee Redis | D36 (reemplaza D33) | **Hecho** (C6; cierra I3) |
