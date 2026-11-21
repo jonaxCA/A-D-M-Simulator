@@ -5,17 +5,17 @@ from contextlib import contextmanager
 import psycopg2
 import psycopg2.extras
 
+from .conexiones import conexion
+
 
 @contextmanager
 def get_conn():
     url = (os.environ.get("DATABASE_URL") or "").strip()
     if not url:
         raise RuntimeError("Falta DATABASE_URL.")
-    conn = psycopg2.connect(url)
-    try:
+    # Prestada y reutilizada (conexiones.py, F4), en lugar de abrir una por consulta.
+    with conexion(url, lambda u: psycopg2.connect(u)) as conn:
         yield conn
-    finally:
-        conn.close()
 
 
 def query(sql, params=None, one=False):

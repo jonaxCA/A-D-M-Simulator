@@ -57,6 +57,17 @@ desde el primer error de la ventana. `estado-servicios` lo muestra como `errores
 `/api/v1/services/health` y la consola, en la columna «Errores (24 h)». Con Redis caído no se
 cuenta (best-effort).
 
+## Conexiones a PostgreSQL (F4)
+
+`bd.get_conn()` (y `backend_web.db.get_conn()`, que usan la web y los servicios que aún la importan)
+presta una conexión de `conexiones.py` en lugar de abrir una por consulta: abrirla cuesta unos
+47 ms y usarla, menos de 1 ms. Cada proceso guarda hasta `DB_CONEXIONES_LIBRES` (4) por URL;
+antes de prestar una comprueba que siga viva, al devolverla hace `rollback` (lo no confirmado se
+descarta, como al cerrarla) y si algo falla a la mitad la cierra. Si no hay libres abre otra, sin
+esperar. Por eso nadie debe dejar estado de sesión en la conexión (`SET` fuera de una
+transacción, tablas temporales, `autocommit`). PostgreSQL acepta 200 conexiones en el compose.
+Lo encontró la prueba de carga en la nube: cada página de la web abría varias, el mapa 53.
+
 ## Detrás de nginx (D25, RNF-H16)
 
 Con `DETRAS_DE_PROXY=1`, `crear_app` pone `ProxyFix` (`x_for`, `x_proto`, `x_host`, `x_prefix`, un
