@@ -18,6 +18,7 @@ Opción A. nginx es el terminador TLS y el proxy inverso, sin validar JWT ni ten
 ## Consecuencias
 - Ajusta D13: `estado-servicios` devuelve `https://<dominio>/<servicio>`. Las rutas de D11 no cambian.
 - Los servicios deben funcionar detrás de un prefijo: revisar `/docs`, `/openapi.json` y el CORS de `CONSOLE_ORIGIN`.
+- A un servicio solo van sus rutas: `/<servicio>/api/...`, `/health`, `/docs` y `/openapi.json`. Lo demás es de la web, porque varias de sus páginas se llaman como un servicio (`/usuarios`, `/regiones/5/editar`, `/escenarios/3`, `/enfermedades`, `/comparacion`); al principio nginx las mandaba al servicio, que respondía 404 (visto en la máquina el 2026-11-21). La consola, que sí tiene páginas propias, conserva todo `/consola/`.
 - Los límites de consumo siguen en Redis. `limit_req` de nginx puede ser una capa extra, no la única.
 - D26 decide de dónde sale el certificado.
 - Implementado en local el 2026-11-19: `infra/docker-compose.nginx.yml` e `infra/nginx/` (guía en `docs/INSTALACION.md`). Detrás de nginx, cada servicio confía en sus cabeceras `X-Forwarded-*` solo con `DETRAS_DE_PROXY=1`, y esa variable solo va donde los servicios no publican su puerto. waitress también tiene que confiar en ellas (`epidemia_comun/servir.py`): por omisión las borra, y el servicio veía la IP de nginx en lugar de la del cliente.

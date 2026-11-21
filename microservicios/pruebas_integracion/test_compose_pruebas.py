@@ -58,8 +58,12 @@ def _servicios_con_puerto():
 def test_nginx_enruta_cada_servicio_del_directorio_y_la_consola():
     plantilla = (RAIZ / "infra/nginx/templates/default.conf.template").read_text(encoding="utf-8")
     ruta = re.search(r"\(\?<servicio>([a-z|-]+)\)", plantilla).group(1).split("|")
-    assert sorted(ruta) == sorted(set(SERVICIOS) | {"consola"})
+    assert sorted(ruta) == sorted(SERVICIOS)
     assert len(ruta) == len(set(ruta))
+    # A un servicio solo van sus rutas; /usuarios, /regiones/5/editar o /escenarios/3 son
+    # páginas de la web. La consola, que sí tiene páginas, tiene su propia ruta completa.
+    assert r"(?<resto>/(api/.*|health|docs(/.*)?|openapi\.json))$" in plantilla
+    assert "    location ~ ^/consola(?<resto>/.*)?$ {" in plantilla
 
 
 def test_detras_de_nginx_ningun_servicio_publica_su_puerto():

@@ -42,10 +42,23 @@ def test_cada_servicio_responde_bajo_su_prefijo():
         assert r.json()["servicio"] == nombre
 
 
-def test_el_prefijo_sin_barra_final_redirige():
-    r = pide("GET", "/auth", allow_redirects=False)
+def test_la_consola_sin_barra_final_redirige():
+    r = pide("GET", "/consola", allow_redirects=False)
     assert r.status_code == 301
-    assert r.headers["Location"].endswith("/auth/")
+    assert r.headers["Location"].endswith("/consola/")
+
+
+def test_las_paginas_de_la_web_con_nombre_de_servicio_llegan_a_la_web():
+    """/usuarios, /regiones, /escenarios, /enfermedades y /comparacion son páginas de la web y
+    también nombres de servicios. Antes nginx las mandaba al servicio, que respondía 404."""
+    for pagina in ("/usuarios", "/usuarios/nuevo", "/regiones", "/escenarios", "/escenarios/1",
+                   "/enfermedades", "/comparacion"):
+        r = pide("GET", pagina, allow_redirects=False)
+        # Sin sesión, la web manda al login; un servicio respondería JSON o 404.
+        assert r.status_code in (302, 303) and "/login" in r.headers["Location"], (pagina, r.status_code)
+    # Las rutas de los servicios con el mismo nombre siguen yendo al servicio.
+    assert pide("GET", "/usuarios/api/v1/users/me?format=json").status_code == 401
+    assert pide("GET", "/usuarios/health?format=json").json()["servicio"] == "usuarios"
 
 
 def test_swagger_y_su_contrato_funcionan_bajo_el_prefijo():
