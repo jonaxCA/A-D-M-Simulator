@@ -61,7 +61,9 @@ estaba:
    ```
 
    Pide la contraseña de cada cuenta sin mostrarla y deja todo en
-   `docs/pruebas/carga/<fecha>_nube_perfiles/`, con `resumen.md`.
+   `docs/pruebas/carga/<fecha>_nube_perfiles/`, con `resumen.md`. Mientras corre, nadie
+   use esas cuentas en otro lado: cada una admite 3 sesiones (D41) y la cuarta cierra la más
+   antigua, así que Locust volvería a iniciar sesión a media prueba.
 4. **Cerrar**, en la máquina: `sudo bash pruebas_carga/ventana_nube.sh cierra`. Detiene los
    servicios, vacía las colas de corridas, restaura las tres cosas y los límites, levanta todo y
    compara los conteos de casos, corridas y usuarios con los de antes.

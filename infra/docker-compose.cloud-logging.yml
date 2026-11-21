@@ -34,7 +34,8 @@ services:
   nginx: *cloud-logging
   certbot: *cloud-logging
   # Los servicios, la consola y la web. test_compose_pruebas.py revisa que no falte ninguno del
-  # compose principal (menos base, que no corre).
+  # compose principal (menos las imágenes base: base, base-identidad y base-simulacion, que no
+  # corren).
   auth: *cloud-logging
   sesiones: *cloud-logging
   usuarios: *cloud-logging
