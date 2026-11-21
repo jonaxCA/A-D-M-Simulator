@@ -3,5 +3,7 @@
   "username": "beto",
   "email": "beto@ejemplo.mx",
   "full_name": "Beto Ejemplo",
-  "is_active": true
+  "is_active": true,
+  "institution_id": 1,
+  "region_id": 19
 }

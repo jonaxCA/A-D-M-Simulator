@@ -92,6 +92,14 @@ class NotificacionesTests(unittest.TestCase):
         self.assertEqual(len(ids), len(esperados))
 
     def test_aviso_a_un_rol_salta_a_los_inactivos_y_audita_cada_uno(self):
+        escribe("""INSERT INTO users (username, email, password_hash, full_name, is_active)
+                   VALUES ('prueba.epi.inactivo', 'prueba.epi.inactivo@example.com', 'x',
+                           'Epidemiólogo inactivo de prueba', FALSE)
+                   ON CONFLICT (username) DO UPDATE SET is_active = FALSE""")
+        escribe("""INSERT INTO user_roles (user_id, role_id)
+                   SELECT u.id, r.id FROM users u, roles r
+                   WHERE u.username = 'prueba.epi.inactivo' AND r.code = 'EPIDEMIOLOGO'
+                   ON CONFLICT DO NOTHING""")
         inactivos = {f["id"] for f in query(
             """SELECT u.id FROM users u JOIN user_roles ur ON ur.user_id = u.id
                JOIN roles r ON r.id = ur.role_id WHERE r.code = 'EPIDEMIOLOGO' AND NOT u.is_active""")}

@@ -1,9 +1,9 @@
 import time
 from unittest import mock
 
-from epidemia_comun import llaves, sesiones
-
-from .base import ConRedis
+from epidemia_comun import llaves, sesiones as comun
+from microservicios.comun.tests.base import ConRedis
+from microservicios.sesiones import almacen as sesiones
 
 HORA = 3600
 
@@ -96,7 +96,7 @@ class Sesiones(ConRedis):
         self.assertTrue(sesiones.cerrar(s["sid"]))
         self.assertFalse(sesiones.cerrar(s["sid"]))
         self.assertIsNone(sesiones.renovar(s["refresh"]))
-        self.assertEqual(sesiones.verificar(s["sid"], "jti-1"), "sin_sesion")
+        self.assertEqual(comun.verificar(s["sid"], "jti-1"), "sin_sesion")
         self.assertEqual(self.r.keys("*"), [])
 
     def test_cerrar_todas_solo_las_de_esa_cuenta(self):
@@ -111,11 +111,11 @@ class Sesiones(ConRedis):
 
     def test_verificar(self):
         s = sesiones.abrir(7, ["admin"], HORA)
-        self.assertEqual(sesiones.verificar(s["sid"], "jti-1"), "vigente")
+        self.assertEqual(comun.verificar(s["sid"], "jti-1"), "vigente")
         sesiones.revocar("jti-1", int(time.time()) + 1200)
-        self.assertEqual(sesiones.verificar(s["sid"], "jti-1"), "revocado")
-        self.assertEqual(sesiones.verificar(s["sid"], "jti-2"), "vigente")
-        self.assertEqual(sesiones.verificar("otro-sid", "jti-2"), "sin_sesion")
+        self.assertEqual(comun.verificar(s["sid"], "jti-1"), "revocado")
+        self.assertEqual(comun.verificar(s["sid"], "jti-2"), "vigente")
+        self.assertEqual(comun.verificar("otro-sid", "jti-2"), "sin_sesion")
 
     def test_la_revocacion_dura_lo_que_le_queda_al_token(self):
         sesiones.revocar("jti-1", int(time.time()) + 1200)

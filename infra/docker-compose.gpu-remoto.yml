@@ -21,12 +21,12 @@
 name: epidemia-gpu-remoto
 
 services:
-  # La misma imagen base que el compose principal; no corre, solo se construye.
-  base:
-    image: epidemia/base
+  # La misma imagen base de simulación que el compose principal; no corre, solo se construye.
+  base-simulacion:
+    image: epidemia/base-simulacion
     build:
       context: ..
-      dockerfile: infra/docker/base.Dockerfile
+      dockerfile: infra/docker/base-simulacion.Dockerfile
     deploy:
       replicas: 0
 
@@ -35,7 +35,7 @@ services:
       context: ..
       dockerfile: microservicios/simulador/gpu.Dockerfile
       additional_contexts:
-        epidemia/base: service:base
+        epidemia/base-simulacion: service:base-simulacion
     restart: unless-stopped
     gpus:
       - driver: nvidia

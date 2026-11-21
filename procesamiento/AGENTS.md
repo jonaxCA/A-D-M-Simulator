@@ -18,6 +18,10 @@ sale de cualquier motor (`seir-ref`, `abm-ref`, `abm-gpu`) está en `contrato.py
   GPU de NVIDIA (`abm_gpu/README.md`); sin ellos sus pruebas se saltan. Un cambio a las
   fórmulas de `abm/` se hace también en `abm_gpu/agentes.cu`, y `tests/test_abm_gpu.py`
   revisa que sigan dando lo mismo.
+- `entrada_motor.py` traduce una versión de escenario (filas de la base) a la entrada del motor y
+  decide si es simulable (parámetros con fuente o supuesto, versión aprobada). Es la regla que
+  comparten `simulador` y `pareto` sin importar `backend_web` (E8, D37); no toca la base: cada
+  servicio lee sus filas.
 - `analitica/escala.py` calcula el factor de escala de D6 (habitantes del censo / agentes) y
   lleva los conteos del resumen a habitantes. El motor nunca lo ve.
 - La comparación por costo e impacto (Pareto) vive en `analitica/`, fuera de los motores. Solo

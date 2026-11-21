@@ -1,0 +1,11 @@
+{
+  "total": 1,
+  "instituciones": [
+    {
+      "id": 1,
+      "code": "SSNL",
+      "name": "Secretaría de Salud de Nuevo León",
+      "is_active": true
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- La respuesta del servicio comparacion (puerto 5244): GET /api/v1/comparisons?runs=...,
      raíz <comparacion>. Cada corrida trae su serie diaria completa y los indicadores que
-     simulation_results saca de su resumen. -->
+     simulation_results saca de su resumen. Además: diferencias contra una corrida base, la
+     incertidumbre de las réplicas (D8) y, si se pide, un contrafactual exploratorio. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
 
   <xs:include schemaLocation="../comun/tipos.xsd"/>
@@ -11,6 +12,7 @@
     <xs:all>
       <xs:element name="id" type="Entero"/>
       <xs:element name="scenario_id" type="Entero"/>
+      <xs:element name="scenario_version_id" type="EnteroONulo" minOccurs="0"/>
       <xs:element name="version_number" type="Entero"/>
       <xs:element name="scenario_name" type="xs:string"/>
       <xs:element name="serie" type="Serie"/>
@@ -21,10 +23,163 @@
     </xs:all>
   </xs:complexType>
 
+  <xs:complexType name="MetricaDiferencia">
+    <xs:all>
+      <xs:element name="metrica" type="xs:string"/>
+      <xs:element name="unidad" type="xs:string"/>
+      <xs:element name="base" type="Numero"/>
+      <xs:element name="valor" type="Numero"/>
+      <xs:element name="absoluta" type="Numero"/>
+      <xs:element name="relativa" type="NumeroONulo"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="MetricaContrafactual">
+    <xs:all>
+      <xs:element name="metrica" type="xs:string"/>
+      <xs:element name="unidad" type="xs:string"/>
+      <xs:element name="sin" type="Numero"/>
+      <xs:element name="con" type="Numero"/>
+      <xs:element name="absoluta" type="Numero"/>
+      <xs:element name="relativa" type="NumeroONulo"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Metricas">
+    <xs:sequence>
+      <xs:element name="metrica" type="MetricaDiferencia" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="MetricasContrafactual">
+    <xs:sequence>
+      <xs:element name="metrica" type="MetricaContrafactual" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Diferencia">
+    <xs:all>
+      <xs:element name="corrida_id" type="Entero"/>
+      <xs:element name="contra_id" type="Entero"/>
+      <xs:element name="metricas" type="Metricas"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Diferencias">
+    <xs:all>
+      <xs:element name="nota" type="xs:string"/>
+      <xs:element name="costos_disponibles" type="Booleano"/>
+      <xs:element name="costos_motivo" type="TextoONulo"/>
+      <xs:element name="corridas">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="corrida" type="Diferencia" minOccurs="1" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="PuntoBanda">
+    <xs:all>
+      <xs:element name="dia" type="Entero"/>
+      <xs:element name="corridas" type="Entero"/>
+      <xs:element name="p5" type="Numero"/>
+      <xs:element name="p50" type="Numero"/>
+      <xs:element name="p95" type="Numero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="PicoBanda">
+    <xs:all>
+      <xs:element name="dia" type="Entero"/>
+      <xs:element name="p5" type="Numero"/>
+      <xs:element name="p50" type="Numero"/>
+      <xs:element name="p95" type="Numero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="CorridaConBanda">
+    <xs:all>
+      <xs:element name="id" type="Entero"/>
+      <xs:element name="replicas" type="Entero"/>
+      <xs:element name="pico" type="PicoBanda"/>
+      <xs:element name="banda">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="punto" type="PuntoBanda" minOccurs="1" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Incertidumbre">
+    <xs:all>
+      <xs:element name="nota" type="xs:string"/>
+      <xs:element name="corridas">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="corrida" type="CorridaConBanda" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="sin_replicas">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="corrida_id" type="Entero" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="bandas_encimadas">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="encimada" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:all>
+                  <xs:element name="corrida_id" type="Entero"/>
+                  <xs:element name="contra_id" type="Entero"/>
+                </xs:all>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="CorridaContrafactual">
+    <xs:all>
+      <xs:element name="corrida_id" type="Entero"/>
+      <xs:element name="scenario_name" type="xs:string"/>
+      <xs:element name="mismo_escenario" type="Booleano"/>
+      <xs:element name="metricas" type="MetricasContrafactual"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Contrafactual">
+    <xs:all>
+      <xs:element name="exploratorio" type="Booleano"/>
+      <xs:element name="nota" type="xs:string"/>
+      <xs:element name="sin_intervencion_id" type="Entero"/>
+      <xs:element name="corridas">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="corrida" type="CorridaContrafactual" minOccurs="1" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
   <xs:element name="comparacion">
     <xs:complexType>
       <xs:all>
         <xs:element name="aviso" type="xs:string"/>
+        <xs:element name="base_id" type="Entero"/>
+        <xs:element name="diferencias" type="Diferencias"/>
+        <xs:element name="incertidumbre" type="Incertidumbre"/>
+        <xs:element name="contrafactual" type="Contrafactual" minOccurs="0"/>
         <xs:element name="corridas">
           <xs:complexType>
             <xs:sequence>

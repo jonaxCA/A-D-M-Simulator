@@ -1,0 +1,52 @@
+{
+  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+  "version": 7,
+  "parametro": "r0",
+  "metrica": "fallecimientos",
+  "valor_base": 1.8,
+  "semillas": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "engine_version": "seir-ref-0.1",
+  "metodo": "Un factor a la vez: se cambia un parametro de la enfermedad, los demas quedan como en el escenario, y se corre el motor de referencia con las mismas semillas por valor. Los valores probados son supuestos del analisis, no datos.",
+  "categoria": "exploratoria",
+  "modelo_verificado": true,
+  "motivo": "El modelo seir-ref-0.1 no está calibrado para esta enfermedad y región.",
+  "texto_categoria": "Simulación exploratoria: sirve para comparar escenarios entre sí, no para anticipar cifras reales. El modelo no está calibrado ni validado con datos observados de esta enfermedad y región.",
+  "filas": [
+    {
+      "valor": 1.44,
+      "es_base": false,
+      "media": 319,
+      "minimo": 264,
+      "maximo": 382,
+      "cambio_parametro_pct": -20.0,
+      "diferencia_vs_base": -407.6,
+      "cambio_metrica_pct": -56.1
+    },
+    {
+      "valor": 1.8,
+      "es_base": true,
+      "media": 726.6,
+      "minimo": 697,
+      "maximo": 763,
+      "cambio_parametro_pct": 0.0,
+      "diferencia_vs_base": 0.0,
+      "cambio_metrica_pct": 0.0
+    },
+    {
+      "valor": 2.16,
+      "es_base": false,
+      "media": 854.4,
+      "minimo": 820,
+      "maximo": 880,
+      "cambio_parametro_pct": 20.0,
+      "diferencia_vs_base": 127.8,
+      "cambio_metrica_pct": 17.59
+    }
+  ]
+}

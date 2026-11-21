@@ -10,7 +10,8 @@ import fakeredis
 from backend_web.tests.base import contexto_de_prueba  # noqa: F401  fija JWT_SECRET_KEY
 from backend_web import resultados
 from backend_web.auth import create_token, decode_token
-from epidemia_comun import llaves, sesiones
+from epidemia_comun import llaves
+from microservicios.sesiones import almacen as sesiones
 from epidemia_comun.ajustes import cargar_ajustes
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.seguridad import verificar_token

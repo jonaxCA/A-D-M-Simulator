@@ -21,6 +21,12 @@ plantilla (bloque A), y **Redis** (bloque K).
   y `days` (422 si no son válidos, 404 si la enfermedad o el municipio no existen). La usan
   `series` y `zonas`.
 
+- `alcance.regiones_permitidas()`, `exige_region(region_id)` y `exige_region_de(obtener)`: el cliente
+  técnico de `GET /api/v1/scopes/me` de `roles` (D43). `None` es una cuenta nacional; si no, el
+  conjunto de regiones cubiertas. Pide el alcance en cada petición con el token de la persona y, si
+  `roles` no responde, es 503: nunca deja pasar. Qué región tiene un dato lo decide cada servicio
+  con su SQL. En las pruebas, el fixture `alcance_falso` (autouse) responde nacional.
+
 `microservicios/conftest.py` trae para las pruebas de los servicios un fakeredis compartido
 por `crear_app` y `redis_compartido` (`redis_falso`, con `apagar_redis()` para simular la
 caída), un firmador de tokens con sesión (`token`) y `crear_cliente("<paquete>")`.
@@ -120,7 +126,8 @@ docker compose -f infra/docker-compose.yml up -d redis
 
 | Módulo | Para qué | Redis caído |
 |---|---|---|
-| `sesiones` | `abrir`, `obtener`, `renovar`, `cerrar`, `cerrar_todas`, `revocar`, `verificar` | 503 |
+| `sesiones` | Solo lo técnico: `verificar(sid, jti)` y `cerrar_de_usuario(usuario)`, el cliente de la ruta interna de `sesiones`. Las reglas (abrir, renovar, cerrar, tope de concurrentes) son del servicio `sesiones` (`microservicios/sesiones/almacen.py`) | 503 |
+| `contratos` | `proyectar(fila, campos)`: recorta una fila a los campos del contrato | — |
 | `cache` | `obtener(servicio, clave, ttl, calcular)` | Calcula con la base y sigue |
 | `candados` | `with candado(llave, ttl):` | 503 |
 | `cola` | `encolar`, `tomar` (espera hasta `ESPERA` segundos), `pendientes` | 503 |
@@ -134,7 +141,7 @@ convierta en RFC 7807 sin conocerlas una por una:
 | Excepción | `codigo` | `http` |
 |---|---|---|
 | `redis_compartido.RedisNoDisponible` | `REDIS_NO_DISPONIBLE` | 503 |
-| `sesiones.RefreshReutilizado` | `TOKEN_REVOCADO` | 401 |
+| `sesiones.almacen.RefreshReutilizado` (servicio `sesiones`) | `TOKEN_REVOCADO` | 401 |
 | `candados.CandadoOcupado` | `CONFLICTO` | 409 |
 | `errores.ErrorAPI` desde `limites` | `LIMITE_EXCEDIDO` (con `Retry-After`) | 429 |
 
@@ -144,22 +151,12 @@ convierta en RFC 7807 sin conocerlas una por una:
 from epidemia_comun import cache, candados, cola, llaves, sesiones
 from epidemia_comun.redis_compartido import opcional
 
-# auth, al iniciar sesión: el sid va en el claim `sid` del access; la app guarda el refresh.
-s = sesiones.abrir(usuario["id"], usuario["roles"], ttl=7200)
-
 # @requiere_token, después de revisar la firma: "vigente", "revocado" o "sin_sesion".
 estado = sesiones.verificar(claims["sid"], claims["jti"])
 
-# sesiones, logout: el access deja de valer aunque no haya vencido.
-sesiones.revocar(claims["jti"], claims["exp"])
-sesiones.cerrar(claims["sid"])
-
-# sesiones, refresh: None si no existe o venció. Si ya se había usado, lanza
-# RefreshReutilizado y la sesión queda cerrada.
-nueva = sesiones.renovar(refresh)
-
-# usuarios y roles, al cambiar los roles o dar de baja una cuenta (por la ruta interna de sesiones).
-sesiones.cerrar_todas(usuario_id)
+# usuarios y roles, al cambiar los roles o dar de baja una cuenta: llama a la ruta interna de
+# `sesiones` (DELETE /api/v1/sessions/user/{id}) y regresa cuántas cerró.
+cerradas = sesiones.cerrar_de_usuario(usuario_id)
 
 # zonas: la clave lleva todo lo que cambia la respuesta, incluido el ámbito de quien pregunta.
 filas = cache.obtener("zonas", f"pagina={pagina}&ambito={ambito}", 60,
@@ -231,7 +228,6 @@ colecciones de D28 (regla 12 de `microservicios/AGENTS.md`).
 | Módulo | Para qué | MongoDB caído |
 |---|---|---|
 | `mongo` | `base()`, `coleccion(nombre)` (crea sus índices la primera vez), `requerido()`, `opcional()`, `ping()` y `usar()` para las pruebas | `requerido` lanza `MongoNoDisponible` (503 `SERVICIO_NO_DISPONIBLE`, lo convierte `crear_app`); `opcional` regresa el defecto |
-| `series_corridas` | `documentos(run, motor, resultado)`, `guardar(docs)`, `borrar(run_id)`, `leer(run_id)` y `banda(version, motor, campo)` | Según quién llame: el simulador reintenta, `resultados` responde 503 |
 
 ## Colecciones
 
@@ -239,25 +235,25 @@ colecciones de D28 (regla 12 de `microservicios/AGENTS.md`).
 
 | Colección | Un documento es | Índices | Vida | Escribe / lee |
 |---|---|---|---|---|
-| `series_corridas` | Un día de una corrida: `run_id`, `batch_id`, `scenario_id`, `scenario_version_id`, `motor`, `engine_version`, `semilla`, los campos de `CAMPOS_SERIE` (`procesamiento/contrato.py`) y `version_esquema` | `{run_id, dia}` único; `{scenario_version_id, motor, dia}` | La de la corrida | `simulador` / `resultados` |
+| `series_corridas` | Un día de una corrida: `run_id`, `batch_id`, `scenario_id`, `scenario_version_id`, `motor`, `engine_version`, `semilla`, los campos de `CAMPOS_SERIE` (`procesamiento/contrato.py`) y `version_esquema` | `{run_id, dia}` único; `{scenario_version_id, motor, dia}` | La de la corrida | `simulador` (`simulador/serie.py`) / `resultados` (`resultados/serie.py`); el formato es el contrato `docs/contratos/series_corridas/` (D37) |
 | `historial_servicios` | Un sondeo: `servicio`, `fecha`, `estado`, `latencia_ms`, `version`, `dependencias_caidas`, `error` y `version_esquema` | `{servicio, fecha}`; `{fecha}` con TTL de 30 días (el TTL solo se pone en un índice de un campo) | 30 días | `estado-servicios` |
 
 - **Versión de esquema.** Cada documento lleva `version_esquema` (hoy 1). Quien lee filtra por las
   versiones que conoce (`CONOCIDAS`).
-- **Actualización.** `series_corridas.guardar()` reemplaza por `{run_id, dia}`: volver a guardar una
+- **Actualización.** `simulador/serie.py` (`guardar()`) reemplaza por `{run_id, dia}`: volver a guardar una
   corrida (el reintento del simulador) actualiza sus días y no los duplica.
-- **Agregación.** `series_corridas.banda()` da p5, mediana y p95 por día entre las corridas de una
+- **Agregación.** `resultados/serie.py` (`banda()`) da p5, mediana y p95 por día entre las corridas de una
   versión y un motor (`$percentile`, MongoDB 7). `estado-servicios` agrega la disponibilidad y la
   latencia de las últimas 24 h de cada servicio.
 
 ```python
-from epidemia_comun import mongo, series_corridas
+from epidemia_comun import mongo
 
 # simulador: si MongoDB no responde, opcional() regresa None y la serie queda pendiente.
-mongo.opcional("simulador: guardar la serie", lambda: series_corridas.guardar(docs))
+mongo.opcional("simulador: guardar la serie", lambda: serie.guardar(docs))
 
 # resultados: sin MongoDB, 503.
-serie = mongo.requerido("resultados: leer la serie", lambda: series_corridas.leer(run_id))
+serie = mongo.requerido("resultados: leer la serie", lambda: serie.leer(run_id))
 ```
 
 ## Pruebas

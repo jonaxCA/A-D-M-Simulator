@@ -27,7 +27,7 @@ ROLES = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 
 def emitir(usuario, roles, minutos, ajustes):
     import jwt
-    from epidemia_comun import sesiones
+    from microservicios.sesiones import almacen as sesiones
     ttl = minutos * 60
     sesion = sesiones.abrir(usuario, roles, ttl=ttl)
     ahora = int(time.time())

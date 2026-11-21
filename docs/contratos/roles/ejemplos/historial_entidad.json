@@ -1,0 +1,42 @@
+{
+  "total": 2,
+  "coincidencias": 2,
+  "limit": 100,
+  "offset": 0,
+  "eventos": [
+    {
+      "id": 340,
+      "fecha": "2026-11-18T12:05:00+00:00",
+      "usuario": "Eva Epidemióloga",
+      "usuario_id": 4,
+      "modulo": "scenario_versions",
+      "accion": "UPDATE",
+      "entidad_id": "31",
+      "antes": {
+        "status": "en_revision"
+      },
+      "datos": {
+        "status": "aprobado",
+        "version_number": 2,
+        "review_comment": null
+      }
+    },
+    {
+      "id": 331,
+      "fecha": "2026-11-17T16:20:00+00:00",
+      "usuario": "Ana Analista",
+      "usuario_id": 9,
+      "modulo": "scenario_versions",
+      "accion": "UPDATE",
+      "entidad_id": "31",
+      "antes": {
+        "status": "borrador"
+      },
+      "datos": {
+        "status": "en_revision",
+        "version_number": 2,
+        "parametros_congelados": true
+      }
+    }
+  ]
+}

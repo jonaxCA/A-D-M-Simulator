@@ -7,8 +7,8 @@ from contextlib import contextmanager
 
 import pytest
 
-from backend_web import auth as reglas_auth
-from backend_web import queries
+from microservicios.auth import datos as reglas_auth
+from microservicios.usuarios import datos as queries
 from microservicios.auth import rutas as rutas_auth
 from microservicios.roles import rutas as rutas_roles
 from microservicios.sesiones import rutas as rutas_sesiones
@@ -100,9 +100,13 @@ def base(monkeypatch):
     for modulo in (rutas_usuarios, rutas_roles):
         monkeypatch.setattr(modulo, "get_conn", get_conn)
     monkeypatch.setattr(reglas_auth, "attempt_login", falsa.login)
+    # Este flujo no es el de MFA ni el de dispositivos (D40, D41): sus pruebas viven en auth y sesiones.
+    monkeypatch.setenv("MFA_PERFILES", "")
     monkeypatch.setattr(queries, "get_usuario", falsa.usuario)
-    monkeypatch.setattr(rutas_usuarios, "get_user_roles", falsa.roles_de)
-    monkeypatch.setattr(queries, "get_roles_catalogo",
+    monkeypatch.setattr(rutas_usuarios, "query", lambda *a, **k: {
+        "institution_id": None, "institucion": None, "region_id": None, "region": None})
+    monkeypatch.setattr(queries, "get_user_roles", falsa.roles_de)
+    monkeypatch.setattr(rutas_roles, "catalogo_roles",
                         lambda: [{"id": i, "code": c, "name": c.title()} for i, c in ROLES.items()])
     return falsa
 
@@ -118,7 +122,10 @@ def bitacora(monkeypatch):
 
 
 @pytest.fixture
-def servicios(crear_cliente, base, bitacora):
+def servicios(crear_cliente, base, bitacora, llamar_a_sesiones, monkeypatch):
+    from epidemia_comun import sesiones as tecnicas
+    monkeypatch.setattr(rutas_auth, "llamar", llamar_a_sesiones)
+    monkeypatch.setattr(tecnicas, "llamar", llamar_a_sesiones)
     return {nombre: crear_cliente(nombre) for nombre in ("auth", "sesiones", "usuarios", "roles")}
 
 

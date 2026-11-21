@@ -15,6 +15,7 @@ RAIZ = Path(__file__).resolve().parents[3]
 
 def corrida(id_, fallecimientos):
     return {"id": id_, "scenario_id": 3, "version_number": 1, "scenario_name": "Escenario %d" % id_,
+            "scenario_version_id": 10 + id_,
             "serie": [{"dia": 0, "casos_activos": 100, "H": 0, "D": 0},
                       {"dia": 1, "casos_activos": 120, "H": 1, "D": 0}],
             "fallecimientos": fallecimientos, "pico_casos_activos": 500, "dia_pico": 40,
@@ -34,7 +35,8 @@ class Respuesta:
 
 
 def resultado(c):
-    return {"corrida": {k: c[k] for k in ("scenario_id", "version_number", "scenario_name")},
+    return {"corrida": {k: c[k] for k in ("scenario_id", "scenario_version_id", "version_number",
+                                          "scenario_name")},
             "serie": c["serie"],
             "resumen": {k: c[k] for k in ("fallecimientos", "pico_casos_activos", "dia_pico",
                                           "tasa_ataque")}}
@@ -45,6 +47,8 @@ def pedidas(monkeypatch):
     registro = []
 
     def llamar(servicio, metodo, ruta, **kw):
+        if servicio == "pareto" or ruta.endswith("/band"):
+            return Respuesta(404)
         registro.append((servicio, metodo, ruta, kw["token"], kw["correlation_id"]))
         run_id = int(ruta.split("/")[4])
         if run_id in COMPLETADAS:
@@ -172,3 +176,160 @@ def test_redis_caido_es_503(cliente, token, apagar_redis):
 def test_contrato_servido_es_el_del_repo(cliente):
     r = cliente.get("/openapi.json")
     assert r.data == (RAIZ / "docs/contratos/comparacion/openapi.json").read_bytes()
+
+
+def banda(pico, replicas=30):
+    return {"replicas": replicas, "banda": [{"dia": 0, "corridas": replicas, "p5": 90, "p50": 100, "p95": 110},
+                                             {"dia": 1, "corridas": replicas, "p5": pico[0], "p50": pico[1],
+                                              "p95": pico[2]}]}
+
+
+COSTOS = {"filas": [{"id": 12, "costo": 0, "costo_pesos": 0},
+                    {"id": 15, "costo": 1000.0, "costo_pesos": 15000.0}]}
+
+
+@pytest.fixture
+def completo(monkeypatch):
+    llamadas = []
+    bandas = {12: banda((100, 200, 300)), 15: banda((250, 350, 450))}
+
+    def llamar(servicio, metodo, ruta, **kw):
+        llamadas.append((servicio, ruta))
+        if servicio == "pareto":
+            return Respuesta(200, COSTOS)
+        run_id = int(ruta.split("/")[4])
+        if ruta.endswith("/band"):
+            return Respuesta(200, bandas[run_id])
+        return Respuesta(200, resultado(COMPLETADAS[run_id]))
+
+    monkeypatch.setattr(rutas, "llamar", llamar)
+    return llamadas
+
+
+def test_diferencias_absolutas_y_relativas_contra_la_primera(cliente, token, completo):
+    datos = cliente.get("/api/v1/comparisons?runs=12,15&format=json", headers=token()).get_json()
+    assert datos["base_id"] == 12
+    [fila] = datos["diferencias"]["corridas"]
+    assert (fila["corrida_id"], fila["contra_id"]) == (15, 12)
+    metricas = {m["metrica"]: m for m in fila["metricas"]}
+    assert metricas["fallecimientos"] == {"metrica": "fallecimientos", "unidad": "personas simuladas",
+                                          "base": 100, "valor": 61, "absoluta": -39, "relativa": -0.39}
+    assert metricas["costo"]["absoluta"] == 1000.0 and metricas["costo"]["relativa"] is None
+    assert metricas["costo_pesos"]["valor"] == 15000.0
+    assert datos["diferencias"]["costos_disponibles"] is True
+    assert "contrafactual" not in datos
+
+
+def test_la_base_la_elige_quien_llama(cliente, token, completo):
+    datos = cliente.get("/api/v1/comparisons?runs=12,15&base=15&format=json", headers=token()).get_json()
+    assert datos["base_id"] == 15 and datos["diferencias"]["corridas"][0]["corrida_id"] == 12
+    assert datos["diferencias"]["corridas"][0]["metricas"][3]["absoluta"] == 39
+
+
+@pytest.mark.parametrize("parametro", ["base=99", "base=abc", "sin_intervencion=99"])
+def test_base_o_sin_intervencion_fuera_de_runs_es_422(cliente, token, completo, parametro):
+    r = cliente.get("/api/v1/comparisons?runs=12,15&format=json&" + parametro, headers=token())
+    assert r.status_code == 422 and r.get_json()["codigo"] == "DATOS_INVALIDOS"
+
+
+def test_sin_costos_las_demas_diferencias_siguen(cliente, token, completo, monkeypatch):
+    original = rutas.llamar
+
+    def llamar(servicio, *a, **kw):
+        if servicio == "pareto":
+            return type("R", (), {"status_code": 422, "json": lambda self: {"detail": "Falta el costo de X."}})()
+        return original(servicio, *a, **kw)
+
+    monkeypatch.setattr(rutas, "llamar", llamar)
+    datos = cliente.get("/api/v1/comparisons?runs=12,15&format=json", headers=token()).get_json()
+    assert datos["diferencias"]["costos_disponibles"] is False
+    assert datos["diferencias"]["costos_motivo"] == "Falta el costo de X."
+    assert {m["metrica"] for m in datos["diferencias"]["corridas"][0]["metricas"]} == {
+        "tasa_ataque", "pico_casos_activos", "dia_pico", "fallecimientos"}
+
+
+def test_incertidumbre_con_replicas_y_aviso_de_bandas_encimadas(cliente, token, completo):
+    inc = cliente.get("/api/v1/comparisons?runs=12,15&format=json", headers=token()).get_json()["incertidumbre"]
+    assert [c["id"] for c in inc["corridas"]] == [12, 15]
+    assert inc["corridas"][0]["pico"] == {"dia": 1, "p5": 100, "p50": 200, "p95": 300}
+    assert inc["sin_replicas"] == [] and inc["bandas_encimadas"] == [{"corrida_id": 12, "contra_id": 15}]
+
+
+def test_bandas_separadas_no_avisan(cliente, token, completo, monkeypatch):
+    original = rutas.llamar
+
+    def llamar(servicio, metodo, ruta, **kw):
+        if ruta.endswith("15/band"):
+            return Respuesta(200, banda((400, 500, 600)))
+        return original(servicio, metodo, ruta, **kw)
+
+    monkeypatch.setattr(rutas, "llamar", llamar)
+    inc = cliente.get("/api/v1/comparisons?runs=12,15&format=json", headers=token()).get_json()["incertidumbre"]
+    assert inc["bandas_encimadas"] == []
+
+
+def test_una_sola_replica_va_en_sin_replicas(cliente, token, pedidas):
+    inc = cliente.get("/api/v1/comparisons?runs=12,15&format=json", headers=token()).get_json()["incertidumbre"]
+    assert inc["corridas"] == [] and inc["sin_replicas"] == [12, 15] and inc["bandas_encimadas"] == []
+
+
+def test_contrafactual_exploratorio_solo_con_las_corridas_dadas(cliente, token, completo):
+    datos = cliente.get("/api/v1/comparisons?runs=12,15&sin_intervencion=12&format=json",
+                        headers=token()).get_json()
+    cf = datos["contrafactual"]
+    assert cf["exploratorio"] is True and cf["sin_intervencion_id"] == 12 and "No recomienda" in cf["nota"]
+    [fila] = cf["corridas"]
+    assert fila["corrida_id"] == 15 and fila["mismo_escenario"] is True
+    muertes = next(m for m in fila["metricas"] if m["metrica"] == "fallecimientos")
+    assert (muertes["sin"], muertes["con"], muertes["absoluta"]) == (100, 61, -39)
+    assert {c["id"] for c in datos["corridas"]} == {12, 15}
+    assert not any(l[1].count("sin") for l in completo)
+
+
+def test_xml_con_todo_valida_contra_el_xsd(cliente, token, completo, monkeypatch):
+    serie = simular(escenario(dias=5), 1)["serie"]
+    for corrida_ in COMPLETADAS.values():
+        monkeypatch.setitem(corrida_, "serie", serie)
+    r = cliente.get("/api/v1/comparisons?runs=12,15&sin_intervencion=12", headers=token())
+    xmlschema.XMLSchema(str(RAIZ / "docs/contratos/comparacion/comparacion.xsd")).validate(r.data.decode("utf-8"))
+
+
+def test_mismo_version_con_otro_motor_pide_su_propia_banda_y_las_compara(cliente, token, monkeypatch):
+    mismas = {12: dict(COMPLETADAS[12], scenario_version_id=11), 15: dict(COMPLETADAS[15], scenario_version_id=11)}
+    motores = {12: "seir-ref-0.1", 15: "abm-ref-0.1"}
+    bandas = {12: banda((100, 200, 300)), 15: banda((250, 350, 450))}
+    pedidas_band = []
+
+    def llamar(servicio, metodo, ruta, **kw):
+        if servicio == "pareto":
+            return Respuesta(200, COSTOS)
+        run_id = int(ruta.split("/")[4])
+        if ruta.endswith("/band"):
+            pedidas_band.append(run_id)
+            return Respuesta(200, bandas[run_id])
+        return Respuesta(200, dict(resultado(mismas[run_id]), engine_version=motores[run_id]))
+
+    monkeypatch.setattr(rutas, "llamar", llamar)
+    datos = cliente.get("/api/v1/comparisons?runs=12,15&format=json", headers=token()).get_json()
+    assert sorted(pedidas_band) == [12, 15]
+    assert [c["pico"]["p50"] for c in datos["incertidumbre"]["corridas"]] == [200, 350]
+    assert datos["incertidumbre"]["bandas_encimadas"] == [{"corrida_id": 12, "contra_id": 15}]
+    assert all("engine_version" not in c for c in datos["corridas"])
+
+
+def test_misma_version_y_motor_comparten_banda_y_no_se_marcan_encimadas(cliente, token, monkeypatch):
+    mismas = {i: dict(COMPLETADAS[i], scenario_version_id=11) for i in (12, 15)}
+    pedidas_band = []
+
+    def llamar(servicio, metodo, ruta, **kw):
+        if servicio == "pareto":
+            return Respuesta(200, COSTOS)
+        run_id = int(ruta.split("/")[4])
+        if ruta.endswith("/band"):
+            pedidas_band.append(run_id)
+            return Respuesta(200, banda((100, 200, 300)))
+        return Respuesta(200, dict(resultado(mismas[run_id]), engine_version="seir-ref-0.1"))
+
+    monkeypatch.setattr(rutas, "llamar", llamar)
+    inc = cliente.get("/api/v1/comparisons?runs=12,15&format=json", headers=token()).get_json()["incertidumbre"]
+    assert len(pedidas_band) == 1 and len(inc["corridas"]) == 2 and inc["bandas_encimadas"] == []

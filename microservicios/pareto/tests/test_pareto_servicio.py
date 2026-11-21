@@ -4,7 +4,7 @@ from xml.etree import ElementTree as ET
 import pytest
 import xmlschema
 
-from backend_web import simulaciones
+from microservicios.pareto import datos as consultas_sql, dominio
 from microservicios.pareto import rutas
 from procesamiento.analitica import METRICAS_IMPACTO, comparar
 from procesamiento.motor import AVISO_SIMULACION, simular
@@ -38,7 +38,7 @@ def llamadas(monkeypatch):
             return None, ["Metrica '%s' no valida." % metrica]
         return dict(COMPARACION, metrica=metrica), []
 
-    monkeypatch.setattr(simulaciones, "construir_comparacion_costo_impacto",
+    monkeypatch.setattr(dominio, "construir_comparacion_costo_impacto",
                         comparacion_costo_impacto)
     return registro
 
@@ -107,7 +107,7 @@ def test_la_salida_real_del_motor_valida_contra_el_xsd(cliente, token, monkeypat
     factores = {"VACUNACION": {"valor": 0.5, "supuesto": True}}
     real = comparar(entradas, costos, base=base, factores=factores)
     assert (real["filas"][1]["costo_pesos"] is None) is not con_pesos
-    monkeypatch.setattr(simulaciones, "construir_comparacion_costo_impacto",
+    monkeypatch.setattr(dominio, "construir_comparacion_costo_impacto",
                         lambda run_ids, metrica="fallecimientos": (real, []))
     r = cliente.get("/api/v1/pareto?runs=12,15", headers=token())
     assert r.status_code == 200
@@ -147,3 +147,107 @@ def test_redis_caido_es_503(cliente, token, apagar_redis):
 def test_contrato_servido_es_el_del_repo(cliente):
     r = cliente.get("/openapi.json")
     assert r.data == (RAIZ / "docs/contratos/pareto/openapi.json").read_bytes()
+
+
+@pytest.fixture
+def versiones(monkeypatch):
+    def construir(version_id):
+        if version_id == 404:
+            return None, None, ["La version de escenario no existe."]
+        if version_id == 5:
+            return None, {"id": 5}, ["La version de escenario no esta aprobada."]
+        return escenario(), {"id": version_id}, []
+
+    monkeypatch.setattr(dominio, "construir_escenario_desde_version", construir)
+
+
+def test_sensibilidad_por_porcentaje(cliente, token, versiones):
+    r = cliente.get("/api/v1/pareto/sensitivity?version=7&parameter=r0&percent=-20,20&format=json",
+                    headers=token())
+    assert r.status_code == 200
+    datos = r.get_json()
+    assert datos["aviso"] == AVISO_SIMULACION and datos["categoria"] == "exploratoria"
+    assert [f["valor"] for f in datos["filas"]] == [1.44, 1.8, 2.16]
+    assert [f["es_base"] for f in datos["filas"]] == [False, True, False]
+    medias = [f["media"] for f in datos["filas"]]
+    assert medias == sorted(medias)
+
+
+def test_sensibilidad_por_valores_xml_valida_contra_el_xsd(cliente, token, versiones):
+    r = cliente.get("/api/v1/pareto/sensitivity?version=7&parameter=infeccioso_dias&values=4,6"
+                    "&metric=hospitalizaciones", headers=token())
+    assert r.status_code == 200
+    xmlschema.XMLSchema(str(RAIZ / "docs/contratos/pareto/pareto.xsd")).validate(r.data.decode("utf-8"))
+
+
+@pytest.mark.parametrize("consulta,estado", [
+    ("version=7&parameter=r0", 422),
+    ("version=7&parameter=r0&values=1.5&percent=10", 422),
+    ("version=7&parameter=letalidad&values=1.5", 422),
+    ("version=7&parameter=r0&values=abc", 422),
+    ("version=7&parameter=r0&values=0", 422),
+    ("version=7&parameter=r0&percent=-100", 422),
+    ("version=7&parameter=r0&values=1,2,3,4,5,6,7,8,9,10", 422),
+    ("version=7&parameter=r0&values=1.5&metric=costo", 422),
+    ("parameter=r0&values=1.5", 422),
+    ("version=5&parameter=r0&values=1.5", 422),
+    ("version=404&parameter=r0&values=1.5", 404),
+])
+def test_sensibilidad_invalida(cliente, token, versiones, consulta, estado):
+    r = cliente.get("/api/v1/pareto/sensitivity?format=json&" + consulta, headers=token())
+    assert r.status_code == estado
+
+
+def test_sensibilidad_pide_token_y_rol(cliente, token, versiones):
+    ruta = "/api/v1/pareto/sensitivity?version=7&parameter=r0&values=1.5"
+    assert cliente.get(ruta).status_code == 401
+    assert cliente.get(ruta, headers=token(("CAPTURISTA",))).status_code == 403
+
+
+def test_calibracion_dice_que_no_hay(cliente, token):
+    r = cliente.get("/api/v1/pareto/calibration?format=json", headers=token())
+    assert r.status_code == 200
+    datos = r.get_json()
+    assert datos["disponible"] is False and datos["ejecucion"] == "no_disponible"
+    assert {m["estado"] for m in datos["modelos"]} == {"sin_calibrar"}
+    assert {m["categoria"] for m in datos["modelos"]} == {"exploratoria"}
+    xml = cliente.get("/api/v1/pareto/calibration?disease=1&region=2", headers=token())
+    xmlschema.XMLSchema(str(RAIZ / "docs/contratos/pareto/pareto.xsd")).validate(xml.data.decode("utf-8"))
+
+
+@pytest.mark.parametrize("consulta", ["engine=otro", "disease=0", "region=x"])
+def test_calibracion_invalida(cliente, token, consulta):
+    assert cliente.get("/api/v1/pareto/calibration?format=json&" + consulta, headers=token()).status_code == 422
+
+
+def test_calibracion_no_se_ejecuta(cliente, token):
+    assert cliente.post("/api/v1/pareto/calibration", headers=token()).status_code == 405
+    assert cliente.get("/api/v1/pareto/calibration", headers={}).status_code == 401
+    assert cliente.get("/api/v1/pareto/calibration", headers=token(("CAPTURISTA",))).status_code == 403
+
+
+@pytest.mark.parametrize("rol", ["INVESTIGADOR", "AUTORIDAD_SANITARIA"])
+def test_los_perfiles_de_lectura_ven_la_frontera(cliente, token, rol):
+    assert cliente.get("/api/v1/pareto?runs=12,15&format=json", headers=token((rol,))).status_code == 200
+
+
+def test_las_corridas_de_otra_region_son_403(cliente, token, llamadas, alcance_falso, monkeypatch):
+    monkeypatch.setattr(consultas_sql, "regiones_de_corridas", lambda ids: {9, 10})
+    alcance_falso["regiones"] = [9]
+    r = cliente.get("/api/v1/pareto?runs=12,15&format=json", headers=token())
+    assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE"
+    assert llamadas == []
+    alcance_falso["regiones"] = [9, 10]
+    assert cliente.get("/api/v1/pareto?runs=12,15&format=json", headers=token()).status_code == 200
+
+
+def test_la_sensibilidad_de_una_version_de_otra_region_es_403(
+        cliente, token, versiones, alcance_falso, monkeypatch):
+    monkeypatch.setattr(consultas_sql, "region_de_version", lambda version_id: 10)
+    alcance_falso["regiones"] = [9]
+    r = cliente.get("/api/v1/pareto/sensitivity?version=7&parameter=r0&percent=20&format=json",
+                    headers=token())
+    assert r.status_code == 403
+    alcance_falso["regiones"] = [10]
+    assert cliente.get("/api/v1/pareto/sensitivity?version=7&parameter=r0&percent=20&format=json",
+                       headers=token()).status_code == 200

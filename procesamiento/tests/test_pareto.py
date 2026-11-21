@@ -25,8 +25,8 @@ COSTOS = {
 FACTORES = {"VACUNACION": {"valor": 0.5, "fuente": "prueba", "supuesto": True}}
 
 
-def pt(id_, costo, impacto):
-    return {"id": id_, "costo": costo, "impacto": impacto}
+def pt(id_, costo, impacto, **resto):
+    return {"id": id_, "costo": costo, "impacto": impacto, **resto}
 
 
 def ids_dominados(resultado):
@@ -329,3 +329,42 @@ class CapasTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Explicacion(unittest.TestCase):
+    def test_dominada_dice_quien_y_en_que_criterio(self):
+        r = frontera_pareto([pt("A", 5, 50, nombre="Alfa"), pt("B", 5, 40, nombre="Beta"),
+                             pt("C", 2, 60, nombre="Gama")], "fallecimientos")
+        a = r["puntos"][0]["explicacion"]
+        self.assertTrue(a["dominado"])
+        self.assertEqual([d["id"] for d in a["dominada_por"]], ["B"])
+        self.assertEqual(a["dominada_por"][0]["criterios"], ["impacto"])
+        self.assertEqual(a["dominada_por"][0]["diferencia_impacto"], 10)
+        self.assertEqual(a["dominada_por"][0]["diferencia_costo"], 0)
+        self.assertEqual([c["id"] for c in a["compromisos"]], ["C"])
+        self.assertIn("Beta", a["texto"])
+        self.assertIn("fallecimientos", a["texto"])
+
+    def test_dominada_en_los_dos_criterios(self):
+        r = frontera_pareto([pt("A", 9, 90), pt("B", 1, 10)])
+        d = r["puntos"][0]["explicacion"]["dominada_por"][0]
+        self.assertEqual(d["criterios"], ["costo", "impacto"])
+        self.assertEqual((d["diferencia_costo"], d["diferencia_impacto"]), (8, 80))
+
+    def test_frontera_explica_los_compromisos(self):
+        r = frontera_pareto([pt("A", 0, 100), pt("B", 10, 80)])
+        a, b = (p["explicacion"] for p in r["puntos"])
+        self.assertFalse(a["dominado"] or b["dominado"])
+        self.assertEqual(a["compromisos"][0]["mejor_en"], "impacto")
+        self.assertEqual(b["compromisos"][0]["mejor_en"], "costo")
+        self.assertTrue(a["texto"].startswith("En la frontera"))
+
+    def test_identicas_empatan(self):
+        r = frontera_pareto([pt("A", 5, 40), pt("B", 5, 40)])
+        self.assertEqual(r["puntos"][0]["explicacion"]["empatada_con"], ["B"])
+        self.assertIn("Empata", r["puntos"][0]["explicacion"]["texto"])
+
+    def test_no_recomienda(self):
+        r = frontera_pareto([pt("A", 0, 100), pt("B", 10, 80), pt("C", 12, 90)])
+        for p in r["puntos"]:
+            self.assertNotRegex(p["explicacion"]["texto"].lower(), "recomend|conviene|mejor opcion")

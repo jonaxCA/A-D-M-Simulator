@@ -11,7 +11,7 @@ import requests
 from backend_web import notificaciones, queries
 from microservicios.aprobacion import rutas as rutas_aprobacion
 from microservicios.sincronizacion import rutas as rutas_sincronizacion
-from microservicios.simulador import trabajador
+from microservicios.simulador import datos as datos_simulador, trabajador
 
 
 class Respuesta(requests.Response):
@@ -66,7 +66,7 @@ def test_aviso_de_aprobacion(crear_cliente, guardadas, caplog):
 
 @pytest.mark.parametrize("final", ["completado", "fallido"])
 def test_aviso_del_simulador(crear_cliente, guardadas, monkeypatch, caplog, final):
-    monkeypatch.setattr(queries, "get_run", lambda run_id: {
+    monkeypatch.setattr(datos_simulador, "get_run", lambda run_id: {
         "id": run_id, "requested_by": 5, "scenario_id": 3, "scenario_version_id": 11,
         "scenario_name": "Brote", "version_number": 2, "error_message": "Error forzado."})
     ajustes = crear_cliente("simulador").application.config

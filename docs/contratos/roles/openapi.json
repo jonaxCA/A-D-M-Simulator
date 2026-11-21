@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - roles",
     "version": "0.1.0",
-    "description": "Consulta roles y permisos, y asigna el rol de una cuenta (solo ADMINISTRADOR). Escribe user_roles; cambiar el rol cierra las sesiones de la cuenta."
+    "description": "Consulta roles y permisos, asigna el rol de una cuenta (solo ADMINISTRADOR), consulta la bitácora y administra el alcance por región o institución de cada cuenta (D43). Escribe user_roles y user_scopes; cambiar el rol cierra las sesiones de la cuenta."
   },
   "servers": [
     {
@@ -370,7 +370,7 @@
       "get": {
         "summary": "Consultar la bitácora",
         "operationId": "consultar_bitacora",
-        "description": "Los eventos de audit_log, del más reciente al más viejo. Filtros opcionales: q (nombre de quien actuó, IP o módulo), user_id, module (entity_type) y action; action acepta además RUN::<etapa> (encolado, ejecutando, completado, fallido o cancelado) para aislar una etapa de las corridas. datos es data_after tal cual; la descripción para personas la arma el cliente. Solo ADMINISTRADOR (D1).",
+        "description": "Los eventos de audit_log, del más reciente al más viejo. Filtros opcionales: q (nombre de quien actuó, IP o módulo), user_id, module (entity_type), entity_id (con module, el historial de una entidad), action (acepta además RUN::<etapa>: encolado, ejecutando, completado, fallido o cancelado) y el rango from/to (ISO 8601; to con solo la fecha incluye ese día). Se pagina con limit y offset; coincidencias es el total que cumple los filtros. datos es data_after y antes es data_before, tal cual; la descripción para personas la arma el cliente. Solo ADMINISTRADOR (D1).",
         "security": [
           {
             "bearerAuth": []
@@ -422,6 +422,39 @@
           },
           {
             "in": "query",
+            "name": "entity_id",
+            "description": "id de la entidad (audit_log.entity_id); se usa con module.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "description": "Desde esa fecha u hora, inclusive (ISO 8601).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "description": "Hasta esa fecha (inclusive, solo fecha) u hora (exclusiva), ISO 8601.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "description": "Cuántos eventos saltar, para paginar. Por omisión 0.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "in": "query",
             "name": "format",
             "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
             "schema": {
@@ -443,14 +476,19 @@
                 },
                 "example": {
                   "total": 2,
+                  "coincidencias": 57,
+                  "limit": 100,
+                  "offset": 0,
                   "eventos": [
                     {
                       "id": 912,
                       "fecha": "2026-11-18T17:42:10+00:00",
                       "usuario": "Ana Analista",
+                      "usuario_id": 9,
                       "modulo": "roles",
                       "accion": "PERMISSION_DENIED",
                       "entidad_id": "/api/v1/roles",
+                      "antes": null,
                       "datos": {
                         "metodo": "GET",
                         "roles_requeridos": [
@@ -463,9 +501,11 @@
                       "id": 911,
                       "fecha": "2026-11-18T17:40:02+00:00",
                       "usuario": "Ana Analista",
+                      "usuario_id": 9,
                       "modulo": "users",
                       "accion": "LOGIN",
                       "entidad_id": "9",
+                      "antes": null,
                       "datos": null,
                       "ip": "10.0.0.15"
                     }
@@ -482,7 +522,7 @@
                 "examples": {
                   "respuesta": {
                     "summary": "Respuesta real",
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<bitacora><total tipo=\"numero\">2</total><eventos><item><id tipo=\"numero\">912</id><fecha>2026-11-18T17:42:10+00:00</fecha><usuario>Ana Analista</usuario><modulo>roles</modulo><accion>PERMISSION_DENIED</accion><entidad_id>/api/v1/roles</entidad_id><datos><metodo>GET</metodo><roles_requeridos><item>ADMINISTRADOR</item></roles_requeridos></datos><ip>10.0.0.15</ip></item><item><id tipo=\"numero\">911</id><fecha>2026-11-18T17:40:02+00:00</fecha><usuario>Ana Analista</usuario><modulo>users</modulo><accion>LOGIN</accion><entidad_id>9</entidad_id><datos nil=\"true\" /><ip>10.0.0.15</ip></item></eventos></bitacora>"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<bitacora><total tipo=\"numero\">2</total><coincidencias tipo=\"numero\">57</coincidencias><limit tipo=\"numero\">100</limit><offset tipo=\"numero\">0</offset><eventos><item><id tipo=\"numero\">912</id><fecha>2026-11-18T17:42:10+00:00</fecha><usuario>Ana Analista</usuario><usuario_id tipo=\"numero\">9</usuario_id><modulo>roles</modulo><accion>PERMISSION_DENIED</accion><entidad_id>/api/v1/roles</entidad_id><antes nil=\"true\" /><datos><metodo>GET</metodo><roles_requeridos><item>ADMINISTRADOR</item></roles_requeridos></datos><ip>10.0.0.15</ip></item><item><id tipo=\"numero\">911</id><fecha>2026-11-18T17:40:02+00:00</fecha><usuario>Ana Analista</usuario><usuario_id tipo=\"numero\">9</usuario_id><modulo>users</modulo><accion>LOGIN</accion><entidad_id>9</entidad_id><antes nil=\"true\" /><datos nil=\"true\" /><ip>10.0.0.15</ip></item></eventos></bitacora>"
                   }
                 }
               }
@@ -686,6 +726,482 @@
                 "schema": {
                   "type": "integer",
                   "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/history/{entity_type}/{entity_id}": {
+      "get": {
+        "summary": "Historial de una entidad",
+        "operationId": "historial_entidad",
+        "description": "Quién creó, modificó, revisó o aprobó una entidad, del evento más reciente al más viejo: la misma lista que la bitácora, filtrada por entity_type y entity_id y sin la IP. entity_type: scenarios, scenario_versions o scenario_interventions (otro es 404). Lo consultan ADMINISTRADOR, EPIDEMIOLOGO y ANALISTA; la bitácora completa sigue siendo del ADMINISTRADOR (D43). Una cuenta con alcance por región solo consulta entidades de escenarios de esas regiones (403 si no). Una versión tiene su propio entity_id: el historial de un escenario se arma con el del escenario y el de cada una de sus versiones.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_type",
+            "required": true,
+            "description": "scenarios, scenario_versions o scenario_interventions",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "description": "id de la entidad",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "description": "Cuántos eventos saltar, para paginar. Por omisión 0.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "Cuántos eventos, de 1 a 500. Por omisión 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 2,
+                  "coincidencias": 2,
+                  "limit": 100,
+                  "offset": 0,
+                  "eventos": [
+                    {
+                      "id": 340,
+                      "fecha": "2026-11-18T12:05:00+00:00",
+                      "usuario": "Eva Epidemióloga",
+                      "usuario_id": 4,
+                      "modulo": "scenario_versions",
+                      "accion": "UPDATE",
+                      "entidad_id": "31",
+                      "antes": {
+                        "status": "en_revision"
+                      },
+                      "datos": {
+                        "status": "aprobado",
+                        "version_number": 2,
+                        "review_comment": null
+                      }
+                    },
+                    {
+                      "id": 331,
+                      "fecha": "2026-11-17T16:20:00+00:00",
+                      "usuario": "Ana Analista",
+                      "usuario_id": 9,
+                      "modulo": "scenario_versions",
+                      "accion": "UPDATE",
+                      "entidad_id": "31",
+                      "antes": {
+                        "status": "borrador"
+                      },
+                      "datos": {
+                        "status": "en_revision",
+                        "version_number": 2,
+                        "parametros_congelados": true
+                      }
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "bitacora"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<bitacora><total tipo=\"numero\">2</total><coincidencias tipo=\"numero\">2</coincidencias><limit tipo=\"numero\">100</limit><offset tipo=\"numero\">0</offset><eventos><item><id tipo=\"numero\">340</id><fecha>2026-11-18T12:05:00+00:00</fecha><usuario>Eva Epidemióloga</usuario><usuario_id tipo=\"numero\">4</usuario_id><modulo>scenario_versions</modulo><accion>UPDATE</accion><entidad_id>31</entidad_id><antes><status>en_revision</status></antes><datos><status>aprobado</status><version_number tipo=\"numero\">2</version_number><review_comment nil=\"true\" /></datos></item><item><id tipo=\"numero\">331</id><fecha>2026-11-17T16:20:00+00:00</fecha><usuario>Ana Analista</usuario><usuario_id tipo=\"numero\">9</usuario_id><modulo>scenario_versions</modulo><accion>UPDATE</accion><entidad_id>31</entidad_id><antes><status>borrador</status></antes><datos><status>en_revision</status><version_number tipo=\"numero\">2</version_number><parametros_congelados tipo=\"booleano\">true</parametros_congelados></datos></item></eventos></bitacora>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (ADMINISTRADOR, EPIDEMIOLOGO y ANALISTA)"
+          },
+          "422": {
+            "description": "user_id o limit no son enteros positivos, o limit pasa de 500 (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scopes/me": {
+      "get": {
+        "summary": "Consultar el alcance propio",
+        "operationId": "consultar_alcance_propio",
+        "description": "El alcance de la cuenta del token: las regiones (con las hijas que cubren) e instituciones a las que se limita. Con nacional en true no tiene límite. Los servicios lo piden con el token de la persona para filtrar sus datos (D43). Cualquier rol.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "user_id": 9,
+                  "nacional": false,
+                  "region_ids": [
+                    19
+                  ],
+                  "regiones_cubiertas": [
+                    19,
+                    191,
+                    192
+                  ],
+                  "institution_ids": [
+                    1
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "alcance"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<alcance><user_id tipo=\"numero\">9</user_id><nacional tipo=\"booleano\">false</nacional><region_ids><item tipo=\"numero\">19</item></region_ids><regiones_cubiertas><item tipo=\"numero\">19</item><item tipo=\"numero\">191</item><item tipo=\"numero\">192</item></regiones_cubiertas><institution_ids><item tipo=\"numero\">1</item></institution_ids></alcance>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "422": {
+            "description": "user_id o limit no son enteros positivos, o limit pasa de 500 (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scopes/{user_id}": {
+      "get": {
+        "summary": "Consultar el alcance de una cuenta",
+        "operationId": "consultar_alcance",
+        "description": "Igual que /scopes/me, de otra cuenta. Solo ADMINISTRADOR.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "description": "id de users",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "user_id": 9,
+                  "nacional": false,
+                  "region_ids": [
+                    19
+                  ],
+                  "regiones_cubiertas": [
+                    19,
+                    191,
+                    192
+                  ],
+                  "institution_ids": [
+                    1
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "alcance"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<alcance><user_id tipo=\"numero\">9</user_id><nacional tipo=\"booleano\">false</nacional><region_ids><item tipo=\"numero\">19</item></region_ids><regiones_cubiertas><item tipo=\"numero\">19</item><item tipo=\"numero\">191</item><item tipo=\"numero\">192</item></regiones_cubiertas><institution_ids><item tipo=\"numero\">1</item></institution_ids></alcance>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "422": {
+            "description": "user_id o limit no son enteros positivos, o limit pasa de 500 (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Asignar el alcance de una cuenta",
+        "operationId": "asignar_alcance",
+        "description": "Reemplaza el alcance completo con las regiones e instituciones indicadas; con las dos listas vacías la cuenta vuelve a ser nacional. Los ids deben existir. Si cambia, audita UPDATE sobre user_scopes.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "description": "id de users",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "user_id": 9,
+                  "nacional": false,
+                  "region_ids": [
+                    19
+                  ],
+                  "regiones_cubiertas": [
+                    19,
+                    191,
+                    192
+                  ],
+                  "institution_ids": [
+                    1
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "alcance"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<alcance><user_id tipo=\"numero\">9</user_id><nacional tipo=\"booleano\">false</nacional><region_ids><item tipo=\"numero\">19</item></region_ids><regiones_cubiertas><item tipo=\"numero\">19</item><item tipo=\"numero\">191</item><item tipo=\"numero\">192</item></regiones_cubiertas><institution_ids><item tipo=\"numero\">1</item></institution_ids></alcance>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "422": {
+            "description": "user_id o limit no son enteros positivos, o limit pasa de 500 (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "region_ids": [
+                  19
+                ],
+                "institution_ids": [
+                  1
+                ]
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "alcance"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<alcance><region_ids><item tipo=\"numero\">19</item></region_ids><institution_ids><item tipo=\"numero\">1</item></institution_ids></alcance>"
                 }
               }
             }
