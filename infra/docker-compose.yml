@@ -66,6 +66,10 @@ services:
   # rol svc_*. Solo en 127.0.0.1, para el monolito y psql; los servicios lo ven como postgres.
   postgres:
     image: postgres:16-alpine
+    # Cada proceso de servicio guarda hasta DB_CONEXIONES_LIBRES (4) conexiones abiertas
+    # (epidemia_comun/conexiones.py, F4); con unos 30 procesos, el tope de 100 de PostgreSQL
+    # quedaba justo. Cada conexión libre ocupa unos pocos MB.
+    command: ["postgres", "-c", "max_connections=200"]
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
       POSTGRES_DB: ${POSTGRES_DB:-simulador_epidemico}

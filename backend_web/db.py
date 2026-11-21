@@ -1,7 +1,10 @@
 """Conexion directa a PostgreSQL. Sistema monolitico: sin capa de microservicios,
 un solo pool de conexiones para toda la app (tal como se pidio: "se puede
-entrar de manera indiscriminada a la DB").
+entrar de manera indiscriminada a la DB"). Las conexiones se reutilizan con
+epidemia_comun/conexiones.py cuando esta disponible (F4).
 """
+import importlib
+import importlib.util
 import json
 import os
 import psycopg2
@@ -48,9 +51,21 @@ def _conecta():
         raise psycopg2.OperationalError(mensaje) from exc
 
 
+# Conexiones reutilizables (F4, epidemia_comun/conexiones.py): abrir una cuesta ~47 ms; usarla,
+# menos de 1 ms. Sin epidemia_comun instalado (un script suelto, como prepara_base_pruebas.py), una
+# conexión por uso, como antes. Se busca con importlib para no esconder un import a mitad del
+# módulo (test_integridad).
+_prestada = (importlib.import_module("epidemia_comun.conexiones").conexion
+             if importlib.util.find_spec("epidemia_comun") is not None else None)
+
+
 @contextmanager
 def get_conn():
     _verifica_configuracion()
+    if _prestada is not None:
+        with _prestada(DATABASE_URL, lambda _url: _conecta()) as conn:
+            yield conn
+        return
     conn = _conecta()
     try:
         yield conn

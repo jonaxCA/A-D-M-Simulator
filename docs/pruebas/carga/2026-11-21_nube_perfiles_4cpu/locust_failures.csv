@@ -1,0 +1,11 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,web: GET / (tablero),HTTPError('504 Server Error: Gateway Time-out for url: web: GET / (tablero)'),93,2026-11-21T23:30:23Z,2026-11-21T23:33:59Z
+POST,movil: POST sincronizacion /sync/cases (5 casos),CatchResponseError('504 <html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n<hr><c'),410,2026-11-21T23:26:33Z,2026-11-21T23:34:55Z
+GET,web: GET /escenarios,CatchResponseError('504'),14,2026-11-21T23:30:25Z,2026-11-21T23:33:14Z
+GET,web: GET /comparacion,CatchResponseError('504'),18,2026-11-21T23:30:29Z,2026-11-21T23:33:28Z
+GET,web: GET /monitoreo,CatchResponseError('504'),27,2026-11-21T23:30:27Z,2026-11-21T23:33:54Z
+GET,web: GET /api/mapa,CatchResponseError('504'),49,2026-11-21T23:30:21Z,2026-11-21T23:33:26Z
+GET,web: GET /mapa,CatchResponseError('504'),30,2026-11-21T23:30:02Z,2026-11-21T23:34:02Z
+GET,web: GET /simulaciones,CatchResponseError('504'),20,2026-11-21T23:30:32Z,2026-11-21T23:32:44Z
+POST,movil: POST sincronizacion /sync/cases (100 casos),CatchResponseError('504 <html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n<hr><c'),53,2026-11-21T23:24:18Z,2026-11-21T23:32:56Z
+GET,web: GET /dashboard,CatchResponseError('504'),81,2026-11-21T23:30:23Z,2026-11-21T23:34:08Z
