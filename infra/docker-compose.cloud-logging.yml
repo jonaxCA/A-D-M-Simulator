@@ -1,0 +1,70 @@
+# Registros en Cloud Logging (N6, RF-K08, RNF-J13). Se suma, en la máquina de Compute Engine, a
+# los tres archivos de la nube:
+#
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.nginx.yml \
+#     -f infra/docker-compose.letsencrypt.yml -f infra/docker-compose.cloud-logging.yml \
+#     <los perfiles de docs/INSTALACION.md, con web y sin gpu> up -d --build --wait
+#
+# Cada contenedor manda lo que escribe con el driver gcplogs de Docker, todo al registro
+# gcplogs-docker-driver del proyecto. Cada línea lleva el nombre del contenedor y, de los
+# servicios, el X-Correlation-ID, así que una petición se sigue de un servicio a otro buscando
+# ese id en el Explorador de registros. El servicio va también en la etiqueta
+# com.docker.compose.service.
+#
+# Solo funciona en Compute Engine: el driver toma el proyecto, la zona y la máquina del servidor
+# de metadatos, y escribe con la cuenta de servicio de la máquina (alcance logging.write, que
+# viene por omisión). En una PC el contenedor no arranca: ahí no se suma este archivo.
+# `docker logs` sigue funcionando, porque Docker guarda además una copia local.
+#
+# Cloud Logging no cobra los primeros 50 GiB al mes por proyecto; lo que más escribe son los
+# healthcheck de los contenedores, muy por debajo de eso. Los registros se guardan 30 días.
+
+x-cloud-logging: &cloud-logging
+  logging:
+    driver: gcplogs
+    options:
+      gcp-log-cmd: "false"
+      labels: com.docker.compose.service
+
+services:
+  # Las bases y la entrada.
+  redis: *cloud-logging
+  postgres: *cloud-logging
+  mongodb: *cloud-logging
+  nginx: *cloud-logging
+  certbot: *cloud-logging
+  # Los servicios, la consola y la web. test_compose_pruebas.py revisa que no falte ninguno del
+  # compose principal (menos base, que no corre).
+  auth: *cloud-logging
+  sesiones: *cloud-logging
+  usuarios: *cloud-logging
+  roles: *cloud-logging
+  enfermedades: *cloud-logging
+  parametros: *cloud-logging
+  regiones: *cloud-logging
+  poblacion: *cloud-logging
+  tipos-intervencion: *cloud-logging
+  casos: *cloud-logging
+  sincronizacion: *cloud-logging
+  dispositivos: *cloud-logging
+  evidencias: *cloud-logging
+  vacunas: *cloud-logging
+  validacion: *cloud-logging
+  escenarios: *cloud-logging
+  intervenciones: *cloud-logging
+  aprobacion: *cloud-logging
+  escenarios-xml: *cloud-logging
+  corridas: *cloud-logging
+  simulador: *cloud-logging
+  simulador-abm: *cloud-logging
+  simulador-gpu: *cloud-logging
+  resultados: *cloud-logging
+  comparacion: *cloud-logging
+  pareto: *cloud-logging
+  indicadores: *cloud-logging
+  series: *cloud-logging
+  zonas: *cloud-logging
+  notificaciones: *cloud-logging
+  estado-servicios: *cloud-logging
+  consola: *cloud-logging
+  web: *cloud-logging

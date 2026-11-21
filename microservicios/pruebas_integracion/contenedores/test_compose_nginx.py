@@ -1,5 +1,6 @@
 """nginx como única entrada (D25, D26), de punta a punta: prefijo por servicio, HTTPS, las URL
-del directorio, servicios sin puerto publicado, límites por IP y tiempo máximo (RNF-C10).
+del directorio, servicios sin puerto publicado, límites por IP, tiempo máximo (RNF-C10) y la
+web en contenedor en la raíz (F1).
 
 Solo corre con python infra/pruebas_integracion.py --nginx, que suma
 infra/docker-compose.nginx.yml y pone EPIDEMIA_PRUEBAS_NGINX; sin eso, se salta. El
@@ -63,10 +64,22 @@ def test_el_directorio_da_las_urls_de_nginx():
 
 
 def test_los_servicios_no_publican_su_puerto():
-    for puerto in (5201, 5221, 5231, 5241, 5251, 5260, 5262):
+    for puerto in (5000, 5201, 5221, 5231, 5241, 5251, 5260, 5262):
         with socket.socket() as s:
             s.settimeout(0.5)
             assert s.connect_ex(("127.0.0.1", puerto)) != 0, puerto
+
+
+def test_la_web_responde_en_la_raiz():
+    salud = pide("GET", "/health")
+    assert salud.status_code == 200, salud.text[:200]
+    assert salud.json() == {"servicio": "web", "estado": "ok"}
+    # El tablero público lee la base con epidemia_app (D18).
+    tablero = pide("GET", "/")
+    assert tablero.status_code == 200, tablero.text[:300]
+    # /login le pide el captcha a auth por la red interna (URL_SERVICIOS).
+    login = pide("GET", "/login")
+    assert login.status_code == 200 and 'name="captcha_id"' in login.text, login.text[:300]
 
 
 def test_una_ruta_protegida_pasa_por_nginx_con_su_token(analista):

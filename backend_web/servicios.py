@@ -2,8 +2,9 @@
 
 La web deja de ir a PostgreSQL y a Redis: cada dato lo pide al servicio dueño, en JSON, con el
 JWT de la sesión (D34) y un X-Correlation-ID. La URL de cada servicio sale de
-SERVICIO_<NOMBRE>_URL (p. ej. SERVICIO_ESCENARIOS_URL); si no viene, la del catálogo en local.
-Detrás de nginx (D25) apunta a https://<dominio>/<servicio>. No reintenta escrituras.
+SERVICIO_<NOMBRE>_URL (p. ej. SERVICIO_ESCENARIOS_URL); si no viene, de URL_SERVICIOS con
+{servicio} (el contenedor de la web usa http://{servicio}:8000, la red interna); y si tampoco,
+la del catálogo en local. No reintenta escrituras.
 """
 import json
 import logging
@@ -54,7 +55,9 @@ cabeceras_de_la_persona = _sin_cabeceras
 
 def url_base(servicio):
     variable = "SERVICIO_%s_URL" % servicio.upper().replace("-", "_")
-    return (os.environ.get(variable) or "http://localhost:%d" % PUERTOS[servicio]).rstrip("/")
+    plantilla = os.environ.get("URL_SERVICIOS")
+    url = os.environ.get(variable) or (plantilla.format(servicio=servicio) if plantilla else "")
+    return (url or "http://localhost:%d" % PUERTOS[servicio]).rstrip("/")
 
 
 def llamar(servicio, metodo, ruta, token=None, params=None, cuerpo=None, correlacion=None):

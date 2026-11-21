@@ -10,16 +10,17 @@
 #   (DETRAS_DE_PROXY=1). Las dos cosas van juntas: con el puerto publicado, un cliente que
 #   llegara directo podría falsear su IP y evadir los límites por IP (D31).
 # - estado-servicios da https://<host>/<servicio> como URL de cada servicio.
-# - PostgreSQL, Redis y MongoDB siguen publicados solo en 127.0.0.1, porque la web corre fuera
-#   de Docker y todavía lee PostgreSQL en los módulos que no pasan a los servicios (D36). El
-#   compose de producción (F1) también los quita.
+# - PostgreSQL, Redis y MongoDB siguen publicados solo en 127.0.0.1: los usan la web cuando corre
+#   fuera de Docker y, en la nube, el túnel del simulador de GPU (D23). Desde fuera de la
+#   máquina no se alcanzan.
 #
 # Guía completa: «nginx como única entrada» en docs/INSTALACION.md.
 #
-# La web corre en la PC (python -m frontend_web.run, puerto 5000) y nginx la alcanza en
-# host.docker.internal. Variables, todas con valor por omisión: NGINX_PUERTO_HTTP (80),
-# NGINX_PUERTO_HTTPS (443), NGINX_TIEMPO_MAXIMO (30s), WEB_DESTINO (host.docker.internal:5000)
-# y URL_PUBLICA_NGINX (https://localhost/{servicio}).
+# La web es el contenedor web (perfil web). Para desarrollarla con recarga automática, córrela
+# en la PC (python -m frontend_web.run, puerto 5000) y pon WEB_DESTINO=host.docker.internal:5000.
+# Variables, todas con valor por omisión: NGINX_PUERTO_HTTP (80), NGINX_PUERTO_HTTPS (443),
+# NGINX_TIEMPO_MAXIMO (30s), WEB_DESTINO (web:8000) y URL_PUBLICA_NGINX
+# (https://localhost/{servicio}).
 
 x-detras-de-nginx: &detras-de-nginx
   ports: !reset []
@@ -41,7 +42,7 @@ services:
       NGINX_LLAVE: /etc/nginx/certs/epidemia-key.pem
       NGINX_TIEMPO_MAXIMO: ${NGINX_TIEMPO_MAXIMO:-30s}
       NGINX_PUERTO_HTTPS: ${NGINX_PUERTO_HTTPS:-443}
-      WEB_DESTINO: ${WEB_DESTINO:-host.docker.internal:5000}
+      WEB_DESTINO: ${WEB_DESTINO:-web:8000}
     volumes:
       - ./nginx/templates:/etc/nginx/templates:ro
       - ./nginx/certs:/etc/nginx/certs:ro
@@ -53,8 +54,8 @@ services:
       timeout: 3s
       retries: 3
 
-  # Los 29 servicios del directorio y la consola. test_compose_pruebas.py revisa que no falte
-  # ninguno de los que publican puerto en el compose principal.
+  # Los 29 servicios del directorio, la consola y la web. test_compose_pruebas.py revisa que no
+  # falte ninguno de los que publican puerto en el compose principal.
   auth: *detras-de-nginx
   sesiones: *detras-de-nginx
   usuarios: *detras-de-nginx
@@ -84,6 +85,7 @@ services:
   zonas: *detras-de-nginx
   notificaciones: *detras-de-nginx
   consola: *detras-de-nginx
+  web: *detras-de-nginx
   estado-servicios:
     <<: *detras-de-nginx
     environment:

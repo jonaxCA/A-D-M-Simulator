@@ -78,9 +78,13 @@ server {
         proxy_set_header X-Forwarded-Prefix $prefijo;
     }
 
-    # Lo demás es la web (D36). En local corre fuera de Docker (python -m frontend_web.run).
+    # Lo demás es la web (D36): el contenedor web, o la de la PC con WEB_DESTINO. Con variable,
+    # como los servicios, nginx resuelve el nombre en cada petición: arranca aunque la web no esté
+    # arriba, y la sigue si su contenedor se recrea con otra IP. Docker Desktop resuelve
+    # host.docker.internal; en Linux sin Docker Desktop, usa la IP (por ejemplo 172.17.0.1:5000).
     location / {
-        proxy_pass http://${WEB_DESTINO};
+        set $web ${WEB_DESTINO};
+        proxy_pass http://$web;
         proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto https;

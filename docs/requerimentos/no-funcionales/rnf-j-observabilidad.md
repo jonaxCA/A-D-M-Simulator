@@ -12,7 +12,7 @@ Cómo se sabe qué pasó dentro del sistema. El panel y el historial están en [
 | RNF-J05 | Cada servicio responde su salud | Ver RF-K10 | Microservicios, Monitoreo | En parte (N3) |
 | RNF-J06 | Los registros de cada servicio se pueden leer y buscar | Cada línea trae la fecha, el servicio, el nivel y el identificador de correlación | Microservicios, Monitoreo | Hecho |
 | RNF-J12 | De cada corrida se sabe con qué se hizo | Se guardan la versión del motor, la versión congelada del escenario y la semilla (RF-E12) | Microservicios, Bases de datos | Hecho |
-| RNF-J13 | Los registros se centralizan en la nube | Ver RF-K08 | Monitoreo, Infraestructura | Falta (N6) |
+| RNF-J13 | Los registros se centralizan en la nube | Ver RF-K08 | Monitoreo, Infraestructura | Hecho: `infra/docker-compose.cloud-logging.yml` (2026-11-20) |
 
 ## Fuera de alcance
 

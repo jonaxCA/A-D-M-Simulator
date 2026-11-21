@@ -15,7 +15,9 @@ espec.loader.exec_module(SCRIPT)
 
 def test_cada_servicio_toma_la_base_de_postgres_db():
     urls = re.findall(r"^      DATABASE_URL: (.*)$", COMPOSE, re.M)
-    assert len(urls) == len(SERVICIOS)
+    # Cada servicio y la web, que entra con epidemia_app (D18).
+    assert len(urls) == len(SERVICIOS) + 1
+    assert sum("epidemia_app:${EPIDEMIA_APP_PASSWORD:-}@" in u for u in urls) == 1
     assert all(u.endswith("@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}") for u in urls)
     assert "      POSTGRES_DB: ${POSTGRES_DB:-simulador_epidemico}\n" in COMPOSE
 
@@ -28,8 +30,8 @@ def test_las_pruebas_van_en_otro_proyecto_y_otra_base():
 
 def test_el_script_revisa_todos_los_puertos_publicados():
     publicados = {int(p) for p in re.findall(r'^      - "(\d+):8000"$', COMPOSE, re.M)}
-    # Cada servicio y la consola.
-    assert len(publicados) == len(SERVICIOS) + 1
+    # Cada servicio, la consola y la web.
+    assert len(publicados) == len(SERVICIOS) + 2
     locales = {int(SCRIPT.FIJOS[v]) for v in ("REDIS_PUERTO_LOCAL", "POSTGRES_PUERTO_LOCAL",
                                               "MONGO_PUERTO_LOCAL")}
     assert set(SCRIPT.PUERTOS) == publicados | locales
@@ -140,3 +142,37 @@ def test_el_tunel_le_pasa_a_gcloud_el_python_del_sdk(tmp_path, monkeypatch):
     assert Path(entorno["CLOUDSDK_PYTHON"]) == propio.resolve() and entorno["PATH"] == "x"
     # Si CLOUDSDK_PYTHON ya viene puesto, se respeta.
     assert tunel.entorno_gcloud({"CLOUDSDK_PYTHON": "otro"})["CLOUDSDK_PYTHON"] == "otro"
+
+
+def test_la_web_va_en_su_perfil_y_llama_a_los_servicios_por_la_red_interna():
+    web = COMPOSE.split("\n  web:\n", 1)[1].split("\n\n", 1)[0]
+    assert "    profiles: [web]\n" in web and '      - "5000:8000"' in web
+    assert '      URL_SERVICIOS: "http://{servicio}:8000"' in web
+    # Su cookie no se firma con el secreto de los tokens, y genera_env.py lo llena.
+    assert "      SECRET_KEY: ${SECRET_KEY_WEB:-}" in web and "JWT_SECRET_KEY" not in web
+    assert "SECRET_KEY_WEB" in (RAIZ / "infra/genera_env.py").read_text(encoding="utf-8")
+    assert "\nSECRET_KEY_WEB=\n" in (RAIZ / "infra/.env.example").read_text(encoding="utf-8")
+    assert "frontend_web/Dockerfile" in web
+    dockerfile = (RAIZ / "frontend_web/Dockerfile").read_text(encoding="utf-8")
+    assert "FROM epidemia/base" in dockerfile and "/health" in dockerfile
+    assert '"frontend_web.run:app"' in dockerfile
+
+
+def test_nginx_manda_la_raiz_al_contenedor_de_la_web_y_lo_resuelve_en_cada_peticion():
+    nginx = (RAIZ / "infra/docker-compose.nginx.yml").read_text(encoding="utf-8")
+    assert "      WEB_DESTINO: ${WEB_DESTINO:-web:8000}" in nginx
+    plantilla = (RAIZ / "infra/nginx/templates/default.conf.template").read_text(encoding="utf-8")
+    raiz = plantilla.split("    location / {\n")[-1]
+    # Con variable (y el resolver de Docker), nginx arranca sin la web y la sigue si cambia de IP.
+    assert raiz.startswith("        set $web ${WEB_DESTINO};\n        proxy_pass http://$web;\n")
+
+
+def test_cloud_logging_cubre_cada_contenedor_de_la_nube():
+    """docker-compose.cloud-logging.yml manda a Cloud Logging los registros de cada contenedor
+    (RF-K08): los del compose principal (menos base, que no corre), nginx y certbot."""
+    servicios = COMPOSE.split("\nservices:\n", 1)[1].split("\nvolumes:\n", 1)[0]
+    principales = set(re.findall(r"^  ([a-z][a-z0-9-]*):$", servicios, re.M)) - {"base"}
+    registros = (RAIZ / "infra/docker-compose.cloud-logging.yml").read_text(encoding="utf-8")
+    cubiertos = set(re.findall(r"^  ([a-z][a-z0-9-]*): \*cloud-logging$", registros, re.M))
+    assert cubiertos == principales | {"nginx", "certbot"}, cubiertos ^ (principales | {"nginx", "certbot"})
+    assert "    driver: gcplogs\n" in registros

@@ -609,7 +609,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 - [x] Crear la máquina y reservar una IP externa fija (RNF-H02, RNF-H17). e2-highmem-2 (2 vCPU, 16 GB), Debian 13, disco de 50 GB, us-central1-c, IP estática 35.222.19.202 (2026-11-20). Con todo levantado usa unos 2.6 GB.
 - [x] Firewall: solo los puertos 80 y 443 abiertos (RNF-D10). Se borraron `default-allow-ssh` y `default-allow-rdp`; SSH solo entra por IAP (`permitir-ssh-iap`, 35.235.240.0/20). Comprobado desde fuera: 22, 3389, los de los servicios y los de las bases, cerrados (2026-11-20).
 - [x] Compose de producción: ningún servicio ni base publica su puerto fuera de nginx (RNF-H07, RNF-H18). Compose principal + `docker-compose.nginx.yml` + `docker-compose.letsencrypt.yml`. Las bases siguen solo en el 127.0.0.1 de la máquina, para el túnel del simulador de GPU (D23); desde internet no se alcanzan.
-- [ ] Desplegar la web, los 29 servicios, PostgreSQL, MongoDB y Redis, con la base de la demostración (RNF-L09). La web usa el rol `epidemia_app` (D18). Los 29 servicios y las bases corren en la máquina y responden por HTTPS (2026-11-20). Falta la web: todavía no tiene contenedor, y `/` responde 502.
+- [x] Desplegar la web, los 29 servicios, PostgreSQL, MongoDB y Redis, con la base de la demostración (RNF-L09). La web usa el rol `epidemia_app` (D18). Todo corre en la máquina y responde por HTTPS (2026-11-20). La web va en su contenedor (`frontend_web/Dockerfile`, perfil `web`), llama a los servicios por la red interna y les pasa la IP de quien la usa, para el límite por IP (D31). Ojo: los casos de la semilla van del 2026-07-20 al 2026-09-03, así que el tablero público, que cuenta los últimos 7 y 30 días, sale en ceros.
 - [x] ~~Pedir desde ya el aumento de cuota de GPU del proyecto, y confirmar qué cuenta de facturación paga la máquina: los cupones no se juntan (D23).~~ Ya no hace falta: la GPU es la de una PC (D23, 2026-11-20).
 - [ ] Secretos fuera del repositorio y de la imagen, protegidos en GCP (S5, RNF-D03). Hoy, `infra/.env` generado en la máquina con `genera_env.py` (permisos 600, nunca impreso). Falta decidir si pasan a Secret Manager.
 - [ ] ~~Solo si sobra tiempo: máquina con GPU para `abm-gpu`, con su costo comparado contra los créditos y anotado en D23. Se enciende solo cuando hay corridas de `abm-gpu` (RNF-B09).~~ No alcanzaron los créditos: el simulador de `abm-gpu` corre en una PC con GPU, conectado a la máquina por un túnel SSH por IAP (`infra/docker-compose.gpu-remoto.yml`, `infra/tunel_gpu.py`; D23). Probado en local con `python infra/pruebas_integracion.py --gpu-remoto` (2026-11-20); falta con la máquina real.
@@ -625,7 +625,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### F3. Registros y diagramas
 
-- [ ] Los registros de todos los contenedores llegan a un solo lugar en la nube. Propuesta: Cloud Logging (N6, RF-K08, RNF-J13).
+- [x] Los registros de todos los contenedores llegan a un solo lugar en la nube (N6, RF-K08, RNF-J13): Cloud Logging, con el driver `gcplogs` de Docker (`infra/docker-compose.cloud-logging.yml`). Comprobado en la máquina el 2026-11-20: llegan los de los servicios, la web, nginx y las bases, al registro `gcplogs-docker-driver`.
 - [ ] Diagrama de distribución en la nube: web, servicios, PostgreSQL, MongoDB, Redis, archivos y monitoreo (N2).
 
 ### F4. Locust (A4, A5)
