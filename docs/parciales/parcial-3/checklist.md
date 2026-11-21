@@ -631,11 +631,11 @@ Antes de empezar: `microservicios/AGENTS.md`.
 ### F4. Locust (A4, A5)
 
 - [x] Un perfil por tipo de uso: consulta en la web, captura desde la móvil, reportes desde el escritorio y corridas automáticas (RNF-L14). `pruebas_carga/perfiles.py` (2026-11-21): cinco perfiles, con el panel de administración que pide RNF-A16 y las fotos de la móvil. `escalones.py` da la forma de carga y `analiza.py` el resumen. Probados contra el compose de pruebas. Guía: `pruebas_carga/README.md`.
-- [ ] Medir usuarios concurrentes, peticiones por segundo, tiempo medio, p95, p99 y errores (RNF-A01, RNF-A05 a RNF-A08). `analiza.py` los da por escalón y por perfil. Falta la corrida en la nube, en una ventana que respalda y restaura la base (`pruebas_carga/ventana_nube.sh`, ensayada en local el 2026-11-21).
-- [ ] Encontrar el punto de saturación y medir cuánto tarda en recuperarse (RNF-A14, RNF-A16). Los calcula `analiza.py` (criterios en `pruebas_carga/README.md`); falta la corrida en la nube.
+- [x] Medir usuarios concurrentes, peticiones por segundo, tiempo medio, p95, p99 y errores (RNF-A01, RNF-A05 a RNF-A08). Medido en la máquina el 2026-11-21 con los cinco perfiles (`docs/pruebas/carga/2026-11-21_nube_perfiles`): 5 733 peticiones, hasta 16.6 por segundo con 200 usuarios, p50 1.3 s, p95 y p99 de 30 s, 1 236 fallos (todos 504 de nginx por tiempo).
+- [x] Encontrar el punto de saturación y medir cuánto tarda en recuperarse (RNF-A14, RNF-A16). La máquina (e2-highmem-2, 2 vCPU) se satura con unos 40 usuarios: sin CPU (carga media 15 a 19) y con el simulador ocupando un núcleo entero. Se recupera en 40 s al bajar a 20 usuarios, pero desde un p95 que ya era de 7.8 s.
 - [x] Hallazgo de la primera corrida local: `sincronizacion` convertía el 429 por cuenta de `casos` en un 503 para todo el lote, y la app reintentaba de inmediato contra el mismo límite. Ahora pasa el 429 con su `Retry-After` (contrato y prueba al día). La app ya lo trata como un 503: reintenta con la espera de WorkManager.
-- [ ] Listar los endpoints más lentos.
-- [ ] Confirmar o corregir las metas de rendimiento de los requerimientos con lo medido.
+- [x] Listar los endpoints más lentos. En `resumen.md` de la medición. Aun con 20 usuarios: `/mapa` (mediana 11 s), `/api/mapa` (8 s), lote de 5 casos en `sincronizacion` (5.3 s), inicio de sesión (2 a 6 s) y tablero (2.1 s); con más, `pareto`.
+- [ ] Confirmar o corregir las metas de rendimiento de los requerimientos con lo medido. Ninguna se cumple en esta máquina (A01, A05 a A08 y A14, en `rnf-a-rendimiento.md`). Las metas se quedan: lo medido es una máquina chica con el simulador dentro. Siguen, en el LEEME de la medición: más CPU (e2-standard-4), tope de CPU a los simuladores, revisar las consultas del mapa y el tablero, y un solo llamado de `sincronizacion` a `casos` por lote; luego, repetir.
 
 ### F5. Demostración de fallos (N5)
 
