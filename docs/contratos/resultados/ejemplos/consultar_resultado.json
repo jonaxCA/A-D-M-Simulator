@@ -1,5 +1,11 @@
 {
   "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+  "categoria": {
+    "categoria": "exploratoria",
+    "modelo_verificado": true,
+    "motivo": "El modelo seir-ref-0.1 no está calibrado para esta enfermedad y región.",
+    "texto": "Simulación exploratoria: sirve para comparar escenarios entre sí, no para anticipar cifras reales. El modelo no está calibrado ni validado con datos observados de esta enfermedad y región."
+  },
   "simplificaciones": [
     "Mezcla homogenea entre grupos de edad; la edad solo modifica hospitalizacion, letalidad y vacunacion.",
     "Duraciones geometricas en pasos de un dia; solo se usa la media de cada distribucion.",
@@ -21,7 +27,7 @@
     "horizon_days": 5,
     "finished_at": "2026-10-20T15:02:00+00:00"
   },
-  "engine_version": "python-ref-0.1",
+  "engine_version": "seir-ref-0.1",
   "scenario_checksum": "de8417bf8d7ff3a4e59ef77e663f55dfcc37f5fb510644e60d4497f9b971ea39",
   "resumen": {
     "casos_acumulados": 95,
@@ -175,5 +181,23 @@
       "fuente": null,
       "estado": "sin_fuente"
     }
-  ]
+  ],
+  "escala": {
+    "agentes": 200000,
+    "habitantes": 1142994,
+    "factor": 5.715,
+    "fuente": "regions.population (Censo 2020 de INEGI)",
+    "avisos": [],
+    "representados": {
+      "casos_acumulados": 543,
+      "casos_activos_final": 326,
+      "pico_casos_activos": 326,
+      "pico_nuevos_casos": 80,
+      "hospitalizaciones": 0,
+      "pico_hospitalizados": 0,
+      "fallecimientos": 0,
+      "vacunados_protegidos": 0,
+      "dosis_aplicadas": 0
+    }
+  }
 }

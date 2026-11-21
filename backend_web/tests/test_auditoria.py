@@ -30,6 +30,7 @@ import unittest
 from datetime import datetime
 from unittest.mock import patch
 
+from microservicios.simulador import ejecucion
 from backend_web.tests.base import ConCorridasDePrueba
 from backend_web import queries, simulaciones
 from frontend_web.app import presentacion
@@ -160,7 +161,7 @@ class AuditoriaIntegracionTests(ConCorridasDePrueba):
                   data_after={"estado": "encolado", "seed": 910001,
                               "scenario_version_id": self.version_id,
                               "forzar_error": False})
-        simulaciones.ejecutar_run(run_id, demora_seg=0)
+        ejecucion.ejecutar_run(run_id, demora_seg=0)
 
         eventos = presentacion.filas_bitacora(
             queries.get_auditoria_lista(modulo="simulation_run", limit=500))
@@ -178,7 +179,7 @@ class AuditoriaIntegracionTests(ConCorridasDePrueba):
 
     def test_corrida_fallida_forzada_se_ve_fallida_no_correcta(self):
         run_id = self._encola(seed=910002)
-        simulaciones.ejecutar_run(run_id, forzar_error=True, demora_seg=0)
+        ejecucion.ejecutar_run(run_id, forzar_error=True, demora_seg=0)
 
         eventos = presentacion.filas_bitacora(
             queries.get_auditoria_lista(modulo="simulation_run", limit=500))
@@ -190,7 +191,7 @@ class AuditoriaIntegracionTests(ConCorridasDePrueba):
 
     def test_filtro_compuesto_run_fallido_aisla_solo_las_fallidas(self):
         run_id = self._encola(seed=910003)
-        simulaciones.ejecutar_run(run_id, forzar_error=True, demora_seg=0)
+        ejecucion.ejecutar_run(run_id, forzar_error=True, demora_seg=0)
 
         eventos = presentacion.filas_bitacora(
             queries.get_auditoria_lista(accion="RUN::fallido", limit=500))
@@ -201,7 +202,7 @@ class AuditoriaIntegracionTests(ConCorridasDePrueba):
 
     def test_get_acciones_auditoria_incluye_las_etapas_de_run(self):
         run_id = self._encola(seed=910004)
-        simulaciones.ejecutar_run(run_id, demora_seg=0)
+        ejecucion.ejecutar_run(run_id, demora_seg=0)
 
         opciones = {o["valor"]: o["etiqueta"]
                     for o in presentacion.opciones_accion(queries.get_acciones_auditoria())}

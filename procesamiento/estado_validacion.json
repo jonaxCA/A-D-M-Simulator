@@ -1,0 +1,20 @@
+{
+  "seir-ref-0.1": {
+    "verificado": true,
+    "evidencia": "docs/arquitectura/ficha_simulador.md §13 a §15; docs/pruebas/validacion/2026-11-19",
+    "calibrado": [],
+    "validado": []
+  },
+  "abm-ref-0.1": {
+    "verificado": true,
+    "evidencia": "docs/arquitectura/ficha_simulador.md §10 y §15; docs/pruebas/validacion/2026-11-19",
+    "calibrado": [],
+    "validado": []
+  },
+  "abm-gpu-0.1": {
+    "verificado": true,
+    "evidencia": "docs/arquitectura/ficha_simulador.md §10 (medido en la GPU de desarrollo)",
+    "calibrado": [],
+    "validado": []
+  }
+}

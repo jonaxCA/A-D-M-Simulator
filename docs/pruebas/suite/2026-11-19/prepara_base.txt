@@ -1,0 +1,31 @@
+psql:/tmp/tmp98iewhix.sql:1: NOTICE:  database "simulador_epidemico_pruebas" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:191: NOTICE:  trigger "tg_users_updated_at" for relation "users" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:364: NOTICE:  trigger "tg_audit_log_inmutable" for relation "audit_log" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:416: NOTICE:  trigger "tg_system_settings_updated_at" for relation "system_settings" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:697: NOTICE:  trigger "tg_scenarios_updated_at" for relation "scenarios" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:1796: NOTICE:  constraint "fk_scenario_versions_reviewer" of relation "scenario_versions" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:1796: NOTICE:  constraint "ck_scenario_versions_status" of relation "scenario_versions" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:1796: NOTICE:  constraint "ck_scenario_versions_iniciales" of relation "scenario_versions" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:1796: NOTICE:  constraint "ck_scenario_versions_envio" of relation "scenario_versions" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:1796: NOTICE:  constraint "ck_scenario_versions_revision" of relation "scenario_versions" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:1796: NOTICE:  constraint "ck_scenario_versions_no_autoaprobacion" of relation "scenario_versions" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:1902: NOTICE:  constraint "fk_simulation_runs_user" of relation "simulation_runs" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:1938: NOTICE:  trigger "tg_simulation_runs_version_aprobada" for relation "simulation_runs" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:1943: NOTICE:  trigger "tg_simulation_batches_version_aprobada" for relation "simulation_batches" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:2015: NOTICE:  constraint "ck_intervention_types_cost_unit" of relation "intervention_types" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:2015: NOTICE:  constraint "ck_intervention_types_cost" of relation "intervention_types" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:2166: NOTICE:  constraint "ck_regions_poblacion_60" of relation "regions" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:3011: NOTICE:  trigger "trg_rag_sincroniza_60plus" for relation "region_age_groups" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:3101: NOTICE:  constraint "ck_scenario_versions_edad" of relation "scenario_versions" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:3170: NOTICE:  constraint "ck_scenario_versions_disease_params" of relation "scenario_versions" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:4258: NOTICE:  constraint "ck_intervention_types_person_days" of relation "intervention_types" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:4317: NOTICE:  constraint "ck_simulation_runs_resumen" of relation "simulation_runs" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:4317: NOTICE:  constraint "ck_simulation_runs_traza" of relation "simulation_runs" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:4317: NOTICE:  constraint "ck_simulation_runs_checksum" of relation "simulation_runs" does not exist, skipping
+psql:/mnt/c/Users/carog/Downloads/digital-twin-epidemic-demo-main/A-D-M-Simulator/datos/postgres/dump_completo.sql:4426: NOTICE:  constraint "ck_simulation_runs_attempts" of relation "simulation_runs" does not exist, skipping
+Base de pruebas: 'simulador_epidemico_pruebas' en 127.0.0.1:55435. Permisos para: 'epidemia_app'.
+La base de la aplicacion ('simulador_epidemico') no se toca.
+1/3 Creando la base...
+2/3 Cargando el esquema, las semillas y 0 migracion(es) aparte...
+3/3 Comprobando con el usuario de la app...
+Lista: simulador_epidemico_pruebas con 3,824 casos y 52 regiones. Ya puedes correr las pruebas.

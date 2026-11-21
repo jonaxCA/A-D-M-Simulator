@@ -181,7 +181,7 @@ def usuario_vigente(payload):
             "full_name": fila["full_name"], "roles": list(fila["roles"])}
 
 
-def create_token(user):
+def create_token(user, sid=None, jti=None):
     ahora = datetime.datetime.now(datetime.timezone.utc)
     payload = {
         "sub": str(user["id"]),
@@ -190,13 +190,20 @@ def create_token(user):
         "roles": user["roles"],
         "exp": ahora + datetime.timedelta(minutes=TOKEN_TTL_MINUTES),
         "iat": ahora,
+        "nbf": ahora,
+        "iss": os.environ.get("JWT_ISSUER") or "epidemia-auth",
+        "aud": os.environ.get("JWT_AUDIENCE") or "epidemia-api",
     }
+    if sid and jti:
+        payload.update(sid=sid, jti=jti)
     return jwt.encode(payload, secreto_jwt(), algorithm="HS256")
 
 
 def decode_token(token):
     try:
-        return jwt.decode(token, secreto_jwt(), algorithms=["HS256"])
+        return jwt.decode(token, secreto_jwt(), algorithms=["HS256"],
+                          issuer=os.environ.get("JWT_ISSUER") or "epidemia-auth",
+                          audience=os.environ.get("JWT_AUDIENCE") or "epidemia-api")
     except jwt.PyJWTError:
         return None
 

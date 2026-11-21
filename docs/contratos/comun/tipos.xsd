@@ -55,4 +55,29 @@
     </xs:simpleContent>
   </xs:complexType>
 
+  <xs:simpleType name="enteroOVacio">
+    <xs:union memberTypes="xs:long vacio"/>
+  </xs:simpleType>
+
+  <xs:complexType name="EnteroONulo">
+    <xs:simpleContent>
+      <xs:extension base="enteroOVacio">
+        <xs:attribute name="tipo" type="xs:string" fixed="numero"/>
+        <xs:attribute name="nil" type="xs:string" fixed="true"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:simpleType name="fechaHoraOVacio">
+    <xs:union memberTypes="xs:dateTime vacio"/>
+  </xs:simpleType>
+
+  <xs:complexType name="FechaHoraONulo">
+    <xs:simpleContent>
+      <xs:extension base="fechaHoraOVacio">
+        <xs:attribute name="nil" type="xs:string" fixed="true"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
 </xs:schema>

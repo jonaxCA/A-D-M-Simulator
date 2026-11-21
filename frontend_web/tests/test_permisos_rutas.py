@@ -37,8 +37,7 @@ class PermisosRutasTests(AppTestCase):
 
     def test_analista_si_entra_a_escenarios(self):
         with self.app.test_client() as client:
-            client.post("/login", data={"usuario": "alex.cavazos",
-                                        "password": "Epidemia2026!"})
+            self._login(client, "alex.cavazos", "Epidemia2026!")
             resp = client.get("/escenarios")
             self.assertEqual(resp.status_code, 200)
 

@@ -1,0 +1,31 @@
+# CON casos DETENIDO: GET /cases (0 = sin conexion)
+0
+
+# panel
+{
+  "nombre": "casos",
+  "estado": "caido",
+  "causas": [
+    "proceso"
+  ],
+  "detalle": "sin_conexion",
+  "version": null,
+  "latencia_ms": null
+}
+
+# regiones
+200
+
+# DESPUES: GET /cases con la misma sesion
+200
+
+# panel
+{
+  "nombre": "casos",
+  "estado": "ok",
+  "causas": [],
+  "detalle": null,
+  "version": "0.1.0",
+  "latencia_ms": 22.5
+}
+

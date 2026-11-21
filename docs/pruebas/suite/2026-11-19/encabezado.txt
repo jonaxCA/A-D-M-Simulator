@@ -1,0 +1,9 @@
+# Suite consolidada
+fecha: 2026-11-19T06:54:52-06:00
+rama: segundo-parcial-correccion  commit: 075712f9ae07ce10829f5773335efca20cdb08ff
+árbol limpio: 0 archivos modificados sin commit
+python: Python 3.14.4  postgres: postgres (PostgreSQL) 16.15 (Debian 16.15-1.pgdg13+2)
+prepara_base_pruebas: rc=0
+verifica_migraciones: rc=0
+pytest: rc=1
+2 failed, 2281 passed, 182 skipped, 323 warnings, 689 subtests passed in 336.80s (0:05:36)

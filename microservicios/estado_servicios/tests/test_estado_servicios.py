@@ -1,12 +1,14 @@
 import json
 import re
 import threading
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
 import requests
 
+from epidemia_comun import llaves
 from epidemia_comun.formatos import a_xml
 from microservicios.estado_servicios import app as modulo_app
 from microservicios.estado_servicios import sondeo
@@ -47,7 +49,7 @@ def red(monkeypatch):
 
 
 @pytest.fixture
-def cliente(crear_cliente, red):
+def cliente(crear_cliente, red, mongo_falso):
     return crear_cliente("estado_servicios")
 
 
@@ -82,6 +84,23 @@ def test_directorio_con_otra_url_publica(cliente, monkeypatch):
     # el compose la pasa vacía cuando no está en infra/.env
     monkeypatch.setenv("URL_PUBLICA", "")
     assert sondeo.url_publica("auth") == "http://localhost:5201"
+
+
+@pytest.mark.parametrize("host,esperada", [
+    ("10.0.2.2:5262", "http://10.0.2.2:5201"),            # emulador de Android
+    ("192.168.1.20:5262", "http://192.168.1.20:5201"),    # celular en la misma red que la PC
+    ("[::1]:5262", "http://[::1]:5201"),
+    ("<script>:5262", "http://localhost:5201"),           # lo que no es un host se descarta
+])
+def test_sin_url_publica_el_directorio_usa_el_host_de_la_peticion(cliente, host, esperada):
+    auth = cliente.get("/api/v1/services?format=json", headers={"Host": host}).get_json()["servicios"][0]
+    assert (auth["url"], auth["docs"]) == (esperada, esperada + "/docs")
+
+
+def test_url_publica_manda_sobre_el_host_de_la_peticion(cliente, monkeypatch):
+    monkeypatch.setenv("URL_PUBLICA", "http://epidemia.local:{puerto}")
+    auth = cliente.get("/api/v1/services?format=json", headers={"Host": "10.0.2.2:5262"}).get_json()["servicios"][0]
+    assert auth["url"] == "http://epidemia.local:5201"
 
 
 def test_directorio_en_xml_por_omision(cliente):
@@ -124,7 +143,7 @@ def test_salud_con_la_causa_de_cada_falla(cliente, red):
     assert vistos["corridas"] == ("caido", ["proceso"], "sin_conexion")
     assert vistos["zonas"] == ("caido", ["proceso"], "respuesta_invalida")
     assert vistos["pareto"] == ("caido", ["proceso"], "respuesta_invalida")
-    assert datos["resumen"] == {"ok": 20, "degradado": 2, "caido": 4}
+    assert datos["resumen"] == {"ok": len(sondeo.SERVICIOS) - 6, "degradado": 2, "caido": 4}
     assert por_nombre["auth"]["version"] == "0.1.0" and por_nombre["auth"]["latencia_ms"] >= 0
     assert por_nombre["casos"]["latencia_ms"] is None
     assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00:00", por_nombre["auth"]["revisado"])
@@ -132,7 +151,8 @@ def test_salud_con_la_causa_de_cada_falla(cliente, red):
 
 def test_un_503_sin_causa_conocida_es_degradado(cliente, red):
     red["respuestas"]["zonas"] = lambda n: respuesta(503, salud(n).content)
-    zonas = cliente.get("/api/v1/services/health?format=json").get_json()["servicios"][23]
+    servicios = cliente.get("/api/v1/services/health?format=json").get_json()["servicios"]
+    zonas = next(s for s in servicios if s["nombre"] == "zonas")
     assert (zonas["nombre"], zonas["estado"], zonas["causas"]) == ("zonas", "degradado", [])
 
 
@@ -151,14 +171,15 @@ def test_salud_en_xml(cliente, red):
 
 
 def test_salud_guardada_en_redis_no_se_vuelve_a_sondear(cliente, red, redis_falso):
+    total = len(sondeo.SERVICIOS)
     cliente.get("/api/v1/services/health")
-    assert len(red["pedidas"]) == 26
+    assert len(red["pedidas"]) == total
     assert 0 < redis_falso.ttl("health:auth") <= 3 * sondeo.INTERVALO
     cliente.get("/api/v1/services/health")
-    assert len(red["pedidas"]) == 26
+    assert len(red["pedidas"]) == total
     redis_falso.delete("health:zonas")
     cliente.get("/api/v1/services/health")
-    assert [p[0] for p in red["pedidas"][26:]] == ["zonas"]
+    assert [p[0] for p in red["pedidas"][total:]] == ["zonas"]
 
 
 def test_con_redis_caido_la_salud_se_sondea_en_vivo(cliente, red, apagar_redis, monkeypatch):
@@ -167,15 +188,15 @@ def test_con_redis_caido_la_salud_se_sondea_en_vivo(cliente, red, apagar_redis, 
     monkeypatch.setattr(sondeo, "guardar", guardados.append)
     r = cliente.get("/api/v1/services/health?format=json")
     assert r.status_code == 200
-    assert r.get_json()["resumen"]["ok"] == 26
+    assert r.get_json()["resumen"]["ok"] == len(sondeo.SERVICIOS)
     cliente.get("/api/v1/services/health")
-    assert len(red["pedidas"]) == 52
+    assert len(red["pedidas"]) == 2 * len(sondeo.SERVICIOS)
     # ni intenta guardar: con Redis caído solo sumaría otra espera
     assert guardados == []
     assert cliente.get("/api/v1/services?format=json").status_code == 200
 
 
-def test_historial_del_mas_reciente_al_mas_viejo_y_corto(cliente, red, redis_falso):
+def test_historial_del_mas_reciente_al_mas_viejo_y_corto(cliente, red, mongo_falso):
     for i in range(sondeo.HISTORIAL + 5):
         red["respuestas"]["series"] = lambda n, i=i: salud(n, version="0.%d" % i)
         sondeo.guardar(sondeo.sondear_varios(["series"]))
@@ -184,13 +205,43 @@ def test_historial_del_mas_reciente_al_mas_viejo_y_corto(cliente, red, redis_fal
     datos = r.get_json()
     assert datos["servicio"] == "series"
     assert [s["version"] for s in datos["sondeos"]] == ["0.%d" % i for i in range(sondeo.HISTORIAL + 4, 4, -1)]
-    assert 0 < redis_falso.ttl("health:history:series") <= sondeo.TTL_HISTORIAL
+    assert set(datos["sondeos"][0]) == {"nombre", "estado", "causas", "detalle", "version",
+                                        "latencia_ms", "revisado"}
+    assert datos["sondeos"][0]["revisado"].endswith("+00:00")
+    # En MongoDB se quedan todos: el TTL de 30 días los borra, no el tope de la respuesta.
+    assert mongo_falso["historial_servicios"].count_documents({"servicio": "series"}) == \
+        sondeo.HISTORIAL + 5
+
+
+def test_historial_guarda_un_documento_por_sondeo(red, mongo_falso):
+    red["respuestas"]["series"] = lambda n: salud(n, postgresql=False)
+    sondeo.guardar(sondeo.sondear_varios(["series", "zonas"]))
+    doc = mongo_falso["historial_servicios"].find_one({"servicio": "series"}, {"_id": 0})
+    assert doc["estado"] == "degradado" and doc["dependencias_caidas"] == ["postgresql"]
+    assert doc["version_esquema"] == 1 and doc["error"] is None and doc["latencia_ms"] >= 0
+    assert doc["fecha"].tzinfo is not None
+    assert mongo_falso["historial_servicios"].count_documents({}) == 2
+
+
+def test_disponibilidad_y_latencia_de_las_ultimas_24_horas(cliente, mongo_falso):
+    ahora = datetime.now(timezone.utc)
+    mongo_falso["historial_servicios"].insert_many([
+        {"servicio": "zonas", "fecha": ahora - timedelta(minutes=m), "estado": e,
+         "latencia_ms": l, "version": "0.1.0", "dependencias_caidas": [], "error": None,
+         "version_esquema": 1}
+        for m, e, l in ((1, "ok", 10.0), (2, "ok", 20.0), (3, "degradado", 30.0),
+                        (4, "caido", None), (60 * 25, "caido", None))])
+    datos = cliente.get("/api/v1/services/zonas/history?format=json").get_json()
+    assert datos["resumen"] == {"horas": 24, "sondeos": 4, "disponibilidad": 0.5,
+                                "latencia_promedio_ms": 20.0}
+    assert len(datos["sondeos"]) == 5
 
 
 def test_historial_vacio_y_en_xml(cliente):
     raiz = ET.fromstring(cliente.get("/api/v1/services/zonas/history").data)
     assert raiz.tag == "historial" and raiz.findtext("servicio") == "zonas"
     assert raiz.findall("sondeos/sondeo") == []
+    assert raiz.findtext("resumen/sondeos") == "0"
 
 
 def test_historial_de_un_servicio_que_no_existe(cliente):
@@ -198,17 +249,29 @@ def test_historial_de_un_servicio_que_no_existe(cliente):
     assert r.status_code == 404 and r.get_json()["codigo"] == "NO_ENCONTRADO"
 
 
-def test_historial_con_redis_caido_es_503(cliente, apagar_redis):
-    apagar_redis()
+def test_historial_con_mongodb_caido_es_503(cliente, apagar_mongo):
+    apagar_mongo()
     r = cliente.get("/api/v1/services/zonas/history?format=json")
     assert r.status_code == 503 and r.get_json()["codigo"] == "SERVICIO_NO_DISPONIBLE"
+
+
+def test_historial_no_depende_de_redis(cliente, apagar_redis):
+    apagar_redis()
+    assert cliente.get("/api/v1/services/zonas/history").status_code == 200
+
+
+def test_con_mongodb_caido_el_sondeo_sigue_y_guarda_en_redis(red, redis_falso, apagar_mongo):
+    apagar_mongo()
+    sondeo.guardar(sondeo.sondear_varios(["auth"]))
+    assert redis_falso.exists("health:auth")
 
 
 class Alto(Exception):
     pass
 
 
-def test_el_ciclo_guarda_cada_ronda_y_sigue_si_una_falla(red, redis_falso, monkeypatch):
+def test_el_ciclo_guarda_cada_ronda_y_sigue_si_una_falla(red, redis_falso, mongo_falso,
+                                                        monkeypatch):
     rondas, real = [], sondeo.sondear_varios
 
     def varios(nombres):
@@ -227,7 +290,8 @@ def test_el_ciclo_guarda_cada_ronda_y_sigue_si_una_falla(red, redis_falso, monke
     with pytest.raises(Alto):
         sondeo._ciclo()
     assert rondas == [list(sondeo.SERVICIOS)] * 2
-    assert redis_falso.exists("health:auth") and redis_falso.llen("health:history:auth") == 1
+    assert redis_falso.exists("health:auth")
+    assert mongo_falso["historial_servicios"].count_documents({"servicio": "auth"}) == 1
 
 
 def test_url_de_sondeo_del_compose(monkeypatch):
@@ -244,7 +308,7 @@ def test_intervalo_invalido_usa_el_de_omision(monkeypatch):
 
 # ------------------------------------------- el directorio contra el catálogo y el compose
 
-def test_los_26_del_catalogo_con_su_puerto():
+def test_los_del_catalogo_con_su_puerto():
     texto = (RAIZ / "docs/arquitectura/microservicios.md").read_text(encoding="utf-8")
     catalogo = {m.group(1): int(m.group(2))
                 for m in re.finditer(r"^\| \d+ +\| `([a-z-]+)` .*\| (\d{4}) +\|$", texto, re.M)}
@@ -256,7 +320,7 @@ def test_cada_servicio_del_compose_con_su_puerto_y_perfil():
     vistos = {m.group(1): (m.group(2), int(m.group(3))) for m in re.finditer(
         r"^  ([a-z-]+):\n(?:    .*\n)*?    profiles: \[([a-z]+)\]\n    ports:\n      - \"(\d+):8000\"",
         compose, re.M)}
-    # La consola está en el compose, pero no es uno de los 26: no tiene /health de servicio.
+    # La consola está en el compose, pero no es un servicio del catálogo: no tiene /health de servicio.
     vistos.pop("consola")
     assert vistos and all(sondeo.SERVICIOS[n] == v for n, v in vistos.items())
 
@@ -269,3 +333,43 @@ def test_cada_servicio_existente_se_llama_como_en_el_directorio():
         texto = app.read_text(encoding="utf-8")
         nombre = re.search(r'crear_app\("([a-z-]+)"', texto).group(1)
         assert "port=%d" % sondeo.SERVICIOS[nombre][1] in texto, app
+
+
+def test_mongodb_y_el_bucket_caidos_son_causas_del_servicio(cliente, red):
+    def con_salud(**campos):
+        base = {"servicio": None, "version": "0.1.0", "postgresql": True, "redis": True,
+                "mongodb": "no_usa", "bucket": "no_usa"}
+
+        def contesta(nombre):
+            datos = dict(base, servicio=nombre, **campos)
+            return respuesta(503, a_xml(dict(datos, estado="degradado"), "salud"))
+        return contesta
+    red["respuestas"].update({"evidencias": con_salud(mongodb=False, bucket="no_configurado"),
+                              "series": con_salud(mongodb="no_usa")})
+    por_nombre = {s["nombre"]: s for s in
+                  cliente.get("/api/v1/services/health?format=json").get_json()["servicios"]}
+    assert por_nombre["evidencias"]["causas"] == ["mongodb", "bucket"]
+    assert por_nombre["evidencias"]["estado"] == "degradado"
+    assert por_nombre["series"]["causas"] == []
+
+
+def test_el_panel_cuenta_los_errores_de_cada_servicio(cliente, red, redis_falso):
+    redis_falso.set(llaves.errores("casos"), 3)
+    datos = cliente.get("/api/v1/services/health?format=json").get_json()
+    por_nombre = {s["nombre"]: s["errores"] for s in datos["servicios"]}
+    assert por_nombre["casos"] == 3 and por_nombre["auth"] == 0
+
+
+def test_con_redis_caido_los_errores_van_vacios(cliente, red, apagar_redis):
+    apagar_redis()
+    datos = cliente.get("/api/v1/services/health?format=json").get_json()
+    assert all(s["errores"] is None for s in datos["servicios"])
+
+
+def test_url_publica_detras_de_nginx(cliente, monkeypatch):
+    monkeypatch.setenv("URL_PUBLICA", "https://epidemia.example.com/{servicio}")
+    servicios = cliente.get("/api/v1/services?format=json").get_json()["servicios"]
+    casos = next(s for s in servicios if s["nombre"] == "casos")
+    assert casos["url"] == "https://epidemia.example.com/casos"
+    assert casos["docs"] == "https://epidemia.example.com/casos/docs"
+    assert casos["openapi"] == "https://epidemia.example.com/casos/openapi.json"

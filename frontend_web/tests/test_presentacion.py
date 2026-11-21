@@ -309,6 +309,7 @@ class EnfermedadesMuestraFechasTests(AppTestCase):
              "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
     def setUp(self):
+        super().setUp()
         self._borra()
         with get_conn() as conn:
             with conn.cursor() as cur:

@@ -1,0 +1,48 @@
+# HTTPS con Let's Encrypt en la nube (D26). Se suma al compose principal y a
+# docker-compose.nginx.yml, con DOMINIO apuntando a la IP fija de la máquina:
+#
+#   sudo DOMINIO=<ip-con-guiones>.sslip.io bash infra/nginx/letsencrypt.sh    la primera vez
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.nginx.yml \
+#     -f infra/docker-compose.letsencrypt.yml <perfiles> up -d                 después
+#
+# Guía: «HTTPS con Let's Encrypt en la máquina» en docs/INSTALACION.md.
+#
+# - nginx usa el certificado de Let's Encrypt (infra/letsencrypt/) y recarga cada 6 h, para
+#   tomar el renovado sin cortar conexiones.
+# - certbot intenta renovar cada 12 h; solo renueva si al certificado le quedan menos de 30
+#   días. Valida por HTTP: deja un archivo en infra/certbot-www/ y nginx lo sirve en el
+#   puerto 80, en /.well-known/acme-challenge/.
+# - estado-servicios da https://<DOMINIO>/<servicio> como URL de cada servicio.
+#
+# infra/letsencrypt/ (la llave privada) e infra/certbot-www/ no entran a git.
+
+services:
+  nginx:
+    environment:
+      NGINX_DOMINIO: ${DOMINIO:?Falta DOMINIO, por ejemplo 34-56-78-90.sslip.io}
+      NGINX_CERTIFICADO: /etc/letsencrypt/live/${DOMINIO}/fullchain.pem
+      NGINX_LLAVE: /etc/letsencrypt/live/${DOMINIO}/privkey.pem
+    volumes:
+      - ./letsencrypt:/etc/letsencrypt:ro
+      - ./certbot-www:/var/www/certbot:ro
+    # El entrypoint de la imagen solo procesa las plantillas si el comando empieza con nginx,
+    # así que se le vuelve a llamar desde el ciclo de recarga.
+    command:
+      - /bin/sh
+      - -c
+      - "(while :; do sleep 6h; nginx -s reload; done) & exec /docker-entrypoint.sh nginx -g 'daemon off;'"
+
+  certbot:
+    image: certbot/certbot:v5.9.0
+    restart: unless-stopped
+    volumes:
+      - ./letsencrypt:/etc/letsencrypt
+      - ./certbot-www:/var/www/certbot
+    entrypoint:
+      - /bin/sh
+      - -c
+      - "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
+
+  estado-servicios:
+    environment:
+      URL_PUBLICA: https://${DOMINIO}/{servicio}

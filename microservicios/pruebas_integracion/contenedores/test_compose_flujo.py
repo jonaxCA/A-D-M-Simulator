@@ -31,6 +31,14 @@ def test_flujo_completo(api, sesion, analista, crea_escenario, aprueba, lanza, t
 
     comparacion = api("comparacion", "GET", "/api/v1/comparisons", analista["access"], params={"runs": "%d,%d" % (a, c)})
     assert comparacion.status_code == 200 and [x["id"] for x in comparacion.json()["corridas"]] == [a, c]
+    # Sin las personas-día por dosis, la vacunación no entra a la frontera (D3, migración 040).
+    pareto = api("pareto", "GET", "/api/v1/pareto", analista["access"], params={"runs": "%d,%d" % (a, c)})
+    assert pareto.status_code == 422 and "personas-dia por dosis" in pareto.text, pareto.text
+    r = api("intervenciones", "PUT", "/api/v1/versions/%d/interventions/%d/person-days"
+            % (version, intervenciones["VACUNACION"]), admin["access"],
+            json={"person_days_per_unit": "0.5", "person_days_source": FUENTE, "person_days_is_assumption": True})
+    assert r.status_code == 200, r.text
     pareto = api("pareto", "GET", "/api/v1/pareto", analista["access"], params={"runs": "%d,%d" % (a, c)})
     assert pareto.status_code == 200, pareto.text
     assert set(pareto.json()["frontera"]) <= {a, c} and pareto.json()["frontera"]
+    assert all(f["costo_pesos"] is not None for f in pareto.json()["filas"])

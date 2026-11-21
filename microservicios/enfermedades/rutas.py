@@ -3,7 +3,7 @@ from flask import g, request
 
 from backend_web import queries
 from backend_web.audit import log_audit
-from backend_web.db import get_conn
+from backend_web.db import get_conn, query
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.seguridad import requiere_token
@@ -11,6 +11,7 @@ from epidemia_comun.validaciones import diccionario, entero_positivo
 
 
 CAMPOS = ("id", "code", "name", "description", "is_active", "created_at")
+ESTADO_NL = "19"
 
 
 def _ficha(fila):
@@ -34,6 +35,22 @@ def registrar(app):
             busqueda=(request.args.get("q") or "").strip() or None,
             estado=estado, pagina=pagina, por_pagina=tamano)
         return responder(datos, "catalogo_enfermedades")
+
+    # Las tarjetas del catálogo. «Detectadas» son las enfermedades con un caso pendiente o validado
+    # en un municipio de Nuevo León en los últimos 30 días; lo demás es solo del catálogo.
+    @app.get("/api/v1/diseases/stats")
+    def estadisticas():
+        catalogo = query("""SELECT count(*) AS registradas,
+                                   count(*) FILTER (WHERE is_active) AS activas,
+                                   count(*) FILTER (WHERE NOT is_active) AS inactivas,
+                                   count(*) FILTER (WHERE created_at >= now() - interval '30 days') AS altas_30d
+                            FROM diseases""", one=True)
+        detectadas = query("""SELECT count(DISTINCT c.disease_id) AS n
+                              FROM cases c JOIN regions r ON r.id = c.region_id
+                              WHERE r.parent_region_id = (SELECT id FROM regions WHERE code = %s)
+                                AND c.status IN ('pendiente', 'validado')
+                                AND c.report_date >= current_date - 29""", (ESTADO_NL,), one=True)
+        return responder({**catalogo, "detectadas_30d": detectadas["n"]}, "estadisticas_enfermedades")
 
     @app.get("/api/v1/diseases/<int:disease_id>")
     def detalle(disease_id):

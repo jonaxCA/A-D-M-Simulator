@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - auth",
     "version": "0.1.0",
-    "description": "Inicio de sesión. Emite el access (JWT HS256, 20 min) y el refresh, y abre la sesión en Redis (8 h). Cada intento de login necesita un captcha nuevo, de un solo uso."
+    "description": "Inicio de sesión. Emite el access (JWT HS256, 20 min) y el refresh, y abre la sesión en Redis (8 h). Cada intento de login necesita un captcha nuevo, de un solo uso. Los perfiles críticos (ADMINISTRADOR y EPIDEMIOLOGO, D40) entran en dos pasos con un código TOTP; cada login envía el identificador del dispositivo (D41) y se aplica el tope de sesiones por cuenta."
   },
   "servers": [
     {
@@ -63,7 +63,7 @@
                 "examples": {
                   "respuesta": {
                     "summary": "Respuesta real (tokens sustituidos)",
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<captcha><captcha_id>GcdGyhd9c8eKIGaA9fvtuA</captcha_id><pregunta>5 + 7</pregunta><expira tipo=\"numero\">1791866991</expira></captcha>"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<captcha><captcha_id>D7H0xiR5jwdtQrwUtIQC5w</captcha_id><pregunta>6 + 6</pregunta><expira tipo=\"numero\">1791866991</expira></captcha>"
                   }
                 }
               }
@@ -73,7 +73,19 @@
             "description": "Solicitud inválida"
           },
           "503": {
-            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -82,7 +94,7 @@
       "post": {
         "summary": "Iniciar sesión",
         "operationId": "iniciar_sesion",
-        "description": "Revisa primero el captcha y después la contraseña (bcrypt, bloqueo tras cinco fallos). Cuenta inexistente, inactiva, bloqueada o contraseña equivocada dan el mismo 401. Audita LOGIN y LOGIN_FAILED.",
+        "description": "Revisa primero el captcha y después la contraseña (bcrypt, bloqueo tras cinco fallos). Cuenta inexistente, inactiva, bloqueada o contraseña equivocada dan el mismo 401. Si envía dispositivo_id, sesiones lo registra: el primero de una cuenta nace autorizado y los siguientes quedan pendientes (403 DISPOSITIVO_NO_AUTORIZADO hasta que la persona o un ADMINISTRADOR los autorice). dispositivo_id es obligatorio para los perfiles críticos. Con un perfil crítico no regresa tokens sino el reto de MFA (mfa_requerido, mfa_enrolado, mfa_token y mfa_expira; ejemplo en ejemplos/iniciar_sesion_mfa.json): el token se cambia por la sesión en /api/v1/auth/mfa/verify, o en /enroll y /confirm si aún no tiene MFA. Al pasar el tope de sesiones por cuenta (3 por omisión) se cierra la más antigua. Audita LOGIN y LOGIN_FAILED.",
         "parameters": [
           {
             "in": "query",
@@ -123,6 +135,17 @@
                   },
                   "captcha_respuesta": {
                     "type": "string"
+                  },
+                  "dispositivo_id": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "description": "Identificador estable que genera el cliente. Obligatorio para los perfiles críticos"
+                  },
+                  "dispositivo_etiqueta": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "description": "Nombre para reconocer el dispositivo"
                   }
                 }
               },
@@ -130,7 +153,9 @@
                 "usuario": "analista1",
                 "password": "CONTRASENA_DE_EJEMPLO",
                 "captcha_id": "D7H0xiR5jwdtQrwUtIQC5w",
-                "captcha_respuesta": "12"
+                "captcha_respuesta": "12",
+                "dispositivo_id": "DISPOSITIVO_DE_EJEMPLO_0001",
+                "dispositivo_etiqueta": "Laptop de oficina"
               }
             },
             "application/xml": {
@@ -143,7 +168,7 @@
               "examples": {
                 "peticion": {
                   "summary": "Petición",
-                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<login><usuario>analista1</usuario><password>CONTRASENA_DE_EJEMPLO</password><captcha_id>D7H0xiR5jwdtQrwUtIQC5w</captcha_id><captcha_respuesta>12</captcha_respuesta></login>\n"
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<login><usuario>analista1</usuario><password>CONTRASENA_DE_EJEMPLO</password><captcha_id>D7H0xiR5jwdtQrwUtIQC5w</captcha_id><captcha_respuesta>12</captcha_respuesta><dispositivo_id>DISPOSITIVO_DE_EJEMPLO_0001</dispositivo_id><dispositivo_etiqueta>Laptop de oficina</dispositivo_etiqueta></login>\n"
                 }
               }
             }
@@ -151,7 +176,7 @@
         },
         "responses": {
           "200": {
-            "description": "Operación correcta",
+            "description": "Operación correcta (tokens, o el reto de MFA de un perfil crítico)",
             "content": {
               "application/json": {
                 "schema": {
@@ -217,12 +242,638 @@
             "description": "Content-Type distinto de JSON o XML"
           },
           "422": {
-            "description": "Falta un campo, o el captcha es incorrecto o venció (DATOS_INVALIDOS)"
+            "description": "Falta un campo (dispositivo_id incluido, para los perfiles críticos), el dispositivo_id no tiene de 8 a 128 caracteres, o el captcha es incorrecto o venció (DATOS_INVALIDOS)"
           },
           "503": {
-            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.. También MFA_BLOQUEADO si la cuenta crítica agotó sus 5 códigos en 15 min (aparte, DEMASIADOS_DISPOSITIVOS si tiene 10 dispositivos pendientes)",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El dispositivo está pendiente o revocado (DISPOSITIVO_NO_AUTORIZADO)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Este dispositivo está pendiente: autorízalo desde una sesión abierta en otro dispositivo autorizado o pide a un ADMINISTRADOR que lo autorice.",
+                  "codigo": "DISPOSITIVO_NO_AUTORIZADO",
+                  "instance": "/api/v1/auth/login"
+                }
+              }
+            }
           }
         }
+      }
+    },
+    "/api/v1/auth/mfa/verify": {
+      "post": {
+        "summary": "Segundo paso del inicio de sesión",
+        "operationId": "mfa_verificar",
+        "description": "Cambia el token de MFA y un código TOTP (6 dígitos, ±1 paso de 30 s, uno ya usado no sirve otra vez) o un código de respaldo (un solo uso) por la sesión. El token vive 5 min y aguanta cinco fallos. Cada fallo queda como LOGIN_FAILED en la entidad user_mfa. Además del tope del token, la cuenta admite 5 códigos incorrectos en 15 min, aunque pida otro token (429 MFA_BLOQUEADO). El código solo admite caracteres ASCII.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "mfa_token",
+                  "codigo"
+                ],
+                "properties": {
+                  "mfa_token": {
+                    "type": "string",
+                    "description": "El que regresó /login"
+                  },
+                  "codigo": {
+                    "type": "string",
+                    "description": "Código TOTP de 6 dígitos o un código de respaldo"
+                  }
+                }
+              },
+              "example": {
+                "mfa_token": "MFA_TOKEN_DE_EJEMPLO",
+                "codigo": "123456"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "mfa"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<mfa><mfa_token>MFA_TOKEN_DE_EJEMPLO</mfa_token><codigo>123456</codigo></mfa>\n"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "access_token": "JWT_DE_EJEMPLO",
+                  "refresh_token": "REFRESH_DE_EJEMPLO",
+                  "token_type": "Bearer",
+                  "expires_in": 1200,
+                  "sesion_expira": 1791895491,
+                  "usuario": {
+                    "id": 1,
+                    "username": "admin",
+                    "full_name": "Administrador",
+                    "roles": [
+                      "ADMINISTRADOR"
+                    ]
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "sesion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<sesion><access_token>JWT_DE_EJEMPLO</access_token><refresh_token>REFRESH_DE_EJEMPLO</refresh_token><token_type>Bearer</token_type><expires_in tipo=\"numero\">1200</expires_in><sesion_expira tipo=\"numero\">1791895491</sesion_expira><usuario><id tipo=\"numero\">1</id><username>admin</username><full_name>Administrador</full_name><roles><item>ADMINISTRADOR</item></roles></usuario></sesion>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Código incorrecto (MFA_CODIGO_INVALIDO) o token de MFA desconocido, vencido o agotado, con cinco fallos (MFA_TOKEN_INVALIDO)"
+          },
+          "409": {
+            "description": "La cuenta aún no tiene MFA (CONFLICTO): usa /enroll"
+          },
+          "413": {
+            "description": "Cuerpo demasiado grande"
+          },
+          "415": {
+            "description": "Content-Type distinto de JSON o XML"
+          },
+          "422": {
+            "description": "Falta un campo (DATOS_INVALIDOS) o código con caracteres no ASCII"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.. También MFA_BLOQUEADO",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/mfa/enroll": {
+      "post": {
+        "summary": "Generar el secreto de MFA",
+        "operationId": "mfa_enrolar",
+        "description": "Para quien aún no tiene MFA. Exige codigo_alta, un código de un solo uso (15 min) que emitió un ADMINISTRADOR con /api/v1/auth/mfa/{user_id}/enrollment-code; sin él, 403 (ALTA_REQUERIDA o ALTA_INVALIDA), salvo que el servicio corra con MFA_ENROLAMIENTO_LIBRE=1 (solo para el primer administrador). Genera un secreto TOTP (20 bytes, base32) y la URI otpauth:// para registrarlo en una app de autenticación. Queda pendiente hasta confirmar con /confirm; mientras esté pendiente (15 min) no se puede sobrescribir (409). Si ya tiene MFA activo, 409. Audita UPDATE en user_mfa.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "mfa_token"
+                ],
+                "properties": {
+                  "mfa_token": {
+                    "type": "string",
+                    "description": "El que regresó /login"
+                  },
+                  "codigo_alta": {
+                    "type": "string",
+                    "description": "El que emitió un ADMINISTRADOR; no hace falta con MFA_ENROLAMIENTO_LIBRE=1"
+                  }
+                }
+              },
+              "example": {
+                "mfa_token": "MFA_TOKEN_DE_EJEMPLO",
+                "codigo_alta": "CODIGO_DE_ALTA_EJEMPLO"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "mfa"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<mfa><mfa_token>MFA_TOKEN_DE_EJEMPLO</mfa_token><codigo_alta>CODIGO_DE_ALTA_EJEMPLO</codigo_alta></mfa>\n"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "secreto": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+                  "uri": "otpauth://totp/EPIDEMIA:admin?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=EPIDEMIA&algorithm=SHA1&digits=6&period=30",
+                  "algoritmo": "SHA1",
+                  "digitos": 6,
+                  "periodo": 30
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "mfa"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<mfa><secreto>JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP</secreto><uri>otpauth://totp/EPIDEMIA:admin?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&amp;issuer=EPIDEMIA&amp;algorithm=SHA1&amp;digits=6&amp;period=30</uri><algoritmo>SHA1</algoritmo><digitos tipo=\"numero\">6</digitos><periodo tipo=\"numero\">30</periodo></mfa>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Token de MFA desconocido o vencido (MFA_TOKEN_INVALIDO)"
+          },
+          "409": {
+            "description": "La cuenta ya tiene MFA, o hay un enrolamiento pendiente reciente (CONFLICTO)"
+          },
+          "413": {
+            "description": "Cuerpo demasiado grande"
+          },
+          "415": {
+            "description": "Content-Type distinto de JSON o XML"
+          },
+          "422": {
+            "description": "Falta un campo (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Falta el código de alta o no es válido (ALTA_REQUERIDA, ALTA_INVALIDA)"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/mfa/confirm": {
+      "post": {
+        "summary": "Confirmar el MFA con el primer código",
+        "operationId": "mfa_confirmar",
+        "description": "Activa el MFA con el primer código válido del secreto de /enroll y abre la sesión. Regresa, una sola vez, los 8 códigos de respaldo (12 caracteres hexadecimales en grupos de cuatro; en la base solo está su SHA-256). Cuenta en el mismo tope de 5 códigos por 15 min que /verify (429 MFA_BLOQUEADO).",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "mfa_token",
+                  "codigo"
+                ],
+                "properties": {
+                  "mfa_token": {
+                    "type": "string",
+                    "description": "El que regresó /login"
+                  },
+                  "codigo": {
+                    "type": "string",
+                    "description": "Código TOTP de 6 dígitos o un código de respaldo"
+                  }
+                }
+              },
+              "example": {
+                "mfa_token": "MFA_TOKEN_DE_EJEMPLO",
+                "codigo": "123456"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "mfa"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<mfa><mfa_token>MFA_TOKEN_DE_EJEMPLO</mfa_token><codigo>123456</codigo></mfa>\n"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "access_token": "JWT_DE_EJEMPLO",
+                  "refresh_token": "REFRESH_DE_EJEMPLO",
+                  "token_type": "Bearer",
+                  "expires_in": 1200,
+                  "sesion_expira": 1791895491,
+                  "usuario": {
+                    "id": 1,
+                    "username": "admin",
+                    "full_name": "Administrador",
+                    "roles": [
+                      "ADMINISTRADOR"
+                    ]
+                  },
+                  "codigos_respaldo": [
+                    "CODIGO-DE-RESPALDO-1",
+                    "CODIGO-DE-RESPALDO-2"
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "sesion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<sesion><access_token>JWT_DE_EJEMPLO</access_token><refresh_token>REFRESH_DE_EJEMPLO</refresh_token><token_type>Bearer</token_type><expires_in tipo=\"numero\">1200</expires_in><sesion_expira tipo=\"numero\">1791895491</sesion_expira><usuario><id tipo=\"numero\">1</id><username>admin</username><full_name>Administrador</full_name><roles><item>ADMINISTRADOR</item></roles></usuario><codigos_respaldo><item>CODIGO-DE-RESPALDO-1</item><item>CODIGO-DE-RESPALDO-2</item></codigos_respaldo></sesion>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Código incorrecto (MFA_CODIGO_INVALIDO) o token de MFA desconocido, vencido o agotado, con cinco fallos (MFA_TOKEN_INVALIDO)"
+          },
+          "409": {
+            "description": "No hay un enrolamiento pendiente (CONFLICTO)"
+          },
+          "413": {
+            "description": "Cuerpo demasiado grande"
+          },
+          "415": {
+            "description": "Content-Type distinto de JSON o XML"
+          },
+          "422": {
+            "description": "Falta un campo (DATOS_INVALIDOS) o código que no son 6 dígitos ASCII"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.. También MFA_BLOQUEADO",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/mfa/{user_id}": {
+      "delete": {
+        "summary": "Restablecer el MFA de una cuenta",
+        "operationId": "mfa_restablecer",
+        "description": "Solo ADMINISTRADOR. Borra el secreto y los códigos de respaldo de la cuenta (teléfono o códigos perdidos); en su siguiente login vuelve a enrolarse. Audita DELETE en user_mfa.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "description": "id de users",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "usuario": 2,
+                  "restablecido": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "mfa"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<mfa><usuario tipo=\"numero\">2</usuario><restablecido tipo=\"booleano\">true</restablecido></mfa>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token, token inválido, vencido o revocado"
+          },
+          "403": {
+            "description": "El rol no es ADMINISTRADOR (PERMISO_INSUFICIENTE)"
+          },
+          "422": {
+            "description": "user_id inválido (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/mfa/{user_id}/enrollment-code": {
+      "post": {
+        "summary": "Emitir el código de alta de MFA",
+        "operationId": "mfa_codigo_alta",
+        "description": "Solo ADMINISTRADOR. Emite un código de un solo uso, válido 15 min, para que esa cuenta pueda enrolar su MFA en /mfa/enroll (D40). Emitir otro invalida el anterior. Audita UPDATE en user_mfa sin guardar el código.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "description": "id de users",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "usuario": 2,
+                  "codigo_alta": "0f3a9c1d7be24a68",
+                  "expira": 1795000000
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "mfa"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<mfa><usuario tipo=\"numero\">2</usuario><codigo_alta>0f3a9c1d7be24a68</codigo_alta><expira tipo=\"numero\">1795000000</expira></mfa>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token, token inválido, vencido o revocado"
+          },
+          "403": {
+            "description": "El rol no es ADMINISTRADOR (PERMISO_INSUFICIENTE)"
+          },
+          "422": {
+            "description": "user_id inválido (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     }
   }

@@ -380,6 +380,16 @@ class IntervencionesTests(_ConEscenarioBorrador):
                                   p_CUBREBOCAS_eficacia="2")
         self.assertTrue(any("mayor que 1" in e for e in errores), errores)
 
+    def test_rechaza_un_parametro_nan(self):
+        """nan no es menor que 0 ni mayor que 1, asi que pasaba la validacion y
+        la columna jsonb lo rechazaba despues. Lo cubria la prueba de la ruta
+        web de intervenciones, que se quito con D4."""
+        ok, errores = self._agrega(code="REDUCCION_AFORO", start_day="10",
+                                   p_REDUCCION_AFORO_reduccion="nan")
+        self.assertIsNone(ok)
+        self.assertTrue(any("«reduccion» debe ser un número" in e for e in errores), errores)
+        self.assertEqual(self._codigos(), [])
+
     # ---- orden y baja ------------------------------------------------------
 
     def test_reordenar_intercambia_con_la_vecina(self):

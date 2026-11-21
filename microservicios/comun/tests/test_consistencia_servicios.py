@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import requests
 
-from backend_web import queries
+from backend_web import dispositivos, queries
 from epidemia_comun.formatos import a_xml, de_xml
 from microservicios.escenarios import rutas as rutas_escenarios
 from microservicios.escenarios_xml import lectura, mapeo
@@ -268,6 +268,10 @@ def test_sincronizacion_y_casos_reales_201_nuevo_y_200_duplicado(crear_cliente, 
     monkeypatch.setattr(rutas_casos, "get_conn", get_conn)
     monkeypatch.setattr(rutas_casos, "log_audit", lambda *a, **k: None)
     monkeypatch.setattr(rutas_sync, "log_audit", lambda *a, **k: None)
+    # El dispositivo 3 del lote es de quien firma el token (sub 7); el 4, de la misma persona
+    # pero revocado.
+    monkeypatch.setattr(dispositivos, "estado_para_captura",
+                        lambda device_id, user_id: {3: "ok", 4: "revocado"}.get(device_id, "ajeno"))
     monkeypatch.setattr(queries, "get_enfermedades_para_captura",
                         lambda: [{"id": 1, "name": "COVID-19", "code": "SARS"}])
     monkeypatch.setattr(queries, "get_municipios_catalogo", lambda: [{"id": 10, "name": "Monterrey"}])
@@ -297,6 +301,15 @@ def test_sincronizacion_y_casos_reales_201_nuevo_y_200_duplicado(crear_cliente, 
     assert resultados[u1]["resultado"] == "duplicado" and resultados[u1]["case_id"] == 100
     assert resultados[u2]["resultado"] == "creado" and resultados[u2]["case_id"] == 101
     assert [x["resultado"] for x in r.get_json()["resultados"]][2] == "rechazado"
+
+    # Desde un teléfono revocado, casos rechaza cada caso con 409 y el lote lo reporta.
+    revocado = {"batch_id": "5d1c9d2e-7b3a-4c1f-9e8d-2a6b4c8e0f13", "device_id": 4, "cases": [
+        {"local_uuid": "44444444-4444-4444-8444-444444444444", "disease_id": 1, "region_id": 10,
+         "report_date": "2026-10-03"}]}
+    r = cliente_sync.post("/api/v1/sync/cases?format=json", json=revocado, headers=cabeceras)
+    assert r.status_code == 200, r.data
+    [resultado] = r.get_json()["resultados"]
+    assert resultado["resultado"] == "rechazado" and "revocado" in resultado["errores"][0]
 
 
 # ------------------------------------------------------------ aprobacion -> validacion real

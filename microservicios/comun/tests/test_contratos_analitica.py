@@ -1,5 +1,7 @@
 """Contrato, rutas y Dockerfile de tipos-intervencion, indicadores, series, zonas, comparacion,
-pareto, corridas, resultados, notificaciones y estado-servicios (simulador tiene los suyos)."""
+pareto, corridas, resultados, notificaciones, estado-servicios, dispositivos, evidencias y vacunas
+(simulador tiene los suyos). Una operación con "x-binario" regresa un archivo tal cual: no lleva
+JSON ni XML ni ejemplos."""
 import ast
 import json
 import re
@@ -11,8 +13,15 @@ RAIZ = Path(__file__).resolve().parents[3]
 
 # (servicio del catálogo, paquete de Python, puerto, rutas públicas)
 SERVICIOS = [
+    # Identidad: sus ejemplos por ruta, pendientes del segundo parcial (E6).
+    # Pública salvo el restablecimiento del MFA de una cuenta, que es de ADMINISTRADOR (D40).
+    ("auth", "auth", 5201, None),
+    ("sesiones", "sesiones", 5202, None),
+    ("usuarios", "usuarios", 5203, False),
+    ("roles", "roles", 5204, False),
     ("tipos-intervencion", "tipos_intervencion", 5215, True),
-    ("indicadores", "indicadores", 5251, True),
+    # Pública salvo la exportación, que pide sesión para auditar quién exporta (D36).
+    ("indicadores", "indicadores", 5251, None),
     ("series", "series", 5252, False),
     ("zonas", "zonas", 5253, False),
     ("comparacion", "comparacion", 5244, False),
@@ -21,6 +30,9 @@ SERVICIOS = [
     ("resultados", "resultados", 5243, False),
     ("notificaciones", "notificaciones", 5261, False),
     ("estado-servicios", "estado_servicios", 5262, True),
+    ("dispositivos", "dispositivos", 5223, False),
+    ("evidencias", "evidencias", 5224, False),
+    ("vacunas", "vacunas", 5225, False),
 ]
 
 
@@ -58,10 +70,12 @@ def test_contrato_igual_a_las_rutas(servicio, paquete, puerto, publico):
     for ruta, metodos in contrato["paths"].items():
         for metodo, item in metodos.items():
             contenido = exito(item)["content"]
-            assert {"application/json", "application/xml"} <= set(contenido)
+            if not item.get("x-binario"):
+                assert {"application/json", "application/xml"} <= set(contenido)
             en_contrato.add((ruta, metodo, item.get("security") == [{"bearerAuth": []}]))
     assert en_contrato == rutas_declaradas(paquete)
-    assert all(not protegida for *_, protegida in en_contrato) is publico
+    if publico is not None:
+        assert all(not protegida for *_, protegida in en_contrato) is publico
 
 
 @pytest.mark.parametrize("servicio,paquete,puerto,publico", SERVICIOS)
@@ -85,6 +99,8 @@ def test_ejemplos_json_y_xml_por_ruta(servicio, paquete, puerto, publico):
     contrato = json.loads((carpeta / "openapi.json").read_text(encoding="utf-8"))
     for metodos in contrato["paths"].values():
         for item in metodos.values():
+            if item.get("x-binario"):
+                continue
             ejemplo = carpeta / "ejemplos" / item["operationId"]
             contenido = exito(item)["content"]
             en_json = json.loads(ejemplo.with_suffix(".json").read_text(encoding="utf-8"))
@@ -92,3 +108,15 @@ def test_ejemplos_json_y_xml_por_ruta(servicio, paquete, puerto, publico):
             assert contenido["application/json"]["example"] == en_json
             assert contenido["application/xml"]["examples"]["respuesta"]["value"] == en_xml
             ET.fromstring(en_xml.encode("utf-8"))
+
+
+def test_toda_ruta_con_limite_documenta_el_429():
+    publicas = {("auth", "/api/v1/auth/captcha"), ("auth", "/api/v1/auth/login"),
+                ("regiones", "/api/v1/regions"), ("regiones", "/api/v1/regions/{region_id}")}
+    for archivo in (RAIZ / "docs/contratos").glob("*/openapi.json"):
+        contrato = json.loads(archivo.read_text(encoding="utf-8"))
+        for ruta, metodos in contrato["paths"].items():
+            for item in metodos.values():
+                if item.get("security") == [{"bearerAuth": []}] or (archivo.parent.name, ruta) in publicas:
+                    respuesta = item["responses"]["429"]
+                    assert "Retry-After" in respuesta["headers"], (archivo.parent.name, ruta)

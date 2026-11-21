@@ -11,13 +11,6 @@
   </div>
   <div class="page-actions">
     <a class="btn" href="{{ url_for('main.simulaciones_lista') }}">← Simulaciones</a>
-    {% if puede_ejecutar and run.status in ('completado', 'fallido', 'cancelado') %}
-    <form method="post" action="{{ url_for('main.simulacion_reejecutar', run_id=run.id) }}">
-      <button type="submit" class="btn btn-primary" title="Encola una corrida nueva con la misma versión y la misma semilla, para demostrar reproducibilidad.">
-        ⟳ Re-ejecutar con la misma semilla ({{ run.seed }})
-      </button>
-    </form>
-    {% endif %}
   </div>
 </div>
 
@@ -61,29 +54,42 @@
     <div>
       <h3>Indicadores</h3>
       <p class="subtitle">Calculados por el motor {{ resultado.engine_version }} a partir de la serie diaria completa.</p>
+      {% set muestra_escala = escala.factor and escala.factor != 1 %}
+      {% if muestra_escala %}
+      <p class="subtitle">Se simularon {{ "{:,}".format(escala.agentes) }} agentes por los
+        {{ "{:,}".format(escala.habitantes) }} habitantes de {{ run.region_name }} (Censo 2020): cada
+        agente representa {{ "{:,.2f}".format(escala.factor) }}. Debajo de cada cifra va su equivalente
+        aproximado en habitantes, que supone que los no simulados se comportan igual.</p>
+      {% endif %}
+      {% for a in escala.avisos %}<p class="subtitle">{{ a }}</p>{% endfor %}
     </div>
   </div>
   <div class="stat-grid sim-indicadores-grid">
     <div class="card stat-card">
       <div class="stat-label"><span>CASOS ACUMULADOS</span></div>
       <div class="stat-value">{{ "{:,}".format(resultado.resumen.casos_acumulados) }}</div>
+      {% if muestra_escala %}<div class="stat-trend"><span>≈ {{ "{:,}".format(escala.representados.casos_acumulados) }} habitantes</span></div>{% endif %}
     </div>
     <div class="card stat-card">
       <div class="stat-label"><span>CASOS ACTIVOS (FINAL)</span></div>
       <div class="stat-value">{{ "{:,}".format(resultado.resumen.casos_activos_final) }}</div>
+      {% if muestra_escala %}<div class="stat-trend"><span>≈ {{ "{:,}".format(escala.representados.casos_activos_final) }} habitantes</span></div>{% endif %}
     </div>
     <div class="card stat-card">
       <div class="stat-label"><span>PICO DE CASOS ACTIVOS</span></div>
       <div class="stat-value">{{ "{:,}".format(resultado.resumen.pico_casos_activos) }}</div>
       <div class="stat-trend"><span>día {{ resultado.resumen.dia_pico }}</span></div>
+      {% if muestra_escala %}<div class="stat-trend"><span>≈ {{ "{:,}".format(escala.representados.pico_casos_activos) }} habitantes</span></div>{% endif %}
     </div>
     <div class="card stat-card">
       <div class="stat-label"><span>HOSPITALIZACIONES</span></div>
       <div class="stat-value">{{ "{:,}".format(resultado.resumen.hospitalizaciones) }}</div>
+      {% if muestra_escala %}<div class="stat-trend"><span>≈ {{ "{:,}".format(escala.representados.hospitalizaciones) }} habitantes</span></div>{% endif %}
     </div>
     <div class="card stat-card">
       <div class="stat-label"><span>FALLECIMIENTOS</span></div>
       <div class="stat-value">{{ "{:,}".format(resultado.resumen.fallecimientos) }}</div>
+      {% if muestra_escala %}<div class="stat-trend"><span>≈ {{ "{:,}".format(escala.representados.fallecimientos) }} habitantes</span></div>{% endif %}
     </div>
     <div class="card stat-card">
       <div class="stat-label"><span>TASA DE ATAQUE</span></div>
@@ -99,7 +105,12 @@
       <p class="subtitle">Susceptibles, Expuestos, Infecciosos, Recuperados, Hospitalizados y Fallecidos por día.</p>
     </div>
   </div>
+  {% if resultado.serie %}
   <div class="chart-wrap"><div id="curvas-chart" style="height:360px;"></div></div>
+  {% else %}
+  <div class="alert alert-warn">Las curvas no están disponibles en este momento: el servicio de
+    resultados no respondió. Los indicadores de arriba sí son los de esta corrida.</div>
+  {% endif %}
 </div>
 
 <div class="card sim-card">
@@ -115,8 +126,8 @@
       motor y debe reportarse.</div>
     {% endif %}
   {% else %}
-    <p class="field-hint">Todavía no hay otra corrida completada con esta misma versión y semilla. Usa
-      "Re-ejecutar con la misma semilla" para demostrar que el resultado se repite.</p>
+    <p class="field-hint">Todavía no hay otra corrida completada con esta misma versión y semilla. Para
+      demostrar que el resultado se repite, lanza otra con la misma semilla desde la app de escritorio.</p>
   {% endif %}
   </div>
 </div>
@@ -166,7 +177,7 @@
 <script src="https://code.highcharts.com/highcharts.js"></script>
 <script>
 (function () {
-  {% if resultado %}
+  {% if resultado and resultado.serie %}
   var serie = {{ resultado.serie | tojson }};
   var dias = serie.map(function (f) { return f.dia; });
   function serieDe(campo) { return serie.map(function (f) { return f[campo]; }); }

@@ -3,8 +3,9 @@ from xml.etree import ElementTree as ET
 import jwt
 import pytest
 
-from backend_web import auth
-from epidemia_comun import llaves, sesiones
+from microservicios.auth import datos as auth
+from epidemia_comun import llaves
+from microservicios.sesiones import almacen as sesiones
 from epidemia_comun.seguridad import verificar_token
 from microservicios.auth import rutas
 
@@ -21,7 +22,8 @@ def bitacora(monkeypatch):
 
 
 @pytest.fixture
-def cliente(crear_cliente, monkeypatch, bitacora):
+def cliente(crear_cliente, monkeypatch, bitacora, llamar_a_sesiones):
+    monkeypatch.setattr(rutas, "llamar", llamar_a_sesiones)
     def intento(usuario, password):
         if usuario == "analista1" and password == "correcta":
             return dict(CUENTA), None
@@ -122,4 +124,6 @@ def test_contrato_servido_es_el_de_docs(cliente):
     from microservicios.auth.app import CONTRATO
     r = cliente.get("/openapi.json")
     assert r.data == CONTRATO.read_bytes()
-    assert set(r.get_json()["paths"]) == {"/api/v1/auth/captcha", "/api/v1/auth/login"}
+    assert set(r.get_json()["paths"]) == {
+        "/api/v1/auth/captcha", "/api/v1/auth/login", "/api/v1/auth/mfa/verify",
+        "/api/v1/auth/mfa/enroll", "/api/v1/auth/mfa/confirm", "/api/v1/auth/mfa/{user_id}", "/api/v1/auth/mfa/{user_id}/enrollment-code"}

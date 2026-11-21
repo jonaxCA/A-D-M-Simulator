@@ -4,7 +4,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from flask import g, request
+from flask import current_app, g, request
 
 from backend_web.audit import log_audit
 from epidemia_comun import llaves
@@ -13,12 +13,14 @@ from epidemia_comun.errores import ErrorAPI, respuesta_error
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.http import llamar
 from epidemia_comun.redis_compartido import RedisNoDisponible, requerido
-from epidemia_comun.seguridad import requiere_token
+from epidemia_comun.seguridad import requiere_token, token_servicio
 from epidemia_comun.validaciones import diccionario
 
 log = logging.getLogger(__name__)
 
-ROLES = ("CAPTURISTA", "ADMINISTRADOR")
+# Solo el CAPTURISTA captura (D1); el ADMINISTRADOR consulta cualquier lote.
+ROLES_ENVIAN = ("CAPTURISTA",)
+ROLES_LEEN = ("CAPTURISTA", "ADMINISTRADOR")
 MAXIMO_CASOS = 100
 # Cuánto se recuerda un lote: una semana cubre un dispositivo sin red varios días.
 TTL_LOTE = 7 * 24 * 3600
@@ -105,11 +107,14 @@ def _resultado_de_caso(indice, local_uuid, respuesta):
     if estado in (200, 201):
         return {"indice": indice, "local_uuid": local_uuid,
                 "resultado": "creado" if estado == 201 else "duplicado",
-                "case_id": cuerpo.get("id"), "errores": []}
+                "case_id": cuerpo.get("id"), "codigo": None, "errores": []}
     detalle = cuerpo.get("detail") or "El servicio de casos rechazó el caso."
     if estado in (400, 409, 413, 415, 422):
+        # El codigo distingue un teléfono revocado (CONFLICTO, todo el lote) de datos que hay
+        # que corregir (DATOS_INVALIDOS): la app no tiene que leer el mensaje.
+        codigo = cuerpo.get("codigo") or ("CONFLICTO" if estado == 409 else "DATOS_INVALIDOS")
         return {"indice": indice, "local_uuid": local_uuid, "resultado": "rechazado",
-                "case_id": None, "errores": [detalle]}
+                "case_id": None, "codigo": codigo, "errores": [detalle]}
     # 401/403 (el token ya no sirve o no alcanza), 5xx u otra cosa: no es culpa del caso.
     codigo = cuerpo.get("codigo") or "TOKEN_INVALIDO"
     if estado in (401, 403):
@@ -125,6 +130,28 @@ def _bitacora(lote_id, resumen):
         log.exception("No se pudo registrar el SYNC del lote %s", lote_id)
 
 
+def _avisar_casos_nuevos(guardado):
+    # Un solo aviso por lote. Solo se llama cuando el lote se procesa por primera vez: un
+    # reintento lo contesta _repetido_o_none con lo guardado, sin llegar aquí. Si falla, el lote
+    # ya está guardado: solo se anota.
+    n = guardado["creados"]
+    try:
+        resp = llamar("notificaciones", "POST", "/api/v1/notifications", formato="json", timeout=3,
+                      token=token_servicio(current_app.config, "sincronizacion"),
+                      cuerpo={"role": "EPIDEMIOLOGO", "type": "NEW_CASES",
+                              "title": "Lote con %d caso%s nuevo%s" % (n, "" if n == 1 else "s",
+                                                                       "" if n == 1 else "s"),
+                              "body": "Un lote sincronizado desde un dispositivo trajo %d caso%s nuevo%s."
+                                      % (n, "" if n == 1 else "s", "" if n == 1 else "s"),
+                              "payload": {"batch_id": guardado["batch_id"], "creados": n,
+                                          "total": guardado["total"]}})
+        if resp.status_code >= 400:
+            log.warning("notificaciones respondió %d al avisar el lote %s",
+                        resp.status_code, guardado["batch_id"])
+    except Exception as exc:
+        log.warning("No se pudo avisar el lote %s: %s", guardado["batch_id"], exc)
+
+
 def registrar(app):
     @app.errorhandler(RedisNoDisponible)
     def redis_caido(exc):
@@ -138,12 +165,12 @@ def registrar(app):
         guardado = _leer_guardado(lote_id)
         if guardado is None:
             return None
-        if guardado.get("user_id") != g.contexto.user_id and "ADMINISTRADOR" not in g.usuario.get("roles", []):
+        if guardado.get("user_id") != g.contexto.user_id:
             raise ErrorAPI(409, "CONFLICTO", "Ese lote ya fue enviado por otra persona.")
         return responder(_publico(guardado, True), "resultado_lote")
 
     @app.post("/api/v1/sync/cases")
-    @requiere_token(roles=ROLES)
+    @requiere_token(roles=ROLES_ENVIAN)
     def enviar():
         lote_id, device_id, casos = _leer_lote(leer_cuerpo())
         previo = _repetido_o_none(lote_id)
@@ -175,13 +202,15 @@ def registrar(app):
                         "resultados": resultados, "user_id": g.contexto.user_id}
             requerido("lote_guardar", lambda r: r.set(
                 llaves.lote(lote_id), json.dumps(guardado, ensure_ascii=False), ex=_ttl_lote()))
+            if guardado["creados"]:
+                _avisar_casos_nuevos(guardado)
         _bitacora(lote_id, {"batch_id": lote_id, "device_id": device_id, "total": guardado["total"],
                             "creados": guardado["creados"], "duplicados": guardado["duplicados"],
                             "rechazados": guardado["rechazados"]})
         return responder(_publico(guardado, False), "resultado_lote")
 
     @app.get("/api/v1/sync/batches/<batch_id>")
-    @requiere_token(roles=ROLES)
+    @requiere_token(roles=ROLES_LEEN)
     def consultar(batch_id):
         lote_id = _uuid(batch_id, "batch_id")
         guardado = _leer_guardado(lote_id)

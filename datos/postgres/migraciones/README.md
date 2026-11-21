@@ -30,9 +30,58 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `028_roles_comparacion_pareto.sql` | Los roles de `comparacion` y `pareto`, los dos de solo lectura |
 | `029_roles_simulacion_notificaciones.sql` | Los roles de `corridas`, `simulador`, `resultados` y `notificaciones`, y el tipo de aviso `SCENARIO_APPROVED` en `notifications` |
 | `030_rol_estado_servicios.sql` | El rol de `estado-servicios`, que solo se conecta: no lee ni escribe tablas |
+| `031_rol_dispositivos.sql` | El rol de `dispositivos`, dueño de `devices`, y la lectura de `devices` (dueño y revocado) que necesita `casos` |
+| `032_rol_evidencias.sql` | El rol de `evidencias`, dueño de `case_attachments` (sin UPDATE: una evidencia se sube o se borra) |
+| `033_rol_vacunas.sql` | El rol de `vacunas`, dueño de `vaccine_lots`; de un lote ya registrado solo cambia `doses_used` |
+| `035_nombres_de_motores.sql` | Los motores cambian de nombre (D2): `python-ref` → `seir-ref`, `numba` → `abm-ref` y `cuda` → `abm-gpu`, en el CHECK, el DEFAULT y los lotes que ya existen. La 034 queda reservada para D1 |
+| `036_tope_de_replicas_100.sql` | El tope de réplicas por lote baja de 200 a 100 (D8): CHECK de `simulation_batches.replicas` y `max_replicas_por_lote` de `system_settings` |
+| `037_avisos_de_casos_y_revision.sql` | Tipos de aviso `NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED` en el CHECK, y lectura de `users`, `user_roles` y `roles` para `svc_notificaciones`. La 036 queda reservada |
+| `040_personas_dia_por_dosis.sql` | `intervention_types` gana el factor de personas-día por dosis de la frontera de Pareto (D3): valor, fuente y marca de supuesto, sin valor por omisión. `svc_intervenciones` puede actualizarlo |
+| `045_intentos_de_corridas.sql` | `simulation_runs.attempts` (0 a 3): las veces que una corrida pasó a `ejecutando`. Una interrumpida se reencola mientras le queden intentos (D38); `svc_simulador` lo actualiza |
+| `046_bitacora_de_servicios.sql` | Los diez roles `svc_*` que no escribían en `audit_log` reciben INSERT, para anotar el `PERMISSION_DENIED` de sus 403 (D36), y `svc_roles` lee `audit_log` para la consulta de la bitácora (D37) |
+| `050_dispositivos_de_sesion.sql` | `session_devices`: los dispositivos desde los que una cuenta inicia sesión, con su estado (`pendiente`, `autorizado`, `revocado`) (D41, RF-A08). `svc_sesiones` es dueño |
+| `051_mfa.sql` | `user_mfa` y `mfa_backup_codes`: el secreto TOTP y los códigos de respaldo de los perfiles críticos (D40). `svc_auth` es dueño |
+| `054_prioridad_de_corridas.sql` | `simulation_runs.priority` (`baja`, `normal`, `alta`) para la cola con prioridades, y los permisos de `svc_corridas` para reintentar una corrida fallida (D44) |
+| `052_instituciones_y_perfiles.sql` | `institutions`, `users.institution_id` y `users.region_id` (opcionales), y los roles INVESTIGADOR y AUTORIDAD_SANITARIA con permisos de solo lectura como supuesto (D42). `svc_usuarios` es dueño de `institutions` |
+| `055_historial_con_alcance.sql` | `svc_roles` lee `scenarios`, `scenario_versions` y `scenario_interventions` para aplicar el alcance regional (D43) al historial de un escenario |
+| `053_alcances_de_usuario.sql` | `user_scopes`: la región o institución a la que se limita una cuenta; sin filas es nacional (D43). `svc_roles` es dueño |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.
+
+## Números reservados (tercer parcial)
+
+Acordados el 2026-11-17 con el líder (bloque 0 del
+[checklist](../../../docs/parciales/parcial-3/checklist.md)). Los huecos no son
+problema: ya falta la 018.
+
+| Número | Bloque | Contenido |
+|---|---|---|
+| 034 | C | Permisos de D1 y D35: crea `scenarios.approve` y `reports.upload`, quita `audit.read` al EPIDEMIOLOGO y `cases.create` al ADMINISTRADOR |
+| 038 | D | Columnas del resumen en `simulation_runs` y sus permisos para los roles `svc_*` (D28) |
+| 039 | D | Tabla de metadatos de los reportes y el rol del servicio que la escribe (D30, D35) |
+| 040 | E | Lugar del factor de día-persona por dosis, con fuente o marca de supuesto (D3) |
+| 041 | D | Retira `simulation_results`, cuando la web ya no la lea (D28) |
+| 042–044 | D | Reserva |
+| 045 | E | `simulation_runs.attempts`: intentos de una corrida interrumpida que se reencola (D38) |
+| 046 | E | INSERT en `audit_log` para los roles que no lo tenían y lectura para `svc_roles` (D36, D37) |
+| 054 | E | `simulation_runs.priority`: prioridad de la corrida en la cola y permisos para reintentarla (D44) |
+| 047 | C | Reserva |
+| 048–049 | 0 | Reserva del líder (por ejemplo, `cost_unit` en pesos, D3) |
+| 052 | E | Instituciones, región de cada cuenta y los perfiles nuevos (D42) |
+| 053 | E | Alcance por región o institución de cada cuenta (D43) |
+| 055 | E | `svc_roles` lee escenarios para el alcance regional del historial (D43) |
+| 056 en adelante | — | Se piden al líder |
+
+1. **Cada migración corre en cualquier orden.** El dump las tiene en el orden en
+   que se integran, y una instalación limpia las corre por número: la 034 llegará
+   al dump después de la 037, pero corre antes en una instalación limpia. Ninguna
+   depende de otra que no esté integrada, y todas son idempotentes (D7).
+2. **Cada una se copia idéntica al final de `dump_completo.sql`.** Si dos ramas
+   agregan migraciones a la vez, chocan ahí. Se conservan los dos bloques, en el
+   orden en que se integran.
+3. **El bloque usa los números de su fila.** Si se le acaban, pide el siguiente al
+   líder y se agrega a esta tabla antes de crear el archivo.
 
 ## Cómo ejecutarlas
 

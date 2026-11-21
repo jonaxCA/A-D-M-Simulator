@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - usuarios",
     "version": "0.1.0",
-    "description": "Administra cuentas (solo ADMINISTRADOR). Escribe users; el rol se asigna en el servicio roles. Desactivar, eliminar o cambiar la contraseña cierra las sesiones de la cuenta."
+    "description": "Administra cuentas (solo ADMINISTRADOR), con su institución y región opcionales (D42); cada cuenta consulta su perfil en /users/me. Administra también el catálogo de instituciones. Escribe users e institutions; el rol se asigna en el servicio roles. Desactivar, eliminar o cambiar la contraseña cierra las sesiones de la cuenta."
   },
   "servers": [
     {
@@ -129,14 +129,26 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Redis no disponible"
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       },
       "post": {
         "summary": "Crear cuenta",
         "operationId": "crear_usuario",
-        "description": "Alta sin rol: el rol se asigna con PUT /api/v1/roles/assignments/{user_id}. Contraseña de al menos 8 caracteres. Audita CREATE.",
+        "description": "Alta sin rol: el rol se asigna con PUT /api/v1/roles/assignments/{user_id}. Contraseña de al menos 8 caracteres. Audita CREATE. institution_id y region_id son opcionales (D42); si no existen, 422.",
         "security": [
           {
             "bearerAuth": []
@@ -169,7 +181,9 @@
                   "username": "beto",
                   "email": "beto@ejemplo.mx",
                   "full_name": "Beto Ejemplo",
-                  "is_active": true
+                  "is_active": true,
+                  "institution_id": 1,
+                  "region_id": 19
                 }
               },
               "application/xml": {
@@ -182,7 +196,7 @@
                 "examples": {
                   "respuesta": {
                     "summary": "Respuesta real",
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">10</id><username>beto</username><email>beto@ejemplo.mx</email><full_name>Beto Ejemplo</full_name><is_active tipo=\"booleano\">true</is_active></usuario>"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">10</id><username>beto</username><email>beto@ejemplo.mx</email><full_name>Beto Ejemplo</full_name><is_active tipo=\"booleano\">true</is_active><institution_id tipo=\"numero\">1</institution_id><region_id tipo=\"numero\">19</region_id></usuario>"
                   }
                 }
               }
@@ -207,7 +221,19 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Redis no disponible"
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -222,7 +248,9 @@
                 "email": "beto@ejemplo.mx",
                 "full_name": "Beto Ejemplo",
                 "password": "CONTRASENA_DE_EJEMPLO",
-                "is_active": true
+                "is_active": true,
+                "institution_id": 1,
+                "region_id": 19
               }
             },
             "application/xml": {
@@ -235,7 +263,176 @@
               "examples": {
                 "peticion": {
                   "summary": "Petición",
-                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><username>beto</username><email>beto@ejemplo.mx</email><full_name>Beto Ejemplo</full_name><password>CONTRASENA_DE_EJEMPLO</password><is_active tipo=\"booleano\">true</is_active></usuario>"
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><username>beto</username><email>beto@ejemplo.mx</email><full_name>Beto Ejemplo</full_name><password>CONTRASENA_DE_EJEMPLO</password><is_active tipo=\"booleano\">true</is_active><institution_id tipo=\"numero\">1</institution_id><region_id tipo=\"numero\">19</region_id></usuario>"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/summary": {
+      "get": {
+        "summary": "Resumen de cuentas",
+        "operationId": "resumen_usuarios",
+        "description": "Las tarjetas de la pantalla de usuarios: total y cuántas están activas (ya entraron alguna vez), pendientes (activas que nunca han entrado) e inactivas (baja lógica). Los mismos estados que el filtro status de listar_usuarios.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 14,
+                  "activos": 11,
+                  "pendientes": 2,
+                  "inactivos": 1
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "resumen_usuarios"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<resumen_usuarios><total tipo=\"numero\">14</total><activos tipo=\"numero\">11</activos><pendientes tipo=\"numero\">2</pendientes><inactivos tipo=\"numero\">1</inactivos></resumen_usuarios>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE): solo ADMINISTRADOR. Queda en la bitácora como PERMISSION_DENIED."
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me": {
+      "get": {
+        "summary": "Mi perfil",
+        "operationId": "consultar_perfil",
+        "description": "La cuenta del token, para cualquiera de los cuatro roles: lo que la app muestra como perfil. Mismos campos que consultar_usuario.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 12,
+                  "username": "capturista1",
+                  "email": "capturista1@ejemplo.mx",
+                  "full_name": "Carla Captura",
+                  "is_active": true,
+                  "last_login_at": "2026-11-06T09:30:00-06:00",
+                  "created_at": "2026-09-01T10:00:00-06:00",
+                  "role_id": 4,
+                  "roles": [
+                    "CAPTURISTA"
+                  ],
+                  "institution_id": 1,
+                  "institucion": "Secretaría de Salud de Nuevo León",
+                  "region_id": 19,
+                  "region": "Monterrey"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "usuario"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">12</id><username>capturista1</username><email>capturista1@ejemplo.mx</email><full_name>Carla Captura</full_name><is_active tipo=\"booleano\">true</is_active><last_login_at>2026-11-06T09:30:00-06:00</last_login_at><created_at>2026-09-01T10:00:00-06:00</created_at><role_id tipo=\"numero\">4</role_id><roles><item>CAPTURISTA</item></roles><institution_id tipo=\"numero\">1</institution_id><institucion>Secretaría de Salud de Nuevo León</institucion><region_id tipo=\"numero\">19</region_id><region>Monterrey</region></usuario>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "404": {
+            "description": "La cuenta del token ya no existe"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
                 }
               }
             }
@@ -296,7 +493,11 @@
                   "role_id": 3,
                   "roles": [
                     "ANALISTA"
-                  ]
+                  ],
+                  "institution_id": 1,
+                  "institucion": "Secretaría de Salud de Nuevo León",
+                  "region_id": 19,
+                  "region": "Monterrey"
                 }
               },
               "application/xml": {
@@ -309,7 +510,7 @@
                 "examples": {
                   "respuesta": {
                     "summary": "Respuesta real",
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">9</id><username>ana</username><email>ana@ejemplo.mx</email><full_name>Ana Lista</full_name><is_active tipo=\"booleano\">true</is_active><last_login_at>2026-10-12T09:30:00-06:00</last_login_at><created_at>2026-09-01T10:00:00-06:00</created_at><role_id tipo=\"numero\">3</role_id><roles><item>ANALISTA</item></roles></usuario>"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">9</id><username>ana</username><email>ana@ejemplo.mx</email><full_name>Ana Lista</full_name><is_active tipo=\"booleano\">true</is_active><last_login_at>2026-10-12T09:30:00-06:00</last_login_at><created_at>2026-09-01T10:00:00-06:00</created_at><role_id tipo=\"numero\">3</role_id><roles><item>ANALISTA</item></roles><institution_id tipo=\"numero\">1</institution_id><institucion>Secretaría de Salud de Nuevo León</institucion><region_id tipo=\"numero\">19</region_id><region>Monterrey</region></usuario>"
                   }
                 }
               }
@@ -334,14 +535,26 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Redis no disponible"
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       },
       "put": {
         "summary": "Editar cuenta",
         "operationId": "editar_usuario",
-        "description": "Edita email y full_name; password es opcional y, si viene, cierra las sesiones de la cuenta. El username no se edita. Audita UPDATE.",
+        "description": "Edita email y full_name; password es opcional y, si viene, cierra las sesiones de la cuenta. El username no se edita. Audita UPDATE. institution_id y region_id solo se cambian si vienen; null los quita (D42).",
         "security": [
           {
             "bearerAuth": []
@@ -385,7 +598,9 @@
                   "email": "ana.lista@ejemplo.mx",
                   "full_name": "Ana Lista",
                   "is_active": true,
-                  "sesiones_cerradas": 0
+                  "sesiones_cerradas": 0,
+                  "institution_id": 1,
+                  "region_id": 19
                 }
               },
               "application/xml": {
@@ -398,7 +613,7 @@
                 "examples": {
                   "respuesta": {
                     "summary": "Respuesta real",
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">9</id><username>ana</username><email>ana.lista@ejemplo.mx</email><full_name>Ana Lista</full_name><is_active tipo=\"booleano\">true</is_active><sesiones_cerradas tipo=\"numero\">0</sesiones_cerradas></usuario>"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><id tipo=\"numero\">9</id><username>ana</username><email>ana.lista@ejemplo.mx</email><full_name>Ana Lista</full_name><is_active tipo=\"booleano\">true</is_active><sesiones_cerradas tipo=\"numero\">0</sesiones_cerradas><institution_id tipo=\"numero\">1</institution_id><region_id tipo=\"numero\">19</region_id></usuario>"
                   }
                 }
               }
@@ -423,7 +638,19 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Redis no disponible"
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -436,7 +663,9 @@
               "example": {
                 "email": "ana.lista@ejemplo.mx",
                 "full_name": "Ana Lista",
-                "password": ""
+                "password": "",
+                "institution_id": 1,
+                "region_id": null
               }
             },
             "application/xml": {
@@ -449,7 +678,7 @@
               "examples": {
                 "peticion": {
                   "summary": "Petición",
-                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><email>ana.lista@ejemplo.mx</email><full_name>Ana Lista</full_name><password /></usuario>"
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<usuario><email>ana.lista@ejemplo.mx</email><full_name>Ana Lista</full_name><password /><institution_id tipo=\"numero\">1</institution_id><region_id nil=\"true\" /></usuario>"
                 }
               }
             }
@@ -538,7 +767,19 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Redis no disponible"
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -638,7 +879,321 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Redis no disponible"
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/institutions": {
+      "get": {
+        "summary": "Listar instituciones",
+        "operationId": "listar_instituciones",
+        "description": "El catálogo de instituciones ordenado por nombre (D42). Cualquier rol: se usa para llenar el perfil.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 1,
+                  "instituciones": [
+                    {
+                      "id": 1,
+                      "code": "SSNL",
+                      "name": "Secretaría de Salud de Nuevo León",
+                      "is_active": true
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "catalogo_instituciones"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<catalogo_instituciones><total tipo=\"numero\">1</total><instituciones><item><id tipo=\"numero\">1</id><code>SSNL</code><name>Secretaría de Salud de Nuevo León</name><is_active tipo=\"booleano\">true</is_active></item></instituciones></catalogo_instituciones>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Dar de alta una institución",
+        "operationId": "crear_institucion",
+        "description": "code (2 a 30 caracteres, se guarda en mayúsculas) y name (3 a 160), únicos. Audita CREATE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Creado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 1,
+                  "code": "SSNL",
+                  "name": "Secretaría de Salud de Nuevo León",
+                  "is_active": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "institucion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<institucion><id tipo=\"numero\">1</id><code>SSNL</code><name>Secretaría de Salud de Nuevo León</name><is_active tipo=\"booleano\">true</is_active></institucion>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "code": "SSNL",
+                "name": "Secretaría de Salud de Nuevo León"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "institucion"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<institucion><code>SSNL</code><name>Secretaría de Salud de Nuevo León</name></institucion>"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/institutions/{institution_id}": {
+      "put": {
+        "summary": "Editar una institución",
+        "operationId": "editar_institucion",
+        "description": "Solo name e is_active; el código no cambia. Audita UPDATE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "institution_id",
+            "required": true,
+            "description": "id de institutions",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 1,
+                  "code": "SSNL",
+                  "name": "Secretaría de Salud de Nuevo León",
+                  "is_active": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "institucion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<institucion><id tipo=\"numero\">1</id><code>SSNL</code><name>Secretaría de Salud de Nuevo León</name><is_active tipo=\"booleano\">true</is_active></institucion>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente (solo ADMINISTRADOR)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "is_active": false
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "institucion"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<institucion><is_active tipo=\"booleano\">false</is_active></institucion>"
+                }
+              }
+            }
           }
         }
       }

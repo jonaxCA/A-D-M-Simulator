@@ -1,0 +1,186 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "39560e1b848b3e4ccec0658621dab98c",
+    "entities": [
+      {
+        "tableName": "casos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localUuid` TEXT NOT NULL, `cuenta` INTEGER NOT NULL, `enfermedad` INTEGER NOT NULL, `municipio` INTEGER NOT NULL, `fechaReporte` TEXT NOT NULL, `inicioSintomas` TEXT, `edad` INTEGER, `sexo` TEXT, `resultadoPrueba` TEXT, `severidad` TEXT, `latitud` REAL, `longitud` REAL, `capturadoEn` INTEGER NOT NULL, `estado` TEXT NOT NULL, `lote` TEXT, `caseId` INTEGER, `error` TEXT, PRIMARY KEY(`localUuid`))",
+        "fields": [
+          {
+            "fieldPath": "localUuid",
+            "columnName": "localUuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cuenta",
+            "columnName": "cuenta",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enfermedad",
+            "columnName": "enfermedad",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "municipio",
+            "columnName": "municipio",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaReporte",
+            "columnName": "fechaReporte",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inicioSintomas",
+            "columnName": "inicioSintomas",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "edad",
+            "columnName": "edad",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sexo",
+            "columnName": "sexo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "resultadoPrueba",
+            "columnName": "resultadoPrueba",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "severidad",
+            "columnName": "severidad",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "latitud",
+            "columnName": "latitud",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "longitud",
+            "columnName": "longitud",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "capturadoEn",
+            "columnName": "capturadoEn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lote",
+            "columnName": "lote",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "caseId",
+            "columnName": "caseId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "error",
+            "columnName": "error",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "localUuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_casos_cuenta_estado",
+            "unique": false,
+            "columnNames": [
+              "cuenta",
+              "estado"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_casos_cuenta_estado` ON `${TABLE_NAME}` (`cuenta`, `estado`)"
+          },
+          {
+            "name": "index_casos_lote",
+            "unique": false,
+            "columnNames": [
+              "lote"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_casos_lote` ON `${TABLE_NAME}` (`lote`)"
+          }
+        ]
+      },
+      {
+        "tableName": "enfermedades",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `nombre` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "municipios",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `nombre` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '39560e1b848b3e4ccec0658621dab98c')"
+    ]
+  }
+}

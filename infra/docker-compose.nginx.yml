@@ -1,0 +1,91 @@
+# nginx como única entrada (D25, D26). Se suma al compose principal:
+#
+#   python infra/nginx/certificado_local.py          una vez: el certificado de infra/nginx/certs/
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.nginx.yml \
+#     <los perfiles de docs/INSTALACION.md, sin gpu> up -d --build --wait
+#
+# Lo que cambia frente al compose principal:
+# - nginx publica 80 (redirige a 443) y 443, y es la única puerta a los servicios y a la web.
+# - Ningún servicio publica su puerto, y todos confían en las cabeceras X-Forwarded-* de nginx
+#   (DETRAS_DE_PROXY=1). Las dos cosas van juntas: con el puerto publicado, un cliente que
+#   llegara directo podría falsear su IP y evadir los límites por IP (D31).
+# - estado-servicios da https://<host>/<servicio> como URL de cada servicio.
+# - PostgreSQL, Redis y MongoDB siguen publicados solo en 127.0.0.1, porque la web corre fuera
+#   de Docker y todavía lee PostgreSQL en los módulos que no pasan a los servicios (D36). El
+#   compose de producción (F1) también los quita.
+#
+# Guía completa: «nginx como única entrada» en docs/INSTALACION.md.
+#
+# La web corre en la PC (python -m frontend_web.run, puerto 5000) y nginx la alcanza en
+# host.docker.internal. Variables, todas con valor por omisión: NGINX_PUERTO_HTTP (80),
+# NGINX_PUERTO_HTTPS (443), NGINX_TIEMPO_MAXIMO (30s), WEB_DESTINO (host.docker.internal:5000)
+# y URL_PUBLICA_NGINX (https://localhost/{servicio}).
+
+x-detras-de-nginx: &detras-de-nginx
+  ports: !reset []
+  environment:
+    DETRAS_DE_PROXY: "1"
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PUERTO_HTTP:-80}:80"
+      - "${NGINX_PUERTO_HTTPS:-443}:443"
+    environment:
+      # El certificado de infra/nginx/certs/ (certificado_local.py). En la nube los cambia
+      # docker-compose.letsencrypt.yml por los de Let's Encrypt.
+      NGINX_DOMINIO: "_"
+      NGINX_CERTIFICADO: /etc/nginx/certs/epidemia.pem
+      NGINX_LLAVE: /etc/nginx/certs/epidemia-key.pem
+      NGINX_TIEMPO_MAXIMO: ${NGINX_TIEMPO_MAXIMO:-30s}
+      NGINX_PUERTO_HTTPS: ${NGINX_PUERTO_HTTPS:-443}
+      WEB_DESTINO: ${WEB_DESTINO:-host.docker.internal:5000}
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/nginx-salud"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Los 29 servicios del directorio y la consola. test_compose_pruebas.py revisa que no falte
+  # ninguno de los que publican puerto en el compose principal.
+  auth: *detras-de-nginx
+  sesiones: *detras-de-nginx
+  usuarios: *detras-de-nginx
+  roles: *detras-de-nginx
+  enfermedades: *detras-de-nginx
+  parametros: *detras-de-nginx
+  regiones: *detras-de-nginx
+  poblacion: *detras-de-nginx
+  tipos-intervencion: *detras-de-nginx
+  casos: *detras-de-nginx
+  sincronizacion: *detras-de-nginx
+  dispositivos: *detras-de-nginx
+  evidencias: *detras-de-nginx
+  vacunas: *detras-de-nginx
+  escenarios: *detras-de-nginx
+  intervenciones: *detras-de-nginx
+  aprobacion: *detras-de-nginx
+  validacion: *detras-de-nginx
+  escenarios-xml: *detras-de-nginx
+  corridas: *detras-de-nginx
+  simulador: *detras-de-nginx
+  resultados: *detras-de-nginx
+  comparacion: *detras-de-nginx
+  pareto: *detras-de-nginx
+  indicadores: *detras-de-nginx
+  series: *detras-de-nginx
+  zonas: *detras-de-nginx
+  notificaciones: *detras-de-nginx
+  consola: *detras-de-nginx
+  estado-servicios:
+    <<: *detras-de-nginx
+    environment:
+      DETRAS_DE_PROXY: "1"
+      URL_PUBLICA: ${URL_PUBLICA_NGINX:-https://localhost/{servicio}}

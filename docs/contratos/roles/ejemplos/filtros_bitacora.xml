@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<filtros_bitacora><modulos><item>diseases</item><item>roles</item><item>simulation_run</item><item>users</item></modulos><acciones><item>LOGIN</item><item>LOGIN_FAILED</item><item>PERMISSION_DENIED</item><item>UPDATE</item><item>RUN::completado</item><item>RUN::encolado</item></acciones><usuarios><item><id tipo="numero">9</id><full_name>Ana Analista</full_name></item><item><id tipo="numero">7</id><full_name>Admin</full_name></item></usuarios></filtros_bitacora>

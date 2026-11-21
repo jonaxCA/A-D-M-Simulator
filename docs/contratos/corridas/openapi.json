@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - corridas",
     "version": "0.1.0",
-    "description": "Lanza, consulta y cancela corridas. Lanzar crea la corrida en PostgreSQL (encolado) y la mete en la cola de Redis; la ejecuta el servicio simulador. Solo se simula una versión aprobada."
+    "description": "Lanza, consulta y cancela corridas. Lanzar crea la corrida en PostgreSQL (encolado) y la mete en la cola de Redis; la ejecuta el simulador de su motor, que la toma de queue:simulaciones:<engine>. Solo se simula una versión aprobada. Sus respuestas XML validan contra docs/contratos/corridas/corrida.xsd."
   },
   "servers": [
     {
@@ -25,7 +25,7 @@
       "post": {
         "summary": "Lanzar una corrida",
         "operationId": "lanzar_corrida",
-        "description": "ANALISTA y ADMINISTRADOR, como la pantalla Simulaciones del monolito. Responde 202 con el id: el avance se sigue con GET /api/v1/runs/{run_id}. Un candado en Redis por versión evita que un doble clic lance dos corridas.",
+        "description": "ANALISTA y ADMINISTRADOR, como la pantalla Simulaciones del monolito. Responde 202 con el id: el avance se sigue con GET /api/v1/runs/{run_id}. Un candado en Redis por versión evita que un doble clic lance dos corridas. La corrida va a la cola de su motor (queue:simulaciones:<engine>), de donde la toma el simulador de ese motor. priority (baja, normal por omisión, alta) decide de qué cola de su motor la toma el simulador: primero las altas, luego las normales y al final las bajas, y dentro de cada una en orden de llegada (D44). Pedir alta es solo del ADMINISTRADOR; para otro rol es 403.",
         "security": [
           {
             "bearerAuth": []
@@ -52,16 +52,43 @@
                     "maximum": 2147483647,
                     "description": "Opcional; sin ella se elige una al azar"
                   },
+                  "engine": {
+                    "type": "string",
+                    "enum": [
+                      "seir-ref",
+                      "abm-ref",
+                      "abm-gpu"
+                    ],
+                    "default": "seir-ref",
+                    "description": "Motor de simulación. seir-ref siempre se acepta; abm-ref y abm-gpu, solo si el despliegue tiene su simulador (MOTORES_HABILITADOS). Otro valor es 422. Por compatibilidad, también acepta los nombres anteriores a D2 (python-ref, numba y cuda) y los traduce; las respuestas usan los nuevos."
+                  },
                   "forzar_error": {
                     "type": "boolean",
                     "default": false,
                     "description": "Solo cuenta para ADMINISTRADOR; para otro rol se ignora"
+                  },
+                  "replicas": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "description": "Opcional. Solo se valida el tope (D8): más de 100 es 422. Los lotes con varias réplicas llegan con la app de escritorio; cada POST crea una sola corrida"
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "baja",
+                      "normal",
+                      "alta"
+                    ],
+                    "default": "normal",
+                    "description": "Prioridad en la cola de su motor (D44). alta solo la pide el ADMINISTRADOR (403 para otro rol); otro valor es 422"
                   }
                 }
               },
               "example": {
                 "scenario_version_id": 11,
-                "seed": 982314
+                "seed": 982314,
+                "engine": "seir-ref"
               }
             },
             "application/xml": {
@@ -82,10 +109,36 @@
                     "maximum": 2147483647,
                     "description": "Opcional; sin ella se elige una al azar"
                   },
+                  "engine": {
+                    "type": "string",
+                    "enum": [
+                      "seir-ref",
+                      "abm-ref",
+                      "abm-gpu"
+                    ],
+                    "default": "seir-ref",
+                    "description": "Motor de simulación. seir-ref siempre se acepta; abm-ref y abm-gpu, solo si el despliegue tiene su simulador (MOTORES_HABILITADOS). Otro valor es 422. Por compatibilidad, también acepta los nombres anteriores a D2 (python-ref, numba y cuda) y los traduce; las respuestas usan los nuevos."
+                  },
                   "forzar_error": {
                     "type": "boolean",
                     "default": false,
                     "description": "Solo cuenta para ADMINISTRADOR; para otro rol se ignora"
+                  },
+                  "replicas": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "description": "Opcional. Solo se valida el tope (D8): más de 100 es 422. Los lotes con varias réplicas llegan con la app de escritorio; cada POST crea una sola corrida"
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "baja",
+                      "normal",
+                      "alta"
+                    ],
+                    "default": "normal",
+                    "description": "Prioridad en la cola de su motor (D44). alta solo la pide el ADMINISTRADOR (403 para otro rol); otro valor es 422"
                   }
                 },
                 "xml": {
@@ -94,7 +147,7 @@
               },
               "examples": {
                 "peticion": {
-                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed></solicitud>\n"
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed><engine>seir-ref</engine></solicitud>\n"
                 }
               }
             }
@@ -113,7 +166,9 @@
                   "batch_id": 44,
                   "scenario_version_id": 11,
                   "seed": 982314,
+                  "engine": "seir-ref",
                   "forzar_error": false,
+                  "priority": "normal",
                   "status": "encolado"
                 }
               },
@@ -126,7 +181,7 @@
                 },
                 "examples": {
                   "respuesta": {
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<corrida><id tipo=\"numero\">44</id><batch_id tipo=\"numero\">44</batch_id><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed><forzar_error tipo=\"booleano\">false</forzar_error><status>encolado</status></corrida>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<corrida><id tipo=\"numero\">44</id><batch_id tipo=\"numero\">44</batch_id><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed><engine>seir-ref</engine><forzar_error tipo=\"booleano\">false</forzar_error><priority>normal</priority><status>encolado</status></corrida>\n"
                   }
                 }
               }
@@ -139,7 +194,7 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "400": {
             "description": "JSON o XML ilegible"
@@ -154,14 +209,26 @@
             "description": "Content-Type no soportado"
           },
           "422": {
-            "description": "scenario_version_id, seed o forzar_error inválidos"
+            "description": "scenario_version_id, seed, engine, replicas (más de 100) o forzar_error inválidos; engine también si su motor no está habilitado"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       },
       "get": {
         "summary": "Corridas recientes",
         "operationId": "listar_corridas",
-        "description": "Las más recientes de cualquier escenario, como la lista de la pantalla Simulaciones. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
+        "description": "Las más recientes de cualquier escenario, como la lista de la pantalla Simulaciones, con el motor (engine) de cada una. Los filtros se combinan; from y to son días de Monterrey (America/Monterrey) de queued_at, los dos incluidos. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (D42).",
         "parameters": [
           {
             "in": "query",
@@ -173,6 +240,69 @@
               "maximum": 100,
               "default": 20
             }
+          },
+          {
+            "in": "query",
+            "name": "scenario_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por escenario."
+          },
+          {
+            "in": "query",
+            "name": "scenario_version_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por versión del escenario."
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "encolado",
+                "ejecutando",
+                "completado",
+                "fallido",
+                "cancelado"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "engine",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "seir-ref",
+                "abm-ref",
+                "abm-gpu"
+              ]
+            },
+            "description": "Filtra por motor, esté habilitado o no. Una corrida sin lote no tiene motor y no sale con este filtro."
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Encoladas desde ese día (incluido), en hora de Monterrey."
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Encoladas hasta ese día (incluido), en hora de Monterrey. from no puede ser posterior a to."
           }
         ],
         "security": [
@@ -195,10 +325,12 @@
                       "id": 43,
                       "status": "ejecutando",
                       "seed": 982314,
+                      "engine": "seir-ref",
                       "queued_at": "2026-10-20T15:03:00+00:00",
                       "started_at": "2026-10-20T15:03:00+00:00",
                       "finished_at": null,
                       "error_message": null,
+                      "scenario_version_id": 11,
                       "scenario_id": 3,
                       "version_number": 2,
                       "scenario_name": "Brote de influenza en Monterrey",
@@ -208,10 +340,12 @@
                       "id": 41,
                       "status": "fallido",
                       "seed": 7,
+                      "engine": "seir-ref",
                       "queued_at": "2026-10-20T14:00:00+00:00",
                       "started_at": "2026-10-20T14:00:00+00:00",
                       "finished_at": "2026-10-20T14:00:00+00:00",
                       "error_message": "Error forzado de prueba: se solicito explicitamente desde la pantalla de simulaciones (opcion visible solo para ADMINISTRADOR). Demuestra el camino encolado -> ejecutando -> fallido sin depender de que un escenario real este incompleto.",
+                      "scenario_version_id": 11,
                       "scenario_id": 3,
                       "version_number": 2,
                       "scenario_name": "Brote de influenza en Monterrey",
@@ -229,7 +363,7 @@
                 },
                 "examples": {
                   "respuesta": {
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<listado><total tipo=\"numero\">2</total><corridas><corrida><id tipo=\"numero\">43</id><status>ejecutando</status><seed tipo=\"numero\">982314</seed><queued_at>2026-10-20T15:03:00+00:00</queued_at><started_at>2026-10-20T15:03:00+00:00</started_at><finished_at nil=\"true\" /><error_message nil=\"true\" /><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Brote de influenza en Monterrey</scenario_name><requested_by_username>ana</requested_by_username></corrida><corrida><id tipo=\"numero\">41</id><status>fallido</status><seed tipo=\"numero\">7</seed><queued_at>2026-10-20T14:00:00+00:00</queued_at><started_at>2026-10-20T14:00:00+00:00</started_at><finished_at>2026-10-20T14:00:00+00:00</finished_at><error_message>Error forzado de prueba: se solicito explicitamente desde la pantalla de simulaciones (opcion visible solo para ADMINISTRADOR). Demuestra el camino encolado -&gt; ejecutando -&gt; fallido sin depender de que un escenario real este incompleto.</error_message><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Brote de influenza en Monterrey</scenario_name><requested_by_username>ana</requested_by_username></corrida></corridas></listado>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<listado><total tipo=\"numero\">2</total><corridas><corrida><id tipo=\"numero\">43</id><status>ejecutando</status><seed tipo=\"numero\">982314</seed><engine>seir-ref</engine><queued_at>2026-10-20T15:03:00+00:00</queued_at><started_at>2026-10-20T15:03:00+00:00</started_at><finished_at nil=\"true\" /><error_message nil=\"true\" /><scenario_version_id tipo=\"numero\">11</scenario_version_id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Brote de influenza en Monterrey</scenario_name><requested_by_username>ana</requested_by_username></corrida><corrida><id tipo=\"numero\">41</id><status>fallido</status><seed tipo=\"numero\">7</seed><engine>seir-ref</engine><queued_at>2026-10-20T14:00:00+00:00</queued_at><started_at>2026-10-20T14:00:00+00:00</started_at><finished_at>2026-10-20T14:00:00+00:00</finished_at><error_message>Error forzado de prueba: se solicito explicitamente desde la pantalla de simulaciones (opcion visible solo para ADMINISTRADOR). Demuestra el camino encolado -&gt; ejecutando -&gt; fallido sin depender de que un escenario real este incompleto.</error_message><scenario_version_id tipo=\"numero\">11</scenario_version_id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Brote de influenza en Monterrey</scenario_name><requested_by_username>ana</requested_by_username></corrida></corridas></listado>\n"
                   }
                 }
               }
@@ -242,10 +376,22 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "422": {
-            "description": "limit inválido"
+            "description": "limit, scenario_id, scenario_version_id, status, engine, from o to inválidos, o from posterior a to"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -254,7 +400,7 @@
       "get": {
         "summary": "Estado y avance de una corrida",
         "operationId": "consultar_corrida",
-        "description": "progress sale de Redis (job:<id>:progress, lo escribe el simulador) mientras la corrida no termina, y de PostgreSQL después. terminal es true en completado, fallido y cancelado. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
+        "description": "progress sale de Redis (job:<id>:progress, lo escribe el simulador) mientras la corrida no termina, y de PostgreSQL después. engine es el motor de su lote. engine_version es la de seir-ref desde que se encola; con otro motor llega en null, porque corridas no la conoce. terminal es true en completado, fallido y cancelado. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (D42). priority es la de la cola. queue_position es el lugar entre las encoladas de su motor (1 es la siguiente) y va en null si no está encolada. estimated_seconds es la mediana de lo que tardaron las últimas 50 corridas completadas con el mismo motor, población y horizonte (en una ejecutando, lo que falta; en una encolada, supone que las de delante duran igual); estimate_samples es cuántas hubo. Sin historial, o si la corrida ya terminó, estimated_seconds va en null y estimate_reason dice por qué (D44).",
         "parameters": [
           {
             "in": "path",
@@ -287,7 +433,7 @@
                   "seed": 982314,
                   "status": "ejecutando",
                   "progress": 30,
-                  "engine_version": "python-ref-0.1",
+                  "engine_version": "seir-ref-0.1",
                   "queued_at": "2026-10-20T15:00:00+00:00",
                   "started_at": "2026-10-20T15:03:00+00:00",
                   "finished_at": null,
@@ -306,7 +452,13 @@
                   "region_name": "Monterrey",
                   "requested_by_username": "ana",
                   "requested_by_nombre": "Ana Analista",
-                  "terminal": false
+                  "engine": "seir-ref",
+                  "terminal": false,
+                  "priority": "normal",
+                  "queue_position": null,
+                  "estimated_seconds": 148,
+                  "estimate_samples": 12,
+                  "estimate_reason": null
                 }
               },
               "application/xml": {
@@ -318,7 +470,7 @@
                 },
                 "examples": {
                   "respuesta": {
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<corrida><id tipo=\"numero\">43</id><batch_id tipo=\"numero\">43</batch_id><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed><status>ejecutando</status><progress tipo=\"numero\">30</progress><engine_version>python-ref-0.1</engine_version><queued_at>2026-10-20T15:00:00+00:00</queued_at><started_at>2026-10-20T15:03:00+00:00</started_at><finished_at nil=\"true\" /><error_message nil=\"true\" /><requested_by tipo=\"numero\">5</requested_by><version_number tipo=\"numero\">2</version_number><scenario_id tipo=\"numero\">3</scenario_id><version_status>aprobado</version_status><population_size tipo=\"numero\">200000</population_size><horizon_days tipo=\"numero\">5</horizon_days><initial_infected tipo=\"numero\">100</initial_infected><scenario_name>Brote de influenza en Monterrey</scenario_name><disease_id tipo=\"numero\">1</disease_id><disease_name>Influenza</disease_name><region_id tipo=\"numero\">9</region_id><region_name>Monterrey</region_name><requested_by_username>ana</requested_by_username><requested_by_nombre>Ana Analista</requested_by_nombre><terminal tipo=\"booleano\">false</terminal></corrida>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<corrida><id tipo=\"numero\">43</id><batch_id tipo=\"numero\">43</batch_id><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed><status>ejecutando</status><progress tipo=\"numero\">30</progress><engine_version>seir-ref-0.1</engine_version><queued_at>2026-10-20T15:00:00+00:00</queued_at><started_at>2026-10-20T15:03:00+00:00</started_at><finished_at nil=\"true\" /><error_message nil=\"true\" /><requested_by tipo=\"numero\">5</requested_by><version_number tipo=\"numero\">2</version_number><scenario_id tipo=\"numero\">3</scenario_id><version_status>aprobado</version_status><population_size tipo=\"numero\">200000</population_size><horizon_days tipo=\"numero\">5</horizon_days><initial_infected tipo=\"numero\">100</initial_infected><scenario_name>Brote de influenza en Monterrey</scenario_name><disease_id tipo=\"numero\">1</disease_id><disease_name>Influenza</disease_name><region_id tipo=\"numero\">9</region_id><region_name>Monterrey</region_name><requested_by_username>ana</requested_by_username><requested_by_nombre>Ana Analista</requested_by_nombre><engine>seir-ref</engine><terminal tipo=\"booleano\">false</terminal><priority>normal</priority><queue_position nil=\"true\" /><estimated_seconds tipo=\"numero\">148</estimated_seconds><estimate_samples tipo=\"numero\">12</estimate_samples><estimate_reason nil=\"true\" /></corrida>\n"
                   }
                 }
               }
@@ -331,13 +483,131 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "404": {
             "description": "No existe la corrida"
           },
           "422": {
             "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/equivalent": {
+      "get": {
+        "summary": "Corrida equivalente",
+        "operationId": "corrida_equivalente",
+        "description": "La demostración de reproducibilidad: otra corrida completada con la misma versión, la misma semilla y la misma huella del escenario (scenario_checksum). Si existe, su resumen debe ser idéntico al de esta corrida. equivalente es null si es la primera con esa combinación o si la corrida todavía no tiene huella (no ha terminado). Raíz XML <equivalencia> de corrida.xsd. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (D42).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la corrida"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "run_id": 43,
+                  "scenario_version_id": 11,
+                  "seed": 982314,
+                  "scenario_checksum": "5f2c0a9e7b1d4c3a8e6f0b2d9c7a1e4f3b5d8c0a2e6f9b1d4c7a0e3f5b8d2c6a",
+                  "equivalente": {
+                    "id": 40,
+                    "resumen": {
+                      "casos_acumulados": 61240,
+                      "hospitalizaciones": 1873,
+                      "fallecimientos": 212,
+                      "pico_casos_activos": 9105,
+                      "dia_pico": 47,
+                      "tasa_ataque": 0.3062
+                    }
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "equivalencia"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<equivalencia><run_id tipo=\"numero\">43</run_id><scenario_version_id tipo=\"numero\">11</scenario_version_id><seed tipo=\"numero\">982314</seed><scenario_checksum>5f2c0a9e7b1d4c3a8e6f0b2d9c7a1e4f3b5d8c0a2e6f9b1d4c7a0e3f5b8d2c6a</scenario_checksum><equivalente><id tipo=\"numero\">40</id><resumen><casos_acumulados tipo=\"numero\">61240</casos_acumulados><hospitalizaciones tipo=\"numero\">1873</hospitalizaciones><fallecimientos tipo=\"numero\">212</fallecimientos><pico_casos_activos tipo=\"numero\">9105</pico_casos_activos><dia_pico tipo=\"numero\">47</dia_pico><tasa_ataque tipo=\"numero\">0.3062</tasa_ataque></resumen></equivalente></equivalencia>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE): solo ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA. Con alcance por región (D43), una corrida o versión de otra región es 403 y la lista solo trae las de sus regiones. Queda en la bitácora como PERMISSION_DENIED."
+          },
+          "404": {
+            "description": "No existe la corrida"
+          },
+          "422": {
+            "description": "run_id no es un entero positivo (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -399,7 +669,7 @@
             "description": "El rol no puede usar esta ruta"
           },
           "503": {
-            "description": "Redis no está disponible"
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           },
           "404": {
             "description": "No existe la corrida"
@@ -409,6 +679,103 @@
           },
           "422": {
             "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/retry": {
+      "post": {
+        "summary": "Reintentar una corrida fallida",
+        "operationId": "reintentar_corrida",
+        "description": "Solo una corrida fallida: vuelve a encolada con la misma semilla (D38) y el mismo run_id, así que no hay otra corrida ni resultados duplicados. La transición fallido a encolado es condicionada: un segundo reintento (o uno sobre otro estado) es 409. Conserva su prioridad, salvo alta: si quien reintenta no es ADMINISTRADOR, se reencola en normal. ANALISTA y ADMINISTRADOR (simulations.run). Queda en la bitácora como RUN (motivo «reintento manual»). Si Redis no responde al encolar, la corrida ya quedó encolada en la base: se responde 202 y el simulador la mete a su cola cuando vuelva (D19).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la corrida"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 43,
+                  "seed": 982314,
+                  "priority": "normal",
+                  "status": "encolado"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "corrida"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<corrida><id tipo=\"numero\">43</id><seed tipo=\"numero\">982314</seed><priority>normal</priority><status>encolado</status></corrida>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "404": {
+            "description": "No existe la corrida"
+          },
+          "409": {
+            "description": "La corrida no está fallida (o ya la reintentó otra petición)"
+          },
+          "422": {
+            "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }

@@ -4,8 +4,8 @@
 <div class="page-header">
   <div>
     <h1>Simulaciones</h1>
-    <p class="subtitle">Corre versiones de escenario ya aprobadas y consulta sus resultados. La
-      creación, edición y aprobación de escenarios vive en otra pantalla; aquí solo se listan.</p>
+    <p class="subtitle">Consulta las corridas y sus resultados. Las corridas se lanzan desde la app
+      de escritorio sobre versiones aprobadas; la aprobación vive en la pantalla de escenarios.</p>
   </div>
 </div>
 
@@ -34,7 +34,6 @@
           <th>Población</th>
           <th>Días</th>
           <th>Estado</th>
-          <th class="col-acciones">Acción</th>
         </tr>
       </thead>
       <tbody>
@@ -54,28 +53,10 @@
             <div class="field-hint">Aprobó {{ v.revisado_por }}</div>
             {% endif %}
           </td>
-          <td class="col-acciones">
-            {% if v.status == 'aprobado' and puede_ejecutar %}
-            <form method="post" action="{{ url_for('main.simulacion_ejecutar', version_id=v.id) }}" class="form-ejecutar">
-              <input type="number" name="seed" min="0" placeholder="semilla (aleatoria si se deja vacío)"
-                     class="input-semilla" title="Semilla de la corrida. Vacío = aleatoria.">
-              {% if es_admin %}
-              <label class="chk-forzar-error" title="Camino de ERROR documentado para pruebas: la corrida falla a propósito, con el mensaje guardado en la base.">
-                <input type="checkbox" name="forzar_error" value="1"> forzar error (prueba)
-              </label>
-              {% endif %}
-              <button type="submit" class="btn btn-primary btn-mini">▶ Ejecutar simulación</button>
-            </form>
-            {% elif v.status == 'aprobado' %}
-            <span class="field-hint">Tu rol no puede ejecutar corridas.</span>
-            {% else %}
-            <span class="field-hint">Solo versiones aprobadas.</span>
-            {% endif %}
-          </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="8" class="tabla-vacia">No hay versiones de escenario capturadas todavía.</td>
+          <td colspan="7" class="tabla-vacia">No hay versiones de escenario capturadas todavía.</td>
         </tr>
         {% endfor %}
       </tbody>

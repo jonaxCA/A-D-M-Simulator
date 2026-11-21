@@ -1,0 +1,42 @@
+
+- [ ] Definir qué cambia en la interfaz del escritorio para que sea más intuitiva y usable. **Frena a A.**:
+	- Al responsable del bloque A se le encarga esta tarea. Fecha límite: por fijar.
+	- Yo propongo una cosa entre varias: Quitar pantalla de encolados innecesaria y confusa. Es una propuesta: A la valida con su recorrido de usabilidad (A1) y confirma a qué pantalla se refiere.
+- [x] ¿El ADMINISTRADOR también captura casos? (D1). **Frena a C** y a la migración 034.:
+	- No, solo capturista.
+	- La migración 034 le quita `cases.create` al ADMINISTRADOR, porque la 010 le da todos los permisos.
+	- `casos`, `sincronizacion` y `evidencias` lo quitan de sus roles de escritura. `ROLES_BORRAN` de `evidencias` se queda: borrar no es capturar.
+- [x] ¿Qué hace la web si Redis no responde? (I3, RF-A12). **Frena a C.**: → D33
+	- La web debe poder funcionar por su propia cuenta, como monolito que al principio fue.
+	- Ya estaba resuelto e implementado en D33: con Redis caído, la web conserva las sesiones abiertas, no deja iniciar sesión nueva y lo anota en su registro. Validada el 2026-11-17.
+- [x] ¿Cómo se identifica la web ante `resultados` para pedir las curvas? (D20). **Frena a C y a E.**: → D34
+	- ~~Con el token de servicio que ya usan simulador y aprobacion para llamar a notificaciones.~~
+	- Ya estaba resuelto e implementado en D34: la web reenvía el JWT de la sesión del usuario. Así `resultados` aplica el permiso del rol y la revocación sigue funcionando, sin secreto nuevo. Validada el 2026-11-17.
+- [x] ¿El aviso de casos nuevos usa el tipo `SYSTEM` o lleva una migración con un tipo propio? (D32). **Frena a E.**:
+	- Una sola migración con los tres tipos que faltan: casos nuevos, versión por revisar y versión rechazada.
+	- Ya hecho por el bloque E: migración 037, con `NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED` (la 036 es el tope de réplicas). Falta que la app móvil (`Formato.kt`) los muestre.
+- [x] ¿«Validación del JWT» pide que el escritorio revise `exp`? (C10, RF-H23). **Frena a A.**: → D35
+	- Sí. La app lee `exp` sin verificar la firma (el secreto no va en el cliente) y renueva el token antes de que venza.
+- [x] ¿La serie diaria lleva el desglose por grupo de edad? (RF-F02, D28). **Frena a D.**:
+	- No. Ningún motor lo produce por día: la serie trae totales y el desglose por grupo solo viene en el resumen. Decir que sí es cambiar la salida de los tres motores. D28 y la §6 de la arquitectura lo dan por hecho y habría que corregirlas.
+	- El índice {batch_id} agrupa una sola corrida, porque cada réplica es su propio lote. La comparación necesita scenario_version_id y motor en el documento. Con eso, la agregación que pide la rúbrica puede ser la banda p5–p95 por día.
+	- Índices: `{run_id, dia}` y `{scenario_version_id, motor, dia}`.
+- [ ] ¿Quién consigue el dominio y con qué proveedor? (D26). **Frena a F.**:
+	- Al responsable del bloque F se le asigna esta tarea. Fecha límite: por fijar.
+	- F confirma que el proveedor permite Let's Encrypt y quién lo paga, si cuesta.
+- [x] ¿Qué archivo recibe la web? **Frena a C.**: → D35
+	- El reporte del analista.
+	- Lo sube el ANALISTA o el ADMINISTRADOR, con el permiso nuevo `reports.upload` (migración 034).
+	- El escritorio también lo sube (RF-F17). Los dos caminos usan la misma tabla de metadatos y la misma interfaz de archivos.
+- [x] ¿Cómo entra la vacunación a la frontera de Pareto? (D3).:
+	- Como fracción de día-persona por dosis, marcada como supuesto. Hoy el código suma costo por habitante-día y costo por dosis en un mismo número, y D3 dice personas-día.
+	- El factor no va en `unit_cost`: ahí está el precio por dosis en pesos, que D3 muestra aparte. Necesita su propio lugar, con su valor y su fuente o su marca de supuesto (regla 8). Lo propone E y se confirma la migración con el líder.
+	- `pareto` separa las unidades: la frontera en personas-día y los pesos aparte (bloque E).
+	- «No hacer nada» cuesta cero, así que siempre queda en la frontera.
+- [x] ¿Se retiran los roles `app_*` de la migración 009, y qué rol de base usa el monolito? (D18).:
+	- No se retiran.
+	- El monolito sigue con `epidemia_app` en este parcial, como excepción documentada. F lo crea también en GCP.
+- [ ] Con el profesor: confirmar el volumen de D29 y si hay créditos para la GPU (brechas §8). **Frena a D y a F.**:
+	- Si hay creditos para GPU, tenemos cupones de 100 dolares varios de nosotros en GCP.
+	- F pide desde ya el aumento de cuota de GPU, y confirma qué cuenta de facturación la paga: cada cupón está en la cuenta de su dueño y un proyecto se liga a una sola.
+	- falta investigar volumen. Fecha para preguntarle al profesor: por fijar.

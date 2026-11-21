@@ -9,6 +9,7 @@ sacado del token.
 from flask import g, request
 
 from backend_web import queries
+from backend_web.db import query
 from epidemia_comun.http import llamar
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
@@ -16,6 +17,7 @@ from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import diccionario, entero_positivo
 
 ROLES = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
+ESTADOS_VERSION = ("borrador", "en_revision", "aprobado", "rechazado")
 
 CAMPOS_ALTA = {"name", "description", "disease_id", "region_id", "population_size",
                "horizon_days", "initial_infected", "stratify", "age_unknown_policy", "notes"}
@@ -152,6 +154,29 @@ def registrar(app):
         busqueda = (request.args.get("q") or "").strip() or None
         filas = [_fila_listado(f) for f in queries.get_escenarios(busqueda=busqueda)]
         return responder({"total": len(filas), "escenarios": filas}, "lista_escenarios")
+
+    # Las versiones de todos los escenarios en una sola llamada (pantalla de simulaciones de la
+    # web). Las aprobadas van primero: son las únicas que se pueden correr.
+    @app.get("/api/v1/scenarios/versions")
+    @requiere_token(roles=ROLES)
+    def versiones():
+        estado = request.args.get("status")
+        if estado is not None and estado not in ESTADOS_VERSION:
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "status debe ser uno de: %s." % ", ".join(ESTADOS_VERSION))
+        filas = query("""SELECT sv.id, sv.scenario_id, sv.version_number, sv.status,
+                                sv.population_size, sv.horizon_days, sv.initial_infected,
+                                sv.created_at, sv.reviewed_at, sv.review_comment,
+                                s.name AS scenario_name, d.name AS disease_name, reg.name AS region_name,
+                                autor.full_name AS creado_por, revisor.full_name AS revisado_por
+                         FROM scenario_versions sv
+                         JOIN scenarios s ON s.id = sv.scenario_id
+                         JOIN diseases d ON d.id = s.disease_id
+                         JOIN regions reg ON reg.id = s.region_id
+                         JOIN users autor ON autor.id = sv.created_by
+                         LEFT JOIN users revisor ON revisor.id = sv.reviewed_by
+                         WHERE %s IS NULL OR sv.status = %s
+                         ORDER BY (sv.status = 'aprobado') DESC, sv.created_at DESC""", (estado, estado))
+        return responder({"total": len(filas), "versiones": [dict(f) for f in filas]}, "versiones")
 
     @app.get("/api/v1/scenarios/<int:scenario_id>")
     @requiere_token(roles=ROLES)

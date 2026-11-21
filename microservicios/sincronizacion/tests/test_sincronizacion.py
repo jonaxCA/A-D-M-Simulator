@@ -2,6 +2,7 @@ import json
 import uuid
 from xml.etree import ElementTree as ET
 
+import jwt
 import pytest
 
 from epidemia_comun import llaves
@@ -28,11 +29,18 @@ class CasosFalso:
     """Imita al servicio casos: crea una vez por local_uuid, rechaza los inválidos."""
     def __init__(self):
         self.llamadas = []
+        self.avisos = []
+        self.aviso_falla = None
         self.creados = {}
         self.caido = False
         self.respuesta_fija = None
 
     def __call__(self, servicio, metodo, ruta, formato="json", cuerpo=None, token=None, **kw):
+        if servicio == "notificaciones":
+            self.avisos.append((metodo, ruta, cuerpo, token))
+            if self.aviso_falla:
+                raise self.aviso_falla
+            return Resp(201, {})
         self.llamadas.append((servicio, metodo, ruta, formato, cuerpo, token))
         if self.caido:
             raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio no respondió.")
@@ -95,10 +103,27 @@ def test_lote_nuevo_resultado_por_caso(cliente, captura, casos, bitacora):
     assert (d["batch_id"], d["total"], d["creados"], d["duplicados"], d["rechazados"]) == (LOTE, 2, 1, 0, 1)
     assert d["repetido"] is False and "user_id" not in d
     assert d["resultados"][0] == {"indice": 0, "local_uuid": U1, "resultado": "creado",
-                                  "case_id": 100, "errores": []}
+                                  "case_id": 100, "codigo": None, "errores": []}
     assert d["resultados"][1]["resultado"] == "rechazado"
+    assert d["resultados"][1]["codigo"] == "DATOS_INVALIDOS"
     assert "sexo" in d["resultados"][1]["errores"][0].lower()
     assert len(casos.llamadas) == 2
+
+
+def test_telefono_revocado_se_distingue_de_datos_malos(cliente, captura, casos):
+    casos.respuesta_fija = Resp(409, {"status": 409, "codigo": "CONFLICTO", "detail":
+                                      "El dispositivo está revocado: ya no puede capturar ni sincronizar casos."})
+    d = enviar(cliente, captura).get_json()
+    assert [(r["resultado"], r["codigo"]) for r in d["resultados"]] == [("rechazado", "CONFLICTO")] * 2
+    assert d["rechazados"] == 2
+
+
+@pytest.mark.parametrize("estado, esperado", [(409, "CONFLICTO"), (422, "DATOS_INVALIDOS"),
+                                               (400, "DATOS_INVALIDOS"), (413, "DATOS_INVALIDOS")])
+def test_sin_codigo_de_casos_sale_del_estado(cliente, captura, casos, estado, esperado):
+    casos.respuesta_fija = Resp(estado, None)
+    d = enviar(cliente, captura).get_json()
+    assert {r["codigo"] for r in d["resultados"]} == {esperado}
 
 
 def test_llama_a_casos_en_json_con_token_y_device(cliente, captura, casos):
@@ -127,6 +152,42 @@ def test_reenviar_el_lote_no_duplica(cliente, captura, casos, bitacora):
     assert len(bitacora) == 1                # un SYNC por lote procesado
 
 
+def test_lote_con_casos_nuevos_avisa_una_vez_a_los_epidemiologos(cliente, captura, casos):
+    enviar(cliente, captura)
+    assert len(casos.avisos) == 1
+    metodo, ruta, cuerpo, token = casos.avisos[0]
+    assert (metodo, ruta) == ("POST", "/api/v1/notifications")
+    assert cuerpo["role"] == "EPIDEMIOLOGO" and cuerpo["type"] == "NEW_CASES"
+    assert "user_id" not in cuerpo
+    assert cuerpo["payload"] == {"batch_id": LOTE, "creados": 1, "total": 2}
+    assert jwt.decode(token, options={"verify_signature": False})["aud"] == "epidemia-interno"
+
+
+def test_reintentar_el_lote_no_vuelve_a_avisar(cliente, captura, casos):
+    enviar(cliente, captura)
+    enviar(cliente, captura)
+    assert len(casos.avisos) == 1
+
+
+def test_lote_sin_casos_nuevos_no_avisa(cliente, captura, casos):
+    enviar(cliente, captura)
+    casos.avisos.clear()
+    otro = lote(batch_id="1c6f5a53-1d1f-4f52-8a0a-5d0a4a0e9c22")
+    otro["cases"] = [c for c in otro["cases"] if c["local_uuid"] == U1]
+    d = enviar(cliente, captura, otro).get_json()
+    assert d["creados"] == 0 and d["duplicados"] == 1
+    assert casos.avisos == []
+
+
+@pytest.mark.parametrize("falla", [ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "caído"),
+                                   RuntimeError("boom")])
+def test_aviso_fallido_no_tumba_el_lote(cliente, captura, casos, falla):
+    casos.aviso_falla = falla
+    r = enviar(cliente, captura)
+    assert r.status_code == 200 and r.get_json()["creados"] == 1
+    assert enviar(cliente, captura).get_json()["repetido"] is True
+
+
 def test_sync_deja_una_bitacora_con_conteos(cliente, captura, bitacora):
     enviar(cliente, captura)
     assert bitacora == [(7, "SYNC", "sync_batches", LOTE,
@@ -145,7 +206,7 @@ def test_caso_ya_existente_sale_duplicado(cliente, captura, casos):
     casos.creados[U1] = 55
     d = enviar(cliente, captura, lote(batch_id=str(uuid.uuid4()))).get_json()
     assert d["resultados"][0] == {"indice": 0, "local_uuid": U1, "resultado": "duplicado",
-                                  "case_id": 55, "errores": []}
+                                  "case_id": 55, "codigo": None, "errores": []}
     assert d["duplicados"] == 1
 
 
@@ -239,6 +300,7 @@ def test_cuerpo_xml_y_respuesta_xml(cliente, captura, casos):
     assert raiz.tag == "resultado_lote" and raiz.findtext("creados") == "1"
     item = raiz.find("resultados").find("item")
     assert item.findtext("resultado") == "creado" and item.find("errores") is not None
+    assert item.find("codigo").get("nil") == "true"
     assert casos.llamadas[0][4]["local_uuid"] == U1
 
 
@@ -249,6 +311,15 @@ def test_sin_token_401_y_rol_403(cliente, token):
         h = token(roles=(rol,))
         assert enviar(cliente, h).status_code == 403
         assert cliente.get("/api/v1/sync/batches/" + LOTE, headers=h).status_code == 403
+
+
+def test_administrador_consulta_pero_no_envia(cliente, token, casos):
+    # Solo el CAPTURISTA captura (D1); el ADMINISTRADOR sigue viendo cualquier lote.
+    admin = token(roles=("ADMINISTRADOR",), sub="9")
+    r = enviar(cliente, admin)
+    assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE"
+    assert casos.llamadas == []
+    assert cliente.get("/api/v1/sync/batches/" + LOTE, headers=admin).status_code == 404
 
 
 def test_consultar_lote(cliente, captura):

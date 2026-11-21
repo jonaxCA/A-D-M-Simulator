@@ -1,0 +1,56 @@
+# El simulador de abm-gpu en una PC con GPU, fuera de la nube (D23). Toma las corridas de
+# abm-gpu de la cola de la máquina de GCP, como cualquier otro simulador: la cola no sabe
+# dónde corre quien la atiende. Se usa cuando no alcanzan los créditos para una VM con GPU.
+#
+# En la PC, con el túnel abierto (python infra/tunel_gpu.py ...):
+#
+#   docker compose --env-file infra/.env.gpu-remoto -f infra/docker-compose.gpu-remoto.yml up -d --build
+#
+# Guía y plantilla: «Trabajador de GPU en tu PC» en docs/INSTALACION.md e
+# infra/gpu-remoto.env.example.
+#
+# - Se conecta a Redis, PostgreSQL y MongoDB de la máquina por el túnel: en la PC, los puertos
+#   16380, 15433 y 17018 (TUNEL_*) llevan a los que la máquina publica solo en su 127.0.0.1.
+#   En la máquina no se abre ningún puerto: el túnel lo abre la PC hacia ella.
+# - Usa el rol svc_simulador (D18): solo puede escribir lo del simulador.
+# - Avisa a notificaciones por nginx (https://<dominio>/notificaciones), con su token de
+#   servicio. Si no responde, la corrida termina igual.
+# - Si la PC se apaga, las corridas de abm-gpu esperan en la cola (encolado); al volver se
+#   atienden, y las que quedaron a medias se reencolan (D38).
+
+name: epidemia-gpu-remoto
+
+services:
+  # La misma imagen base de simulación que el compose principal; no corre, solo se construye.
+  base-simulacion:
+    image: epidemia/base-simulacion
+    build:
+      context: ..
+      dockerfile: infra/docker/base-simulacion.Dockerfile
+    deploy:
+      replicas: 0
+
+  simulador-gpu:
+    build:
+      context: ..
+      dockerfile: microservicios/simulador/gpu.Dockerfile
+      additional_contexts:
+        epidemia/base-simulacion: service:base-simulacion
+    restart: unless-stopped
+    gpus:
+      - driver: nvidia
+        count: 1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SIMULADOR_MOTOR: abm-gpu
+      JWT_SECRET_KEY: "${JWT_SECRET_KEY:?Falta JWT_SECRET_KEY, el de la máquina}"
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Falta REDIS_PASSWORD}@${TUNEL_HOST:-host.docker.internal}:${TUNEL_REDIS:-16380}/0
+      DATABASE_URL: postgresql://svc_simulador:${DB_PASSWORD_SIMULADOR:?Falta DB_PASSWORD_SIMULADOR}@${TUNEL_HOST:-host.docker.internal}:${TUNEL_POSTGRES:-15433}/${POSTGRES_DB:-simulador_epidemico}
+      MONGO_URL: mongodb://epidemia:${MONGO_PASSWORD:?Falta MONGO_PASSWORD}@${TUNEL_HOST:-host.docker.internal}:${TUNEL_MONGO:-17018}/epidemia?authSource=epidemia
+      SERVICIO_NOTIFICACIONES_URL: "${SERVICIO_NOTIFICACIONES_URL:?Falta SERVICIO_NOTIFICACIONES_URL, por ejemplo https://<dominio>/notificaciones}"
+    volumes:
+      - flamegpu-cache:/var/cache/flamegpu
+
+volumes:
+  flamegpu-cache:

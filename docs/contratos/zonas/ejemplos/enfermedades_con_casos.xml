@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<enfermedades_con_casos><total tipo="numero">2</total><enfermedades><enfermedad><id tipo="numero">2</id><name>Dengue</name></enfermedad><enfermedad><id tipo="numero">1</id><name>Influenza</name></enfermedad></enfermedades></enfermedades_con_casos>

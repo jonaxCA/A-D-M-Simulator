@@ -48,6 +48,11 @@ def url_de_pruebas(url_app, url_pruebas=""):
 
 
 URL_APP = (os.environ.get("DATABASE_URL") or "").strip()
+# Si otro modulo de pruebas del mismo proceso (microservicios/pruebas_bd.py) ya apunto
+# DATABASE_URL a la de pruebas, se recupera la de la aplicacion quitando el sufijo.
+if URL_APP.split("?")[0].endswith("_pruebas"):
+    _p = urlsplit(URL_APP)
+    URL_APP = _p._replace(path=_p.path[:-len("_pruebas")]).geturl()
 BASE_DE_LA_APP = _ubicacion(URL_APP)[2] if URL_APP else ""
 
 if URL_APP:

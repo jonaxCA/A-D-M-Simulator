@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rol><id tipo="numero">3</id><code>ANALISTA</code><name>Analista</name><permisos><item><code>cases.read</code><resource>cases</resource><action>read</action><description>Consultar casos</description></item><item><code>dashboard.read</code><resource>dashboard</resource><action>read</action><description>Ver el tablero</description></item></permisos></rol>

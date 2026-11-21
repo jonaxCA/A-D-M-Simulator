@@ -98,7 +98,8 @@ def test_xsd_exige_los_obligatorios(falta):
 
 def test_la_respuesta_real_valida_contra_el_xsd(crear_cliente, token, monkeypatch):
     # El XML que arma el servicio (no solo el ejemplo) cumple el XSD.
-    from microservicios.casos.tests.test_casos import BaseFalsa, Conexion, ENFERMEDADES, MUNICIPIOS
+    from microservicios.casos.tests.test_casos import (BaseFalsa, Conexion, ENFERMEDADES, MUNICIPIOS,
+                                                       simula_dispositivos)
     from contextlib import contextmanager
     from backend_web import queries
     from microservicios.casos import rutas
@@ -108,6 +109,7 @@ def test_la_respuesta_real_valida_contra_el_xsd(crear_cliente, token, monkeypatc
     def get_conn():
         yield Conexion(base)
     monkeypatch.setattr(rutas, "get_conn", get_conn)
+    simula_dispositivos(monkeypatch, base)
     monkeypatch.setattr(rutas, "log_audit", lambda *a, **k: None)
     monkeypatch.setattr(queries, "get_enfermedades_para_captura", lambda: ENFERMEDADES)
     monkeypatch.setattr(queries, "get_municipios_catalogo", lambda: MUNICIPIOS)

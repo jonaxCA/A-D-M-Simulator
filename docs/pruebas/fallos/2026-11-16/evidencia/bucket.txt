@@ -1,0 +1,95 @@
+# ANTES: /health de evidencias
+[
+  200,
+  {
+    "servicio": "evidencias",
+    "version": "0.1.0",
+    "estado": "ok",
+    "postgresql": true,
+    "redis": true,
+    "mongodb": "no_usa",
+    "bucket": true,
+    "tiempos_ms": {
+      "postgresql": 5.4,
+      "redis": 0.2,
+      "bucket": 1.6
+    },
+    "tiempo_ms": 7.2
+  }
+]
+
+# ANTES: panel
+{
+  "nombre": "evidencias",
+  "estado": "ok",
+  "causas": [],
+  "detalle": null,
+  "version": "0.1.0",
+  "latencia_ms": 12.9
+}
+
+# CON bucket DETENIDO: /health de evidencias (estado HTTP, cuerpo)
+[
+  503,
+  {
+    "servicio": "evidencias",
+    "version": "0.1.0",
+    "estado": "degradado",
+    "postgresql": true,
+    "redis": true,
+    "mongodb": "no_usa",
+    "bucket": false,
+    "tiempos_ms": {
+      "postgresql": 8.3,
+      "redis": 0.3,
+      "bucket": 4.9
+    },
+    "tiempo_ms": 13.6
+  }
+]
+
+# CON bucket DETENIDO: panel
+{
+  "nombre": "evidencias",
+  "estado": "degradado",
+  "causas": [
+    "bucket"
+  ],
+  "detalle": null,
+  "version": "0.1.0",
+  "latencia_ms": 25.9
+}
+
+# CON bucket DETENIDO: regiones sigue
+200
+
+# DESPUES: /health de evidencias
+[
+  200,
+  {
+    "servicio": "evidencias",
+    "version": "0.1.0",
+    "estado": "ok",
+    "postgresql": true,
+    "redis": true,
+    "mongodb": "no_usa",
+    "bucket": true,
+    "tiempos_ms": {
+      "postgresql": 7.6,
+      "redis": 0.2,
+      "bucket": 1.8
+    },
+    "tiempo_ms": 9.6
+  }
+]
+
+# DESPUES: panel
+{
+  "nombre": "evidencias",
+  "estado": "ok",
+  "causas": [],
+  "detalle": null,
+  "version": "0.1.0",
+  "latencia_ms": 15.8
+}
+

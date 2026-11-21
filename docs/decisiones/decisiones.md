@@ -1,0 +1,53 @@
+# Registro de decisiones
+
+Una decisión por archivo, con la estructura de [`plantilla_ADR.md`](plantilla_ADR.md). El número es el de siempre (D1, D2…) para que no se rompan las referencias en otros documentos.
+
+Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una opción recomendada sin confirmar), **Por confirmar** (ya está en uso o se asumió, falta que el equipo la confirme) **Reemplazada por DXX** y **Reabierta** (la retroalimentación la contradice y todavía no hay decisión que la reemplace).
+
+| #   | Decisión                                                                       | Estado    | Depende de  | Archivo                                                                                |
+| --- | ---                                                                            | ---       | ---         | ---                                                                                    |
+| D1  | Quién captura casos, aprueba versiones y consulta la auditoría                 | Aceptada  | —           | [D01-permisos-y-auditoria.md](D01-permisos-y-auditoria.md)                             |
+| D2  | Papel del SEIR frente al modelo basado en agentes                              | Aceptada  | D22         | [D02-papel-del-seir.md](D02-papel-del-seir.md)                                         |
+| D3  | Unidad de costo: personas-día, pesos o ambos por separado                      | Aceptada  | —           | [D03-unidad-de-costo.md](D03-unidad-de-costo.md)                                       |
+| D4  | Reparto del trabajo con escenarios entre la web y la app de escritorio         | Aceptada  | D1          | [D04-web-contra-escritorio.md](D04-web-contra-escritorio.md)                           |
+| D5  | Una versión es una fotografía: congela población y parámetros                  | Aceptada  | —           | [D05-foto-de-la-version.md](D05-foto-de-la-version.md)                                 |
+| D6  | Qué significa la población de un escenario                                     | Aceptada  | D22         | [D06-poblacion-del-escenario.md](D06-poblacion-del-escenario.md)                       |
+| D7  | Política de migraciones: datos contra esquema                                  | Aceptada  | —           | [D07-politica-de-migraciones.md](D07-politica-de-migraciones.md)                       |
+| D8  | Cuántas réplicas usa una comparación y cómo se resumen                         | Aceptada  | D22         | [D08-replicas-de-una-comparacion.md](D08-replicas-de-una-comparacion.md)               |
+| D9  | XML por defecto y JSON por parámetro o cabecera                                | Aceptada  | —           | [D09-formato-xml-por-defecto.md](D09-formato-xml-por-defecto.md)                       |
+| D10 | Microservicios en el segundo parcial; apps de escritorio y móvil en el tercero | Aceptada  | —           | [D10-entregas-por-parcial.md](D10-entregas-por-parcial.md)                             |
+| D11 | Rutas de las API en inglés                                                     | Aceptada  | —           | [D11-rutas-en-ingles.md](D11-rutas-en-ingles.md)                                       |
+| D12 | Nombres de los servicios en español                                            | Aceptada  | —           | [D12-servicios-en-espanol.md](D12-servicios-en-espanol.md)                             |
+| D13 | Sin pasarela: las apps usan el directorio de `estado-servicios`                | Aceptada  | —           | [D13-sin-pasarela.md](D13-sin-pasarela.md)                                             |
+| D14 | Pruebas con `pytest`                                                           | Aceptada  | —           | [D14-pruebas-con-pytest.md](D14-pruebas-con-pytest.md)                                 |
+| D15 | XSD validado con `xmlschema`; XML leído con `defusedxml`                       | Aceptada  | —           | [D15-xsd-con-xmlschema.md](D15-xsd-con-xmlschema.md)                                   |
+| D16 | Migraciones del segundo parcial reservadas: 026 en adelante                    | Aceptada  | D7          | [D16-migraciones-desde-la-026.md](D16-migraciones-desde-la-026.md)                     |
+| D17 | Migraciones SQL numeradas en lugar de Alembic                                  | Aceptada  | —           | [D17-migraciones-sql-numeradas.md](D17-migraciones-sql-numeradas.md)                   |
+| D18 | Una sola instancia de PostgreSQL con un rol por servicio                       | Aceptada  | —           | [D18-un-postgres-un-rol-por-servicio.md](D18-un-postgres-un-rol-por-servicio.md)       |
+| D19 | Redis sin datos autoritativos                                                  | Aceptada  | —           | [D19-redis-sin-datos-autoritativos.md](D19-redis-sin-datos-autoritativos.md)           |
+| D20 | La web sigue conectada directo a PostgreSQL, sin fachada hacia los servicios   | Reemplazada por D36 | —           | [D20-web-directa-a-postgres.md](D20-web-directa-a-postgres.md)                         |
+| D21 | Lo no implementado pasa al tercer parcial                                      | Aceptada  | —           | [D21-pendientes-pasan-al-tercer-parcial.md](D21-pendientes-pasan-al-tercer-parcial.md) |
+| D22 | Implementar el modelo basado en agentes (ABM)                                  | Aceptada  | D2          | [D22-modelo-basado-en-agentes.md](D22-modelo-basado-en-agentes.md)                     |
+| D23 | Tecnología del ABM: CPU o GPU                                                  | Aceptada  | D22         | [D23-tecnologia-del-abm.md](D23-tecnologia-del-abm.md)                                 |
+| D24 | Calibración y parámetros de los agentes                                        | Reabierta | D22         | [D24-calibracion-del-abm.md](D24-calibracion-del-abm.md)                               |
+| D25 | nginx como terminador TLS y entrada única                                      | Aceptada  | D13         | [D25-nginx-como-entrada.md](D25-nginx-como-entrada.md)                                 |
+| D26 | Certificado HTTPS                                                              | Aceptada  | D25         | [D26-certificado-https.md](D26-certificado-https.md)                                   |
+| D27 | Servicios nuevos para la app móvil                                             | Aceptada  | —           | [D27-servicios-nuevos-para-la-movil.md](D27-servicios-nuevos-para-la-movil.md)         |
+| D28 | Qué datos van a MongoDB                                                        | Aceptada  | D21         | [D28-uso-de-mongodb.md](D28-uso-de-mongodb.md)                                         |
+| D29 | Volumen de datos de alto volumen                                               | Aceptada  | D6, D8, D28 | [D29-volumen-de-datos.md](D29-volumen-de-datos.md)                                     |
+| D30 | Archivos en Cloud Storage                                                      | Aceptada  | -           | [D30-archivos-en-cloud-storage.md](D30-archivos-en-cloud-storage.md)                   |
+| D31 | Limites de consumo                                                             | Aceptada  |             | [D31-limites-de-consumo.md](D31-limites-de-consumo.md)                                                              |
+| D32 | Cierre de los procesos de la v3: aviso de P1, C9 y P2 sin bucket               | Aceptada  | D28, D30    | [D32-cierre-de-los-procesos-v3.md](D32-cierre-de-los-procesos-v3.md)                   |
+| D33 | Redis caído en la web                                                          | Reemplazada por D36 | D31, D20    | [D33-redis-caido-en-la-web.md](D33-redis-caido-en-la-web.md)                            |
+| D34 | La web se identifica ante `resultados` con el JWT de la sesión                  | Aceptada  | D20, D28, D33 | [D34-la-web-se-identifica-ante-resultados.md](D34-la-web-se-identifica-ante-resultados.md) |
+| D35 | Expiración del token en el escritorio y archivo que recibe la web              | Aceptada  | D1, D30     | [D35-exp-en-escritorio-y-archivo-de-la-web.md](D35-exp-en-escritorio-y-archivo-de-la-web.md) |
+| D36 | La web consume los microservicios (reemplaza D20 y D33)                        | Aceptada  | D34         | [D36-la-web-consume-los-servicios.md](D36-la-web-consume-los-servicios.md)             |
+| D37 | Dueños de las reglas de negocio y servicios sin `backend_web`                  | Aceptada  | D36         | [D37-duenos-de-las-reglas-de-negocio.md](D37-duenos-de-las-reglas-de-negocio.md)       |
+| D38 | Corridas interrumpidas: se reencolan, no se cierran como fallidas              | Aceptada  | D19, D28    | [D38-corridas-interrumpidas.md](D38-corridas-interrumpidas.md)                         |
+| D39 | Simulación exploratoria, predicción y resultado validado                       | Aceptada  | D24, D37    | [D39-exploratoria-prediccion-validada.md](D39-exploratoria-prediccion-validada.md)     |
+| D40 | MFA para los perfiles críticos                                                | Aceptada (tomada por el orquestador; pendiente de validación del líder) | D1 | [D40-mfa-para-perfiles-criticos.md](D40-mfa-para-perfiles-criticos.md) |
+| D41 | Sesiones concurrentes y dispositivos autorizados                               | Aceptada (tomada por el orquestador; pendiente de validación del líder) | D1 | [D41-sesiones-concurrentes-y-dispositivos.md](D41-sesiones-concurrentes-y-dispositivos.md) |
+| D42 | Institución, región y perfiles de cada cuenta                                  | Aceptada (tomada por el orquestador; pendiente de validación del líder) | D1 | [D42-institucion-region-y-perfiles.md](D42-institucion-region-y-perfiles.md) |
+| D43 | Permisos con alcance por región o institución, e historial de una entidad      | Aceptada (tomada por el orquestador; pendiente de validación del líder) | D1, D42 | [D43-permisos-con-alcance.md](D43-permisos-con-alcance.md) |
+| D44 | Prioridad en la cola, tiempo estimado y reintento de una corrida fallida       | Aceptada (tomada por el orquestador; pendiente de validación del líder) | D19, D38 | [D44-prioridad-estimacion-y-reintento.md](D44-prioridad-estimacion-y-reintento.md) |
+| D46 | Sensibilidad exploratoria y estado de calibración, en `pareto`                 | Aceptada (tomada por el orquestador; pendiente de validación del líder) | D24, D37, D39 | [D46-sensibilidad-y-calibracion-en-pareto.md](D46-sensibilidad-y-calibracion-en-pareto.md) |

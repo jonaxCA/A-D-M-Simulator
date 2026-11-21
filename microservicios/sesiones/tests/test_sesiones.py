@@ -1,12 +1,12 @@
 import time
+from types import SimpleNamespace
 import uuid
 from xml.etree import ElementTree as ET
 
 import jwt
 import pytest
 
-from epidemia_comun import sesiones
-from microservicios.sesiones import rutas
+from microservicios.sesiones import almacen as sesiones, rutas
 from microservicios.sesiones.rutas import emitir_access
 
 SECRETO = "secreto-solo-para-pruebas-unitarias-0123456789"
@@ -29,8 +29,8 @@ def cliente(crear_cliente, bitacora):
 @pytest.fixture
 def login(cliente):
     """Lo que entrega auth: una sesión abierta en Redis, su access y su refresh."""
-    def abrir(usuario=7, roles=("ANALISTA",)):
-        sesion = sesiones.abrir(usuario, list(roles), ttl=600)
+    def abrir(usuario=7, roles=("ANALISTA",), dispositivo=None):
+        sesion = sesiones.abrir(usuario, list(roles), ttl=600, dispositivo=dispositivo)
         access = emitir_access(usuario, roles, sesion["sid"], cliente.application.config)
         return {"Authorization": "Bearer " + access}, sesion["refresh"]
     return abrir
@@ -140,6 +140,58 @@ def test_ruta_interna_id_invalido_es_422(cliente, valor):
     assert r.status_code == 422
 
 
+def test_ruta_interna_abre_una_sesion_y_aplica_el_tope(cliente, monkeypatch):
+    monkeypatch.setenv("MAX_SESIONES_POR_USUARIO", "2")
+    reloj = iter(range(1_000, 1_100))
+    monkeypatch.setattr(sesiones, "time", SimpleNamespace(time=lambda: next(reloj)))
+    cuerpo = {"usuario": 7, "roles": ["ANALISTA"], "dispositivo": "huella"}
+    abiertas = [cliente.post("/api/v1/sessions/internal/open?format=json", json=cuerpo,
+                             headers=token_servicio(sub="auth")).get_json() for _ in range(3)]
+    assert set(abiertas[0]) == {"sid", "refresh", "expira", "cerradas"}
+    assert [a["cerradas"] for a in abiertas] == [0, 0, 1]
+    assert sesiones.obtener(abiertas[0]["sid"]) is None and sesiones.obtener(abiertas[2]["sid"])
+    assert sesiones.obtener(abiertas[2]["sid"])["roles"] == ["ANALISTA"]
+
+
+def test_ruta_interna_de_abrir_rechaza_persona_y_cuerpo_invalido(cliente, login):
+    cabecera, _ = login(roles=("ADMINISTRADOR",))
+    cuerpo = {"usuario": 7, "roles": ["ANALISTA"]}
+    assert cliente.post("/api/v1/sessions/internal/open?format=json", json=cuerpo,
+                        headers=cabecera).status_code == 401
+    for malo in ({"usuario": 7}, {"usuario": 7, "roles": "ANALISTA"}, {"roles": []}):
+        r = cliente.post("/api/v1/sessions/internal/open?format=json", json=malo,
+                         headers=token_servicio(sub="auth"))
+        assert r.status_code == 422
+
+
+def test_rutas_de_auth_rechazan_el_token_de_otro_servicio(cliente):
+    cuerpo = {"usuario": 7, "roles": ["ADMINISTRADOR"]}
+    for otro in ("casos", "notificaciones", "usuarios"):
+        r = cliente.post("/api/v1/sessions/internal/open?format=json", json=cuerpo,
+                         headers=token_servicio(sub=otro))
+        assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE"
+    r = cliente.post("/api/v1/sessions/devices/check?format=json", headers=token_servicio(sub="casos"),
+                     json={"usuario": 7, "dispositivo_id": "telefono-0001"})
+    assert r.status_code == 403
+
+
+def test_cierre_de_sesiones_solo_para_usuarios_y_roles(cliente):
+    ruta = "/api/v1/sessions/user/7?format=json"
+    assert cliente.delete(ruta, headers=token_servicio(sub="casos")).status_code == 403
+    for quien in ("usuarios", "roles"):
+        assert cliente.delete(ruta, headers=token_servicio(sub=quien)).status_code == 200
+
+
+def test_max_sesiones_invalido_usa_el_valor_por_omision(cliente, monkeypatch):
+    for malo in ("tres", "0", "-2"):
+        monkeypatch.setenv("MAX_SESIONES_POR_USUARIO", malo)
+        with cliente.application.app_context():
+            assert rutas._max_sesiones() == rutas.MAX_SESIONES
+    monkeypatch.setenv("MAX_SESIONES_POR_USUARIO", "5")
+    with cliente.application.app_context():
+        assert rutas._max_sesiones() == 5
+
+
 def test_redis_caido_es_503(cliente, apagar_redis):
     apagar_redis()
     r = cliente.post("/api/v1/sessions/refresh?format=json", json={"refresh_token": "x.y"})
@@ -153,4 +205,7 @@ def test_contrato_servido_es_el_de_docs(cliente):
     assert r.data == CONTRATO.read_bytes()
     assert set(r.get_json()["paths"]) == {
         "/api/v1/sessions/refresh", "/api/v1/sessions/logout",
-        "/api/v1/sessions/current", "/api/v1/sessions/user/{id}"}
+        "/api/v1/sessions/current", "/api/v1/sessions/user/{id}",
+        "/api/v1/sessions/devices", "/api/v1/sessions/devices/check",
+        "/api/v1/sessions/internal/open",
+        "/api/v1/sessions/devices/{id}/authorize", "/api/v1/sessions/devices/{id}/revoke"}

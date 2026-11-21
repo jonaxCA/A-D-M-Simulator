@@ -1,0 +1,17 @@
+{
+  "id": 9,
+  "username": "ana",
+  "email": "ana@ejemplo.mx",
+  "full_name": "Ana Lista",
+  "is_active": true,
+  "last_login_at": "2026-10-12T09:30:00-06:00",
+  "created_at": "2026-09-01T10:00:00-06:00",
+  "role_id": 3,
+  "roles": [
+    "ANALISTA"
+  ],
+  "institution_id": 1,
+  "institucion": "Secretaría de Salud de Nuevo León",
+  "region_id": 19,
+  "region": "Monterrey"
+}

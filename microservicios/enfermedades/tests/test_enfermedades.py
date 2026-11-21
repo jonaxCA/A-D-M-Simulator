@@ -239,3 +239,34 @@ def test_accion_desconocida_es_404(cliente, epidemiologo):
 
 def test_no_hay_ruta_delete(cliente, epidemiologo):
     assert cliente.delete("/api/v1/diseases/1?format=json", headers=epidemiologo).status_code == 405
+
+
+@pytest.fixture
+def conteos(monkeypatch):
+    consultas = []
+
+    def query(sql, params=(), one=False):
+        consultas.append((" ".join(sql.split()), params))
+        if "FROM diseases" in sql:
+            return {"registradas": 9, "activas": 7, "inactivas": 2, "altas_30d": 1}
+        return {"n": 3}
+    monkeypatch.setattr(rutas, "query", query)
+    return consultas
+
+
+def test_estadisticas_publicas_en_json_y_xml(cliente, conteos):
+    from pathlib import Path
+    import xmlschema
+    r = cliente.get("/api/v1/diseases/stats?format=json")
+    assert r.status_code == 200
+    assert r.get_json() == {"registradas": 9, "activas": 7, "inactivas": 2, "altas_30d": 1,
+                            "detectadas_30d": 3}
+    sql, params = conteos[1]
+    assert "c.status IN ('pendiente', 'validado')" in sql and params == ("19",)
+    xsd = Path(__file__).resolve().parents[3] / "docs/contratos/enfermedades/enfermedad.xsd"
+    xmlschema.XMLSchema(str(xsd)).validate(cliente.get("/api/v1/diseases/stats").data.decode("utf-8"))
+
+
+def test_estadisticas_no_chocan_con_el_detalle(cliente, conteos):
+    assert cliente.get("/api/v1/diseases/1?format=json").get_json()["id"] == 1
+    assert cliente.get("/api/v1/diseases/stats?format=json").status_code == 200

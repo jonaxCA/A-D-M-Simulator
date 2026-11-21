@@ -2,7 +2,7 @@
   "id": 78,
   "code": "VACUNACION",
   "name": "Vacunación",
-  "target_layer": "poblacion",
+  "target_layer": "todas",
   "start_day": 20,
   "end_day": null,
   "coverage": 0.6,

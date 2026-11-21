@@ -1,0 +1,95 @@
+# ANTES: /health de resultados
+[
+  200,
+  {
+    "servicio": "resultados",
+    "version": "0.1.0",
+    "estado": "ok",
+    "postgresql": true,
+    "redis": true,
+    "mongodb": true,
+    "bucket": "no_usa",
+    "tiempos_ms": {
+      "postgresql": 3.2,
+      "redis": 0.4,
+      "mongodb": 0.4
+    },
+    "tiempo_ms": 4.0
+  }
+]
+
+# ANTES: panel
+{
+  "nombre": "resultados",
+  "estado": "ok",
+  "causas": [],
+  "detalle": null,
+  "version": "0.1.0",
+  "latencia_ms": 20.4
+}
+
+# CON mongodb DETENIDO: /health de resultados (estado HTTP, cuerpo)
+[
+  503,
+  {
+    "servicio": "resultados",
+    "version": "0.1.0",
+    "estado": "degradado",
+    "postgresql": true,
+    "redis": true,
+    "mongodb": false,
+    "bucket": "no_usa",
+    "tiempos_ms": {
+      "postgresql": 7.6,
+      "redis": 0.3,
+      "mongodb": 4.6
+    },
+    "tiempo_ms": 12.6
+  }
+]
+
+# CON mongodb DETENIDO: panel
+{
+  "nombre": "resultados",
+  "estado": "degradado",
+  "causas": [
+    "mongodb"
+  ],
+  "detalle": null,
+  "version": "0.1.0",
+  "latencia_ms": 25.7
+}
+
+# CON mongodb DETENIDO: regiones sigue
+200
+
+# DESPUES: /health de resultados
+[
+  200,
+  {
+    "servicio": "resultados",
+    "version": "0.1.0",
+    "estado": "ok",
+    "postgresql": true,
+    "redis": true,
+    "mongodb": true,
+    "bucket": "no_usa",
+    "tiempos_ms": {
+      "postgresql": 5.0,
+      "redis": 0.2,
+      "mongodb": 0.4
+    },
+    "tiempo_ms": 5.6
+  }
+]
+
+# DESPUES: panel
+{
+  "nombre": "resultados",
+  "estado": "ok",
+  "causas": [],
+  "detalle": null,
+  "version": "0.1.0",
+  "latencia_ms": 14.7
+}
+

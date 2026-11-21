@@ -1,5 +1,6 @@
 {
   "trabajador": "simulador-1",
+  "motor": "seir-ref",
   "activo": true,
   "corrida_actual": 44,
   "procesadas": 3,

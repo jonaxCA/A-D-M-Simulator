@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<catalogo_instituciones><total tipo="numero">1</total><instituciones><item><id tipo="numero">1</id><code>SSNL</code><name>Secretaría de Salud de Nuevo León</name><is_active tipo="booleano">true</is_active></item></instituciones></catalogo_instituciones>

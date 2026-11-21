@@ -68,26 +68,46 @@ def _error_de_negocio(mensaje):
     return ErrorAPI(409, "CONFLICTO", mensaje)
 
 
-def _notificar_aprobacion(escenario, version):
-    """Avisa a quien armó la versión. Si falla, la aprobación ya está hecha: solo se anota.
-
-    La ruta que crea avisos es interna: va con un token de servicio, no con el de
-    quien aprueba."""
+def _avisar(destino, tipo, titulo, cuerpo, payload, version_id):
+    # Si falla, el cambio de estado ya está hecho: solo se anota. Va con token de servicio.
+    # destino es {"user_id": n} o {"role": "EPIDEMIOLOGO"}.
     try:
         resp = llamar("notificaciones", "POST", "/api/v1/notifications", formato="json", timeout=3,
                       token=token_servicio(current_app.config, "aprobacion"),
-                      cuerpo={"user_id": version["created_by"], "type": "SCENARIO_APPROVED",
-                              "title": "Versión %d aprobada" % version["version_number"],
-                              "body": "Se aprobó la versión %d del escenario «%s»."
-                                      % (version["version_number"], escenario["name"]),
-                              "payload": {"scenario_id": escenario["id"],
-                                          "version_id": version["id"],
-                                          "version_number": version["version_number"]}})
+                      cuerpo=dict(destino, type=tipo, title=titulo, body=cuerpo, payload=payload))
         if resp.status_code >= 400:
-            log.warning("notificaciones respondió %d al avisar la aprobación de la versión %s",
-                        resp.status_code, version["id"])
-    except Exception as exc:  # incluye ErrorAPI 503: nunca debe tumbar la aprobación
-        log.warning("No se pudo notificar la aprobación de la versión %s: %s", version["id"], exc)
+            log.warning("notificaciones respondió %d al avisar %s de la versión %s",
+                        resp.status_code, tipo, version_id)
+    except Exception as exc:  # incluye ErrorAPI 503: nunca debe tumbar la operación
+        log.warning("No se pudo avisar %s de la versión %s: %s", tipo, version_id, exc)
+
+
+def _payload(escenario, version):
+    return {"scenario_id": escenario["id"], "version_id": version["id"],
+            "version_number": version["version_number"]}
+
+
+def _notificar_aprobacion(escenario, version):
+    _avisar({"user_id": version["created_by"]}, "SCENARIO_APPROVED",
+            "Versión %d aprobada" % version["version_number"],
+            "Se aprobó la versión %d del escenario «%s»." % (version["version_number"], escenario["name"]),
+            _payload(escenario, version), version["id"])
+
+
+def _notificar_rechazo(escenario, version, comentario):
+    _avisar({"user_id": version["created_by"]}, "SCENARIO_REJECTED",
+            "Versión %d rechazada" % version["version_number"],
+            "Se rechazó la versión %d del escenario «%s»: %s"
+            % (version["version_number"], escenario["name"], comentario),
+            _payload(escenario, version), version["id"])
+
+
+def _notificar_envio(escenario, version):
+    _avisar({"role": "EPIDEMIOLOGO"}, "SCENARIO_SUBMITTED",
+            "Versión %d por revisar" % version["version_number"],
+            "Se envió a revisión la versión %d del escenario «%s»."
+            % (version["version_number"], escenario["name"]),
+            _payload(escenario, version), version["id"])
 
 
 def registrar(app):
@@ -107,6 +127,7 @@ def registrar(app):
         ok, error = queries.envia_a_revision(escenario["id"], contexto=g.contexto)
         if not ok:
             raise _error_de_negocio(error)
+        _notificar_envio(escenario, version)
         return responder({"scenario_id": escenario["id"], "version_id": version["id"],
                           "version_number": version["version_number"],
                           "status": "en_revision", "avisos": avisos}, "envio")
@@ -140,6 +161,8 @@ def registrar(app):
             raise _error_de_negocio(error)
         if estado == "aprobado":
             _notificar_aprobacion(detalle["escenario"], version)
+        else:
+            _notificar_rechazo(detalle["escenario"], version, comentario)
         return responder({"scenario_id": detalle["escenario"]["id"], "version_id": version["id"],
                           "version_number": version["version_number"], "status": estado,
                           "decision": decision}, "revision")

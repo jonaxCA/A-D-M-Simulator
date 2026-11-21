@@ -21,22 +21,6 @@ class EsperadoTests(unittest.TestCase):
         self.assertEqual(formularios.esperado({"e": " 42 "}, "e"), (42, True))
 
 
-class SemillaTests(unittest.TestCase):
-    def test_vacia_es_aleatoria_dentro_del_rango(self):
-        for vacia in (None, "", "   "):
-            seed, error = formularios.semilla(vacia)
-            self.assertIsNone(error)
-            self.assertTrue(0 <= seed <= formularios.SEED_MAX)
-
-    def test_con_valor_debe_ser_entero_no_negativo(self):
-        self.assertEqual(formularios.semilla(" 7 "), (7, None))
-        self.assertEqual(formularios.semilla("0"), (0, None))
-        self.assertEqual(formularios.semilla("abc"),
-                         (None, "La semilla debe ser un número entero."))
-        self.assertEqual(formularios.semilla("-1"),
-                         (None, "La semilla debe ser un número entero mayor o igual a 0."))
-
-
 class IdsDeTests(unittest.TestCase):
     def test_enteros_sin_repetir_en_el_orden_de_llegada(self):
         self.assertEqual(formularios.ids_de(["42", "x", "41", "42", "", None, " 7 "]),
