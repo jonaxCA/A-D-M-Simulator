@@ -1,0 +1,15 @@
+{
+  "user_id": 9,
+  "nacional": false,
+  "region_ids": [
+    19
+  ],
+  "regiones_cubiertas": [
+    19,
+    191,
+    192
+  ],
+  "institution_ids": [
+    1
+  ]
+}

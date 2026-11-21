@@ -1,0 +1,7 @@
+{
+  "secreto": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+  "uri": "otpauth://totp/EPIDEMIA:admin?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=EPIDEMIA&algorithm=SHA1&digits=6&period=30",
+  "algoritmo": "SHA1",
+  "digitos": 6,
+  "periodo": 30
+}

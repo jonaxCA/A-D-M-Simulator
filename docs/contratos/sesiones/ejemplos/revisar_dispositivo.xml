@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<dispositivo><id tipo="numero">3</id><user_id tipo="numero">7</user_id><label>Laptop de oficina</label><status>pendiente</status><authorized_by nil="true" /><authorized_at nil="true" /><last_seen_at nil="true" /><created_at>2026-11-20T16:00:00+00:00</created_at></dispositivo>

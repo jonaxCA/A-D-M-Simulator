@@ -4,36 +4,68 @@ from xml.etree import ElementTree as ET
 import psycopg2
 import pytest
 
-from backend_web import queries
-from epidemia_comun import sesiones
+from microservicios.usuarios import datos as queries
+from microservicios.sesiones import almacen as sesiones
 from epidemia_comun.redis_compartido import RedisNoDisponible
 from microservicios.usuarios import rutas
+
+
+@pytest.fixture(autouse=True)
+def _sesiones(sesiones_en_proceso):
+    pass
 
 
 class BaseFalsa:
     """Solo la tabla users, con las sentencias que usa rutas.py."""
 
     def __init__(self):
-        self.users = {7: [7, "admin", "admin@ejemplo.mx", "Admin", True],
-                      9: [9, "ana", "ana@ejemplo.mx", "Ana Lista", True]}
+        self.users = {7: [7, "admin", "admin@ejemplo.mx", "Admin", True, None, None],
+                      9: [9, "ana", "ana@ejemplo.mx", "Ana Lista", True, None, None]}
+        self.instituciones = {1: [1, "SSNL", "Secretaría de Salud de Nuevo León", True]}
+        self.regiones = {5}
         self.hashes = {}
         self.commits = 0
+
+    def consulta(self, sql, params=(), one=False):
+        sql = " ".join(sql.split())
+        if sql.startswith("SELECT id, code, name, is_active FROM institutions"):
+            return [dict(zip(("id", "code", "name", "is_active"), i))
+                    for i in self.instituciones.values()]
+        fila = self.users.get(params[0], [0] * 5 + [None, None])
+        return {"institution_id": fila[5], "institucion": "Secretaría" if fila[5] else None,
+                "region_id": fila[6], "region": "Monterrey" if fila[6] else None}
 
     def ejecutar(self, sql, p):
         if sql.startswith("SELECT id, username"):
             fila = self.users.get(p[0])
             return [tuple(fila)] if fila else []
         if sql.startswith("INSERT INTO users"):
-            username, email, _, nombre, activo = p
+            username, email, _, nombre, activo, institucion, region = p
+            if institucion not in (None, 1):
+                raise psycopg2.errors.ForeignKeyViolation("fk_users_institution")
+            if region not in (None,) + tuple(self.regiones):
+                raise psycopg2.errors.ForeignKeyViolation("fk_users_region")
             if any(u[1] == username.lower() for u in self.users.values()):
                 raise psycopg2.errors.UniqueViolation("uq_users_username")
             nuevo = max(self.users) + 1
-            self.users[nuevo] = [nuevo, username.lower(), email.lower(), nombre, activo]
+            self.users[nuevo] = [nuevo, username.lower(), email.lower(), nombre, activo, institucion, region]
             return [(nuevo,)]
         if sql.startswith("UPDATE users SET email"):
-            self.users[p[3]][2:4] = [p[0].lower(), p[1]]
+            self.users[p[5]][2:4] = [p[0].lower(), p[1]]
+            self.users[p[5]][5:7] = [p[3], p[4]]
             if p[2]:
-                self.hashes[p[3]] = p[2]
+                self.hashes[p[5]] = p[2]
+        elif sql.startswith("SELECT id, code, name, is_active FROM institutions"):
+            fila = self.instituciones.get(p[0])
+            return [tuple(fila)] if fila else []
+        elif sql.startswith("INSERT INTO institutions"):
+            if any(i[1] == p[0] for i in self.instituciones.values()):
+                raise psycopg2.errors.UniqueViolation("uq_institutions_code")
+            nueva = max(self.instituciones) + 1
+            self.instituciones[nueva] = [nueva, p[0], p[1], True]
+            return [tuple(self.instituciones[nueva])]
+        elif sql.startswith("UPDATE institutions"):
+            self.instituciones[p[2]][2:4] = [p[0], p[1]]
         elif sql.startswith("UPDATE users SET is_active"):
             self.users[p[1]][4] = p[0]
         elif sql.startswith("DELETE FROM users"):
@@ -78,7 +110,8 @@ def base(monkeypatch):
         yield Conexion(falsa)
 
     monkeypatch.setattr(rutas, "get_conn", get_conn)
-    monkeypatch.setattr(rutas, "hash_password", lambda p: "hash-" + p)
+    monkeypatch.setattr(queries, "hash_password", lambda p: "hash-" + p)
+    monkeypatch.setattr(rutas, "query", falsa.consulta)
     return falsa
 
 
@@ -120,7 +153,7 @@ def test_lista_pasa_los_filtros(cliente, admin, monkeypatch):
 def test_detalle_en_xml_con_roles(cliente, admin, monkeypatch):
     monkeypatch.setattr(queries, "get_usuario",
                         lambda i: {"id": i, "username": "ana", "role_id": 3} if i == 9 else None)
-    monkeypatch.setattr(rutas, "get_user_roles", lambda i: ["ANALISTA"])
+    monkeypatch.setattr(queries, "get_user_roles", lambda i: ["ANALISTA"])
     r = cliente.get("/api/v1/users/9", headers=admin)
     assert r.content_type.startswith("application/xml")
     assert ET.fromstring(r.data).find("roles").findtext("item") == "ANALISTA"
@@ -130,10 +163,11 @@ def test_detalle_en_xml_con_roles(cliente, admin, monkeypatch):
 @pytest.mark.parametrize("rol", ["CAPTURISTA", "ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR"])
 def test_perfil_es_la_cuenta_del_token(cliente, token, monkeypatch, rol):
     monkeypatch.setattr(queries, "get_usuario", lambda i: {"id": i, "username": "karla"})
-    monkeypatch.setattr(rutas, "get_user_roles", lambda i: [rol])
+    monkeypatch.setattr(queries, "get_user_roles", lambda i: [rol])
     r = cliente.get("/api/v1/users/me?format=json", headers=token(roles=(rol,), sub="12"))
     assert r.status_code == 200
-    assert r.get_json() == {"id": 12, "username": "karla", "roles": [rol]}
+    assert r.get_json() == {"id": 12, "username": "karla", "institution_id": None,
+                            "institucion": None, "region_id": None, "region": None, "roles": [rol]}
 
 
 def test_perfil_sin_token_o_sin_cuenta(cliente, token, monkeypatch):
@@ -230,6 +264,80 @@ def test_eliminar(cliente, admin, base, bitacora, monkeypatch):
     assert bitacora[0][0] == "DELETE"
 
 
+def test_perfil_con_institucion_y_region(cliente, token, base, monkeypatch):
+    base.users[9][5:7] = [1, 5]
+    monkeypatch.setattr(queries, "get_usuario", lambda i: {"id": i, "username": "ana"})
+    monkeypatch.setattr(queries, "get_user_roles", lambda i: ["ANALISTA"])
+    r = cliente.get("/api/v1/users/me?format=json", headers=token(roles=("ANALISTA",), sub="9"))
+    assert (r.get_json()["institution_id"], r.get_json()["region"]) == (1, "Monterrey")
+
+
+def test_alta_con_institucion_y_region(cliente, admin, base, bitacora):
+    cuerpo = {"username": "luis", "email": "luis@ejemplo.mx", "full_name": "Luis",
+              "password": "contrasena-larga", "institution_id": 1, "region_id": 5}
+    r = cliente.post("/api/v1/users?format=json", headers=admin, json=cuerpo)
+    assert r.status_code == 201 and (r.get_json()["institution_id"], r.get_json()["region_id"]) == (1, 5)
+    assert bitacora[0][3]["region_id"] == 5
+
+
+@pytest.mark.parametrize("campo,valor", [("institution_id", 99), ("region_id", 99),
+                                         ("region_id", "x"), ("institution_id", 0)])
+def test_alta_con_institucion_o_region_invalida_es_422(cliente, admin, base, campo, valor):
+    cuerpo = {"username": "luis", "email": "luis@ejemplo.mx", "full_name": "Luis",
+              "password": "contrasena-larga", campo: valor}
+    assert cliente.post("/api/v1/users?format=json", headers=admin, json=cuerpo).status_code == 422
+    assert base.commits == 0
+
+
+def test_editar_institucion_y_region_solo_si_vienen(cliente, admin, base, bitacora):
+    base.users[9][5:7] = [1, 5]
+    cuerpo = {"email": "ana@ejemplo.mx", "full_name": "Ana Lista"}
+    r = cliente.put("/api/v1/users/9?format=json", headers=admin, json=cuerpo)
+    assert (r.get_json()["institution_id"], r.get_json()["region_id"]) == (1, 5)
+    r = cliente.put("/api/v1/users/9?format=json", headers=admin, json={**cuerpo, "region_id": None})
+    assert (r.get_json()["institution_id"], r.get_json()["region_id"]) == (1, None)
+    assert bitacora[1][2]["region_id"] == 5 and bitacora[1][3]["region_id"] is None
+
+
+def test_instituciones_las_lee_cualquier_cuenta(cliente, token):
+    assert cliente.get("/api/v1/institutions?format=json").status_code == 401
+    r = cliente.get("/api/v1/institutions?format=json", headers=token(roles=("CAPTURISTA",)))
+    assert r.get_json()["instituciones"][0]["code"] == "SSNL"
+
+
+def test_alta_y_edicion_de_instituciones(cliente, admin, base, bitacora):
+    r = cliente.post("/api/v1/institutions?format=json", headers=admin,
+                     json={"code": "imss", "name": "IMSS Nuevo León"})
+    assert r.status_code == 201 and r.get_json()["code"] == "IMSS"
+    r = cliente.put("/api/v1/institutions/2?format=json", headers=admin, json={"is_active": False})
+    assert r.get_json()["is_active"] is False and r.get_json()["name"] == "IMSS Nuevo León"
+    assert [b[0] for b in bitacora] == ["CREATE", "UPDATE"] and bitacora[1][2]["is_active"] is True
+
+
+@pytest.mark.parametrize("cuerpo,estado", [({"code": "SSNL", "name": "Otra"}, 409),
+                                           ({"code": "X", "name": "Corta"}, 422),
+                                           ({"code": "AB"}, 422)])
+def test_alta_de_institucion_invalida(cliente, admin, base, cuerpo, estado):
+    assert cliente.post("/api/v1/institutions?format=json", headers=admin,
+                        json=cuerpo).status_code == estado
+    assert base.commits == 0
+
+
+def test_instituciones_se_escriben_solo_con_administrador(cliente, token, base, negados):
+    analista = token(roles=("ANALISTA",))
+    r = cliente.post("/api/v1/institutions?format=json", headers=analista,
+                     json={"code": "IMSS", "name": "IMSS Nuevo León"})
+    assert r.status_code == 403 and base.commits == 0
+    assert cliente.put("/api/v1/institutions/1?format=json", headers=analista,
+                       json={"name": "Otro nombre"}).status_code == 403
+    assert negados[0][1:4] == ("PERMISSION_DENIED", "usuarios", "/api/v1/institutions")
+
+
+def test_institucion_inexistente_es_404(cliente, admin):
+    assert cliente.put("/api/v1/institutions/9?format=json", headers=admin,
+                       json={"name": "Nombre largo"}).status_code == 404
+
+
 def test_resumen_de_cuentas(cliente, token, monkeypatch):
     consultas = []
 
@@ -259,4 +367,5 @@ def test_contrato_servido_es_el_de_docs(cliente):
     assert r.data == CONTRATO.read_bytes()
     assert set(r.get_json()["paths"]) == {
         "/api/v1/users", "/api/v1/users/summary", "/api/v1/users/me", "/api/v1/users/{user_id}",
-        "/api/v1/users/{user_id}/{accion}"}
+        "/api/v1/users/{user_id}/{accion}", "/api/v1/institutions",
+        "/api/v1/institutions/{institution_id}"}
