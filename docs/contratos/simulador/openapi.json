@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - simulador",
     "version": "0.1.0",
-    "description": "Proceso trabajador: toma las corridas de seir-ref de su cola de Redis (queue:simulaciones:seir-ref), ejecuta el motor, guarda el resultado en PostgreSQL, publica el avance en job:<id>:progress y avisa a notificaciones al terminar o fallar. Su única ruta es el estado del trabajador."
+    "description": "Proceso trabajador: toma las corridas de seir-ref de su cola de Redis (queue:simulaciones:seir-ref, y sus colas :alta y :baja: toma primero las altas, luego las normales y al final las bajas, D44), ejecuta el motor, guarda el resultado en PostgreSQL, publica el avance en job:<id>:progress y avisa a notificaciones al terminar o fallar. Su única ruta es el estado del trabajador."
   },
   "servers": [
     {
@@ -25,7 +25,7 @@
       "get": {
         "summary": "Estado del trabajador",
         "operationId": "estado_trabajador",
-        "description": "Nombre del contenedor, el motor que ejecuta (motor), si el hilo trabajador sigue vivo, la corrida que está ejecutando, cuántas lleva, la última y cuántas esperan en la cola de su motor. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
+        "description": "Nombre del contenedor, el motor que ejecuta (motor), si el hilo trabajador sigue vivo, la corrida que está ejecutando, cuántas lleva, la última y cuántas esperan en las colas de su motor (de todas las prioridades). ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
         "security": [
           {
             "bearerAuth": []

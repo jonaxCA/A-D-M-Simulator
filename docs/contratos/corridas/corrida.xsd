@@ -2,8 +2,10 @@
 <!-- Las respuestas del servicio corridas (puerto 5241). La raíz <corrida> la usan tres rutas,
      cada una con sus campos:
        POST /api/v1/runs               id, batch_id, scenario_version_id, seed, engine,
-                                       forzar_error y status (encolado)
-       GET  /api/v1/runs/{id}          el detalle completo, con progress, engine y terminal
+                                       forzar_error, priority y status (encolado)
+       GET  /api/v1/runs/{id}          el detalle completo, con progress, engine, terminal,
+                                       priority, queue_position y la estimación (D44)
+       POST /api/v1/runs/{id}/retry    id, seed, priority y status (encolado)
        POST /api/v1/runs/{id}/cancel   id y status (cancelado)
      Por eso solo id y status son obligatorios. La raíz <listado> es GET /api/v1/runs, y
      <equivalencia>, GET /api/v1/runs/{id}/equivalent.
@@ -19,6 +21,14 @@
       <xs:enumeration value="completado"/>
       <xs:enumeration value="fallido"/>
       <xs:enumeration value="cancelado"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="prioridad">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="baja"/>
+      <xs:enumeration value="normal"/>
+      <xs:enumeration value="alta"/>
     </xs:restriction>
   </xs:simpleType>
 
@@ -83,6 +93,11 @@
         <xs:element name="requested_by_username" type="xs:string" minOccurs="0"/>
         <xs:element name="requested_by_nombre" type="xs:string" minOccurs="0"/>
         <xs:element name="terminal" type="Booleano" minOccurs="0"/>
+        <xs:element name="priority" type="prioridad" minOccurs="0"/>
+        <xs:element name="queue_position" type="EnteroONulo" minOccurs="0"/>
+        <xs:element name="estimated_seconds" type="EnteroONulo" minOccurs="0"/>
+        <xs:element name="estimate_samples" type="Entero" minOccurs="0"/>
+        <xs:element name="estimate_reason" type="TextoONulo" minOccurs="0"/>
       </xs:all>
     </xs:complexType>
   </xs:element>

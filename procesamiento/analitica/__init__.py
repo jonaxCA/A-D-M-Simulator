@@ -13,6 +13,7 @@ y de la trazabilidad, procesamiento/trazabilidad.py.
 from .escala import INDICADORES_ESCALABLES, factor_de_escala, representados
 from .pareto import (METRICAS_IMPACTO, UNIDAD_COSTO, UNIDAD_FACTOR, ComparacionInvalida,
                      comparar, costo_escenario, frontera_pareto)
+from .sensibilidad import PARAMETROS, SensibilidadInvalida, sensibilidad, valores_por_porcentaje
 
 __all__ = [
     "INDICADORES_ESCALABLES",
@@ -20,9 +21,13 @@ __all__ = [
     "UNIDAD_COSTO",
     "UNIDAD_FACTOR",
     "ComparacionInvalida",
+    "PARAMETROS",
+    "SensibilidadInvalida",
     "comparar",
     "costo_escenario",
     "factor_de_escala",
     "frontera_pareto",
     "representados",
+    "sensibilidad",
+    "valores_por_porcentaje",
 ]

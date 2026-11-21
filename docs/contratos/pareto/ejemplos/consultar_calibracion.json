@@ -1,0 +1,19 @@
+{
+  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+  "disponible": false,
+  "ejecucion": "no_disponible",
+  "modelos": [
+    {
+      "engine_version": "seir-ref-0.1",
+      "estado": "sin_calibrar",
+      "verificado": true,
+      "calibrado": [],
+      "validado": [],
+      "categoria": "exploratoria",
+      "motivo": "El modelo seir-ref-0.1 no está calibrado para esta enfermedad y región.",
+      "texto": "Simulación exploratoria: sirve para comparar escenarios entre sí, no para anticipar cifras reales. El modelo no está calibrado ni validado con datos observados de esta enfermedad y región.",
+      "evidencia": "docs/arquitectura/ficha_simulador.md §13 a §15; docs/pruebas/validacion/2026-11-19"
+    }
+  ],
+  "nota": "La calibracion esta reabierta (D24) y su metodo lo decide el bloque 0: hasta entonces toda corrida es exploratoria (D39)."
+}

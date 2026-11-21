@@ -154,12 +154,65 @@ def costo_escenario(escenario, resultado, costos, factores=None):
     }
 
 
-def frontera_pareto(puntos):
+def _num(x):
+    x = round(x, 2)
+    return f"{int(x):,}" if x == int(x) else f"{x:,.2f}"
+
+
+def _explica(pt, puntos, metrica):
+    otros = [q for q in puntos if q is not pt]
+    nombre = lambda q: str(q.get("nombre") or q["id"])
+    dominan, compromisos, iguales = [], [], []
+    for q in otros:
+        dc, di = pt["costo"] - q["costo"], pt["impacto"] - q["impacto"]
+        if dc >= 0 and di >= 0 and (dc > 0 or di > 0):
+            dominan.append({
+                "id": q["id"], "nombre": nombre(q), "costo": q["costo"], "impacto": q["impacto"],
+                "diferencia_costo": round(dc, 2), "diferencia_impacto": round(di, 2),
+                "criterios": [c for c, d in (("costo", dc), ("impacto", di)) if d > 0]})
+        elif dc == 0 and di == 0:
+            iguales.append(q["id"])
+        elif dc > 0 or di > 0:
+            compromisos.append({
+                "id": q["id"], "nombre": nombre(q), "mejor_en": "costo" if dc > 0 else "impacto",
+                "diferencia": round(dc if dc > 0 else di, 2)})
+    etiqueta = metrica.replace("_", " ")
+    if dominan:
+        partes = []
+        for d in dominan:
+            if d["criterios"] == ["costo", "impacto"]:
+                partes.append(f"{d['nombre']} cuesta {_num(d['diferencia_costo'])} personas-dia menos "
+                              f"y tiene {_num(d['diferencia_impacto'])} menos de {etiqueta}")
+            elif d["criterios"] == ["costo"]:
+                partes.append(f"{d['nombre']} cuesta {_num(d['diferencia_costo'])} personas-dia menos "
+                              f"con el mismo valor de {etiqueta}")
+            else:
+                partes.append(f"{d['nombre']} tiene {_num(d['diferencia_impacto'])} menos de {etiqueta} "
+                              "con el mismo costo")
+        texto = "Dominada: " + "; ".join(partes) + "."
+    else:
+        texto = ("En la frontera: ninguna otra alternativa cuesta lo mismo o menos y tiene lo mismo "
+                 f"o menos de {etiqueta}.")
+        if compromisos:
+            texto += " Frente a las demas, cada una es menor solo en un criterio: " + "; ".join(
+                f"{c['nombre']} cuesta {_num(c['diferencia'])} personas-dia menos"
+                if c["mejor_en"] == "costo" else
+                f"{c['nombre']} tiene {_num(c['diferencia'])} menos de {etiqueta}"
+                for c in compromisos) + "."
+        if iguales:
+            texto += " Empata en ambos criterios con: " + ", ".join(map(str, iguales)) + "."
+    return {"dominado": bool(dominan), "dominada_por": dominan, "compromisos": compromisos,
+            "empatada_con": iguales, "texto": texto}
+
+
+def frontera_pareto(puntos, metrica="impacto"):
     """Marca los puntos dominados y regresa la frontera ordenada por costo.
 
     `puntos`: [{"id": ..., "costo": float, "impacto": float, ...}]. Regresa
-    {"puntos": copia con "dominado" y "dominado_por", "frontera": [ids]}.
-    Dos escenarios identicos en ambos ejes no se dominan entre si.
+    {"puntos": copia con "dominado", "dominado_por" y "explicacion", "frontera": [ids]}.
+    Dos escenarios identicos en ambos ejes no se dominan entre si. La explicacion dice
+    quien domina a cada punto y en que criterios (diferencias en costo y en impacto); si
+    esta en la frontera, frente a quien cada criterio es menor. No recomienda nada.
     """
     errores = []
     ids = [pt.get("id") for pt in puntos]
@@ -180,7 +233,8 @@ def frontera_pareto(puntos):
             and q["costo"] <= pt["costo"] and q["impacto"] <= pt["impacto"]
             and (q["costo"] < pt["costo"] or q["impacto"] < pt["impacto"])
         ]
-        marcados.append({**pt, "dominado": bool(dominado_por), "dominado_por": dominado_por})
+        marcados.append({**pt, "dominado": bool(dominado_por), "dominado_por": dominado_por,
+                         "explicacion": _explica(pt, puntos, metrica)})
 
     frontera = sorted((m for m in marcados if not m["dominado"]),
                       key=lambda m: (m["costo"], m["impacto"], str(m["id"])))
@@ -251,7 +305,7 @@ def comparar(entradas, costos, metrica="fallecimientos", base=None, factores=Non
                       + ": los pesos de los escenarios que lo usan quedan sin dato. "
                         "La frontera no los necesita.")
 
-    pareto = frontera_pareto(filas)
+    pareto = frontera_pareto(filas, metrica)
 
     if base is not None:
         ref = next(f for f in pareto["puntos"] if f["id"] == base)

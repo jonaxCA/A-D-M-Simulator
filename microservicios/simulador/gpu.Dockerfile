@@ -2,7 +2,7 @@
 # piezas de CUDA que usa para compilar las funciones de agente. No trae el CUDA Toolkit ni el
 # driver: el driver lo pone el host con NVIDIA Container Toolkit (en el compose, `gpus`), y lo
 # demás llega por pip (procesamiento/abm_gpu/requerimientos.txt).
-FROM epidemia/base
+FROM epidemia/base-simulacion
 USER root
 COPY procesamiento/abm_gpu/requerimientos.txt /tmp/requerimientos/abm_gpu.txt
 RUN pip install --no-cache-dir -r /tmp/requerimientos/abm_gpu.txt \

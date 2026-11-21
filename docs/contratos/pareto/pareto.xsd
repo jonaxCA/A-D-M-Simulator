@@ -72,6 +72,67 @@
     </xs:all>
   </xs:complexType>
 
+  <!-- Por qué una fila está dominada o en la frontera. dominada_por: cada alternativa que la
+       domina, con sus valores y cuánto menos cuesta (diferencia_costo, personas-día) y cuánto
+       menos impacto tiene (diferencia_impacto); criterios, en cuáles es estrictamente menor.
+       compromisos: las que son menores en un solo criterio (mejor_en). empatada_con: ids con
+       el mismo costo e impacto. No recomienda. -->
+  <xs:complexType name="Dominante">
+    <xs:all>
+      <xs:element name="id" type="Entero"/>
+      <xs:element name="nombre" type="xs:string"/>
+      <xs:element name="costo" type="Numero"/>
+      <xs:element name="impacto" type="Numero"/>
+      <xs:element name="diferencia_costo" type="Numero"/>
+      <xs:element name="diferencia_impacto" type="Numero"/>
+      <xs:element name="criterios">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="criterio" type="criterio" minOccurs="1" maxOccurs="2"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:simpleType name="criterio">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="costo"/>
+      <xs:enumeration value="impacto"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="Compromiso">
+    <xs:all>
+      <xs:element name="id" type="Entero"/>
+      <xs:element name="nombre" type="xs:string"/>
+      <xs:element name="mejor_en" type="criterio"/>
+      <xs:element name="diferencia" type="Numero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Explicacion">
+    <xs:all>
+      <xs:element name="dominado" type="Booleano"/>
+      <xs:element name="dominada_por">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="alternativa" type="Dominante" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="compromisos">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="compromiso" type="Compromiso" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="empatada_con" type="Ids"/>
+      <xs:element name="texto" type="xs:string"/>
+    </xs:all>
+  </xs:complexType>
+
   <xs:complexType name="Fila">
     <xs:all>
       <xs:element name="id" type="Entero"/>
@@ -92,6 +153,7 @@
       <xs:element name="poblacion" type="Entero"/>
       <xs:element name="dominado" type="Booleano"/>
       <xs:element name="dominado_por" type="Ids"/>
+      <xs:element name="explicacion" type="Explicacion"/>
       <xs:element name="impacto_evitado" type="NumeroONulo" minOccurs="0"/>
       <xs:element name="costo_adicional" type="NumeroONulo" minOccurs="0"/>
       <xs:element name="costo_por_unidad_evitada" type="NumeroONulo" minOccurs="0"/>
@@ -138,6 +200,117 @@
             </xs:sequence>
           </xs:complexType>
         </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- GET /api/v1/pareto/sensitivity: análisis exploratorio de un factor a la vez (D46).
+       categoria es siempre exploratoria mientras no haya calibración (D39). -->
+  <xs:complexType name="FilaSensibilidad">
+    <xs:all>
+      <xs:element name="valor" type="Numero"/>
+      <xs:element name="es_base" type="Booleano"/>
+      <xs:element name="media" type="Numero"/>
+      <xs:element name="minimo" type="Numero"/>
+      <xs:element name="maximo" type="Numero"/>
+      <xs:element name="cambio_parametro_pct" type="Numero"/>
+      <xs:element name="diferencia_vs_base" type="Numero"/>
+      <xs:element name="cambio_metrica_pct" type="NumeroONulo"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:simpleType name="categoriaD39">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="exploratoria"/>
+      <xs:enumeration value="prediccion"/>
+      <xs:enumeration value="validada"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:element name="sensibilidad">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="aviso" type="xs:string"/>
+        <xs:element name="version" type="Entero"/>
+        <xs:element name="parametro" type="xs:string"/>
+        <xs:element name="metrica" type="metrica"/>
+        <xs:element name="valor_base" type="Numero"/>
+        <xs:element name="semillas">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="semilla" type="Entero" minOccurs="1" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="engine_version" type="xs:string"/>
+        <xs:element name="metodo" type="xs:string"/>
+        <xs:element name="categoria" type="categoriaD39"/>
+        <xs:element name="modelo_verificado" type="Booleano"/>
+        <xs:element name="motivo" type="xs:string"/>
+        <xs:element name="texto_categoria" type="xs:string"/>
+        <xs:element name="filas">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="fila" type="FilaSensibilidad" minOccurs="1" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- GET /api/v1/pareto/calibration: estado de calibración de cada versión de motor
+       (procesamiento/estado_validacion.json). disponible es false: no hay ruta para calibrar
+       mientras D24 siga reabierta. -->
+  <xs:complexType name="EnfermedadRegion">
+    <xs:all>
+      <xs:element name="enfermedad" type="Entero"/>
+      <xs:element name="region" type="Entero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="ListaEnfermedadRegion">
+    <xs:sequence>
+      <xs:element name="enfermedad_region" type="EnfermedadRegion" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ModeloCalibracion">
+    <xs:all>
+      <xs:element name="engine_version" type="xs:string"/>
+      <xs:element name="estado">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="sin_calibrar"/>
+            <xs:enumeration value="calibrado"/>
+            <xs:enumeration value="validado"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+      <xs:element name="verificado" type="Booleano"/>
+      <xs:element name="calibrado" type="ListaEnfermedadRegion"/>
+      <xs:element name="validado" type="ListaEnfermedadRegion"/>
+      <xs:element name="categoria" type="categoriaD39"/>
+      <xs:element name="motivo" type="xs:string"/>
+      <xs:element name="texto" type="xs:string"/>
+      <xs:element name="evidencia" type="xs:string"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:element name="calibracion">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="aviso" type="xs:string"/>
+        <xs:element name="disponible" type="Booleano"/>
+        <xs:element name="ejecucion" type="xs:string"/>
+        <xs:element name="modelos">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="modelo" type="ModeloCalibracion" minOccurs="1" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="nota" type="xs:string"/>
       </xs:all>
     </xs:complexType>
   </xs:element>

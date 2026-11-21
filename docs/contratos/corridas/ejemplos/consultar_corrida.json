@@ -25,5 +25,10 @@
   "requested_by_username": "ana",
   "requested_by_nombre": "Ana Analista",
   "engine": "seir-ref",
-  "terminal": false
+  "terminal": false,
+  "priority": "normal",
+  "queue_position": null,
+  "estimated_seconds": 148,
+  "estimate_samples": 12,
+  "estimate_reason": null
 }
