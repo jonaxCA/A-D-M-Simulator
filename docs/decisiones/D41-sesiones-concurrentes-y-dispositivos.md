@@ -1,6 +1,6 @@
 # D41 - Sesiones concurrentes y dispositivos autorizados
 
-Fecha: 2026-11-20 · Estado: Aceptada (tomada por el orquestador; pendiente de validación del líder) · Reabre RF-A08 (antes fuera de alcance) · Amplía D1
+Fecha: 2026-11-20 · Estado: Aceptada · Reabre RF-A08 · Amplía D1
 
 ## Contexto
 La retroalimentación pide limitar las sesiones concurrentes y aceptar solo dispositivos autorizados. RF-A08 había quedado fuera de alcance porque ningún proceso lo pedía.
