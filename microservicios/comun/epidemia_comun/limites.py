@@ -32,11 +32,13 @@ def cifras(perfil):
     return PERFILES[perfil]
 
 
-def consumir(usuario=None, perfil=None):
+def consumir(usuario=None, perfil=None, cantidad=1, ruta=None):
     # Ventana fija. Con Redis caído no se limita: la sesión ya habría dado 503 y,
     # en las rutas públicas, el límite es una mejora, no un control de acceso.
+    # `cantidad` y `ruta` son para una petición que vale por varias: un lote de casos descuenta
+    # un caso por cada caso, de la misma cuenta que POST /cases (F4).
     quien = "ip-" + str(request.remote_addr) if usuario is None else str(usuario)
-    ruta = "%s:%s" % (request.method, request.url_rule.rule if request.url_rule else request.path)
+    ruta = ruta or "%s:%s" % (request.method, request.url_rule.rule if request.url_rule else request.path)
     perfil = perfil or perfil_de(current_app.config.get("NOMBRE_SERVICIO"), request.method)
     maximo, ventana = cifras(perfil)
     llave = limite(quien, ruta)
@@ -44,7 +46,7 @@ def consumir(usuario=None, perfil=None):
     def contar(r):
         p = r.pipeline()
         p.set(llave, 0, nx=True, ex=ventana)
-        p.incr(llave)
+        p.incrby(llave, cantidad)
         p.ttl(llave)
         return p.execute()
 

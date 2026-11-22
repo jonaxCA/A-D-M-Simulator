@@ -90,4 +90,41 @@
       </xs:all>
     </xs:complexType>
   </xs:element>
+  <!-- POST /api/v1/cases/batch: la petición (raíz lote_casos) y la respuesta (raíz
+       resultado_lote_casos), con hasta 100 casos. -->
+  <xs:simpleType name="EstadoDeCaso"><xs:restriction base="xs:integer"><xs:enumeration value="200"/><xs:enumeration value="201"/><xs:enumeration value="409"/><xs:enumeration value="422"/></xs:restriction></xs:simpleType>
+  <xs:complexType name="TEstadoDeCaso"><xs:simpleContent><xs:extension base="EstadoDeCaso"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:element name="lote_casos">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="cases">
+          <xs:complexType><xs:sequence><xs:element name="item" type="Caso" maxOccurs="100"/></xs:sequence></xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="resultado_lote_casos">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="total" type="TEntero"/>
+        <xs:element name="resultados">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="item" maxOccurs="100">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="indice" type="TEntero"/>
+                    <xs:element name="estado" type="TEstadoDeCaso"/>
+                    <xs:element name="caso" type="Caso" minOccurs="0"/>
+                    <xs:element name="codigo" type="TTexto" minOccurs="0"/>
+                    <xs:element name="detail" type="TTexto" minOccurs="0"/>
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
 </xs:schema>

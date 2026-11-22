@@ -53,10 +53,15 @@ def test_ejemplos_incrustados_estan_en_los_archivos():
     assert cuerpo["application/json"]["example"] == json.loads(
         (carpeta / "crear_caso_solicitud.json").read_text(encoding="utf-8"))
     assert cuerpo["application/xml"]["example"] == (carpeta / "crear_caso_solicitud.xml").read_text(encoding="utf-8")
+    lote = CONTRATO["paths"]["/api/v1/cases/batch"]["post"]["requestBody"]["content"]
+    assert lote["application/json"]["example"] == json.loads(
+        (carpeta / "crear_lote_casos_solicitud.json").read_text(encoding="utf-8"))
+    assert lote["application/xml"]["example"] == (carpeta / "crear_lote_casos_solicitud.xml").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("nombre", ["crear_caso_solicitud", "crear_caso", "crear_caso_duplicado",
-                                    "consultar_caso", "listar_casos"])
+                                    "consultar_caso", "listar_casos", "crear_lote_casos_solicitud",
+                                    "crear_lote_casos"])
 def test_ejemplo_xml_valida_contra_el_xsd(nombre):
     XSD.validate(str(CARPETA / "ejemplos" / (nombre + ".xml")))
 
@@ -68,6 +73,9 @@ def test_documentacion_del_contrato():
     assert {"disease_id", "region_id", "status", "sex", "from", "to", "page", "per_page", "format"} <= nombres
     assert {"200", "201", "401", "403", "422", "503"} <= set(ruta["post"]["responses"])
     assert "application/problem+json" in ruta["post"]["responses"]["422"]["content"]
+    lote = CONTRATO["paths"]["/api/v1/cases/batch"]["post"]
+    assert {"200", "401", "403", "422", "429", "503"} <= set(lote["responses"])
+    assert "Retry-After" in lote["responses"]["429"]["headers"]
 
 
 def test_xsd_acepta_xml_minimo_sin_atributos_y_con_nulos():
@@ -121,4 +129,12 @@ def test_la_respuesta_real_valida_contra_el_xsd(crear_cliente, token, monkeypatc
     assert r.status_code == 201
     XSD.validate(r.data.decode("utf-8"))
     r = c.get("/api/v1/cases", headers=h)
+    XSD.validate(r.data.decode("utf-8"))
+    # El lote (POST /cases/batch), con un caso nuevo, uno repetido y uno rechazado.
+    lote = {"cases": [{"local_uuid": "7a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d", "disease_id": 1,
+                       "region_id": 10, "report_date": "2026-10-01"},
+                      {"local_uuid": UUID_A, "disease_id": 1, "region_id": 10, "report_date": "2026-10-01"},
+                      {"disease_id": 1, "region_id": 10, "report_date": "2026-10-01", "sex": "X"}]}
+    r = c.post("/api/v1/cases/batch", json=lote, headers=h)
+    assert r.status_code == 200
     XSD.validate(r.data.decode("utf-8"))

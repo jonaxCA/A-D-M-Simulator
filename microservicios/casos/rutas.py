@@ -8,6 +8,7 @@ from flask import g, request
 from backend_web import dispositivos, queries
 from backend_web.audit import log_audit
 from backend_web.db import get_conn
+from epidemia_comun import limites
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.seguridad import requiere_token
@@ -21,6 +22,8 @@ ROLES_LECTURA = ("CAPTURISTA", "EPIDEMIOLOGO", "ANALISTA", "ADMINISTRADOR")
 
 ESTADOS = ("pendiente", "validado", "duplicado", "descartado")
 MAXIMO_POR_PAGINA = 100
+# Un lote de POST /cases/batch: el mismo tope que uno de sincronizacion.
+MAXIMO_POR_LOTE = 100
 BIGINT_MAX = 2 ** 63 - 1
 
 CAMPOS_ENTRADA = ("local_uuid", "device_id", "disease_id", "region_id", "report_date",
@@ -115,73 +118,129 @@ def _fecha_de_consulta(nombre):
     return None if crudo is None else fecha(crudo, nombre)
 
 
+def _lista_de_casos(valor):
+    """JSON trae una lista; XML trae <cases><item>..</item></cases>, que de_xml entrega como dict
+    (un solo item) o dict con lista. Los mismos topes que un lote de sincronizacion."""
+    if isinstance(valor, dict):
+        valor = valor.get("item")
+        if isinstance(valor, dict):
+            valor = [valor]
+    if not isinstance(valor, list) or not valor:
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "cases debe traer al menos un caso.")
+    if len(valor) > MAXIMO_POR_LOTE:
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "Un lote admite máximo %d casos." % MAXIMO_POR_LOTE)
+    if any(not isinstance(c, dict) for c in valor):
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "Cada caso debe ser un objeto con campos.")
+    return valor
+
+
+def _catalogos():
+    return queries.get_enfermedades_para_captura(), queries.get_municipios_catalogo()
+
+
+def _crea(entrada, catalogos=None, dispositivos_vistos=None):
+    """Crea un caso: (201, caso), o (200, caso) si su local_uuid ya existía. Lanza ErrorAPI 422 o
+    409 si no pasa. Un lote comparte `catalogos` y `dispositivos_vistos` para no repetir las
+    mismas consultas en cada caso."""
+    local_uuid = _uuid_opcional(entrada["local_uuid"])
+    device_id = _dispositivo_opcional(entrada["device_id"])
+
+    # Idempotencia: un reintento de la sincronización con el mismo local_uuid
+    # regresa el caso que ya existe, sin volver a validar ni a escribir.
+    if local_uuid:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                previo = _existente(cur, local_uuid)
+        if previo:
+            previo["duplicado"] = True
+            return 200, previo
+
+    # Un dispositivo revocado no captura aunque el token siga vigente (comentario de devices).
+    if device_id is not None:
+        vistos = {} if dispositivos_vistos is None else dispositivos_vistos
+        if device_id not in vistos:
+            vistos[device_id] = dispositivos.estado_para_captura(device_id, g.contexto.user_id)
+        if vistos[device_id] == "ajeno":
+            raise ErrorAPI(422, "DATOS_INVALIDOS",
+                           "device_id no es un dispositivo registrado de esta cuenta.")
+        if vistos[device_id] == "revocado":
+            raise ErrorAPI(409, "CONFLICTO",
+                           "El dispositivo está revocado: ya no puede capturar ni sincronizar casos.")
+
+    enfermedades, municipios = catalogos or _catalogos()
+    datos, errores = queries.valida_caso(entrada, enfermedades, municipios)
+    if errores:
+        raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
+    local_uuid = local_uuid or str(uuid.uuid4())
+    # synced_at: el caso llegó desde un dispositivo (trae device_id).
+    sincronizado = datetime.now(timezone.utc) if device_id else None
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(_INSERTA, (
+                    local_uuid, device_id, g.usuario["sub"], datos["disease_id"],
+                    datos["region_id"], datos["age"], datos["sex"], datos["onset_date"],
+                    datos["report_date"], datos["latitude"], datos["longitude"],
+                    datos["test_result"], datos["severity"], sincronizado))
+                nuevo = cur.fetchone()
+                if nuevo is None:
+                    # Otra petición con el mismo local_uuid ganó la carrera.
+                    previo = _existente(cur, local_uuid)
+                    conn.rollback()
+                    previo["duplicado"] = True
+                    return 200, previo
+                cur.execute(_SELECT + " WHERE c.id = %s", (nuevo[0],))
+                caso = _a_caso(cur.fetchone())
+                log_audit(g.contexto, "CREATE", "cases", caso["id"],
+                          data_after=dict(caso), cur=cur)
+            conn.commit()
+    except psycopg2.errors.ForeignKeyViolation as exc:
+        restriccion = getattr(getattr(exc, "diag", None), "constraint_name", "") or ""
+        mensaje = ("El dispositivo no existe." if "device" in restriccion
+                   else "La enfermedad o el municipio seleccionados ya no existen.")
+        raise ErrorAPI(422, "DATOS_INVALIDOS", mensaje) from exc
+    except psycopg2.errors.CheckViolation as exc:
+        restriccion = getattr(getattr(exc, "diag", None), "constraint_name", "") or ""
+        raise ErrorAPI(422, "DATOS_INVALIDOS",
+                       "La base rechazó el caso por una restricción: %s." % restriccion) from exc
+    caso["duplicado"] = False
+    return 201, caso
+
+
 def registrar(app):
     @app.post("/api/v1/cases")
     @requiere_token(roles=ROLES_ESCRITURA)
     def crear():
-        entrada = _leer_caso(leer_cuerpo())
-        local_uuid = _uuid_opcional(entrada["local_uuid"])
-        device_id = _dispositivo_opcional(entrada["device_id"])
+        estado, caso = _crea(_leer_caso(leer_cuerpo()))
+        return responder(caso, "caso", estado=estado)
 
-        # Idempotencia: un reintento de la sincronización con el mismo local_uuid
-        # regresa el caso que ya existe, sin volver a validar ni a escribir.
-        if local_uuid:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    previo = _existente(cur, local_uuid)
-            if previo:
-                previo["duplicado"] = True
-                return responder(previo, "caso", estado=200)
-
-        # Un dispositivo revocado no captura aunque el token siga vigente (comentario de devices).
-        if device_id is not None:
-            estado = dispositivos.estado_para_captura(device_id, g.contexto.user_id)
-            if estado == "ajeno":
-                raise ErrorAPI(422, "DATOS_INVALIDOS",
-                               "device_id no es un dispositivo registrado de esta cuenta.")
-            if estado == "revocado":
-                raise ErrorAPI(409, "CONFLICTO",
-                               "El dispositivo está revocado: ya no puede capturar ni sincronizar casos.")
-
-        datos, errores = queries.valida_caso(
-            entrada, queries.get_enfermedades_para_captura(), queries.get_municipios_catalogo())
-        if errores:
-            raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
-        local_uuid = local_uuid or str(uuid.uuid4())
-        # synced_at: el caso llegó desde un dispositivo (trae device_id).
-        sincronizado = datetime.now(timezone.utc) if device_id else None
-
-        try:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(_INSERTA, (
-                        local_uuid, device_id, g.usuario["sub"], datos["disease_id"],
-                        datos["region_id"], datos["age"], datos["sex"], datos["onset_date"],
-                        datos["report_date"], datos["latitude"], datos["longitude"],
-                        datos["test_result"], datos["severity"], sincronizado))
-                    nuevo = cur.fetchone()
-                    if nuevo is None:
-                        # Otra petición con el mismo local_uuid ganó la carrera.
-                        previo = _existente(cur, local_uuid)
-                        conn.rollback()
-                        previo["duplicado"] = True
-                        return responder(previo, "caso", estado=200)
-                    cur.execute(_SELECT + " WHERE c.id = %s", (nuevo[0],))
-                    caso = _a_caso(cur.fetchone())
-                    log_audit(g.contexto, "CREATE", "cases", caso["id"],
-                              data_after=dict(caso), cur=cur)
-                conn.commit()
-        except psycopg2.errors.ForeignKeyViolation as exc:
-            restriccion = getattr(getattr(exc, "diag", None), "constraint_name", "") or ""
-            mensaje = ("El dispositivo no existe." if "device" in restriccion
-                       else "La enfermedad o el municipio seleccionados ya no existen.")
-            raise ErrorAPI(422, "DATOS_INVALIDOS", mensaje) from exc
-        except psycopg2.errors.CheckViolation as exc:
-            restriccion = getattr(getattr(exc, "diag", None), "constraint_name", "") or ""
+    @app.post("/api/v1/cases/batch")
+    @requiere_token(roles=ROLES_ESCRITURA)
+    def crear_lote():
+        """Varios casos en una sola petición; la usa sincronizacion (F4). Cada caso tiene el
+        resultado que tendría en POST /cases (201, 200 si ya existía, 409 o 422), en el mismo
+        orden y en su propia transacción: uno rechazado no detiene a los demás. El límite de D31
+        cuenta los casos, no la petición, en la misma cuenta que POST /cases. Si la base o algo
+        más falla, el lote completo responde 503 y se reenvía: local_uuid evita duplicados."""
+        cuerpo = diccionario(leer_cuerpo())
+        desconocidos = set(cuerpo) - {"cases"}
+        if desconocidos:
             raise ErrorAPI(422, "DATOS_INVALIDOS",
-                           "La base rechazó el caso por una restricción: %s." % restriccion) from exc
-        caso["duplicado"] = False
-        return responder(caso, "caso", estado=201)
+                           "Campos no reconocidos: " + ", ".join(sorted(str(c) for c in desconocidos)) + ".")
+        casos = _lista_de_casos(cuerpo.get("cases"))
+        limites.consumir(g.usuario["sub"], cantidad=len(casos), ruta="POST:/api/v1/cases")
+        catalogos, vistos, resultados = _catalogos(), {}, []
+        for indice, crudo in enumerate(casos):
+            try:
+                estado, caso = _crea(_leer_caso(crudo), catalogos, vistos)
+                resultados.append({"indice": indice, "estado": estado, "caso": caso})
+            except ErrorAPI as error:
+                if error.estado not in (409, 422):
+                    raise
+                resultados.append({"indice": indice, "estado": error.estado,
+                                   "codigo": error.codigo, "detail": error.detalle})
+        return responder({"total": len(resultados), "resultados": resultados}, "resultado_lote_casos")
 
     @app.get("/api/v1/cases")
     @requiere_token(roles=ROLES_LECTURA)

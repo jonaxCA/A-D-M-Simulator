@@ -34,6 +34,8 @@ class CasosFalso:
         self.creados = {}
         self.caido = False
         self.respuesta_fija = None
+        self.peticiones = []
+        self.sin_lote = False
 
     def __call__(self, servicio, metodo, ruta, formato="json", cuerpo=None, token=None, **kw):
         if servicio == "notificaciones":
@@ -41,6 +43,29 @@ class CasosFalso:
             if self.aviso_falla:
                 raise self.aviso_falla
             return Resp(201, {})
+        self.peticiones.append(ruta)
+        if ruta.endswith("/batch"):
+            # POST /cases/batch: cada caso se anota en `llamadas` como si llegara solo, para que
+            # las pruebas sigan viendo qué casos recibió casos; `peticiones` cuenta las llamadas.
+            if self.caido:
+                self.llamadas.append((servicio, metodo, ruta, formato, cuerpo["cases"][0], token))
+                raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio no respondió.")
+            # Un rechazo de un caso (400, 409, 413, 415, 422) va dentro de su resultado; lo demás
+            # (401, 403, 429, 5xx) es la respuesta de todo el lote, como en casos.
+            if self.respuesta_fija and self.respuesta_fija.status_code not in (400, 409, 413, 415, 422):
+                self.llamadas.append((servicio, metodo, ruta, formato, cuerpo["cases"][0], token))
+                return self.respuesta_fija
+            if self.sin_lote:
+                return Resp(404, {"codigo": "NO_ENCONTRADO", "detail": "No existe."})
+            filas = []
+            for indice, caso in enumerate(cuerpo["cases"]):
+                r = self._uno(servicio, metodo, "/api/v1/cases", formato, caso, token)
+                filas.append(dict({"indice": indice, "estado": r.status_code},
+                                  **({"caso": r._cuerpo} if r.status_code in (200, 201) else (r._cuerpo or {}))))
+            return Resp(200, {"total": len(filas), "resultados": filas})
+        return self._uno(servicio, metodo, ruta, formato, cuerpo, token)
+
+    def _uno(self, servicio, metodo, ruta, formato, cuerpo, token):
         self.llamadas.append((servicio, metodo, ruta, formato, cuerpo, token))
         if self.caido:
             raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio no respondió.")
@@ -372,3 +397,25 @@ def test_lote_ajeno_no_se_ve_ni_se_reenvia(cliente, token):
 def test_consultar_con_redis_caido_503(cliente, captura, apagar_redis):
     apagar_redis()
     assert cliente.get("/api/v1/sync/batches/" + LOTE, headers=captura).status_code == 503
+
+
+# --- Un lote, una llamada a casos (POST /api/v1/cases/batch, F4) ------------------------------
+
+def test_el_lote_va_en_una_sola_llamada_a_casos(cliente, captura, casos):
+    d = enviar(cliente, captura).get_json()
+    assert casos.peticiones == ["/api/v1/cases/batch"]
+    assert [r["resultado"] for r in d["resultados"]] == ["creado", "rechazado"]
+
+
+def test_si_casos_no_tiene_la_ruta_del_lote_va_caso_por_caso(cliente, captura, casos):
+    casos.sin_lote = True
+    d = enviar(cliente, captura).get_json()
+    assert casos.peticiones == ["/api/v1/cases/batch", "/api/v1/cases", "/api/v1/cases"]
+    assert [r["resultado"] for r in d["resultados"]] == ["creado", "rechazado"]
+
+
+def test_una_respuesta_de_lote_incompleta_es_503(cliente, captura, casos, redis_falso):
+    casos.respuesta_fija = Resp(200, {"total": 0, "resultados": []})
+    r = enviar(cliente, captura)
+    assert r.status_code == 503 and r.get_json()["codigo"] == "SERVICIO_NO_DISPONIBLE"
+    assert redis_falso.exists(llaves.lote(LOTE)) == 0
