@@ -1,6 +1,6 @@
 # D44 - Prioridad en la cola, tiempo estimado y reintento manual de una corrida fallida
 
-Fecha: 2026-11-20 · Estado: Aceptada (tomada por el orquestador; pendiente de validación del líder) · Reabre RF-E07, RF-E08 y RF-E14 · Amplía D38
+Fecha: 2026-11-20 · Estado: Aceptada · Reabre RF-E07, RF-E08 y RF-E14 · Amplía D38
 
 ## Contexto
 La retroalimentación pide prioridades en la cola, un tiempo estimado y reintentos seguros. Hoy la cola de cada motor atiende en orden de llegada, ninguna ruta da una estimación y una corrida `fallido` solo se repite lanzando otra.
