@@ -1,6 +1,6 @@
 # D36 - La web consume los microservicios
 
-Fecha: 2026-11-19 · Estado: Aceptada (tomada en sesión por el equipo del salón 2; falta validarla con el líder) · Reemplaza a D20 y D33
+Fecha: 2026-11-19 · Estado: Aceptada · Reemplaza a D20 y D33
 
 ## Contexto
 La retroalimentación del segundo parcial pide que ninguna aplicación cliente se conecte directo a PostgreSQL, MongoDB ni Redis, y que se compruebe que una operación de la web consume realmente una API. Hoy la web va directo a PostgreSQL (D20) y a Redis (D33), e importa `epidemia_comun`. D20 se tomó para que la web funcionara por su cuenta. La retroalimentación manda sobre esa razón (checklist, «Qué manda»).
