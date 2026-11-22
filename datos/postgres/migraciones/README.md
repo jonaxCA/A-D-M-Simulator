@@ -45,6 +45,7 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `052_instituciones_y_perfiles.sql` | `institutions`, `users.institution_id` y `users.region_id` (opcionales), y los roles INVESTIGADOR y AUTORIDAD_SANITARIA con permisos de solo lectura como supuesto (D42). `svc_usuarios` es dueño de `institutions` |
 | `055_historial_con_alcance.sql` | `svc_roles` lee `scenarios`, `scenario_versions` y `scenario_interventions` para aplicar el alcance regional (D43) al historial de un escenario |
 | `053_alcances_de_usuario.sql` | `user_scopes`: la región o institución a la que se limita una cuenta; sin filas es nacional (D43). `svc_roles` es dueño |
+| `056_nombres_oficiales_municipios.sql` | Nombre oficial de INEGI, con acento, de cuatro municipios que `010` cargó sin él: García, San Pedro Garza García, Juárez y San Nicolás de los Garza |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.
@@ -73,7 +74,8 @@ problema: ya falta la 018.
 | 053 | E | Alcance por región o institución de cada cuenta (D43) |
 | 054 | E | `simulation_runs.priority`: prioridad de la corrida en la cola y permisos para reintentarla (D44) |
 | 055 | E | `svc_roles` lee escenarios para el alcance regional del historial (D43) |
-| 056 en adelante | — | Se piden al líder |
+| 056 | F | Nombre oficial, con acento, de los cuatro municipios de `010` que no lo tenían (asignada por el líder, 2026-11-22) |
+| 057 en adelante | — | Se piden al líder |
 
 1. **Cada migración corre en cualquier orden.** El dump las tiene en el orden en
    que se integran, y una instalación limpia las corre por número: la 034 llegará
