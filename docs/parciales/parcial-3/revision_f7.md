@@ -82,11 +82,11 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 | Pide | Estado | Cómo, o qué falta |
 |---|---|---|
 | Por enfermedad, periodo y región | **Cumple** | `disease_id`, `region_id` y `days` (7, 30 o 90) |
-| Por grupo | Parcial | Rutas aparte por edad y por sexo; no se combinan con la serie diaria |
-| Filtrado | Parcial | `days` acepta solo 7, 30 o 90; no hay rango de fechas libre |
-| Paginación | Falta | |
-| Agregaciones | Falta | Solo por día; ni por semana epidemiológica ni por mes |
-| Formato para Highcharts | Falta | Listas de filas; Highcharts espera `series: [{name, data: [[x, y]]}]` |
+| Por grupo | **Hecho** (2026-11-21) | `/series/cases/aggregate?group_by=`: sexo, edad, enfermedad o municipio, en cada periodo |
+| Filtrado | **Hecho** (2026-11-21) | Rango libre con `from` y `to` (hasta 731 días), además de `days` |
+| Paginación | **Hecho** (2026-11-21) | Por periodos: `page` y `size`, con `total` y `paginas` |
+| Agregaciones | **Hecho** (2026-11-21) | `interval`: día, semana epidemiológica (domingo a sábado, `semana_epi`) o mes |
+| Formato para Highcharts | **Hecho** (2026-11-21) | `/series/cases/highcharts`: `{xAxis, yAxis, series: [{name, data: [{x, y}]}]}` |
 
 ### `zonas` (5253)
 
@@ -152,7 +152,7 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 | ~~Chico~~ | **Hecho** el 2026-11-21: cola, ejecutando y simuladores vivos por motor (`/services/capacity`) | `estado-servicios` y `simulador` |
 | ~~Chico~~ | **Hecho** el 2026-11-21: avisar con `SYSTEM` a los ADMINISTRADOR cuando un servicio cae o se recupera (alertas técnicas y errores operativos) | `estado-servicios` y `notificaciones` |
 | ~~Chico~~ | **Hecho** el 2026-11-21: numerador, denominador y periodo en cada indicador; mortalidad, letalidad y casos graves | `indicadores` |
-| Mediano | Agregación por semana o mes, paginación y salida para Highcharts | `series` |
+| ~~Mediano~~ | **Hecho** el 2026-11-21: agregación por semana o mes, paginación y salida para Highcharts | `series` |
 | Mediano | Puntos agregados para el mapa de calor y agrupación por región del estado | `zonas` |
 | Mediano | Cambiar estado (validar, descartar, marcar duplicado) y corregir datos, con historial y control de versión (`If-Match`); con eso, los conflictos de la sincronización | `casos` y `sincronizacion` |
 | Grande | Formularios por enfermedad con versiones | `casos` (y la móvil, B4) |

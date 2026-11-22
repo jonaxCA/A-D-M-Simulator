@@ -560,6 +560,541 @@
           }
         }
       }
+    },
+    "/api/v1/series/cases/aggregate": {
+      "get": {
+        "summary": "Serie agregada y paginada",
+        "operationId": "serie_agregada",
+        "description": "Casos por periodo (día, semana epidemiológica o mes), con rango de fechas libre, agrupados si se pide y paginados por periodo. Por periodo: `inicio`, `fin`, `semana_epi` (AAAA-SS, solo por semana), `completo` (false si el rango corta el periodo), `casos`, `acumulado` desde el inicio del rango y `por_grupo` (un `{grupo, casos}` por cada grupo de `grupos`, en el mismo orden). `grupos` va ordenado por casos, salvo la edad, que da siempre los seis grupos en orden; lo que no trae el dato es «No especificado». `total` es el número de periodos, `paginas` cuántas páginas hay y `total_casos` la suma del rango. Casos `pendiente` o `validado`, por fecha de reporte, en los municipios de Nuevo León (o en el de region_id). El rango va de from a to (hasta 731 días), o los últimos days, o los 90 días que terminan hoy. Cada periodo sale aunque no tenga casos. 422 si una fecha no es AAAA-MM-DD, si from es posterior a to, si el rango pasa de 731 días o si vienen days y from/to juntos.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por enfermedad"
+          },
+          {
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por municipio de Nuevo León"
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                7,
+                30,
+                90
+              ]
+            },
+            "description": "Los últimos 7, 30 o 90 días hasta hoy; no se combina con from y to"
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inicio del rango (AAAA-MM-DD). Sin from ni days, los 90 días que terminan en to"
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Fin del rango (AAAA-MM-DD); por omisión, hoy"
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "dia",
+                "semana",
+                "mes"
+              ],
+              "default": "dia"
+            },
+            "description": "dia, semana (epidemiológica, de domingo a sábado) o mes"
+          },
+          {
+            "in": "query",
+            "name": "group_by",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sexo",
+                "edad",
+                "enfermedad",
+                "municipio"
+              ]
+            },
+            "description": "Una serie por sexo, grupo de edad, enfermedad o municipio"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Página de periodos"
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 366,
+              "default": 52
+            },
+            "description": "Periodos por página"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "grupos": [
+                    "Femenino",
+                    "Masculino",
+                    "No especificado"
+                  ],
+                  "total_casos": 68,
+                  "total": 4,
+                  "pagina": 1,
+                  "paginas": 1,
+                  "periodos": [
+                    {
+                      "inicio": "2026-10-25",
+                      "fin": "2026-10-31",
+                      "semana_epi": "2026-43",
+                      "completo": true,
+                      "casos": 10,
+                      "acumulado": 10,
+                      "por_grupo": [
+                        {
+                          "grupo": "Femenino",
+                          "casos": 6
+                        },
+                        {
+                          "grupo": "Masculino",
+                          "casos": 4
+                        },
+                        {
+                          "grupo": "No especificado",
+                          "casos": 0
+                        }
+                      ]
+                    },
+                    {
+                      "inicio": "2026-11-01",
+                      "fin": "2026-11-07",
+                      "semana_epi": "2026-44",
+                      "completo": true,
+                      "casos": 17,
+                      "acumulado": 27,
+                      "por_grupo": [
+                        {
+                          "grupo": "Femenino",
+                          "casos": 9
+                        },
+                        {
+                          "grupo": "Masculino",
+                          "casos": 7
+                        },
+                        {
+                          "grupo": "No especificado",
+                          "casos": 1
+                        }
+                      ]
+                    },
+                    {
+                      "inicio": "2026-11-08",
+                      "fin": "2026-11-14",
+                      "semana_epi": "2026-45",
+                      "completo": true,
+                      "casos": 22,
+                      "acumulado": 49,
+                      "por_grupo": [
+                        {
+                          "grupo": "Femenino",
+                          "casos": 12
+                        },
+                        {
+                          "grupo": "Masculino",
+                          "casos": 10
+                        },
+                        {
+                          "grupo": "No especificado",
+                          "casos": 0
+                        }
+                      ]
+                    },
+                    {
+                      "inicio": "2026-11-15",
+                      "fin": "2026-11-21",
+                      "semana_epi": "2026-46",
+                      "completo": true,
+                      "casos": 19,
+                      "acumulado": 68,
+                      "por_grupo": [
+                        {
+                          "grupo": "Femenino",
+                          "casos": 8
+                        },
+                        {
+                          "grupo": "Masculino",
+                          "casos": 11
+                        },
+                        {
+                          "grupo": "No especificado",
+                          "casos": 0
+                        }
+                      ]
+                    }
+                  ],
+                  "filtros": {
+                    "disease_id": null,
+                    "region_id": null,
+                    "desde": "2026-10-25",
+                    "hasta": "2026-11-21",
+                    "intervalo": "semana",
+                    "agrupar": "sexo"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "serie_agregada"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<serie_agregada><grupos><grupo>Femenino</grupo><grupo>Masculino</grupo><grupo>No especificado</grupo></grupos><total_casos tipo=\"numero\">68</total_casos><total tipo=\"numero\">4</total><pagina tipo=\"numero\">1</pagina><paginas tipo=\"numero\">1</paginas><periodos><periodo><inicio>2026-10-25</inicio><fin>2026-10-31</fin><semana_epi>2026-43</semana_epi><completo tipo=\"booleano\">true</completo><casos tipo=\"numero\">10</casos><acumulado tipo=\"numero\">10</acumulado><por_grupo><grupo><grupo>Femenino</grupo><casos tipo=\"numero\">6</casos></grupo><grupo><grupo>Masculino</grupo><casos tipo=\"numero\">4</casos></grupo><grupo><grupo>No especificado</grupo><casos tipo=\"numero\">0</casos></grupo></por_grupo></periodo><periodo><inicio>2026-11-01</inicio><fin>2026-11-07</fin><semana_epi>2026-44</semana_epi><completo tipo=\"booleano\">true</completo><casos tipo=\"numero\">17</casos><acumulado tipo=\"numero\">27</acumulado><por_grupo><grupo><grupo>Femenino</grupo><casos tipo=\"numero\">9</casos></grupo><grupo><grupo>Masculino</grupo><casos tipo=\"numero\">7</casos></grupo><grupo><grupo>No especificado</grupo><casos tipo=\"numero\">1</casos></grupo></por_grupo></periodo><periodo><inicio>2026-11-08</inicio><fin>2026-11-14</fin><semana_epi>2026-45</semana_epi><completo tipo=\"booleano\">true</completo><casos tipo=\"numero\">22</casos><acumulado tipo=\"numero\">49</acumulado><por_grupo><grupo><grupo>Femenino</grupo><casos tipo=\"numero\">12</casos></grupo><grupo><grupo>Masculino</grupo><casos tipo=\"numero\">10</casos></grupo><grupo><grupo>No especificado</grupo><casos tipo=\"numero\">0</casos></grupo></por_grupo></periodo><periodo><inicio>2026-11-15</inicio><fin>2026-11-21</fin><semana_epi>2026-46</semana_epi><completo tipo=\"booleano\">true</completo><casos tipo=\"numero\">19</casos><acumulado tipo=\"numero\">68</acumulado><por_grupo><grupo><grupo>Femenino</grupo><casos tipo=\"numero\">8</casos></grupo><grupo><grupo>Masculino</grupo><casos tipo=\"numero\">11</casos></grupo><grupo><grupo>No especificado</grupo><casos tipo=\"numero\">0</casos></grupo></por_grupo></periodo></periodos><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><desde>2026-10-25</desde><hasta>2026-11-21</hasta><intervalo>semana</intervalo><agrupar>sexo</agrupar></filtros></serie_agregada>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/cases/highcharts": {
+      "get": {
+        "summary": "Serie para Highcharts",
+        "operationId": "serie_highcharts",
+        "description": "La misma serie de /series/cases/aggregate, sin paginar, como la toma Highcharts.chart(): `xAxis` (datetime), `yAxis` y `series`, una por grupo (o «Casos» sin group_by) con puntos `{x, y}`: x es el inicio del periodo en milisegundos UTC y y sus casos. Casos `pendiente` o `validado`, por fecha de reporte, en los municipios de Nuevo León (o en el de region_id). El rango va de from a to (hasta 731 días), o los últimos days, o los 90 días que terminan hoy. Cada periodo sale aunque no tenga casos. 422 si una fecha no es AAAA-MM-DD, si from es posterior a to, si el rango pasa de 731 días o si vienen days y from/to juntos.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por enfermedad"
+          },
+          {
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por municipio de Nuevo León"
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                7,
+                30,
+                90
+              ]
+            },
+            "description": "Los últimos 7, 30 o 90 días hasta hoy; no se combina con from y to"
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inicio del rango (AAAA-MM-DD). Sin from ni days, los 90 días que terminan en to"
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Fin del rango (AAAA-MM-DD); por omisión, hoy"
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "dia",
+                "semana",
+                "mes"
+              ],
+              "default": "dia"
+            },
+            "description": "dia, semana (epidemiológica, de domingo a sábado) o mes"
+          },
+          {
+            "in": "query",
+            "name": "group_by",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sexo",
+                "edad",
+                "enfermedad",
+                "municipio"
+              ]
+            },
+            "description": "Una serie por sexo, grupo de edad, enfermedad o municipio"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "xAxis": {
+                    "type": "datetime"
+                  },
+                  "yAxis": {
+                    "title": {
+                      "text": "Casos"
+                    }
+                  },
+                  "series": [
+                    {
+                      "name": "Femenino",
+                      "data": [
+                        {
+                          "x": 1792886400000,
+                          "y": 6
+                        },
+                        {
+                          "x": 1793491200000,
+                          "y": 9
+                        },
+                        {
+                          "x": 1794096000000,
+                          "y": 12
+                        },
+                        {
+                          "x": 1794700800000,
+                          "y": 8
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Masculino",
+                      "data": [
+                        {
+                          "x": 1792886400000,
+                          "y": 4
+                        },
+                        {
+                          "x": 1793491200000,
+                          "y": 7
+                        },
+                        {
+                          "x": 1794096000000,
+                          "y": 10
+                        },
+                        {
+                          "x": 1794700800000,
+                          "y": 11
+                        }
+                      ]
+                    },
+                    {
+                      "name": "No especificado",
+                      "data": [
+                        {
+                          "x": 1792886400000,
+                          "y": 0
+                        },
+                        {
+                          "x": 1793491200000,
+                          "y": 1
+                        },
+                        {
+                          "x": 1794096000000,
+                          "y": 0
+                        },
+                        {
+                          "x": 1794700800000,
+                          "y": 0
+                        }
+                      ]
+                    }
+                  ],
+                  "filtros": {
+                    "disease_id": null,
+                    "region_id": null,
+                    "desde": "2026-10-25",
+                    "hasta": "2026-11-21",
+                    "intervalo": "semana",
+                    "agrupar": "sexo"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "highcharts"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<highcharts><xAxis><type>datetime</type></xAxis><yAxis><title><text>Casos</text></title></yAxis><series><serie><name>Femenino</name><data><punto><x tipo=\"numero\">1792886400000</x><y tipo=\"numero\">6</y></punto><punto><x tipo=\"numero\">1793491200000</x><y tipo=\"numero\">9</y></punto><punto><x tipo=\"numero\">1794096000000</x><y tipo=\"numero\">12</y></punto><punto><x tipo=\"numero\">1794700800000</x><y tipo=\"numero\">8</y></punto></data></serie><serie><name>Masculino</name><data><punto><x tipo=\"numero\">1792886400000</x><y tipo=\"numero\">4</y></punto><punto><x tipo=\"numero\">1793491200000</x><y tipo=\"numero\">7</y></punto><punto><x tipo=\"numero\">1794096000000</x><y tipo=\"numero\">10</y></punto><punto><x tipo=\"numero\">1794700800000</x><y tipo=\"numero\">11</y></punto></data></serie><serie><name>No especificado</name><data><punto><x tipo=\"numero\">1792886400000</x><y tipo=\"numero\">0</y></punto><punto><x tipo=\"numero\">1793491200000</x><y tipo=\"numero\">1</y></punto><punto><x tipo=\"numero\">1794096000000</x><y tipo=\"numero\">0</y></punto><punto><x tipo=\"numero\">1794700800000</x><y tipo=\"numero\">0</y></punto></data></serie></series><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><desde>2026-10-25</desde><hasta>2026-11-21</hasta><intervalo>semana</intervalo><agrupar>sexo</agrupar></filtros></highcharts>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
