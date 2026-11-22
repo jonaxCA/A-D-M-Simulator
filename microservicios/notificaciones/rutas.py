@@ -6,12 +6,13 @@ estado-servicios con un token de servicio.
 """
 from flask import g, request
 
-from backend_web import notificaciones
-from backend_web.contexto import Contexto
+from epidemia_comun.auditoria import Contexto
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.seguridad import requiere_token, solo_servicios
 from epidemia_comun.validaciones import diccionario, entero_positivo
+
+from . import almacen
 
 LIMITE, LIMITE_MAX = 50, 200
 CAMPOS = {"user_id", "role", "type", "title", "body", "payload"}
@@ -36,7 +37,7 @@ def registrar(app):
         limite = LIMITE if limite is None else entero_positivo(limite, "limit")
         if limite > LIMITE_MAX:
             raise ErrorAPI(422, "DATOS_INVALIDOS", "limit no puede pasar de %d." % LIMITE_MAX)
-        filas, no_leidas = notificaciones.listar_notificaciones(
+        filas, no_leidas = almacen.listar_notificaciones(
             g.contexto.user_id, _solo_no_leidas(request.args.get("unread")), limite)
         return responder({"total": len(filas), "no_leidas": no_leidas, "notificaciones": filas},
                          "bandeja")
@@ -44,8 +45,8 @@ def registrar(app):
     @app.post("/api/v1/notifications/<notificacion_id>/read")
     @requiere_token()
     def leer(notificacion_id):
-        fila, error = notificaciones.marcar_leida(entero_positivo(notificacion_id, "id"),
-                                                  g.contexto.user_id, contexto=g.contexto)
+        fila, error = almacen.marcar_leida(entero_positivo(notificacion_id, "id"),
+                                           g.contexto.user_id, contexto=g.contexto)
         if error:
             raise ErrorAPI(404, "NO_ENCONTRADO", error)
         return responder(fila, "notificacion")
@@ -54,7 +55,7 @@ def registrar(app):
     @app.get("/api/v1/notifications/preferences")
     @requiere_token()
     def preferencias():
-        return responder({"preferencias": notificaciones.preferencias(
+        return responder({"preferencias": almacen.preferencias(
             g.contexto.user_id, g.usuario.get("roles") or [])}, "preferencias")
 
     @app.put("/api/v1/notifications/preferences")
@@ -62,14 +63,14 @@ def registrar(app):
     def guarda_preferencias():
         cuerpo = diccionario(leer_cuerpo())
         roles = g.usuario.get("roles") or []
-        suyos = notificaciones.tipos_de(roles)
+        suyos = almacen.tipos_de(roles)
         if not cuerpo:
             raise ErrorAPI(422, "DATOS_INVALIDOS", "Manda al menos un tipo de aviso: {tipo: true o false}.")
         cambios, errores = {}, []
         for tipo, valor in cuerpo.items():
             if tipo not in suyos:
                 errores.append("%s no es un aviso que te llegue." % tipo)
-            elif tipo in notificaciones.FIJOS:
+            elif tipo in almacen.FIJOS:
                 errores.append("%s no se puede apagar." % tipo)
             elif valor in (True, "true"):
                 cambios[tipo] = True
@@ -79,8 +80,8 @@ def registrar(app):
                 errores.append("%s va con true o false." % tipo)
         if errores:
             raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
-        notificaciones.guarda_preferencias(g.contexto.user_id, cambios, contexto=g.contexto)
-        return responder({"preferencias": notificaciones.preferencias(g.contexto.user_id, roles)},
+        almacen.guarda_preferencias(g.contexto.user_id, cambios, contexto=g.contexto)
+        return responder({"preferencias": almacen.preferencias(g.contexto.user_id, roles)},
                          "preferencias")
 
     @app.post("/api/v1/notifications")
@@ -100,15 +101,15 @@ def registrar(app):
                 raise ErrorAPI(422, "DATOS_INVALIDOS",
                                "role debe ser uno de: %s." % ", ".join(ROLES_DESTINO))
             datos = {k: v for k, v in cuerpo.items() if k != "role"}
-            ids, error = notificaciones.crear_notificaciones_a_rol(datos, cuerpo["role"],
-                                                                   contexto=contexto)
+            ids, error = almacen.crear_notificaciones_a_rol(datos, cuerpo["role"],
+                                                            contexto=contexto)
             if error:
                 raise ErrorAPI(422, "DATOS_INVALIDOS", error)
             return responder({"role": cuerpo["role"], "type": datos["type"], "total": len(ids)},
                              "notificacion", estado=201)
         # En XML sin tipo="numero" el id llega como texto.
         datos = dict(cuerpo, user_id=entero_positivo(cuerpo.get("user_id"), "user_id"))
-        notificacion_id, error = notificaciones.crear_notificacion(datos, contexto=contexto)
+        notificacion_id, error = almacen.crear_notificacion(datos, contexto=contexto)
         if error and error.startswith("No existe"):
             raise ErrorAPI(404, "NO_ENCONTRADO", error)
         if error:

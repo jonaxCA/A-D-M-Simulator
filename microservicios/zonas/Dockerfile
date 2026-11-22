@@ -1,4 +1,4 @@
-FROM epidemia/base
+FROM epidemia/base-vigilancia
 COPY microservicios/zonas/ /app/microservicios/zonas/
 COPY docs/contratos/zonas/ /app/docs/contratos/zonas/
 # Los municipios de cada jurisdicción sanitaria (jurisdicciones.py) y su geometría oficial

@@ -39,7 +39,7 @@ def grupos():
 
 
 def _variacion(actual, previa):
-    # Como backend_web.queries._pct_change y _clasifica_tendencia, los de la tabla por zona.
+    # Como consultas._pct_change y _clasifica_tendencia, los de la tabla por zona.
     if previa == 0:
         return 100.0 if actual > 0 else 0.0
     return round((actual - previa) / previa * 100, 1)

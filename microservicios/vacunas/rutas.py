@@ -3,22 +3,21 @@ campañas de salud (D49).
 
 La app escanea el código del lote, lo busca (GET con lot_code) y, si no está, lo
 registra; después le descuenta las dosis que aplica. Registran y aplican CAPTURISTA
-y ADMINISTRADOR; consultan los cuatro roles. Las reglas están en
-backend_web.vacunas. Las campañas las crean EPIDEMIOLOGO y ADMINISTRADOR (campanas.py).
+y ADMINISTRADOR; consultan los cuatro roles. Las reglas de los lotes
+están en lotes.py. Las campañas las crean EPIDEMIOLOGO y ADMINISTRADOR (campanas.py).
 """
 import logging
 
 from flask import current_app, g, request
 
-from backend_web import vacunas
-from backend_web.audit import log_audit
+from epidemia_comun.auditoria import log_audit
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.http import llamar
 from epidemia_comun.seguridad import requiere_token, token_servicio
 from epidemia_comun.validaciones import diccionario, entero_positivo
 
-from . import campanas
+from . import campanas, lotes
 
 log = logging.getLogger(__name__)
 
@@ -35,9 +34,9 @@ def _dosis(cuerpo):
     if isinstance(dosis, bool) or dosis in (None, ""):
         raise ErrorAPI(422, "DATOS_INVALIDOS", "doses es obligatorio: cuántas dosis se aplicaron.")
     dosis = entero_positivo(dosis, "doses")
-    if dosis > vacunas.APLICAR_MAX:
+    if dosis > lotes.APLICAR_MAX:
         raise ErrorAPI(422, "DATOS_INVALIDOS",
-                       "No se aplican más de %d dosis en una sola llamada." % vacunas.APLICAR_MAX)
+                       "No se aplican más de %d dosis en una sola llamada." % lotes.APLICAR_MAX)
     return dosis
 
 
@@ -122,11 +121,11 @@ def registrar(app):
     @app.post("/api/v1/vaccine-lots")
     @requiere_token(roles=ROLES_ESCRIBEN)
     def alta():
-        datos, errores = vacunas.valida_lote(diccionario(leer_cuerpo()))
+        datos, errores = lotes.valida_lote(diccionario(leer_cuerpo()))
         if errores:
             raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
-        lote, creado, conflicto = vacunas.registrar_lote(datos, g.contexto.user_id,
-                                                         contexto=g.contexto)
+        lote, creado, conflicto = lotes.registrar_lote(datos, g.contexto.user_id,
+                                                       contexto=g.contexto)
         if conflicto:
             raise ErrorAPI(409, "CONFLICTO", conflicto)
         return responder(lote, "lote_vacuna", estado=201 if creado else 200)
@@ -144,13 +143,13 @@ def registrar(app):
                 filtros[nombre] = entero_positivo(request.args[nombre], nombre)
         if "lot_code" in request.args:
             filtros["lot_code"] = request.args["lot_code"].strip()
-        filas = vacunas.listar_lotes(limite=limite, **filtros)
+        filas = lotes.listar_lotes(limite=limite, **filtros)
         return responder({"total": len(filas), "lotes": filas}, "listado")
 
     @app.get("/api/v1/vaccine-lots/<lote_id>")
     @requiere_token(roles=ROLES_LEEN)
     def consultar(lote_id):
-        lote = vacunas.get_lote(entero_positivo(lote_id, "id"))
+        lote = lotes.get_lote(entero_positivo(lote_id, "id"))
         if lote is None:
             raise ErrorAPI(404, "NO_ENCONTRADO", "No existe el lote.")
         return responder(lote, "lote_vacuna")
@@ -159,8 +158,8 @@ def registrar(app):
     @requiere_token(roles=ROLES_ESCRIBEN)
     def aplicar(lote_id):
         lote_id = entero_positivo(lote_id, "id")
-        lote, error = vacunas.aplicar_dosis(lote_id, _dosis(diccionario(leer_cuerpo())),
-                                            contexto=g.contexto)
+        lote, error = lotes.aplicar_dosis(lote_id, _dosis(diccionario(leer_cuerpo())),
+                                          contexto=g.contexto)
         if error and error.startswith("No existe"):
             raise ErrorAPI(404, "NO_ENCONTRADO", error)
         if error:

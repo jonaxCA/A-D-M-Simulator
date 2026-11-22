@@ -52,7 +52,7 @@ FROM casos
 
 
 def _variacion(actual, previa):
-    # Igual que backend_web.queries._pct_change, para que coincida con casos_pct y tasa_pct.
+    # Igual que consultas._pct_change, para que coincida con casos_pct y tasa_pct.
     if previa == 0:
         return 100.0 if actual > 0 else 0.0
     return round((actual - previa) / previa * 100, 1)

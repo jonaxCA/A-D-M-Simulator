@@ -140,8 +140,11 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 
 ## Lo que cruza a todos
 
-- **E8:** `casos`, `sincronizacion`, `dispositivos`, `vacunas`, `indicadores`, `series`, `zonas` y
-  `notificaciones` todavía importan `backend_web`. Es el siguiente paso de E8 para el bloque F.
+- **E8:** **hecho** el 2026-11-22. Ninguno de los nueve importa `backend_web` y sus imágenes parten
+  de `epidemia/base-vigilancia`. Dispositivos, lotes de vacuna y avisos se mudaron de `backend_web`
+  a su servicio; lo que la web todavía lee (tablero, Monitoreo, mapa y captura) quedó como copia en
+  el servicio dueño, igual a la del monolito hasta que la web consuma el servicio (D36). Ver
+  `docs/arquitectura/duenos_de_reglas.md`.
 - **D42 y D43 (bloque E):** los perfiles INVESTIGADOR y AUTORIDAD_SANITARIA no están en los candados
   de las rutas de lectura de F, y el alcance por región no filtra casos, series, zonas ni
   indicadores. Las dos decisiones esperan la validación del líder.
@@ -161,4 +164,4 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 | ~~Grande~~ | **Hecho** el 2026-11-22 en el servidor (D48): formularios por enfermedad con versiones; falta la móvil (B4) | `casos` (y la móvil, B4) |
 | ~~Grande~~ | **Hecho** el 2026-11-22: geometría oficial de los municipios y ubicar un punto; sin PostGIS ni consultas por área | `zonas` |
 | ~~Grande~~ | **Hecho** el 2026-11-22 (D49): campañas, avisos de datos incompletos y preferencias por perfil | `notificaciones`, `vacunas` y `casos` |
-| Transversal | Dejar de importar `backend_web` (E8), los perfiles nuevos y el alcance (D42, D43) | los nueve |
+| Transversal | ~~Dejar de importar `backend_web` (E8)~~ **hecho** el 2026-11-22; faltan los perfiles nuevos y el alcance (D42, D43) | los nueve |

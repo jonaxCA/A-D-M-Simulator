@@ -114,7 +114,7 @@ def test_la_respuesta_real_valida_contra_el_xsd(crear_cliente, token, monkeypatc
     from microservicios.casos.tests.test_casos import (BaseFalsa, Conexion, ENFERMEDADES, MUNICIPIOS,
                                                        simula_dispositivos, simula_formularios)
     from contextlib import contextmanager
-    from backend_web import queries
+    from microservicios.casos import captura as datos_captura
     from microservicios.casos import rutas
     base = BaseFalsa()
 
@@ -125,8 +125,8 @@ def test_la_respuesta_real_valida_contra_el_xsd(crear_cliente, token, monkeypatc
     simula_dispositivos(monkeypatch, base)
     simula_formularios(monkeypatch, base)
     monkeypatch.setattr(rutas, "log_audit", lambda *a, **k: None)
-    monkeypatch.setattr(queries, "get_enfermedades_para_captura", lambda: ENFERMEDADES)
-    monkeypatch.setattr(queries, "get_municipios_catalogo", lambda: MUNICIPIOS)
+    monkeypatch.setattr(datos_captura, "get_enfermedades_para_captura", lambda: ENFERMEDADES)
+    monkeypatch.setattr(datos_captura, "get_municipios_catalogo", lambda: MUNICIPIOS)
     c = crear_cliente("casos")
     h = token(roles=("CAPTURISTA",))
     r = c.post("/api/v1/cases", json={"local_uuid": UUID_A, "device_id": 3, "disease_id": 1,

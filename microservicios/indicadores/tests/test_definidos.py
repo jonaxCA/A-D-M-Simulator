@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from backend_web import queries
+from microservicios.indicadores import consultas
 from microservicios.indicadores import definidos
 
 FILA = {"hoy": date(2026, 11, 21), "poblacion": 5784442, "municipios": 51, "casos": 120,
@@ -55,11 +55,11 @@ def test_tasa_de_incidencia_con_numerador_denominador_y_periodo(consulta):
 
 
 def test_las_variaciones_coinciden_con_los_campos_de_siempre(consulta):
-    """casos_pct y tasa_pct salen de backend_web: la misma cuenta da lo mismo."""
+    """casos_pct y tasa_pct salen de consultas.py: la misma cuenta da lo mismo."""
     ind = por_clave(consulta)
     assert ind["casos_activos"]["valor"] == 120
-    assert ind["casos_activos"]["variacion_pct"] == queries._pct_change(120, 104) == 15.4
-    assert ind["tasa_incidencia"]["variacion_pct"] == queries._pct_change(2.1, 1.8) == 16.7
+    assert ind["casos_activos"]["variacion_pct"] == consultas._pct_change(120, 104) == 15.4
+    assert ind["tasa_incidencia"]["variacion_pct"] == consultas._pct_change(2.1, 1.8) == 16.7
 
 
 def test_mortalidad_letalidad_y_graves(consulta):

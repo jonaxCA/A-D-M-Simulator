@@ -7,7 +7,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from backend_web import queries
+from microservicios.zonas import consultas
 from microservicios.zonas import jurisdicciones
 
 RAIZ = Path(__file__).resolve().parents[3]
@@ -102,7 +102,7 @@ def test_la_consulta_es_la_de_la_tabla_por_zona(base):
 
 @pytest.fixture
 def cliente(crear_cliente, base, monkeypatch):
-    monkeypatch.setattr(queries, "get_enfermedad", lambda i: {"id": i} if i == 1 else None)
+    monkeypatch.setattr(consultas, "get_enfermedad", lambda i: {"id": i} if i == 1 else None)
     return crear_cliente("zonas")
 
 

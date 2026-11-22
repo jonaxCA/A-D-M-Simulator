@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import requests
 
-from backend_web import dispositivos, queries
+from backend_web import queries
 from epidemia_comun.formatos import a_xml, de_xml
 from microservicios.escenarios import rutas as rutas_escenarios
 from microservicios.escenarios_xml import lectura, mapeo
@@ -270,16 +270,16 @@ def test_sincronizacion_y_casos_reales_201_nuevo_y_200_duplicado(crear_cliente, 
     monkeypatch.setattr(rutas_casos, "get_conn", get_conn)
     monkeypatch.setattr(rutas_casos, "log_audit", lambda *a, **k: None)
     # La enfermedad no tiene formulario (D48): casos no lo pide.
-    from microservicios.casos import formularios
+    from microservicios.casos import captura, formularios
     monkeypatch.setattr(formularios, "vigentes", lambda disease_id=None: [])
     monkeypatch.setattr(rutas_sync, "log_audit", lambda *a, **k: None)
     # El dispositivo 3 del lote es de quien firma el token (sub 7); el 4, de la misma persona
     # pero revocado.
-    monkeypatch.setattr(dispositivos, "estado_para_captura",
+    monkeypatch.setattr(captura, "estado_para_captura",
                         lambda device_id, user_id: {3: "ok", 4: "revocado"}.get(device_id, "ajeno"))
-    monkeypatch.setattr(queries, "get_enfermedades_para_captura",
+    monkeypatch.setattr(captura, "get_enfermedades_para_captura",
                         lambda: [{"id": 1, "name": "COVID-19", "code": "SARS"}])
-    monkeypatch.setattr(queries, "get_municipios_catalogo", lambda: [{"id": 10, "name": "Monterrey"}])
+    monkeypatch.setattr(captura, "get_municipios_catalogo", lambda: [{"id": 10, "name": "Monterrey"}])
     cliente_casos = crear_cliente("casos")
     cliente_sync = crear_cliente("sincronizacion")
     cabeceras = token(roles=("CAPTURISTA",))

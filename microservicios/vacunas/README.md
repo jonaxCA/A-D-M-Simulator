@@ -38,8 +38,8 @@ El flujo en la app:
 
 ## Cómo funciona
 
-Las reglas están en `backend_web/vacunas.py`, con sus pruebas contra la base
-(`backend_web/tests/test_vacunas.py`):
+Las reglas de los lotes están en `lotes.py` (antes en `backend_web`, E8), con sus pruebas
+contra la base (`tests/test_lotes_bd.py`):
 
 - Aplicar es un solo `UPDATE ... SET doses_used = doses_used + n WHERE doses_used + n <=
   doses_total AND (expires_on IS NULL OR expires_on >= hoy)`: si dos teléfonos aplican a la vez,
@@ -57,7 +57,6 @@ Las reglas están en `backend_web/vacunas.py`, con sus pruebas contra la base
 
 ```bash
 python -m pytest microservicios/vacunas
-python -m unittest backend_web.tests.test_vacunas
 python -m microservicios.vacunas.app
 curl -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:5225/api/v1/vaccine-lots?lot_code=FL3239-2026&format=json"
 curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \

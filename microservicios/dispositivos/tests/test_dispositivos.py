@@ -4,7 +4,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from backend_web import dispositivos
+from microservicios.dispositivos import almacen
 from epidemia_comun.formatos import a_xml
 from microservicios.dispositivos import rutas
 
@@ -21,7 +21,7 @@ def dispositivo(device_id, user_id, revocado=False):
 
 
 class Mundo:
-    """backend_web.dispositivos simulado: guarda lo que le piden."""
+    """almacen.py simulado: guarda lo que le piden."""
 
     def __init__(self):
         self.filas = {PROPIO: dispositivo(PROPIO, 7), AJENO: dispositivo(AJENO, 8)}
@@ -54,7 +54,7 @@ def mundo(monkeypatch):
     m = Mundo()
     for nombre in ("registrar_dispositivo", "listar_dispositivos", "get_dispositivo",
                    "revocar_dispositivo"):
-        monkeypatch.setattr(dispositivos, nombre, getattr(m, nombre))
+        monkeypatch.setattr(almacen, nombre, getattr(m, nombre))
     return m
 
 

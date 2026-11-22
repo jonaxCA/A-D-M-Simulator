@@ -16,8 +16,9 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
      se busca en Docker Hub. No la publiques ahí.
    - Los servicios de simulación (`corridas`, `simulador`, `resultados`, `comparacion` y `pareto`)
      parten de `epidemia/base-simulacion` (`docker/base-simulacion.Dockerfile`): lo mismo, sin
-     `backend_web` (E8). Los de identidad, de `epidemia/base-identidad`. Los demás siguen en
-     `epidemia/base` mientras no se les quite `backend_web`.
+     `backend_web` (E8). Los de identidad, de `epidemia/base-identidad`, y los de F (vigilancia,
+     analítica y plataforma), de `epidemia/base-vigilancia`. Los de D siguen en `epidemia/base`
+     mientras no se les quite `backend_web`.
    - El `Dockerfile` de un servicio solo copia su carpeta y su contrato. Úsalo igual que los
      demás, o el que genera `nuevo_servicio.py`.
 2. Cada servicio escucha en 8000 dentro de su contenedor y publica el puerto del catálogo

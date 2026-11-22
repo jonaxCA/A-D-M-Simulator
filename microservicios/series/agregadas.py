@@ -26,7 +26,7 @@ TAMANO_POR_OMISION = 52
 TAMANO_MAXIMO = 366
 SIN_DATO = "No especificado"
 SEXOS = {"M": "Masculino", "F": "Femenino", "O": "Otro"}
-# Los de la pantalla de Monitoreo (backend_web.queries.GRUPOS_EDAD); hay prueba.
+# Los de la pantalla de Monitoreo (consultas.GRUPOS_EDAD); hay prueba.
 GRUPOS_EDAD = ("0-4", "5-14", "15-24", "25-44", "45-64", "65+")
 
 _INICIO = {

@@ -2,7 +2,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from backend_web import queries
+from microservicios.indicadores import consultas
 from microservicios.indicadores import definidos
 
 DEFINIDOS = [{"clave": "zonas_en_riesgo", "nombre": "Zonas en riesgo", "valor": 3,
@@ -27,8 +27,8 @@ def llamadas(monkeypatch):
         conteo["situacion"].append(limit)
         return [{"enfermedad": "Dengue", "estado": "alerta", "incidencia": 40}][:limit]
 
-    monkeypatch.setattr(queries, "get_resumen_indicadores", indicadores)
-    monkeypatch.setattr(queries, "get_resumen_situacion", situacion)
+    monkeypatch.setattr(consultas, "get_resumen_indicadores", indicadores)
+    monkeypatch.setattr(consultas, "get_resumen_situacion", situacion)
     monkeypatch.setattr(definidos, "calcular", lambda: [dict(d) for d in DEFINIDOS])
     return conteo
 

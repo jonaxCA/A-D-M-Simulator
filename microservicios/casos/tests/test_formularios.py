@@ -342,8 +342,8 @@ def test_agregar_el_formulario_a_un_caso_que_no_lo_traia(cliente, captura, publi
 
 
 def test_cambiar_la_enfermedad_pide_el_formulario_nuevo(cliente, captura, publicado, monkeypatch):
-    from backend_web import queries
-    monkeypatch.setattr(queries, "get_enfermedades_para_captura",
+    from microservicios.casos import captura as datos_captura
+    monkeypatch.setattr(datos_captura, "get_enfermedades_para_captura",
                         lambda: [{"id": 1, "name": "COVID-19"}, {"id": 2, "name": "Dengue"}])
     captura_caso(cliente, captura, form_id=1, form_answers={"fiebre_dias": 3})
     cabeceras = dict(captura, **{"If-Match": '"1"'})

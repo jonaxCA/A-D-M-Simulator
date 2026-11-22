@@ -8,7 +8,7 @@ from xml.etree import ElementTree as ET
 import psycopg2
 import pytest
 
-from backend_web import dispositivos, queries
+from microservicios.casos import captura as datos_captura
 from microservicios.casos import formularios, rutas
 
 ENFERMEDADES = [{"id": 1, "name": "COVID-19", "code": "SARS"}]
@@ -144,8 +144,8 @@ def base(monkeypatch):
         yield Conexion(falsa)
 
     monkeypatch.setattr(rutas, "get_conn", get_conn)
-    monkeypatch.setattr(queries, "get_enfermedades_para_captura", lambda: ENFERMEDADES)
-    monkeypatch.setattr(queries, "get_municipios_catalogo", lambda: MUNICIPIOS)
+    monkeypatch.setattr(datos_captura, "get_enfermedades_para_captura", lambda: ENFERMEDADES)
+    monkeypatch.setattr(datos_captura, "get_municipios_catalogo", lambda: MUNICIPIOS)
     simula_dispositivos(monkeypatch, falsa)
     simula_formularios(monkeypatch, falsa)
     return falsa
@@ -167,7 +167,7 @@ def simula_dispositivos(monkeypatch, falsa):
         dueno, revocado = falsa.dispositivos.get(device_id, (None, False))
         return "ajeno" if dueno != user_id else ("revocado" if revocado else "ok")
 
-    monkeypatch.setattr(dispositivos, "estado_para_captura", estado)
+    monkeypatch.setattr(datos_captura, "estado_para_captura", estado)
 
 
 @pytest.fixture
@@ -461,7 +461,7 @@ def test_lote_cada_caso_con_su_resultado_y_en_orden(cliente, captura, base, bita
 
 def test_lote_lee_los_catalogos_y_el_dispositivo_una_sola_vez(cliente, captura, base, monkeypatch):
     cuenta = {"catalogo": 0, "dispositivo": 0}
-    original = dispositivos.estado_para_captura
+    original = datos_captura.estado_para_captura
 
     def enfermedades():
         cuenta["catalogo"] += 1
@@ -471,8 +471,8 @@ def test_lote_lee_los_catalogos_y_el_dispositivo_una_sola_vez(cliente, captura, 
         cuenta["dispositivo"] += 1
         return original(device_id, user_id)
 
-    monkeypatch.setattr(queries, "get_enfermedades_para_captura", enfermedades)
-    monkeypatch.setattr(dispositivos, "estado_para_captura", estado)
+    monkeypatch.setattr(datos_captura, "get_enfermedades_para_captura", enfermedades)
+    monkeypatch.setattr(datos_captura, "estado_para_captura", estado)
     casos = [cuerpo(local_uuid=str(uuid.uuid4())) for _ in range(5)]
     r = cliente.post("/api/v1/cases/batch?format=json", json={"cases": casos}, headers=captura)
     assert [f["estado"] for f in r.get_json()["resultados"]] == [201] * 5

@@ -1,17 +1,12 @@
-"""
-Avisos de backend_web/notificaciones.py, que escribe el microservicio
-notificaciones.
-
-Ejecutar:
-    python -m unittest backend_web.tests.test_notificaciones -v
-"""
+"""Avisos (almacen.py) contra la base de pruebas."""
 import unittest
 
-from backend_web import notificaciones
-from backend_web.contexto import Contexto
-from backend_web.db import query
-from backend_web.tests.base import escribe, id_de_usuario, requiere_base
+from microservicios.pruebas_bd import escribe, id_de_usuario, tiene_base
+from epidemia_comun.auditoria import Contexto
+from epidemia_comun.bd import query
+from microservicios.notificaciones import almacen as notificaciones
 
+requiere_base = unittest.skipUnless(tiene_base(), "Requiere la base de pruebas")
 
 class ValidaNotificacionTests(unittest.TestCase):
     def test_una_valida_no_tiene_errores(self):

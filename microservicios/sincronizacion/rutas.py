@@ -6,8 +6,8 @@ from datetime import datetime, timezone
 
 from flask import current_app, g, request
 
-from backend_web.audit import log_audit
 from epidemia_comun import llaves
+from epidemia_comun.auditoria import log_audit
 from epidemia_comun.candados import CandadoOcupado, candado
 from epidemia_comun.errores import ErrorAPI, respuesta_error
 from epidemia_comun.formatos import leer_cuerpo, responder
