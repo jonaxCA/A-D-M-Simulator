@@ -57,7 +57,7 @@ estaba:
    cada 60 s hasta 200, y 2 minutos de recuperación):
 
    ```powershell
-   C:\Temp\locust\Scripts\python.exe pruebas_carga\corre_nube.py --url https://35-222-19-202.sslip.io
+   C:\Temp\locust\Scripts\python.exe pruebas_carga\corre_nube.py --url https://epidemos.app
    ```
 
    Pide la contraseña de cada cuenta sin mostrarla y deja todo en
