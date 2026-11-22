@@ -46,6 +46,7 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `055_historial_con_alcance.sql` | `svc_roles` lee `scenarios`, `scenario_versions` y `scenario_interventions` para aplicar el alcance regional (D43) al historial de un escenario |
 | `053_alcances_de_usuario.sql` | `user_scopes`: la región o institución a la que se limita una cuenta; sin filas es nacional (D43). `svc_roles` es dueño |
 | `056_nombres_oficiales_municipios.sql` | Nombre oficial de INEGI, con acento, de cuatro municipios que `010` cargó sin él: García, San Pedro Garza García, Juárez y San Nicolás de los Garza |
+| `057_seguimiento_de_casos.sql` | `cases.version`, `updated_at`, `updated_by`, `status_reason` y `duplicate_of`; `case_history` (un cambio por fila) y el aviso `CASE_REJECTED`. `svc_casos` actualiza solo las columnas que se corrigen (D47) |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.
@@ -75,7 +76,8 @@ problema: ya falta la 018.
 | 054 | E | `simulation_runs.priority`: prioridad de la corrida en la cola y permisos para reintentarla (D44) |
 | 055 | E | `svc_roles` lee escenarios para el alcance regional del historial (D43) |
 | 056 | F | Nombre oficial, con acento, de los cuatro municipios de `010` que no lo tenían (asignada por el líder, 2026-11-22) |
-| 057 en adelante | — | Se piden al líder |
+| 057 | F | Corrección y estado de los casos con versión e historial, y el aviso `CASE_REJECTED` (D47) |
+| 058 en adelante | — | Se piden al líder |
 
 1. **Cada migración corre en cualquier orden.** El dump las tiene en el orden en
    que se integran, y una instalación limpia las corre por número: la 034 llegará

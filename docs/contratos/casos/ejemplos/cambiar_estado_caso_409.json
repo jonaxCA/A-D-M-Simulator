@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Conflict",
+  "status": 409,
+  "detail": "Un caso descartado no puede pasar a validado; desde descartado puede pasar a: pendiente.",
+  "codigo": "CONFLICTO",
+  "instance": "/api/v1/cases/1/status"
+}

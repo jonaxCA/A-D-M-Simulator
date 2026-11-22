@@ -47,10 +47,11 @@ def crear_app(nombre, contrato, registrar_rutas=None, dependencias=()):
         if permitido and origen == permitido:
             respuesta.headers["Access-Control-Allow-Origin"] = origen
             respuesta.headers["Vary"] = "Origin"
-            respuesta.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-Correlation-ID"
+            # If-Match y ETag: la versión de un caso al corregirlo desde la consola (D47).
+            respuesta.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-Correlation-ID, If-Match"
             respuesta.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-            # Sin esto, el navegador no deja que la consola lea el X-Correlation-ID.
-            respuesta.headers["Access-Control-Expose-Headers"] = "X-Correlation-ID"
+            # Sin esto, el navegador no deja que la consola lea el X-Correlation-ID ni el ETag.
+            respuesta.headers["Access-Control-Expose-Headers"] = "X-Correlation-ID, ETag"
         if respuesta.status_code >= 500 and request.path != "/health":
             def contar(r):
                 p = r.pipeline()

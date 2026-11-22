@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<problem><type>about:blank</type><title>Precondition Failed</title><status tipo="numero">412</status><detail>El caso cambió desde que lo leíste: tenías la versión 1 y ya va en la 2. Vuelve a consultarlo y decide con lo que tiene ahora.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/cases/1</instance></problem>

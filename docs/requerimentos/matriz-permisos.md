@@ -20,6 +20,8 @@ Qué puede hacer cada rol, según [D1](../decisiones/D01-permisos-y-auditoria.md
 | Corregir población y bandas de edad | Web | ✓ | — | — | — |
 | Fijar el costo unitario de una intervención | Web | ✓ | ✓ | — | — |
 | Registrar casos y fotos | Android | — | — | — | ✓ |
+| Corregir un caso (D47) | Android, web | — | ✓ | — | ✓ (los suyos, pendientes) |
+| Validar, descartar o marcar duplicado un caso (D47) | Web, escritorio | — | ✓ | — | — |
 | Registrar lotes de vacuna y aplicar dosis | Android | ? | — | — | ✓ |
 | Consultar escenarios y versiones | Web | ✓ | ✓ | ✓ | — |
 | Crear y editar escenarios e intervenciones | Escritorio | ✓ | — | ✓ | — |
@@ -44,4 +46,4 @@ La app de escritorio solo deja entrar a ANALISTA y ADMINISTRADOR. En la app Andr
 
 ## Operaciones que salieron
 
-Recuperar la contraseña (RF-A10), corregir, confirmar o descartar un caso (RF-C11, RF-C15), publicar un escenario (RF-D09) y la configuración y los respaldos (RF-L06, RF-L08) ya no están en la matriz: sus requerimientos quedaron fuera de alcance.
+Recuperar la contraseña (RF-A10), publicar un escenario (RF-D09) y la configuración y los respaldos (RF-L06, RF-L08) ya no están en la matriz: sus requerimientos quedaron fuera de alcance. Corregir, validar y descartar un caso (RF-C11, RF-C15) regresaron con D47.

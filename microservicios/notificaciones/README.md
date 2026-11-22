@@ -26,7 +26,7 @@ responde 201 con `{role, type, total}`. Mandar los dos es 422.
 
 - `type` es uno de `RUN_FINISHED`, `RUN_FAILED`, `THRESHOLD_EXCEEDED`, `ASSIGNMENT`,
   `SCENARIO_PUBLISHED`, `SCENARIO_APPROVED`, `SCENARIO_SUBMITTED`, `SCENARIO_REJECTED`,
-  `NEW_CASES` y `SYSTEM` (CHECK de la tabla, migraciones 003, 029 y 037).
+  `NEW_CASES`, `SYSTEM` y `CASE_REJECTED` (CHECK de la tabla, migraciones 003, 029, 037 y 057).
 - `title` lleva como máximo 160 caracteres.
 - `payload` es un objeto con los ids para llegar al recurso.
 
@@ -38,6 +38,8 @@ ADMINISTRADOR, recibe 401. Lo usan:
 - `aprobacion`: `SCENARIO_SUBMITTED` (a los EPIDEMIOLOGO), `SCENARIO_APPROVED` y
   `SCENARIO_REJECTED` (a quien armó la versión).
 - `sincronizacion`: `NEW_CASES`, a los EPIDEMIOLOGO, una vez por lote.
+- `casos`: `CASE_REJECTED`, a quien capturó el caso, cuando un EPIDEMIOLOGO lo descarta o lo
+  marca como duplicado (D47).
 - `estado-servicios`: `SYSTEM`, a los ADMINISTRADOR, cuando un servicio cae, se degrada o se
   recupera (alertas técnicas, F7; ver su README).
 

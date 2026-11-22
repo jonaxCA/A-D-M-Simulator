@@ -50,7 +50,8 @@ def test_ejemplos_incrustados_estan_en_los_archivos():
 
 
 @pytest.mark.parametrize("nombre", ["enviar_lote_solicitud", "enviar_lote", "enviar_lote_repetido",
-                                    "consultar_lote"])
+                                    "consultar_lote", "enviar_lote_con_correcciones_solicitud",
+                                    "enviar_lote_con_correcciones"])
 def test_ejemplo_xml_valida_contra_el_xsd(nombre):
     XSD.validate(str(CARPETA / "ejemplos" / (nombre + ".xml")))
 
@@ -113,4 +114,23 @@ def test_la_respuesta_real_valida_contra_el_xsd(crear_cliente, token, monkeypatc
     assert r.status_code == 200
     XSD.validate(r.data.decode("utf-8"))
     r = c.get("/api/v1/sync/batches/" + LOTE, headers=h)
+    XSD.validate(r.data.decode("utf-8"))
+
+
+def test_la_respuesta_real_con_correcciones_valida_contra_el_xsd(crear_cliente, token, monkeypatch):
+    from microservicios.sincronizacion import rutas
+    from microservicios.sincronizacion.tests.test_actualizaciones import CasosConVersion
+    falso = CasosConVersion()
+    falso.casos[5]["version"] = 2  # para que la primera salga en conflicto
+    monkeypatch.setattr(rutas, "llamar", falso)
+    monkeypatch.setattr(rutas, "log_audit", lambda *a, **k: None)
+    c = crear_cliente("sincronizacion")
+    xml = ("<lote><batch_id>%s</batch_id><updates>"
+           "<item><case_id>5</case_id><version>1</version><changes><age>31</age></changes></item>"
+           "<item><case_id>77</case_id><version>1</version><changes><age>31</age></changes></item>"
+           "</updates></lote>" % LOTE)
+    XSD.validate(xml)
+    r = c.post("/api/v1/sync/cases", data=xml,
+               headers=dict(token(roles=("CAPTURISTA",)), **{"Content-Type": "application/xml"}))
+    assert r.status_code == 200
     XSD.validate(r.data.decode("utf-8"))

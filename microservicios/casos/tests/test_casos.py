@@ -19,6 +19,7 @@ UUID_A = "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f"
 class BaseFalsa:
     def __init__(self):
         self.casos = []
+        self.historial = []
         self.sentencias = []
         self.commits = 0
         self.rollbacks = 0
@@ -31,8 +32,10 @@ class BaseFalsa:
         return (c["id"], c["local_uuid"], c["device_id"], int(c["reported_by"]), c["disease_id"],
                 nombres[c["disease_id"]], c["region_id"], muni[c["region_id"]], c["age"],
                 c["sex"], c["onset_date"], c["report_date"], c["latitude"], c["longitude"],
-                c["test_result"], c["severity"], "pendiente",
-                datetime(2026, 10, 12, 10, 0, tzinfo=timezone.utc), c["synced_at"])
+                c["test_result"], c["severity"], c["status"],
+                datetime(2026, 10, 12, 10, 0, tzinfo=timezone.utc), c["synced_at"],
+                c["version"], c["updated_at"], c["updated_by"], c["status_reason"],
+                c["duplicate_of"])
 
     def ejecutar(self, sql, p):
         self.sentencias.append((sql, p))
@@ -45,6 +48,31 @@ class BaseFalsa:
                 return []
             self.casos.append(dict(self._base(p), id=len(self.casos) + 1))
             return [(len(self.casos),)]
+        if sql.startswith("UPDATE cases SET"):
+            columnas = [a.split(" = ")[0] for a in
+                        sql[len("UPDATE cases SET "):sql.index(", version = version + 1")].split(", ")]
+            *valores, usuario, case_id, version = p
+            caso = next((c for c in self.casos if c["id"] == case_id and c["version"] == version), None)
+            if caso is None:
+                return []
+            caso.update(zip(columnas, valores))
+            caso.update(version=version + 1, updated_by=int(usuario),
+                        updated_at=datetime(2026, 10, 13, 9, 0, tzinfo=timezone.utc))
+            return [(caso["version"],)]
+        if sql.startswith("INSERT INTO case_history"):
+            self.historial.append(dict(zip(("case_id", "version", "action", "changed_by",
+                                            "status_before", "status_after", "changes", "reason",
+                                            "device_id"), p)))
+            return []
+        if sql.startswith("SELECT version FROM cases"):
+            return [(c["version"],) for c in self.casos if c["id"] == p[0]]
+        if sql.startswith("SELECT version, action"):
+            return [(h["version"], h["action"], int(h["changed_by"]),
+                     datetime(2026, 10, 13, 9, 0, tzinfo=timezone.utc), h["status_before"],
+                     h["status_after"], json.loads(h["changes"]), h["reason"], h["device_id"])
+                    for h in sorted(self.historial, key=lambda h: h["version"]) if h["case_id"] == p[0]]
+        if sql.startswith("SELECT id, disease_id, status FROM cases"):
+            return [(c["id"], c["disease_id"], c["status"]) for c in self.casos if c["id"] == p[0]]
         if "FROM cases c" in sql and sql.startswith("SELECT count"):
             return [(len(self.filtrar(sql, p)),)]
         if sql.startswith("SELECT c.id"):
@@ -65,7 +93,8 @@ class BaseFalsa:
         return dict(local_uuid=p[0], device_id=p[1], reported_by=p[2], disease_id=p[3],
                     region_id=p[4], age=p[5], sex=p[6], onset_date=p[7], report_date=p[8],
                     latitude=p[9], longitude=p[10], test_result=p[11], severity=p[12],
-                    synced_at=p[13])
+                    synced_at=p[13], status="pendiente", version=1, updated_at=None,
+                    updated_by=None, status_reason=None, duplicate_of=None)
 
 
 class Cursor:
