@@ -617,7 +617,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 ### F2. nginx y HTTPS (D25, D26, S6)
 
 - [x] nginx en `infra/`, como única entrada, con una ruta por servicio y la web (RNF-H16, RNF-L11). En local: `infra/docker-compose.nginx.yml` e `infra/nginx/` (2026-11-19); ningún servicio publica su puerto. Se prueba con `python infra/pruebas_integracion.py --nginx`.
-- [ ] En local, certificado de mkcert. El script está (`infra/nginx/certificado_local.py`): usa mkcert si está instalado y, si no, genera uno autofirmado con OpenSSL. Falta que cada quien instale mkcert y corra `mkcert -install` en su máquina.
+- [x] En local, certificado de mkcert. El script está (`infra/nginx/certificado_local.py`): usa mkcert si está instalado y, si no, genera uno autofirmado con OpenSSL. Falta que cada quien instale mkcert y corra `mkcert -install` en su máquina. Queda como paso de cada integrante, documentado en `INSTALACION.md` §6 (2026-11-21).
 - [x] Conseguir el dominio: elegir el proveedor, confirmar que permite Let's Encrypt y quién lo paga (D26). `<ip-con-guiones>.sslip.io`, gratuito y compatible con Let's Encrypt; si se agota su límite semanal, DuckDNS (2026-11-20).
 - [x] Apuntar el dominio a la IP fija y obtener el certificado de Let's Encrypt con certbot (RNF-D01). Dominio del equipo, `https://epidemos.app` (registro A en name.com, 2026-11-21); certificado emitido el 2026-11-21 y vigente hasta el 2027-02-20, con cadena hasta ISRG Root X1, la raíz que trae la app móvil. Antes, del 2026-11-20 al 21, `https://35-222-19-202.sslip.io`.
 - [x] Renovación programada del certificado, y HTTP redirige a HTTPS (RNF-D09). La redirección ya está (`test_http_redirige_a_https`). La renovación está en `infra/docker-compose.letsencrypt.yml`: certbot cada 12 h y nginx recarga cada 6 h. En la máquina, los dos ciclos corren y `certbot renew --dry-run` salió bien (2026-11-20).
@@ -653,24 +653,24 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 [Retro: «Microservicios existentes que deben completarse y fortalecerse»]. Los servicios de F en [«Dueños de los servicios»](#dueños-de-los-servicios). La lista es lo que pide la retroalimentación, no lo que falta: lo que ya se cumpla se marca al revisarlo. Lo que dice «reabierto» o «hoy no existe» ya se revisó.
 
-- [ ] Revisar cada servicio contra su lista de la retroalimentación y marcar aquí lo que ya cumple.
+- [x] Revisar cada servicio contra su lista de la retroalimentación y marcar aquí lo que ya cumple. Hecho el 2026-11-21: [`revision_f7.md`](revision_f7.md), servicio por servicio, con lo que cumple, lo parcial y lo que falta, y lo que sigue por tamaño.
 
 **Vigilancia**
 
-- [ ] `casos`: actualizar, dar seguimiento y rechazar, con historial, duplicados y control de conflictos (RF-C11 y RF-C15, reabiertos; decisión del bloque 0).
-- [ ] Formularios por enfermedad, con versiones (para B4).
-- [ ] `sincronizacion`: conflictos entre lo capturado sin conexión y lo que cambió otro profesional.
+- [ ] `casos`: actualizar, dar seguimiento y rechazar, con historial, duplicados y control de conflictos (RF-C11 y RF-C15, reabiertos; decisión del bloque 0). Hoy: registro, validaciones e idempotencia, sí; actualizar y cambiar estado, no ([`revision_f7.md`](revision_f7.md)).
+- [ ] Formularios por enfermedad, con versiones (para B4). Falta por completo: los campos de un caso son fijos ([`revision_f7.md`](revision_f7.md)).
+- [ ] `sincronizacion`: conflictos entre lo capturado sin conexión y lo que cambió otro profesional. Lo demás de su lista se cumple; este conflicto espera a que `casos` tenga actualización ([`revision_f7.md`](revision_f7.md)).
 
 **Analítica**
 
-- [ ] `indicadores`: cada indicador con su numerador, su denominador y su periodo; capacidad utilizada, con su fuente (RF-G07, reabierto).
-- [ ] `series`: filtrado, paginación y agregaciones por enfermedad, periodo, región y grupo.
-- [ ] `zonas`: mapas de calor y agrupaciones territoriales. El mapa del escritorio (A4) espera además la geometría oficial de los municipios: hoy dibuja marcadores sin polígonos.
+- [ ] `indicadores`: cada indicador con su numerador, su denominador y su periodo; capacidad utilizada, con su fuente (RF-G07, reabierto). Hoy: incidencia por 100 000 semanal; faltan numerador, denominador y periodo explícitos, mortalidad, hospitalizaciones y prevalencia ([`revision_f7.md`](revision_f7.md)).
+- [ ] `series`: filtrado, paginación y agregaciones por enfermedad, periodo, región y grupo. Hoy: por enfermedad, región y periodo (7, 30 o 90 días), por día; faltan paginación, agregación por semana o mes y el formato para Highcharts ([`revision_f7.md`](revision_f7.md)).
+- [ ] `zonas`: mapas de calor y agrupaciones territoriales. El mapa del escritorio (A4) espera además la geometría oficial de los municipios: hoy dibuja marcadores sin polígonos. Hoy: mapa temático y semáforo por municipio ([`revision_f7.md`](revision_f7.md)).
 
 **Plataforma**
 
-- [ ] `notificaciones`: avisos de campañas, de datos incompletos y de errores operativos.
-- [ ] `estado-servicios`: capacidad de procesamiento (la cola de cada motor).
+- [ ] `notificaciones`: avisos de campañas, de datos incompletos y de errores operativos. Hoy: escenarios por aprobar, corridas terminadas y casos nuevos; `SYSTEM` existe sin uso ([`revision_f7.md`](revision_f7.md)).
+- [ ] `estado-servicios`: capacidad de procesamiento (la cola de cada motor). Hoy: APIs, bases, latencia y errores de 24 h; faltan colas, capacidad y alertas técnicas ([`revision_f7.md`](revision_f7.md)).
 
 ---
 
