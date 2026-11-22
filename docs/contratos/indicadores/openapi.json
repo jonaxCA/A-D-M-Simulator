@@ -24,7 +24,7 @@
       "get": {
         "summary": "Indicadores del tablero",
         "operationId": "indicadores_tablero",
-        "description": "Casos activos, tasa de incidencia por 100k, zonas en riesgo y simulaciones activas, con su variación semanal.",
+        "description": "Casos activos, tasa de incidencia por 100k, zonas en riesgo y simulaciones activas, con su variación semanal (los campos de siempre). `indicadores` (F7) da cada uno con su cuenta: `valor`, `unidad`, `numerador` y `denominador` (cada uno con `valor` y `descripcion`), `factor`, `periodo` (`desde`, `hasta`, `dias`), `previo` (la semana anterior: `valor`, `numerador` y sus fechas) y `variacion_pct`. Con `factor`, valor = numerador / denominador × factor; sin él, valor = numerador y el denominador, si viene, es el total de referencia. Suma `tasa_mortalidad` (casos con gravedad `fallecido` por 100 000 habitantes), `letalidad` (% de los casos que fallecieron) y `casos_graves` (% con gravedad `grave`). Los casos son los `pendiente` o `validado`, por fecha de reporte, en los municipios de Nuevo León; la semana es hoy y los 6 días previos. Un valor que dividiría entre cero es `null`.",
         "parameters": [
           {
             "in": "query",
@@ -48,12 +48,180 @@
                   "type": "object"
                 },
                 "example": {
-                  "casos_activos": 0,
-                  "casos_pct": 0.0,
-                  "tasa_incidencia": 0.0,
-                  "tasa_pct": 0.0,
-                  "zonas_en_riesgo": 0,
-                  "simulaciones_activas": 70
+                  "casos_activos": 120,
+                  "casos_pct": 15.4,
+                  "tasa_incidencia": 2.1,
+                  "tasa_pct": 16.7,
+                  "zonas_en_riesgo": 3,
+                  "simulaciones_activas": 1,
+                  "indicadores": [
+                    {
+                      "clave": "casos_activos",
+                      "nombre": "Casos de la semana",
+                      "valor": 120,
+                      "unidad": "casos",
+                      "numerador": {
+                        "valor": 120,
+                        "descripcion": "Casos reportados en el periodo (pendientes o validados) en los municipios de Nuevo León"
+                      },
+                      "denominador": null,
+                      "factor": null,
+                      "periodo": {
+                        "desde": "2026-11-15",
+                        "hasta": "2026-11-21",
+                        "dias": 7
+                      },
+                      "previo": {
+                        "desde": "2026-11-08",
+                        "hasta": "2026-11-14",
+                        "dias": 7,
+                        "valor": 104,
+                        "numerador": 104
+                      },
+                      "variacion_pct": 15.4
+                    },
+                    {
+                      "clave": "tasa_incidencia",
+                      "nombre": "Tasa de incidencia",
+                      "valor": 2.1,
+                      "unidad": "casos por 100 000 habitantes",
+                      "numerador": {
+                        "valor": 120,
+                        "descripcion": "Casos reportados en el periodo (pendientes o validados) en los municipios de Nuevo León"
+                      },
+                      "denominador": {
+                        "valor": 5784442,
+                        "descripcion": "Habitantes de Nuevo León"
+                      },
+                      "factor": 100000,
+                      "periodo": {
+                        "desde": "2026-11-15",
+                        "hasta": "2026-11-21",
+                        "dias": 7
+                      },
+                      "previo": {
+                        "desde": "2026-11-08",
+                        "hasta": "2026-11-14",
+                        "dias": 7,
+                        "valor": 1.8,
+                        "numerador": 104
+                      },
+                      "variacion_pct": 16.7
+                    },
+                    {
+                      "clave": "tasa_mortalidad",
+                      "nombre": "Tasa de mortalidad",
+                      "valor": 0.05,
+                      "unidad": "defunciones por 100 000 habitantes",
+                      "numerador": {
+                        "valor": 3,
+                        "descripcion": "Casos con gravedad «fallecido» reportados en el periodo"
+                      },
+                      "denominador": {
+                        "valor": 5784442,
+                        "descripcion": "Habitantes de Nuevo León"
+                      },
+                      "factor": 100000,
+                      "periodo": {
+                        "desde": "2026-11-15",
+                        "hasta": "2026-11-21",
+                        "dias": 7
+                      },
+                      "previo": {
+                        "desde": "2026-11-08",
+                        "hasta": "2026-11-14",
+                        "dias": 7,
+                        "valor": 0.02,
+                        "numerador": 1
+                      },
+                      "variacion_pct": 150.0
+                    },
+                    {
+                      "clave": "letalidad",
+                      "nombre": "Letalidad",
+                      "valor": 2.5,
+                      "unidad": "% de los casos",
+                      "numerador": {
+                        "valor": 3,
+                        "descripcion": "Casos con gravedad «fallecido» reportados en el periodo"
+                      },
+                      "denominador": {
+                        "valor": 120,
+                        "descripcion": "Casos reportados en el periodo"
+                      },
+                      "factor": 100,
+                      "periodo": {
+                        "desde": "2026-11-15",
+                        "hasta": "2026-11-21",
+                        "dias": 7
+                      },
+                      "previo": null,
+                      "variacion_pct": null
+                    },
+                    {
+                      "clave": "casos_graves",
+                      "nombre": "Casos graves",
+                      "valor": 10.0,
+                      "unidad": "% de los casos",
+                      "numerador": {
+                        "valor": 12,
+                        "descripcion": "Casos con gravedad «grave» reportados en el periodo"
+                      },
+                      "denominador": {
+                        "valor": 120,
+                        "descripcion": "Casos reportados en el periodo"
+                      },
+                      "factor": 100,
+                      "periodo": {
+                        "desde": "2026-11-15",
+                        "hasta": "2026-11-21",
+                        "dias": 7
+                      },
+                      "previo": null,
+                      "variacion_pct": null
+                    },
+                    {
+                      "clave": "zonas_en_riesgo",
+                      "nombre": "Zonas en riesgo",
+                      "valor": 3,
+                      "unidad": "municipios",
+                      "numerador": {
+                        "valor": 3,
+                        "descripcion": "Municipios con más de 10 casos por 100 000 habitantes en el periodo"
+                      },
+                      "denominador": {
+                        "valor": 51,
+                        "descripcion": "Municipios de Nuevo León"
+                      },
+                      "factor": null,
+                      "periodo": {
+                        "desde": "2026-11-15",
+                        "hasta": "2026-11-21",
+                        "dias": 7
+                      },
+                      "previo": null,
+                      "variacion_pct": null
+                    },
+                    {
+                      "clave": "simulaciones_activas",
+                      "nombre": "Simulaciones activas",
+                      "valor": 1,
+                      "unidad": "corridas",
+                      "numerador": {
+                        "valor": 1,
+                        "descripcion": "Corridas encoladas o ejecutándose en este momento"
+                      },
+                      "denominador": null,
+                      "factor": null,
+                      "periodo": {
+                        "desde": null,
+                        "hasta": null,
+                        "dias": null
+                      },
+                      "previo": null,
+                      "variacion_pct": null
+                    }
+                  ]
                 }
               },
               "application/xml": {
@@ -66,7 +234,7 @@
                 "examples": {
                   "respuesta": {
                     "summary": "Respuesta real (listas recortadas)",
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<indicadores><casos_activos tipo=\"numero\">0</casos_activos><casos_pct tipo=\"numero\">0.0</casos_pct><tasa_incidencia tipo=\"numero\">0.0</tasa_incidencia><tasa_pct tipo=\"numero\">0.0</tasa_pct><zonas_en_riesgo tipo=\"numero\">0</zonas_en_riesgo><simulaciones_activas tipo=\"numero\">70</simulaciones_activas></indicadores>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<indicadores><casos_activos tipo=\"numero\">120</casos_activos><casos_pct tipo=\"numero\">15.4</casos_pct><tasa_incidencia tipo=\"numero\">2.1</tasa_incidencia><tasa_pct tipo=\"numero\">16.7</tasa_pct><zonas_en_riesgo tipo=\"numero\">3</zonas_en_riesgo><simulaciones_activas tipo=\"numero\">1</simulaciones_activas><indicadores><indicador><clave>casos_activos</clave><nombre>Casos de la semana</nombre><valor tipo=\"numero\">120</valor><unidad>casos</unidad><numerador><valor tipo=\"numero\">120</valor><descripcion>Casos reportados en el periodo (pendientes o validados) en los municipios de Nuevo León</descripcion></numerador><denominador nil=\"true\" /><factor nil=\"true\" /><periodo><desde>2026-11-15</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">7</dias></periodo><previo><desde>2026-11-08</desde><hasta>2026-11-14</hasta><dias tipo=\"numero\">7</dias><valor tipo=\"numero\">104</valor><numerador tipo=\"numero\">104</numerador></previo><variacion_pct tipo=\"numero\">15.4</variacion_pct></indicador><indicador><clave>tasa_incidencia</clave><nombre>Tasa de incidencia</nombre><valor tipo=\"numero\">2.1</valor><unidad>casos por 100 000 habitantes</unidad><numerador><valor tipo=\"numero\">120</valor><descripcion>Casos reportados en el periodo (pendientes o validados) en los municipios de Nuevo León</descripcion></numerador><denominador><valor tipo=\"numero\">5784442</valor><descripcion>Habitantes de Nuevo León</descripcion></denominador><factor tipo=\"numero\">100000</factor><periodo><desde>2026-11-15</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">7</dias></periodo><previo><desde>2026-11-08</desde><hasta>2026-11-14</hasta><dias tipo=\"numero\">7</dias><valor tipo=\"numero\">1.8</valor><numerador tipo=\"numero\">104</numerador></previo><variacion_pct tipo=\"numero\">16.7</variacion_pct></indicador><indicador><clave>tasa_mortalidad</clave><nombre>Tasa de mortalidad</nombre><valor tipo=\"numero\">0.05</valor><unidad>defunciones por 100 000 habitantes</unidad><numerador><valor tipo=\"numero\">3</valor><descripcion>Casos con gravedad «fallecido» reportados en el periodo</descripcion></numerador><denominador><valor tipo=\"numero\">5784442</valor><descripcion>Habitantes de Nuevo León</descripcion></denominador><factor tipo=\"numero\">100000</factor><periodo><desde>2026-11-15</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">7</dias></periodo><previo><desde>2026-11-08</desde><hasta>2026-11-14</hasta><dias tipo=\"numero\">7</dias><valor tipo=\"numero\">0.02</valor><numerador tipo=\"numero\">1</numerador></previo><variacion_pct tipo=\"numero\">150.0</variacion_pct></indicador><indicador><clave>letalidad</clave><nombre>Letalidad</nombre><valor tipo=\"numero\">2.5</valor><unidad>% de los casos</unidad><numerador><valor tipo=\"numero\">3</valor><descripcion>Casos con gravedad «fallecido» reportados en el periodo</descripcion></numerador><denominador><valor tipo=\"numero\">120</valor><descripcion>Casos reportados en el periodo</descripcion></denominador><factor tipo=\"numero\">100</factor><periodo><desde>2026-11-15</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">7</dias></periodo><previo nil=\"true\" /><variacion_pct nil=\"true\" /></indicador><indicador><clave>casos_graves</clave><nombre>Casos graves</nombre><valor tipo=\"numero\">10.0</valor><unidad>% de los casos</unidad><numerador><valor tipo=\"numero\">12</valor><descripcion>Casos con gravedad «grave» reportados en el periodo</descripcion></numerador><denominador><valor tipo=\"numero\">120</valor><descripcion>Casos reportados en el periodo</descripcion></denominador><factor tipo=\"numero\">100</factor><periodo><desde>2026-11-15</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">7</dias></periodo><previo nil=\"true\" /><variacion_pct nil=\"true\" /></indicador><indicador><clave>zonas_en_riesgo</clave><nombre>Zonas en riesgo</nombre><valor tipo=\"numero\">3</valor><unidad>municipios</unidad><numerador><valor tipo=\"numero\">3</valor><descripcion>Municipios con más de 10 casos por 100 000 habitantes en el periodo</descripcion></numerador><denominador><valor tipo=\"numero\">51</valor><descripcion>Municipios de Nuevo León</descripcion></denominador><factor nil=\"true\" /><periodo><desde>2026-11-15</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">7</dias></periodo><previo nil=\"true\" /><variacion_pct nil=\"true\" /></indicador><indicador><clave>simulaciones_activas</clave><nombre>Simulaciones activas</nombre><valor tipo=\"numero\">1</valor><unidad>corridas</unidad><numerador><valor tipo=\"numero\">1</valor><descripcion>Corridas encoladas o ejecutándose en este momento</descripcion></numerador><denominador nil=\"true\" /><factor nil=\"true\" /><periodo><desde nil=\"true\" /><hasta nil=\"true\" /><dias nil=\"true\" /></periodo><previo nil=\"true\" /><variacion_pct nil=\"true\" /></indicador></indicadores></indicadores>\n"
                   }
                 }
               }

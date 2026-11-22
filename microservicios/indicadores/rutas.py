@@ -9,6 +9,8 @@ from backend_web import queries
 from backend_web.audit import log_audit
 from backend_web.db import query
 
+from . import definidos
+
 LIMITE_MAXIMO = 20
 TTL_CACHE = 60
 ESTADO_NL = "19"
@@ -32,12 +34,17 @@ def _limite():
     return limite
 
 
+def tablero():
+    # Los campos de siempre (también los lee la web) y, en `indicadores`, cada uno con su
+    # numerador, su denominador y su periodo (definidos.py, F7).
+    return dict(queries.get_resumen_indicadores(), indicadores=definidos.calcular())
+
+
 def registrar(app):
     # Públicas, como el dashboard del monolito, que se ve sin iniciar sesión.
     @app.get("/api/v1/dashboard/indicators")
     def indicadores():
-        datos = cache.obtener("indicadores", "indicators", TTL_CACHE,
-                              queries.get_resumen_indicadores)
+        datos = cache.obtener("indicadores", "indicators", TTL_CACHE, tablero)
         return responder(datos, "indicadores")
 
     @app.get("/api/v1/dashboard/situation")

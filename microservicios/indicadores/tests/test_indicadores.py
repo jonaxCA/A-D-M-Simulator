@@ -3,9 +3,16 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from backend_web import queries
+from microservicios.indicadores import definidos
 
+DEFINIDOS = [{"clave": "zonas_en_riesgo", "nombre": "Zonas en riesgo", "valor": 3,
+              "unidad": "municipios", "numerador": {"valor": 3, "descripcion": "Municipios"},
+              "denominador": {"valor": 51, "descripcion": "Municipios de Nuevo León"},
+              "factor": None, "periodo": {"desde": "2026-11-15", "hasta": "2026-11-21", "dias": 7},
+              "previo": None, "variacion_pct": None}]
 INDICADORES = {"casos_activos": 120, "casos_pct": 15.4, "tasa_incidencia": 2.1,
-               "tasa_pct": 15.4, "zonas_en_riesgo": 3, "simulaciones_activas": 1}
+               "tasa_pct": 15.4, "zonas_en_riesgo": 3, "simulaciones_activas": 1,
+               "indicadores": DEFINIDOS}
 
 
 @pytest.fixture
@@ -14,7 +21,7 @@ def llamadas(monkeypatch):
 
     def indicadores():
         conteo["indicadores"] += 1
-        return dict(INDICADORES)
+        return {k: v for k, v in INDICADORES.items() if k != "indicadores"}
 
     def situacion(limit=5):
         conteo["situacion"].append(limit)
@@ -22,6 +29,7 @@ def llamadas(monkeypatch):
 
     monkeypatch.setattr(queries, "get_resumen_indicadores", indicadores)
     monkeypatch.setattr(queries, "get_resumen_situacion", situacion)
+    monkeypatch.setattr(definidos, "calcular", lambda: [dict(d) for d in DEFINIDOS])
     return conteo
 
 
@@ -40,6 +48,10 @@ def test_indicadores_en_xml(cliente):
     raiz = ET.fromstring(cliente.get("/api/v1/dashboard/indicators").data)
     assert raiz.tag == "indicadores"
     assert raiz.findtext("zonas_en_riesgo") == "3"
+    zonas = raiz.find("indicadores/indicador")
+    assert zonas.findtext("clave") == "zonas_en_riesgo"
+    assert zonas.findtext("denominador/valor") == "51"
+    assert zonas.find("factor").get("nil") == "true"
 
 
 def test_segunda_consulta_sale_de_cache(cliente, llamadas, redis_falso):
