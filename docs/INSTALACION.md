@@ -703,6 +703,9 @@ llegar directo, falsearía esas cabeceras.
 
 ### 7. HTTPS con Let's Encrypt en la máquina (D26)
 
+El despliegue completo en GCP, de la máquina a las actualizaciones, está en
+[`DESPLIEGUE_GCP.md`](DESPLIEGUE_GCP.md); aquí, el certificado.
+
 En la nube el certificado es de Let's Encrypt, gratuito y de confianza para el navegador, la
 app de escritorio y la móvil (que trae la raíz ISRG Root X1). No hace falta comprar un dominio:
 con la IP fija de la máquina, `34-56-78-90.sslip.io` resuelve solo a `34.56.78.90`.

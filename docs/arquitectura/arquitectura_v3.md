@@ -202,35 +202,58 @@ Todo el algoritmo está en [`ficha_simulador.md`](ficha_simulador.md), que cierr
 
 ## 8. Despliegue y seguridad
 
-**Distribución en GCP (N1, N2; bloque F).** Propuesta:
+**Distribución en GCP (N1, N2; bloque F).** Desplegada desde el 2026-11-20 en
+https://epidemos.app; cómo se repite, en [`DESPLIEGUE_GCP.md`](../DESPLIEGUE_GCP.md).
 
 ```mermaid
 flowchart TB
-    INET((Internet)) -->|80 y 443| FW{{Firewall de la VPC}}
-    subgraph VPC[VPC del proyecto]
-        subgraph VM1[VM principal · Compute Engine · IP fija]
-            NG[nginx + certbot]
-            WEB[web]
-            MS[29 microservicios<br/>simulador · simulador-abm]
-            PG[(PostgreSQL)]
-            RD[(Redis)]
-            MG[(MongoDB)]
+    U((Web, app móvil,<br/>escritorio)) -->|HTTPS · epidemos.app| FW
+    DNS[DNS en name.com<br/>A epidemos.app → 35.222.19.202]
+    LE[Let's Encrypt]
+    U -.->|resuelve| DNS
+    subgraph GCP[Proyecto de GCP · us-central1-c]
+        FW{{Firewall: 80 y 443 públicos<br/>22 solo desde IAP}}
+        IAP[IAP<br/>SSH y túnel de la GPU]
+        subgraph VM[VM e2-standard-4 · IP fija 35.222.19.202 · Docker Compose, 37 contenedores]
+            NG["nginx + certbot<br/>TLS · /servicio/api/... a cada servicio, lo demás a la web"]
+            WEB[web<br/>contenedor, perfil web]
+            MS[29 microservicios + consola<br/>estado-servicios sondea a todos]
+            SIM[simulador seir-ref<br/>simulador-abm abm-ref]
+            PG[(PostgreSQL 16<br/>volumen postgres-datos)]
+            RD[(Redis<br/>sesiones, colas por motor, límites)]
+            MG[(MongoDB<br/>series_corridas, historial_servicios)]
+            EV[(volumen evidencias-datos<br/>fotos de casos)]
         end
+        LOG[Cloud Logging<br/>gcplogs, X-Correlation-ID]
     end
     subgraph PC[PC con GPU · fuera de GCP]
-        SG[simulador-gpu]
+        SG[simulador-gpu<br/>abm-gpu, FLAME GPU]
     end
     FW --> NG
     NG --> WEB & MS
-    SG -->|túnel SSH por IAP| PG & RD & MG
-    MS -->|cuenta de servicio| GCS[(Cloud Storage)]
-    VM1 -->|logs de Docker| LOG[Cloud Logging]
+    WEB -->|HTTP interno, URL_SERVICIOS| MS
+    WEB --> PG
+    MS --> PG & RD & MG
+    MS --> EV
+    SIM --> PG & RD & MG
+    SG -->|túnel SSH| IAP
+    IAP --> PG & RD & MG
+    LE -.->|certificado por HTTP 80, renovación cada 12 h| NG
+    VM -->|registros de cada contenedor| LOG
+    MS -.->|pendiente D-3| GCS[(Cloud Storage)]
 ```
+
+- **Monitoreo:** `estado-servicios` sondea el `/health` de los 29 servicios (PostgreSQL, Redis,
+  MongoDB y tiempo de respuesta) y guarda el historial en MongoDB; la consola (`/consola/`) lo
+  muestra. Los registros de los 37 contenedores van a Cloud Logging. La web todavía lee
+  PostgreSQL directo en los módulos que no pasaron a los servicios (D36).
+- **Archivos:** las fotos de los casos están en el volumen `evidencias-datos` de la VM; pasarlas
+  a Cloud Storage con URLs firmadas es del bloque D (D30, D35).
 
 - **Máquinas:**
   - La VM principal corre el mismo `infra/docker-compose.yml` que en local, con nginx enfrente.
   - No hay VM con GPU: los créditos no alcanzaron (D23). `simulador-gpu` corre en una PC con GPU (`infra/docker-compose.gpu-remoto.yml`) y toma las corridas de `abm-gpu` por un túnel SSH por IAP que abre la PC (`infra/tunel_gpu.py`): las bases siguen solo en el `127.0.0.1` de la VM y no se abre ningún puerto. Si la PC está apagada, las corridas esperan en la cola.
-  - Los tipos de máquina se fijan con las mediciones de Locust (§9).
+  - e2-standard-4 (4 vCPU): con 2 vCPU la VM se saturaba con unos 40 usuarios; con 4 y las conexiones a PostgreSQL reutilizadas aguanta unos 80 a 100 (F4, §9).
 - **Bases en la VM, no administradas.** PostgreSQL, Redis y MongoDB corren en contenedores en la VM principal: el mismo compose que en desarrollo, sin costo extra sobre los créditos. La rúbrica lo permite si se justifica. Cloud SQL o MongoDB Atlas quedan como alternativa si la VM no da.
 - **Firewall:**
 
@@ -251,7 +274,7 @@ flowchart TB
 | JWT de acceso, refresh, revocación y expiración | `auth` y `sesiones`; refresh de un solo uso, revocación en Redis (v2 §4.4) | **Hecho** (S1) |
 | Roles y permisos por recurso | `@requiere_token(roles=...)`, un rol de PostgreSQL por servicio, matriz de D1 | **Hecho** |
 | Rate limiting | D31; ver «Límites de consumo» abajo | **Hecho** en la biblioteca (S2); falta el `429` en los `openapi.json` |
-| Protección de endpoints | Token en toda ruta no pública; `@solo_servicios` para las internas; en la nube, solo nginx expuesto | **Hecho** en los servicios; nginx falta |
+| Protección de endpoints | Token en toda ruta no pública; `@solo_servicios` para las internas; en la nube, solo nginx expuesto | **Hecho** (en la nube desde el 2026-11-20: solo 80 y 443 abiertos) |
 | Validación de archivos, XML y JSON | XSD con `xmlschema`, XML con `defusedxml`, validación de cada cuerpo; archivos según §6 | **Hecho** para XML y JSON; archivos, con GCS |
 | Intentos fallidos y auditoría | `LOGIN_FAILED` y `audit_log` en la misma transacción que cada escritura | **Hecho** (S3) |
 | Secretos protegidos | `.env` fuera de git; en GCP, según lo de arriba | Falta en GCP (S5) |
