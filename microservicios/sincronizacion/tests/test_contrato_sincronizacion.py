@@ -134,3 +134,11 @@ def test_la_respuesta_real_con_correcciones_valida_contra_el_xsd(crear_cliente, 
                headers=dict(token(roles=("CAPTURISTA",)), **{"Content-Type": "application/xml"}))
     assert r.status_code == 200
     XSD.validate(r.data.decode("utf-8"))
+
+
+def test_el_xsd_acepta_un_caso_con_su_formulario():
+    """D48: el teléfono manda la versión del formulario y sus respuestas; las valida casos."""
+    XSD.validate(_lote(cuerpo_caso="<local_uuid>%s</local_uuid><disease_id>1</disease_id>"
+                       "<region_id>10</region_id><report_date>2026-10-01</report_date>"
+                       "<form_id>4</form_id><form_answers><fiebre_dias>3</fiebre_dias>"
+                       "<signos_alarma><item>vomito</item></signos_alarma></form_answers>" % U1))

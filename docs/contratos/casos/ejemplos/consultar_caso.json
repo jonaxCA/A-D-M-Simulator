@@ -22,5 +22,13 @@
   "updated_at": null,
   "updated_by": null,
   "status_reason": null,
-  "duplicate_of": null
+  "duplicate_of": null,
+  "form_id": 4,
+  "form_answers": {
+    "fiebre_dias": 3,
+    "signos_alarma": [
+      "dolor_abdominal"
+    ],
+    "hospitalizado": false
+  }
 }

@@ -9,7 +9,7 @@ import psycopg2
 import pytest
 
 from backend_web import dispositivos, queries
-from microservicios.casos import rutas
+from microservicios.casos import formularios, rutas
 
 ENFERMEDADES = [{"id": 1, "name": "COVID-19", "code": "SARS"}]
 MUNICIPIOS = [{"id": 10, "name": "Monterrey"}, {"id": 11, "name": "Apodaca"}]
@@ -20,6 +20,7 @@ class BaseFalsa:
     def __init__(self):
         self.casos = []
         self.historial = []
+        self.formularios = {}   # id -> versión de un formulario (D48)
         self.sentencias = []
         self.commits = 0
         self.rollbacks = 0
@@ -27,7 +28,7 @@ class BaseFalsa:
         self.carrera = False
 
     def _fila(self, c):
-        nombres = {1: "COVID-19"}
+        nombres = {1: "COVID-19", 2: "Dengue"}
         muni = {10: "Monterrey", 11: "Apodaca"}
         return (c["id"], c["local_uuid"], c["device_id"], int(c["reported_by"]), c["disease_id"],
                 nombres[c["disease_id"]], c["region_id"], muni[c["region_id"]], c["age"],
@@ -35,7 +36,7 @@ class BaseFalsa:
                 c["test_result"], c["severity"], c["status"],
                 datetime(2026, 10, 12, 10, 0, tzinfo=timezone.utc), c["synced_at"],
                 c["version"], c["updated_at"], c["updated_by"], c["status_reason"],
-                c["duplicate_of"])
+                c["duplicate_of"], c["form_id"], c["form_answers"])
 
     def ejecutar(self, sql, p):
         self.sentencias.append((sql, p))
@@ -56,6 +57,8 @@ class BaseFalsa:
             if caso is None:
                 return []
             caso.update(zip(columnas, valores))
+            if isinstance(caso.get("form_answers"), str):
+                caso["form_answers"] = json.loads(caso["form_answers"])
             caso.update(version=version + 1, updated_by=int(usuario),
                         updated_at=datetime(2026, 10, 13, 9, 0, tzinfo=timezone.utc))
             return [(caso["version"],)]
@@ -94,7 +97,8 @@ class BaseFalsa:
                     region_id=p[4], age=p[5], sex=p[6], onset_date=p[7], report_date=p[8],
                     latitude=p[9], longitude=p[10], test_result=p[11], severity=p[12],
                     synced_at=p[13], status="pendiente", version=1, updated_at=None,
-                    updated_by=None, status_reason=None, duplicate_of=None)
+                    updated_by=None, status_reason=None, duplicate_of=None, form_id=p[14],
+                    form_answers=json.loads(p[15]) if p[15] else None)
 
 
 class Cursor:
@@ -143,7 +147,16 @@ def base(monkeypatch):
     monkeypatch.setattr(queries, "get_enfermedades_para_captura", lambda: ENFERMEDADES)
     monkeypatch.setattr(queries, "get_municipios_catalogo", lambda: MUNICIPIOS)
     simula_dispositivos(monkeypatch, falsa)
+    simula_formularios(monkeypatch, falsa)
     return falsa
+
+
+def simula_formularios(monkeypatch, falsa):
+    """Los formularios de la base falsa: por id y la versión publicada de cada enfermedad."""
+    monkeypatch.setattr(formularios, "por_id", lambda form_id: falsa.formularios.get(form_id))
+    monkeypatch.setattr(formularios, "vigentes", lambda disease_id=None: [
+        f for f in falsa.formularios.values() if f["status"] == "publicado"
+        and (disease_id is None or f["disease_id"] == disease_id)])
 
 
 def simula_dispositivos(monkeypatch, falsa):

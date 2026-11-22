@@ -419,3 +419,14 @@ def test_una_respuesta_de_lote_incompleta_es_503(cliente, captura, casos, redis_
     r = enviar(cliente, captura)
     assert r.status_code == 503 and r.get_json()["codigo"] == "SERVICIO_NO_DISPONIBLE"
     assert redis_falso.exists(llaves.lote(LOTE)) == 0
+
+
+def test_el_formulario_de_cada_caso_llega_a_casos_tal_cual(cliente, captura, casos):
+    """D48: sincronizacion no lo revisa; lo valida casos contra su versión."""
+    caso = {"local_uuid": U1, "disease_id": 1, "region_id": 10, "report_date": "2026-10-01",
+            "form_id": 4, "form_answers": {"fiebre_dias": 3, "signos_alarma": ["vomito"]}}
+    r = cliente.post("/api/v1/sync/cases?format=json", headers=captura,
+                     json={"batch_id": LOTE, "cases": [caso]})
+    assert r.status_code == 200
+    enviado = casos.llamadas[0][4]
+    assert (enviado["form_id"], enviado["form_answers"]) == (4, {"fiebre_dias": 3, "signos_alarma": ["vomito"]})

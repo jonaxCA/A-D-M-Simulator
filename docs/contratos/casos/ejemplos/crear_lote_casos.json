@@ -29,6 +29,8 @@
         "updated_by": null,
         "status_reason": null,
         "duplicate_of": null,
+        "form_id": null,
+        "form_answers": null,
         "duplicado": false
       }
     },

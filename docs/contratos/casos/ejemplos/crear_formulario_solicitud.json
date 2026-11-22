@@ -1,0 +1,41 @@
+{
+  "disease_id": 2,
+  "title": "Dengue: datos clínicos",
+  "fields": [
+    {
+      "clave": "fiebre_dias",
+      "etiqueta": "Días con fiebre",
+      "tipo": "entero",
+      "obligatorio": true,
+      "minimo": 0,
+      "maximo": 30
+    },
+    {
+      "clave": "signos_alarma",
+      "etiqueta": "Signos de alarma",
+      "tipo": "opciones",
+      "obligatorio": false,
+      "opciones": [
+        {
+          "valor": "dolor_abdominal",
+          "etiqueta": "Dolor abdominal intenso"
+        },
+        {
+          "valor": "vomito",
+          "etiqueta": "Vómito persistente"
+        },
+        {
+          "valor": "sangrado",
+          "etiqueta": "Sangrado de mucosas"
+        }
+      ]
+    },
+    {
+      "clave": "hospitalizado",
+      "etiqueta": "¿Está hospitalizado?",
+      "tipo": "booleano",
+      "obligatorio": false
+    }
+  ],
+  "required": false
+}
