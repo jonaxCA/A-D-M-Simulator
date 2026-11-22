@@ -16,8 +16,8 @@ from epidemia_comun.validaciones import diccionario, entero_positivo
 LIMITE, LIMITE_MAX = 50, 200
 CAMPOS = {"user_id", "role", "type", "title", "body", "payload"}
 # EPIDEMIOLOGO: escenarios por aprobar y casos nuevos. ADMINISTRADOR: alertas técnicas de
-# estado-servicios (F7).
-ROLES_DESTINO = ("EPIDEMIOLOGO", "ADMINISTRADOR")
+# estado-servicios (F7). CAPTURISTA: campañas (D49).
+ROLES_DESTINO = ("EPIDEMIOLOGO", "ADMINISTRADOR", "CAPTURISTA")
 
 
 def _solo_no_leidas(valor):
@@ -50,6 +50,39 @@ def registrar(app):
             raise ErrorAPI(404, "NO_ENCONTRADO", error)
         return responder(fila, "notificacion")
 
+    # Preferencias (D49): cada persona apaga los avisos que le tocan por su perfil, menos SYSTEM.
+    @app.get("/api/v1/notifications/preferences")
+    @requiere_token()
+    def preferencias():
+        return responder({"preferencias": notificaciones.preferencias(
+            g.contexto.user_id, g.usuario.get("roles") or [])}, "preferencias")
+
+    @app.put("/api/v1/notifications/preferences")
+    @requiere_token()
+    def guarda_preferencias():
+        cuerpo = diccionario(leer_cuerpo())
+        roles = g.usuario.get("roles") or []
+        suyos = notificaciones.tipos_de(roles)
+        if not cuerpo:
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "Manda al menos un tipo de aviso: {tipo: true o false}.")
+        cambios, errores = {}, []
+        for tipo, valor in cuerpo.items():
+            if tipo not in suyos:
+                errores.append("%s no es un aviso que te llegue." % tipo)
+            elif tipo in notificaciones.FIJOS:
+                errores.append("%s no se puede apagar." % tipo)
+            elif valor in (True, "true"):
+                cambios[tipo] = True
+            elif valor in (False, "false"):
+                cambios[tipo] = False
+            else:
+                errores.append("%s va con true o false." % tipo)
+        if errores:
+            raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
+        notificaciones.guarda_preferencias(g.contexto.user_id, cambios, contexto=g.contexto)
+        return responder({"preferencias": notificaciones.preferencias(g.contexto.user_id, roles)},
+                         "preferencias")
+
     @app.post("/api/v1/notifications")
     @solo_servicios
     def crear():
@@ -80,5 +113,9 @@ def registrar(app):
             raise ErrorAPI(404, "NO_ENCONTRADO", error)
         if error:
             raise ErrorAPI(422, "DATOS_INVALIDOS", error)
+        if notificacion_id is None:
+            # La persona apagó ese tipo de aviso (D49): no es un error de quien avisa.
+            return responder({"id": None, "user_id": datos["user_id"], "type": datos["type"],
+                              "omitida": True}, "notificacion")
         return responder({"id": notificacion_id, "user_id": datos["user_id"], "type": datos["type"]},
                          "notificacion", estado=201)

@@ -595,6 +595,573 @@
           }
         }
       }
+    },
+    "/api/v1/campaigns": {
+      "get": {
+        "summary": "Campañas",
+        "operationId": "listar_campanas",
+        "description": "Las campañas, de la más reciente a la más vieja (D49). Filtros: status, disease_id y region_id (las de ese municipio y las de todo el estado); limit de 1 a 200 (50). Los cuatro roles.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "programada",
+                "activa",
+                "terminada",
+                "cancelada"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 1,
+                  "campanas": [
+                    {
+                      "id": 3,
+                      "name": "Vacunación contra influenza 2026",
+                      "disease_id": 1,
+                      "enfermedad": "Influenza estacional",
+                      "region_id": 39,
+                      "municipio": "Monterrey",
+                      "starts_on": "2026-12-01",
+                      "ends_on": "2026-12-15",
+                      "target_population": 120000,
+                      "description": "Adultos de 60 años o más y personas con enfermedades crónicas.",
+                      "status": "programada",
+                      "created_by": 9,
+                      "created_at": "2026-11-22T18:00:00+00:00",
+                      "updated_at": null,
+                      "cancelled_at": null,
+                      "cancelled_by": null,
+                      "cancel_reason": null
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "campanas"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<campanas><total tipo=\"numero\">1</total><campanas><campana><id tipo=\"numero\">3</id><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">39</region_id><municipio>Monterrey</municipio><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description><status>programada</status><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T18:00:00+00:00</created_at><updated_at nil=\"true\" /><cancelled_at nil=\"true\" /><cancelled_by nil=\"true\" /><cancel_reason nil=\"true\" /></campana></campanas></campanas>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Un filtro inválido (DATOS_INVALIDOS)"
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear una campaña",
+        "operationId": "crear_campana",
+        "description": "EPIDEMIOLOGO y ADMINISTRADOR (D49). name (hasta 160), disease_id, region_id (municipio de Nuevo León; null es todo el estado), starts_on y ends_on (AAAA-MM-DD; ends_on no antes de starts_on ni de hoy), target_population (opcional, de 1 a 20 000 000) y description (opcional, hasta 2000). status sale de las fechas: programada, activa, terminada o cancelada. Los CAPTURISTA reciben un aviso CAMPAIGN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "Vacunación contra influenza 2026",
+                "disease_id": 1,
+                "region_id": 39,
+                "starts_on": "2026-12-01",
+                "ends_on": "2026-12-15",
+                "target_population": 120000,
+                "description": "Adultos de 60 años o más y personas con enfermedades crónicas."
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><region_id tipo=\"numero\">39</region_id><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description></solicitud>"
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "name": "Vacunación contra influenza 2026",
+                  "disease_id": 1,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 39,
+                  "municipio": "Monterrey",
+                  "starts_on": "2026-12-01",
+                  "ends_on": "2026-12-15",
+                  "target_population": 120000,
+                  "description": "Adultos de 60 años o más y personas con enfermedades crónicas.",
+                  "status": "programada",
+                  "created_by": 9,
+                  "created_at": "2026-11-22T18:00:00+00:00",
+                  "updated_at": null,
+                  "cancelled_at": null,
+                  "cancelled_by": null,
+                  "cancel_reason": null
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "campana"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<campana><id tipo=\"numero\">3</id><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">39</region_id><municipio>Monterrey</municipio><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description><status>programada</status><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T18:00:00+00:00</created_at><updated_at nil=\"true\" /><cancelled_at nil=\"true\" /><cancelled_by nil=\"true\" /><cancel_reason nil=\"true\" /></campana>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existe la enfermedad o el municipio (NO_ENCONTRADO)"
+          },
+          "422": {
+            "description": "Datos que no pasan (DATOS_INVALIDOS)"
+          }
+        }
+      }
+    },
+    "/api/v1/campaigns/{campana_id}": {
+      "get": {
+        "summary": "Una campaña",
+        "operationId": "consultar_campana",
+        "description": "Los cuatro roles.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campana_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "name": "Vacunación contra influenza 2026",
+                  "disease_id": 1,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 39,
+                  "municipio": "Monterrey",
+                  "starts_on": "2026-12-01",
+                  "ends_on": "2026-12-15",
+                  "target_population": 120000,
+                  "description": "Adultos de 60 años o más y personas con enfermedades crónicas.",
+                  "status": "programada",
+                  "created_by": 9,
+                  "created_at": "2026-11-22T18:00:00+00:00",
+                  "updated_at": null,
+                  "cancelled_at": null,
+                  "cancelled_by": null,
+                  "cancel_reason": null
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "campana"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<campana><id tipo=\"numero\">3</id><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">39</region_id><municipio>Monterrey</municipio><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description><status>programada</status><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T18:00:00+00:00</created_at><updated_at nil=\"true\" /><cancelled_at nil=\"true\" /><cancelled_by nil=\"true\" /><cancel_reason nil=\"true\" /></campana>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existe (NO_ENCONTRADO)"
+          }
+        }
+      },
+      "put": {
+        "summary": "Editar una campaña",
+        "operationId": "editar_campana",
+        "description": "EPIDEMIOLOGO y ADMINISTRADOR. Se manda todo; name (hasta 160), disease_id, region_id (municipio de Nuevo León; null es todo el estado), starts_on y ends_on (AAAA-MM-DD; ends_on no antes de starts_on ni de hoy), target_population (opcional, de 1 a 20 000 000) y description (opcional, hasta 2000). status sale de las fechas: programada, activa, terminada o cancelada. Una cancelada o terminada no se edita (409).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campana_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "Vacunación contra influenza 2026",
+                "disease_id": 1,
+                "region_id": 39,
+                "starts_on": "2026-12-01",
+                "ends_on": "2026-12-15",
+                "target_population": 120000,
+                "description": "Adultos de 60 años o más y personas con enfermedades crónicas."
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><region_id tipo=\"numero\">39</region_id><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description></solicitud>"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "name": "Vacunación contra influenza 2026",
+                  "disease_id": 1,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 39,
+                  "municipio": "Monterrey",
+                  "starts_on": "2026-12-01",
+                  "ends_on": "2026-12-15",
+                  "target_population": 120000,
+                  "description": "Adultos de 60 años o más y personas con enfermedades crónicas.",
+                  "status": "programada",
+                  "created_by": 9,
+                  "created_at": "2026-11-22T18:00:00+00:00",
+                  "updated_at": null,
+                  "cancelled_at": null,
+                  "cancelled_by": null,
+                  "cancel_reason": null
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "campana"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<campana><id tipo=\"numero\">3</id><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">39</region_id><municipio>Monterrey</municipio><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description><status>programada</status><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T18:00:00+00:00</created_at><updated_at nil=\"true\" /><cancelled_at nil=\"true\" /><cancelled_by nil=\"true\" /><cancel_reason nil=\"true\" /></campana>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existe la campaña, la enfermedad o el municipio (NO_ENCONTRADO)"
+          },
+          "409": {
+            "description": "Ya está cancelada o terminada (CONFLICTO)"
+          },
+          "422": {
+            "description": "Datos que no pasan (DATOS_INVALIDOS)"
+          }
+        }
+      }
+    },
+    "/api/v1/campaigns/{campana_id}/cancel": {
+      "post": {
+        "summary": "Cancelar una campaña",
+        "operationId": "cancelar_campana",
+        "description": "EPIDEMIOLOGO y ADMINISTRADOR. reason es obligatorio (hasta 500). Los CAPTURISTA reciben un aviso CAMPAIGN. Una cancelada o terminada no se cancela (409).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campana_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "reason": "No llegaron las vacunas a tiempo"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><reason>No llegaron las vacunas a tiempo</reason></solicitud>"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "name": "Vacunación contra influenza 2026",
+                  "disease_id": 1,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 39,
+                  "municipio": "Monterrey",
+                  "starts_on": "2026-12-01",
+                  "ends_on": "2026-12-15",
+                  "target_population": 120000,
+                  "description": "Adultos de 60 años o más y personas con enfermedades crónicas.",
+                  "status": "cancelada",
+                  "created_by": 9,
+                  "created_at": "2026-11-22T18:00:00+00:00",
+                  "updated_at": "2026-11-23T09:00:00+00:00",
+                  "cancelled_at": "2026-11-23T09:00:00+00:00",
+                  "cancelled_by": 9,
+                  "cancel_reason": "No llegaron las vacunas a tiempo"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "campana"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<campana><id tipo=\"numero\">3</id><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">39</region_id><municipio>Monterrey</municipio><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description><status>cancelada</status><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T18:00:00+00:00</created_at><updated_at>2026-11-23T09:00:00+00:00</updated_at><cancelled_at>2026-11-23T09:00:00+00:00</cancelled_at><cancelled_by tipo=\"numero\">9</cancelled_by><cancel_reason>No llegaron las vacunas a tiempo</cancel_reason></campana>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existe (NO_ENCONTRADO)"
+          },
+          "409": {
+            "description": "Ya está cancelada o terminada (CONFLICTO)"
+          },
+          "422": {
+            "description": "Falta reason (DATOS_INVALIDOS)"
+          }
+        }
+      }
     }
   }
 }

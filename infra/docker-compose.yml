@@ -438,6 +438,8 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_VACUNAS:-postgresql://svc_vacunas:${DB_PASSWORD_VACUNAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # El aviso CAMPAIGN a los CAPTURISTA (D49).
+      SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
     depends_on:
       postgres:
         condition: service_healthy

@@ -148,7 +148,7 @@
       "post": {
         "summary": "Crear una notificación (interna)",
         "operationId": "crear_notificacion",
-        "description": "Solo con token de servicio: la usan simulador, aprobacion, sincronizacion, estado-servicios y casos. Manda user_id (una persona) o role (todas las personas activas con ese rol: EPIDEMIOLOGO o ADMINISTRADOR, que recibe las alertas técnicas SYSTEM de estado-servicios), no los dos. La bitácora registra qué servicio la creó.",
+        "description": "Solo con token de servicio: la usan simulador, aprobacion, sincronizacion, estado-servicios, casos y vacunas. Manda user_id (una persona) o role (todas las personas activas con ese rol: EPIDEMIOLOGO, ADMINISTRADOR, que recibe las alertas técnicas SYSTEM de estado-servicios, o CAPTURISTA, que recibe las campañas), no los dos. La bitácora registra qué servicio la creó. Preferencias (D49): si la persona apagó ese tipo de aviso, no se crea y responde 200 con id null y omitida true; a un rol, se salta a quien lo apagó. SYSTEM no se apaga.",
         "security": [
           {
             "tokenServicio": []
@@ -183,7 +183,9 @@
                       "SCENARIO_REJECTED",
                       "NEW_CASES",
                       "SYSTEM",
-                      "CASE_REJECTED"
+                      "CASE_REJECTED",
+                      "CAMPAIGN",
+                      "DATA_INCOMPLETE"
                     ]
                   },
                   "title": {
@@ -201,7 +203,8 @@
                     "type": "string",
                     "enum": [
                       "EPIDEMIOLOGO",
-                      "ADMINISTRADOR"
+                      "ADMINISTRADOR",
+                      "CAPTURISTA"
                     ],
                     "description": "Destinatarios por rol, alternativa a user_id"
                   }
@@ -259,7 +262,9 @@
                       "SCENARIO_REJECTED",
                       "NEW_CASES",
                       "SYSTEM",
-                      "CASE_REJECTED"
+                      "CASE_REJECTED",
+                      "CAMPAIGN",
+                      "DATA_INCOMPLETE"
                     ]
                   },
                   "title": {
@@ -277,7 +282,8 @@
                     "type": "string",
                     "enum": [
                       "EPIDEMIOLOGO",
-                      "ADMINISTRADOR"
+                      "ADMINISTRADOR",
+                      "CAPTURISTA"
                     ],
                     "description": "Destinatarios por rol, alternativa a user_id"
                   }
@@ -345,6 +351,9 @@
                 }
               }
             }
+          },
+          "200": {
+            "description": "La persona apagó ese tipo de aviso (D49): no se creó. {id: null, user_id, type, omitida: true}"
           },
           "400": {
             "description": "JSON o XML ilegible"
@@ -454,6 +463,192 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/preferences": {
+      "get": {
+        "summary": "Mis preferencias de avisos",
+        "operationId": "preferencias_avisos",
+        "description": "Los tipos de aviso que le llegan a quien consulta, según su perfil (D49), con enabled (sin cambio, true) y fijo (SYSTEM no se apaga). CAPTURISTA: CASE_REJECTED, CAMPAIGN y DATA_INCOMPLETE; EPIDEMIOLOGO: SCENARIO_SUBMITTED y NEW_CASES; ANALISTA: RUN_FINISHED, RUN_FAILED, SCENARIO_APPROVED y SCENARIO_REJECTED; ADMINISTRADOR: los de ANALISTA y SYSTEM.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "preferencias": [
+                    {
+                      "type": "CASE_REJECTED",
+                      "nombre": "Caso descartado",
+                      "enabled": true,
+                      "fijo": false
+                    },
+                    {
+                      "type": "CAMPAIGN",
+                      "nombre": "Campañas",
+                      "enabled": false,
+                      "fijo": false
+                    },
+                    {
+                      "type": "DATA_INCOMPLETE",
+                      "nombre": "Datos incompletos",
+                      "enabled": true,
+                      "fijo": false
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "preferencias"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<preferencias><preferencias><preferencia><type>CASE_REJECTED</type><nombre>Caso descartado</nombre><enabled tipo=\"booleano\">true</enabled><fijo tipo=\"booleano\">false</fijo></preferencia><preferencia><type>CAMPAIGN</type><nombre>Campañas</nombre><enabled tipo=\"booleano\">false</enabled><fijo tipo=\"booleano\">false</fijo></preferencia><preferencia><type>DATA_INCOMPLETE</type><nombre>Datos incompletos</nombre><enabled tipo=\"booleano\">true</enabled><fijo tipo=\"booleano\">false</fijo></preferencia></preferencias></preferencias>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Apagar o prender avisos",
+        "operationId": "guardar_preferencias",
+        "description": "{tipo: true o false} de los tipos que le llegan a quien la manda; regresa todas sus preferencias. Un tipo que no le llega, SYSTEM o un valor que no es booleano es 422.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "boolean"
+                }
+              },
+              "example": {
+                "CAMPAIGN": false
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "example": "<solicitud><CAMPAIGN>false</CAMPAIGN></solicitud>"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "preferencias": [
+                    {
+                      "type": "CASE_REJECTED",
+                      "nombre": "Caso descartado",
+                      "enabled": true,
+                      "fijo": false
+                    },
+                    {
+                      "type": "CAMPAIGN",
+                      "nombre": "Campañas",
+                      "enabled": false,
+                      "fijo": false
+                    },
+                    {
+                      "type": "DATA_INCOMPLETE",
+                      "nombre": "Datos incompletos",
+                      "enabled": true,
+                      "fijo": false
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "preferencias"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<preferencias><preferencias><preferencia><type>CASE_REJECTED</type><nombre>Caso descartado</nombre><enabled tipo=\"booleano\">true</enabled><fijo tipo=\"booleano\">false</fijo></preferencia><preferencia><type>CAMPAIGN</type><nombre>Campañas</nombre><enabled tipo=\"booleano\">false</enabled><fijo tipo=\"booleano\">false</fijo></preferencia><preferencia><type>DATA_INCOMPLETE</type><nombre>Datos incompletos</nombre><enabled tipo=\"booleano\">true</enabled><fijo tipo=\"booleano\">false</fijo></preferencia></preferencias></preferencias>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Un tipo que no le llega, SYSTEM o un valor no booleano (DATOS_INVALIDOS)"
           }
         }
       }
