@@ -665,7 +665,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 - [ ] `indicadores`: cada indicador con su numerador, su denominador y su periodo; capacidad utilizada, con su fuente (RF-G07, reabierto). Desde el 2026-11-21, cada indicador trae su numerador, su denominador y su periodo, más mortalidad, letalidad y casos graves (`indicadores` en `/dashboard/indicators`). Faltan capacidad utilizada (sin fuente), hospitalizaciones (no hay el dato) y prevalencia ([`revision_f7.md`](revision_f7.md)).
 - [x] `series`: filtrado, paginación y agregaciones por enfermedad, periodo, región y grupo. Hecho el 2026-11-21: `/series/cases/aggregate` con rango libre, agregación por día, semana epidemiológica o mes, grupos (sexo, edad, enfermedad, municipio) y paginación, y `/series/cases/highcharts` con la misma serie para Highcharts ([`revision_f7.md`](revision_f7.md)).
-- [ ] `zonas`: mapas de calor y agrupaciones territoriales. El mapa del escritorio (A4) espera además la geometría oficial de los municipios: hoy dibuja marcadores sin polígonos. Hoy: mapa temático y semáforo por municipio ([`revision_f7.md`](revision_f7.md)).
+- [x] `zonas`: mapas de calor y agrupaciones territoriales. Hecho el 2026-11-21: `/zones/heatmap` (celdas de ~1 km como mínimo, sin celdas de menos de 3 casos) y `/zones/jurisdictions` (por jurisdicción sanitaria, del Reglamento Interior de Servicios de Salud de NL; falta confirmar con la Secretaría que siga vigente). La geometría oficial de los municipios para el mapa del escritorio (A4) es aparte ([`revision_f7.md`](revision_f7.md)).
 
 **Plataforma**
 

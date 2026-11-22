@@ -1,0 +1,340 @@
+{
+  "filtros": {
+    "disease_id": null,
+    "days": 30
+  },
+  "fuente": {
+    "documento": "Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27",
+    "publicacion": "Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009",
+    "url": "http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf",
+    "nota": "Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos."
+  },
+  "jurisdicciones": [
+    {
+      "clave": "compartido-19039",
+      "nombre": "Monterrey (jurisdicciones 1, 2 y 3)",
+      "numeros": [
+        1,
+        2,
+        3
+      ],
+      "municipios": [
+        {
+          "region_code": "19039",
+          "nombre": "Monterrey"
+        }
+      ],
+      "poblacion": 1142994,
+      "casos": 48,
+      "incidencia": 4.2,
+      "graves": 4,
+      "variacion": 57.1,
+      "estado": "critico"
+    },
+    {
+      "clave": "2",
+      "nombre": "Jurisdicción Sanitaria No. 2",
+      "numeros": [
+        2
+      ],
+      "municipios": [
+        {
+          "region_code": "19001",
+          "nombre": "Abasolo"
+        },
+        {
+          "region_code": "19010",
+          "nombre": "El Carmen"
+        },
+        {
+          "region_code": "19012",
+          "nombre": "Ciénega de Flores"
+        },
+        {
+          "region_code": "19021",
+          "nombre": "General Escobedo"
+        },
+        {
+          "region_code": "19025",
+          "nombre": "General Zuazua"
+        },
+        {
+          "region_code": "19037",
+          "nombre": "Mina"
+        },
+        {
+          "region_code": "19045",
+          "nombre": "Salinas Victoria"
+        },
+        {
+          "region_code": "19046",
+          "nombre": "San Nicolás de los Garza"
+        },
+        {
+          "region_code": "19047",
+          "nombre": "Hidalgo"
+        }
+      ],
+      "poblacion": 1280660,
+      "casos": 20,
+      "incidencia": 1.6,
+      "graves": 1,
+      "variacion": 100.0,
+      "estado": "critico"
+    },
+    {
+      "clave": "3",
+      "nombre": "Jurisdicción Sanitaria No. 3",
+      "numeros": [
+        3
+      ],
+      "municipios": [
+        {
+          "region_code": "19018",
+          "nombre": "García"
+        },
+        {
+          "region_code": "19019",
+          "nombre": "San Pedro Garza García"
+        },
+        {
+          "region_code": "19048",
+          "nombre": "Santa Catarina"
+        }
+      ],
+      "poblacion": 835696,
+      "casos": 10,
+      "incidencia": 1.2,
+      "graves": 0,
+      "variacion": 0.0,
+      "estado": "estable"
+    },
+    {
+      "clave": "4",
+      "nombre": "Jurisdicción Sanitaria No. 4",
+      "numeros": [
+        4
+      ],
+      "municipios": [
+        {
+          "region_code": "19006",
+          "nombre": "Apodaca"
+        },
+        {
+          "region_code": "19026",
+          "nombre": "Guadalupe"
+        },
+        {
+          "region_code": "19031",
+          "nombre": "Juárez"
+        }
+      ],
+      "poblacion": 1771130,
+      "casos": 36,
+      "incidencia": 2.0,
+      "graves": 4,
+      "variacion": 38.5,
+      "estado": "alerta"
+    },
+    {
+      "clave": "5",
+      "nombre": "Jurisdicción Sanitaria No. 5",
+      "numeros": [
+        5
+      ],
+      "municipios": [
+        {
+          "region_code": "19002",
+          "nombre": "Agualeguas"
+        },
+        {
+          "region_code": "19005",
+          "nombre": "Anáhuac"
+        },
+        {
+          "region_code": "19008",
+          "nombre": "Bustamante"
+        },
+        {
+          "region_code": "19023",
+          "nombre": "General Treviño"
+        },
+        {
+          "region_code": "19032",
+          "nombre": "Lampazos de Naranjo"
+        },
+        {
+          "region_code": "19040",
+          "nombre": "Parás"
+        },
+        {
+          "region_code": "19044",
+          "nombre": "Sabinas Hidalgo"
+        },
+        {
+          "region_code": "19050",
+          "nombre": "Vallecillo"
+        },
+        {
+          "region_code": "19051",
+          "nombre": "Villaldama"
+        }
+      ],
+      "poblacion": 72972,
+      "casos": 1,
+      "incidencia": 1.4,
+      "graves": 0,
+      "variacion": 100.0,
+      "estado": "critico"
+    },
+    {
+      "clave": "6",
+      "nombre": "Jurisdicción Sanitaria No. 6",
+      "numeros": [
+        6
+      ],
+      "municipios": [
+        {
+          "region_code": "19003",
+          "nombre": "Los Aldamas"
+        },
+        {
+          "region_code": "19009",
+          "nombre": "Cadereyta Jiménez"
+        },
+        {
+          "region_code": "19011",
+          "nombre": "Cerralvo"
+        },
+        {
+          "region_code": "19013",
+          "nombre": "China"
+        },
+        {
+          "region_code": "19015",
+          "nombre": "Doctor Coss"
+        },
+        {
+          "region_code": "19016",
+          "nombre": "Doctor González"
+        },
+        {
+          "region_code": "19020",
+          "nombre": "General Bravo"
+        },
+        {
+          "region_code": "19027",
+          "nombre": "Los Herreras"
+        },
+        {
+          "region_code": "19028",
+          "nombre": "Higueras"
+        },
+        {
+          "region_code": "19034",
+          "nombre": "Marín"
+        },
+        {
+          "region_code": "19035",
+          "nombre": "Melchor Ocampo"
+        },
+        {
+          "region_code": "19041",
+          "nombre": "Pesquería"
+        },
+        {
+          "region_code": "19042",
+          "nombre": "Los Ramones"
+        }
+      ],
+      "poblacion": 314096,
+      "casos": 3,
+      "incidencia": 1.0,
+      "graves": 0,
+      "variacion": 100.0,
+      "estado": "critico"
+    },
+    {
+      "clave": "7",
+      "nombre": "Jurisdicción Sanitaria No. 7",
+      "numeros": [
+        7
+      ],
+      "municipios": [
+        {
+          "region_code": "19004",
+          "nombre": "Allende"
+        },
+        {
+          "region_code": "19022",
+          "nombre": "General Terán"
+        },
+        {
+          "region_code": "19029",
+          "nombre": "Hualahuises"
+        },
+        {
+          "region_code": "19033",
+          "nombre": "Linares"
+        },
+        {
+          "region_code": "19038",
+          "nombre": "Montemorelos"
+        },
+        {
+          "region_code": "19043",
+          "nombre": "Rayones"
+        },
+        {
+          "region_code": "19049",
+          "nombre": "Santiago"
+        }
+      ],
+      "poblacion": 257679,
+      "casos": 4,
+      "incidencia": 1.6,
+      "graves": 1,
+      "variacion": 0.0,
+      "estado": "estable"
+    },
+    {
+      "clave": "8",
+      "nombre": "Jurisdicción Sanitaria No. 8",
+      "numeros": [
+        8
+      ],
+      "municipios": [
+        {
+          "region_code": "19007",
+          "nombre": "Aramberri"
+        },
+        {
+          "region_code": "19014",
+          "nombre": "Doctor Arroyo"
+        },
+        {
+          "region_code": "19017",
+          "nombre": "Galeana"
+        },
+        {
+          "region_code": "19024",
+          "nombre": "General Zaragoza"
+        },
+        {
+          "region_code": "19036",
+          "nombre": "Mier y Noriega"
+        },
+        {
+          "region_code": "19030",
+          "nombre": "Iturbide"
+        }
+      ],
+      "poblacion": 109215,
+      "casos": 0,
+      "incidencia": 0.0,
+      "graves": 0,
+      "variacion": 0.0,
+      "estado": "estable"
+    }
+  ]
+}
