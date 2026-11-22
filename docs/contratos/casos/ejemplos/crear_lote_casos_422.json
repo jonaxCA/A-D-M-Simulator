@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Unprocessable Entity",
+  "status": 422,
+  "detail": "cases debe traer al menos un caso.",
+  "codigo": "DATOS_INVALIDOS",
+  "instance": "/api/v1/cases/batch"
+}

@@ -3,7 +3,11 @@
 # volumen vacío; la base de la máquina de GCP (o la del compose en tu PC) no recibe sola las
 # migraciones nuevas. Desde la raíz del repositorio:
 #
-#   sudo bash infra/postgres/aplica_migraciones.sh 050 051 052 053 054 055
+#   sudo bash infra/aplica_migraciones.sh 050 051 052 053 054 055
+#
+# No va en infra/postgres/: esa carpeta se monta como /docker-entrypoint-initdb.d, y la imagen de
+# PostgreSQL ejecuta todo .sh que haya ahí al crear una base nueva (sin argumentos, este fallaba
+# y dejaba la inicialización a medias).
 #
 # Antes de tocar nada respalda la base (pg_dump) en /var/backups/epidemia-migraciones. Cada
 # migración del repositorio trae su BEGIN ... COMMIT, y corre con ON_ERROR_STOP: si una falla, esa
@@ -13,7 +17,7 @@
 # Variables: COMPOSE_CMD (otro compose, por ejemplo el de pruebas), BASE_DATOS (otra base del
 # mismo servidor; por omisión, la POSTGRES_DB del contenedor) y RESPALDO_DIR.
 set -euo pipefail
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")/.."
 
 [ $# -gt 0 ] || { echo "Uso: sudo bash $0 <número> [<número>...]   (por ejemplo 050 051)" >&2; exit 2; }
 RESPALDO_DIR=${RESPALDO_DIR:-/var/backups/epidemia-migraciones}

@@ -128,6 +128,48 @@ def _resultado_de_caso(indice, local_uuid, respuesta):
     raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio de casos no pudo procesar el lote.")
 
 
+class _RespuestaDeCaso:
+    """El resultado de un caso dentro de la respuesta de POST /cases/batch, con la forma que
+    espera _resultado_de_caso (la de una respuesta de POST /cases)."""
+
+    def __init__(self, estado, cuerpo):
+        self.status_code, self._cuerpo, self.headers = estado, cuerpo, {}
+
+    def json(self):
+        return self._cuerpo
+
+
+def _envia_a_casos(casos, cuerpos, token):
+    """Todo el lote en una sola llamada a casos (POST /api/v1/cases/batch). Antes era una llamada
+    por caso, y con carga un lote de 5 tardaba segundos (prueba de carga en la nube, F4). Si casos
+    todavía no tiene esa ruta (404 o 405), caso por caso como antes."""
+    respuesta = llamar("casos", "POST", "/api/v1/cases/batch", formato="json",
+                       cuerpo={"cases": cuerpos}, token=token)
+    if respuesta.status_code in (404, 405):
+        return [_resultado_de_caso(i, caso["local_uuid"],
+                                   llamar("casos", "POST", "/api/v1/cases", formato="json",
+                                          cuerpo=cuerpo, token=token))
+                for i, (caso, cuerpo) in enumerate(zip(casos, cuerpos))]
+    if respuesta.status_code != 200:
+        if respuesta.status_code in (401, 403, 429) or respuesta.status_code >= 500:
+            _resultado_de_caso(0, casos[0]["local_uuid"], respuesta)  # lanza el error que toca
+        raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio de casos no pudo procesar el lote.")
+    try:
+        filas = respuesta.json().get("resultados")
+    except (ValueError, AttributeError):
+        filas = None
+    if not isinstance(filas, list) or len(filas) != len(casos):
+        raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio de casos no pudo procesar el lote.")
+    resultados = []
+    for indice, (caso, fila) in enumerate(zip(casos, filas)):
+        estado = fila.get("estado")
+        cuerpo = fila.get("caso") if estado in (200, 201) else {
+            "codigo": fila.get("codigo"), "detail": fila.get("detail")}
+        resultados.append(_resultado_de_caso(indice, caso["local_uuid"],
+                                             _RespuestaDeCaso(estado, cuerpo or {})))
+    return resultados
+
+
 def _bitacora(lote_id, resumen):
     # sincronizacion no escribe tablas: solo deja un SYNC por lote, en su propia transacción.
     try:
@@ -188,16 +230,15 @@ def registrar(app):
             previo = _repetido_o_none(lote_id)
             if previo is not None:
                 return previo
-            resultados = []
-            for indice, caso in enumerate(casos):
+            cuerpos = []
+            for caso in casos:
                 cuerpo = {k: v for k, v in caso.items()}
                 if device_id is not None and cuerpo.get("device_id") in (None, ""):
                     cuerpo["device_id"] = device_id
-                # Sin reintentos: si casos no contesta, todo el lote responde 503 y el
-                # cliente lo reenvía; local_uuid evita duplicar lo que ya se hubiera creado.
-                respuesta = llamar("casos", "POST", "/api/v1/cases", formato="json",
-                                   cuerpo=cuerpo, token=token)
-                resultados.append(_resultado_de_caso(indice, caso["local_uuid"], respuesta))
+                cuerpos.append(cuerpo)
+            # Sin reintentos: si casos no contesta, todo el lote responde 503 y el cliente lo
+            # reenvía; local_uuid evita duplicar lo que ya se hubiera creado.
+            resultados = _envia_a_casos(casos, cuerpos, token)
             cuenta = {"creado": 0, "duplicado": 0, "rechazado": 0}
             for r in resultados:
                 cuenta[r["resultado"]] += 1

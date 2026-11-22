@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Too Many Requests",
+  "status": 429,
+  "detail": "Demasiadas peticiones; intenta de nuevo en 42 segundos.",
+  "codigo": "LIMITE_EXCEDIDO",
+  "instance": "/api/v1/cases/batch"
+}

@@ -164,10 +164,10 @@ se espera.
 
 `infra/postgres/10-inicializa.sh` solo corre la primera vez, con el volumen vacío. A una base que
 ya existe (la de la máquina de GCP, o la del compose en tu PC) las migraciones nuevas se le aplican
-con `infra/postgres/aplica_migraciones.sh`, que primero la respalda:
+con `infra/aplica_migraciones.sh`, que primero la respalda:
 
 ```bash
-sudo bash infra/postgres/aplica_migraciones.sh 050 051 052 053 054 055
+sudo bash infra/aplica_migraciones.sh 050 051 052 053 054 055
 ```
 
 La base de la máquina se creó el 2026-11-20 con el dump de entonces: le faltan las 050 a 055 del

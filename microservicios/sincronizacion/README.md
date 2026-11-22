@@ -1,8 +1,10 @@
 # EPIDEMIA - Servicio sincronizacion
 
 Puerto externo 5222; puerto interno en Docker, 8000. Recibe lotes de casos capturados sin
-conexión (app móvil) y los manda **uno por uno** a `casos` (`POST /api/v1/cases`, en JSON,
-con el token de quien sincroniza). No escribe tablas de casos.
+conexión (app móvil) y los manda **en una sola llamada** a `casos` (`POST /api/v1/cases/batch`,
+en JSON, con el token de quien sincroniza). No escribe tablas de casos. Antes era una llamada por
+caso: con carga, un lote de 5 tardaba segundos (prueba de carga en la nube, F4). Si `casos` no
+tiene esa ruta (404 o 405), los manda uno por uno con `POST /api/v1/cases`, como antes.
 
 ## Rutas (`/api/v1`)
 
@@ -54,12 +56,13 @@ tiene raíz `resultado_lote`. XSD: `docs/contratos/sincronizacion/lote.xsd`.
   si falla, el lote se mantiene y solo se anota en el log.
 - **Limitaciones conocidas:** (1) si un lote tarda más que el candado (300 s; 100 casos con
   5 s de timeout por llamada pueden pasarse), una segunda petición lo procesa otra vez y el
-  aviso `NEW_CASES` puede duplicarse. (2) Si `casos` crea las filas y falla guardar el
+  aviso `NEW_CASES` puede duplicarse; con el lote en una sola llamada a casos ya es mucho más raro. (2) Si `casos` crea las filas y falla guardar el
   resultado del lote en Redis, el reintento ve todo como duplicado y ya no avisa. Ambos son
   casos extremos y se aceptan.
 - Si casos no responde o contesta 5xx: **todo el lote es 503** `SERVICIO_NO_DISPONIBLE`, sin
   reintentos y sin guardar resultado. El cliente reenvía el lote; los casos ya creados salen
-  como `duplicado` gracias a `local_uuid`. Un 401/403 de casos se propaga.
+  como `duplicado` gracias a `local_uuid`. Un 401/403 de casos se propaga, y un 429 (el límite
+  de casos por cuenta, que cuenta cada caso del lote) llega con su `Retry-After`.
 - Redis caído: 503.
 - Bitácora: un `SYNC` (entidad `sync_batches`, id = `batch_id`) por lote procesado, con
   conteos, en su propia transacción. Si falla, se registra en el log y el lote no se pierde.

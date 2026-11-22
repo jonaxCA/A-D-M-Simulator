@@ -183,3 +183,10 @@ def test_cloud_logging_cubre_cada_contenedor_de_la_nube():
     cubiertos = set(re.findall(r"^  ([a-z][a-z0-9-]*): \*cloud-logging$", registros, re.M))
     assert cubiertos == principales | {"nginx", "certbot"}, cubiertos ^ (principales | {"nginx", "certbot"})
     assert "    driver: gcplogs\n" in registros
+
+
+def test_en_la_carpeta_de_inicio_de_postgres_solo_van_scripts_de_inicio():
+    """infra/postgres se monta como /docker-entrypoint-initdb.d: la imagen de PostgreSQL ejecuta
+    todo .sh y .sql que haya ahí al crear una base nueva. aplica_migraciones.sh estuvo ahí, corrió
+    sin argumentos y dejó la inicialización a medias (2026-11-21)."""
+    assert sorted(p.name for p in (RAIZ / "infra/postgres").iterdir()) == ["10-inicializa.sh"]

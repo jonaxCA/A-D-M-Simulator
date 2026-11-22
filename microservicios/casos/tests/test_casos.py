@@ -388,3 +388,83 @@ def test_filtros_invalidos_422(cliente, captura, consulta):
 
 def test_format_desconocido_400(cliente, captura):
     assert cliente.get("/api/v1/cases?format=csv", headers=captura).status_code == 400
+
+
+# --- POST /api/v1/cases/batch: varios casos en una petición (la usa sincronizacion, F4) -------
+
+UUID_B = "7a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d"
+UUID_C = "8b3c4d5e-6f7a-4b2c-9d3e-4f5a6b7c8d9e"
+UUID_D = "9c4d5e6f-7a8b-4c3d-8e4f-5a6b7c8d9e0f"
+
+
+def test_lote_cada_caso_con_su_resultado_y_en_orden(cliente, captura, base, bitacora):
+    assert cliente.post("/api/v1/cases?format=json", json=cuerpo(), headers=captura).status_code == 201
+    r = cliente.post("/api/v1/cases/batch?format=json", headers=captura, json={"cases": [
+        cuerpo(local_uuid=UUID_B),               # nuevo
+        cuerpo(),                                # su local_uuid ya existía
+        cuerpo(local_uuid=UUID_C, sex="X"),      # datos que no pasan
+        cuerpo(local_uuid=UUID_D, device_id=4),  # teléfono revocado
+    ]})
+    assert r.status_code == 200
+    d = r.get_json()
+    assert d["total"] == 4
+    assert [(f["indice"], f["estado"]) for f in d["resultados"]] == [(0, 201), (1, 200), (2, 422), (3, 409)]
+    assert d["resultados"][0]["caso"]["local_uuid"] == UUID_B
+    assert d["resultados"][1]["caso"]["duplicado"] is True
+    assert d["resultados"][2]["codigo"] == "DATOS_INVALIDOS"
+    assert d["resultados"][3]["codigo"] == "CONFLICTO"
+    # Cada caso en su transacción: el rechazado no deshace al nuevo.
+    assert base.commits == 2 and len(bitacora) == 2
+
+
+def test_lote_lee_los_catalogos_y_el_dispositivo_una_sola_vez(cliente, captura, base, monkeypatch):
+    cuenta = {"catalogo": 0, "dispositivo": 0}
+    original = dispositivos.estado_para_captura
+
+    def enfermedades():
+        cuenta["catalogo"] += 1
+        return ENFERMEDADES
+
+    def estado(device_id, user_id):
+        cuenta["dispositivo"] += 1
+        return original(device_id, user_id)
+
+    monkeypatch.setattr(queries, "get_enfermedades_para_captura", enfermedades)
+    monkeypatch.setattr(dispositivos, "estado_para_captura", estado)
+    casos = [cuerpo(local_uuid=str(uuid.uuid4())) for _ in range(5)]
+    r = cliente.post("/api/v1/cases/batch?format=json", json={"cases": casos}, headers=captura)
+    assert [f["estado"] for f in r.get_json()["resultados"]] == [201] * 5
+    assert cuenta == {"catalogo": 1, "dispositivo": 1}
+
+
+def test_el_lote_cuenta_cada_caso_en_el_limite_de_post_cases(cliente, captura, monkeypatch):
+    """Un lote no se brinca el límite de D31: descuenta un caso por caso, de la misma cuenta que
+    POST /cases."""
+    monkeypatch.setenv("LIMITE_PERMISIVO", "5/60")
+    casos = [cuerpo(local_uuid=str(uuid.uuid4())) for _ in range(4)]
+    assert cliente.post("/api/v1/cases/batch?format=json", json={"cases": casos},
+                        headers=captura).status_code == 200
+    assert cliente.post("/api/v1/cases?format=json", json=cuerpo(local_uuid=str(uuid.uuid4())),
+                        headers=captura).status_code == 201
+    r = cliente.post("/api/v1/cases?format=json", json=cuerpo(local_uuid=str(uuid.uuid4())),
+                     headers=captura)
+    assert r.status_code == 429 and r.headers.get("Retry-After")
+    r = cliente.post("/api/v1/cases/batch?format=json", json={"cases": casos[:1]}, headers=captura)
+    assert r.status_code == 429 and r.headers.get("Retry-After")
+
+
+@pytest.mark.parametrize("cuerpo_lote, texto", [
+    ({"cases": []}, "al menos un caso"),
+    ({"cases": [{"local_uuid": UUID_B}] * 101}, "máximo 100"),
+    ({"cases": ["no es un objeto"]}, "objeto"),
+    ({"cases": [{}], "otro": 1}, "no reconocidos"),
+])
+def test_lote_malformado_422(cliente, captura, cuerpo_lote, texto):
+    r = cliente.post("/api/v1/cases/batch?format=json", json=cuerpo_lote, headers=captura)
+    assert r.status_code == 422 and texto in r.get_json()["detail"]
+
+
+def test_solo_el_capturista_envia_lotes(cliente, token):
+    r = cliente.post("/api/v1/cases/batch?format=json", json={"cases": [cuerpo()]},
+                     headers=token(roles=("ANALISTA",)))
+    assert r.status_code == 403
