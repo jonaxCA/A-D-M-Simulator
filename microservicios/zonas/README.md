@@ -1,8 +1,8 @@
 # EPIDEMIA - Servicio zonas
 
 Detalle por zona (tabla de Monitoreo), datos del mapa por municipio de Nuevo
-León, puntos agregados para un mapa de calor y casos por jurisdicción sanitaria (F7). Solo
-lectura.
+León, puntos agregados para un mapa de calor, casos por jurisdicción sanitaria y la geometría
+oficial de los municipios, con la ubicación de un punto (F7). Solo lectura.
 
 Puerto externo: 5253; puerto interno en Docker: 8000. Contrato en
 `docs/contratos/zonas/openapi.json`.
@@ -18,6 +18,8 @@ igual que Monitoreo y Mapa en el monolito.
 | GET    | `/api/v1/zones/map`  | Municipios con incidencia, nivel del semáforo (`nivel`) y tendencia de 14 días, más la serie acumulada día por día para la línea de tiempo |
 | GET    | `/api/v1/zones/heatmap` | Los casos con coordenadas, agregados en celdas, para un mapa de calor (ver abajo) |
 | GET    | `/api/v1/zones/jurisdictions` | Las cifras de `/zones` sumadas por jurisdicción sanitaria (ver abajo) |
+| GET    | `/api/v1/zones/geometry` | Los 51 municipios como GeoJSON, tal cual, con su ETag (ver abajo) |
+| GET    | `/api/v1/zones/locate` | En qué municipio y jurisdicción cae un punto (`lat`, `lon`) |
 
 Filtros de `/api/v1/zones`: `disease_id`, `region_id`, `days` (7, 30 o 90),
 `q` (nombre del municipio), `order` (`casos` o `incidencia`, por omisión
@@ -56,6 +58,24 @@ con sus `municipios` y los `numeros` de jurisdicción.
   (sur). Con casos por municipio no se puede partir, así que va primero como su propio grupo
   (`compartido-19039`), y la 2 y la 3 llevan solo sus otros municipios. Por eso salen 8 grupos:
   Monterrey y las jurisdicciones 2 a 8.
+
+### Geometría oficial y ubicar un punto (F7)
+
+`geometria.py`. La geometría es `datos/geo/nl_municipios.geojson`: la capa municipal del Marco
+Geoestadístico 2024 de INEGI, reproyectada a lon/lat y simplificada a 0.0012 grados (unos 130 m)
+por `datos/scripts/build_municipios_inegi.py`, el mismo script que hace la del mapa de la web (una
+prueba revisa que sean iguales). El miembro `fuente` del GeoJSON cita a INEGI.
+
+- **`/zones/geometry`:** el archivo tal cual (`application/geo+json`, unos 250 KB), con `ETag` y
+  `Cache-Control` de un día; con `If-None-Match` igual, 304 sin cuerpo. Es lo que el escritorio
+  necesita para dibujar los municipios en lugar de marcadores (A4).
+- **`/zones/locate?lat=&lon=`:** el municipio (con su `region_id`, para llenar un caso) y su
+  jurisdicción sanitaria. Sin PostGIS: cada municipio guarda su recuadro, que descarta casi todos,
+  y luego la prueba de punto en polígono, con huecos (unos 0.13 ms por punto; coincide con shapely
+  en 8 407 puntos al azar). Como la geometría está simplificada, un punto en la rendija entre dos
+  fronteras (o a menos de 0.0015 grados del borde del estado) se asigna al municipio más cercano y
+  sale con `aproximado` en true. Fuera de Nuevo León, `municipio` y `jurisdiccion` son null.
+- La imagen copia el GeoJSON (`Dockerfile` y la excepción en `.dockerignore`).
 
 ### `mayor_cambio` (LIMP-20)
 

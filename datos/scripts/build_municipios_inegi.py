@@ -29,8 +29,12 @@ dibuja en el mapa sea el mismo que el de la base.
 
 Salida:
   - frontend_web/app/static/js/nl_municipios.json   el geojson que consume Highcharts Maps
+  - datos/geo/nl_municipios.geojson  la misma geometria con su fuente (miembro "fuente"); la
+                                   sirve zonas en GET /api/v1/zones/geometry y la usa para ubicar
+                                   un punto (GET /api/v1/zones/locate), F7
   - datos/geo/nl_centroides.json    codigo -> {name, lat, lon}, insumo de
                                    datos/scripts/build_regiones_sql.py
+Los tres se escriben con LF, tambien en Windows.
 
 Dependencias (solo de build -- no van en requirements.txt, que es el runtime
 de la app):
@@ -62,6 +66,15 @@ SHP = os.path.join(GEO_DIR, "inegi_mg2024", "19mun")
 CATALOGO = os.path.join(GEO_DIR, "nl_catalogo_oficial.json")
 OUT_GEOJSON = os.path.join(os.path.dirname(BASE_DIR), "frontend_web", "app", "static", "js", "nl_municipios.json")
 OUT_CENTROIDES = os.path.join(GEO_DIR, "nl_centroides.json")
+OUT_ZONAS = os.path.join(GEO_DIR, "nl_municipios.geojson")
+# Lo pide la licencia de INEGI: citar la fuente. Va como miembro extra del FeatureCollection.
+FUENTE = {
+    "documento": "INEGI. Marco Geoestadístico 2024, capa municipal de Nuevo León (19mun)",
+    "url": "https://www.inegi.org.mx/contenidos/productos/prod_serv/contenidos/espanol/"
+           "bvinegi/productos/geografia/marcogeo/794551132173/19_nuevoleon.zip",
+    "proceso": "Reproyectada de EPSG:6372 a EPSG:4326 (lon/lat) y simplificada con shapely "
+               "(tolerancia en grados) por datos/scripts/build_municipios_inegi.py",
+}
 
 TOLERANCIA_DEFAULT = 0.0012
 
@@ -152,14 +165,19 @@ def main():
         })
         centroides[code] = {"name": nombre, "lat": round(c.y, 6), "lon": round(c.x, 6)}
 
-    with open(OUT_GEOJSON, "w", encoding="utf-8") as f:
+    with open(OUT_GEOJSON, "w", encoding="utf-8", newline="\n") as f:
         json.dump({"type": "FeatureCollection", "features": features}, f)
-    with open(OUT_CENTROIDES, "w", encoding="utf-8") as f:
+    fuente = dict(FUENTE, tolerancia_grados=args.tolerancia)
+    with open(OUT_ZONAS, "w", encoding="utf-8", newline="\n") as f:
+        json.dump({"type": "FeatureCollection", "fuente": fuente, "features": features}, f,
+                  ensure_ascii=False)
+    with open(OUT_CENTROIDES, "w", encoding="utf-8", newline="\n") as f:
         json.dump(centroides, f, ensure_ascii=False, indent=2)
 
     tam = os.path.getsize(OUT_GEOJSON)
     print(f"tolerancia: {args.tolerancia}  vertices: {verts:,}")
     print(f"guardado: {OUT_GEOJSON} ({tam/1024:,.0f} KB)")
+    print(f"guardado: {OUT_ZONAS}")
     print(f"guardado: {OUT_CENTROIDES}")
 
 

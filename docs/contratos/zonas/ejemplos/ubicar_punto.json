@@ -1,0 +1,21 @@
+{
+  "lat": 25.6866,
+  "lon": -100.3161,
+  "en_nuevo_leon": true,
+  "aproximado": false,
+  "precision_m": 130,
+  "municipio": {
+    "region_id": 3,
+    "region_code": "19039",
+    "nombre": "Monterrey"
+  },
+  "jurisdiccion": {
+    "clave": "compartido-19039",
+    "nombre": "Monterrey (jurisdicciones 1, 2 y 3)",
+    "numeros": [
+      1,
+      2,
+      3
+    ]
+  }
+}

@@ -99,8 +99,8 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 | Indicadores geoespaciales | **Cumple** | Casos, incidencia, variación a 7 días y graves por municipio (`/zones`) |
 | Agrupaciones territoriales | **Hecho** (2026-11-21) | `/zones/jurisdictions`: por jurisdicción sanitaria, con los municipios del artículo 27 del Reglamento Interior de Servicios de Salud de NL (pendiente de confirmar que siga vigente). Monterrey, repartido entre las jurisdicciones 1, 2 y 3, va como su propio grupo |
 | Datos para mapas de calor | **Hecho** (2026-11-21) | `/zones/heatmap`: casos agregados en celdas de 0.01 a 0.05 grados, con peso de 0 a 1; una celda con menos de 3 casos no se publica (privacidad) |
-| Consultas espaciales optimizadas | Falta | Sin índice espacial (PostGIS) ni consultas por área |
-| Geometría oficial de los municipios | Falta | El mapa del escritorio (A4) dibuja marcadores; necesita los polígonos y su fuente |
+| Consultas espaciales optimizadas | Parcial (2026-11-22) | `/zones/locate`: en qué municipio y jurisdicción cae un punto, con recuadros que descartan antes de la prueba de punto en polígono (0.13 ms). Sin PostGIS: no hay índice espacial en la base ni casos por un área dibujada |
+| Geometría oficial de los municipios | **Hecho** (2026-11-22) | `/zones/geometry`: los 51 municipios en GeoJSON, del Marco Geoestadístico 2024 de INEGI (la fuente va en el archivo). Falta que el escritorio (A4) la dibuje en lugar de marcadores |
 
 ## Plataforma
 
@@ -156,6 +156,6 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 | ~~Mediano~~ | **Hecho** el 2026-11-21: puntos agregados para el mapa de calor y agrupación por jurisdicción sanitaria | `zonas` |
 | ~~Mediano~~ | **Hecho** el 2026-11-22 (D47): cambiar estado (validar, descartar, marcar duplicado) y corregir datos, con historial y control de versión (`If-Match`), y los conflictos de la sincronización | `casos` y `sincronizacion` |
 | Grande | Formularios por enfermedad con versiones | `casos` (y la móvil, B4) |
-| Grande | Geometría oficial de los municipios y consultas espaciales | `zonas` |
+| ~~Grande~~ | **Hecho** el 2026-11-22: geometría oficial de los municipios y ubicar un punto; sin PostGIS ni consultas por área | `zonas` |
 | Grande | Campañas, avisos de datos incompletos y preferencias por perfil | `notificaciones` y `vacunas` |
 | Transversal | Dejar de importar `backend_web` (E8), los perfiles nuevos y el alcance (D42, D43) | los nueve |
