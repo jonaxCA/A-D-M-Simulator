@@ -1,6 +1,6 @@
 # D39 - Simulación exploratoria, predicción y resultado validado
 
-Fecha: 2026-11-19 · Estado: Aceptada (tomada en sesión por el equipo del salón 2; falta validarla con el líder) · Amplía la regla 9 del `AGENTS.md` de la raíz
+Fecha: 2026-11-19 · Estado: Aceptada · Amplía la regla 9 del `AGENTS.md` de la raíz
 
 ## Contexto
 La retroalimentación pide distinguir con claridad entre simulaciones exploratorias, predicciones y resultados validados, y recuerda que una curva no demuestra que el modelo sea correcto. Hoy todas las pantallas muestran el mismo `AVISO_SIMULACION`, que solo dice que no es una predicción.
