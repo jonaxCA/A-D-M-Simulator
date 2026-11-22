@@ -69,10 +69,10 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 |---|---|---|
 | Incidencia | **Cumple** | Tasa por 100 000 habitantes de la semana, contra la previa (`/dashboard/indicators`) |
 | Prevalencia | Falta | Casos activos sí; prevalencia como tasa, no |
-| Mortalidad | Falta | `severity = fallecido` existe en los casos: se puede calcular |
-| Hospitalizaciones | Falta | No hay un dato de hospitalización; `grave` es lo más cercano |
+| Mortalidad | **Hecho** (2026-11-21) | `tasa_mortalidad` (fallecidos por 100 000 habitantes, contra la semana previa) y `letalidad` (% de los casos) |
+| Hospitalizaciones | Parcial | No hay un dato de hospitalización; desde el 2026-11-21, `casos_graves` (% con gravedad `grave`) es lo más cercano |
 | Capacidad utilizada | Falta | No hay fuente de capacidad (es el servicio opcional 31) |
-| Numerador, denominador y periodo | Falta | Las cifras salen calculadas, sin decir de qué conteo, sobre qué población ni de qué fechas |
+| Numerador, denominador y periodo | **Hecho** (2026-11-21) | `indicadores` en `/dashboard/indicators`: cada uno con `numerador`, `denominador`, `factor`, `periodo` (fechas), la semana previa y la variación |
 
 ### `series` (5252)
 
@@ -151,7 +151,7 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 |---|---|---|
 | ~~Chico~~ | **Hecho** el 2026-11-21: cola, ejecutando y simuladores vivos por motor (`/services/capacity`) | `estado-servicios` y `simulador` |
 | ~~Chico~~ | **Hecho** el 2026-11-21: avisar con `SYSTEM` a los ADMINISTRADOR cuando un servicio cae o se recupera (alertas técnicas y errores operativos) | `estado-servicios` y `notificaciones` |
-| Chico | Numerador, denominador y periodo en cada indicador; mortalidad y casos graves | `indicadores` |
+| ~~Chico~~ | **Hecho** el 2026-11-21: numerador, denominador y periodo en cada indicador; mortalidad, letalidad y casos graves | `indicadores` |
 | Mediano | Agregación por semana o mes, paginación y salida para Highcharts | `series` |
 | Mediano | Puntos agregados para el mapa de calor y agrupación por región del estado | `zonas` |
 | Mediano | Cambiar estado (validar, descartar, marcar duplicado) y corregir datos, con historial y control de versión (`If-Match`); con eso, los conflictos de la sincronización | `casos` y `sincronizacion` |
