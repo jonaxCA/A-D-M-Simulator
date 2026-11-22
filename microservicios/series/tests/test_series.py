@@ -102,3 +102,94 @@ def test_redis_caido_es_503_en_ruta_protegida(cliente, token, apagar_redis):
     r = cliente.get("/api/v1/series/cases?format=json", headers=cabeceras)
     assert r.status_code == 503
     assert r.get_json()["codigo"] == "SERVICIO_NO_DISPONIBLE"
+
+
+# ------------------------------------- rango libre, agregación, paginación y Highcharts (F7)
+
+NUEVAS = ["/api/v1/series/cases/aggregate", "/api/v1/series/cases/highcharts"]
+
+
+@pytest.fixture
+def conteo(monkeypatch):
+    """Lo que regresa la base a agregadas: hoy es 2026-11-21 y hay casos el 20 y el 21."""
+    from datetime import date
+    from microservicios.series import agregadas
+    pedidas = []
+
+    def query(sql, params=None, one=False):
+        if "current_date AS hoy" in sql:
+            return {"hoy": date(2026, 11, 21)}
+        pedidas.append(params)
+        return [{"inicio": date(2026, 11, 20), "grupo": "F", "casos": 2},
+                {"inicio": date(2026, 11, 21), "grupo": "M", "casos": 3}]
+
+    monkeypatch.setattr(agregadas, "query", query)
+    return pedidas
+
+
+@pytest.mark.parametrize("ruta", NUEVAS)
+def test_las_nuevas_piden_sesion(cliente, conteo, ruta):
+    assert cliente.get(ruta + "?format=json").status_code == 401
+
+
+def test_agregada_paginada_con_sus_filtros(cliente, token, conteo):
+    r = cliente.get("/api/v1/series/cases/aggregate?from=2026-11-15&to=2026-11-21&group_by=sexo"
+                    "&page=2&size=5&disease_id=1&format=json", headers=token())
+    assert r.status_code == 200
+    datos = r.get_json()
+    assert datos["filtros"] == {"disease_id": 1, "region_id": None, "desde": "2026-11-15",
+                                "hasta": "2026-11-21", "intervalo": "dia", "agrupar": "sexo"}
+    assert (datos["total"], datos["pagina"], datos["paginas"]) == (7, 2, 2)
+    assert [p["inicio"] for p in datos["periodos"]] == ["2026-11-20", "2026-11-21"]
+    assert datos["grupos"] == ["Masculino", "Femenino"] and datos["total_casos"] == 5
+    assert conteo[0]["disease_id"] == 1
+
+
+def test_agregada_por_omision_90_dias_por_dia(cliente, token, conteo):
+    datos = cliente.get("/api/v1/series/cases/aggregate?format=json", headers=token()).get_json()
+    assert (datos["filtros"]["desde"], datos["filtros"]["hasta"]) == ("2026-08-24", "2026-11-21")
+    assert datos["total"] == 90 and datos["paginas"] == 2 and len(datos["periodos"]) == 52
+
+
+def test_agregada_con_days_y_por_semana_en_xml(cliente, token, conteo):
+    raiz = ET.fromstring(cliente.get("/api/v1/series/cases/aggregate?days=7&interval=semana",
+                                     headers=token()).data)
+    assert raiz.tag == "serie_agregada"
+    periodos = raiz.find("periodos").findall("periodo")
+    assert [p.findtext("semana_epi") for p in periodos] == ["2026-46"]
+    assert periodos[0].findtext("completo") == "true"
+
+
+def test_highcharts_en_json_y_xml(cliente, token, conteo):
+    datos = cliente.get("/api/v1/series/cases/highcharts?days=7&group_by=sexo&format=json",
+                        headers=token()).get_json()
+    assert datos["xAxis"] == {"type": "datetime"}
+    assert [s["name"] for s in datos["series"]] == ["Masculino", "Femenino"]
+    assert [p["y"] for p in datos["series"][0]["data"]] == [0, 0, 0, 0, 0, 0, 3]
+    raiz = ET.fromstring(cliente.get("/api/v1/series/cases/highcharts?days=7", headers=token()).data)
+    assert raiz.tag == "highcharts"
+    assert raiz.find("series/serie").findtext("name") == "Casos"
+    assert len(raiz.find("series/serie/data").findall("punto")) == 7
+
+
+@pytest.mark.parametrize("consulta", ["size=367", "size=0", "page=0", "interval=anio",
+                                      "group_by=edad_y_sexo", "days=7&from=2026-11-01",
+                                      "from=2026-11-21&to=2026-11-01", "from=21-11-2026"])
+def test_agregada_invalida_es_422(cliente, token, conteo, consulta):
+    r = cliente.get("/api/v1/series/cases/aggregate?%s&format=json" % consulta, headers=token())
+    assert r.status_code == 422, consulta
+
+
+def test_agregada_con_enfermedad_inexistente_es_404(cliente, token, conteo):
+    r = cliente.get("/api/v1/series/cases/highcharts?disease_id=99&format=json", headers=token())
+    assert r.status_code == 404
+
+
+def test_agregada_sale_de_cache_por_filtros(cliente, token, conteo):
+    cabeceras = token()
+    for _ in range(2):
+        cliente.get("/api/v1/series/cases/aggregate?days=7&page=1", headers=cabeceras)
+    cliente.get("/api/v1/series/cases/highcharts?days=7", headers=cabeceras)
+    assert len(conteo) == 1
+    cliente.get("/api/v1/series/cases/aggregate?days=7&interval=mes", headers=cabeceras)
+    assert len(conteo) == 2

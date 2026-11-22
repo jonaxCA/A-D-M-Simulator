@@ -1,10 +1,16 @@
+import json
+
 from flask import request
 
 from epidemia_comun import cache
 from epidemia_comun.ambito import clave_ambito, filtros_ambito
+from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import responder
 from epidemia_comun.seguridad import requiere_token
+from epidemia_comun.validaciones import entero_positivo
 from backend_web import queries
+
+from . import agregadas
 
 # Los periodos de la pantalla de Monitoreo del monolito.
 PERIODOS = (7, 30, 90)
@@ -21,6 +27,23 @@ def _consulta(nombre, funcion):
 
 def _filtros(f):
     return {"disease_id": f["disease_id"], "region_id": f["region_id"], "days": f["dias"]}
+
+
+def _agregadas():
+    # Rango libre, intervalo y grupo (agregadas.py, F7); los filtros de enfermedad y municipio,
+    # con sus 404, son los de siempre.
+    f = filtros_ambito(request.args, PERIODOS)
+    dias = f["dias"] if request.args.get("days") not in (None, "") else None
+    desde, hasta = agregadas.rango(request.args, dias)
+    filtros = {"disease_id": f["disease_id"], "region_id": f["region_id"],
+               "desde": desde.isoformat(), "hasta": hasta.isoformat(),
+               "intervalo": agregadas.opcion(request.args, "interval", agregadas.INTERVALOS, "dia"),
+               "agrupar": agregadas.opcion(request.args, "group_by", agregadas.AGRUPACIONES)}
+    datos = cache.obtener("series", "aggregate:%s" % json.dumps(filtros, sort_keys=True), TTL_CACHE,
+                          lambda: agregadas.calcular(desde, hasta, filtros["intervalo"],
+                                                     filtros["agrupar"], f["disease_id"],
+                                                     f["region_id"]))
+    return filtros, datos
 
 
 def registrar(app):
@@ -48,3 +71,22 @@ def registrar(app):
     def totales():
         f, datos = _consulta("totals", queries.get_monitoreo_totales)
         return responder({"filtros": _filtros(f), "totales": datos}, "totales")
+
+    @app.get("/api/v1/series/cases/aggregate")
+    @requiere_token()
+    def agregada():
+        numero = entero_positivo(request.args.get("page", "1"), "page")
+        tamano = entero_positivo(request.args.get("size", str(agregadas.TAMANO_POR_OMISION)), "size")
+        if tamano > agregadas.TAMANO_MAXIMO:
+            raise ErrorAPI(422, "DATOS_INVALIDOS",
+                           "size no puede ser mayor que %d." % agregadas.TAMANO_MAXIMO)
+        filtros, datos = _agregadas()
+        return responder(dict(agregadas.pagina(datos, numero, tamano), filtros=filtros),
+                         "serie_agregada")
+
+    # La misma serie, sin paginar, como la espera Highcharts: {xAxis, yAxis, series}.
+    @app.get("/api/v1/series/cases/highcharts")
+    @requiere_token()
+    def para_highcharts():
+        filtros, datos = _agregadas()
+        return responder(dict(agregadas.highcharts(datos), filtros=filtros), "highcharts")
