@@ -7,10 +7,12 @@ from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFileDialog, QFrame, Q
                                QPlainTextEdit, QPushButton, QScrollArea, QTabWidget, QVBoxLayout, QWidget)
 
 from .. import api, esquemas, servicios
+from .auditoria import DialogoAuditoria
 from .comun import celda, dato_vertical, encabezado, estado, fecha, num, tabla, tarjeta
 from .formularios import DialogoEscenario, DialogoVersion, FormIntervencion, mostrar_parametros
 from .linea_tiempo import LineaTiempo
 from .tareas import en_hilo
+from .validacion_modelo import DialogoValidacionModelo
 from .zonas import DialogoZonas
 
 
@@ -33,6 +35,7 @@ class VistaEscenarios(QWidget):
         self.v = ventana
         self.c = ventana.cliente
         self.detalle = None
+        self.historial_versiones = []
         self._solicitud = 0
         self._cargando_detalle = False
         self.tipos = []
@@ -116,9 +119,15 @@ class VistaEscenarios(QWidget):
         self.b_parametros.clicked.connect(self.consultar_parametros)
         self.b_zonas = QPushButton("Indicadores municipales")
         self.b_zonas.clicked.connect(self.abrir_zonas)
+        self.b_auditoria = QPushButton("Historial de auditoría")
+        self.b_auditoria.clicked.connect(self.abrir_auditoria)
+        self.b_modelo = QPushButton("Validación del modelo")
+        self.b_modelo.clicked.connect(self.abrir_modelo)
         accesos = QHBoxLayout()
         accesos.addWidget(self.b_parametros)
         accesos.addWidget(self.b_zonas)
+        accesos.addWidget(self.b_auditoria)
+        accesos.addWidget(self.b_modelo)
         accesos.addStretch(1)
         rejilla.addLayout(accesos)
         capa.addWidget(datos)
@@ -251,6 +260,7 @@ class VistaEscenarios(QWidget):
             return
         self._cargando_detalle = False
         self.detalle, versiones = resultado
+        self.historial_versiones = versiones
         d, v = self.detalle, self._version()
         self.titulo.setText("%s · %s v%s" % (d["name"], estado(v.get("status"))[0], v.get("version_number")))
         self.valores["enfermedad"].setText(d.get("enfermedad") or "—")
@@ -316,6 +326,8 @@ class VistaEscenarios(QWidget):
             b.setEnabled(hay)
         self.b_parametros.setEnabled(bool(hay and self.detalle.get("disease_id")))
         self.b_zonas.setEnabled(self.b_parametros.isEnabled())
+        self.b_auditoria.setEnabled(hay)
+        self.b_modelo.setEnabled(bool(hay and self.detalle.get("disease_id") and self.detalle.get("region_id")))
         self.b_version.setEnabled(hay and self._propio() and bool(self._version().get("is_current"))
                                   and self._version().get("status") != "borrador")
         for b in (self.b_enviar, self.b_agregar, self.b_subir, self.b_bajar, self.b_quitar):
@@ -411,6 +423,13 @@ class VistaEscenarios(QWidget):
     def abrir_zonas(self):
         d = self.detalle
         DialogoZonas(self, self.v, d["disease_id"], d.get("enfermedad") or "Enfermedad").open()
+
+    def abrir_auditoria(self):
+        if self.detalle and not self._cargando_detalle:
+            DialogoAuditoria(self, self.v, self.detalle, self.historial_versiones).open()
+
+    def abrir_modelo(self):
+        DialogoValidacionModelo(self, self.v, self.detalle).open()
 
     def enviar(self):
         pregunta = ("Al enviarla, la versión %s queda congelada y un epidemiólogo la revisa en la web. ¿Enviar?"

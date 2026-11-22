@@ -8,7 +8,8 @@ App en Python y PySide6 para el **analista**. Diseña escenarios y su XML, los e
 lanza lotes de réplicas y compara los resultados con exportación e impresión. Es el proceso que
 le da D4 al escritorio. La web conserva la aprobación y la consulta.
 
-Solo habla con los microservicios y solo en **XML**. Nunca toca PostgreSQL ni Redis. Conoce
+Habla con los microservicios en **XML** y descarga la geometría municipal en **GeoJSON**,
+el formato del contrato de `zonas/geometry`. Nunca toca PostgreSQL ni Redis. Conoce
 una sola URL, la del directorio de `estado-servicios` (D13), y de ahí saca las demás.
 
 ## Instalar y correr

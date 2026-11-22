@@ -1,10 +1,11 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QLabel,
-                               QTabWidget, QVBoxLayout, QWidget)
+                               QStackedWidget, QTabWidget, QVBoxLayout, QWidget)
 
-from .. import servicios
+from .. import api, servicios
 from . import graficas
 from .comun import celda, num, tabla
+from .mapa import MapaMunicipal, NIVELES
 from .tareas import en_hilo
 
 
@@ -18,6 +19,10 @@ class DialogoZonas(QDialog):
         self.enfermedad_id = enfermedad_id
         self.fechas = []
         self.serie_municipal = {}
+        self.geometria = None
+        self.etag = None
+        self.indicadores = []
+        self.filas_por_codigo = {}
 
         capa = QVBoxLayout(self)
         filtros = QHBoxLayout()
@@ -33,9 +38,20 @@ class DialogoZonas(QDialog):
         self.fuente.setWordWrap(True)
         self.fuente.setTextFormat(Qt.PlainText)
         capa.addWidget(self.fuente)
+        self.leyenda = QLabel(" · ".join('<span style="color:%s">■</span> %s' % (color, nombre)
+                                         for nombre, color in NIVELES.values()))
+        self.leyenda.setTextFormat(Qt.RichText)
+        self.leyenda.setWordWrap(True)
+        self.leyenda.hide()
+        capa.addWidget(self.leyenda)
         contenido = QHBoxLayout()
+        self.graficos = QStackedWidget()
         self.mapa = graficas.vista()
-        contenido.addWidget(self.mapa, 1)
+        self.poligonos = MapaMunicipal()
+        self.poligonos.municipio.connect(self._elegir_municipio)
+        self.graficos.addWidget(self.mapa)
+        self.graficos.addWidget(self.poligonos)
+        contenido.addWidget(self.graficos, 1)
         self.tabla = tabla(["Municipio", "Casos", "Incidencia por 100 000", "Nivel"], estirar=(0,))
         self.tabla.currentCellChanged.connect(self._mostrar_serie)
         pestanas = QTabWidget()
@@ -62,23 +78,26 @@ class DialogoZonas(QDialog):
         self.fuente.setText("Consultando indicadores municipales del servicio zonas…")
         self.tabla.setRowCount(0)
         self.tabla_serie.setRowCount(0)
+        self.graficos.setCurrentWidget(self.mapa)
+        self.leyenda.hide()
         graficas.sin_datos(self.mapa, "Consultando coordenadas…")
         en_hilo(servicios.zonas_mapa, self.ventana.cliente, self.enfermedad_id, self.periodo.currentData(),
                 listo=self._mostrar, fallo=self._fallo)
 
     def _mostrar(self, datos):
-        self.periodo.setEnabled(True)
         municipios = datos.get("municipios") or []
+        self.indicadores = municipios
+        self.filas_por_codigo = {}
         serie = datos.get("serie") or {}
         self.fechas = serie.get("fechas") or []
         self.serie_municipal = {s["region_code"]: s for s in serie.get("municipios") or []}
         periodo = datos.get("filtros", {}).get("days") or self.periodo.currentData()
         intervalo = " · %s a %s" % (self.fechas[0], self.fechas[-1]) if self.fechas else ""
-        self.fuente.setText("Fuente: zonas · casos registrados · periodo de %s días%s. "
-                            "Puntos por coordenada municipal; colores según el nivel del servicio."
-                            % (periodo, intervalo))
+        self.periodo_texto = "Fuente de incidencia: zonas · periodo de %s días%s." % (periodo, intervalo)
+        self.fuente.setText(self.periodo_texto + " Consultando límites municipales…")
         for municipio in municipios:
             fila = self.tabla.rowCount()
+            self.filas_por_codigo[municipio["region_code"]] = fila
             self.tabla.insertRow(fila)
             valores = (municipio["nombre"], num(municipio.get("casos")), num(municipio.get("incidencia"), 2),
                        municipio.get("nivel"))
@@ -87,10 +106,39 @@ class DialogoZonas(QDialog):
         graficas.municipios(self.mapa, municipios)
         if municipios:
             self.tabla.selectRow(0)
+        en_hilo(servicios.geometria_municipal, self.ventana.cliente, self.etag,
+                listo=self._mostrar_geometria, fallo=self._fallo_geometria)
+
+    def _mostrar_geometria(self, resultado):
+        datos, self.etag = resultado
+        if datos is not None:
+            self.geometria = datos
+        self.periodo.setEnabled(True)
+        if not self.geometria or not self.geometria.get("features"):
+            self.fuente.setText(self.periodo_texto + " Geometría sin municipios. Se muestran coordenadas.")
+            return
+        self.graficos.setCurrentWidget(self.poligonos)
+        self.poligonos.poner(self.geometria, self.indicadores)
+        item = self.tabla.item(self.tabla.currentRow(), 0)
+        self.poligonos.elegir(item.data(Qt.UserRole) if item else None)
+        fuente = self.geometria.get("fuente") or {}
+        self.fuente.setText(self.periodo_texto + " Límites: " + (fuente.get("documento") or "servicio zonas") + ".")
+        self.leyenda.show()
+
+    def _fallo_geometria(self, exc):
+        self.periodo.setEnabled(True)
+        self.fuente.setText(self.periodo_texto + " Límites no disponibles. Se muestran coordenadas.")
+        if isinstance(exc, api.SesionCerrada):
+            self.ventana.mostrar_error(exc)
+
+    def _elegir_municipio(self, codigo):
+        if codigo in self.filas_por_codigo:
+            self.tabla.selectRow(self.filas_por_codigo[codigo])
 
     def _mostrar_serie(self, fila, *_):
         self.tabla_serie.setRowCount(0)
         municipio = self.tabla.item(fila, 0)
+        self.poligonos.elegir(municipio.data(Qt.UserRole) if municipio is not None else None)
         if municipio is None:
             self.encabezado_serie.setText("Elige un municipio en la tabla.")
             return

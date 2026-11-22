@@ -59,6 +59,35 @@ def zonas_mapa(c, enfermedad_id, dias):
     return c.pedir("zonas", "GET", "/api/v1/zones/map", params={"disease_id": enfermedad_id, "days": dias})
 
 
+def geometria_municipal(c, etag=None):
+    r = c.enviar("zonas", "GET", "/api/v1/zones/geometry", accept="application/geo+json", etag=etag)
+    if r.status_code == 304 and etag:
+        return None, etag
+    if r.status_code == 200 and r.headers.get("Content-Type", "").split(";")[0] == "application/geo+json":
+        try:
+            datos = r.json()
+            if datos.get("type") == "FeatureCollection" and isinstance(datos.get("features"), list):
+                return datos, r.headers.get("ETag")
+        except (ValueError, AttributeError):
+            pass
+    raise api.ErrorServicio("El servicio zonas no devolvió una geometría municipal GeoJSON válida.")
+
+
+def historial_auditoria(c, entidad, identificador, limite, desplazamiento):
+    return c.pedir("roles", "GET", "/api/v1/audit/history/%s/%d" % (entidad, identificador),
+                   params={"limit": limite, "offset": desplazamiento})
+
+
+def estado_calibracion(c, enfermedad_id, region_id):
+    return c.pedir("pareto", "GET", "/api/v1/pareto/calibration",
+                   params={"disease": enfermedad_id, "region": region_id})
+
+
+def sensibilidad(c, version_id, parametro, cambios):
+    return c.pedir("pareto", "GET", "/api/v1/pareto/sensitivity",
+                   params={"version": version_id, "parameter": parametro, "percent": cambios})
+
+
 def tipos_intervencion(c):
     return c.pedir("tipos-intervencion", "GET", "/api/v1/intervention-types", publico=True).get("tipos") or []
 
