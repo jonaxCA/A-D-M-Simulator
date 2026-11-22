@@ -117,3 +117,13 @@ def test_la_imagen_trae_la_geometria():
     docker = (RAIZ / "microservicios/zonas/Dockerfile").read_text(encoding="utf-8")
     assert "datos/geo/nl_municipios.geojson" in docker
     assert "!datos/geo/nl_municipios.geojson" in (RAIZ / ".dockerignore").read_text(encoding="utf-8")
+
+
+def test_cada_centroide_cae_dentro_de_su_municipio():
+    """El marcador de un municipio (regions.centroid_lat/lon, de nl_centroides.json) va dentro de
+    él. El centroide de Marín, cóncavo, caía en Doctor González; build_municipios_inegi.py usa un
+    punto interior cuando el centroide queda fuera."""
+    centroides = json.loads((RAIZ / "datos/geo/nl_centroides.json").read_text(encoding="utf-8"))
+    fuera = {codigo: d["name"] for codigo, d in centroides.items()
+             if geometria.localiza(d["lat"], d["lon"]) != ({"region_code": codigo, "name": d["name"]}, False)}
+    assert fuera == {}
