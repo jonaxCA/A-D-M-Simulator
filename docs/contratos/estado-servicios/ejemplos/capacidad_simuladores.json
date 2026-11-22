@@ -1,0 +1,59 @@
+{
+  "revisado": "2026-11-21T18:30:05+00:00",
+  "latido_segundos": 30,
+  "motores": [
+    {
+      "nombre": "seir-ref",
+      "en_cola": 0,
+      "en_cola_por_prioridad": {
+        "alta": 0,
+        "normal": 0,
+        "baja": 0
+      },
+      "vivos": 1,
+      "ocupados": 0,
+      "libres": 1,
+      "simuladores": [
+        {
+          "nombre": "5c1f0e2a9b3d",
+          "corrida_actual": null,
+          "procesadas": 12,
+          "visto": "2026-11-21T18:30:01+00:00"
+        }
+      ]
+    },
+    {
+      "nombre": "abm-ref",
+      "en_cola": 3,
+      "en_cola_por_prioridad": {
+        "alta": 1,
+        "normal": 2,
+        "baja": 0
+      },
+      "vivos": 1,
+      "ocupados": 1,
+      "libres": 0,
+      "simuladores": [
+        {
+          "nombre": "8d4b7a6c2e10",
+          "corrida_actual": 41,
+          "procesadas": 7,
+          "visto": "2026-11-21T18:30:04+00:00"
+        }
+      ]
+    },
+    {
+      "nombre": "abm-gpu",
+      "en_cola": 2,
+      "en_cola_por_prioridad": {
+        "alta": 0,
+        "normal": 2,
+        "baja": 0
+      },
+      "vivos": 0,
+      "ocupados": 0,
+      "libres": 0,
+      "simuladores": []
+    }
+  ]
+}

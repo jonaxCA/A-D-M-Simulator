@@ -4,12 +4,12 @@ from epidemia_comun import mongo
 from epidemia_comun.errores import ErrorAPI, respuesta_error
 from epidemia_comun.formatos import responder
 from epidemia_comun.redis_compartido import RedisNoDisponible
-from . import sondeo
+from . import capacidad, sondeo
 
 ESTADOS = ("ok", "degradado", "caido")
 
 
-# Las tres rutas son públicas: las apps y la consola piden aquí la URL de auth antes de
+# Las cuatro rutas son públicas: las apps y la consola piden aquí la URL de auth antes de
 # iniciar sesión, y la salud de cada servicio ya es pública en su /health.
 def registrar(app):
     @app.errorhandler(RedisNoDisponible)
@@ -36,6 +36,11 @@ def registrar(app):
         servicios = [dict(s, errores=errores.get(s["nombre"])) for s in servicios]
         resumen = {e: sum(s["estado"] == e for s in servicios) for e in ESTADOS}
         return responder({"resumen": resumen, "servicios": servicios}, "estado_servicios")
+
+    # Colas y capacidad por motor (F7): sale de Redis, así que con Redis caído es 503.
+    @app.get("/api/v1/services/capacity")
+    def capacidad_simuladores():
+        return responder(capacidad.por_motor(), "capacidad")
 
     # El historial sale de MongoDB (D28): con MongoDB caído responde 503, aunque Redis esté bien.
     @app.get("/api/v1/services/<nombre>/history")

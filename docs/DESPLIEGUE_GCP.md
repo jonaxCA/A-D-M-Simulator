@@ -146,6 +146,12 @@ gcloud logging read 'logName="projects/integracion-515321/logs/gcplogs-docker-dr
 En la consola: **Logging → Explorador de registros**. `docker logs` sigue funcionando en la
 máquina. Los primeros 50 GiB al mes no se cobran.
 
+Además, si un servicio cae, se degrada o se recupera y el cambio dura 30 s, los ADMINISTRADOR
+reciben un aviso `SYSTEM` en su bandeja (alertas técnicas de `estado-servicios`, F7);
+`ALERTAS_TECNICAS=0` en `infra/.env` las apaga. Las colas y los simuladores vivos por motor,
+incluido el de la PC con GPU, están en `https://epidemos.app/estado-servicios/api/v1/services/capacity`
+y en la consola.
+
 ## 8. Actualizar
 
 ```bash

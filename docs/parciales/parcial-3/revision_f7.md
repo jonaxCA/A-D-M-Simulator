@@ -7,6 +7,7 @@ Revisado el 2026-11-21 contra [`RETROALIMENTACION_SEGUNDO_PARCIAL.txt`](RETROALI
 `estado-servicios` («Dueños de los servicios» del [checklist](checklist.md)).
 
 **Cumple** = hay ruta y prueba. **Parcial** = una parte, o solo de lectura. **Falta** = no existe.
+Lo que se cerró después de la revisión dice **Hecho**, con su fecha.
 
 ## Vigilancia
 
@@ -113,10 +114,10 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 | Escenarios por aprobar | **Cumple** | `SCENARIO_SUBMITTED` a los EPIDEMIOLOGO (y aprobado o rechazado al autor) |
 | Corridas terminadas | **Cumple** | `RUN_FINISHED` y `RUN_FAILED` a quien la pidió |
 | Casos nuevos | **Cumple** | `NEW_CASES` a los EPIDEMIOLOGO, una vez por lote (D32) |
-| Errores operativos | Falta | El tipo `SYSTEM` existe, pero nadie lo emite |
+| Errores operativos | **Hecho** (2026-11-21) | `estado-servicios` manda `SYSTEM` a los ADMINISTRADOR cuando un servicio cae, se degrada o se recupera (ver «Alertas técnicas») |
 | Datos incompletos | Falta | |
 | Campañas | Falta | No hay campañas (ver `vacunas`) |
-| Alertas configurables por perfil | Parcial | Se puede avisar a un rol (hoy solo EPIDEMIOLOGO); no hay preferencias por perfil. `THRESHOLD_EXCEEDED` existe sin uso |
+| Alertas configurables por perfil | Parcial | Se puede avisar a un rol (EPIDEMIOLOGO y, desde el 2026-11-21, ADMINISTRADOR); no hay preferencias por perfil. `THRESHOLD_EXCEEDED` existe sin uso |
 
 ### `estado-servicios` (5262)
 
@@ -127,12 +128,12 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 |---|---|---|
 | Estado de las APIs | **Cumple** | Sondea el `/health` de los 29 servicios; directorio y panel (consola) |
 | Bases de datos | **Cumple** | PostgreSQL, Redis, MongoDB y el bucket como causas (`degradado`) |
-| Simulador | Parcial | Se sondean `simulador` y `simulador-abm` como servicios; no si su trabajador está tomando corridas |
-| Colas | Falta | Cuántas corridas esperan en cada cola (`queue:simulaciones:<motor>`, y `:alta`/`:baja` de D44) |
+| Simulador | **Hecho** (2026-11-21) | Se sondean como servicios y, además, cada simulador renueva un latido en Redis cada 10 s mientras su trabajador corre (`worker:<motor>:<simulador>`, TTL de 30 s); cuenta también el de `abm-gpu` de la PC con GPU |
+| Colas | **Hecho** (2026-11-21) | `GET /services/capacity`: corridas en cola por motor y por prioridad (`queue:simulaciones:<motor>`, `:alta` y `:baja`, D44) |
 | Tiempos de respuesta | **Cumple** | `latencia_ms` de cada sondeo, con historial de 30 días en MongoDB |
-| Capacidad de procesamiento | Falta | Corridas en ejecución contra simuladores disponibles por motor |
+| Capacidad de procesamiento | **Hecho** (2026-11-21) | En la misma ruta: simuladores vivos, ocupados y libres por motor, con la corrida de cada uno |
 | Errores | **Cumple** | 5xx de las últimas 24 h por servicio (`errores`) |
-| Alertas técnicas | Falta | Un servicio caído no avisa a nadie; puede emitir `SYSTEM` por `notificaciones` |
+| Alertas técnicas | **Hecho** (2026-11-21) | `SYSTEM` a los ADMINISTRADOR por `notificaciones` cuando un servicio cambia de estado durante 30 s; un aviso por ronda, sin repetir, y lo que no se pudo entregar (Redis o PostgreSQL caídos) llega cuando vuelven |
 
 ## Lo que cruza a todos
 
@@ -148,8 +149,8 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 
 | Tamaño | Qué | Servicio |
 |---|---|---|
-| Chico | Cola, ejecutando y simuladores vivos por motor (colas y capacidad) | `estado-servicios` |
-| Chico | Avisar con `SYSTEM` a los ADMINISTRADOR cuando un servicio cae (alertas técnicas y errores operativos) | `estado-servicios` y `notificaciones` |
+| ~~Chico~~ | **Hecho** el 2026-11-21: cola, ejecutando y simuladores vivos por motor (`/services/capacity`) | `estado-servicios` y `simulador` |
+| ~~Chico~~ | **Hecho** el 2026-11-21: avisar con `SYSTEM` a los ADMINISTRADOR cuando un servicio cae o se recupera (alertas técnicas y errores operativos) | `estado-servicios` y `notificaciones` |
 | Chico | Numerador, denominador y periodo en cada indicador; mortalidad y casos graves | `indicadores` |
 | Mediano | Agregación por semana o mes, paginación y salida para Highcharts | `series` |
 | Mediano | Puntos agregados para el mapa de calor y agrupación por región del estado | `zonas` |

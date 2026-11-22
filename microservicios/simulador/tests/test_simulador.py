@@ -435,6 +435,51 @@ def test_el_ciclo_sobrevive_a_redis_caido_y_a_un_pedido_ilegible(mundo, monkeypa
     assert any("no es json" in r.getMessage() for r in caplog.records)
 
 
+# ---- latido (F7) ----------------------------------------------------------------------
+
+class _Vueltas(threading.Event):
+    """Un Event que se detiene solo después de n esperas, y anota cuánto se pidió esperar."""
+    def __init__(self, vueltas):
+        super().__init__()
+        self.vueltas, self.esperas = vueltas, []
+
+    def wait(self, timeout=None):
+        self.esperas.append(timeout)
+        if len(self.esperas) >= self.vueltas:
+            self.set()
+        return self.is_set()
+
+
+def test_el_latido_dice_motor_y_corrida_y_vence_solo(redis_falso, monkeypatch):
+    monkeypatch.setitem(trabajador.estado, "corrida_actual", 42)
+    monkeypatch.setitem(trabajador.estado, "procesadas", 3)
+    trabajador.latido()
+    llave = llaves.latido("seir-ref", trabajador.estado["trabajador"])
+    datos = json.loads(redis_falso.get(llave))
+    assert (datos["nombre"], datos["motor"]) == (trabajador.estado["trabajador"], "seir-ref")
+    assert (datos["corrida_actual"], datos["procesadas"]) == (42, 3)
+    assert 0 < redis_falso.ttl(llave) <= trabajador.LATIDO_TTL
+    # Se renueva antes de vencer, con margen para un latido que se retrase.
+    assert trabajador.LATIDO_CADA * 2 < trabajador.LATIDO_TTL
+
+
+def test_late_solo_mientras_el_trabajador_corre(monkeypatch):
+    latidos = []
+    monkeypatch.setattr(trabajador, "latido", lambda: latidos.append(1))
+    monkeypatch.setitem(trabajador.estado, "activo", True)
+    vueltas = _Vueltas(3)
+    trabajador.latir(vueltas)
+    assert len(latidos) == 3 and vueltas.esperas == [trabajador.LATIDO_CADA] * 3
+    monkeypatch.setitem(trabajador.estado, "activo", False)
+    trabajador.latir(_Vueltas(3))
+    assert len(latidos) == 3
+
+
+def test_el_latido_con_redis_caido_no_tumba_al_hilo(redis_falso, apagar_redis):
+    apagar_redis()
+    trabajador.latido()
+
+
 # ---- ruta de estado -------------------------------------------------------------------
 
 @pytest.fixture

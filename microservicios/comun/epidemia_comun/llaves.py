@@ -61,6 +61,11 @@ def candado_corrida(version):
     return f"lock:corrida:{version}"
 
 
+# Un simulador vivo y lo que está corriendo (F7); estado-servicios los cuenta por motor.
+def latido(motor, simulador):
+    return f"worker:{motor}:{simulador}"
+
+
 def progreso(corrida):
     return f"job:{corrida}:progress"
 
@@ -79,6 +84,11 @@ def candado_lote(lote_id):
 
 def salud(servicio):
     return f"health:{servicio}"
+
+
+# Lo último que estado-servicios avisó de un servicio a los ADMINISTRADOR (F7).
+def alerta(servicio):
+    return f"alert:{servicio}"
 
 
 def limite(quien, ruta):

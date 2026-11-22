@@ -32,7 +32,7 @@ Más `/health`, `/docs` y `/openapi.json`, como todos.
 
 ## Cómo funciona
 
-`python -m microservicios.simulador` (`__main__.py`) hace tres cosas en un solo proceso:
+`python -m microservicios.simulador` (`__main__.py`) hace cuatro cosas en un solo proceso:
 
 1. **Al arrancar** regresa a `encolado` las corridas de su motor que quedaron en `ejecutando`
    (D38, `ejecucion.reencola_corridas_interrumpidas`), si tienen menos de 3 intentos
@@ -55,7 +55,13 @@ Más `/health`, `/docs` y `/openapi.json`, como todos.
    - audita cada paso.
    El avance (10, 30, 90 y 100) va a `job:<id>:progress` (TTL de 24 h), de donde lo lee
    `corridas`.
-3. **Sirve** `/health` y `/api/v1/worker/status` con waitress.
+3. **Lanza el hilo del latido** (`trabajador.latir`, F7). Cada 10 s, mientras el trabajador
+   corre, escribe `worker:<motor>:<nombre del contenedor>` con su corrida actual y cuántas lleva,
+   con TTL de 30 s. `estado-servicios` los cuenta por motor en `/api/v1/services/capacity`: un
+   simulador muerto, o uno cuyo hilo trabajador terminó, deja de contar como vivo a los 30 s.
+   Va en otro hilo porque durante una corrida larga el ciclo no vuelve a la cola. Con Redis
+   caído no hay latido (tampoco toma corridas).
+4. **Sirve** `/health` y `/api/v1/worker/status` con waitress.
 
 Al terminar, avisa a quien pidió la corrida con `POST /api/v1/notifications` (`RUN_FINISHED`
 o `RUN_FAILED`), usando un **token de servicio** (`epidemia_comun.seguridad.token_servicio`).

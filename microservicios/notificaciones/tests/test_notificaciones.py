@@ -129,18 +129,19 @@ def test_crear_con_token_de_servicio(cliente, servicio, bandeja):
     assert contexto.user_id is None and contexto.user_agent == "servicio simulador"
 
 
-def test_crear_para_un_rol(cliente, servicio, bandeja):
+@pytest.mark.parametrize("rol_destino,tipo", [("EPIDEMIOLOGO", "NEW_CASES"), ("ADMINISTRADOR", "SYSTEM")])
+def test_crear_para_un_rol(cliente, servicio, bandeja, rol_destino, tipo):
     cuerpo = {k: v for k, v in AVISO.items() if k != "user_id"}
-    r = cliente.post("/api/v1/notifications?format=json", json=dict(cuerpo, role="EPIDEMIOLOGO", type="NEW_CASES"),
+    r = cliente.post("/api/v1/notifications?format=json", json=dict(cuerpo, role=rol_destino, type=tipo),
                      headers=servicio)
     assert r.status_code == 201
-    assert r.get_json() == {"role": "EPIDEMIOLOGO", "type": "NEW_CASES", "total": 2}
+    assert r.get_json() == {"role": rol_destino, "type": tipo, "total": 2}
     rol, datos = bandeja.a_rol[0]
-    assert rol == "EPIDEMIOLOGO" and "role" not in datos
+    assert rol == rol_destino and "role" not in datos
     assert bandeja.contextos[0].user_agent == "servicio simulador"
 
 
-@pytest.mark.parametrize("cuerpo", [dict(role="ADMINISTRADOR"), dict(role="EPIDEMIOLOGO", user_id=7)])
+@pytest.mark.parametrize("cuerpo", [dict(role="CAPTURISTA"), dict(role="EPIDEMIOLOGO", user_id=7)])
 def test_rol_invalido_o_con_user_id_es_422(cliente, servicio, bandeja, cuerpo):
     base = {k: v for k, v in AVISO.items() if k != "user_id"}
     r = cliente.post("/api/v1/notifications?format=json", json=dict(base, **cuerpo), headers=servicio)
