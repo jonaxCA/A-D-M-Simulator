@@ -1,0 +1,161 @@
+[2026-11-21 18:10:01,091] Jonathan/INFO/locust.main: Starting Locust 2.47.0
+[2026-11-21 18:10:01,095] Jonathan/INFO/locust.runners: Shape test starting.
+[2026-11-21 18:10:01,097] Jonathan/INFO/locust.runners: Shape worker starting
+[2026-11-21 18:10:01,097] Jonathan/INFO/locust.runners: Shape test updating to 20 users at 4.00 spawn rate
+[2026-11-21 18:10:01,098] Jonathan/INFO/locust.runners: Ramping to 20 users at a rate of 4.00 per second
+[2026-11-21 18:10:05,118] Jonathan/INFO/locust.runners: All users spawned: {"CapturaMovil": 5, "ConsultaWeb": 7, "CorridasAutomaticas": 2, "EscritorioReportes": 4, "PanelAdministracion": 2} (20 total users)
+[2026-11-21 18:11:01,397] Jonathan/INFO/locust.runners: Shape test updating to 40 users at 4.00 spawn rate
+[2026-11-21 18:11:01,401] Jonathan/INFO/locust.runners: Ramping to 40 users at a rate of 4.00 per second
+[2026-11-21 18:11:05,435] Jonathan/INFO/locust.runners: All users spawned: {"CapturaMovil": 11, "ConsultaWeb": 14, "CorridasAutomaticas": 4, "EscritorioReportes": 7, "PanelAdministracion": 4} (40 total users)
+[2026-11-21 18:12:01,791] Jonathan/INFO/locust.runners: Shape test updating to 60 users at 4.00 spawn rate
+[2026-11-21 18:12:01,792] Jonathan/INFO/locust.runners: Ramping to 60 users at a rate of 4.00 per second
+[2026-11-21 18:12:05,822] Jonathan/INFO/locust.runners: All users spawned: {"CapturaMovil": 16, "ConsultaWeb": 22, "CorridasAutomaticas": 6, "EscritorioReportes": 11, "PanelAdministracion": 5} (60 total users)
+[2026-11-21 18:13:01,096] Jonathan/INFO/locust.runners: Shape test updating to 80 users at 4.00 spawn rate
+[2026-11-21 18:13:01,097] Jonathan/INFO/locust.runners: Ramping to 80 users at a rate of 4.00 per second
+[2026-11-21 18:13:05,143] Jonathan/INFO/locust.runners: All users spawned: {"CapturaMovil": 22, "ConsultaWeb": 29, "CorridasAutomaticas": 7, "EscritorioReportes": 15, "PanelAdministracion": 7} (80 total users)
+[2026-11-21 18:14:01,404] Jonathan/INFO/locust.runners: Shape test updating to 100 users at 4.00 spawn rate
+[2026-11-21 18:14:01,404] Jonathan/INFO/locust.runners: Ramping to 100 users at a rate of 4.00 per second
+[2026-11-21 18:14:05,436] Jonathan/INFO/locust.runners: All users spawned: {"CapturaMovil": 27, "ConsultaWeb": 37, "CorridasAutomaticas": 9, "EscritorioReportes": 18, "PanelAdministracion": 9} (100 total users)
+[2026-11-21 18:15:01,673] Jonathan/INFO/locust.runners: Shape test updating to 120 users at 4.00 spawn rate
+[2026-11-21 18:15:01,674] Jonathan/INFO/locust.runners: Ramping to 120 users at a rate of 4.00 per second
+[2026-11-21 18:15:05,700] Jonathan/INFO/locust.runners: All users spawned: {"CapturaMovil": 33, "ConsultaWeb": 43, "CorridasAutomaticas": 11, "EscritorioReportes": 22, "PanelAdministracion": 11} (120 total users)
+[2026-11-21 18:16:02,035] Jonathan/INFO/locust.runners: Shape test updating to 140 users at 4.00 spawn rate
+[2026-11-21 18:16:02,035] Jonathan/INFO/locust.runners: Ramping to 140 users at a rate of 4.00 per second
+[2026-11-21 18:16:06,066] Jonathan/INFO/locust.runners: All users spawned: {"CapturaMovil": 38, "ConsultaWeb": 51, "CorridasAutomaticas": 13, "EscritorioReportes": 25, "PanelAdministracion": 13} (140 total users)
+[2026-11-21 18:17:01,334] Jonathan/INFO/locust.runners: Shape test updating to 160 users at 4.00 spawn rate
+[2026-11-21 18:17:01,334] Jonathan/INFO/locust.runners: Ramping to 160 users at a rate of 4.00 per second
+[2026-11-21 18:17:05,365] Jonathan/INFO/locust.runners: All users spawned: {"CapturaMovil": 43, "ConsultaWeb": 58, "CorridasAutomaticas": 15, "EscritorioReportes": 29, "PanelAdministracion": 15} (160 total users)
+[2026-11-21 18:18:01,661] Jonathan/INFO/locust.runners: Shape test updating to 180 users at 4.00 spawn rate
+[2026-11-21 18:18:01,662] Jonathan/INFO/locust.runners: Ramping to 180 users at a rate of 4.00 per second
+[2026-11-21 18:18:05,694] Jonathan/INFO/locust.runners: All users spawned: {"CapturaMovil": 49, "ConsultaWeb": 66, "CorridasAutomaticas": 16, "EscritorioReportes": 33, "PanelAdministracion": 16} (180 total users)
+[2026-11-21 18:19:01,926] Jonathan/INFO/locust.runners: Shape test updating to 200 users at 4.00 spawn rate
+[2026-11-21 18:19:01,926] Jonathan/INFO/locust.runners: Ramping to 200 users at a rate of 4.00 per second
+[2026-11-21 18:19:05,955] Jonathan/INFO/locust.runners: All users spawned: {"CapturaMovil": 55, "ConsultaWeb": 73, "CorridasAutomaticas": 18, "EscritorioReportes": 36, "PanelAdministracion": 18} (200 total users)
+[2026-11-21 18:20:01,212] Jonathan/INFO/locust.runners: Shape test updating to 20 users at 1000.00 spawn rate
+[2026-11-21 18:20:01,213] Jonathan/WARNING/locust.runners: Your selected spawn rate is very high (>100), and this is known to sometimes cause issues. Do you really need to ramp up that fast?
+[2026-11-21 18:20:01,213] Jonathan/INFO/locust.runners: Ramping to 20 users at a rate of 1000.00 per second
+[2026-11-21 18:20:01,249] Jonathan/INFO/locust.runners: All users spawned: {"CapturaMovil": 5, "ConsultaWeb": 7, "CorridasAutomaticas": 2, "EscritorioReportes": 4, "PanelAdministracion": 2} (20 total users)
+[2026-11-21 18:22:01,838] Jonathan/INFO/locust.runners: Shape test stopping
+[2026-11-21 18:22:01,917] Jonathan/INFO/locust.main: Shape test completed, shutting down
+[2026-11-21 18:22:01,980] Jonathan/INFO/locust.main: Shutting down (exit code 1)
+Type     Name                                                                          # reqs      # fails |    Avg     Min     Max    Med |   req/s  failures/s
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+POST     [409] corridas: POST corridas /runs                                                7     0(0.00%) |    129     110     199    120 |    0.01        0.00
+GET      corridas: GET auth /auth/captcha                                                   1     0(0.00%) |    484     484     484    484 |    0.00        0.00
+GET      corridas: GET corridas /runs/{id}                                               1335     0(0.00%) |    266      90    1155    210 |    1.86        0.00
+GET      corridas: GET escenarios /scenarios                                                1     0(0.00%) |    100     100     100    100 |    0.00        0.00
+GET      corridas: GET escenarios /scenarios/{id}                                           1     0(0.00%) |    114     114     114    114 |    0.00        0.00
+GET      corridas: GET resultados /runs/{id}/results                                      295     0(0.00%) |    583     181    4393    300 |    0.41        0.00
+POST     corridas: POST auth /auth/login                                                    1     0(0.00%) |    961     961     961    961 |    0.00        0.00
+POST     corridas: POST corridas /runs                                                    305     0(0.00%) |    177      91     738    130 |    0.42        0.00
+CORRIDA  corridas: seir-ref de lanzar a terminar                                          295     0(0.00%) |  10139    2187   29076   6700 |    0.41        0.00
+GET      escritorio: GET auth /auth/captcha                                                 2     0(0.00%) |    363     292     433    430 |    0.00        0.00
+GET      escritorio: GET comparacion /comparisons                                         425    12(2.82%) |   3649     447   20637   1200 |    0.59        0.02
+GET      escritorio: GET corridas /runs                                                   443     0(0.00%) |    254      90     765    220 |    0.62        0.00
+GET      escritorio: GET escenarios /scenarios                                             36     0(0.00%) |    161      88     436    120 |    0.05        0.00
+GET      escritorio: GET escenarios-xml /scenarios/{id}/export                            200     0(0.00%) |    153      85     556    120 |    0.28        0.00
+GET      escritorio: GET indicadores /dashboard/situation                                 185     0(0.00%) |    108      74    1481     84 |    0.26        0.00
+GET      escritorio: GET pareto /pareto                                                   190     0(0.00%) |    377     124    1776    280 |    0.26        0.00
+GET      escritorio: GET resultados /runs/{id}/curves                                     372     0(0.00%) |    503     164    4858    220 |    0.52        0.00
+GET      escritorio: GET resultados /runs/{id}/results                                    632     0(0.00%) |    591     174    4591    280 |    0.88        0.00
+GET      escritorio: GET zonas /zones/map                                                 402     0(0.00%) |    372     160    5170    280 |    0.56        0.00
+POST     escritorio: POST auth /auth/login                                                  2     0(0.00%) |    638     576     700    700 |    0.00        0.00
+GET      movil: GET auth /auth/captcha                                                      2     0(0.00%) |    467     448     486    486 |    0.00        0.00
+GET      movil: GET enfermedades /diseases                                                  1     0(0.00%) |    340     340     340    340 |    0.00        0.00
+GET      movil: GET notificaciones /notifications                                         623     0(0.00%) |    102      75     398     90 |    0.87        0.00
+GET      movil: GET regiones /regions                                                       1     0(0.00%) |    209     209     209    209 |    0.00        0.00
+GET      movil: GET usuarios /users/me                                                    199     0(0.00%) |    118      80     340    100 |    0.28        0.00
+POST     movil: POST auth /auth/login                                                       2     0(0.00%) |    644     575     713    710 |    0.00        0.00
+POST     movil: POST evidencias /cases/{id}/attachments                                   604     0(0.00%) |    135      88    1213    120 |    0.84        0.00
+POST     movil: POST sincronizacion /sync/cases (100 casos)                               189    16(8.47%) |   8188    1792   30124   4900 |    0.26        0.02
+POST     movil: POST sincronizacion /sync/cases (5 casos)                                1939    32(1.65%) |   3834     157   30133    480 |    2.69        0.04
+CASOS    movil: casos guardados                                                          2080     0(0.00%) |      0       0       0      0 |    2.89        0.00
+GET      panel: GET auth /auth/captcha                                                      1     0(0.00%) |    484     484     484    484 |    0.00        0.00
+GET      panel: GET estado-servicios /services                                            303     0(0.00%) |    103      75     626     89 |    0.42        0.00
+GET      panel: GET estado-servicios /services/health                                     313     0(0.00%) |    100      75     306     92 |    0.43        0.00
+GET      panel: GET notificaciones /notifications                                         149     0(0.00%) |    191      77     429    180 |    0.21        0.00
+GET      panel: GET usuarios /users                                                       182     0(0.00%) |    116      77     804    100 |    0.25        0.00
+GET      panel: GET usuarios /users/summary                                               173     0(0.00%) |    107      78     364     94 |    0.24        0.00
+POST     panel: POST auth /auth/login                                                       1     0(0.00%) |    685     685     685    685 |    0.00        0.00
+GET      web: GET / (tablero)                                                             913     0(0.00%) |   4357     110   46850    410 |    1.27        0.00
+GET      web: GET /api/mapa                                                               516     0(0.00%) |   3195     236   26143    640 |    0.72        0.00
+GET      web: GET /comparacion                                                            263     0(0.00%) |   2205      88   24328    210 |    0.37        0.00
+GET      web: GET /dashboard                                                              703     0(0.00%) |   2620     103   26227    330 |    0.98        0.00
+GET      web: GET /escenarios                                                             237     0(0.00%) |   2560      88   23090    130 |    0.33        0.00
+GET      web: GET /login                                                                    4     0(0.00%) |    674     270    1568    570 |    0.01        0.00
+GET      web: GET /mapa                                                                   246     0(0.00%) |   2931     237   25350    450 |    0.34        0.00
+GET      web: GET /monitoreo                                                              235     0(0.00%) |   3251     186   26376    510 |    0.33        0.00
+GET      web: GET /simulaciones                                                           245     0(0.00%) |   2216      90   24225    220 |    0.34        0.00
+POST     web: POST /login                                                                   4     0(0.00%) |    763     571    1102    710 |    0.01        0.00
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+         Aggregated                                                                     15258    60(0.39%) |   1707       0   46850    220 |   21.20        0.08
+
+Response time percentiles (approximated)
+Type     Name                                                                                  50%    66%    75%    80%    90%    95%    98%    99%  99.9% 99.99%   100% # reqs
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+POST     [409] corridas: POST corridas /runs                                                   120    130    130    130    200    200    200    200    200    200    200      7
+GET      corridas: GET auth /auth/captcha                                                      480    480    480    480    480    480    480    480    480    480    480      1
+GET      corridas: GET corridas /runs/{id}                                                     210    290    340    390    500    590    740    830   1100   1200   1200   1335
+GET      corridas: GET escenarios /scenarios                                                   100    100    100    100    100    100    100    100    100    100    100      1
+GET      corridas: GET escenarios /scenarios/{id}                                              110    110    110    110    110    110    110    110    110    110    110      1
+GET      corridas: GET resultados /runs/{id}/results                                           300    350    420    540   1400   2100   3600   4200   4400   4400   4400    295
+POST     corridas: POST auth /auth/login                                                       960    960    960    960    960    960    960    960    960    960    960      1
+POST     corridas: POST corridas /runs                                                         130    160    210    250    330    420    530    570    740    740    740    305
+CORRIDA  corridas: seir-ref de lanzar a terminar                                              6700  11000  15000  20000  23000  25000  27000  28000  29000  29000  29000    295
+GET      escritorio: GET auth /auth/captcha                                                    430    430    430    430    430    430    430    430    430    430    430      2
+GET      escritorio: GET comparacion /comparisons                                             1200   1800   4100   6000  13000  16000  17000  18000  21000  21000  21000    425
+GET      escritorio: GET corridas /runs                                                        220    260    300    320    390    470    590    630    770    770    770    443
+GET      escritorio: GET escenarios /scenarios                                                 120    160    200    220    340    380    440    440    440    440    440     36
+GET      escritorio: GET escenarios-xml /scenarios/{id}/export                                 120    150    170    190    250    350    480    520    560    560    560    200
+GET      escritorio: GET indicadores /dashboard/situation                                       84     88     93     97    110    150    390   1200   1500   1500   1500    185
+GET      escritorio: GET pareto /pareto                                                        280    390    500    550    770    990   1200   1400   1800   1800   1800    190
+GET      escritorio: GET resultados /runs/{id}/curves                                          220    270    410    570   1200   2000   3200   4000   4900   4900   4900    372
+GET      escritorio: GET resultados /runs/{id}/results                                         280    330    410    470   1500   2300   3800   4200   4600   4600   4600    632
+GET      escritorio: GET zonas /zones/map                                                      280    300    320    340    400    500   1000   3700   5200   5200   5200    402
+POST     escritorio: POST auth /auth/login                                                     700    700    700    700    700    700    700    700    700    700    700      2
+GET      movil: GET auth /auth/captcha                                                         490    490    490    490    490    490    490    490    490    490    490      2
+GET      movil: GET enfermedades /diseases                                                     340    340    340    340    340    340    340    340    340    340    340      1
+GET      movil: GET notificaciones /notifications                                               90     97    100    110    130    170    250    270    400    400    400    623
+GET      movil: GET regiones /regions                                                          210    210    210    210    210    210    210    210    210    210    210      1
+GET      movil: GET usuarios /users/me                                                         100    120    130    140    170    220    280    340    340    340    340    199
+POST     movil: POST auth /auth/login                                                          710    710    710    710    710    710    710    710    710    710    710      2
+POST     movil: POST evidencias /cases/{id}/attachments                                        120    130    140    160    190    240    300    370   1200   1200   1200    604
+POST     movil: POST sincronizacion /sync/cases (100 casos)                                   4900   7400   8800  11000  28000  30000  30000  30000  30000  30000  30000    189
+POST     movil: POST sincronizacion /sync/cases (5 casos)                                      480   2000   4400   5500  13000  23000  30000  30000  30000  30000  30000   1939
+CASOS    movil: casos guardados                                                                  0      0      0      0      0      0      0      0      0      0      0   2080
+GET      panel: GET auth /auth/captcha                                                         480    480    480    480    480    480    480    480    480    480    480      1
+GET      panel: GET estado-servicios /services                                                  89     94     97    100    130    190    260    370    630    630    630    303
+GET      panel: GET estado-servicios /services/health                                           92     96     99    100    110    160    240    280    310    310    310    313
+GET      panel: GET notificaciones /notifications                                              180    200    220    240    270    310    350    370    430    430    430    149
+GET      panel: GET usuarios /users                                                            100    110    130    130    150    180    250    380    800    800    800    182
+GET      panel: GET usuarios /users/summary                                                     94    100    110    110    150    180    250    310    360    360    360    173
+POST     panel: POST auth /auth/login                                                          690    690    690    690    690    690    690    690    690    690    690      1
+GET      web: GET / (tablero)                                                                  410   1100   2200   3300   8300  34000  44000  45000  47000  47000  47000    913
+GET      web: GET /api/mapa                                                                    640   1100   2200   2800  12000  22000  24000  26000  26000  26000  26000    516
+GET      web: GET /comparacion                                                                 210    470   1300   1700   5100  17000  23000  24000  24000  24000  24000    263
+GET      web: GET /dashboard                                                                   330    870   1700   2000   8100  20000  24000  25000  26000  26000  26000    703
+GET      web: GET /escenarios                                                                  130    320    990   1700  12000  21000  22000  23000  23000  23000  23000    237
+GET      web: GET /login                                                                       570    570   1600   1600   1600   1600   1600   1600   1600   1600   1600      4
+GET      web: GET /mapa                                                                        450    900   1800   2200  12000  21000  24000  24000  25000  25000  25000    246
+GET      web: GET /monitoreo                                                                   510   1200   2000   2900  14000  22000  25000  26000  26000  26000  26000    235
+GET      web: GET /simulaciones                                                                220    540   1200   2200   4500  14000  21000  23000  24000  24000  24000    245
+POST     web: POST /login                                                                      710    710   1100   1100   1100   1100   1100   1100   1100   1100   1100      4
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+         Aggregated                                                                            220    330    500    840   3600  11000  23000  27000  45000  46000  47000  15258
+
+Error report
+# occurrences      Error                                                                                               
+------------------|---------------------------------------------------------------------------------------------------------------------------------------------
+12                 GET escritorio: GET comparacion /comparisons: 503 {"type": "about:blank", "title": "Service Unavailable", "status": 503, "detail": "El servicio no respondió.", "codigo": 
+16                 POST movil: POST sincronizacion /sync/cases (100 casos): 504 <html>
+<head><title>504 Gateway Time-out</title></head>
+<body>
+<center><h1>504 Gateway Time-out</h1></center>
+<hr><c
+32                 POST movil: POST sincronizacion /sync/cases (5 casos): 504 <html>
+<head><title>504 Gateway Time-out</title></head>
+<body>
+<center><h1>504 Gateway Time-out</h1></center>
+<hr><c
+------------------|---------------------------------------------------------------------------------------------------------------------------------------------
+
