@@ -1,6 +1,6 @@
 # D40 - MFA para los perfiles críticos
 
-Fecha: 2026-11-20 · Estado: Aceptada (tomada por el orquestador; pendiente de validación del líder) · Cierra el pendiente «MFA» del bloque 0 · Amplía D1
+Fecha: 2026-11-20 · Estado: Aceptada · Amplía D1
 
 ## Contexto
 La retroalimentación pide MFA para los perfiles críticos. Sin SMTP no hay segundo factor por correo; hoy solo hay captcha y bloqueo de 15 min tras cinco fallos.
