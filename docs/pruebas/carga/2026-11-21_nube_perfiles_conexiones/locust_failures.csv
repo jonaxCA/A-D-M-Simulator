@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,movil: POST sincronizacion /sync/cases (5 casos),CatchResponseError('504 <html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n<hr><c'),32,2026-11-22T00:18:17Z,2026-11-22T00:19:22Z
+POST,movil: POST sincronizacion /sync/cases (100 casos),CatchResponseError('504 <html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n<hr><c'),16,2026-11-22T00:18:11Z,2026-11-22T00:19:28Z
+GET,escritorio: GET comparacion /comparisons,"CatchResponseError('503 {""type"": ""about:blank"", ""title"": ""Service Unavailable"", ""status"": 503, ""detail"": ""El servicio no respondió."", ""codigo"": ')",12,2026-11-22T00:17:52Z,2026-11-22T00:18:48Z

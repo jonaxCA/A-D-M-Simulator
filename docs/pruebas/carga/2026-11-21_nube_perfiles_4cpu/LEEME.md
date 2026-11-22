@@ -51,6 +51,6 @@ de una consulta con la conexión abierta), y el mapa hace 53. Con las conexiones
 1 975 ms a 18 ms y las tres consultas del tablero de 218 ms a 18 ms.
 
 1. Desplegarlo en la máquina (junto con las migraciones 050 a 055 del bloque E) y repetir con la
-   ventana.
+   ventana. Hecho: [`2026-11-21_nube_perfiles_conexiones`](../2026-11-21_nube_perfiles_conexiones/LEEME.md).
 2. Si `sincronizacion` sigue lenta con las conexiones reutilizadas, mandar el lote completo a
    `casos` en una sola llamada en lugar de una por caso.
