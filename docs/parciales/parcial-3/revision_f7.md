@@ -59,7 +59,7 @@ Sin formulario se acepta mientras la versión vigente no lo pida (`required`). F
 No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 
 - `dispositivos`: registrar, listar y revocar el teléfono que sincroniza; `casos` rechaza uno revocado. **Cumple** lo de D27. Ojo: D41 (bloque E) creó aparte los dispositivos de **sesión**; falta decidir si se unen.
-- `vacunas`: lotes y dosis aplicadas. Se acerca al servicio opcional 32 (`vacunacion`: campañas, coberturas, poblaciones objetivo), que no está en el alcance; las **campañas** tampoco existen, y `notificaciones` las pide.
+- `vacunas`: lotes y dosis aplicadas y, desde el 2026-11-22, **campañas** (D49), que `notificaciones` pedía. Coberturas y poblaciones objetivo por grupo siguen siendo del servicio opcional 32 (`vacunacion`).
 
 ## Analítica
 
@@ -118,9 +118,9 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 | Corridas terminadas | **Cumple** | `RUN_FINISHED` y `RUN_FAILED` a quien la pidió |
 | Casos nuevos | **Cumple** | `NEW_CASES` a los EPIDEMIOLOGO, una vez por lote (D32) |
 | Errores operativos | **Hecho** (2026-11-21) | `estado-servicios` manda `SYSTEM` a los ADMINISTRADOR cuando un servicio cae, se degrada o se recupera (ver «Alertas técnicas») |
-| Datos incompletos | Falta | |
-| Campañas | Falta | No hay campañas (ver `vacunas`) |
-| Alertas configurables por perfil | Parcial | Se puede avisar a un rol (EPIDEMIOLOGO y, desde el 2026-11-21, ADMINISTRADOR); no hay preferencias por perfil. `THRESHOLD_EXCEEDED` existe sin uso |
+| Datos incompletos | **Hecho** (2026-11-22) | `DATA_INCOMPLETE` a quien capturó casos sin edad, sexo, inicio de síntomas, resultado, gravedad o ubicación (uno por captura o por lote) y `GET /cases/incomplete` para el panel (D49) |
+| Campañas | **Hecho** (2026-11-22) | `vacunas` las administra (`/campaigns`) y avisa `CAMPAIGN` a los CAPTURISTA al crear o cancelar una (D49); sin coberturas |
+| Alertas configurables por perfil | **Hecho** (2026-11-22) | Avisos a un rol (EPIDEMIOLOGO, ADMINISTRADOR y CAPTURISTA) y preferencias por persona de los tipos que le tocan por su perfil (`/notifications/preferences`); `SYSTEM` no se apaga (D49). `THRESHOLD_EXCEEDED` sigue sin uso |
 
 ### `estado-servicios` (5262)
 
@@ -160,5 +160,5 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 | ~~Mediano~~ | **Hecho** el 2026-11-22 (D47): cambiar estado (validar, descartar, marcar duplicado) y corregir datos, con historial y control de versión (`If-Match`), y los conflictos de la sincronización | `casos` y `sincronizacion` |
 | ~~Grande~~ | **Hecho** el 2026-11-22 en el servidor (D48): formularios por enfermedad con versiones; falta la móvil (B4) | `casos` (y la móvil, B4) |
 | ~~Grande~~ | **Hecho** el 2026-11-22: geometría oficial de los municipios y ubicar un punto; sin PostGIS ni consultas por área | `zonas` |
-| Grande | Campañas, avisos de datos incompletos y preferencias por perfil | `notificaciones` y `vacunas` |
+| ~~Grande~~ | **Hecho** el 2026-11-22 (D49): campañas, avisos de datos incompletos y preferencias por perfil | `notificaciones`, `vacunas` y `casos` |
 | Transversal | Dejar de importar `backend_web` (E8), los perfiles nuevos y el alcance (D42, D43) | los nueve |

@@ -355,7 +355,7 @@ La app solo habla JSON.
 [Retro: «Aplicación móvil Android»]. Para capturistas, personal de vigilancia, supervisores regionales y responsables de campañas.
 
 - [ ] Revisar la app contra esta lista y marcar lo que ya cumple.
-- [ ] Panel del capturista: casos pendientes, formularios, registros incompletos, sincronizaciones pendientes y avisos.
+- [ ] Panel del capturista: casos pendientes, formularios, registros incompletos, sincronizaciones pendientes y avisos. Los registros incompletos ya los da el servidor (`GET /cases/incomplete`, D49, 2026-11-22).
 - [ ] Seguimiento: actualizar el estado de un caso, con observaciones e historial (RF-I12, reabierto). El servidor ya está (D47, 2026-11-22): `PATCH /cases/{id}` para corregir los casos pendientes propios, con `If-Match`, y `GET /cases/{id}/history`; cambiar el estado es del EPIDEMIOLOGO.
 - [ ] Formularios por enfermedad, con versiones, validaciones y campos obligatorios. El servidor ya está (D48, 2026-11-22): la app baja `GET /forms/current`, arma la captura con esos campos y manda `form_id` y `form_answers` en cada caso (también en el lote); `casos` las valida.
 - [ ] GPS, con selección manual cuando la captura automática no conviene.
@@ -363,7 +363,7 @@ La app solo habla JSON.
 - [ ] Un caso no se muestra como recibido, validado o publicado hasta que el servidor lo confirma.
 - [ ] La sincronización no sobrescribe en silencio lo que cambió otro profesional: el conflicto se muestra. El servidor ya está (D47, 2026-11-22): el lote manda `updates` con la versión del teléfono y cada corrección regresa `actualizado`, `conflicto` (con el caso actual) o `rechazado`; falta mostrarlo en la app.
 - [ ] Consulta epidemiológica agregada por zona, periodo y enfermedad, según los permisos.
-- [ ] Alertas: tareas nuevas, registros rechazados, campañas y eventos de vigilancia, desde `notificaciones`. Registros rechazados ya llegan (D47, 2026-11-22): `CASE_REJECTED` cuando un EPIDEMIOLOGO descarta o marca duplicado un caso; falta su nombre en `TIPOS_DE_AVISO` de la app («Caso descartado»), que hoy lo muestra como «Aviso».
+- [ ] Alertas: tareas nuevas, registros rechazados, campañas y eventos de vigilancia, desde `notificaciones`. Registros rechazados ya llegan (D47, 2026-11-22): `CASE_REJECTED` cuando un EPIDEMIOLOGO descarta o marca duplicado un caso; falta su nombre en `TIPOS_DE_AVISO` de la app («Caso descartado»), que hoy lo muestra como «Aviso». Campañas (`CAMPAIGN`) y datos incompletos (`DATA_INCOMPLETE`) también llegan desde el 2026-11-22 (D49), y cada quien puede apagarlos (`/notifications/preferences`); faltan sus nombres en la app.
 - [ ] Control de calidad: avisa de campos incompletos, fechas incoherentes y posibles duplicados.
 - [ ] Perfil con institución, región asignada y estado de conexión. Espera a E (E7).
 - [ ] Menú para cada perfil de campo. Espera a la decisión de perfiles (0).
@@ -669,7 +669,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 **Plataforma**
 
-- [ ] `notificaciones`: avisos de campañas, de datos incompletos y de errores operativos. Hoy: escenarios por aprobar, corridas terminadas, casos nuevos y, desde el 2026-11-21, errores operativos (`SYSTEM` a los ADMINISTRADOR desde `estado-servicios`); faltan campañas y datos incompletos ([`revision_f7.md`](revision_f7.md)).
+- [x] `notificaciones`: avisos de campañas, de datos incompletos y de errores operativos. Hecho: errores operativos el 2026-11-21 (`SYSTEM` desde `estado-servicios`) y, el 2026-11-22 con [D49](../../decisiones/D49-campanas-incompletos-y-preferencias.md) y la migración 060, campañas (`CAMPAIGN`, desde `vacunas`), datos incompletos (`DATA_INCOMPLETE`, desde `casos`) y preferencias por persona ([`revision_f7.md`](revision_f7.md)).
 - [x] `estado-servicios`: capacidad de procesamiento (la cola de cada motor). Hecho el 2026-11-21: `GET /api/v1/services/capacity` da por motor las corridas en cola (por prioridad, D44) y los simuladores vivos, ocupados y libres, con el latido que cada simulador renueva en Redis (`worker:<motor>:<simulador>`), también el de `abm-gpu` de la PC. Alertas técnicas, también el 2026-11-21: un servicio que cae, se degrada o se recupera durante 30 s manda un aviso `SYSTEM` a los ADMINISTRADOR por `notificaciones` ([`revision_f7.md`](revision_f7.md)).
 
 ---

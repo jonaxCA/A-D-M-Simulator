@@ -391,6 +391,46 @@ def _verifica_original(cur, caso, original):
                        "El caso %d es de otra enfermedad: no puede ser el original." % original)
 
 
+# Lo que un caso debería traer aunque no sea obligatorio (D49): sin ello sirve menos.
+IMPORTANTES = (("age", "edad"), ("sex", "sexo"), ("onset_date", "inicio de síntomas"),
+               ("test_result", "resultado de prueba"), ("severity", "gravedad"),
+               ("latitude", "ubicación"))
+_SIN_IMPORTANTES = " OR ".join("c.%s IS NULL" % campo for campo, _ in IMPORTANTES)
+
+
+def faltantes(caso):
+    return [nombre for campo, nombre in IMPORTANTES if caso.get(campo) is None]
+
+
+def _avisa_incompletos(creados):
+    """Un aviso DATA_INCOMPLETE a quien capturó, por captura o por lote, con lo que falta.
+    Best-effort: el caso ya quedó guardado."""
+    incompletos = [(c["id"], faltantes(c)) for c in creados if faltantes(c)]
+    if not incompletos:
+        return
+    cuenta = {}
+    for _, nombres in incompletos:
+        for nombre in nombres:
+            cuenta[nombre] = cuenta.get(nombre, 0) + 1
+    if len(incompletos) == 1:
+        titulo = "El caso %d tiene datos incompletos" % incompletos[0][0]
+        detalle = ", ".join(cuenta)
+    else:
+        titulo = "%d casos con datos incompletos" % len(incompletos)
+        detalle = ", ".join("%s (%d)" % par for par in cuenta.items())
+    try:
+        resp = llamar("notificaciones", "POST", "/api/v1/notifications", formato="json", timeout=3,
+                      token=token_servicio(current_app.config, "casos"),
+                      cuerpo={"user_id": int(g.usuario["sub"]), "type": "DATA_INCOMPLETE",
+                              "title": titulo,
+                              "body": "Falta: %s. Complétalos si tienes el dato." % detalle,
+                              "payload": {"case_ids": [i for i, _ in incompletos], "faltantes": cuenta}})
+        if resp.status_code >= 400:
+            log.warning("notificaciones respondió %d al avisar datos incompletos", resp.status_code)
+    except Exception as exc:
+        log.warning("No se pudo avisar de datos incompletos: %s", exc)
+
+
 def _avisa_rechazo(caso):
     """Best-effort, como los demás avisos: si notificaciones no responde, el cambio ya quedó."""
     if caso["status"] == "duplicado":
@@ -495,6 +535,8 @@ def registrar(app):
     @requiere_token(roles=ROLES_ESCRITURA)
     def crear():
         estado, caso = _crea(_leer_caso(leer_cuerpo()))
+        if estado == 201:
+            _avisa_incompletos([caso])
         return responder(caso, "caso", estado=estado)
 
     @app.post("/api/v1/cases/batch")
@@ -522,6 +564,8 @@ def registrar(app):
                     raise
                 resultados.append({"indice": indice, "estado": error.estado,
                                    "codigo": error.codigo, "detail": error.detalle})
+        # Un solo aviso de datos incompletos por lote (D49), solo de los casos nuevos.
+        _avisa_incompletos([r["caso"] for r in resultados if r["estado"] == 201])
         return responder({"total": len(resultados), "resultados": resultados}, "resultado_lote_casos")
 
     @app.get("/api/v1/cases")
@@ -572,6 +616,35 @@ def registrar(app):
                           "por_pagina": por_pagina,
                           "paginas": int(math.ceil(total / float(por_pagina)))},
                          "lista_casos")
+
+    # Los casos a los que les falta algo importante (D49): el panel del capturista. Cada quien ve los
+    # que capturó; los demás roles, todos. Sin los descartados ni los duplicados.
+    @app.get("/api/v1/cases/incomplete")
+    @requiere_token(roles=ROLES_LECTURA)
+    def incompletos():
+        pagina = entero_positivo(request.args.get("page", "1"), "page")
+        por_pagina = entero_positivo(request.args.get("per_page", "20"), "per_page")
+        if por_pagina > MAXIMO_POR_PAGINA:
+            raise ErrorAPI(422, "DATOS_INVALIDOS",
+                           "per_page no puede ser mayor que %d." % MAXIMO_POR_PAGINA)
+        condiciones = ["c.status IN ('pendiente', 'validado')", "(%s)" % _SIN_IMPORTANTES]
+        params = []
+        if set(g.usuario.get("roles") or []) <= {"CAPTURISTA"}:
+            condiciones.append("c.reported_by = %s")
+            params.append(g.usuario["sub"])
+        donde = " WHERE " + " AND ".join(condiciones)
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT count(*) FROM cases c" + donde, tuple(params))
+                total = cur.fetchone()[0]
+                cur.execute(_SELECT + donde + " ORDER BY c.report_date DESC, c.id DESC"
+                            " LIMIT %s OFFSET %s",
+                            tuple(params) + (por_pagina, (pagina - 1) * por_pagina))
+                casos = [_a_caso(f) for f in cur.fetchall()]
+        for caso in casos:
+            caso["faltantes"] = faltantes(caso)
+        return responder({"casos": casos, "total": total, "pagina": pagina, "por_pagina": por_pagina,
+                          "paginas": int(math.ceil(total / float(por_pagina)))}, "casos_incompletos")
 
     @app.get("/api/v1/cases/<int:case_id>")
     @requiere_token(roles=ROLES_LECTURA)

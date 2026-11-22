@@ -3029,6 +3029,143 @@
           }
         }
       }
+    },
+    "/api/v1/cases/incomplete": {
+      "get": {
+        "summary": "Casos con datos incompletos",
+        "operationId": "casos_incompletos",
+        "tags": [
+          "casos"
+        ],
+        "description": "Roles: los cuatro; la CAPTURISTA ve los que capturó, los demás todos (D49). Los casos pendientes o validados a los que les falta edad, sexo, inicio de síntomas, resultado, gravedad o ubicación; cada uno con faltantes. Paginado como GET /cases. Al capturar un caso (o un lote) así, quien lo capturó recibe un aviso DATA_INCOMPLETE.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Los casos incompletos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "casos": [
+                    {
+                      "id": 1,
+                      "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+                      "device_id": 3,
+                      "reported_by": 7,
+                      "disease_id": 1,
+                      "enfermedad": "COVID-19",
+                      "region_id": 10,
+                      "municipio": "Monterrey",
+                      "age": null,
+                      "sex": "F",
+                      "onset_date": "2026-09-28",
+                      "report_date": "2026-10-01",
+                      "latitude": null,
+                      "longitude": null,
+                      "test_result": "positivo",
+                      "severity": "leve",
+                      "status": "pendiente",
+                      "created_at": "2026-10-12T10:00:00+00:00",
+                      "synced_at": "2026-10-12T10:00:00+00:00",
+                      "version": 1,
+                      "updated_at": null,
+                      "updated_by": null,
+                      "status_reason": null,
+                      "duplicate_of": null,
+                      "form_id": null,
+                      "form_answers": null,
+                      "faltantes": [
+                        "edad",
+                        "ubicación"
+                      ]
+                    }
+                  ],
+                  "total": 1,
+                  "pagina": 1,
+                  "por_pagina": 20,
+                  "paginas": 1
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "casos_incompletos"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<casos_incompletos><casos><item><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age nil=\"true\" /><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude nil=\"true\" /><longitude nil=\"true\" /><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /><form_id nil=\"true\" /><form_answers nil=\"true\" /><faltantes><item>edad</item><item>ubicación</item></faltantes></item></casos><total tipo=\"numero\">1</total><pagina tipo=\"numero\">1</pagina><por_pagina tipo=\"numero\">20</por_pagina><paginas tipo=\"numero\">1</paginas></casos_incompletos>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity. RFC 7807; en XML, application/problem+xml."
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO): la cuenta pasó su límite de casos (D31). La cabecera Retry-After trae los segundos de espera; no se guardó ningún caso del lote.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

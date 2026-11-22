@@ -141,7 +141,7 @@ def test_crear_para_un_rol(cliente, servicio, bandeja, rol_destino, tipo):
     assert bandeja.contextos[0].user_agent == "servicio simulador"
 
 
-@pytest.mark.parametrize("cuerpo", [dict(role="CAPTURISTA"), dict(role="EPIDEMIOLOGO", user_id=7)])
+@pytest.mark.parametrize("cuerpo", [dict(role="ANALISTA"), dict(role="EPIDEMIOLOGO", user_id=7)])
 def test_rol_invalido_o_con_user_id_es_422(cliente, servicio, bandeja, cuerpo):
     base = {k: v for k, v in AVISO.items() if k != "user_id"}
     r = cliente.post("/api/v1/notifications?format=json", json=dict(base, **cuerpo), headers=servicio)
@@ -185,3 +185,78 @@ def test_redis_caido_es_503(cliente, token, apagar_redis):
 def test_contrato_servido_es_el_del_repo(cliente):
     r = cliente.get("/openapi.json")
     assert r.data == (RAIZ / "docs/contratos/notificaciones/openapi.json").read_bytes()
+
+
+
+# ------------------------------------------------------------------ preferencias (D49)
+
+@pytest.fixture
+def preferencias(monkeypatch, bandeja):
+    """notification_preferences en memoria: {(user_id, tipo): prendido}."""
+    guardadas = {}
+
+    def query(sql, params=None, one=False):
+        assert sql.startswith("SELECT type, enabled FROM notification_preferences")
+        return [{"type": t, "enabled": e} for (u, t), e in guardadas.items() if u == params[0]]
+
+    def guarda(user_id, cambios, *, contexto):
+        guardadas.update({(user_id, t): v for t, v in cambios.items()})
+    monkeypatch.setattr(notificaciones, "query", query)
+    monkeypatch.setattr(notificaciones, "guarda_preferencias", guarda)
+    return guardadas
+
+
+def test_cada_perfil_ve_los_avisos_que_le_tocan(cliente, token, preferencias):
+    for roles, tipos in ((("CAPTURISTA",), ["CASE_REJECTED", "CAMPAIGN", "DATA_INCOMPLETE"]),
+                         (("EPIDEMIOLOGO",), ["SCENARIO_SUBMITTED", "NEW_CASES"]),
+                         (("ADMINISTRADOR",), ["RUN_FINISHED", "RUN_FAILED", "SCENARIO_APPROVED",
+                                               "SCENARIO_REJECTED", "SYSTEM"])):
+        datos = cliente.get("/api/v1/notifications/preferences?format=json", headers=token(roles)).get_json()
+        assert [p["type"] for p in datos["preferencias"]] == tipos, roles
+        assert all(p["enabled"] for p in datos["preferencias"])
+    admin = cliente.get("/api/v1/notifications/preferences?format=json",
+                        headers=token(("ADMINISTRADOR",))).get_json()["preferencias"]
+    assert [p["fijo"] for p in admin if p["type"] == "SYSTEM"] == [True]
+
+
+def test_apagar_y_volver_a_prender(cliente, token, preferencias):
+    cabeceras = token(("CAPTURISTA",))
+    r = cliente.put("/api/v1/notifications/preferences?format=json", headers=cabeceras,
+                    json={"CAMPAIGN": False, "DATA_INCOMPLETE": "false"})
+    assert r.status_code == 200
+    apagados = {p["type"] for p in r.get_json()["preferencias"] if not p["enabled"]}
+    assert apagados == {"CAMPAIGN", "DATA_INCOMPLETE"} and preferencias[(7, "CAMPAIGN")] is False
+    r = cliente.put("/api/v1/notifications/preferences?format=json", headers=cabeceras, json={"CAMPAIGN": True})
+    assert {p["type"] for p in r.get_json()["preferencias"] if not p["enabled"]} == {"DATA_INCOMPLETE"}
+
+
+@pytest.mark.parametrize("roles,cuerpo,mensaje", [
+    (("ADMINISTRADOR",), {"SYSTEM": False}, "no se puede apagar"),
+    (("CAPTURISTA",), {"NEW_CASES": False}, "no es un aviso que te llegue"),
+    (("CAPTURISTA",), {"CAMPAIGN": "no"}, "true o false"),
+    (("CAPTURISTA",), {}, "al menos un tipo"),
+])
+def test_preferencias_invalidas_son_422(cliente, token, preferencias, roles, cuerpo, mensaje):
+    r = cliente.put("/api/v1/notifications/preferences?format=json", headers=token(roles), json=cuerpo)
+    assert r.status_code == 422 and mensaje in r.get_json()["detail"]
+
+
+def test_preferencias_en_xml(cliente, token, preferencias):
+    raiz = ET.fromstring(cliente.get("/api/v1/notifications/preferences", headers=token(("CAPTURISTA",))).data)
+    assert raiz.tag == "preferencias"
+    assert raiz.find("preferencias/preferencia").findtext("type") == "CASE_REJECTED"
+
+
+def test_un_aviso_apagado_no_se_crea(cliente, servicio, bandeja, monkeypatch):
+    monkeypatch.setattr(notificaciones, "crear_notificacion", lambda datos, *, contexto: (None, None))
+    r = cliente.post("/api/v1/notifications?format=json", json=AVISO, headers=servicio)
+    assert r.status_code == 200
+    assert r.get_json() == {"id": None, "user_id": 7, "type": "RUN_FAILED", "omitida": True}
+
+
+def test_las_consultas_respetan_las_preferencias():
+    """crear_notificacion y el aviso a un rol consultan notification_preferences."""
+    import inspect
+    assert "notification_preferences" in inspect.getsource(notificaciones.crear_notificacion)
+    fuente = inspect.getsource(notificaciones.crear_notificaciones_a_rol)
+    assert "NOT EXISTS" in fuente and "notification_preferences" in fuente

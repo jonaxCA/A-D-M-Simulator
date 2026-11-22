@@ -16,6 +16,7 @@ D48). Es el único servicio que escribe en ellas.
 | `PATCH /cases/{id}` | EPIDEMIOLOGO (cualquier caso pendiente o validado), CAPTURISTA (los suyos, pendientes) | Corrige los campos que vienen en el cuerpo (ver «Corrección y estado»). |
 | `POST /cases/{id}/status` | EPIDEMIOLOGO | Valida, descarta, marca duplicado o reabre. |
 | `GET /cases/{id}/history` | los cuatro roles | Un cambio por versión, del más viejo al más nuevo. |
+| `GET /cases/incomplete` | los cuatro roles (la CAPTURISTA, solo los suyos) | Los casos pendientes o validados a los que les faltan datos, con `faltantes` (D49). |
 | `GET /forms` | los cuatro roles (los borradores, solo EPIDEMIOLOGO y ADMINISTRADOR) | Las versiones de los formularios; filtros `disease_id` y `status`. |
 | `GET /forms/current` | los cuatro roles | La versión vigente de cada enfermedad (o de una, con `disease_id`): lo que la app guarda para capturar sin red. |
 | `GET /forms/{id}` | los cuatro roles | Una versión. |
@@ -97,6 +98,14 @@ que ya existe: lo que se sincronizó antes de revocar el teléfono se queda.
   (otra versión, con sus respuestas; `null` lo quita). Cambiar la enfermedad de un caso con
   formulario pide el de la nueva o `form_id` null. El cambio queda en el historial.
 - Crear, editar y publicar se auditan (`case_forms`).
+
+## Datos incompletos (D49)
+
+A un caso le faltan datos si no trae edad, sexo, inicio de síntomas, resultado, gravedad o ubicación
+(`IMPORTANTES` en `rutas.py`; ninguno es obligatorio). Al crear casos así, quien los capturó recibe un
+aviso `DATA_INCOMPLETE` con lo que falta: uno por `POST /cases` y uno por lote; un reintento (200) no
+avisa. `GET /cases/incomplete` los lista con `faltantes`, para el panel de la app; se completan con
+`PATCH /cases/{id}` (D47).
 
 ## Variables y base de datos
 

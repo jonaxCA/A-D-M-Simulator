@@ -63,3 +63,23 @@ curl -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:5225/api/v1/vaccine-lot
 curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
      -d '{"doses": 1}' "http://127.0.0.1:5225/api/v1/vaccine-lots/5/doses?format=json"
 ```
+
+## Campañas (D49)
+
+`campanas.py`, con su propia consulta (`epidemia_comun.bd`); tabla `campaigns` (migración 060).
+
+| Ruta | Roles | Qué hace |
+|---|---|---|
+| `GET /api/v1/campaigns` | los cuatro | De la más reciente a la más vieja; filtros `status`, `disease_id`, `region_id` (las de ese municipio y las de todo el estado) y `limit` |
+| `GET /api/v1/campaigns/{id}` | los cuatro | Una campaña |
+| `POST /api/v1/campaigns` | EPIDEMIOLOGO, ADMINISTRADOR | Crea una; los CAPTURISTA reciben un aviso `CAMPAIGN` |
+| `PUT /api/v1/campaigns/{id}` | EPIDEMIOLOGO, ADMINISTRADOR | La edita (se manda todo) |
+| `POST /api/v1/campaigns/{id}/cancel` | EPIDEMIOLOGO, ADMINISTRADOR | La cancela con `reason`; aviso `CAMPAIGN` |
+
+- Campos: `name` (hasta 160), `disease_id`, `region_id` (municipio de Nuevo León; null es todo el
+  estado), `starts_on` y `ends_on` (no antes de `starts_on` ni de hoy), `target_population` (opcional)
+  y `description` (opcional, hasta 2000).
+- `status` sale de las fechas: `programada`, `activa`, `terminada`, o `cancelada`. Una cancelada o
+  terminada no se edita ni se cancela (409).
+- Sin coberturas: eso es el servicio opcional de vacunación. El aviso es best-effort; se audita
+  `CREATE` y `UPDATE` de `campaigns`. Necesita `SERVICIO_NOTIFICACIONES_URL`.
