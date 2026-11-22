@@ -300,8 +300,8 @@ y el PDF pone las gráficas y el aviso de incertidumbre antes de la tabla.
 
 - [x] Sin red, con rechazo o sesión vencida, la app explica el problema (RF-H24, RNF-E06). Evidencia en `test_api.py` y `test_mensajes_ui.py`.
 - [x] Búsqueda, filtros, tabla, XSD y exportación verificados localmente con ejemplos XML y PDF. Se conserva la evidencia previa de roles ANALISTA, ADMINISTRADOR y EPIDEMIOLOGO con respuestas controladas.
-- [ ] **Parcial (F).** Verificar el escritorio detrás de nginx y contra el dominio con HTTPS (D25, D26). nginx en local ya está (F2, `infra/docker-compose.nginx.yml`): se puede probar con el directorio en `https://localhost`. El dominio sigue esperando a F.
-- [x] `python -m pytest frontend_desktop` pasó la suite completa. Ver [reproducción y resultados](../../pruebas/bloque_a_escritorio.md).
+- [ ] **Parcial.** Verificación HTTPS contra `epidemos.app` (D25, D26). El cliente descubrió los 29 servicios sanos y la ventana mostró el captcha XML con verificación TLS. Geometría e historial respondieron 401 sin sesión. Para cerrar la prueba en nube falta iniciar sesión con una cuenta de demostración y recorrer mapa y auditoría con datos del despliegue.
+- [x] `python -m pytest frontend_desktop` pasó la suite completa con 315 pruebas. Ver [reproducción y resultados](../../pruebas/bloque_a_escritorio.md).
 
 ### A4. Módulos que pide la retroalimentación
 
@@ -313,15 +313,15 @@ y el PDF pone las gráficas y el aviso de incertidumbre antes de la tabla.
 - [ ] **Parcial (D y 0).** Configuración del modelo. Se elige el motor al lanzar, se ajustan población, infecciones iniciales y horizonte. `parametros/status` aporta definiciones, unidades, rangos, fuentes y estado. Falta el ajuste de parámetros por versión del escenario.
 - [x] Editor de escenarios. Alta, duplicado, nuevas versiones, historial y edición del borrador por XML. La prueba del bloque A verifica que una respuesta tardía no reemplaza la versión que pidió el usuario.
 - [x] Configuración de intervenciones. Intervalo y duración inclusiva, cobertura, cumplimiento, parámetros por tipo y consulta del costo unitario con su procedencia. Cambiar el costo del catálogo es una operación compartida de administración.
-- [ ] **Bloqueado (0 y E).** Calibración. Falta la decisión sobre el método y el servicio de calibración con series y métricas de ajuste.
-- [ ] **Parcial (0 y E).** Validación. El escritorio muestra errores y advertencias del escenario y el motivo de la categoría científica devuelta por `resultados`. Faltan las rutas del estudio de sensibilidad y la validación científica.
+- [ ] **Parcial (0 y E).** Calibración. El escritorio consume el estado, la categoría y la evidencia de D46. La ejecución de calibración sigue pendiente del método, los datos y el contrato para métricas de ajuste.
+- [ ] **Parcial (0 y E).** Validación. El escritorio muestra errores y advertencias del escenario, el motivo de su categoría y la sensibilidad exploratoria de una versión aprobada (D46). Falta acordar la validación con datos observados y sus criterios.
 - [ ] **Parcial (E).** Ejecución asíncrona. La app encola, monitorea, sigue la nueva corrida y cancela en espera por versión y motor. Falta demostrar la recuperación del trabajador de punta a punta (D38).
 - [x] Comparación descriptiva. Mediana, p5–p95, diferencias absolutas y relativas contra referencia, semillas completas y curvas alineadas por día. Se avisa si cambian motor, versión u horizonte.
 - [x] Análisis económico exploratorio y Pareto (D3/D8). Se ven supuestos y diferencias de costos en personas-día y pesos. La frontera sobre medianas muestra dominancia y alternativas fuera por falta de datos.
-- [ ] **Parcial (D y F).** Mapa regional. `zonas/map` aporta coordenadas, casos, incidencia, semáforo y serie por municipio. El escritorio dibuja marcadores sin polígonos. La geometría oficial ya existe en `GET /zones/geometry` (GeoJSON de INEGI, con ETag, 2026-11-22): falta dibujarla.
+- [x] **Implementado en escritorio.** Mapa regional. Dibuja los 51 polígonos oficiales de INEGI de `zonas/geometry` con ETag, coloreados con el nivel de `zonas/map`. La selección sincroniza mapa, tabla y serie. Verificado con la geometría del repositorio y el ejemplo XML. La prueba autenticada en nube queda en A3.
 - [x] Reportes. El comparativo exporta gráficas, metodología, diferencias, advertencias, costos e identificadores de origen. La ficha PDF por réplica exporta serie, indicadores, parámetros con procedencia, versión y limitaciones devueltos por `resultados`.
 - [ ] **Parcial (D y E).** Reproducibilidad. Misma versión del escenario, semilla y motor al reencolar; consulta de huella y resumen, acceso al equivalente y seguimiento. Faltan ID/versionado del conjunto y un contrato para repetir con configuración histórica.
-- [ ] **Parcial (D y E).** Auditoría. Versiones muestra autor, fechas y revisor del servidor cuando existen. Falta la consulta de eventos por operación y modificación (D7/E7).
+- [x] **Implementado en escritorio.** Auditoría. El diálogo consulta `roles/audit/history` por escenario, versión o intervención, muestra autor, acción y valores antes/después y respeta el 403 del servidor (D43). Probado con XML, paginación y rechazo regional controlado. La prueba autenticada en nube queda en A3.
 - [x] Seleccionar una curva por leyenda o tabla, escoger una réplica y abrir su ficha, sus supuestos y su versión del escenario. La repetición histórica sigue en el requisito de reproducibilidad.
 - [x] Trazabilidad gráfica. `corridas` aporta versión del motor y horizonte; `comparacion` y `resultados`, las series e indicadores; `pareto`, los costos. Los ejes muestran unidades. Si faltan datos de procedencia, se muestran tablas y se omite la gráfica afectada.
 
