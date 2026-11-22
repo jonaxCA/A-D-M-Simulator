@@ -783,6 +783,9 @@ services:
       DATABASE_URL: ${DATABASE_URL_ESTADO_SERVICIOS:-postgresql://svc_estado_servicios:${DB_PASSWORD_ESTADO_SERVICIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       URL_SONDEO: "http://{servicio}:8000"
       URL_PUBLICA: ${URL_PUBLICA:-}
+      # Alertas técnicas a los ADMINISTRADOR (F7); ALERTAS_TECNICAS=0 las apaga.
+      SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
+      ALERTAS_TECNICAS: ${ALERTAS_TECNICAS:-1}
       # El historial de los sondeos va a historial_servicios (30 días); el último, a Redis.
       MONGO_URL: mongodb://epidemia:${MONGO_PASSWORD:-}@mongodb:27017/epidemia?authSource=epidemia
     depends_on:

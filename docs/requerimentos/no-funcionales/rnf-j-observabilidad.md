@@ -21,7 +21,7 @@ Cómo se sabe qué pasó dentro del sistema. El panel y el historial están en [
 | RNF-J02 | Rastrear una operación por todos los servicios | Se cubre con RNF-J01 |
 | RNF-J03 | Métricas de negocio | No lo pide la rúbrica |
 | RNF-J04 | CPU, memoria, disco y red por servicio | Se miden en las pruebas de volumen y de carga (RNF-A16, RNF-A17) |
-| RNF-J07 | Alertas por umbral | Ver RF-K06 |
+| RNF-J07 | Alertas por umbral | Se avisan los cambios de estado (RF-K06), no umbrales de latencia ni de errores |
 | RNF-J08 | Panel de monitoreo | Pasa a RF-K02 |
 | RNF-J09 | Historial de incidentes | Pasa a RF-K03 |
 | RNF-J10 | Origen de cada dato | Se cubre con la auditoría (RF-A06) y con las fuentes de los parámetros (RF-B09) |

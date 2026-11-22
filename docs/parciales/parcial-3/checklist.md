@@ -669,8 +669,8 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 **Plataforma**
 
-- [ ] `notificaciones`: avisos de campañas, de datos incompletos y de errores operativos. Hoy: escenarios por aprobar, corridas terminadas y casos nuevos; `SYSTEM` existe sin uso ([`revision_f7.md`](revision_f7.md)).
-- [ ] `estado-servicios`: capacidad de procesamiento (la cola de cada motor). Hoy: APIs, bases, latencia y errores de 24 h; faltan colas, capacidad y alertas técnicas ([`revision_f7.md`](revision_f7.md)).
+- [ ] `notificaciones`: avisos de campañas, de datos incompletos y de errores operativos. Hoy: escenarios por aprobar, corridas terminadas, casos nuevos y, desde el 2026-11-21, errores operativos (`SYSTEM` a los ADMINISTRADOR desde `estado-servicios`); faltan campañas y datos incompletos ([`revision_f7.md`](revision_f7.md)).
+- [x] `estado-servicios`: capacidad de procesamiento (la cola de cada motor). Hecho el 2026-11-21: `GET /api/v1/services/capacity` da por motor las corridas en cola (por prioridad, D44) y los simuladores vivos, ocupados y libres, con el latido que cada simulador renueva en Redis (`worker:<motor>:<simulador>`), también el de `abm-gpu` de la PC. Alertas técnicas, también el 2026-11-21: un servicio que cae, se degrada o se recupera durante 30 s manda un aviso `SYSTEM` a los ADMINISTRADOR por `notificaciones` ([`revision_f7.md`](revision_f7.md)).
 
 ---
 

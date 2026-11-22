@@ -118,8 +118,11 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
   que crea avisos es interna. Es best-effort: si falla, el cambio de estado se mantiene.
 - `sincronizacion` → `notificaciones`: un aviso `NEW_CASES` por lote, a los EPIDEMIOLOGO, solo
   cuando el lote se procesa por primera vez y crea al menos un caso. También con token de
-  servicio y best-effort. `POST /api/v1/notifications` acepta `role` (hoy solo `EPIDEMIOLOGO`) en
-  lugar de `user_id`: crea un aviso por cada persona activa con ese rol.
+  servicio y best-effort. `POST /api/v1/notifications` acepta `role` (`EPIDEMIOLOGO` o
+  `ADMINISTRADOR`) en lugar de `user_id`: crea un aviso por cada persona activa con ese rol.
+- `estado-servicios` → `notificaciones`: las alertas técnicas (F7), un aviso `SYSTEM` a los
+  ADMINISTRADOR cuando un servicio cambia de estado durante 30 s. Con token de servicio; lo que
+  no se entrega se reintenta cada 60 s (ver su README).
 
 ## Simulación
 
@@ -165,7 +168,7 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 | #  | Servicio           | Hace una cosa                                  | Rutas principales                                                                                                              | Escribe         | Lee | Llama a                                  | Puerto |
 |----|--------------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|-----------------|-----|------------------------------------------|--------|
 | 25 | `notificaciones`   | Avisos para las apps                           | `GET /api/v1/notifications`, `POST /api/v1/notifications/{id}/read`, `POST /api/v1/notifications` (solo con token de servicio) | `notifications` | `users` (`id`, `is_active`), `user_roles`, `roles` | —                                        | 5261   |
-| 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/{nombre}/history`                                 | MongoDB `historial_servicios` (un sondeo por documento, 30 días, D28) | MongoDB `historial_servicios` | El `/health` de los 26, incluido el suyo, **en XML** | 5262   |
+| 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/capacity`, `GET /api/v1/services/{nombre}/history`                                 | MongoDB `historial_servicios` (un sondeo por documento, 30 días, D28) | MongoDB `historial_servicios` | El `/health` de los 26, incluido el suyo, **en XML**; `notificaciones` para las alertas técnicas (F7) | 5262   |
 | —  | `consola`          | Página tipo Swagger/Postman para probar los 29 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
 
 - La `consola` es una página: el navegador llama a cada servicio con la URL que da el
@@ -225,12 +228,14 @@ guarda su huella (SHA-256).
 | `queue:simulaciones:<motor>` | Corridas por ejecutar con ese motor y prioridad normal: `{"id", "forzar_error"}` en JSON | **Sin TTL**: la vacía el `simulador`, y lo que manda es PostgreSQL | `corridas`                                     | `cola`     |
 | `queue:simulaciones:<motor>:<prioridad>` | Las de prioridad `alta` o `baja` de ese motor (D44); el simulador las toma en el orden alta, normal y baja | **Sin TTL**: la vacía el `simulador`, y lo que manda es PostgreSQL | `corridas` | `cola` |
 | `lock:corrida:<version>`     | Marca de la petición que lo tomó                                                  | Unos segundos                                                      | `corridas`                                     | `candados` |
+| `worker:<motor>:<simulador>` | Latido de un simulador: su motor, su nombre (el del contenedor), la corrida que ejecuta y cuántas lleva, en JSON; `estado-servicios` cuenta los vivos y los ocupados por motor | 30 s; el simulador lo renueva cada 10 s mientras su trabajador corre | `simulador` | — |
 | `job:<id>:progress`          | Avance de una corrida (10, 30, 90 y 100)                                          | 24 h (86400 s), desde el último avance                             | `simulador`                                    | —          |
 | `cache:<servicio>:<clave>`   | La respuesta, en JSON                                                             | Corto; lo fija cada servicio (`resultados`: 300 s)                 | `resultados`, `indicadores`, `series`, `zonas` | `cache`    |
 | `sync:lote:<id>`             | Resultado de un lote ya recibido                                                  | 7 días (`SYNC_LOTE_TTL_SECONDS`, por defecto 604800)               | `sincronizacion`                               | —          |
 | `sync:lote:<id>:candado`     | Marca de la petición que está procesando ese lote                                 | 300 s                                                              | `sincronizacion`                               | `candados` |
 | `ratelimit:<usuario>:<ruta>` | Contador de peticiones de la ventana; sin sesión, `<usuario>` es `ip-<dirección>` y `<ruta>` es `MÉTODO:regla` | La ventana (60 s por defecto)                                      | todos los servicios                            | `limites`  |
 | `health:<servicio>`          | Último sondeo de un servicio, en JSON                                             | Tres intervalos de sondeo: 30 s con `SONDEO_SEGUNDOS` en 10        | `estado-servicios`                             | —          |
+| `alert:<servicio>`           | Lo último que se avisó de un servicio a los ADMINISTRADOR (`estado`) y cuándo se avisó su última falla, en JSON (alertas técnicas, F7) | 7 días, desde el último aviso; si vence con el servicio caído, la falla se vuelve a avisar | `estado-servicios` | — |
 | `errors:<servicio>`          | Contador de respuestas 5xx del servicio (sin contar `/health`); lo lee el panel   | 24 h, desde el primer error de la ventana                          | todos los servicios                            | —          |
 
 - Todas las rutas protegidas leen `session:` y `jwt:revoked:` desde `@requiere_token`

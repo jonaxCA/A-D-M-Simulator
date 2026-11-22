@@ -244,8 +244,11 @@ flowchart TB
 ```
 
 - **Monitoreo:** `estado-servicios` sondea el `/health` de los 29 servicios (PostgreSQL, Redis,
-  MongoDB y tiempo de respuesta) y guarda el historial en MongoDB; la consola (`/consola/`) lo
-  muestra. Los registros de los 37 contenedores van a Cloud Logging. La web todavía lee
+  MongoDB y tiempo de respuesta) y guarda el historial en MongoDB; además cuenta, por motor, las
+  corridas en cola y los simuladores vivos y ocupados, con el latido que cada simulador deja en
+  Redis, también el de la PC con GPU (F7). La consola (`/consola/`) muestra las dos cosas. Si
+  un servicio cae, se degrada o se recupera durante 30 s, los ADMINISTRADOR reciben un aviso
+  `SYSTEM` de `notificaciones` (alertas técnicas, F7). Los registros de los 37 contenedores van a Cloud Logging. La web todavía lee
   PostgreSQL directo en los módulos que no pasaron a los servicios (D36).
 - **Archivos:** las fotos de los casos están en el volumen `evidencias-datos` de la VM; pasarlas
   a Cloud Storage con URLs firmadas es del bloque D (D30, D35).

@@ -19,8 +19,8 @@ Puerto externo: 5261; puerto interno en Docker: 8000. Contrato en
 
 ### Crear (ruta interna)
 
-Cuerpo `{user_id | role, type, title, body?, payload?}`, sin otros campos. `role` (hoy solo
-`EPIDEMIOLOGO`) va en lugar de `user_id` y crea un aviso por cada persona activa con ese rol;
+Cuerpo `{user_id | role, type, title, body?, payload?}`, sin otros campos. `role`
+(`EPIDEMIOLOGO` o `ADMINISTRADOR`) va en lugar de `user_id` y crea un aviso por cada persona activa con ese rol;
 responde 201 con `{role, type, total}`. Mandar los dos es 422.
 
 
@@ -38,6 +38,8 @@ ADMINISTRADOR, recibe 401. Lo usan:
 - `aprobacion`: `SCENARIO_SUBMITTED` (a los EPIDEMIOLOGO), `SCENARIO_APPROVED` y
   `SCENARIO_REJECTED` (a quien armó la versión).
 - `sincronizacion`: `NEW_CASES`, a los EPIDEMIOLOGO, una vez por lote.
+- `estado-servicios`: `SYSTEM`, a los ADMINISTRADOR, cuando un servicio cae, se degrada o se
+  recupera (alertas técnicas, F7; ver su README).
 
 | Caso | Respuesta |
 |------|-----------|

@@ -1,8 +1,8 @@
 """Servicio notificaciones: los avisos de cada persona para las apps.
 
 Leer y marcar como leída es para quien inició sesión, y solo con sus propios
-avisos. Crearlos es una ruta interna: la llaman simulador, aprobacion y sincronizacion
-con un token de servicio.
+avisos. Crearlos es una ruta interna: la llaman simulador, aprobacion, sincronizacion y
+estado-servicios con un token de servicio.
 """
 from flask import g, request
 
@@ -15,7 +15,9 @@ from epidemia_comun.validaciones import diccionario, entero_positivo
 
 LIMITE, LIMITE_MAX = 50, 200
 CAMPOS = {"user_id", "role", "type", "title", "body", "payload"}
-ROLES_DESTINO = ("EPIDEMIOLOGO",)
+# EPIDEMIOLOGO: escenarios por aprobar y casos nuevos. ADMINISTRADOR: alertas técnicas de
+# estado-servicios (F7).
+ROLES_DESTINO = ("EPIDEMIOLOGO", "ADMINISTRADOR")
 
 
 def _solo_no_leidas(valor):
