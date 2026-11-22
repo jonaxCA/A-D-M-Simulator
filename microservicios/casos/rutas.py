@@ -17,7 +17,7 @@ from epidemia_comun.http import llamar
 from epidemia_comun.seguridad import requiere_token, token_servicio
 from epidemia_comun.validaciones import diccionario, entero_positivo, fecha
 
-from . import seguimiento
+from . import formularios, seguimiento
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +26,8 @@ log = logging.getLogger(__name__)
 # usuario autenticado; aquí se aplica la matriz.
 ROLES_ESCRITURA = ("CAPTURISTA",)
 ROLES_LECTURA = ("CAPTURISTA", "EPIDEMIOLOGO", "ANALISTA", "ADMINISTRADOR")
+# Los formularios por enfermedad los arman quienes dan de alta enfermedades (D48, D1).
+ROLES_FORMULARIOS = ("EPIDEMIOLOGO", "ADMINISTRADOR")
 
 ESTADOS = ("pendiente", "validado", "duplicado", "descartado")
 MAXIMO_POR_PAGINA = 100
@@ -40,14 +42,14 @@ CAMPOS_SALIDA = ("id", "local_uuid", "device_id", "reported_by", "disease_id", "
                  "region_id", "municipio", "age", "sex", "onset_date", "report_date",
                  "latitude", "longitude", "test_result", "severity", "status",
                  "created_at", "synced_at", "version", "updated_at", "updated_by",
-                 "status_reason", "duplicate_of")
+                 "status_reason", "duplicate_of", "form_id", "form_answers")
 
 _SELECT = """
     SELECT c.id, c.local_uuid, c.device_id, c.reported_by, c.disease_id, d.name,
            c.region_id, r.name, c.age, c.sex, c.onset_date, c.report_date,
            c.latitude, c.longitude, c.test_result, c.severity, c.status,
            c.created_at, c.synced_at, c.version, c.updated_at, c.updated_by,
-           c.status_reason, c.duplicate_of
+           c.status_reason, c.duplicate_of, c.form_id, c.form_answers
     FROM cases c
     JOIN diseases d ON d.id = c.disease_id
     JOIN regions  r ON r.id = c.region_id
@@ -56,8 +58,8 @@ _SELECT = """
 _INSERTA = """
     INSERT INTO cases (local_uuid, device_id, reported_by, disease_id, region_id, age, sex,
                        onset_date, report_date, latitude, longitude, test_result,
-                       severity, synced_at)
-    VALUES (%s::uuid, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                       severity, synced_at, form_id, form_answers)
+    VALUES (%s::uuid, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
     ON CONFLICT (local_uuid) DO NOTHING
     RETURNING id
 """
@@ -83,11 +85,58 @@ def _texto_de_formulario(clave, valor):
 
 def _leer_caso(cuerpo):
     datos = diccionario(cuerpo)
-    desconocidos = set(datos) - set(CAMPOS_ENTRADA)
+    desconocidos = set(datos) - set(CAMPOS_ENTRADA) - {"form_id", "form_answers"}
     if desconocidos:
         raise ErrorAPI(422, "DATOS_INVALIDOS",
                        "Campos no reconocidos: " + ", ".join(sorted(str(c) for c in desconocidos)) + ".")
-    return {c: _texto_de_formulario(c, datos.get(c)) for c in CAMPOS_ENTRADA}
+    entrada = {c: _texto_de_formulario(c, datos.get(c)) for c in CAMPOS_ENTRADA}
+    # El formulario de la enfermedad (D48): la versión, como texto, y las respuestas, tal cual.
+    entrada["form_id"] = _texto_de_formulario("form_id", datos.get("form_id"))
+    entrada["form_answers"] = datos.get("form_answers")
+    return entrada
+
+
+def _entero_opcional(texto, campo):
+    if texto is None or not str(texto).strip():
+        return None
+    try:
+        valor = int(str(texto).strip())
+    except ValueError:
+        valor = 0
+    if not 1 <= valor <= BIGINT_MAX:
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "%s debe ser un entero positivo." % campo)
+    return valor
+
+
+def _version_de_formulario(form_id, vistos):
+    clave = ("id", form_id)
+    if clave not in vistos:
+        vistos[clave] = formularios.por_id(form_id)
+    return vistos[clave]
+
+
+def _vigente(disease_id, vistos):
+    clave = ("vigente", disease_id)
+    if clave not in vistos:
+        vigentes = formularios.vigentes(disease_id)
+        vistos[clave] = vigentes[0] if vigentes else None
+    return vistos[clave]
+
+
+def _formulario_del_caso(form_id, crudas, disease_id, vistos):
+    """(form_id, respuestas validadas) o (None, None) (D48). Sin formulario se acepta, salvo que
+    la versión vigente de la enfermedad lo pida (required)."""
+    if form_id is None:
+        if crudas not in (None, "", {}):
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "form_answers va con form_id: la versión del formulario.")
+        vigente = _vigente(disease_id, vistos)
+        if vigente and vigente["required"]:
+            raise ErrorAPI(422, "DATOS_INVALIDOS",
+                           "Esta enfermedad pide su formulario: manda form_id (%d, versión %d) y form_answers."
+                           % (vigente["id"], vigente["version"]))
+        return None, None
+    formulario = formularios.para_caso(_version_de_formulario(form_id, vistos), disease_id)
+    return form_id, formularios.respuestas(formulario, crudas if crudas is not None else {})
 
 
 def _uuid_opcional(texto):
@@ -217,9 +266,10 @@ def corrige(case_id, cuerpo, esperada):
     """PATCH /cases/{id}: los campos que vienen en el cuerpo, validados junto con el resto del
     caso. Regresa el caso como queda; si nada cambia, el mismo, sin subir la versión."""
     cuerpo = diccionario(cuerpo)
-    _desconocidos(cuerpo, seguimiento.EDITABLES + ("reason", "device_id"))
+    _desconocidos(cuerpo, seguimiento.EDITABLES + ("reason", "device_id", "form_id", "form_answers"))
     pedidos = [c for c in seguimiento.EDITABLES if c in cuerpo]
-    if not pedidos:
+    con_formulario = "form_id" in cuerpo or "form_answers" in cuerpo
+    if not pedidos and not con_formulario:
         raise ErrorAPI(422, "DATOS_INVALIDOS", "Manda al menos un campo que corregir.")
     motivo = seguimiento.motivo(cuerpo, obligatorio=False)
     device_id = _dispositivo_opcional(_texto_de_formulario("device_id", cuerpo.get("device_id")))
@@ -245,9 +295,16 @@ def corrige(case_id, cuerpo, esperada):
                 if errores:
                     raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
                 diferencias = seguimiento.cambios(actual, datos, pedidos)
+                valores = {c: datos[c] for c in diferencias}
+                for campo, valor in _formulario_corregido(actual, cuerpo, datos["disease_id"],
+                                                          con_formulario).items():
+                    if valor != actual[campo]:
+                        diferencias[campo] = {"antes": actual[campo], "despues": valor}
+                        valores[campo] = (json.dumps(valor, ensure_ascii=False)
+                                          if campo == "form_answers" and valor is not None else valor)
                 if not diferencias:
                     return actual
-                caso = _guarda_cambio(cur, actual, list(diferencias), [datos[c] for c in diferencias],
+                caso = _guarda_cambio(cur, actual, list(valores), list(valores.values()),
                                       "correccion", motivo, diferencias, device_id, actual["status"])
                 log_audit(g.contexto, "UPDATE", "cases", case_id,
                           data_after={"version": caso["version"], "cambios": diferencias,
@@ -256,6 +313,27 @@ def corrige(case_id, cuerpo, esperada):
     except (psycopg2.errors.CheckViolation, psycopg2.errors.ForeignKeyViolation) as exc:
         raise _restriccion(exc) from exc
     return caso
+
+
+def _formulario_corregido(actual, cuerpo, disease_id, con_formulario):
+    """{form_id, form_answers} como quedan tras la corrección, o {} si no cambian (D48)."""
+    if not con_formulario:
+        if actual["form_id"] is not None and disease_id != actual["disease_id"]:
+            raise ErrorAPI(422, "DATOS_INVALIDOS",
+                           "Cambiaste la enfermedad: manda form_id y form_answers de la nueva, o "
+                           "form_id null para quitar el formulario.")
+        return {}
+    form_id = (_entero_opcional(_texto_de_formulario("form_id", cuerpo["form_id"]), "form_id")
+               if "form_id" in cuerpo else actual["form_id"])
+    crudas = cuerpo["form_answers"] if "form_answers" in cuerpo else actual["form_answers"]
+    if form_id is None:
+        if crudas not in (None, "", {}) and "form_answers" in cuerpo:
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "form_answers va con form_id: la versión del formulario.")
+        return {"form_id": None, "form_answers": None}
+    if "form_id" in cuerpo and "form_answers" not in cuerpo and form_id != actual["form_id"]:
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "Con otra versión del formulario, manda también form_answers.")
+    formulario = formularios.para_caso(formularios.por_id(form_id), disease_id)
+    return {"form_id": form_id, "form_answers": formularios.respuestas(formulario, crudas or {})}
 
 
 def cambia_estado(case_id, cuerpo, esperada):
@@ -346,7 +424,7 @@ def historial(case_id):
     return {"case_id": case_id, "version": fila[0], "cambios": cambios}
 
 
-def _crea(entrada, catalogos=None, dispositivos_vistos=None):
+def _crea(entrada, catalogos=None, dispositivos_vistos=None, formularios_vistos=None):
     """Crea un caso: (201, caso), o (200, caso) si su local_uuid ya existía. Lanza ErrorAPI 422 o
     409 si no pasa. Un lote comparte `catalogos` y `dispositivos_vistos` para no repetir las
     mismas consultas en cada caso."""
@@ -371,6 +449,9 @@ def _crea(entrada, catalogos=None, dispositivos_vistos=None):
     datos, errores = queries.valida_caso(entrada, enfermedades, municipios)
     if errores:
         raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
+    form_id, respuestas = _formulario_del_caso(
+        _entero_opcional(entrada.get("form_id"), "form_id"), entrada.get("form_answers"),
+        datos["disease_id"], {} if formularios_vistos is None else formularios_vistos)
     local_uuid = local_uuid or str(uuid.uuid4())
     # synced_at: el caso llegó desde un dispositivo (trae device_id).
     sincronizado = datetime.now(timezone.utc) if device_id else None
@@ -382,7 +463,8 @@ def _crea(entrada, catalogos=None, dispositivos_vistos=None):
                     local_uuid, device_id, g.usuario["sub"], datos["disease_id"],
                     datos["region_id"], datos["age"], datos["sex"], datos["onset_date"],
                     datos["report_date"], datos["latitude"], datos["longitude"],
-                    datos["test_result"], datos["severity"], sincronizado))
+                    datos["test_result"], datos["severity"], sincronizado, form_id,
+                    None if respuestas is None else json.dumps(respuestas, ensure_ascii=False)))
                 nuevo = cur.fetchone()
                 if nuevo is None:
                     # Otra petición con el mismo local_uuid ganó la carrera.
@@ -430,10 +512,10 @@ def registrar(app):
                            "Campos no reconocidos: " + ", ".join(sorted(str(c) for c in desconocidos)) + ".")
         casos = _lista_de_casos(cuerpo.get("cases"))
         limites.consumir(g.usuario["sub"], cantidad=len(casos), ruta="POST:/api/v1/cases")
-        catalogos, vistos, resultados = _catalogos(), {}, []
+        catalogos, vistos, versiones, resultados = _catalogos(), {}, {}, []
         for indice, crudo in enumerate(casos):
             try:
-                estado, caso = _crea(_leer_caso(crudo), catalogos, vistos)
+                estado, caso = _crea(_leer_caso(crudo), catalogos, vistos, versiones)
                 resultados.append({"indice": indice, "estado": estado, "caso": caso})
             except ErrorAPI as error:
                 if error.estado not in (409, 422):
@@ -519,6 +601,66 @@ def registrar(app):
         cuerpo = leer_cuerpo()
         caso = cambia_estado(case_id, cuerpo, seguimiento.version_pedida())
         return _con_version(responder(caso, "caso"), caso)
+
+    # ---------------------------------------------- formularios por enfermedad (D48)
+
+    def _puede_ver_borradores():
+        return bool(set(g.usuario.get("roles") or []) & set(ROLES_FORMULARIOS))
+
+    @app.get("/api/v1/forms")
+    @requiere_token(roles=ROLES_LECTURA)
+    def lista_formularios():
+        disease_id = _entero_de_consulta("disease_id")
+        estado = request.args.get("status")
+        if estado is not None and estado not in ("borrador", "publicado", "retirado"):
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "status debe ser borrador, publicado o retirado.")
+        filas = formularios.lista(disease_id, estado)
+        if not _puede_ver_borradores():
+            filas = [f for f in filas if f["status"] != "borrador"]
+        return responder({"total": len(filas), "formularios": filas}, "lista_formularios")
+
+    # La versión vigente de cada enfermedad (o de una): lo que la app guarda para capturar sin red.
+    @app.get("/api/v1/forms/current")
+    @requiere_token(roles=ROLES_LECTURA)
+    def formularios_vigentes():
+        filas = formularios.vigentes(_entero_de_consulta("disease_id"))
+        return responder({"total": len(filas), "formularios": filas}, "lista_formularios")
+
+    @app.get("/api/v1/forms/<int:form_id>")
+    @requiere_token(roles=ROLES_LECTURA)
+    def formulario(form_id):
+        fila = formularios.por_id(form_id)
+        if fila is None or (fila["status"] == "borrador" and not _puede_ver_borradores()):
+            raise ErrorAPI(404, "NO_ENCONTRADO", "No existe el formulario.")
+        return responder(fila, "formulario")
+
+    @app.post("/api/v1/forms")
+    @requiere_token(roles=ROLES_FORMULARIOS)
+    def crea_formulario():
+        cuerpo = diccionario(leer_cuerpo())
+        _desconocidos(cuerpo, ("disease_id", "title", "fields", "required"))
+        disease_id = entero_positivo(_texto_de_formulario("disease_id", cuerpo.get("disease_id")), "disease_id")
+        nuevo = formularios.crea_borrador(disease_id, formularios.definicion(cuerpo), g.usuario["sub"])
+        log_audit(g.contexto, "CREATE", "case_forms", nuevo["id"],
+                  data_after={"disease_id": disease_id, "version": nuevo["version"]})
+        return responder(nuevo, "formulario", estado=201)
+
+    @app.put("/api/v1/forms/<int:form_id>")
+    @requiere_token(roles=ROLES_FORMULARIOS)
+    def reemplaza_formulario(form_id):
+        cuerpo = diccionario(leer_cuerpo())
+        _desconocidos(cuerpo, ("title", "fields", "required"))
+        fila = formularios.reemplaza_borrador(form_id, formularios.definicion(cuerpo))
+        log_audit(g.contexto, "UPDATE", "case_forms", form_id, data_after={"version": fila["version"]})
+        return responder(fila, "formulario")
+
+    @app.post("/api/v1/forms/<int:form_id>/publish")
+    @requiere_token(roles=ROLES_FORMULARIOS)
+    def publica_formulario(form_id):
+        fila = formularios.publica(form_id, g.usuario["sub"])
+        log_audit(g.contexto, "UPDATE", "case_forms", form_id,
+                  data_after={"status": "publicado", "version": fila["version"]})
+        return responder(fila, "formulario")
 
     @app.get("/api/v1/cases/<int:case_id>/history")
     @requiere_token(roles=ROLES_LECTURA)

@@ -3,7 +3,8 @@
      POST /api/v1/cases (raíz caso: solo los campos de entrada) y para las respuestas
      (raíz caso, con los campos que agrega el servicio) y la lista (raíz lista_casos);
      también para corregir un caso (raíz correccion_caso), cambiar su estado (raíz
-     cambio_estado_caso) y su historial (raíz historial_caso), D47.
+     cambio_estado_caso) y su historial (raíz historial_caso), D47; y los formularios por
+     enfermedad (raíces formulario y lista_formularios), D48.
      Los datos van sin namespace, igual que los genera epidemia_comun. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
   <xs:attributeGroup name="Marcas">
@@ -23,6 +24,8 @@
   <xs:simpleType name="EstadoValido"><xs:restriction base="xs:string"><xs:enumeration value="pendiente"/><xs:enumeration value="validado"/><xs:enumeration value="duplicado"/><xs:enumeration value="descartado"/></xs:restriction></xs:simpleType>
   <xs:simpleType name="AccionValida"><xs:restriction base="xs:string"><xs:enumeration value="correccion"/><xs:enumeration value="estado"/></xs:restriction></xs:simpleType>
   <xs:simpleType name="EstadoNuloS"><xs:union memberTypes="EstadoValido Vacio"/></xs:simpleType>
+  <xs:simpleType name="TipoCampoValido"><xs:restriction base="xs:string"><xs:enumeration value="texto"/><xs:enumeration value="entero"/><xs:enumeration value="decimal"/><xs:enumeration value="fecha"/><xs:enumeration value="booleano"/><xs:enumeration value="opcion"/><xs:enumeration value="opciones"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="EstadoFormularioValido"><xs:restriction base="xs:string"><xs:enumeration value="borrador"/><xs:enumeration value="publicado"/><xs:enumeration value="retirado"/></xs:restriction></xs:simpleType>
   <xs:simpleType name="MotivoS"><xs:restriction base="xs:string"><xs:maxLength value="500"/></xs:restriction></xs:simpleType>
   <xs:simpleType name="ResultadoCasoValido"><xs:restriction base="xs:string"><xs:enumeration value="creado"/><xs:enumeration value="duplicado"/><xs:enumeration value="rechazado"/></xs:restriction></xs:simpleType>
   <xs:complexType name="TUuid"><xs:simpleContent><xs:extension base="Uuid"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
@@ -58,6 +61,14 @@
   <xs:complexType name="TAccion"><xs:simpleContent><xs:extension base="AccionValida"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
   <xs:complexType name="TEstadoNulo"><xs:simpleContent><xs:extension base="EstadoNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
   <xs:complexType name="TMotivo"><xs:simpleContent><xs:extension base="MotivoS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TTipoCampo"><xs:simpleContent><xs:extension base="TipoCampoValido"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TEstadoFormulario"><xs:simpleContent><xs:extension base="EstadoFormularioValido"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TDecimal"><xs:simpleContent><xs:extension base="xs:decimal"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="Respuestas">
+    <xs:annotation><xs:documentation>Respuestas al formulario de la enfermedad (D48): un elemento por clave del formulario; las de tipo opciones traen item por valor. nil="true" si el caso no trae formulario.</xs:documentation></xs:annotation>
+    <xs:sequence><xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
+    <xs:attributeGroup ref="Marcas"/>
+  </xs:complexType>
   <xs:complexType name="TBooleano"><xs:simpleContent><xs:extension base="xs:boolean"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
   <xs:complexType name="Caso">
     <xs:annotation><xs:documentation>Obligatorios: disease_id, region_id y report_date. local_uuid es opcional (el servicio genera uno). Los campos de la segunda parte (id, reported_by, enfermedad, municipio, status, created_at, synced_at, version, updated_at, updated_by, status_reason, duplicate_of, duplicado) los pone el servicio; en una petición se rechazan por el servicio aunque el XSD los admita.</xs:documentation></xs:annotation>
@@ -86,6 +97,8 @@
       <xs:element name="updated_by" type="TPositivoNulo" minOccurs="0"/>
       <xs:element name="status_reason" type="TMotivo" minOccurs="0"/>
       <xs:element name="duplicate_of" type="TPositivoNulo" minOccurs="0"/>
+      <xs:element name="form_id" type="TPositivoNulo" minOccurs="0"/>
+      <xs:element name="form_answers" type="Respuestas" minOccurs="0"/>
       <xs:element name="duplicado" type="TBooleano" minOccurs="0"/>
     </xs:all>
   </xs:complexType>
@@ -107,6 +120,61 @@
         <xs:element name="severity" type="TSeveridadNulo" minOccurs="0"/>
         <xs:element name="reason" type="TMotivo" minOccurs="0"/>
         <xs:element name="device_id" type="TPositivoNulo" minOccurs="0"/>
+        <xs:element name="form_id" type="TPositivoNulo" minOccurs="0"/>
+        <xs:element name="form_answers" type="Respuestas" minOccurs="0"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+  <!-- Formularios por enfermedad (D48): POST y PUT /api/v1/forms (raíz formulario, con
+       disease_id, title, fields y required) y sus respuestas (raíz formulario, completa); la lista
+       (raíz lista_formularios). fields trae un campo por clave, en orden. -->
+  <xs:complexType name="Opcion">
+    <xs:all>
+      <xs:element name="valor" type="TTexto"/>
+      <xs:element name="etiqueta" type="TTexto"/>
+    </xs:all>
+  </xs:complexType>
+  <xs:complexType name="CampoFormulario">
+    <xs:all>
+      <xs:element name="clave" type="TTexto"/>
+      <xs:element name="etiqueta" type="TTexto"/>
+      <xs:element name="tipo" type="TTipoCampo"/>
+      <xs:element name="obligatorio" type="TBooleano" minOccurs="0"/>
+      <xs:element name="minimo" type="TDecimal" minOccurs="0"/>
+      <xs:element name="maximo" type="TDecimal" minOccurs="0"/>
+      <xs:element name="max_largo" type="TPositivo" minOccurs="0"/>
+      <xs:element name="opciones" minOccurs="0">
+        <xs:complexType><xs:sequence><xs:element name="opcion" type="Opcion" minOccurs="2" maxOccurs="50"/></xs:sequence></xs:complexType>
+      </xs:element>
+      <xs:element name="ayuda" type="TTexto" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+  <xs:complexType name="Formulario">
+    <xs:all>
+      <xs:element name="id" type="TPositivo" minOccurs="0"/>
+      <xs:element name="disease_id" type="TPositivo" minOccurs="0"/>
+      <xs:element name="version" type="TPositivo" minOccurs="0"/>
+      <xs:element name="status" type="TEstadoFormulario" minOccurs="0"/>
+      <xs:element name="title" type="TTexto"/>
+      <xs:element name="fields">
+        <xs:complexType><xs:sequence><xs:element name="campo" type="CampoFormulario" minOccurs="1" maxOccurs="60"/></xs:sequence></xs:complexType>
+      </xs:element>
+      <xs:element name="required" type="TBooleano" minOccurs="0"/>
+      <xs:element name="created_by" type="TPositivo" minOccurs="0"/>
+      <xs:element name="created_at" type="TFechaHora" minOccurs="0"/>
+      <xs:element name="updated_at" type="TFechaHoraNulo" minOccurs="0"/>
+      <xs:element name="published_by" type="TPositivoNulo" minOccurs="0"/>
+      <xs:element name="published_at" type="TFechaHoraNulo" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+  <xs:element name="formulario" type="Formulario"/>
+  <xs:element name="lista_formularios">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="total" type="TEntero"/>
+        <xs:element name="formularios">
+          <xs:complexType><xs:sequence><xs:element name="formulario" type="Formulario" minOccurs="0" maxOccurs="unbounded"/></xs:sequence></xs:complexType>
+        </xs:element>
       </xs:all>
     </xs:complexType>
   </xs:element>

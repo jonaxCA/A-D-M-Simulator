@@ -67,6 +67,10 @@
       <xs:element name="longitude" type="TLongitudNulo" minOccurs="0"/>
       <xs:element name="test_result" type="TResultadoNulo" minOccurs="0"/>
       <xs:element name="severity" type="TSeveridadNulo" minOccurs="0"/>
+      <xs:element name="form_id" type="TPositivoNulo" minOccurs="0"/>
+      <xs:element name="form_answers" type="Cualquiera" minOccurs="0">
+        <xs:annotation><xs:documentation>Respuestas al formulario de la enfermedad, con form_id (D48); las valida casos.</xs:documentation></xs:annotation>
+      </xs:element>
     </xs:all>
   </xs:complexType>
   <xs:complexType name="Cualquiera">

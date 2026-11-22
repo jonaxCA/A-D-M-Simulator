@@ -48,8 +48,11 @@ Lo que se cerró después de la revisión dice **Hecho**, con su fecha.
 > Campos definidos por enfermedad, versiones de formularios, validaciones y datos obligatorios
 > (parte de Android; B4 lo espera).
 
-**Falta.** Los campos de un caso son fijos. Hace falta una tabla de formularios por enfermedad con
-versiones, una ruta que la app consulte y que `casos` valide contra la versión con que se capturó.
+**Hecho en el servidor (2026-11-22, D48, migración 059).** Cada enfermedad suma sus campos en un
+formulario con versiones (`case_forms`: borrador, publicado, retirado; lo publicado no cambia). La app
+baja los vigentes (`GET /forms/current`) y cada caso trae `form_id` y `form_answers`, que `casos`
+valida contra esa versión (obligatorios, tipos, rangos y opciones), también en el lote y al corregir.
+Sin formulario se acepta mientras la versión vigente no lo pida (`required`). Falta la app (B4).
 
 ### `dispositivos` (5223) y `vacunas` (5225) (D27)
 
@@ -155,7 +158,7 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 | ~~Mediano~~ | **Hecho** el 2026-11-21: agregación por semana o mes, paginación y salida para Highcharts | `series` |
 | ~~Mediano~~ | **Hecho** el 2026-11-21: puntos agregados para el mapa de calor y agrupación por jurisdicción sanitaria | `zonas` |
 | ~~Mediano~~ | **Hecho** el 2026-11-22 (D47): cambiar estado (validar, descartar, marcar duplicado) y corregir datos, con historial y control de versión (`If-Match`), y los conflictos de la sincronización | `casos` y `sincronizacion` |
-| Grande | Formularios por enfermedad con versiones | `casos` (y la móvil, B4) |
+| ~~Grande~~ | **Hecho** el 2026-11-22 en el servidor (D48): formularios por enfermedad con versiones; falta la móvil (B4) | `casos` (y la móvil, B4) |
 | ~~Grande~~ | **Hecho** el 2026-11-22: geometría oficial de los municipios y ubicar un punto; sin PostGIS ni consultas por área | `zonas` |
 | Grande | Campañas, avisos de datos incompletos y preferencias por perfil | `notificaciones` y `vacunas` |
 | Transversal | Dejar de importar `backend_web` (E8), los perfiles nuevos y el alcance (D42, D43) | los nueve |

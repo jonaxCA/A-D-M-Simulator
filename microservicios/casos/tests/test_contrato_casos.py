@@ -63,7 +63,10 @@ def test_ejemplos_incrustados_estan_en_los_archivos():
                                     "consultar_caso", "listar_casos", "crear_lote_casos_solicitud",
                                     "crear_lote_casos", "corregir_caso_solicitud", "corregir_caso",
                                     "cambiar_estado_caso_solicitud", "cambiar_estado_caso",
-                                    "historial_caso"])
+                                    "historial_caso", "crear_formulario_solicitud", "crear_formulario",
+                                    "listar_formularios", "formularios_vigentes", "consultar_formulario",
+                                    "editar_formulario_solicitud", "editar_formulario",
+                                    "publicar_formulario"])
 def test_ejemplo_xml_valida_contra_el_xsd(nombre):
     XSD.validate(str(CARPETA / "ejemplos" / (nombre + ".xml")))
 
@@ -109,7 +112,7 @@ def test_xsd_exige_los_obligatorios(falta):
 def test_la_respuesta_real_valida_contra_el_xsd(crear_cliente, token, monkeypatch):
     # El XML que arma el servicio (no solo el ejemplo) cumple el XSD.
     from microservicios.casos.tests.test_casos import (BaseFalsa, Conexion, ENFERMEDADES, MUNICIPIOS,
-                                                       simula_dispositivos)
+                                                       simula_dispositivos, simula_formularios)
     from contextlib import contextmanager
     from backend_web import queries
     from microservicios.casos import rutas
@@ -120,6 +123,7 @@ def test_la_respuesta_real_valida_contra_el_xsd(crear_cliente, token, monkeypatc
         yield Conexion(base)
     monkeypatch.setattr(rutas, "get_conn", get_conn)
     simula_dispositivos(monkeypatch, base)
+    simula_formularios(monkeypatch, base)
     monkeypatch.setattr(rutas, "log_audit", lambda *a, **k: None)
     monkeypatch.setattr(queries, "get_enfermedades_para_captura", lambda: ENFERMEDADES)
     monkeypatch.setattr(queries, "get_municipios_catalogo", lambda: MUNICIPIOS)

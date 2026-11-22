@@ -22,5 +22,7 @@
   "updated_at": "2026-10-14T16:30:00+00:00",
   "updated_by": 9,
   "status_reason": "Resultado negativo confirmado por el laboratorio estatal",
-  "duplicate_of": null
+  "duplicate_of": null,
+  "form_id": null,
+  "form_answers": null
 }

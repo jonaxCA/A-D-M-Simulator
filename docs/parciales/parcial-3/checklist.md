@@ -357,7 +357,7 @@ La app solo habla JSON.
 - [ ] Revisar la app contra esta lista y marcar lo que ya cumple.
 - [ ] Panel del capturista: casos pendientes, formularios, registros incompletos, sincronizaciones pendientes y avisos.
 - [ ] Seguimiento: actualizar el estado de un caso, con observaciones e historial (RF-I12, reabierto). El servidor ya está (D47, 2026-11-22): `PATCH /cases/{id}` para corregir los casos pendientes propios, con `If-Match`, y `GET /cases/{id}/history`; cambiar el estado es del EPIDEMIOLOGO.
-- [ ] Formularios por enfermedad, con versiones, validaciones y campos obligatorios. Espera a F (F7).
+- [ ] Formularios por enfermedad, con versiones, validaciones y campos obligatorios. El servidor ya está (D48, 2026-11-22): la app baja `GET /forms/current`, arma la captura con esos campos y manda `form_id` y `form_answers` en cada caso (también en el lote); `casos` las valida.
 - [ ] GPS, con selección manual cuando la captura automática no conviene.
 - [ ] Cola local cifrada: hoy Room guarda los casos sin cifrar y solo los tokens van cifrados.
 - [ ] Un caso no se muestra como recibido, validado o publicado hasta que el servidor lo confirma.
@@ -658,7 +658,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 **Vigilancia**
 
 - [x] `casos`: actualizar, dar seguimiento y rechazar, con historial, duplicados y control de conflictos (RF-C11 y RF-C15, reabiertos; decisión del bloque 0). Hecho el 2026-11-22 con [D47](../../decisiones/D47-correccion-y-seguimiento-de-casos.md) (aprobada por F, pendiente de validación del líder) y la migración 057: `PATCH /cases/{id}` y `POST /cases/{id}/status` con `If-Match`, `GET /cases/{id}/history` y el aviso `CASE_REJECTED`. Falta la detección automática de duplicados probables ([`revision_f7.md`](revision_f7.md)).
-- [ ] Formularios por enfermedad, con versiones (para B4). Falta por completo: los campos de un caso son fijos ([`revision_f7.md`](revision_f7.md)).
+- [x] Formularios por enfermedad, con versiones (para B4). Hecho el 2026-11-22 con [D48](../../decisiones/D48-formularios-por-enfermedad.md) (aprobada por F, pendiente de validación del líder) y la migración 059: `/forms` para armarlos y publicarlos, `/forms/current` para la app, y cada caso con `form_id` y `form_answers` validadas contra su versión ([`revision_f7.md`](revision_f7.md)).
 - [x] `sincronizacion`: conflictos entre lo capturado sin conexión y lo que cambió otro profesional. Hecho el 2026-11-22 (D47): el lote acepta `updates` y una corrección sobre un caso que cambió otra persona sale `conflicto` con el caso actual, sin sobrescribirlo. Mostrarlo en la app es de B4 ([`revision_f7.md`](revision_f7.md)).
 
 **Analítica**
