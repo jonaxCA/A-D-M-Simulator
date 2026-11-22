@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - auth",
     "version": "0.1.0",
-    "description": "Inicio de sesión. Emite el access (JWT HS256, 20 min) y el refresh, y abre la sesión en Redis (8 h). Cada intento de login necesita un captcha nuevo, de un solo uso. Los perfiles críticos (ADMINISTRADOR y EPIDEMIOLOGO, D40) entran en dos pasos con un código TOTP; cada login envía el identificador del dispositivo (D41) y se aplica el tope de sesiones por cuenta."
+    "description": "Inicio de sesión. Emite el access (JWT HS256, 20 min) y el refresh, y abre la sesión en Redis (8 h). Cada intento de login necesita un captcha nuevo, de un solo uso. Los perfiles críticos (ADMINISTRADOR, EPIDEMIOLOGO y AUTORIDAD_SANITARIA, D40) entran en dos pasos con un código TOTP; cada login envía el identificador del dispositivo (D41) y se aplica el tope de sesiones por cuenta."
   },
   "servers": [
     {

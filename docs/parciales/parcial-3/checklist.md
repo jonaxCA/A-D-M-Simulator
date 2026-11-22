@@ -212,7 +212,7 @@ Cada una reemplaza o amplía una decisión vigente (ver [«Lo que la retroalimen
 - [ ] Editar y rechazar casos: qué se edita, quién lo hace y cómo se detecta un conflicto. Reemplaza lo de D32 sobre editar casos. **Frena a E y a B.**
 - [ ] Calibración: método, función de pérdida, métricas de ajuste, datos y dónde corre. Reemplaza D24. **Frena a A.**
 - [x] Corridas interrumpidas: reencolarlas en lugar de cerrarlas como fallidas, y qué pasa con su serie en MongoDB (RNF-C03). **Frena a E y a D.** Se reencolan hasta 3 intentos con la misma semilla; solo cuentan las series de corridas completadas; migración 045 (D38).
-- [ ] MFA: qué perfiles son críticos y con qué segundo factor. **Frena a E.** El bloque E propuso D40 (TOTP para ADMINISTRADOR y EPIDEMIOLOGO, apagado por omisión): falta que el líder la valide, y que la web, el escritorio y la móvil tengan el segundo paso antes de prenderlo.
+- [ ] MFA: qué perfiles son críticos y con qué segundo factor. **Frena a E.** El bloque E propuso D40 (TOTP para ADMINISTRADOR, EPIDEMIOLOGO y AUTORIDAD_SANITARIA, apagado por omisión): falta que el líder la valide, y que la web, el escritorio y la móvil tengan el segundo paso antes de prenderlo.
 - [ ] Qué son «campañas» y «seguimiento de intervenciones» en la web, y qué datos llevan. **Frena a C y a E.**
 - [ ] Qué agrupa un proyecto de investigación del escritorio y dónde vive. **Frena a A y a E.**
 - [ ] Reservar los números de migración para lo nuevo: instituciones y perfiles, casos, corridas, proyectos y calibración.

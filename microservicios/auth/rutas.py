@@ -31,7 +31,7 @@ CODIGO_6 = re.compile(r"[0-9]{6}")
 
 
 def _perfiles_mfa():
-    # D40: sin MFA_PERFILES (o vacía) el MFA está apagado; se activa con MFA_PERFILES=ADMINISTRADOR,EPIDEMIOLOGO.
+    # D40: sin MFA_PERFILES (o vacía) el MFA está apagado; se activa con MFA_PERFILES=ADMINISTRADOR,EPIDEMIOLOGO,AUTORIDAD_SANITARIA.
     return {p.strip() for p in os.environ.get("MFA_PERFILES", "").split(",") if p.strip()}
 
 
