@@ -750,6 +750,19 @@ con la IP fija de la máquina, `34-56-78-90.sslip.io` resuelve solo a `34.56.78.
 4. **Las apps** apuntan al directorio `https://<DOMINIO>/estado-servicios/api/v1/services`, que
    ya da `https://<DOMINIO>/<servicio>` como URL de cada servicio.
 
+**Con un dominio propio** (el del equipo es `epidemos.app`): en su DNS, un registro A a la IP
+fija y nada más; **sin AAAA** (la máquina no tiene IPv6 y Let's Encrypt lo preferiría) y, si hay
+un CAA, que permita `letsencrypt.org`. Luego, en la máquina:
+
+```bash
+sudo LETSENCRYPT_PRUEBA=1 DOMINIO=epidemos.app bash infra/nginx/letsencrypt.sh   # ensayo
+sudo NUEVO=1 DOMINIO=epidemos.app bash infra/nginx/letsencrypt.sh                 # el real
+```
+
+y `DOMINIO=epidemos.app` en `infra/.env` antes de volver a levantar todo, para que nginx y el
+directorio de `estado-servicios` lo tomen. El simulador de abm-gpu de la PC también apunta a
+`https://epidemos.app/notificaciones` (`infra/.env.gpu-remoto`).
+
 **Si Let's Encrypt responde «too many certificates already issued for sslip.io».** `sslip.io`
 no está en la Public Suffix List, así que todos sus usuarios comparten el límite semanal de
 certificados nuevos. Las renovaciones no cuentan, pero el primero puede fallar. La salida es un

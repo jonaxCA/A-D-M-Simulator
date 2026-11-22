@@ -240,7 +240,7 @@ flowchart TB
   | Administración y túnel de la GPU | IAP (35.235.240.0/20) | 22 | VM principal |
   | Todo lo demás | — | — | Denegado |
 
-- **HTTPS (D26):** Let's Encrypt, gratuito, para `<ip-con-guiones>.sslip.io`, que resuelve a la IP fija sin comprar un dominio (respaldo: DuckDNS). `infra/nginx/letsencrypt.sh` saca el primero; `infra/docker-compose.letsencrypt.yml` lo renueva (certbot cada 12 h, nginx recarga cada 6 h). En local, nginx usa un certificado de mkcert o uno autofirmado.
+- **HTTPS (D26):** Let's Encrypt, gratuito, para el dominio del equipo, `epidemos.app` (desde el 2026-11-21; antes, `<ip-con-guiones>.sslip.io`, que resuelve a la IP fija sin comprar un dominio, con DuckDNS de respaldo). `infra/nginx/letsencrypt.sh` saca el primero; `infra/docker-compose.letsencrypt.yml` lo renueva (certbot cada 12 h, nginx recarga cada 6 h). En local, nginx usa un certificado de mkcert o uno autofirmado.
 - **Secretos (S5):** los `.env` se arman en cada VM, con permisos 600 y fuera del repositorio, como hoy. Propuesta: guardarlos en Secret Manager y que la VM los lea al arrancar con su cuenta de servicio. La cuenta de servicio del bucket solo tiene permisos sobre ese bucket.
 - **Logs (N6):** el driver `gcplogs` de Docker manda los registros de cada contenedor a Cloud Logging, con el `X-Correlation-ID` que ya llevan (`infra/docker-compose.cloud-logging.yml`, desde el 2026-11-20).
 

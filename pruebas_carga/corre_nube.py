@@ -2,7 +2,7 @@
 resumen. Pide la contraseña de cada cuenta sin mostrarla: no queda en pantalla, en el historial
 de la terminal ni en ningún archivo.
 
-    C:\\Temp\\locust\\Scripts\\python.exe pruebas_carga\\corre_nube.py --url https://35-222-19-202.sslip.io
+    C:\\Temp\\locust\\Scripts\\python.exe pruebas_carga\\corre_nube.py --url https://epidemos.app
 
 Antes, la ventana abierta en la máquina (pruebas_carga/ventana_nube.sh abre); al terminar, se
 cierra. Los resultados quedan en docs/pruebas/carga/<fecha>_nube_perfiles/ (o --resultados):

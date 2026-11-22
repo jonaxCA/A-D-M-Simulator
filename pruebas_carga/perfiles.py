@@ -13,7 +13,7 @@ Cinco perfiles, cada uno una clase de Locust con su peso y su ritmo:
 
 Dónde pega (variables de entorno):
 
-    URL_SERVICIOS  plantilla con {servicio}, p. ej. https://35-222-19-202.sslip.io/{servicio}.
+    URL_SERVICIOS  plantilla con {servicio}, p. ej. https://epidemos.app/{servicio}.
                    Sin ella, BASE_SERVICIOS (http://localhost) con el puerto del catálogo.
     URL_WEB        la web; por omisión http://localhost:5000.
     VERIFICAR_TLS  0 para aceptar un certificado autofirmado (nginx en local sin mkcert).
