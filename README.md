@@ -45,7 +45,7 @@ python -m frontend_web.run
 Abre <http://localhost:5000/>. Falta crear el rol `epidemia_app` y darle permisos
 (pasos 1 y 3 de la guía completa). Usuario de prueba: `diana.flores` / `Epidemia2026!`.
 
-**Guía completa, credenciales y solución de problemas: [docs/INSTALACION.md](docs/INSTALACION.md).**
+**Guía completa, credenciales y solución de problemas: [docs/INSTALACION.md](docs/INSTALACION.md).** Despliegue en la nube (https://epidemos.app): [docs/DESPLIEGUE_GCP.md](docs/DESPLIEGUE_GCP.md).
 
 ## Microservicios (segundo parcial)
 

@@ -626,7 +626,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 ### F3. Registros y diagramas
 
 - [x] Los registros de todos los contenedores llegan a un solo lugar en la nube (N6, RF-K08, RNF-J13): Cloud Logging, con el driver `gcplogs` de Docker (`infra/docker-compose.cloud-logging.yml`). Comprobado en la máquina el 2026-11-20: llegan los de los servicios, la web, nginx y las bases, al registro `gcplogs-docker-driver`.
-- [ ] Diagrama de distribución en la nube: web, servicios, PostgreSQL, MongoDB, Redis, archivos y monitoreo (N2).
+- [x] Diagrama de distribución en la nube: web, servicios, PostgreSQL, MongoDB, Redis, archivos y monitoreo (N2). En la arquitectura v3, §8, con lo desplegado (2026-11-21): dominio y DNS, Let's Encrypt, firewall e IAP, la VM con sus 37 contenedores y volúmenes, Cloud Logging, la PC con GPU por el túnel y Cloud Storage pendiente (D-3).
 
 ### F4. Locust (A4, A5)
 
@@ -646,7 +646,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### F6. Documentos
 
-- [ ] Guía de despliegue en GCP y `INSTALACION.md` al día, con MongoDB, el emulador y nginx. nginx en local, hecho (§6 de los microservicios en `INSTALACION.md`).
+- [x] Guía de despliegue en GCP y `INSTALACION.md` al día, con MongoDB, el emulador y nginx. nginx en local, hecho (§6 de los microservicios en `INSTALACION.md`). Guía de despliegue: [`docs/DESPLIEGUE_GCP.md`](../../DESPLIEGUE_GCP.md) (2026-11-21): máquina, firewall e IAP, Docker y secretos, dominio y certificado, levantar (`infra/levanta_nube.sh`), Cloud Logging, actualizar con migraciones, la GPU, pruebas de carga, costos y problemas conocidos.
 - [x] Resultados de Locust y de las pruebas de fallos en `docs/` (`docs/pruebas/carga` y `docs/pruebas/fallos/2026-11-16`).
 
 ### F7. Completar los servicios de vigilancia, analítica y plataforma
