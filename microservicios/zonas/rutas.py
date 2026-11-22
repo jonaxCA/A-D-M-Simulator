@@ -1,6 +1,7 @@
 import json
+import math
 
-from flask import g, request
+from flask import Response, g, request
 
 from epidemia_comun import cache
 from epidemia_comun.ambito import clave_ambito, filtros_ambito
@@ -12,7 +13,7 @@ from backend_web import queries
 from backend_web.audit import log_audit
 from backend_web.db import query
 
-from . import calor, jurisdicciones
+from . import calor, geometria, jurisdicciones
 
 ESTADO_NL = "19"
 
@@ -25,6 +26,17 @@ TAMANO_MAXIMO = 100
 TTL_CACHE = 60
 # Más que los 51 municipios: "todas las zonas" para el mayor cambio.
 TODAS = 1000
+
+
+def _coordenada(nombre, minimo, maximo):
+    crudo = request.args.get(nombre)
+    try:
+        valor = float(crudo)
+    except (TypeError, ValueError):
+        valor = math.nan
+    if not math.isfinite(valor) or not minimo <= valor <= maximo:
+        raise ErrorAPI(422, "DATOS_INVALIDOS", "%s debe ser un número entre %g y %g." % (nombre, minimo, maximo))
+    return valor
 
 
 def mayor_cambio(zonas):
@@ -140,6 +152,34 @@ def registrar(app):
         return responder({"filtros": {"disease_id": f["disease_id"], "days": f["dias"]},
                           "fuente": jurisdicciones.fuente(), "jurisdicciones": grupos},
                          "zonas_por_jurisdiccion")
+
+    # La geometría oficial de los 51 municipios (INEGI, geometria.py, F7): el GeoJSON tal cual, con
+    # su ETag; con If-None-Match igual, 304 sin cuerpo. ?format no aplica.
+    @app.get("/api/v1/zones/geometry")
+    @requiere_token()
+    def geometria_de_municipios():
+        etiqueta = geometria.etag()
+        cabeceras = {"ETag": etiqueta, "Cache-Control": "private, max-age=86400"}
+        if request.headers.get("If-None-Match") == etiqueta:
+            return Response(status=304, headers=cabeceras)
+        return Response(geometria.crudo(), content_type="application/geo+json; charset=utf-8",
+                        headers=cabeceras)
+
+    # En qué municipio y jurisdicción cae un punto (F7, consultas espaciales).
+    @app.get("/api/v1/zones/locate")
+    @requiere_token()
+    def ubicar():
+        lat, lon = _coordenada("lat", -90, 90), _coordenada("lon", -180, 180)
+        propiedades, aproximado = geometria.localiza(lat, lon)
+        municipio = jurisdiccion = None
+        if propiedades:
+            codigo, nombre = propiedades["region_code"], propiedades["name"]
+            ids = cache.obtener("zonas", "region-ids", TTL_CACHE, geometria.ids_de_municipios)
+            municipio = {"region_id": ids.get(codigo), "region_code": codigo, "nombre": nombre}
+            jurisdiccion = jurisdicciones.de_municipio(codigo, nombre)
+        return responder({"lat": lat, "lon": lon, "en_nuevo_leon": municipio is not None,
+                          "aproximado": aproximado, "precision_m": geometria.PRECISION_METROS,
+                          "municipio": municipio, "jurisdiccion": jurisdiccion}, "ubicacion")
 
     @app.get("/api/v1/zones/map")
     @requiere_token()

@@ -73,6 +73,20 @@ def _por_municipio(dias, disease_id):
                                               "disease_id": disease_id, "estado": ESTADO_NL})}
 
 
+def _nombre_compartido(nombres, numeros):
+    return "%s (jurisdicciones %s)" % (", ".join(nombres),
+                                       ", ".join(str(n) for n in numeros[:-1]) + " y " + str(numeros[-1]))
+
+
+def de_municipio(codigo, nombre_municipio):
+    """El grupo de un municipio, con la clave y el nombre que usa /zones/jurisdictions."""
+    for clave, nombre, numeros, codigos in grupos():
+        if codigo in codigos:
+            return {"clave": clave, "nombre": nombre or _nombre_compartido([nombre_municipio], numeros),
+                    "numeros": numeros}
+    return None
+
+
 def calcular(dias, disease_id=None):
     municipios = _por_municipio(dias, disease_id)
     salida, vistos = [], set()
@@ -80,9 +94,7 @@ def calcular(dias, disease_id=None):
         filas = [municipios[c] for c in codigos if c in municipios]
         vistos.update(codigos)
         if nombre is None:
-            nombre = "%s (jurisdicciones %s)" % (
-                ", ".join(f["name"] for f in filas) or ", ".join(codigos),
-                ", ".join(str(n) for n in numeros[:-1]) + " y " + str(numeros[-1]))
+            nombre = _nombre_compartido([f["name"] for f in filas] or codigos, numeros)
         salida.append(_grupo(clave, nombre, numeros, filas))
     # Un municipio que la base tiene y el catálogo no (no debería pasar): no se pierden sus casos.
     sueltos = [f for c, f in sorted(municipios.items()) if c not in vistos]

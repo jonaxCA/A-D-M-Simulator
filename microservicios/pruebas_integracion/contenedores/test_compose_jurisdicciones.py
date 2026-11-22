@@ -20,3 +20,18 @@ def test_las_jurisdicciones_suman_lo_mismo_que_los_municipios(api, analista):
     assert cuatro["casos"] == sum(municipios[m["nombre"]]["casos"] for m in cuatro["municipios"])
     assert grupos["compartido-19039"]["casos"] == municipios["Monterrey"]["casos"]
     assert "artículo 27" in datos["fuente"]["documento"]
+
+
+def test_la_geometria_y_ubicar_un_punto(api, analista, catalogo):
+    token = analista["access"]
+    r = api("zonas", "GET", "/api/v1/zones/geometry", token)
+    assert r.status_code == 200 and r.headers["Content-Type"].startswith("application/geo+json")
+    geojson = r.json()
+    assert len(geojson["features"]) == 51 and "INEGI" in geojson["fuente"]["documento"]
+    assert api("zonas", "GET", "/api/v1/zones/geometry", token,
+               headers={"If-None-Match": r.headers["ETag"]}).status_code == 304
+    # El centro de Monterrey: el region_id es el de la base real.
+    datos = api("zonas", "GET", "/api/v1/zones/locate", token,
+                params={"lat": 25.6866, "lon": -100.3161}).json()
+    assert datos["municipio"]["region_id"] == catalogo["region_id"]
+    assert datos["jurisdiccion"]["clave"] == "compartido-19039"

@@ -1261,6 +1261,197 @@
           }
         }
       }
+    },
+    "/api/v1/zones/geometry": {
+      "get": {
+        "summary": "Geometría oficial de los municipios",
+        "operationId": "geometria_municipios",
+        "x-binario": true,
+        "description": "Los 51 municipios de Nuevo León como GeoJSON (FeatureCollection; cada Feature con `region_code` y `name`), en lon/lat (EPSG:4326). Fuente: INEGI, Marco Geoestadístico 2024, capa municipal, simplificada a 0.0012 grados (unos 130 m); el miembro `fuente` la cita. Es la misma geometría del mapa de la web. Va tal cual, con ETag y Cache-Control: con If-None-Match igual al ETag responde 304 sin cuerpo. ?format no aplica.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "El ETag de una descarga anterior"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El GeoJSON",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/geo+json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "No cambió desde el ETag de If-None-Match"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zones/locate": {
+      "get": {
+        "summary": "En qué municipio y jurisdicción cae un punto",
+        "operationId": "ubicar_punto",
+        "description": "Consulta espacial sobre la geometría oficial (la de /zones/geometry), sin PostGIS: cada municipio guarda su recuadro, que descarta casi todos, y luego la prueba de punto en polígono (con huecos). `municipio` (con su `region_id`, para llenar un caso) y `jurisdiccion` (la de /zones/jurisdictions) son null fuera de Nuevo León. La geometría está simplificada (`precision_m`, unos 130 m): un punto en la rendija entre dos fronteras se asigna al municipio más cercano y sale con `aproximado` en true.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lat",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "example": 25.6866
+          },
+          {
+            "in": "query",
+            "name": "lon",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "example": -100.3161
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dónde cae el punto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "lat": 25.6866,
+                  "lon": -100.3161,
+                  "en_nuevo_leon": true,
+                  "aproximado": false,
+                  "precision_m": 130,
+                  "municipio": {
+                    "region_id": 3,
+                    "region_code": "19039",
+                    "nombre": "Monterrey"
+                  },
+                  "jurisdiccion": {
+                    "clave": "compartido-19039",
+                    "nombre": "Monterrey (jurisdicciones 1, 2 y 3)",
+                    "numeros": [
+                      1,
+                      2,
+                      3
+                    ]
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "ubicacion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<ubicacion><lat tipo=\"numero\">25.6866</lat><lon tipo=\"numero\">-100.3161</lon><en_nuevo_leon tipo=\"booleano\">true</en_nuevo_leon><aproximado tipo=\"booleano\">false</aproximado><precision_m tipo=\"numero\">130</precision_m><municipio><region_id tipo=\"numero\">3</region_id><region_code>19039</region_code><nombre>Monterrey</nombre></municipio><jurisdiccion><clave>compartido-19039</clave><nombre>Monterrey (jurisdicciones 1, 2 y 3)</nombre><numeros><numero tipo=\"numero\">1</numero><numero tipo=\"numero\">2</numero><numero tipo=\"numero\">3</numero></numeros></jurisdiccion></ubicacion>\n"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "lat o lon faltan, no son números o están fuera de rango (DATOS_INVALIDOS)"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
