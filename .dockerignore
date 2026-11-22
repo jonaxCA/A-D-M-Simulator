@@ -14,3 +14,5 @@ venv/
 # Ninguna imagen los usa; sin ellos cada build le manda menos a Docker.
 evidencias/
 datos/
+# Salvo los municipios de cada jurisdicción sanitaria, que lee zonas (F7).
+!datos/geo/nl_jurisdicciones_sanitarias.json

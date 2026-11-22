@@ -1,0 +1,123 @@
+{
+  "fuente": {
+    "documento": "Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27",
+    "publicacion": "Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009",
+    "url": "http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf",
+    "consultado": "2026-11-21",
+    "nota": "Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos."
+  },
+  "jurisdicciones": [
+    {
+      "numero": 1,
+      "nombre": "Jurisdicción Sanitaria No. 1",
+      "circunscripcion": "Poniente del municipio de Monterrey",
+      "municipios": []
+    },
+    {
+      "numero": 2,
+      "nombre": "Jurisdicción Sanitaria No. 2",
+      "circunscripcion": "Norte y oriente del municipio de Monterrey y los municipios de Abasolo, el Carmen, Ciénega de Flores, General Mariano Escobedo, General Zuazua, Mina, Salinas Victoria, San Nicolás de los Garza e Hidalgo",
+      "municipios": [
+        "19001",
+        "19010",
+        "19012",
+        "19021",
+        "19025",
+        "19037",
+        "19045",
+        "19046",
+        "19047"
+      ]
+    },
+    {
+      "numero": 3,
+      "nombre": "Jurisdicción Sanitaria No. 3",
+      "circunscripcion": "Sur de Monterrey y los municipios de Villa de García, San Pedro Garza García y Santa Catarina",
+      "municipios": [
+        "19018",
+        "19019",
+        "19048"
+      ]
+    },
+    {
+      "numero": 4,
+      "nombre": "Jurisdicción Sanitaria No. 4",
+      "circunscripcion": "Municipios de Apodaca, Guadalupe y Benito Juárez",
+      "municipios": [
+        "19006",
+        "19026",
+        "19031"
+      ]
+    },
+    {
+      "numero": 5,
+      "nombre": "Jurisdicción Sanitaria No. 5",
+      "circunscripcion": "Municipios de Agualeguas, Anáhuac, Bustamante, General Treviño, Lampazos, Parás, Sabinas Hidalgo, Vallecillo y Villaldama",
+      "municipios": [
+        "19002",
+        "19005",
+        "19008",
+        "19023",
+        "19032",
+        "19040",
+        "19044",
+        "19050",
+        "19051"
+      ]
+    },
+    {
+      "numero": 6,
+      "nombre": "Jurisdicción Sanitaria No. 6",
+      "circunscripcion": "Municipios de Los Aldama, Cadereyta Jiménez, Cerralvo, China, Dr. Coss, Dr. González, General Bravo, Los Herrera, Higueras, Marín, Melchor Ocampo, Pesquería y Los Ramones",
+      "municipios": [
+        "19003",
+        "19009",
+        "19011",
+        "19013",
+        "19015",
+        "19016",
+        "19020",
+        "19027",
+        "19028",
+        "19034",
+        "19035",
+        "19041",
+        "19042"
+      ]
+    },
+    {
+      "numero": 7,
+      "nombre": "Jurisdicción Sanitaria No. 7",
+      "circunscripcion": "Municipios de Allende, General Terán, Hualahuises, Linares, Montemorelos, Los Rayones y Santiago",
+      "municipios": [
+        "19004",
+        "19022",
+        "19029",
+        "19033",
+        "19038",
+        "19043",
+        "19049"
+      ]
+    },
+    {
+      "numero": 8,
+      "nombre": "Jurisdicción Sanitaria No. 8",
+      "circunscripcion": "Municipios de Aramberri, Dr. Arroyo, Galeana, General Zaragoza, Mier y Noriega e Iturbide",
+      "municipios": [
+        "19007",
+        "19014",
+        "19017",
+        "19024",
+        "19036",
+        "19030"
+      ]
+    }
+  ],
+  "compartidos": {
+    "19039": [
+      1,
+      2,
+      3
+    ]
+  }
+}

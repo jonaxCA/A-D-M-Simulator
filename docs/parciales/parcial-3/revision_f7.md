@@ -97,8 +97,8 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 |---|---|---|
 | Mapas temáticos | **Cumple** | `/zones/map`: incidencia y semáforo por municipio, con la línea de tiempo |
 | Indicadores geoespaciales | **Cumple** | Casos, incidencia, variación a 7 días y graves por municipio (`/zones`) |
-| Agrupaciones territoriales | Falta | Solo municipios; no por jurisdicción sanitaria o región del estado |
-| Datos para mapas de calor | Falta | Los casos traen latitud y longitud, pero no hay ruta que las agregue |
+| Agrupaciones territoriales | **Hecho** (2026-11-21) | `/zones/jurisdictions`: por jurisdicción sanitaria, con los municipios del artículo 27 del Reglamento Interior de Servicios de Salud de NL (pendiente de confirmar que siga vigente). Monterrey, repartido entre las jurisdicciones 1, 2 y 3, va como su propio grupo |
+| Datos para mapas de calor | **Hecho** (2026-11-21) | `/zones/heatmap`: casos agregados en celdas de 0.01 a 0.05 grados, con peso de 0 a 1; una celda con menos de 3 casos no se publica (privacidad) |
 | Consultas espaciales optimizadas | Falta | Sin índice espacial (PostGIS) ni consultas por área |
 | Geometría oficial de los municipios | Falta | El mapa del escritorio (A4) dibuja marcadores; necesita los polígonos y su fuente |
 
@@ -153,7 +153,7 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 | ~~Chico~~ | **Hecho** el 2026-11-21: avisar con `SYSTEM` a los ADMINISTRADOR cuando un servicio cae o se recupera (alertas técnicas y errores operativos) | `estado-servicios` y `notificaciones` |
 | ~~Chico~~ | **Hecho** el 2026-11-21: numerador, denominador y periodo en cada indicador; mortalidad, letalidad y casos graves | `indicadores` |
 | ~~Mediano~~ | **Hecho** el 2026-11-21: agregación por semana o mes, paginación y salida para Highcharts | `series` |
-| Mediano | Puntos agregados para el mapa de calor y agrupación por región del estado | `zonas` |
+| ~~Mediano~~ | **Hecho** el 2026-11-21: puntos agregados para el mapa de calor y agrupación por jurisdicción sanitaria | `zonas` |
 | Mediano | Cambiar estado (validar, descartar, marcar duplicado) y corregir datos, con historial y control de versión (`If-Match`); con eso, los conflictos de la sincronización | `casos` y `sincronizacion` |
 | Grande | Formularios por enfermedad con versiones | `casos` (y la móvil, B4) |
 | Grande | Geometría oficial de los municipios y consultas espaciales | `zonas` |

@@ -12,11 +12,14 @@ from backend_web import queries
 from backend_web.audit import log_audit
 from backend_web.db import query
 
+from . import calor, jurisdicciones
+
 ESTADO_NL = "19"
 
 # Periodos de cada pantalla del monolito: Monitoreo (tabla) y Mapa.
 PERIODOS_TABLA = (7, 30, 90)
 PERIODOS_MAPA = (7, 30, 60)
+PERIODOS_CALOR = (7, 30, 60, 90)
 ORDENES = ("casos", "incidencia")
 TAMANO_MAXIMO = 100
 TTL_CACHE = 60
@@ -111,6 +114,32 @@ def registrar(app):
         datos["filtros"] = {"disease_id": f["disease_id"], "region_id": f["region_id"],
                             "days": f["dias"], "order": orden}
         return responder(datos, "zonas_detalle")
+
+    # Los casos con coordenadas, agregados en celdas para un mapa de calor (calor.py, F7).
+    @app.get("/api/v1/zones/heatmap")
+    @requiere_token()
+    def mapa_de_calor():
+        f = filtros_ambito(request.args, PERIODOS_CALOR)
+        celda = request.args.get("cell") or calor.CELDAS[0]
+        if celda not in calor.CELDAS:
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "cell debe ser uno de: %s." % ", ".join(calor.CELDAS))
+        datos = cache.obtener("zonas", "heatmap:%s:celda=%s" % (clave_ambito(f), celda), TTL_CACHE,
+                              lambda: calor.calcular(celda, f["dias"], f["disease_id"],
+                                                     f["region_id"]))
+        datos["filtros"] = {"disease_id": f["disease_id"], "region_id": f["region_id"],
+                            "days": f["dias"], "cell": float(celda)}
+        return responder(datos, "mapa_calor")
+
+    # Las mismas cifras de /zones, sumadas por jurisdicción sanitaria (jurisdicciones.py, F7).
+    @app.get("/api/v1/zones/jurisdictions")
+    @requiere_token()
+    def por_jurisdiccion():
+        f = filtros_ambito(request.args, PERIODOS_TABLA, con_region=False)
+        grupos = cache.obtener("zonas", "jurisdictions:%s" % clave_ambito(f), TTL_CACHE,
+                               lambda: jurisdicciones.calcular(f["dias"], f["disease_id"]))
+        return responder({"filtros": {"disease_id": f["disease_id"], "days": f["dias"]},
+                          "fuente": jurisdicciones.fuente(), "jurisdicciones": grupos},
+                         "zonas_por_jurisdiccion")
 
     @app.get("/api/v1/zones/map")
     @requiere_token()
