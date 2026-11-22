@@ -2,7 +2,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from backend_web import queries
+from microservicios.series import consultas
 
 RUTAS = ["/api/v1/series/cases", "/api/v1/series/cases/by-age",
          "/api/v1/series/cases/by-sex", "/api/v1/series/cases/totals"]
@@ -18,17 +18,17 @@ def llamadas(monkeypatch):
             return salida
         return consulta
 
-    monkeypatch.setattr(queries, "get_monitoreo_serie", falsa(
+    monkeypatch.setattr(consultas, "get_monitoreo_serie", falsa(
         "serie", [{"fecha": "2026-10-01", "casos": 4, "incidencia_acum": 0.07}]))
-    monkeypatch.setattr(queries, "get_monitoreo_edad", falsa(
-        "edad", [{"grupo": g, "casos": 0} for g in queries.GRUPOS_EDAD]))
-    monkeypatch.setattr(queries, "get_monitoreo_sexo", falsa(
+    monkeypatch.setattr(consultas, "get_monitoreo_edad", falsa(
+        "edad", [{"grupo": g, "casos": 0} for g in consultas.GRUPOS_EDAD]))
+    monkeypatch.setattr(consultas, "get_monitoreo_sexo", falsa(
         "sexo", [{"label": "Femenino", "casos": 3, "pct": 75.0}]))
-    monkeypatch.setattr(queries, "get_monitoreo_totales", falsa(
+    monkeypatch.setattr(consultas, "get_monitoreo_totales", falsa(
         "totales", {"casos": 4, "casos_previo": 2, "casos_pct": 100.0,
                     "incidencia": 0.1, "incidencia_previa": 0.0}))
-    monkeypatch.setattr(queries, "get_enfermedad", lambda i: {"id": i} if i == 1 else None)
-    monkeypatch.setattr(queries, "get_region_municipio", lambda i: {"id": i} if i == 39 else None)
+    monkeypatch.setattr(consultas, "get_enfermedad", lambda i: {"id": i} if i == 1 else None)
+    monkeypatch.setattr(consultas, "get_region_municipio", lambda i: {"id": i} if i == 39 else None)
     return registro
 
 
@@ -84,7 +84,7 @@ def test_enfermedad_o_municipio_inexistente_es_404(cliente, token, consulta):
 def test_por_edad_en_xml(cliente, token):
     raiz = ET.fromstring(cliente.get("/api/v1/series/cases/by-age", headers=token()).data)
     assert raiz.tag == "casos_por_edad"
-    assert [g.findtext("grupo") for g in raiz.find("grupos").findall("grupo")] == queries.GRUPOS_EDAD
+    assert [g.findtext("grupo") for g in raiz.find("grupos").findall("grupo")] == consultas.GRUPOS_EDAD
     assert raiz.find("filtros").find("disease_id").get("nil") == "true"
 
 

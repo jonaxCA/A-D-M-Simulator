@@ -14,7 +14,9 @@ Puerto externo: 5251; puerto interno en Docker: 8000. Contrato en
 | GET    | `/api/v1/dashboard/situation`    | Público | Casos de la última semana por enfermedad con su tendencia (`estable`, `alerta`, `critico`). `limit` de 1 a 20, por omisión 5 |
 
 Públicas porque el tablero del monolito se ve sin iniciar sesión (`/`).
-Usa `get_resumen_indicadores()` y `get_resumen_situacion()` de `backend_web`.
+Usa `get_resumen_indicadores()` y `get_resumen_situacion()` de `consultas.py`: la copia de las
+del monolito, que la web todavía lee (D36). La regla es de este servicio y las dos deben ser
+iguales mientras existan (`test_copias_del_monolito.py`, E8).
 
 ## Cada indicador con su cuenta (F7)
 

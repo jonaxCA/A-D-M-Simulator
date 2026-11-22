@@ -1,17 +1,13 @@
-"""
-Lotes de vacuna de backend_web/vacunas.py, que escribe el microservicio vacunas.
-
-Ejecutar:
-    python -m unittest backend_web.tests.test_vacunas -v
-"""
+"""Lotes de vacuna y sus dosis (lotes.py) contra la base de pruebas."""
 import unittest
 import uuid
 from datetime import date, timedelta
 
-from backend_web import vacunas
-from backend_web.db import query
-from backend_web.tests.base import contexto_de_prueba, escribe, id_de_usuario, requiere_base
+from microservicios.pruebas_bd import contexto_de_prueba, escribe, id_de_usuario, tiene_base
+from epidemia_comun.bd import query
+from microservicios.vacunas import lotes as vacunas
 
+requiere_base = unittest.skipUnless(tiene_base(), "Requiere la base de pruebas")
 
 class ValidaLoteTests(unittest.TestCase):
     def test_uno_valido(self):

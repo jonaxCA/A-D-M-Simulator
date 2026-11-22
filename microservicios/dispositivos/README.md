@@ -41,13 +41,14 @@ los de todos. El dispositivo de otra persona no existe para quien pregunta (404)
 
 ## Cómo funciona
 
-Las reglas están en `backend_web/dispositivos.py`, con sus pruebas contra la base
-(`backend_web/tests/test_dispositivos.py`):
+Las reglas están en `almacen.py` (antes en `backend_web`, E8), con sus pruebas contra la base
+(`tests/test_almacen_dispositivos_bd.py`):
 
 1. Registrar bloquea la fila de ese `device_uid` (`FOR UPDATE`) para que dos peticiones del
    mismo teléfono no se pisen, y audita `CREATE` o `UPDATE` en la misma transacción.
 2. Revocar usa la transición condicionada (`WHERE NOT is_revoked`) y audita `UPDATE`.
-3. `casos` revisa el `device_id` de cada caso con `estado_para_captura()`: si no existe o es de
+3. `casos` revisa el `device_id` de cada caso con `estado_para_captura()` (su copia de solo
+   lectura, `casos/captura.py`, igual a la de aquí: `test_copias_del_monolito.py`): si no existe o es de
    otra cuenta responde 422, y si está revocado, 409. `sincronizacion` manda cada caso a
    `casos`, así que esos casos salen rechazados en el resultado del lote.
 
@@ -60,7 +61,6 @@ Las reglas están en `backend_web/dispositivos.py`, con sus pruebas contra la ba
 
 ```bash
 python -m pytest microservicios/dispositivos
-python -m unittest backend_web.tests.test_dispositivos
 python -m microservicios.dispositivos.app
 curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
      -d '{"device_uid": "3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21", "model": "Pixel 7"}' \

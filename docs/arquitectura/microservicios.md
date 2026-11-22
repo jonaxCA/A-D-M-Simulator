@@ -22,11 +22,13 @@ específicas. Sin MongoDB, Cloud Storage ni nginx.
   transacción, con `log_audit(..., cur=cur)`, como hoy. Un 403 también queda anotado, como
   `PERMISSION_DENIED`, desde `requiere_token` (D36, migración 046). La consulta de la
   bitácora es de `roles` (D37).
-- **Un contenedor por servicio.** Todos parten de la misma imagen base, escuchan en el puerto
-  8000 dentro de su contenedor y publican un puerto propio hacia fuera, según la tabla.
-- **La lógica no se reescribe.** Los servicios importan `backend_web`, cuya capa de datos ya
-  no depende de Flask, y el motor de `procesamiento/`. Al construir la API de un dominio, ese
-  dominio sale de `queries.py` a su propio módulo, con `queries.py` como fachada (LIMP-11e).
+- **Un contenedor por servicio.** Todos parten de una imagen base (`infra/docker/`), escuchan en
+  el puerto 8000 dentro de su contenedor y publican un puerto propio hacia fuera, según la tabla.
+- **Cada regla con su servicio (E8, D37).** Los servicios de E y F ya no importan `backend_web`:
+  sus imágenes parten de `base-identidad`, `base-simulacion` y `base-vigilancia`, y sus reglas
+  viven en su carpeta ([`duenos_de_reglas.md`](duenos_de_reglas.md)). Los de D todavía lo
+  importan desde `epidemia/base`. `procesamiento/` (el motor) solo va en las imágenes que lo
+  usan: `base-simulacion` y `epidemia/base`.
 
 ## Esquema de puertos
 

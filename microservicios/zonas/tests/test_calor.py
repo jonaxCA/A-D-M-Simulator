@@ -4,7 +4,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from backend_web import queries
+from microservicios.zonas import consultas
 from microservicios.zonas import calor
 
 
@@ -64,8 +64,8 @@ def test_la_celda_mas_fina_es_de_un_kilometro():
 
 @pytest.fixture
 def cliente(crear_cliente, base, monkeypatch):
-    monkeypatch.setattr(queries, "get_enfermedad", lambda i: {"id": i} if i == 1 else None)
-    monkeypatch.setattr(queries, "get_region_municipio", lambda i: {"id": i} if i == 39 else None)
+    monkeypatch.setattr(consultas, "get_enfermedad", lambda i: {"id": i} if i == 1 else None)
+    monkeypatch.setattr(consultas, "get_region_municipio", lambda i: {"id": i} if i == 39 else None)
     return crear_cliente("zonas")
 
 

@@ -17,9 +17,10 @@ plantilla (bloque A), y **Redis** (bloque K).
   llamar con `llamar(..., token=...)` a una ruta con `@solo_servicios` cuando no hay persona detrás.
 - `crear_app(nombre, contrato, registrar_rutas, dependencias=())`: Flask con `/health`, `/docs` y
   `/openapi.json`. Ver «Salud», «Errores contados» y «Detrás de nginx».
-- `filtros_ambito(args, periodos)` y `clave_ambito(filtros)`: valida `disease_id`, `region_id`
-  y `days` (422 si no son válidos, 404 si la enfermedad o el municipio no existen). La usan
-  `series` y `zonas`.
+- `filtros_ambito(args, periodos, catalogos=...)` y `clave_ambito(filtros)`: valida `disease_id`,
+  `region_id` y `days` (422 si no son válidos, 404 si la enfermedad o el municipio no existen).
+  Los catálogos los consulta el servicio con lo que pasa en `catalogos` (`get_enfermedad` y
+  `get_region_municipio`), sin `backend_web` (E8). La usan `series` y `zonas`.
 
 - `alcance.regiones_permitidas()`, `exige_region(region_id)` y `exige_region_de(obtener)`: el cliente
   técnico de `GET /api/v1/scopes/me` de `roles` (D43). `None` es una cuenta nacional; si no, el
@@ -59,7 +60,7 @@ cuenta (best-effort).
 
 ## Conexiones a PostgreSQL (F4)
 
-`bd.get_conn()` (y `backend_web.db.get_conn()`, que usan la web y los servicios que aún la importan)
+`bd.get_conn()` (y `backend_web.db.get_conn()`, que usan la web y los servicios de D que aún la importan)
 presta una conexión de `conexiones.py` en lugar de abrir una por consulta: abrirla cuesta unos
 47 ms y usarla, menos de 1 ms. Cada proceso guarda hasta `DB_CONEXIONES_LIBRES` (4) por URL;
 antes de prestar una comprueba que siga viva, al devolverla hace `rollback` (lo no confirmado se
@@ -171,7 +172,7 @@ cerradas = sesiones.cerrar_de_usuario(usuario_id)
 
 # zonas: la clave lleva todo lo que cambia la respuesta, incluido el ámbito de quien pregunta.
 filas = cache.obtener("zonas", f"pagina={pagina}&ambito={ambito}", 60,
-                      lambda: queries.get_monitoreo_zonas(pagina=pagina, **ambito))
+                      lambda: consultas.get_monitoreo_zonas(pagina=pagina, **ambito))
 
 # corridas: un doble clic no lanza dos corridas de la misma versión.
 with candados.candado(llaves.candado_corrida(version_id), ttl=10):

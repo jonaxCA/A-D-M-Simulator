@@ -4,7 +4,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from backend_web import vacunas
+from microservicios.vacunas import lotes
 from microservicios.vacunas import rutas
 
 RAIZ = Path(__file__).resolve().parents[3]
@@ -21,7 +21,7 @@ def lote(lote_id, codigo, total=10, usadas=0, vencido=False):
 
 
 class Mundo:
-    """backend_web.vacunas simulado; valida_lote es la real."""
+    """lotes.py simulado; valida_lote es la real."""
 
     def __init__(self):
         self.lotes = {5: lote(5, "EW0153"), 6: lote(6, "VIEJO-1", vencido=True)}
@@ -65,7 +65,7 @@ class Mundo:
 def mundo(monkeypatch):
     m = Mundo()
     for nombre in ("registrar_lote", "aplicar_dosis", "listar_lotes", "get_lote"):
-        monkeypatch.setattr(vacunas, nombre, getattr(m, nombre))
+        monkeypatch.setattr(lotes, nombre, getattr(m, nombre))
     return m
 
 
@@ -175,7 +175,7 @@ def test_sin_dosis_suficientes_o_caducado_es_409(cliente, capturista):
 
 
 @pytest.mark.parametrize("cuerpo", [{}, {"doses": 0}, {"doses": True}, {"doses": "x"},
-                                    {"doses": vacunas.APLICAR_MAX + 1}, {"doses": 1, "case_id": 3}])
+                                    {"doses": lotes.APLICAR_MAX + 1}, {"doses": 1, "case_id": 3}])
 def test_dosis_invalidas_es_422(cliente, capturista, mundo, cuerpo):
     assert post(cliente, "/api/v1/vaccine-lots/5/doses", capturista, cuerpo).status_code == 422
     assert mundo.aplicadas == []

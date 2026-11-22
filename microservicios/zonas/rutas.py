@@ -4,16 +4,15 @@ import math
 from flask import Response, g, request
 
 from epidemia_comun import cache
+from epidemia_comun.auditoria import log_audit
+from epidemia_comun.bd import query
 from epidemia_comun.ambito import clave_ambito, filtros_ambito
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import responder
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import entero_positivo
-from backend_web import queries
-from backend_web.audit import log_audit
-from backend_web.db import query
 
-from . import calor, geometria, jurisdicciones
+from . import calor, consultas, geometria, jurisdicciones
 
 ESTADO_NL = "19"
 
@@ -57,10 +56,10 @@ def mayor_cambio(zonas):
 
 
 def _mapa(disease_id, dias):
-    municipios = queries.get_mapa_municipios(disease_id=disease_id, dias=dias)
+    municipios = consultas.get_mapa_municipios(disease_id=disease_id, dias=dias)
     for m in municipios:
-        m["tendencia"] = queries.get_tendencia_zona(m["id"], disease_id=disease_id, dias=14)
-    serie = queries.get_mapa_serie_temporal(disease_id=disease_id, dias=dias)
+        m["tendencia"] = consultas.get_tendencia_zona(m["id"], disease_id=disease_id, dias=14)
+    serie = consultas.get_mapa_serie_temporal(disease_id=disease_id, dias=dias)
     # La consulta indexa la serie por clave INEGI ("19039"); una etiqueta XML no
     # puede empezar con dígito, así que viaja como lista.
     serie["municipios"] = [dict(region_code=code, **datos)
@@ -73,7 +72,7 @@ def registrar(app):
     @app.get("/api/v1/zones")
     @requiere_token()
     def zonas():
-        f = filtros_ambito(request.args, PERIODOS_TABLA)
+        f = filtros_ambito(request.args, PERIODOS_TABLA, catalogos=consultas)
         orden = request.args.get("order", "incidencia")
         if orden not in ORDENES:
             raise ErrorAPI(422, "DATOS_INVALIDOS", "order debe ser casos o incidencia.")
@@ -87,12 +86,12 @@ def registrar(app):
 
         tabla = json.dumps([busqueda, orden, pagina, tamano], ensure_ascii=False)
         datos = cache.obtener("zonas", "zones:%s:%s" % (clave_ambito(f), tabla), TTL_CACHE,
-                              lambda: queries.get_monitoreo_zonas(
+                              lambda: consultas.get_monitoreo_zonas(
                                   busqueda=busqueda, orden=orden, pagina=pagina,
                                   por_pagina=tamano, **ambito))
         todas = cache.obtener("zonas", "zones-all:%s" % clave_ambito(f), TTL_CACHE,
-                              lambda: queries.get_monitoreo_zonas(pagina=1, por_pagina=TODAS,
-                                                                  **ambito))
+                              lambda: consultas.get_monitoreo_zonas(pagina=1, por_pagina=TODAS,
+                                                                    **ambito))
         datos["filtros"] = {"disease_id": f["disease_id"], "region_id": f["region_id"],
                             "days": f["dias"], "q": busqueda, "order": orden}
         datos["mayor_cambio"] = mayor_cambio(todas["zonas"])
@@ -114,11 +113,11 @@ def registrar(app):
     @app.get("/api/v1/zones/export")
     @requiere_token()
     def exportar_zonas():
-        f = filtros_ambito(request.args, PERIODOS_TABLA)
+        f = filtros_ambito(request.args, PERIODOS_TABLA, catalogos=consultas)
         orden = request.args.get("order", "incidencia")
         if orden not in ORDENES:
             raise ErrorAPI(422, "DATOS_INVALIDOS", "order debe ser casos o incidencia.")
-        datos = queries.get_monitoreo_zonas(
+        datos = consultas.get_monitoreo_zonas(
             disease_id=f["disease_id"], region_id=f["region_id"], dias=f["dias"],
             busqueda=(request.args.get("q") or "").strip() or None, orden=orden,
             pagina=1, por_pagina=TODAS)
@@ -131,7 +130,7 @@ def registrar(app):
     @app.get("/api/v1/zones/heatmap")
     @requiere_token()
     def mapa_de_calor():
-        f = filtros_ambito(request.args, PERIODOS_CALOR)
+        f = filtros_ambito(request.args, PERIODOS_CALOR, catalogos=consultas)
         celda = request.args.get("cell") or calor.CELDAS[0]
         if celda not in calor.CELDAS:
             raise ErrorAPI(422, "DATOS_INVALIDOS", "cell debe ser uno de: %s." % ", ".join(calor.CELDAS))
@@ -146,7 +145,7 @@ def registrar(app):
     @app.get("/api/v1/zones/jurisdictions")
     @requiere_token()
     def por_jurisdiccion():
-        f = filtros_ambito(request.args, PERIODOS_TABLA, con_region=False)
+        f = filtros_ambito(request.args, PERIODOS_TABLA, con_region=False, catalogos=consultas)
         grupos = cache.obtener("zonas", "jurisdictions:%s" % clave_ambito(f), TTL_CACHE,
                                lambda: jurisdicciones.calcular(f["dias"], f["disease_id"]))
         return responder({"filtros": {"disease_id": f["disease_id"], "days": f["dias"]},
@@ -184,7 +183,7 @@ def registrar(app):
     @app.get("/api/v1/zones/map")
     @requiere_token()
     def mapa():
-        f = filtros_ambito(request.args, PERIODOS_MAPA, con_region=False)
+        f = filtros_ambito(request.args, PERIODOS_MAPA, con_region=False, catalogos=consultas)
         datos = cache.obtener("zonas", "map:%s" % clave_ambito(f), TTL_CACHE,
                               lambda: _mapa(f["disease_id"], f["dias"]))
         datos["filtros"] = {"disease_id": f["disease_id"], "days": f["dias"]}

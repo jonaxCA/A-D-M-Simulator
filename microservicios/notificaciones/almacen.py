@@ -1,15 +1,15 @@
 """
 Avisos para las apps: la tabla notifications (migraciones 003 y 029).
 
-La escribe solo el microservicio notificaciones; el monolito no los muestra.
+La escribe solo este servicio; el monolito no los muestra (E8: antes vivía en backend_web).
 Las funciones que escriben reciben el Contexto y auditan con el cursor de su
 propia transaccion, como el resto de la capa de datos.
 """
 import psycopg2.errors
 import psycopg2.extras
 
-from .audit import log_audit
-from .db import a_jsonb, get_conn, query
+from epidemia_comun.auditoria import log_audit
+from epidemia_comun.bd import a_jsonb, get_conn, query
 
 # Los del CHECK ck_notifications_type (003, 029, 037, 057 y 060).
 TIPOS = ("RUN_FINISHED", "RUN_FAILED", "THRESHOLD_EXCEEDED", "ASSIGNMENT",

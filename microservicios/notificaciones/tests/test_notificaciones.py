@@ -4,7 +4,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from backend_web import notificaciones
+from microservicios.notificaciones import almacen
 from epidemia_comun.seguridad import token_servicio
 
 RAIZ = Path(__file__).resolve().parents[3]
@@ -12,7 +12,7 @@ CREADA = datetime(2026, 10, 20, 15, tzinfo=timezone.utc)
 
 
 class Bandeja:
-    """La tabla notifications simulada, con las reglas de backend_web.notificaciones."""
+    """La tabla notifications simulada, con las reglas de almacen.py."""
 
     def __init__(self):
         self.filas = {1: self.fila(1, 7), 2: self.fila(2, 8)}
@@ -39,7 +39,7 @@ class Bandeja:
         return dict(fila), None
 
     def crear_a_rol(self, datos, rol, *, contexto):
-        errores = notificaciones.valida_notificacion(datos, a_rol=True)
+        errores = almacen.valida_notificacion(datos, a_rol=True)
         if errores:
             return None, " ".join(errores)
         self.contextos.append(contexto)
@@ -47,7 +47,7 @@ class Bandeja:
         return [10, 11], None
 
     def crear(self, datos, *, contexto):
-        errores = notificaciones.valida_notificacion(datos)
+        errores = almacen.valida_notificacion(datos)
         if errores:
             return None, " ".join(errores)
         if datos["user_id"] == 404:
@@ -61,10 +61,10 @@ class Bandeja:
 @pytest.fixture
 def bandeja(monkeypatch):
     b = Bandeja()
-    monkeypatch.setattr(notificaciones, "listar_notificaciones", b.listar)
-    monkeypatch.setattr(notificaciones, "marcar_leida", b.marcar)
-    monkeypatch.setattr(notificaciones, "crear_notificacion", b.crear)
-    monkeypatch.setattr(notificaciones, "crear_notificaciones_a_rol", b.crear_a_rol)
+    monkeypatch.setattr(almacen, "listar_notificaciones", b.listar)
+    monkeypatch.setattr(almacen, "marcar_leida", b.marcar)
+    monkeypatch.setattr(almacen, "crear_notificacion", b.crear)
+    monkeypatch.setattr(almacen, "crear_notificaciones_a_rol", b.crear_a_rol)
     return b
 
 
@@ -201,8 +201,8 @@ def preferencias(monkeypatch, bandeja):
 
     def guarda(user_id, cambios, *, contexto):
         guardadas.update({(user_id, t): v for t, v in cambios.items()})
-    monkeypatch.setattr(notificaciones, "query", query)
-    monkeypatch.setattr(notificaciones, "guarda_preferencias", guarda)
+    monkeypatch.setattr(almacen, "query", query)
+    monkeypatch.setattr(almacen, "guarda_preferencias", guarda)
     return guardadas
 
 
@@ -248,7 +248,7 @@ def test_preferencias_en_xml(cliente, token, preferencias):
 
 
 def test_un_aviso_apagado_no_se_crea(cliente, servicio, bandeja, monkeypatch):
-    monkeypatch.setattr(notificaciones, "crear_notificacion", lambda datos, *, contexto: (None, None))
+    monkeypatch.setattr(almacen, "crear_notificacion", lambda datos, *, contexto: (None, None))
     r = cliente.post("/api/v1/notifications?format=json", json=AVISO, headers=servicio)
     assert r.status_code == 200
     assert r.get_json() == {"id": None, "user_id": 7, "type": "RUN_FAILED", "omitida": True}
@@ -257,6 +257,6 @@ def test_un_aviso_apagado_no_se_crea(cliente, servicio, bandeja, monkeypatch):
 def test_las_consultas_respetan_las_preferencias():
     """crear_notificacion y el aviso a un rol consultan notification_preferences."""
     import inspect
-    assert "notification_preferences" in inspect.getsource(notificaciones.crear_notificacion)
-    fuente = inspect.getsource(notificaciones.crear_notificaciones_a_rol)
+    assert "notification_preferences" in inspect.getsource(almacen.crear_notificacion)
+    fuente = inspect.getsource(almacen.crear_notificaciones_a_rol)
     assert "NOT EXISTS" in fuente and "notification_preferences" in fuente

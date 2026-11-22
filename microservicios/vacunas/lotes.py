@@ -1,9 +1,9 @@
 """
 Lotes de vacuna: la tabla vaccine_lots (migraciones 005 y 033).
 
-La escribe solo el microservicio vacunas. La app movil lee el codigo del lote
-por QR o codigo de barras, lo registra una vez y despues le descuenta las dosis
-que aplica. Que nunca se apliquen mas dosis de las que trae lo garantizan el
+La escribe solo este servicio (E8: antes vivía en backend_web). La app movil
+lee el codigo del lote por QR o codigo de barras, lo registra una vez y despues
+le descuenta las dosis que aplica. Que nunca se apliquen mas dosis de las que trae lo garantizan el
 UPDATE condicionado y ck_vaccine_lots_usadas. Un lote caducado se registra, pero
 ya no se le aplican dosis. Ligar un caso a su lote (cases.vaccine_lot_id) es de
 casos, no de aqui.
@@ -14,9 +14,11 @@ from datetime import date
 import psycopg2.errors
 import psycopg2.extras
 
-from .audit import log_audit
-from .db import get_conn, query
-from .queries import ZONA_HORARIA
+from epidemia_comun.auditoria import log_audit
+from epidemia_comun.bd import get_conn, query
+
+# La misma de backend_web.queries (test_copias_del_monolito.py).
+ZONA_HORARIA = "America/Monterrey"
 
 CODIGO = re.compile(r"^[\x21-\x7e]{1,60}$")
 FABRICANTE_MAX = 120

@@ -56,7 +56,8 @@ ADMINISTRADOR, recibe 401. Lo usan:
 
 Crear queda como `CREATE` y marcar como leída como `UPDATE`, los dos en la misma transacción.
 Al crear no hay persona detrás: `user_id` queda vacío y `user_agent` dice qué servicio lo pidió
-(`servicio simulador`). La lógica está en `backend_web/notificaciones.py`.
+(`servicio simulador`). La lógica está en `almacen.py` (antes en `backend_web`, E8), con sus
+pruebas contra la base en `tests/test_almacen_avisos_bd.py`.
 
 ## Variables
 

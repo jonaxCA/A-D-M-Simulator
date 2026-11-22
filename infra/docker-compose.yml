@@ -31,6 +31,13 @@ x-construye-simulacion: &construye-simulacion
   additional_contexts:
     epidemia/base-simulacion: service:base-simulacion
 
+# Los de F (vigilancia, analítica y plataforma) parten de epidemia/base-vigilancia, sin
+# backend_web (E8).
+x-construye-vigilancia: &construye-vigilancia
+  context: ..
+  additional_contexts:
+    epidemia/base-vigilancia: service:base-vigilancia
+
 services:
   redis:
     image: redis:7.4-alpine
@@ -163,6 +170,14 @@ services:
     build:
       context: ..
       dockerfile: infra/docker/base-identidad.Dockerfile
+    deploy:
+      replicas: 0
+
+  base-vigilancia:
+    image: epidemia/base-vigilancia
+    build:
+      context: ..
+      dockerfile: infra/docker/base-vigilancia.Dockerfile
     deploy:
       replicas: 0
 
@@ -345,7 +360,7 @@ services:
   casos:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/casos/Dockerfile
     profiles: [vigilancia]
     ports:
@@ -365,7 +380,7 @@ services:
   sincronizacion:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/sincronizacion/Dockerfile
     profiles: [vigilancia]
     ports:
@@ -388,7 +403,7 @@ services:
   dispositivos:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/dispositivos/Dockerfile
     profiles: [vigilancia]
     ports:
@@ -428,7 +443,7 @@ services:
   vacunas:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/vacunas/Dockerfile
     profiles: [vigilancia]
     ports:
@@ -698,7 +713,7 @@ services:
   indicadores:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/indicadores/Dockerfile
     profiles: [analitica]
     ports:
@@ -716,7 +731,7 @@ services:
   series:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/series/Dockerfile
     profiles: [analitica]
     ports:
@@ -734,7 +749,7 @@ services:
   zonas:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/zonas/Dockerfile
     profiles: [analitica]
     ports:
@@ -754,7 +769,7 @@ services:
   notificaciones:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/notificaciones/Dockerfile
     profiles: [plataforma]
     ports:
@@ -775,7 +790,7 @@ services:
   estado-servicios:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/estado_servicios/Dockerfile
     profiles: [plataforma]
     ports:

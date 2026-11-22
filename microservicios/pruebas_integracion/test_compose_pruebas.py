@@ -174,11 +174,11 @@ def test_nginx_manda_la_raiz_al_contenedor_de_la_web_y_lo_resuelve_en_cada_petic
 def test_cloud_logging_cubre_cada_contenedor_de_la_nube():
     """docker-compose.cloud-logging.yml manda a Cloud Logging los registros de cada contenedor
     (RF-K08): los del compose principal, nginx y certbot. Las imágenes base (base,
-    base-identidad, base-simulacion: replicas 0) solo se construyen y no corren."""
+    base-identidad, base-simulacion, base-vigilancia: replicas 0) solo se construyen y no corren."""
     servicios = COMPOSE.split("\nservices:\n", 1)[1].split("\nvolumes:\n", 1)[0]
     bloques = dict(re.findall(r"^  ([a-z][a-z0-9-]*):\n((?:(?:    .*)?\n)*)", servicios + "\n", re.M))
     principales = {n for n, b in bloques.items() if "      replicas: 0" not in b}
-    assert {"base", "base-identidad", "base-simulacion"}.isdisjoint(principales) and "web" in principales
+    assert {"base", "base-identidad", "base-simulacion", "base-vigilancia"}.isdisjoint(principales) and "web" in principales
     registros = (RAIZ / "infra/docker-compose.cloud-logging.yml").read_text(encoding="utf-8")
     cubiertos = set(re.findall(r"^  ([a-z][a-z0-9-]*): \*cloud-logging$", registros, re.M))
     assert cubiertos == principales | {"nginx", "certbot"}, cubiertos ^ (principales | {"nginx", "certbot"})

@@ -1,15 +1,14 @@
 from flask import g, request
 
 from epidemia_comun import cache
+from epidemia_comun.auditoria import log_audit
+from epidemia_comun.bd import query
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import responder
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import entero_positivo
-from backend_web import queries
-from backend_web.audit import log_audit
-from backend_web.db import query
 
-from . import definidos
+from . import consultas, definidos
 
 LIMITE_MAXIMO = 20
 TTL_CACHE = 60
@@ -37,7 +36,7 @@ def _limite():
 def tablero():
     # Los campos de siempre (también los lee la web) y, en `indicadores`, cada uno con su
     # numerador, su denominador y su periodo (definidos.py, F7).
-    return dict(queries.get_resumen_indicadores(), indicadores=definidos.calcular())
+    return dict(consultas.get_resumen_indicadores(), indicadores=definidos.calcular())
 
 
 def registrar(app):
@@ -51,7 +50,7 @@ def registrar(app):
     def situacion():
         limite = _limite()
         filas = cache.obtener("indicadores", "situation:limit=%d" % limite, TTL_CACHE,
-                              lambda: queries.get_resumen_situacion(limit=limite))
+                              lambda: consultas.get_resumen_situacion(limit=limite))
         return responder({"enfermedades": filas}, "situacion")
 
     # La curva del tablero público: agregada, sin datos de personas.
@@ -65,6 +64,6 @@ def registrar(app):
     @requiere_token()
     def exportar_situacion():
         limite = _limite()
-        filas = queries.get_resumen_situacion(limit=limite)
+        filas = consultas.get_resumen_situacion(limit=limite)
         log_audit(g.contexto, "EXPORT", "reports", entity_id="resumen_situacion")
         return responder({"enfermedades": filas}, "situacion")

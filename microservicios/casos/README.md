@@ -9,7 +9,7 @@ D48). Es el único servicio que escribe en ellas.
 
 | Ruta | Roles | Qué hace |
 |---|---|---|
-| `POST /cases` | CAPTURISTA (D1: el ADMINISTRADOR no captura) | Valida con `queries.valida_caso` (catálogo vigente de enfermedades y municipios, fechas, rangos, coordenadas completas), inserta con `status = pendiente` y deja un `CREATE` en `audit_log`, en la misma transacción. `reported_by` sale del token. |
+| `POST /cases` | CAPTURISTA (D1: el ADMINISTRADOR no captura) | Valida con `captura.valida_caso` (catálogo vigente de enfermedades y municipios, fechas, rangos, coordenadas completas), inserta con `status = pendiente` y deja un `CREATE` en `audit_log`, en la misma transacción. `reported_by` sale del token. |
 | `POST /cases/batch` | CAPTURISTA | Hasta 100 casos en una petición; la usa `sincronizacion` (F4). Cada caso recibe el resultado que tendría en `POST /cases` (201, 200 si ya existía, 409 o 422) en `resultados`, en el mismo orden (`indice`) y en su propia transacción: uno rechazado no detiene a los demás. Los catálogos y cada dispositivo se revisan una vez por lote. El límite de D31 cuenta los casos, no la petición, en la misma cuenta que `POST /cases`. Si la base falla, todo el lote es 503 y se reenvía (`local_uuid` evita duplicados). |
 | `GET /cases` | CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR | Lista paginada. Filtros: `disease_id`, `region_id` (municipio), `status`, `sex`, `from`, `to` (sobre `report_date`), `page` (1), `per_page` (20, máx. 100). Regresa `casos`, `total`, `pagina`, `por_pagina`, `paginas`. |
 | `GET /cases/{id}` | los cuatro roles | Un caso; 404 si no existe. El `ETag` es su versión. |

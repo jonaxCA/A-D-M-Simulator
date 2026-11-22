@@ -7,17 +7,16 @@ from datetime import datetime, timezone
 import psycopg2
 from flask import current_app, g, request
 
-from backend_web import dispositivos, queries
-from backend_web.audit import log_audit
-from backend_web.db import get_conn
 from epidemia_comun import limites
+from epidemia_comun.auditoria import log_audit
+from epidemia_comun.bd import get_conn
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.http import llamar
 from epidemia_comun.seguridad import requiere_token, token_servicio
 from epidemia_comun.validaciones import diccionario, entero_positivo, fecha
 
-from . import formularios, seguimiento
+from . import captura, formularios, seguimiento
 
 log = logging.getLogger(__name__)
 
@@ -193,14 +192,14 @@ def _lista_de_casos(valor):
 
 
 def _catalogos():
-    return queries.get_enfermedades_para_captura(), queries.get_municipios_catalogo()
+    return captura.get_enfermedades_para_captura(), captura.get_municipios_catalogo()
 
 
 def _verifica_dispositivo(device_id, vistos=None):
     """Un dispositivo ajeno es 422; uno revocado, 409 (comentario de devices)."""
     vistos = {} if vistos is None else vistos
     if device_id not in vistos:
-        vistos[device_id] = dispositivos.estado_para_captura(device_id, g.contexto.user_id)
+        vistos[device_id] = captura.estado_para_captura(device_id, g.contexto.user_id)
     if vistos[device_id] == "ajeno":
         raise ErrorAPI(422, "DATOS_INVALIDOS",
                        "device_id no es un dispositivo registrado de esta cuenta.")
@@ -291,7 +290,7 @@ def corrige(case_id, cuerpo, esperada):
                     [] if "disease_id" in pedidos else [{"id": actual["disease_id"]}])
                 municipios_validos = list(municipios) + (
                     [] if "region_id" in pedidos else [{"id": actual["region_id"]}])
-                datos, errores = queries.valida_caso(entrada, enfermedades_validas, municipios_validos)
+                datos, errores = captura.valida_caso(entrada, enfermedades_validas, municipios_validos)
                 if errores:
                     raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
                 diferencias = seguimiento.cambios(actual, datos, pedidos)
@@ -486,7 +485,7 @@ def _crea(entrada, catalogos=None, dispositivos_vistos=None, formularios_vistos=
         _verifica_dispositivo(device_id, dispositivos_vistos)
 
     enfermedades, municipios = catalogos or _catalogos()
-    datos, errores = queries.valida_caso(entrada, enfermedades, municipios)
+    datos, errores = captura.valida_caso(entrada, enfermedades, municipios)
     if errores:
         raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
     form_id, respuestas = _formulario_del_caso(
@@ -590,7 +589,7 @@ def registrar(app):
             params.append(estado)
         sexo = request.args.get("sex")
         if sexo is not None:
-            if sexo not in queries.SEXOS:
+            if sexo not in captura.SEXOS:
                 raise ErrorAPI(422, "DATOS_INVALIDOS", "sex debe ser M, F u O.")
             condiciones.append("c.sex = %s")
             params.append(sexo)

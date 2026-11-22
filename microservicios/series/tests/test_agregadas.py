@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone
 
 import pytest
 
-from backend_web import queries
+from microservicios.series import consultas
 from epidemia_comun.errores import ErrorAPI
 from microservicios.series import agregadas
 
@@ -85,15 +85,15 @@ def test_por_sexo_con_etiquetas_y_ordenado_por_casos(base):
 def test_por_edad_siempre_los_seis_grupos(base):
     base.filas = [{"inicio": D("2026-11-21"), "grupo": "25-44", "casos": 3}]
     assert agregadas.calcular(D("2026-11-21"), D("2026-11-21"), "dia", "edad")["grupos"] == \
-        list(queries.GRUPOS_EDAD)
+        list(consultas.GRUPOS_EDAD)
     base.filas.append({"inicio": D("2026-11-21"), "grupo": None, "casos": 1})
     assert agregadas.calcular(D("2026-11-21"), D("2026-11-21"), "dia", "edad")["grupos"][-1] == \
         "No especificado"
 
 
 def test_grupos_y_sexos_como_en_monitoreo():
-    assert list(agregadas.GRUPOS_EDAD) == queries.GRUPOS_EDAD
-    assert agregadas.SEXOS == queries.SEXOS
+    assert list(agregadas.GRUPOS_EDAD) == consultas.GRUPOS_EDAD
+    assert agregadas.SEXOS == consultas.SEXOS
 
 
 @pytest.mark.parametrize("agrupar,union", [("enfermedad", "JOIN diseases"), ("municipio", "JOIN regions r")])
