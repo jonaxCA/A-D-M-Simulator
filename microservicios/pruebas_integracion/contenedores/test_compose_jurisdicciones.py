@@ -35,3 +35,18 @@ def test_la_geometria_y_ubicar_un_punto(api, analista, catalogo):
                 params={"lat": 25.6866, "lon": -100.3161}).json()
     assert datos["municipio"]["region_id"] == catalogo["region_id"]
     assert datos["jurisdiccion"]["clave"] == "compartido-19039"
+
+
+def test_una_base_nueva_trae_el_marcador_de_marin_dentro_de_marin(api, analista, base):
+    # La semilla lo carga corregido y la 058 no lo toca (corre antes, cuando Marín no existe).
+    conexion = base()
+    with conexion.cursor() as cur:
+        cur.execute("SELECT centroid_lat::float, centroid_lon::float FROM regions WHERE code = '19034'")
+        lat, lon = cur.fetchone()
+        cur.execute("SELECT 1 FROM schema_migrations WHERE version = '058'")
+        assert cur.fetchone()
+    conexion.close()
+    assert (lat, lon) == (25.886678, -100.022912)
+    datos = api("zonas", "GET", "/api/v1/zones/locate", analista["access"],
+                params={"lat": lat, "lon": lon}).json()
+    assert datos["municipio"]["region_code"] == "19034" and datos["aproximado"] is False

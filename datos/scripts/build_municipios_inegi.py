@@ -33,7 +33,8 @@ Salida:
                                    sirve zonas en GET /api/v1/zones/geometry y la usa para ubicar
                                    un punto (GET /api/v1/zones/locate), F7
   - datos/geo/nl_centroides.json    codigo -> {name, lat, lon}, insumo de
-                                   datos/scripts/build_regiones_sql.py
+                                   datos/scripts/build_regiones_sql.py. Es el centroide, salvo
+                                   cuando cae fuera del municipio (Marin): ahi, un punto interior
 Los tres se escriben con LF, tambien en Windows.
 
 Dependencias (solo de build -- no van en requirements.txt, que es el runtime
@@ -157,7 +158,13 @@ def main():
             print(f"AVISO -- {code} {nombre} quedo vacio al simplificar; se usa sin simplificar")
             g = geom
         verts += contar_vertices(g)
+        # El centroide de un municipio concavo puede caer fuera de el (Marin caia en Doctor
+        # Gonzalez, a 1.3 km de su frontera): entonces va un punto que shapely garantiza dentro.
+        # Los demas conservan su centroide.
         c = g.centroid
+        if not g.contains(c):
+            print(f"AVISO -- el centroide de {code} {nombre} cae fuera; se usa un punto interior")
+            c = g.representative_point()
         features.append({
             "type": "Feature",
             "properties": {"region_code": code, "name": nombre},
