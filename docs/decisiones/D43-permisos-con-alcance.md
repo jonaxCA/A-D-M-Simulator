@@ -1,6 +1,6 @@
 # D43 - Permisos con alcance por región o institución, e historial de una entidad
 
-Fecha: 2026-11-20 · Estado: Aceptada (tomada por el orquestador; pendiente de validación del líder) · Amplía D1 y D42
+Fecha: 2026-11-20 · Estado: Aceptada · Amplía D1 y D42
 
 ## Contexto
 La retroalimentación pide permisos «por recurso, región, institución y operación». Hoy el permiso es (recurso, operación) en `role_permissions` y no hay forma de limitar a una cuenta a los datos de una región o de una institución. Además, el escritorio necesita el historial de un escenario (quién lo creó, modificó, revisó o aprobó) y D1 deja la bitácora solo al ADMINISTRADOR.
