@@ -31,14 +31,14 @@ Es el proceso **P1** de [`procesos_v3.md`](../../arquitectura/procesos_v3.md): e
 | RF-C14 | La app muestra qué se envió, qué se rechazó y qué falta | Cada caso aparece como enviado, rechazado o pendiente | 1.6 | Móvil | Alta | Hecho |
 | RF-C19 | Cuando un lote trae casos nuevos, se avisa a los EPIDEMIOLOGO | `sincronizacion` crea un aviso por lote, no uno por caso, por medio de `notificaciones`. Un reintento del mismo lote no vuelve a avisar (D32) | 1.6 | Microservicios | Alta | Hecho |
 | RF-C20 | La web muestra la foto de un caso con una URL firmada | Solo un rol con permiso recibe la URL, y vence en minutos | 1.9 | Web, Microservicios | Alta | Falta (D-3) |
+| RF-C11 | Corregir un caso ya registrado, sin sobrescribir en silencio lo que cambió otra persona | `PATCH /cases/{id}` con `If-Match` (la versión que se leyó): el EPIDEMIOLOGO corrige cualquier caso pendiente o validado y el CAPTURISTA los suyos pendientes. Si el caso cambió, 412 y nada se toca; la sincronización lo regresa como conflicto con el caso actual. Cada cambio queda en el historial (`case_history`) | 1.6, 1.9 | Microservicios, Móvil | Alta | Hecho en el servidor (D47, 2026-11-22); falta en la móvil (B4) |
+| RF-C15 | Validar, descartar o marcar como duplicado un caso, con su motivo | `POST /cases/{id}/status`, solo el EPIDEMIOLOGO; descartar, duplicado y reabrir piden motivo, y duplicado el caso original. Quien lo capturó recibe `CASE_REJECTED` | 1.9 | Microservicios | Alta | Hecho en el servidor (D47, 2026-11-22); falta en la web o el escritorio |
 | RF-C21 | Un teléfono revocado deja de sincronizar | `sincronizacion` rechaza el lote; los casos vuelven a pendientes en el teléfono y la app cierra la sesión | 1.6 | Microservicios, Móvil | Media | Hecho |
 
 ## Fuera de alcance
 
 | ID | Qué pedía | Por qué sale |
 |---|---|---|
-| RF-C11 | Corregir un caso ya registrado | `casos` solo registra y consulta. D32 decidió que la app no edita casos |
-| RF-C15 | Marcar un caso como erróneo con su motivo | Ningún proceso lo pide; la web no valida ni descarta casos |
 | RF-C16 | Cargar series históricas para calibrar | La calibración queda fuera (D24) |
 | RF-C17 | Agregar casos por AGEB | El catálogo llega a municipio. El tablero y el mapa agregan por municipio (RF-G03) |
 | RF-C18 | No publicar zonas con menos de N casos | No hay umbral definido ni decisión que lo pida |

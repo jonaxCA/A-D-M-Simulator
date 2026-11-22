@@ -356,14 +356,14 @@ La app solo habla JSON.
 
 - [ ] Revisar la app contra esta lista y marcar lo que ya cumple.
 - [ ] Panel del capturista: casos pendientes, formularios, registros incompletos, sincronizaciones pendientes y avisos.
-- [ ] Seguimiento: actualizar el estado de un caso, con observaciones e historial (RF-I12, reabierto). Espera a F (F7).
+- [ ] Seguimiento: actualizar el estado de un caso, con observaciones e historial (RF-I12, reabierto). El servidor ya está (D47, 2026-11-22): `PATCH /cases/{id}` para corregir los casos pendientes propios, con `If-Match`, y `GET /cases/{id}/history`; cambiar el estado es del EPIDEMIOLOGO.
 - [ ] Formularios por enfermedad, con versiones, validaciones y campos obligatorios. Espera a F (F7).
 - [ ] GPS, con selección manual cuando la captura automática no conviene.
 - [ ] Cola local cifrada: hoy Room guarda los casos sin cifrar y solo los tokens van cifrados.
 - [ ] Un caso no se muestra como recibido, validado o publicado hasta que el servidor lo confirma.
-- [ ] La sincronización no sobrescribe en silencio lo que cambió otro profesional: el conflicto se muestra. Espera a F (F7).
+- [ ] La sincronización no sobrescribe en silencio lo que cambió otro profesional: el conflicto se muestra. El servidor ya está (D47, 2026-11-22): el lote manda `updates` con la versión del teléfono y cada corrección regresa `actualizado`, `conflicto` (con el caso actual) o `rechazado`; falta mostrarlo en la app.
 - [ ] Consulta epidemiológica agregada por zona, periodo y enfermedad, según los permisos.
-- [ ] Alertas: tareas nuevas, registros rechazados, campañas y eventos de vigilancia, desde `notificaciones`. Espera a F (F7).
+- [ ] Alertas: tareas nuevas, registros rechazados, campañas y eventos de vigilancia, desde `notificaciones`. Registros rechazados ya llegan (D47, 2026-11-22): `CASE_REJECTED` cuando un EPIDEMIOLOGO descarta o marca duplicado un caso; falta su nombre en `TIPOS_DE_AVISO` de la app («Caso descartado»), que hoy lo muestra como «Aviso».
 - [ ] Control de calidad: avisa de campos incompletos, fechas incoherentes y posibles duplicados.
 - [ ] Perfil con institución, región asignada y estado de conexión. Espera a E (E7).
 - [ ] Menú para cada perfil de campo. Espera a la decisión de perfiles (0).
@@ -657,9 +657,9 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 **Vigilancia**
 
-- [ ] `casos`: actualizar, dar seguimiento y rechazar, con historial, duplicados y control de conflictos (RF-C11 y RF-C15, reabiertos; decisión del bloque 0). Hoy: registro, validaciones e idempotencia, sí; actualizar y cambiar estado, no ([`revision_f7.md`](revision_f7.md)).
+- [x] `casos`: actualizar, dar seguimiento y rechazar, con historial, duplicados y control de conflictos (RF-C11 y RF-C15, reabiertos; decisión del bloque 0). Hecho el 2026-11-22 con [D47](../../decisiones/D47-correccion-y-seguimiento-de-casos.md) (aprobada por F, pendiente de validación del líder) y la migración 057: `PATCH /cases/{id}` y `POST /cases/{id}/status` con `If-Match`, `GET /cases/{id}/history` y el aviso `CASE_REJECTED`. Falta la detección automática de duplicados probables ([`revision_f7.md`](revision_f7.md)).
 - [ ] Formularios por enfermedad, con versiones (para B4). Falta por completo: los campos de un caso son fijos ([`revision_f7.md`](revision_f7.md)).
-- [ ] `sincronizacion`: conflictos entre lo capturado sin conexión y lo que cambió otro profesional. Lo demás de su lista se cumple; este conflicto espera a que `casos` tenga actualización ([`revision_f7.md`](revision_f7.md)).
+- [x] `sincronizacion`: conflictos entre lo capturado sin conexión y lo que cambió otro profesional. Hecho el 2026-11-22 (D47): el lote acepta `updates` y una corrección sobre un caso que cambió otra persona sale `conflicto` con el caso actual, sin sobrescribirlo. Mostrarlo en la app es de B4 ([`revision_f7.md`](revision_f7.md)).
 
 **Analítica**
 

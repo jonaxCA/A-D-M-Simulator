@@ -5,6 +5,9 @@ conexión (app móvil) y los manda **en una sola llamada** a `casos` (`POST /api
 en JSON, con el token de quien sincroniza). No escribe tablas de casos. Antes era una llamada por
 caso: con carga, un lote de 5 tardaba segundos (prueba de carga en la nube, F4). Si `casos` no
 tiene esa ruta (404 o 405), los manda uno por uno con `POST /api/v1/cases`, como antes.
+El lote también trae las correcciones hechas sin conexión (`updates`, D47): cada una va a
+`PATCH /api/v1/cases/{id}` con la versión que tenía el teléfono y nunca sobrescribe lo que cambió
+otra persona.
 
 ## Rutas (`/api/v1`)
 
@@ -27,6 +30,18 @@ Lo revisa `casos` en cada caso: con un dispositivo ajeno o revocado, esos casos 
 En XML: `<lote><batch_id/><device_id/><cases><item>...</item></cases></lote>`; la respuesta
 tiene raíz `resultado_lote`. XSD: `docs/contratos/sincronizacion/lote.xsd`.
 
+### Correcciones sin conexión (D47)
+
+```json
+{"batch_id": "<uuid>", "device_id": 3,
+ "updates": [{"case_id": 41, "version": 1, "changes": {"age": 35}, "reason": "Edad mal capturada"}]}
+```
+
+Un lote trae `cases`, `updates` o las dos cosas, hasta 100 entre ambas. Cada corrección lleva el
+`case_id`, la `version` que tenía el teléfono, los campos que cambiaron (`changes`, los mismos que
+acepta `PATCH /cases/{id}`) y el motivo. Van después de los casos nuevos, una llamada por
+corrección, con `If-Match` y el `device_id` del lote.
+
 ## Respuesta
 
 `batch_id`, `device_id`, `recibido_en`, `total`, `creados`, `duplicados`, `rechazados`,
@@ -41,6 +56,19 @@ tiene raíz `resultado_lote`. XSD: `docs/contratos/sincronizacion/lote.xsd`.
   `DATOS_INVALIDOS` es un caso que hay que corregir. Los lotes guardados antes de que existiera
   `codigo` no lo traen.
 - El lote responde 200 aunque haya rechazos; el cliente revisa cada caso.
+
+Si el lote trajo correcciones, además: `actualizados`, `conflictos`, `actualizaciones_rechazadas`
+y `actualizaciones[]` con `indice`, `case_id`, `resultado`, `version`, `codigo`, `errores[]` y
+`caso`:
+
+- `actualizado`: se aplicó; `version` es la nueva (la misma si no cambió nada).
+- `conflicto`: alguien cambió el caso desde esa versión (412 de casos). `caso` es el caso como está
+  en el servidor y `version` la suya; nada se sobrescribe. La app lo muestra para que la persona
+  decida y, si quiere, vuelve a mandar su corrección con la versión nueva.
+- `rechazado`: casos respondió 403, 404, 409 o 422 (por ejemplo, el caso ya no está pendiente y
+  el CAPTURISTA no puede corregirlo); `codigo` y `errores` traen el motivo.
+- Un lote que falló a medias se reenvía completo: una corrección que ya había entrado choca con su
+  propia versión, pero como el caso ya tiene lo que se pidió, sale `actualizado`, no `conflicto`.
 
 ## Idempotencia, candado y fallas
 

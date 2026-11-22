@@ -11,10 +11,10 @@ import psycopg2.extras
 from .audit import log_audit
 from .db import a_jsonb, get_conn, query
 
-# Los del CHECK ck_notifications_type (003, 029 y 037).
+# Los del CHECK ck_notifications_type (003, 029, 037 y 057).
 TIPOS = ("RUN_FINISHED", "RUN_FAILED", "THRESHOLD_EXCEEDED", "ASSIGNMENT",
          "SCENARIO_PUBLISHED", "SCENARIO_APPROVED", "SCENARIO_SUBMITTED",
-         "SCENARIO_REJECTED", "NEW_CASES", "SYSTEM")
+         "SCENARIO_REJECTED", "NEW_CASES", "SYSTEM", "CASE_REJECTED")
 TITULO_MAX = 160
 _COLUMNAS = "id, user_id, type, title, body, payload, read_at, created_at"
 

@@ -150,6 +150,38 @@
             "type": "boolean",
             "readOnly": true,
             "description": "Solo en POST: true si el local_uuid ya existía."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "readOnly": true,
+            "description": "Sube en 1 con cada corrección o cambio de estado. Va también en el ETag; quien cambia el caso la manda en If-Match (D47)."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true,
+            "description": "Último cambio; null si nunca se cambió."
+          },
+          "updated_by": {
+            "type": "integer",
+            "nullable": true,
+            "readOnly": true,
+            "description": "Quién hizo el último cambio."
+          },
+          "status_reason": {
+            "type": "string",
+            "maxLength": 500,
+            "nullable": true,
+            "readOnly": true,
+            "description": "Motivo del estado: obligatorio al descartar, marcar duplicado o reabrir."
+          },
+          "duplicate_of": {
+            "type": "integer",
+            "nullable": true,
+            "readOnly": true,
+            "description": "El caso original, si este es un duplicado."
           }
         },
         "required": [
@@ -482,6 +514,11 @@
                   "status": "pendiente",
                   "created_at": "2026-10-12T10:00:00+00:00",
                   "synced_at": "2026-10-12T10:00:00+00:00",
+                  "version": 1,
+                  "updated_at": null,
+                  "updated_by": null,
+                  "status_reason": null,
+                  "duplicate_of": null,
                   "duplicado": false
                 }
               },
@@ -492,7 +529,7 @@
                     "name": "caso"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><duplicado tipo=\"booleano\">false</duplicado></caso>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /><duplicado tipo=\"booleano\">false</duplicado></caso>\n"
               }
             }
           },
@@ -523,6 +560,11 @@
                   "status": "pendiente",
                   "created_at": "2026-10-12T10:00:00+00:00",
                   "synced_at": "2026-10-12T10:00:00+00:00",
+                  "version": 1,
+                  "updated_at": null,
+                  "updated_by": null,
+                  "status_reason": null,
+                  "duplicate_of": null,
                   "duplicado": true
                 }
               },
@@ -533,7 +575,7 @@
                     "name": "caso"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><duplicado tipo=\"booleano\">true</duplicado></caso>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /><duplicado tipo=\"booleano\">true</duplicado></caso>\n"
               }
             }
           },
@@ -789,7 +831,12 @@
                       "severity": "leve",
                       "status": "pendiente",
                       "created_at": "2026-10-12T10:00:00+00:00",
-                      "synced_at": "2026-10-12T10:00:00+00:00"
+                      "synced_at": "2026-10-12T10:00:00+00:00",
+                      "version": 1,
+                      "updated_at": null,
+                      "updated_by": null,
+                      "status_reason": null,
+                      "duplicate_of": null
                     },
                     {
                       "id": 1,
@@ -810,7 +857,12 @@
                       "severity": "leve",
                       "status": "pendiente",
                       "created_at": "2026-10-12T10:00:00+00:00",
-                      "synced_at": "2026-10-12T10:00:00+00:00"
+                      "synced_at": "2026-10-12T10:00:00+00:00",
+                      "version": 1,
+                      "updated_at": null,
+                      "updated_by": null,
+                      "status_reason": null,
+                      "duplicate_of": null
                     }
                   ],
                   "total": 41,
@@ -826,7 +878,7 @@
                     "name": "lista_casos"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<lista_casos><casos><item><id tipo=\"numero\">2</id><local_uuid>8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at></item><item><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at></item></casos><total tipo=\"numero\">41</total><pagina tipo=\"numero\">1</pagina><por_pagina tipo=\"numero\">2</por_pagina><paginas tipo=\"numero\">21</paginas></lista_casos>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<lista_casos><casos><item><id tipo=\"numero\">2</id><local_uuid>8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /></item><item><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /></item></casos><total tipo=\"numero\">41</total><pagina tipo=\"numero\">1</pagina><por_pagina tipo=\"numero\">2</por_pagina><paginas tipo=\"numero\">21</paginas></lista_casos>\n"
               }
             }
           },
@@ -1068,6 +1120,11 @@
                         "status": "pendiente",
                         "created_at": "2026-10-12T10:00:00+00:00",
                         "synced_at": "2026-10-12T10:00:00+00:00",
+                        "version": 1,
+                        "updated_at": null,
+                        "updated_by": null,
+                        "status_reason": null,
+                        "duplicate_of": null,
                         "duplicado": false
                       }
                     },
@@ -1087,7 +1144,7 @@
                     "name": "resultado_lote_casos"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<resultado_lote_casos><total tipo=\"numero\">2</total><resultados><item><indice tipo=\"numero\">0</indice><estado tipo=\"numero\">201</estado><caso><id tipo=\"numero\">1</id><local_uuid>7a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><duplicado tipo=\"booleano\">false</duplicado></caso></item><item><indice tipo=\"numero\">1</indice><estado tipo=\"numero\">422</estado><codigo>DATOS_INVALIDOS</codigo><detail>La fecha de reporte no puede estar en el futuro.</detail></item></resultados></resultado_lote_casos>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<resultado_lote_casos><total tipo=\"numero\">2</total><resultados><item><indice tipo=\"numero\">0</indice><estado tipo=\"numero\">201</estado><caso><id tipo=\"numero\">1</id><local_uuid>7a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /><duplicado tipo=\"booleano\">false</duplicado></caso></item><item><indice tipo=\"numero\">1</indice><estado tipo=\"numero\">422</estado><codigo>DATOS_INVALIDOS</codigo><detail>La fecha de reporte no puede estar en el futuro.</detail></item></resultados></resultado_lote_casos>\n"
               }
             }
           },
@@ -1248,7 +1305,7 @@
         "tags": [
           "casos"
         ],
-        "description": "Roles: CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR.",
+        "description": "Roles: CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR. El ETag de la respuesta es la versión del caso, la que se manda en If-Match para corregirlo o cambiar su estado.",
         "parameters": [
           {
             "in": "path",
@@ -1308,7 +1365,12 @@
                   "severity": "leve",
                   "status": "pendiente",
                   "created_at": "2026-10-12T10:00:00+00:00",
-                  "synced_at": "2026-10-12T10:00:00+00:00"
+                  "synced_at": "2026-10-12T10:00:00+00:00",
+                  "version": 1,
+                  "updated_at": null,
+                  "updated_by": null,
+                  "status_reason": null,
+                  "duplicate_of": null
                 }
               },
               "application/xml": {
@@ -1318,7 +1380,16 @@
                     "name": "caso"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at></caso>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /></caso>\n"
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "La versión del caso como queda, entre comillas: la siguiente If-Match.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"1\""
               }
             }
           },
@@ -1432,6 +1503,532 @@
           },
           "400": {
             "description": "Cuerpo JSON/XML ilegible, o ?format desconocido (DATOS_INVALIDOS)."
+          }
+        }
+      },
+      "patch": {
+        "summary": "Corregir un caso",
+        "operationId": "corregir_caso",
+        "tags": [
+          "casos"
+        ],
+        "description": "Roles: EPIDEMIOLOGO (cualquier caso pendiente o validado) y CAPTURISTA (solo los suyos, mientras estén pendientes); D47. Solo los campos que vienen en el cuerpo, más `reason` (motivo, opcional) y `device_id` (si la corrección viene de la app móvil). Se valida junto con el resto del caso, igual que al capturarlo. If-Match lleva la versión que se leyó: si el caso cambió desde entonces, 412 con el ETag de la versión actual y nada se toca. Si nada cambia, regresa el mismo caso sin subir la versión. Cada cambio deja una fila en el historial.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "\"1\"",
+            "description": "La versión del caso que leíste: el ETag de GET /cases/{case_id} o el campo version. Se acepta con o sin comillas y con W/."
+          },
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "age": 35,
+                "severity": "grave",
+                "reason": "La edad y la gravedad se capturaron mal"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "correccion_caso"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<correccion_caso><age tipo=\"numero\">35</age><severity>grave</severity><reason>La edad y la gravedad se capturaron mal</reason></correccion_caso>\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "El caso como queda.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Caso"
+                },
+                "example": {
+                  "id": 1,
+                  "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+                  "device_id": 3,
+                  "reported_by": 7,
+                  "disease_id": 1,
+                  "enfermedad": "COVID-19",
+                  "region_id": 10,
+                  "municipio": "Monterrey",
+                  "age": 35,
+                  "sex": "F",
+                  "onset_date": "2026-09-28",
+                  "report_date": "2026-10-01",
+                  "latitude": 25.6866,
+                  "longitude": -100.3161,
+                  "test_result": "positivo",
+                  "severity": "grave",
+                  "status": "pendiente",
+                  "created_at": "2026-10-12T10:00:00+00:00",
+                  "synced_at": "2026-10-12T10:00:00+00:00",
+                  "version": 2,
+                  "updated_at": "2026-10-13T09:00:00+00:00",
+                  "updated_by": 7,
+                  "status_reason": null,
+                  "duplicate_of": null
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">35</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>grave</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">2</version><updated_at>2026-10-13T09:00:00+00:00</updated_at><updated_by tipo=\"numero\">7</updated_by><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /></caso>\n"
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "La versión del caso como queda, entre comillas: la siguiente If-Match.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"2\""
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (CONFLICTO): el caso está descartado o duplicado; se reabre antes de corregirlo, o el dispositivo está revocado."
+          },
+          "412": {
+            "description": "Precondition Failed (CONFLICTO): el caso cambió desde la versión de If-Match. El ETag trae la versión actual.",
+            "headers": {
+              "ETag": {
+                "description": "La versión actual del caso.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Precondition Failed",
+                  "status": 412,
+                  "detail": "El caso cambió desde que lo leíste: tenías la versión 1 y ya va en la 2. Vuelve a consultarlo y decide con lo que tiene ahora.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/cases/1"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Precondition Failed</title><status tipo=\"numero\">412</status><detail>El caso cambió desde que lo leíste: tenías la versión 1 y ya va en la 2. Vuelve a consultarlo y decide con lo que tiene ahora.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/cases/1</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity (DATOS_INVALIDOS): un campo que no se corrige, ninguno que corregir o un valor que no pasa la validación del caso."
+          },
+          "428": {
+            "description": "Precondition Required (DATOS_INVALIDOS): falta If-Match."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO, D31). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "404": {
+            "description": "Not Found. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        }
+      }
+    },
+    "/api/v1/cases/{case_id}/status": {
+      "post": {
+        "summary": "Cambiar el estado de un caso",
+        "operationId": "cambiar_estado_caso",
+        "tags": [
+          "casos"
+        ],
+        "description": "Rol: EPIDEMIOLOGO (D47). `status`: validado, descartado, duplicado o pendiente (reabrir). Transiciones: pendiente → validado, descartado o duplicado; validado → descartado, duplicado o pendiente; descartado y duplicado → pendiente. `reason` es obligatorio al descartar, marcar duplicado o reabrir; `duplicate_of` (el caso original: existe, es de la misma enfermedad y no es otro duplicado) solo va con duplicado. Al descartar o marcar duplicado, quien capturó el caso recibe un aviso CASE_REJECTED. If-Match como en la corrección.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "\"1\"",
+            "description": "La versión del caso que leíste: el ETag de GET /cases/{case_id} o el campo version. Se acepta con o sin comillas y con W/."
+          },
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "status": "descartado",
+                "reason": "Resultado negativo confirmado por el laboratorio estatal"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "cambio_estado_caso"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<cambio_estado_caso><status>descartado</status><reason>Resultado negativo confirmado por el laboratorio estatal</reason></cambio_estado_caso>\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "El caso como queda.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Caso"
+                },
+                "example": {
+                  "id": 1,
+                  "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+                  "device_id": 3,
+                  "reported_by": 7,
+                  "disease_id": 1,
+                  "enfermedad": "COVID-19",
+                  "region_id": 10,
+                  "municipio": "Monterrey",
+                  "age": 35,
+                  "sex": "F",
+                  "onset_date": "2026-09-28",
+                  "report_date": "2026-10-01",
+                  "latitude": 25.6866,
+                  "longitude": -100.3161,
+                  "test_result": "positivo",
+                  "severity": "grave",
+                  "status": "descartado",
+                  "created_at": "2026-10-12T10:00:00+00:00",
+                  "synced_at": "2026-10-12T10:00:00+00:00",
+                  "version": 3,
+                  "updated_at": "2026-10-14T16:30:00+00:00",
+                  "updated_by": 9,
+                  "status_reason": "Resultado negativo confirmado por el laboratorio estatal",
+                  "duplicate_of": null
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">35</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>grave</severity><status>descartado</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">3</version><updated_at>2026-10-14T16:30:00+00:00</updated_at><updated_by tipo=\"numero\">9</updated_by><status_reason>Resultado negativo confirmado por el laboratorio estatal</status_reason><duplicate_of nil=\"true\" /></caso>\n"
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "La versión del caso como queda, entre comillas: la siguiente If-Match.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"2\""
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (CONFLICTO): esa transición no se permite desde el estado actual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "Un caso descartado no puede pasar a validado; desde descartado puede pasar a: pendiente.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/cases/1/status"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>Un caso descartado no puede pasar a validado; desde descartado puede pasar a: pendiente.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/cases/1/status</instance></problem>\n"
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition Failed (CONFLICTO): el caso cambió desde la versión de If-Match.",
+            "headers": {
+              "ETag": {
+                "description": "La versión actual del caso.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity (DATOS_INVALIDOS): status desconocido, falta el motivo o el caso original no sirve."
+          },
+          "428": {
+            "description": "Precondition Required (DATOS_INVALIDOS): falta If-Match."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO, D31). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "404": {
+            "description": "Not Found. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        }
+      }
+    },
+    "/api/v1/cases/{case_id}/history": {
+      "get": {
+        "summary": "Historial de un caso",
+        "operationId": "historial_caso",
+        "tags": [
+          "casos"
+        ],
+        "description": "Roles: CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR. Un cambio por versión, del más viejo al más nuevo (D47): `action` (correccion o estado), quién (`changed_by`) y cuándo (`changed_at`), el estado antes y después, `changes` ({campo: {antes, despues}}), el motivo y el dispositivo si vino de la app móvil. `version` es la versión actual del caso; uno que nunca cambió trae `cambios` vacío.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El historial.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "case_id": 1,
+                  "version": 3,
+                  "cambios": [
+                    {
+                      "version": 2,
+                      "action": "correccion",
+                      "changed_by": 7,
+                      "changed_at": "2026-10-13T09:00:00+00:00",
+                      "status_before": "pendiente",
+                      "status_after": "pendiente",
+                      "changes": {
+                        "age": {
+                          "antes": 34,
+                          "despues": 35
+                        },
+                        "severity": {
+                          "antes": "leve",
+                          "despues": "grave"
+                        }
+                      },
+                      "reason": "La edad y la gravedad se capturaron mal",
+                      "device_id": 3
+                    },
+                    {
+                      "version": 3,
+                      "action": "estado",
+                      "changed_by": 9,
+                      "changed_at": "2026-10-14T16:30:00+00:00",
+                      "status_before": "pendiente",
+                      "status_after": "descartado",
+                      "changes": {
+                        "status": {
+                          "antes": "pendiente",
+                          "despues": "descartado"
+                        }
+                      },
+                      "reason": "Resultado negativo confirmado por el laboratorio estatal",
+                      "device_id": null
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "historial_caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<historial_caso><case_id tipo=\"numero\">1</case_id><version tipo=\"numero\">3</version><cambios><item><version tipo=\"numero\">2</version><action>correccion</action><changed_by tipo=\"numero\">7</changed_by><changed_at>2026-10-13T09:00:00+00:00</changed_at><status_before>pendiente</status_before><status_after>pendiente</status_after><changes><age><antes tipo=\"numero\">34</antes><despues tipo=\"numero\">35</despues></age><severity><antes>leve</antes><despues>grave</despues></severity></changes><reason>La edad y la gravedad se capturaron mal</reason><device_id tipo=\"numero\">3</device_id></item><item><version tipo=\"numero\">3</version><action>estado</action><changed_by tipo=\"numero\">9</changed_by><changed_at>2026-10-14T16:30:00+00:00</changed_at><status_before>pendiente</status_before><status_after>descartado</status_after><changes><status><antes>pendiente</antes><despues>descartado</despues></status></changes><reason>Resultado negativo confirmado por el laboratorio estatal</reason><device_id nil=\"true\" /></item></cambios></historial_caso>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO, D31). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "404": {
+            "description": "Not Found. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         }
       }

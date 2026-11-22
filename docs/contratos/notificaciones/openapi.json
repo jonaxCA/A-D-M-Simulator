@@ -148,7 +148,7 @@
       "post": {
         "summary": "Crear una notificación (interna)",
         "operationId": "crear_notificacion",
-        "description": "Solo con token de servicio: la usan simulador, aprobacion, sincronizacion y estado-servicios. Manda user_id (una persona) o role (todas las personas activas con ese rol: EPIDEMIOLOGO o ADMINISTRADOR, que recibe las alertas técnicas SYSTEM de estado-servicios), no los dos. La bitácora registra qué servicio la creó.",
+        "description": "Solo con token de servicio: la usan simulador, aprobacion, sincronizacion, estado-servicios y casos. Manda user_id (una persona) o role (todas las personas activas con ese rol: EPIDEMIOLOGO o ADMINISTRADOR, que recibe las alertas técnicas SYSTEM de estado-servicios), no los dos. La bitácora registra qué servicio la creó.",
         "security": [
           {
             "tokenServicio": []
@@ -182,7 +182,8 @@
                       "SCENARIO_SUBMITTED",
                       "SCENARIO_REJECTED",
                       "NEW_CASES",
-                      "SYSTEM"
+                      "SYSTEM",
+                      "CASE_REJECTED"
                     ]
                   },
                   "title": {
@@ -257,7 +258,8 @@
                       "SCENARIO_SUBMITTED",
                       "SCENARIO_REJECTED",
                       "NEW_CASES",
-                      "SYSTEM"
+                      "SYSTEM",
+                      "CASE_REJECTED"
                     ]
                   },
                   "title": {

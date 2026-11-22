@@ -19,15 +19,15 @@ Lo que se cerró después de la revisión dice **Hecho**, con su fecha.
 | Pide | Estado | Cómo, o qué falta |
 |---|---|---|
 | Registro | **Cumple** | `POST /cases` y, para la móvil, `POST /cases/batch` (F4). Solo CAPTURISTA (D1) |
-| Actualización | Falta | No hay `PUT`/`PATCH`: un caso no se corrige después de capturarlo |
-| Seguimiento | Falta | `status` (`pendiente`, `validado`, `duplicado`, `descartado`) existe, pero ninguna ruta lo cambia |
+| Actualización | **Hecho** (2026-11-22) | `PATCH /cases/{id}` con `If-Match` (D47): el EPIDEMIOLOGO corrige cualquier caso pendiente o validado; el CAPTURISTA, los suyos pendientes |
+| Seguimiento | **Hecho** (2026-11-22) | `POST /cases/{id}/status`: el EPIDEMIOLOGO valida, descarta o marca duplicado con motivo y puede reabrir; quien capturó el caso recibe `CASE_REJECTED` |
 | Clasificación | Parcial | `test_result` y `severity`; no hay clasificación formal (sospechoso, probable, confirmado) |
 | Fecha epidemiológica | Parcial | `onset_date` y `report_date`, validadas; falta la semana epidemiológica |
 | Región | **Cumple** | `region_id` (municipio), filtrable en `GET /cases` |
-| Estado | Parcial | Se lee y se filtra; no se cambia (ver seguimiento) |
-| Duplicados | Parcial | Idempotencia por `local_uuid` (un reintento no duplica); no se detectan duplicados probables (misma persona, otro dispositivo) |
+| Estado | **Hecho** (2026-11-22) | Se lee, se filtra y se cambia, con transiciones fijas y motivo (D47) |
+| Duplicados | Parcial | Idempotencia por `local_uuid` y, desde el 2026-11-22, marcar a mano un duplicado con su original (`duplicate_of`); no se detectan solos los duplicados probables |
 | Validaciones | **Cumple** | `queries.valida_caso`: catálogos vigentes, fechas, rangos, coordenadas; 422 con el motivo |
-| Trazabilidad | Parcial | `reported_by`, `device_id`, `synced_at` y `CREATE` en la bitácora; sin historial de cambios, porque no hay cambios |
+| Trazabilidad | **Hecho** (2026-11-22) | `reported_by`, `device_id`, `synced_at`, versión, quién y cuándo cambió por última vez, y `GET /cases/{id}/history` con cada cambio (antes y después, motivo, dispositivo) |
 
 ### `sincronizacion` (5222)
 
@@ -40,7 +40,7 @@ Lo que se cerró después de la revisión dice **Hecho**, con su fecha.
 | Operaciones pendientes | **Cumple** | La cola es de la app (WorkManager); el servidor recuerda cada lote 7 días |
 | Reintentos | **Cumple** | Reenviar el mismo lote regresa lo guardado; 503 y 429 (con `Retry-After`) se reintentan |
 | Control de duplicados | **Cumple** | `local_uuid` en `casos` y el lote repetido |
-| Conflictos | Parcial | Dos envíos del mismo lote a la vez dan 409 (candado); falta el conflicto entre lo editado sin conexión y lo que cambió otro profesional, que necesita que `casos` tenga actualización |
+| Conflictos | **Hecho** (2026-11-22) | Dos envíos del mismo lote a la vez dan 409 (candado), y una corrección sin conexión (`updates`) sobre un caso que cambió otro profesional sale `conflicto` con el caso actual, sin sobrescribirlo (D47) |
 | Confirmación de recepción | **Cumple** | Resultado por caso (`creado`, `duplicado`, `rechazado`) y `GET /sync/batches/{id}` |
 
 ### Formularios dinámicos por enfermedad
@@ -154,7 +154,7 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 | ~~Chico~~ | **Hecho** el 2026-11-21: numerador, denominador y periodo en cada indicador; mortalidad, letalidad y casos graves | `indicadores` |
 | ~~Mediano~~ | **Hecho** el 2026-11-21: agregación por semana o mes, paginación y salida para Highcharts | `series` |
 | ~~Mediano~~ | **Hecho** el 2026-11-21: puntos agregados para el mapa de calor y agrupación por jurisdicción sanitaria | `zonas` |
-| Mediano | Cambiar estado (validar, descartar, marcar duplicado) y corregir datos, con historial y control de versión (`If-Match`); con eso, los conflictos de la sincronización | `casos` y `sincronizacion` |
+| ~~Mediano~~ | **Hecho** el 2026-11-22 (D47): cambiar estado (validar, descartar, marcar duplicado) y corregir datos, con historial y control de versión (`If-Match`), y los conflictos de la sincronización | `casos` y `sincronizacion` |
 | Grande | Formularios por enfermedad con versiones | `casos` (y la móvil, B4) |
 | Grande | Geometría oficial de los municipios y consultas espaciales | `zonas` |
 | Grande | Campañas, avisos de datos incompletos y preferencias por perfil | `notificaciones` y `vacunas` |

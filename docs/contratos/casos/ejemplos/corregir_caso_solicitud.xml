@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<correccion_caso><age tipo="numero">35</age><severity>grave</severity><reason>La edad y la gravedad se capturaron mal</reason></correccion_caso>

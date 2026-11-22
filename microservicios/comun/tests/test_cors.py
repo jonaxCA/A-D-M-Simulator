@@ -18,7 +18,7 @@ def test_la_consola_puede_leer_la_respuesta_y_su_correlation_id(con_consola):
                                             headers={"Origin": CONSOLA})
     assert r.status_code == 200
     assert r.headers["Access-Control-Allow-Origin"] == CONSOLA
-    assert r.headers["Access-Control-Expose-Headers"] == "X-Correlation-ID"
+    assert r.headers["Access-Control-Expose-Headers"] == "X-Correlation-ID, ETag"
     assert r.headers["X-Correlation-ID"]
 
 

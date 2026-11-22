@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<problem><type>about:blank</type><title>Conflict</title><status tipo="numero">409</status><detail>Un caso descartado no puede pasar a validado; desde descartado puede pasar a: pendiente.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/cases/1/status</instance></problem>

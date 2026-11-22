@@ -12,7 +12,7 @@ Fecha: 2026-11-16 · Estado: Aceptada
 
 ## Decisión
 - **Aviso de P1:** `sincronizacion` manda un aviso por lote a los EPIDEMIOLOGO cuando el lote crea al menos un caso nuevo. Un reintento del mismo lote no vuelve a avisar. Uno por caso llenaría la bandeja: un lote trae hasta 100.
-- **Actualización en la móvil (C9):** basta con aplicar dosis (`doses_used` en `vaccine_lots`, con auditoría) y marcar avisos como leídos. No se agrega editar casos.
+- **Actualización en la móvil (C9):** basta con aplicar dosis (`doses_used` en `vaccine_lots`, con auditoría) y marcar avisos como leídos. No se agrega editar casos. *(Cambió el 2026-11-22: [D47](D47-correccion-y-seguimiento-de-casos.md) agrega la corrección y el seguimiento de casos, con control de versión, porque la retroalimentación los pide.)*
 - **Archivo de P2:** P2 queda sin bucket. P1 (fotos) y P3 (reporte) ya lo usan, y el XML se puede volver a generar desde la versión en PostgreSQL. Guardarlo en GCS queda solo si sobra tiempo.
 
 ## Consecuencias

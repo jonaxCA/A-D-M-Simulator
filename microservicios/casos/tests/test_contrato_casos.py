@@ -61,7 +61,9 @@ def test_ejemplos_incrustados_estan_en_los_archivos():
 
 @pytest.mark.parametrize("nombre", ["crear_caso_solicitud", "crear_caso", "crear_caso_duplicado",
                                     "consultar_caso", "listar_casos", "crear_lote_casos_solicitud",
-                                    "crear_lote_casos"])
+                                    "crear_lote_casos", "corregir_caso_solicitud", "corregir_caso",
+                                    "cambiar_estado_caso_solicitud", "cambiar_estado_caso",
+                                    "historial_caso"])
 def test_ejemplo_xml_valida_contra_el_xsd(nombre):
     XSD.validate(str(CARPETA / "ejemplos" / (nombre + ".xml")))
 
