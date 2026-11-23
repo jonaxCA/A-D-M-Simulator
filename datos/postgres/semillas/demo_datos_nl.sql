@@ -85,7 +85,8 @@ ON CONFLICT (code) DO NOTHING;
 --   analista:      alex.cavazos   (rol ANALISTA)
 --   epidemiologa:  diana.flores   (rol EPIDEMIOLOGO)
 -- La capturista es la cuenta de la app movil: captura casos y sincroniza
--- lotes (servicios casos y sincronizacion); la web no le muestra escenarios.
+-- lotes (servicios casos y sincronizacion). En la web entra solo al tablero y
+-- al mapa; cualquier otra pantalla le responde 403 (D1, RF-G11).
 --   capturista:    karla.trevino  (rol CAPTURISTA)
 --   password de las tres:  Epidemia2026!   (documentada tambien en README.md)
 -- Mas abajo se le pone contrasena tambien a 'admin', que 010 crea con un
