@@ -12,8 +12,11 @@
     <div class="login-card">
       <div class="logo-badge">⚕</div>
       <h1>EPIDEMIA</h1>
-      <p class="login-subtitle">Sistema Monolítico v0.1</p>
+      <p class="login-subtitle">Simulador de respuesta a epidemias</p>
 
+      {% for _categoria, mensaje in get_flashed_messages(with_categories=true) %}
+      <div class="login-error">{{ mensaje }}</div>
+      {% endfor %}
       {% if error %}
       <div class="login-error">{{ error }}</div>
       {% endif %}

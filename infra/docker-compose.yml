@@ -845,6 +845,9 @@ services:
       SECRET_KEY: ${SECRET_KEY_WEB:-}
       URL_SERVICIOS: "http://{servicio}:8000"
       DETRAS_DE_PROXY: ${DETRAS_DE_PROXY:-}
+      # Las mismas que auth: con el MFA prendido, la web manda el dispositivo del navegador (D40, D41).
+      MFA_PERFILES: ${MFA_PERFILES:-}
+      DISPOSITIVO_OBLIGATORIO: ${DISPOSITIVO_OBLIGATORIO:-0}
 
 volumes:
   # Lo que FLAME GPU compila para cada tamaño de población (simulador-gpu).
