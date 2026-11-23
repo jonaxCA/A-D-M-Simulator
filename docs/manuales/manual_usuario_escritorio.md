@@ -75,6 +75,22 @@ La dirección en uso aparece al pie de la ventana de inicio de sesión.
 La app revisa tu sesión con el servidor y tu rol. Si tu cuenta no es de analista ni de
 administrador, te lo dice y no te deja entrar.
 
+**Segundo paso (MFA).** Si el servidor tiene el MFA encendido para tu perfil (D40; por ejemplo,
+administrador), después de la contraseña la ventana pide un código:
+- **Ya activaste el MFA:** escribe el código de 6 dígitos de tu app de autenticación (Google
+  Authenticator, Aegis, 1Password…) o uno de tus códigos de respaldo, y pulsa **Verificar**.
+- **Aún no lo activas:** pide a un administrador tu **código de alta**, escríbelo y pulsa
+  **Generar mi secreto**. Registra el secreto (o la dirección `otpauth://`) en tu app de
+  autenticación y escribe el primer código. Al entrar, la app muestra tus **códigos de respaldo**
+  una sola vez: guárdalos.
+- Tienes 5 minutos y 5 intentos. Si vence o te equivocas demasiadas veces, la ventana regresa a
+  la contraseña. **Volver** también regresa.
+
+Si el despliegue exige autorizar cada equipo (D41), arranca la app con `EPIDEMIA_DISPOSITIVO=1`.
+La app genera una vez un identificador de este equipo y lo guarda en `~/.epidemia-escritorio`
+(lo cambia `EPIDEMIA_CARPETA_LOCAL`). El primer equipo de una cuenta queda autorizado; los
+siguientes los autoriza un administrador o la persona desde otro equipo autorizado.
+
 **Cerrar sesión:** botón **Cerrar sesión**, abajo a la izquierda. Al cerrar la ventana la
 sesión también se cierra.
 
@@ -91,15 +107,20 @@ sesión también se cierra.
 | Usuario o contraseña incorrectos.                        | Revisa ambos. Tras **5 fallos** la cuenta se bloquea 15 minutos, y el mensaje es el mismo mientras dure el bloqueo |
 | El captcha es incorrecto o venció. Pide uno nuevo.       | La app ya cargó otra pregunta: respóndela y vuelve a intentar     |
 | La app de escritorio es para analistas y administradores | Tu rol usa el sistema web o la app móvil                          |
+| El código no es correcto.                                | Revisa la hora de tu teléfono y escribe el código vigente         |
+| Demasiados códigos incorrectos.                          | Espera 15 minutos; un administrador puede restablecer tu MFA      |
+| Enrolar el MFA requiere un código de alta                | Pide el código de alta a un administrador                         |
+| Falta el campo dispositivo_id.                           | El despliegue exige autorizar equipos: abre la app con `EPIDEMIA_DISPOSITIVO=1` |
+| Este dispositivo está pendiente                          | Autorízalo desde otro equipo autorizado o pide a un administrador que lo haga |
 | No se pudo conectar con el directorio de servicios       | Los servicios no están levantados o `EPIDEMIA_DIRECTORIO` está mal |
 
 ## 4. La ventana principal
 
 ![Vista de Escenarios](img/escritorio/escenarios.png)
 
-- **Barra lateral (izquierda).** Tiene las tres pantallas: **Escenarios** (Ctrl+1),
-  **Simulaciones** (Ctrl+2) y **Comparación** (Ctrl+3). Abajo están tu nombre, tu rol y
-  **Cerrar sesión**.
+- **Barra lateral (izquierda).** Tiene las cinco pantallas: **Escenarios** (Ctrl+1),
+  **Simulaciones** (Ctrl+2), **Comparación** (Ctrl+3), **Datos** (Ctrl+4) y **Proyectos**
+  (Ctrl+5). Abajo están tu nombre, tu rol y **Cerrar sesión**.
 - **Encabezado.** Muestra el título de lo que estás viendo y, a la derecha, las acciones
   disponibles. Una acción en gris no está permitida en ese momento; por ejemplo, no se puede
   lanzar corridas de un borrador.
@@ -108,7 +129,7 @@ sesión también se cierra.
   - **● Conectado · N ok.** Es la salud de los servicios, revisada cada 30 s. El punto se pone
     ámbar si alguno está degradado o caído, y rojo si no hay conexión.
   - **Cola.** Cuántas corridas se están ejecutando y cuántas esperan.
-  - **Avisos (N).** Notificaciones sin leer (sección 8).
+  - **Avisos (N).** Notificaciones sin leer (sección 10).
 
 ## 5. Escenarios
 
@@ -217,7 +238,7 @@ Con la versión en borrador, sin errores y siendo tú el autor o administrador, 
 
 - La versión pasa a **En revisión** y queda congelada.
 - Un epidemiólogo la aprueba o rechaza en el sistema web.
-- Si la aprueba, te llega un aviso (sección 8). Si la rechaza, la versión aparece como
+- Si la aprueba, te llega un aviso (sección 10). Si la rechaza, la versión aparece como
   **Rechazado** y el comentario del revisor se muestra arriba de la validación.
 
 ### 5.6 Versiones
@@ -418,8 +439,71 @@ Los costos los registra un epidemiólogo o un administrador.
   Si se enciman bandas p5–p95, el reporte incluye la advertencia. La ficha PDF individual
   contiene la versión del motor y los parámetros guardados de la réplica.
 - **Imprimir:** el mismo reporte, a la impresora que elijas.
+- **Subir reporte:** guarda el mismo PDF en el almacenamiento del sistema, ligado a las corridas
+  comparadas (RF-F17). El servidor revisa que sea un PDF, que no pase de 20 MB y que su huella
+  coincida. Un reporte reúne a lo más 100 corridas: con más, compara menos versiones o menos
+  semillas. Si ya subiste ese mismo PDF con esas corridas, el servidor regresa el que ya estaba.
+- **Abrir reporte subido:** pide un enlace firmado que vence en 15 minutos y abre el PDF en tu
+  navegador. Cada vez que lo pulsas pide uno nuevo. Al hacer otra comparación se apaga hasta que
+  subas su reporte.
 
-## 8. Avisos
+## 8. Datos observados
+
+La pantalla **Datos** (Ctrl+4) guarda series observadas, por ejemplo los casos confirmados por
+semana de la Dirección General de Epidemiología. Son las series que usa la calibración (D50).
+Todo lo revisa el servicio `importacion` (D6, D53); la app solo muestra su respuesta.
+
+**Ver lo importado.** La tabla lista cada versión de cada conjunto, de la más nueva a la más
+vieja, de las regiones de tu cuenta. Al elegir una se ven su fuente, su licencia, su fecha de
+corte, el inicio de su huella y sus puntos.
+
+**Importar una serie**
+1. Pulsa **Elegir archivo…** y elige un CSV, JSON o XML de hasta 2 MB. Cada punto lleva
+   `periodo_inicio` (fecha) y `valor` (entero no negativo); los periodos van seguidos, sin
+   repetirse, y un periodo sin casos se escribe con 0. Un CSV de ejemplo:
+   `docs/contratos/importacion/ejemplos/entrada_serie.csv`.
+2. Llena la clave (MAYÚSCULAS, dígitos y `_`), el nombre, la enfermedad, la región, la métrica,
+   el periodo (semana o día), la fuente, la licencia, la URL (opcional) y la fecha de corte.
+3. Pulsa **Verificar calidad**. No guarda nada: dice si la serie pasa y, si no, lista todas las
+   fallas (hasta 50) para que corrijas el archivo.
+4. Pulsa **Importar**. Se guarda como la versión siguiente de esa clave. Si el mismo archivo ya
+   estaba con esa clave, te lo dice y no crea otra versión.
+
+Importan el analista y el administrador. Si el servidor rechaza la serie, el motivo aparece
+debajo de los botones.
+
+## 9. Proyectos de investigación
+
+Un **proyecto** reúne los escenarios de una investigación: una enfermedad y una región, con su
+objetivo, su periodo de estudio y los motores que piensas usar (D54). La pantalla **Proyectos**
+(Ctrl+5) lista los de tus regiones; arriba eliges ver los activos, los archivados o todos.
+
+**Crear un proyecto.** Pulsa **Nuevo proyecto**, llena nombre (3 caracteres o más), objetivo,
+enfermedad, región, periodo y al menos un motor, y pulsa **Crear proyecto**.
+
+**Cambiarlo.** Elige el proyecto, cambia lo que necesites y pulsa **Guardar cambios**; solo se
+manda lo que cambiaste. La enfermedad y la región ya no cambian cuando el proyecto tiene
+escenarios. Cambian un proyecto su autor y un administrador; para los demás el formulario queda
+en gris.
+
+**Sus escenarios.** La tabla de abajo muestra cada escenario del proyecto, también los
+archivados, con su versión vigente y su estado.
+- **Agregar al proyecto:** la lista solo ofrece escenarios de la misma enfermedad y región. Uno
+  que ya está en otro proyecto se cambia a este.
+- **Sacar del proyecto:** el escenario sigue igual, solo deja de estar agrupado.
+- **Abrir:** lo abre en Escenarios.
+- **Archivar escenario** (RF-D12): queda de solo lectura, sin versiones, intervenciones, envíos
+  a revisión ni corridas nuevas, y deja de salir en la lista de Escenarios. Sus corridas y
+  resultados se siguen consultando y se puede duplicar. No se archiva mientras su versión está
+  en revisión. **Restaurar escenario** lo regresa a borrador.
+
+**Archivar el proyecto.** Deja de recibir escenarios y cambios; los que tiene no cambian. No se
+borra nunca. **Restaurar proyecto** lo vuelve a activo.
+
+Si el servidor rechaza algo (otra enfermedad o región, un proyecto archivado, una versión en
+revisión), el motivo aparece debajo del formulario.
+
+## 10. Avisos
 
 El botón **Avisos (N)** de la barra de estado abre las notificaciones; N es cuántas no has
 leído. Llegan cuando:
@@ -432,7 +516,7 @@ Selecciona un aviso y pulsa **Marcar como leído**.
 
 ![Avisos](img/escritorio/avisos.png)
 
-## 9. Registro de actividad
+## 11. Registro de actividad
 
 La app guarda en tu computadora un registro de lo que haces y de cada petición al servidor, con
 su número de seguimiento (`cid`). Sirve para explicar un error a soporte. No guarda contraseñas
@@ -453,7 +537,7 @@ o aprobó el escenario. **Historial de auditoría** muestra las operaciones del 
 cada versión que selecciones o de las intervenciones de la versión abierta. Selecciona un evento
 para ver los campos antes y después. El servidor aplica el rol y alcance regional de tu cuenta.
 
-## 10. Problemas frecuentes
+## 12. Problemas frecuentes
 
 | Ves esto                                                     | Causa probable                                         | Qué hacer                                                  |
 |--------------------------------------------------------------|--------------------------------------------------------|------------------------------------------------------------|
@@ -469,16 +553,18 @@ para ver los campos antes y después. El servidor aplica el rol y alcance region
 | «Falta el costo unitario de …» al comparar                   | Igual que el anterior                                  | Ver 7.4                                                    |
 | «… requiere poblacion por grupo de edad»                     | Vacunación por edad sin reparto por edad               | Crea una versión con **Repartir por edad**, o usa otra prioridad |
 
-## 11. Atajos de teclado
+## 13. Atajos de teclado
 
 | Atajo     | Acción                                               |
 |-----------|------------------------------------------------------|
 | Ctrl+1    | Escenarios                                           |
 | Ctrl+2    | Simulaciones                                         |
 | Ctrl+3    | Comparación                                          |
+| Ctrl+4    | Datos observados                                     |
+| Ctrl+5    | Proyectos de investigación                           |
 | Enter     | Buscar (en el buscador) o Entrar (en el inicio de sesión) |
 
-## 12. Glosario
+## 14. Glosario
 
 - **Escenario.** Situación que se simula: enfermedad, municipio, población e intervenciones.
 - **Versión.** Fotografía de un escenario. Una vez enviada a revisión ya no cambia.

@@ -1,5 +1,8 @@
+import hashlib
 import re
+import uuid
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 from . import api, config, esquemas, resumen, xmlio
 
@@ -23,8 +26,43 @@ def perfil(c):
     return c.pedir("usuarios", "GET", "/api/v1/users/me")
 
 
+def dispositivo():
+    """Identificador estable de este equipo (D41): se genera una vez y se guarda en la carpeta local."""
+    archivo = config.CARPETA_LOCAL / "dispositivo"
+    try:
+        guardado = archivo.read_text(encoding="ascii").strip()
+        if 8 <= len(guardado) <= 128:
+            return guardado
+    except (OSError, UnicodeError):
+        pass
+    nuevo = uuid.uuid4().hex
+    try:
+        archivo.parent.mkdir(parents=True, exist_ok=True)
+        archivo.write_text(nuevo, encoding="ascii")
+    except OSError:
+        pass
+    return nuevo
+
+
 def abrir_sesion(c, usuario, password, captcha_id, respuesta):
-    c.iniciar_sesion(usuario, password, captcha_id, respuesta)
+    """Regresa la cuenta, o el reto de MFA (mfa_requerido) si el perfil es crítico (D40)."""
+    datos = c.iniciar_sesion(usuario, password, captcha_id, respuesta,
+                             dispositivo() if config.ENVIAR_DISPOSITIVO else None)
+    if datos.get("mfa_requerido"):
+        return datos
+    return completar_sesion(c)
+
+
+def segundo_paso(c, accion, mfa_token, **campos):
+    """enroll regresa el secreto; verify y confirm abren la sesión. confirm trae los códigos de respaldo,
+    que el servidor muestra una sola vez."""
+    datos = c.segundo_paso(accion, mfa_token, **campos)
+    if accion == "enroll":
+        return datos
+    return {"usuario": completar_sesion(c), "codigos_respaldo": datos.get("codigos_respaldo") or []}
+
+
+def completar_sesion(c):
     roles = sesion_actual(c).get("roles") or []
     c.usuario.update(perfil(c))
     c.usuario["roles"] = roles
@@ -92,9 +130,46 @@ def tipos_intervencion(c):
     return c.pedir("tipos-intervencion", "GET", "/api/v1/intervention-types", publico=True).get("tipos") or []
 
 
-def escenarios(c, texto=""):
-    params = {"q": texto} if texto else None
-    return c.pedir("escenarios", "GET", "/api/v1/scenarios", params=params).get("escenarios") or []
+def escenarios(c, texto="", proyecto_id=None, archivados=False):
+    params = {k: v for k, v in (("q", texto), ("project_id", proyecto_id),
+                                ("archived", "true" if archivados else None)) if v}
+    return c.pedir("escenarios", "GET", "/api/v1/scenarios", params=params or None).get("escenarios") or []
+
+
+# Proyectos de investigación y archivado (D54, RF-D12, RF-D19). escenarios aplica dueño, alcance y reglas.
+MOTORES_PROYECTO = ("seir-ref", "abm-ref", "abm-gpu")
+
+
+def proyectos(c, estado=None, texto=""):
+    params = {k: v for k, v in (("status", estado), ("q", texto)) if v}
+    return c.pedir("escenarios", "GET", "/api/v1/projects", params=params or None).get("proyectos") or []
+
+
+def proyecto(c, proyecto_id):
+    return c.pedir("escenarios", "GET", "/api/v1/projects/%s" % proyecto_id)
+
+
+def crear_proyecto(c, datos):
+    return c.pedir("escenarios", "POST", "/api/v1/projects", datos, "proyecto")
+
+
+def cambiar_proyecto(c, proyecto_id, cambios):
+    return c.pedir("escenarios", "PATCH", "/api/v1/projects/%s" % proyecto_id, cambios, "proyecto")
+
+
+def archivar_proyecto(c, proyecto_id, archivar=True):
+    return c.pedir("escenarios", "POST", "/api/v1/projects/%s/%s" % (proyecto_id, "archive" if archivar else "restore"))
+
+
+def mover_a_proyecto(c, escenario_id, proyecto_id):
+    """proyecto_id None saca el escenario de su proyecto."""
+    return c.pedir("escenarios", "PUT", "/api/v1/scenarios/%s/project" % escenario_id,
+                   {"project_id": proyecto_id}, "escenario")
+
+
+def archivar_escenario(c, escenario_id, archivar=True):
+    return c.pedir("escenarios", "POST",
+                   "/api/v1/scenarios/%s/%s" % (escenario_id, "archive" if archivar else "restore"))
 
 
 def escenario(c, escenario_id, version=None):
@@ -216,6 +291,78 @@ def pareto(c, ids, metrica):
         junto["filas"].extend(filas)
     junto["filas"] = list({f["id"]: f for f in junto["filas"]}.values())
     return junto
+
+
+def subir_reporte(c, run_ids, titulo, pdf):
+    """RF-F17, D35: el PDF va tal cual al bucket por evidencias, con su huella para que el servidor la revise."""
+    if not pdf.startswith(b"%PDF"):
+        raise api.ErrorServicio("El reporte no es un PDF.")
+    if len(pdf) > config.MAX_REPORTE_BYTES:
+        raise api.ErrorServicio("El reporte pesa más de 20 MB y el servidor no lo aceptaría.")
+    run_ids = sorted(set(run_ids))
+    if not run_ids:
+        raise api.ErrorServicio("El reporte no tiene corridas.")
+    if len(run_ids) > config.MAX_CORRIDAS_REPORTE:
+        raise api.ErrorServicio("El reporte reúne %d corridas y evidencias admite %d por reporte: compara menos "
+                                "versiones o menos semillas para subirlo." % (len(run_ids), config.MAX_CORRIDAS_REPORTE))
+    params = {"runs": ",".join(str(x) for x in run_ids)}
+    if titulo:
+        params["title"] = titulo[:200]
+    r = c.enviar("evidencias", "POST", "/api/v1/reports", pdf, params, tipo="application/pdf",
+                 cabeceras={"X-Content-SHA256": hashlib.sha256(pdf).hexdigest()})
+    return c.leer_respuesta("evidencias", r)
+
+
+def reportes(c, run_ids=None):
+    params = {"runs": ",".join(str(x) for x in run_ids)} if run_ids else None
+    return c.pedir("evidencias", "GET", "/api/v1/reports", params=params).get("reportes") or []
+
+
+def url_reporte(c, reporte_id):
+    return c.pedir("evidencias", "GET", "/api/v1/reports/%s/url" % reporte_id)
+
+
+TIPOS_CONJUNTO = {".csv": "text/csv", ".json": "application/json", ".xml": "application/xml"}
+CAMPOS_CONJUNTO = ("code", "name", "disease", "region", "metric", "period", "source", "license", "url", "cutoff")
+
+
+def leer_conjunto(ruta):
+    """El archivo tal cual, con el tipo que le toca por su extensión (D6, D53)."""
+    ruta = Path(ruta)
+    tipo = TIPOS_CONJUNTO.get(ruta.suffix.lower())
+    if tipo is None:
+        raise api.ErrorServicio("El archivo debe ser CSV, JSON o XML.")
+    contenido = ruta.read_bytes()
+    if len(contenido) > config.MAX_CONJUNTO_BYTES:
+        raise api.ErrorServicio("El archivo pesa más de 2 MB y el servidor no lo aceptaría.")
+    return contenido, tipo
+
+
+def _metadatos(datos):
+    return {k: str(v).strip() for k, v in datos.items() if k in CAMPOS_CONJUNTO and str(v or "").strip()}
+
+
+def validar_conjunto(c, contenido, tipo, metadatos):
+    """Verifica la calidad sin guardar nada: valido, huella, fallas y resumen."""
+    r = c.enviar("importacion", "POST", "/api/v1/datasets/validate", contenido, _metadatos(metadatos), tipo=tipo)
+    return c.leer_respuesta("importacion", r)
+
+
+def importar_conjunto(c, contenido, tipo, metadatos):
+    """Guarda la versión siguiente de la clave; el mismo archivo con la misma clave regresa la que ya estaba."""
+    r = c.enviar("importacion", "POST", "/api/v1/datasets", contenido, _metadatos(metadatos), tipo=tipo)
+    datos = c.leer_respuesta("importacion", r)
+    datos["ya_existia"] = r.status_code == 200
+    return datos
+
+
+def conjuntos(c, enfermedad=None, region=None):
+    params = {k: v for k, v in (("disease", enfermedad), ("region", region)) if v}
+    return c.pedir("importacion", "GET", "/api/v1/datasets", params=params or None).get("conjuntos") or []
+
+
+def puntos_conjunto(c, conjunto_id):
+    return c.pedir("importacion", "GET", "/api/v1/datasets/%s/points" % conjunto_id).get("puntos") or []
 
 
 def avisos(c):
