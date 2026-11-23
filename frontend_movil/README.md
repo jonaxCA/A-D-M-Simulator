@@ -38,9 +38,9 @@ Dónde va cada cosa dentro de `app/src/main/java/com/estudiante/simuladorepidemi
 | `sesion/` | Tokens, cifrados con una llave del Keystore y guardados en DataStore, y el registro del teléfono en `dispositivos` (`Telefono.kt`, sección 6) |
 | `ubicacion/` | La lectura del GPS para un caso (`Ubicador`), con Google Play services |
 | `avisos/` | Los avisos de `notificaciones` (`Avisos`) y la notificación del teléfono (`Notificador`) |
-| `local/` | Room (`epidemia.db`): los casos capturados, sus fotos por subir y los catálogos de enfermedades y municipios (secciones 5 y 7), y los archivos de las fotos (`Fotos.kt`). El esquema de cada versión queda en `app/schemas/` |
+| `local/` | Room (`epidemia.db`): los casos capturados, sus fotos por subir, los catálogos de enfermedades y municipios y los formularios por enfermedad (secciones 5, 7 y 10), y los archivos de las fotos (`Fotos.kt`). Los datos de salud de cada caso van cifrados (`DatosDeSalud`, sección 10). El esquema de cada versión queda en `app/schemas/` |
 | `trabajos/` | El `Sincronizador`, que manda los casos en lotes y sube sus fotos, y `TrabajoSincronizar`, que WorkManager corre cuando hay red; `TrabajoAvisos`, que consulta los avisos cada 15 minutos |
-| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio`, `casos` (Capturar caso y Mis casos, con sus fotos), `vacunas` (lectura del QR, registro del lote y aplicación de dosis), `avisos`, `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde, pide el permiso de red local y pone arriba de todas las pantallas la franja que dice si hay conexión (`IndicadorConexion.kt`, RF-I20). `ui/Formato.kt` da formato a fechas, roles y los valores de un caso, y `ui/Campos.kt` tiene los campos que comparten los formularios |
+| `ui/` | Una carpeta por pantalla con su ViewModel (`login`, `perfil`, `casos`, `fotos`, `vacunas`, `avisos`), más `tema` y `navegacion`. Ya están `login`, `inicio`, `casos` (Capturar caso y Mis casos, con sus fotos), `vacunas` (lectura del QR, registro del lote y aplicación de dosis), `avisos`, `perfil` y `navegacion`, que empieza en el login o en el inicio según haya sesión, regresa al login cuando se pierde, pide el permiso de red local y pone arriba de todas las pantallas la franja que dice si hay conexión (`IndicadorConexion.kt`, RF-I20). `casos` también tiene el seguimiento de un caso (`PantallaSeguimiento`) y `consulta`, los casos por zona (sección 10). `ui/Formato.kt` da formato a fechas, roles, avisos y los valores de un caso, y `ui/Campos.kt` tiene los campos que comparten los formularios |
 
 `app/src/debug/` lleva lo que solo vale en desarrollo, como el permiso de HTTP sin cifrar
 (sección 2). La raíz de Let's Encrypt que trae la app está en `app/src/main/res/raw/` (también
@@ -134,6 +134,15 @@ epidemia.directorio=http://192.168.1.20:5262/
 ```
 
 Cambia `192.168.1.20` por la IP de tu PC.
+
+Para el APK de la demostración en la nube, el directorio es el del dominio, que ya responde por
+HTTPS con su certificado de Let's Encrypt:
+
+```bash
+./gradlew assembleDebug -Pepidemia.directorio=https://epidemos.app/estado-servicios/
+```
+
+El APK queda en `app/build/outputs/apk/debug/app-debug.apk`. No se sube al repositorio.
 
 ## 3. Cuenta de prueba e inicio de sesión
 
@@ -360,9 +369,37 @@ consulta cada cierto tiempo.
 - El permiso de notificaciones (Android 13+) se pide desde la pantalla de avisos, no al abrir la
   app. Sin él, o con las notificaciones apagadas en Ajustes, los avisos solo se ven en esa pantalla.
 
+## 10. Formularios, seguimiento, consulta y datos cifrados
+
+Lo que pidió la retroalimentación para la app (B4 del checklist del tercer parcial):
+
+- **Formularios por enfermedad (D48).** Con los catálogos se baja `GET /api/v1/forms/current` (en
+  `casos`) y se guarda en `epidemia.db`. Al elegir la enfermedad, la captura agrega sus campos
+  (texto, entero, decimal, fecha, booleano, opción u opciones) y los valida igual que `casos`:
+  obligatorios, tipo y rango. El lote manda `form_id` y `form_answers` con cada caso.
+- **Control de calidad.** La captura dice qué datos faltan (los mismos que `casos` marca como
+  incompletos, D49) sin impedir guardar, y avisa si en el teléfono ya hay un caso con la misma
+  enfermedad, municipio, fecha, edad y sexo: se guarda solo si la persona confirma que es otro.
+- **Ubicación a mano.** Si el GPS no conviene, "Escribir las coordenadas" acepta latitud y longitud.
+- **Seguimiento (D47).** Un caso recibido abre su estado en el servidor y su historial
+  (`GET /api/v1/cases/{id}` y `.../history`). Mientras está pendiente, quien lo capturó lo corrige
+  con `PATCH /api/v1/cases/{id}` y `If-Match` con la versión que leyó. Si alguien más lo cambió,
+  responde 412: la app lo dice y muestra cómo quedó, sin pisarlo. Corregir necesita conexión (no
+  usa los `updates` del lote). Solo el servidor dice si se validó, se descartó o se marcó duplicado.
+- **Datos faltantes (D49).** El inicio y Mis casos cuentan y listan `GET /api/v1/cases/incomplete`;
+  cada uno abre su seguimiento para completarlo.
+- **Consulta por zona.** Casos, incidencia por 100 mil y nivel por municipio, para una enfermedad
+  (o todas) y 7, 30 o 90 días (`GET /api/v1/zones`, con el alcance que dé el servidor).
+- **Perfil.** Muestra la institución y la región asignada de la cuenta (E7) y el estado de conexión.
+- **Datos de salud cifrados.** La edad, el sexo, el inicio de síntomas, el resultado, la gravedad,
+  la ubicación y las respuestas de un caso se guardan en una sola columna (`datos`), cifrada con la
+  llave del Keystore (`CifradorKeystore`, la misma de los tokens). La enfermedad, el municipio y la
+  fecha quedan en claro para listar los casos. Los casos guardados antes de la versión 3 de la base
+  conservan esas columnas en claro hasta que se envían.
+
 ## Lo que todavía no existe del lado del servidor
 
 | Necesidad de la app | Estado |
 |---------------------|--------|
-| Editar un caso | `casos` solo registra y consulta |
 | Notificaciones push | Solo consulta; no hay envío |
+| Fotos en el bucket con URL firmada | Espera a D2: hoy `evidencias` guarda en su volumen |
