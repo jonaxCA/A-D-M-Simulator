@@ -1,20 +1,21 @@
-"""Servicio aprobacion: envío a revisión, aprobación y rechazo de versiones.
+"""Servicio aprobacion: envío a revisión, aprobación (con su firma), rechazo y devolución.
 
-Las reglas son las del monolito (backend_web.queries.envia_a_revision y
-resuelve_revision); ellas escriben el estado y la bitácora (log_audit con el cursor
-de la misma transacción, con el Contexto del token). Aquí solo se traducen a HTTP:
-los textos de error en español son los que ya da backend_web.
+Las reglas viven en datos.py (E8: antes en backend_web.queries); ellas escriben el estado y la
+bitácora en la misma transacción, con el Contexto del token. El motor lo revisa el servicio
+validacion, que además da la huella de la entrada del motor con la que se firma la versión
+aprobada (D55).
 """
 import logging
 
 from flask import current_app, g
 
-from backend_web import queries
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.http import llamar
 from epidemia_comun.seguridad import requiere_token, token_servicio
 from epidemia_comun.validaciones import diccionario, entero_positivo
+
+from . import datos
 
 log = logging.getLogger("aprobacion")
 
@@ -22,20 +23,23 @@ ROLES_ENVIAN = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 # scenarios.approve (D1, 034): ninguno revisa la versión que creó.
 ROLES_REVISAN = ("EPIDEMIOLOGO", "ADMINISTRADOR")
 ROLES_BANDEJA = ("EPIDEMIOLOGO", "ADMINISTRADOR")
-DECISIONES = ("aprobar", "rechazar")
+# Los mismos de validacion: la firma se recalcula allá con el token de quien pregunta.
+ROLES_FIRMA = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
+DECISIONES = tuple(datos.DECISIONES)
 
 
 def _detalle(scenario_id):
-    detalle = queries.get_escenario_detalle(entero_positivo(scenario_id, "id"))
-    if detalle is None:
+    encontrado = datos.escenario_y_version(entero_positivo(scenario_id, "id"))
+    if encontrado is None:
         raise ErrorAPI(404, "NO_ENCONTRADO", "No existe el escenario.")
-    if not detalle["version"]:
+    escenario, version = encontrado
+    if not version:
         raise ErrorAPI(409, "CONFLICTO", "Ese escenario no tiene una versión vigente.")
-    return detalle
+    return {"escenario": escenario, "version": version}
 
 
-def _revisar_con_validacion(version_id):
-    """Pregunta al servicio validacion; devuelve sus avisos o lanza el error HTTP."""
+def _dictamen(version_id):
+    """Pregunta al servicio validacion; devuelve su dictamen (valido, errores, avisos y huella)."""
     resp = llamar("validacion", "GET", "/api/v1/versions/%d/validation" % version_id,
                   formato="json")
     if resp.status_code == 404:
@@ -46,27 +50,21 @@ def _revisar_con_validacion(version_id):
         raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE",
                        "El servicio validacion respondió %d." % resp.status_code)
     try:
-        dictamen = resp.json()
+        return resp.json()
     except ValueError as exc:
         raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE",
                        "El servicio validacion devolvió una respuesta ilegible.") from exc
+
+
+def _revisar_con_validacion(version_id, para):
+    """El dictamen de una versión que el motor sí puede correr; si no, 422."""
+    dictamen = _dictamen(version_id)
     if not dictamen.get("valido"):
         errores = dictamen.get("errores") or ["La versión no es válida."]
         raise ErrorAPI(422, "DATOS_INVALIDOS",
-                       "El motor no puede correr esta versión, así que no se envía a revisión: "
+                       "El motor no puede correr esta versión, así que no se %s: " % para
                        + " ".join(str(e) for e in errores))
-    return list(dictamen.get("avisos") or [])
-
-
-def _error_de_negocio(mensaje):
-    """Traduce el texto de backend_web a un estado HTTP."""
-    if "no tiene una versión vigente" in mensaje:
-        return ErrorAPI(404, "NO_ENCONTRADO", mensaje)
-    if mensaje.startswith(("El motor no puede correr", "Decisión inválida", "Para rechazar",
-                           "El comentario no puede")):
-        return ErrorAPI(422, "DATOS_INVALIDOS", mensaje)
-    # Estado distinto, autorrevisión, cambio concurrente o CHECK de la base.
-    return ErrorAPI(409, "CONFLICTO", mensaje)
+    return dictamen
 
 
 def _avisar(destino, tipo, titulo, cuerpo, payload, version_id):
@@ -103,6 +101,14 @@ def _notificar_rechazo(escenario, version, comentario):
             _payload(escenario, version), version["id"])
 
 
+def _notificar_devolucion(escenario, version, comentario):
+    _avisar({"user_id": version["created_by"]}, "SCENARIO_RETURNED",
+            "Versión %d devuelta para cambios" % version["version_number"],
+            "Se devolvió la versión %d del escenario «%s» para cambios: %s"
+            % (version["version_number"], escenario["name"], comentario),
+            _payload(escenario, version), version["id"])
+
+
 def _notificar_envio(escenario, version):
     _avisar({"role": "EPIDEMIOLOGO"}, "SCENARIO_SUBMITTED",
             "Versión %d por revisar" % version["version_number"],
@@ -121,13 +127,14 @@ def registrar(app):
         if escenario["owner_id"] != g.contexto.user_id and not es_admin:
             raise ErrorAPI(403, "PERMISO_INSUFICIENTE",
                            "Solo quien creó el escenario puede enviarlo a revisión.")
+        if escenario["status"] == "archivado":
+            raise ErrorAPI(409, "CONFLICTO", "El escenario está archivado: restáuralo antes de "
+                           "enviarlo a revisión.")
         if version["status"] != "borrador":
             raise ErrorAPI(409, "CONFLICTO", "Esta versión ya está en «%s»: solo se envía un "
                            "borrador." % version["status"])
-        avisos = _revisar_con_validacion(version["id"])
-        ok, error = queries.envia_a_revision(escenario["id"], contexto=g.contexto)
-        if not ok:
-            raise _error_de_negocio(error)
+        avisos = list(_revisar_con_validacion(version["id"], "envía a revisión").get("avisos") or [])
+        datos.envia(version["id"], contexto=g.contexto)
         _notificar_envio(escenario, version)
         return responder({"scenario_id": escenario["id"], "version_id": version["id"],
                           "version_number": version["version_number"],
@@ -140,12 +147,13 @@ def registrar(app):
         decision = cuerpo.get("decision")
         comentario = cuerpo.get("comentario")
         if decision not in DECISIONES:
-            raise ErrorAPI(422, "DATOS_INVALIDOS", "decision debe ser aprobar o rechazar.")
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "decision debe ser aprobar, rechazar o devolver.")
         if comentario is not None and not isinstance(comentario, str):
             raise ErrorAPI(422, "DATOS_INVALIDOS", "comentario debe ser texto.")
         comentario = (comentario or "").strip()
-        if decision == "rechazar" and not comentario:
-            raise ErrorAPI(422, "DATOS_INVALIDOS", "Para rechazar hay que explicar por qué en comentario.")
+        if decision != "aprobar" and not comentario:
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "Para %s hay que explicar por qué en comentario: es "
+                           "lo único que tiene quien va a corregir." % decision)
         if len(comentario) > 1000:
             raise ErrorAPI(422, "DATOS_INVALIDOS", "El comentario no puede pasar de 1,000 caracteres.")
         detalle = _detalle(scenario_id)
@@ -156,20 +164,45 @@ def registrar(app):
         if version["created_by"] == g.contexto.user_id:
             raise ErrorAPI(409, "CONFLICTO", "No puedes revisar una versión que tú creaste: la "
                            "revisión la hace otra persona.")
-        ok, error, estado = queries.resuelve_revision(
-            detalle["escenario"]["id"], decision, comentario, contexto=g.contexto)
-        if not ok:
-            raise _error_de_negocio(error)
-        if estado == "aprobado":
-            _notificar_aprobacion(detalle["escenario"], version)
-        else:
-            _notificar_rechazo(detalle["escenario"], version, comentario)
-        return responder({"scenario_id": detalle["escenario"]["id"], "version_id": version["id"],
-                          "version_number": version["version_number"], "status": estado,
-                          "decision": decision}, "revision")
+        # La firma (D55): la huella de la entrada del motor en el momento de aprobar, la misma
+        # que guardará cada corrida de esta versión. Sin ella no se aprueba.
+        huella = None
+        if decision == "aprobar":
+            huella = _revisar_con_validacion(version["id"], "aprueba").get("huella")
+            if not huella:
+                raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE",
+                               "El servicio validacion no dio la huella de la versión.")
+        estado = datos.resuelve(version["id"], decision, comentario, contexto=g.contexto,
+                                huella=huella)
+        aviso = {"aprobar": _notificar_aprobacion, "rechazar": _notificar_rechazo,
+                 "devolver": _notificar_devolucion}[decision]
+        aviso(detalle["escenario"], version, *([] if decision == "aprobar" else [comentario]))
+        respuesta = {"scenario_id": detalle["escenario"]["id"], "version_id": version["id"],
+                     "version_number": version["version_number"], "status": estado,
+                     "decision": decision}
+        if huella:
+            respuesta["approval_sha256"] = huella
+        return responder(respuesta, "revision")
 
     @app.get("/api/v1/reviews/pending")
     @requiere_token(roles=ROLES_BANDEJA)
     def pendientes():
-        filas = queries.get_pendientes_revision()
+        filas = datos.pendientes()
         return responder({"total": len(filas), "pendientes": filas}, "bandeja")
+
+    @app.get("/api/v1/versions/<version_id>/signature")
+    @requiere_token(roles=ROLES_FIRMA)
+    def firma(version_id):
+        numero = entero_positivo(version_id, "version_id")
+        guardada = datos.firma(numero)
+        if guardada is None:
+            raise ErrorAPI(404, "NO_ENCONTRADO", "No existe la versión.")
+        actual = _dictamen(numero).get("huella")
+        firmada = guardada["approval_sha256"] is not None
+        return responder({
+            "version_id": guardada["version_id"], "scenario_id": guardada["scenario_id"],
+            "version_number": guardada["version_number"], "status": guardada["status"],
+            "firmada": firmada, "huella": guardada["approval_sha256"],
+            "revisor": guardada["revisor"], "reviewed_at": guardada["reviewed_at"],
+            "huella_actual": actual, "integra": firmada and guardada["approval_sha256"] == actual,
+            "corridas": guardada["corridas"]}, "firma")

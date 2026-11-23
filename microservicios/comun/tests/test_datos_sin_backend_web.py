@@ -1,8 +1,10 @@
 """E8 en los servicios de D (catálogos, escenarios y archivos) que ya no importan backend_web.
 
 Hoy evidencias (D2, 2026-11-22), cuyas reglas pasaron de backend_web/evidencias.py a
-microservicios/evidencias/, e importacion (D6), que nació sin él. Las dos imágenes parten de
-epidemia/base-vigilancia. Los demás servicios de D se agregan a SIN_BACKEND_WEB conforme se muden.
+microservicios/evidencias/; importacion (D6), que nació sin él, y aprobacion (D7, 2026-11-23), cuyo
+flujo de revisión pasó de backend_web.queries a microservicios/aprobacion/datos.py. Las tres imágenes
+parten de epidemia/base-vigilancia. Los demás servicios de D se agregan a SIN_BACKEND_WEB conforme se
+muden.
 """
 import ast
 from pathlib import Path
@@ -10,7 +12,7 @@ from pathlib import Path
 import pytest
 
 RAIZ = Path(__file__).resolve().parents[3]
-SIN_BACKEND_WEB = ("evidencias", "importacion")
+SIN_BACKEND_WEB = ("evidencias", "importacion", "aprobacion")
 
 
 def _importaciones(ruta):

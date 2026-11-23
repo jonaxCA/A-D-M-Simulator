@@ -1,0 +1,17 @@
+{
+  "version_id": 11,
+  "scenario_id": 3,
+  "version_number": 2,
+  "status": "aprobado",
+  "firmada": true,
+  "huella": "9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab",
+  "revisor": "Elena Epidemióloga",
+  "reviewed_at": "2026-11-23T10:15:00+00:00",
+  "huella_actual": "9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab",
+  "integra": true,
+  "corridas": {
+    "coinciden": 2,
+    "distintas": 0,
+    "sin_huella": 1
+  }
+}

@@ -15,7 +15,8 @@
       "population_size": 1142994,
       "horizon_days": 120,
       "initial_infected": 50,
-      "por_edad": true
+      "por_edad": true,
+      "project_id": 4
     }
   ]
 }

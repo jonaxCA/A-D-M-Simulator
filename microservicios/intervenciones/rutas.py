@@ -47,7 +47,7 @@ def _fila(i):
 def _version(version_id):
     fila = query(
         """SELECT v.id, v.scenario_id, v.version_number, v.status, v.is_current,
-                  v.horizon_days, s.owner_id
+                  v.horizon_days, s.owner_id, s.status AS scenario_status
            FROM scenario_versions v JOIN scenarios s ON s.id = v.scenario_id
            WHERE v.id = %s""", (version_id,), one=True)
     if not fila:
@@ -66,7 +66,10 @@ def _intervenciones(version_id):
 
 
 def _exige_editable(version):
-    """Borrador y vigente (409) y dueño o ADMINISTRADOR (403), como el monolito."""
+    """Borrador y vigente de un escenario sin archivar (409) y dueño o ADMINISTRADOR (403)."""
+    if version.get("scenario_status") == "archivado":
+        raise ErrorAPI(409, "CONFLICTO", "El escenario está archivado: restáuralo antes de cambiar "
+                       "sus intervenciones.")
     if version["status"] != "borrador":
         raise ErrorAPI(409, "CONFLICTO", "Esta versión ya no es un borrador: para cambiar sus "
                        "intervenciones hay que crear una versión nueva.")
@@ -152,7 +155,8 @@ def registrar(app):
         return responder({
             "version_id": version["id"], "scenario_id": version["scenario_id"],
             "version_number": version["version_number"], "status": version["status"],
-            "editable": version["status"] == "borrador" and version["is_current"],
+            "editable": (version["status"] == "borrador" and version["is_current"]
+                         and version.get("scenario_status") != "archivado"),
             "total": len(filas), "intervenciones": filas}, "intervenciones_version")
 
     @app.post("/api/v1/versions/<int:version_id>/interventions")
