@@ -50,7 +50,7 @@ Abre <http://localhost:5000/>. Falta crear el rol `epidemia_app` y darle permiso
 ## Microservicios (segundo parcial)
 
 - Arquitectura de lo construido: [docs/arquitectura/arquitectura_v2.md](docs/arquitectura/arquitectura_v2.md).
-- Catálogo completo de los 29 servicios: [docs/arquitectura/microservicios.md](docs/arquitectura/microservicios.md).
+- Catálogo completo de los 30 servicios: [docs/arquitectura/microservicios.md](docs/arquitectura/microservicios.md).
 
 ## Pruebas del motor
 

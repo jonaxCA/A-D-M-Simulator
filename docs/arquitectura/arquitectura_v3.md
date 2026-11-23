@@ -54,7 +54,7 @@ flowchart LR
     end
     NAV & MOV & ESC -->|HTTPS 443| NG[nginx<br/>TLS y entrada única]
     NG -->|/| WEB[Web<br/>monolito Flask]
-    NG -->|/servicio/...| MS[29 microservicios<br/>epidemia_comun]
+    NG -->|/servicio/...| MS[30 microservicios<br/>epidemia_comun]
     WEB -->|HTTP con el JWT de la sesión, D36| MS
     WEB -.->|módulos aún sin migrar, D36| PG
     MS --> PG[(PostgreSQL<br/>fuente de verdad)]
@@ -91,13 +91,13 @@ Los tres usan PostgreSQL, que basta para la rúbrica («PostgreSQL o MongoDB»).
 | **Web** (`frontend_web/`, `backend_web/`) | Todos los roles; sitio público sin sesión | Tablero, mapa, catálogos, casos, administración y bitácora. Consulta escenarios y corridas, y el EPIDEMIOLOGO aprueba o rechaza versiones (D4). Consume los servicios (D36): si uno no responde, solo la sección que depende de él muestra el aviso | HTML | **Hecho** en funciones; el paso a los servicios va en curso (C6). Falta recibir el reporte de una comparación (D-5, D35) y mostrar la categoría de D39 |
 | **Android** (`frontend_movil/`) | CAPTURISTA en campo | P1: casos sin conexión con GPS y fotos, sincronización por lotes, lotes de vacuna por QR o código de barras, avisos y perfil | JSON | **Hecho**: usa once servicios y seis capacidades del teléfono (cámara, GPS, código QR y de barras, notificaciones, almacenamiento local y sincronización). También el indicador de conexión fijo (C3) y la captura solo para el CAPTURISTA (C8). C9 lo cerró D32; editar y rechazar casos lo reabre la retroalimentación: el servidor ya los tiene, con versión, historial y conflictos en la sincronización (D47, 2026-11-22); falta la app (B4) |
 | **Escritorio** (`frontend_desktop/`) | ANALISTA y ADMINISTRADOR | P2 y P3: escenarios y su XML validado con XSD, envío a revisión, lotes de réplicas, comparación con Pareto, exportación e impresión | XML | **Hecho**, con la escala de D6, el aviso de bandas encimadas (D8), la revisión de `exp` del JWT con renovación anticipada (C10, D35), la ficha de cada corrida con su categoría de D39 en PDF, los indicadores municipales de `zonas` y la trazabilidad de cada gráfica (PR #173). Falta ofrecer `abm-gpu` en el selector de motor (RF-H20), mostrar la categoría de D39 en la interfaz y los módulos de A4 que esperan a los bloques 0, D y E |
-| **Consola** (`microservicios/consola`) | El equipo | Swagger, probador y panel de salud de los 29 servicios | JSON y XML | **Hecho**. Es herramienta de pruebas, no cliente del producto |
+| **Consola** (`microservicios/consola`) | El equipo | Swagger, probador y panel de salud de los 30 servicios | JSON y XML | **Hecho**. Es herramienta de pruebas, no cliente del producto |
 
 Android y escritorio atienden procesos distintos (P1 contra P2 y P3), y el escritorio no copia a la web: D4 le deja el diseño y las corridas.
 
 ## 5. Microservicios
 
-El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [`microservicios.md`](microservicios.md). Las convenciones de la v2 (§4.2) no cambian: rutas `/api/v1/` en inglés, XML por defecto y JSON a pedido, RFC 7807 con `codigo` estable, XSD validado con `xmlschema`, `X-Correlation-ID`, OpenAPI en `/docs` y un rol de PostgreSQL por servicio. Lo que cambia:
+El catálogo de los 30 servicios, con sus puertos, tablas y llamadas, está en [`microservicios.md`](microservicios.md). Las convenciones de la v2 (§4.2) no cambian: rutas `/api/v1/` en inglés, XML por defecto y JSON a pedido, RFC 7807 con `codigo` estable, XSD validado con `xmlschema`, `X-Correlation-ID`, OpenAPI en `/docs` y un rol de PostgreSQL por servicio. Lo que cambia:
 
 - **Detrás de nginx (D25, hecho en local; en la nube falta la VM).**
   - `https://<dominio>/<servicio>/api/v1/...` llega a `<servicio>:8000/api/v1/...`, así que las rutas no cambian.
@@ -106,7 +106,7 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
   - En desarrollo, sin `infra/docker-compose.nginx.yml`, los puertos de cada servicio siguen publicados, para la consola y las pruebas. Con él, ningún servicio publica puerto y todos llevan `DETRAS_DE_PROXY=1`.
   - waitress confía en las cabeceras `X-Forwarded-For`, `-Proto` y `-Host` de nginx solo en ese modo (`epidemia_comun/servir.py`, el arranque de cada Dockerfile). Sin eso las borraba, y el servicio veía la IP de nginx: el límite por IP de D31 era uno solo para todos.
 - **Límites de consumo (D31, hecho en `epidemia_comun/limites.py`).**
-  - Un contador `ratelimit:<usuario|ip>:<MÉTODO:regla>` en Redis, con ventana fija, así que lo heredan los 29 servicios. Detalle en §8.
+  - Un contador `ratelimit:<usuario|ip>:<MÉTODO:regla>` en Redis, con ventana fija, así que lo heredan los 30 servicios. Detalle en §8.
   - Responde 429 con `Retry-After` y el código `LIMITE_EXCEDIDO`. Si Redis falla en el contador no se aplica límite: la ruta protegida ya respondió 503 por la sesión.
 - **Simuladores por motor (hecho).**
   - `simulador` corre `seir-ref`, `simulador-abm` corre `abm-ref` y `simulador-gpu` corre `abm-gpu` (perfil `gpu`). En la nube, `simulador-gpu` corre en una PC con GPU y toma su cola por un túnel (D23, §8).
@@ -133,7 +133,7 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
 | `series_corridas` | Un día de una corrida | `run_id`, `batch_id`, `scenario_id`, `scenario_version_id`, `motor`, `engine_version`, `semilla`, `dia`, los compartimentos totales del día (sin desglose por grupo, D28), `version_esquema` | `{run_id, dia}` único; `{scenario_version_id, motor, dia}` | Lo que viva la corrida |
 
 - **Versionamiento:** cada documento lleva `version_esquema`. Un cambio de forma sube el número, y quien lee acepta las versiones que conoce.
-- **Crecimiento:** cada corrida suma `dias + 1` documentos a `series_corridas`, que no tiene TTL: con D29, 10 000 corridas de 180 días son 1.81 millones de documentos (tamaño en disco medido en §9). El historial no crece sin fin: 29 servicios cada 10 s son unos 250 000 documentos al día, y el TTL lo deja en unos 7.5 millones.
+- **Crecimiento:** cada corrida suma `dias + 1` documentos a `series_corridas`, que no tiene TTL: con D29, 10 000 corridas de 180 días son 1.81 millones de documentos (tamaño en disco medido en §9). El historial no crece sin fin: 30 servicios cada 10 s son unos 260 000 documentos al día, y el TTL lo deja en unos 7.8 millones.
 - **Qué se demuestra:** inserción, consulta, actualización, agregación (disponibilidad y latencia por servicio; la banda p5–p95 por día de una versión y un motor), índices y recuperación por `run_id`, en `microservicios/comun/tests/test_mongo_real.py` contra un MongoDB real.
 - **Lotes crudos de `sincronizacion`:** son una tercera colección solo si sobra tiempo (§10).
 
@@ -222,7 +222,7 @@ flowchart TB
         subgraph VM[VM e2-standard-4 · IP fija 35.222.19.202 · Docker Compose, 37 contenedores]
             NG["nginx + certbot<br/>TLS · /servicio/api/... a cada servicio, lo demás a la web"]
             WEB[web<br/>contenedor, perfil web]
-            MS[29 microservicios + consola<br/>estado-servicios sondea a todos]
+            MS[30 microservicios + consola<br/>estado-servicios sondea a todos]
             SIM[simulador seir-ref<br/>simulador-abm abm-ref]
             PG[(PostgreSQL 16<br/>volumen postgres-datos)]
             RD[(Redis<br/>sesiones, colas por motor, límites)]
@@ -246,7 +246,7 @@ flowchart TB
     MS -.->|evidencias, D2: falta crear el bucket| GCS[(Cloud Storage<br/>fotos y reportes)]
 ```
 
-- **Monitoreo:** `estado-servicios` sondea el `/health` de los 29 servicios (PostgreSQL, Redis,
+- **Monitoreo:** `estado-servicios` sondea el `/health` de los 30 servicios (PostgreSQL, Redis,
   MongoDB y tiempo de respuesta) y guarda el historial en MongoDB; además cuenta, por motor, las
   corridas en cola y los simuladores vivos y ocupados, con el latido que cada simulador deja en
   Redis, también el de la PC con GPU (F7). La consola (`/consola/`) muestra las dos cosas. Si

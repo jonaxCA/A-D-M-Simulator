@@ -1,0 +1,60 @@
+# Casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, primera ola de 2020.
+#
+# fuente: Secretaría de Salud, Dirección General de Epidemiología. Datos Abiertos de COVID-19, cierre anual 2020 (COVID19MEXICO2020.zip)
+# url: https://datosabiertos.salud.gob.mx/gobmx/salud/datos_abiertos/historicos/2020/COVID19MEXICO2020.zip
+# licencia: Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente
+# corte: 2021-10-31
+# sha256: 64c90685b68a1164bfa093eeef8c8d33d35d93d9d8b8f3d2d6315359a18dab90
+# consultado: 2026-11-22
+# filtro: ENTIDAD_RES = 19 y CLASIFICACION_FINAL 1, 2 o 3 (confirmado); semana de domingo a sábado por FECHA_SINTOMAS
+# pico: 2020-07-05
+# ventana: 2020-03-01 a 2020-07-26 (22 semanas)
+#
+# Van todas las semanas completas de 2020; la 061 carga solo las de la ventana. La del
+# 2020-12-27 queda fuera porque termina en 2021. El cierre 2021 no trae casos de Nuevo León
+# con inicio de síntomas en 2020 (revisado el 2026-11-22). Lo genera
+# datos/scripts/build_serie_observada.py: no se edita a mano.
+periodo_inicio,valor
+2020-03-01,7
+2020-03-08,38
+2020-03-15,40
+2020-03-22,18
+2020-03-29,39
+2020-04-05,95
+2020-04-12,61
+2020-04-19,94
+2020-04-26,167
+2020-05-03,254
+2020-05-10,319
+2020-05-17,359
+2020-05-24,472
+2020-05-31,853
+2020-06-07,1560
+2020-06-14,1661
+2020-06-21,2072
+2020-06-28,2876
+2020-07-05,3295
+2020-07-12,3234
+2020-07-19,2684
+2020-07-26,2061
+2020-08-02,2287
+2020-08-09,2248
+2020-08-16,2595
+2020-08-23,2625
+2020-08-30,2586
+2020-09-06,2187
+2020-09-13,2586
+2020-09-20,2775
+2020-09-27,2795
+2020-10-04,3451
+2020-10-11,3113
+2020-10-18,2907
+2020-10-25,2822
+2020-11-01,4138
+2020-11-08,3503
+2020-11-15,3174
+2020-11-22,2705
+2020-11-29,2809
+2020-12-06,3730
+2020-12-13,3430
+2020-12-20,3739

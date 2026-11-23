@@ -38,6 +38,7 @@ SERVICIOS = {
     "dispositivos": ("vigilancia", 5223),
     "evidencias": ("vigilancia", 5224),
     "vacunas": ("vigilancia", 5225),
+    "importacion": ("vigilancia", 5226),
     "escenarios": ("escenarios", 5231),
     "intervenciones": ("escenarios", 5232),
     "aprobacion": ("escenarios", 5233),

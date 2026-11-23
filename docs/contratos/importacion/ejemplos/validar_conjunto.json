@@ -1,0 +1,13 @@
+{
+  "valido": true,
+  "sha256": "9f2b7c1d4e5a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e",
+  "fallas": [],
+  "resumen": {
+    "puntos": 4,
+    "inicio": "2020-03-01",
+    "fin": "2020-03-22",
+    "total": 103,
+    "maximo": 40,
+    "periodos_en_cero": 0
+  }
+}

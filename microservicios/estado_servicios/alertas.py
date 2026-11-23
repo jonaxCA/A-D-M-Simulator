@@ -8,7 +8,7 @@ Reglas, para que la bandeja no se llene de ruido:
 - Al arrancar hay GRACIA (2 min) sin avisos: los servicios todavía se están levantando.
 - Entre dos fallas avisadas del mismo servicio pasan al menos ESPERA_ENTRE_FALLAS (10 min); una
   falla que cae en ese lapso se avisa al terminar, si sigue. Que se recuperó se avisa siempre.
-- Los cambios de una ronda van en un solo aviso: con Redis caído se degradan los 29 a la vez.
+- Los cambios de una ronda van en un solo aviso: con Redis caído se degradan los 30 a la vez.
 - Lo último que se avisó de cada servicio se guarda en Redis (alert:<servicio>), así que un
   reinicio de estado-servicios no repite ni pierde avisos; con Redis caído vive en la memoria.
 - Si notificaciones no los recibe (también falla si se caen Redis o PostgreSQL, de los que
