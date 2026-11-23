@@ -70,7 +70,8 @@ def estado_parametros(default_params):
 
     detalle, faltan, supuestos, sin_fuente = [], [], [], []
     for spec in PARAMETROS_SIMULACION:
-        valor, fuente, supuesto = _desarma_param(params.get(spec["clave"]))
+        bruto = params.get(spec["clave"])
+        valor, fuente, supuesto = _desarma_param(bruto)
         # El motor acepta letalidad_por_edad como alias de letalidad, asi que
         # una enfermedad con la tabla por edad ya cumple ese requisito.
         heredado = valor is None and spec["clave"] == "letalidad" and tiene_por_edad
@@ -97,6 +98,8 @@ def estado_parametros(default_params):
                            else f"{valor * 100:g}" if spec.get("porcentaje") else f"{valor:g}"),
             "fuente": fuente or "",
             "supuesto": supuesto,
+            # Incertidumbre (D58): {min, max, tipo} si la fuente la da. El motor no la usa.
+            "intervalo": bruto.get("intervalo") if isinstance(bruto, dict) else None,
             "estado": estado,
         })
 

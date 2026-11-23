@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<supuesto><parametro>eficacia</parametro><enfermedad>INFLUENZA_ESTACIONAL</enfermedad><valor tipo="numero">0.5</valor><min tipo="numero">0.3</min><max tipo="numero">0.7</max><fuente>SUPUESTO DEL EQUIPO: igual que para COVID-19, a falta de un estudio para influenza.</fuente><supuesto tipo="booleano">true</supuesto><updated_by tipo="numero">2</updated_by><updated_at>2026-11-23T10:00:00+00:00</updated_at><code>CUBREBOCAS</code></supuesto>

@@ -1,0 +1,34 @@
+{
+  "q": "monterrey",
+  "total": 4,
+  "coincidencias": [
+    {
+      "tipo": "municipio",
+      "id": 2,
+      "code": "19039",
+      "nombre": "Monterrey",
+      "padre": "Nuevo Leon"
+    },
+    {
+      "tipo": "jurisdiccion",
+      "id": 1,
+      "code": null,
+      "nombre": "Jurisdicción Sanitaria No. 1",
+      "padre": null
+    },
+    {
+      "tipo": "jurisdiccion",
+      "id": 2,
+      "code": null,
+      "nombre": "Jurisdicción Sanitaria No. 2",
+      "padre": null
+    },
+    {
+      "tipo": "jurisdiccion",
+      "id": 3,
+      "code": null,
+      "nombre": "Jurisdicción Sanitaria No. 3",
+      "padre": null
+    }
+  ]
+}

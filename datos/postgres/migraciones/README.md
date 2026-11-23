@@ -39,6 +39,8 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `037_avisos_de_casos_y_revision.sql` | Tipos de aviso `NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED` en el CHECK, y lectura de `users`, `user_roles` y `roles` para `svc_notificaciones`. La 036 queda reservada |
 | `039_reportes_de_comparacion.sql` | `comparison_reports`: los metadatos del reporte (PDF) de una comparación, que sube el escritorio o la web al bucket, identificado por sus corridas (D30, D35). `svc_evidencias` es dueño y lee el `id` de `simulation_runs` |
 | `040_personas_dia_por_dosis.sql` | `intervention_types` gana el factor de personas-día por dosis de la frontera de Pareto (D3): valor, fuente y marca de supuesto, sin valor por omisión. `svc_intervenciones` puede actualizarlo |
+| `042_catalogos_con_fuente.sql` | Clasificación de las enfermedades (vía de transmisión y CIE-10), `case_definitions` (definiciones de caso versionadas, con las de la DGE de 2021 y 2023), `disease_parameter_versions` (versiones de los parámetros, con los intervalos de las fuentes citadas) e `intervention_effectiveness` (supuestos de efectividad con fuente) (D58) |
+| `043_jurisdicciones_y_censos.sql` | `health_areas` y `health_area_municipalities` (jurisdicciones sanitarias), `census_population` (censos y conteos de INEGI 1990-2020) y `population_versions` (versiones de la población) (D58). La genera `datos/scripts/build_censos_y_jurisdicciones.py`: no se edita a mano |
 | `045_intentos_de_corridas.sql` | `simulation_runs.attempts` (0 a 3): las veces que una corrida pasó a `ejecutando`. Una interrumpida se reencola mientras le queden intentos (D38); `svc_simulador` lo actualiza |
 | `046_bitacora_de_servicios.sql` | Los diez roles `svc_*` que no escribían en `audit_log` reciben INSERT, para anotar el `PERMISSION_DENIED` de sus 403 (D36), y `svc_roles` lee `audit_log` para la consulta de la bitácora (D37) |
 | `050_dispositivos_de_sesion.sql` | `session_devices`: los dispositivos desde los que una cuenta inicia sesión, con su estado (`pendiente`, `autorizado`, `revocado`) (D41, RF-A08). `svc_sesiones` es dueño |
@@ -72,7 +74,9 @@ problema: ya falta la 018.
 | 039 | D | Tabla de metadatos de los reportes y el rol del servicio que la escribe (D30, D35) |
 | 040 | E | Lugar del factor de día-persona por dosis, con fuente o marca de supuesto (D3) |
 | 041 | D | Retira `simulation_results`, cuando la web ya no la lea (D28) |
-| 042–044 | D | Reserva |
+| 042 | D | Definiciones de caso, clasificación, versiones e intervalos de parámetros y supuestos de efectividad (D58) |
+| 043 | D | Jurisdicciones sanitarias, censos 1990-2020 y versiones de la población (D58) |
+| 044 | D | Reserva |
 | 045 | E | `simulation_runs.attempts`: intentos de una corrida interrumpida que se reencola (D38) |
 | 046 | E | INSERT en `audit_log` para los roles que no lo tenían y lectura para `svc_roles` (D36, D37) |
 | 047 | C | Reserva |

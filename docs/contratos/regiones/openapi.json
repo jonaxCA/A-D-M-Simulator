@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - regiones",
     "version": "0.1.0",
-    "description": "Servicio de regiones del sistema de respuesta a epidemias. Público, de solo lectura y no usa Redis. Los ejemplos están en docs/contratos/regiones/ejemplos (listas recortadas)."
+    "description": "Servicio de regiones del sistema de respuesta a epidemias: el estado y sus municipios, la jerarquía, las jurisdicciones sanitarias y la búsqueda territorial (D58). Público, de solo lectura y no usa Redis. Los ejemplos están en docs/contratos/regiones/ejemplos (listas recortadas)."
   },
   "servers": [
     {
@@ -330,6 +330,546 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/regions/{region_id}/children": {
+      "get": {
+        "summary": "Regiones hijas",
+        "operationId": "hijos_de_region",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "region": {
+                    "id": 1,
+                    "code": "19",
+                    "nombre": "Nuevo Leon",
+                    "nivel": "estado",
+                    "poblacion": 5784442,
+                    "padre_id": null
+                  },
+                  "total": 51,
+                  "hijos": [
+                    {
+                      "id": 12,
+                      "code": "19001",
+                      "nombre": "Abasolo",
+                      "nivel": "municipio",
+                      "poblacion": 2974
+                    },
+                    {
+                      "id": 13,
+                      "code": "19002",
+                      "nombre": "Agualeguas",
+                      "nivel": "municipio",
+                      "poblacion": 3382
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "jerarquia"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<jerarquia><region><id tipo=\"numero\">1</id><code>19</code><nombre>Nuevo Leon</nombre><nivel>estado</nivel><poblacion tipo=\"numero\">5784442</poblacion><padre_id nil=\"true\" /></region><total tipo=\"numero\">51</total><hijos><region><id tipo=\"numero\">12</id><code>19001</code><nombre>Abasolo</nombre><nivel>municipio</nivel><poblacion tipo=\"numero\">2974</poblacion></region><region><id tipo=\"numero\">13</id><code>19002</code><nombre>Agualeguas</nombre><nivel>municipio</nivel><poblacion tipo=\"numero\">3382</poblacion></region></hijos></jerarquia>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "description": "La jerarquía: los municipios del estado (o nada, si es un municipio). Pública."
+      }
+    },
+    "/api/v1/regions/{region_id}/health-areas": {
+      "get": {
+        "summary": "Jurisdicciones sanitarias de una región",
+        "operationId": "jurisdicciones_de_region",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "region_id": 2,
+                  "code": "19039",
+                  "total": 3,
+                  "jurisdicciones_sanitarias": [
+                    {
+                      "numero": 1,
+                      "nombre": "Jurisdicción Sanitaria No. 1",
+                      "parcial": true
+                    },
+                    {
+                      "numero": 2,
+                      "nombre": "Jurisdicción Sanitaria No. 2",
+                      "parcial": true
+                    },
+                    {
+                      "numero": 3,
+                      "nombre": "Jurisdicción Sanitaria No. 3",
+                      "parcial": true
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "jurisdicciones_de_region"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<jurisdicciones_de_region><region_id tipo=\"numero\">2</region_id><code>19039</code><total tipo=\"numero\">3</total><jurisdicciones_sanitarias><jurisdiccion><numero tipo=\"numero\">1</numero><nombre>Jurisdicción Sanitaria No. 1</nombre><parcial tipo=\"booleano\">true</parcial></jurisdiccion><jurisdiccion><numero tipo=\"numero\">2</numero><nombre>Jurisdicción Sanitaria No. 2</nombre><parcial tipo=\"booleano\">true</parcial></jurisdiccion><jurisdiccion><numero tipo=\"numero\">3</numero><nombre>Jurisdicción Sanitaria No. 3</nombre><parcial tipo=\"booleano\">true</parcial></jurisdiccion></jurisdicciones_sanitarias></jurisdicciones_de_region>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "description": "A qué jurisdicción sanitaria pertenece el municipio; Monterrey está en tres, en parte (parcial)."
+      }
+    },
+    "/api/v1/health-areas": {
+      "get": {
+        "summary": "Jurisdicciones sanitarias",
+        "operationId": "listar_jurisdicciones",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 8,
+                  "jurisdicciones_sanitarias": [
+                    {
+                      "numero": 1,
+                      "nombre": "Jurisdicción Sanitaria No. 1",
+                      "circunscripcion": "Poniente del municipio de Monterrey",
+                      "fuente": "Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.",
+                      "url": "http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf",
+                      "municipios": [
+                        {
+                          "code": "19039",
+                          "parcial": true,
+                          "region_id": 2,
+                          "nombre": "Monterrey"
+                        }
+                      ]
+                    },
+                    {
+                      "numero": 2,
+                      "nombre": "Jurisdicción Sanitaria No. 2",
+                      "circunscripcion": "Norte y oriente del municipio de Monterrey y los municipios de Abasolo, el Carmen, Ciénega de Flores, General Mariano Escobedo, General Zuazua, Mina, Salinas Victoria, San Nicolás de los Garza e Hidalgo",
+                      "fuente": "Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.",
+                      "url": "http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf",
+                      "municipios": [
+                        {
+                          "code": "19001",
+                          "parcial": false,
+                          "region_id": 12,
+                          "nombre": "Abasolo"
+                        },
+                        {
+                          "code": "19012",
+                          "parcial": false,
+                          "region_id": 22,
+                          "nombre": "Ciénega de Flores"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "jurisdicciones_sanitarias"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<jurisdicciones_sanitarias><total tipo=\"numero\">8</total><jurisdicciones_sanitarias><jurisdiccion><numero tipo=\"numero\">1</numero><nombre>Jurisdicción Sanitaria No. 1</nombre><circunscripcion>Poniente del municipio de Monterrey</circunscripcion><fuente>Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.</fuente><url>http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf</url><municipios><municipio><code>19039</code><parcial tipo=\"booleano\">true</parcial><region_id tipo=\"numero\">2</region_id><nombre>Monterrey</nombre></municipio></municipios></jurisdiccion><jurisdiccion><numero tipo=\"numero\">2</numero><nombre>Jurisdicción Sanitaria No. 2</nombre><circunscripcion>Norte y oriente del municipio de Monterrey y los municipios de Abasolo, el Carmen, Ciénega de Flores, General Mariano Escobedo, General Zuazua, Mina, Salinas Victoria, San Nicolás de los Garza e Hidalgo</circunscripcion><fuente>Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.</fuente><url>http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf</url><municipios><municipio><code>19001</code><parcial tipo=\"booleano\">false</parcial><region_id tipo=\"numero\">12</region_id><nombre>Abasolo</nombre></municipio><municipio><code>19012</code><parcial tipo=\"booleano\">false</parcial><region_id tipo=\"numero\">22</region_id><nombre>Ciénega de Flores</nombre></municipio></municipios></jurisdiccion></jurisdicciones_sanitarias></jurisdicciones_sanitarias>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "description": "Las jurisdicciones sanitarias de Nuevo León con sus municipios y su fuente (Reglamento Interior de Servicios de Salud de NL, art. 27; 043, D58). El ejemplo, recortado."
+      }
+    },
+    "/api/v1/health-areas/{numero}": {
+      "get": {
+        "summary": "Una jurisdicción sanitaria",
+        "operationId": "consultar_jurisdiccion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "numero",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "numero": 3,
+                  "nombre": "Jurisdicción Sanitaria No. 3",
+                  "circunscripcion": "Sur de Monterrey y los municipios de Villa de García, San Pedro Garza García y Santa Catarina",
+                  "fuente": "Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.",
+                  "url": "http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf",
+                  "municipios": [
+                    {
+                      "code": "19018",
+                      "parcial": false,
+                      "region_id": 10,
+                      "nombre": "García"
+                    },
+                    {
+                      "code": "19039",
+                      "parcial": true,
+                      "region_id": 2,
+                      "nombre": "Monterrey"
+                    },
+                    {
+                      "code": "19019",
+                      "parcial": false,
+                      "region_id": 3,
+                      "nombre": "San Pedro Garza García"
+                    },
+                    {
+                      "code": "19048",
+                      "parcial": false,
+                      "region_id": 8,
+                      "nombre": "Santa Catarina"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "jurisdiccion"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<jurisdiccion><numero tipo=\"numero\">3</numero><nombre>Jurisdicción Sanitaria No. 3</nombre><circunscripcion>Sur de Monterrey y los municipios de Villa de García, San Pedro Garza García y Santa Catarina</circunscripcion><fuente>Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.</fuente><url>http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf</url><municipios><municipio><code>19018</code><parcial tipo=\"booleano\">false</parcial><region_id tipo=\"numero\">10</region_id><nombre>García</nombre></municipio><municipio><code>19039</code><parcial tipo=\"booleano\">true</parcial><region_id tipo=\"numero\">2</region_id><nombre>Monterrey</nombre></municipio><municipio><code>19019</code><parcial tipo=\"booleano\">false</parcial><region_id tipo=\"numero\">3</region_id><nombre>San Pedro Garza García</nombre></municipio><municipio><code>19048</code><parcial tipo=\"booleano\">false</parcial><region_id tipo=\"numero\">8</region_id><nombre>Santa Catarina</nombre></municipio></municipios></jurisdiccion>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "description": "Una jurisdicción con todos sus municipios."
+      }
+    },
+    "/api/v1/regions/search": {
+      "get": {
+        "summary": "Búsqueda territorial",
+        "operationId": "busqueda_territorial",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "description": "De 2 a 80 caracteres; sin importar acentos.",
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 80
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "q": "monterrey",
+                  "total": 4,
+                  "coincidencias": [
+                    {
+                      "tipo": "municipio",
+                      "id": 2,
+                      "code": "19039",
+                      "nombre": "Monterrey",
+                      "padre": "Nuevo Leon"
+                    },
+                    {
+                      "tipo": "jurisdiccion",
+                      "id": 1,
+                      "code": null,
+                      "nombre": "Jurisdicción Sanitaria No. 1",
+                      "padre": null
+                    },
+                    {
+                      "tipo": "jurisdiccion",
+                      "id": 2,
+                      "code": null,
+                      "nombre": "Jurisdicción Sanitaria No. 2",
+                      "padre": null
+                    },
+                    {
+                      "tipo": "jurisdiccion",
+                      "id": 3,
+                      "code": null,
+                      "nombre": "Jurisdicción Sanitaria No. 3",
+                      "padre": null
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "busqueda_territorial"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<busqueda_territorial><q>monterrey</q><total tipo=\"numero\">4</total><coincidencias><coincidencia><tipo>municipio</tipo><id tipo=\"numero\">2</id><code>19039</code><nombre>Monterrey</nombre><padre>Nuevo Leon</padre></coincidencia><coincidencia><tipo>jurisdiccion</tipo><id tipo=\"numero\">1</id><code nil=\"true\" /><nombre>Jurisdicción Sanitaria No. 1</nombre><padre nil=\"true\" /></coincidencia><coincidencia><tipo>jurisdiccion</tipo><id tipo=\"numero\">2</id><code nil=\"true\" /><nombre>Jurisdicción Sanitaria No. 2</nombre><padre nil=\"true\" /></coincidencia><coincidencia><tipo>jurisdiccion</tipo><id tipo=\"numero\">3</id><code nil=\"true\" /><nombre>Jurisdicción Sanitaria No. 3</nombre><padre nil=\"true\" /></coincidencia></coincidencias></busqueda_territorial>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "description": "El estado, los municipios (por nombre o clave INEGI) y las jurisdicciones sanitarias que coinciden, sin importar acentos; hasta 20. Ubicar un punto en el mapa es de zonas (/zones/locate)."
       }
     }
   }

@@ -62,3 +62,4 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D55 | Devolver una versión para cambios y firmar la versión aprobada | Aceptada | D5, D37, D54 | [D55-devolver-y-firmar-versiones.md](D55-devolver-y-firmar-versiones.md) |
 | D56 | El menú de la app móvil por perfil; el EPIDEMIOLOGO solo consulta | Aceptada | D1, D42, D43, D49 | [D56-menu-de-la-app-por-perfil.md](D56-menu-de-la-app-por-perfil.md) |
 | D57 | Prevalencia, hospitalizaciones y capacidad hospitalaria utilizada en el tablero, con las camas censables de la DGIS | Aceptada (F; falta el líder) | F7, RF-G07 | [D57-capacidad-hospitalaria-utilizada.md](D57-capacidad-hospitalaria-utilizada.md) |
+| D58 | Catálogos con fuente y versiones: definiciones de caso, incertidumbre, jurisdicciones, población y efectividad | Aceptada | D5, D37, D50, D52 | [D58-catalogos-con-fuente-y-versiones.md](D58-catalogos-con-fuente-y-versiones.md) |

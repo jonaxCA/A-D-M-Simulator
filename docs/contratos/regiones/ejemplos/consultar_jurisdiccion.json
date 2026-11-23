@@ -1,0 +1,33 @@
+{
+  "numero": 3,
+  "nombre": "Jurisdicción Sanitaria No. 3",
+  "circunscripcion": "Sur de Monterrey y los municipios de Villa de García, San Pedro Garza García y Santa Catarina",
+  "fuente": "Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.",
+  "url": "http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf",
+  "municipios": [
+    {
+      "code": "19018",
+      "parcial": false,
+      "region_id": 10,
+      "nombre": "García"
+    },
+    {
+      "code": "19039",
+      "parcial": true,
+      "region_id": 2,
+      "nombre": "Monterrey"
+    },
+    {
+      "code": "19019",
+      "parcial": false,
+      "region_id": 3,
+      "nombre": "San Pedro Garza García"
+    },
+    {
+      "code": "19048",
+      "parcial": false,
+      "region_id": 8,
+      "nombre": "Santa Catarina"
+    }
+  ]
+}

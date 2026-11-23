@@ -1,0 +1,22 @@
+{
+  "region_id": 2,
+  "code": "19039",
+  "total": 3,
+  "jurisdicciones_sanitarias": [
+    {
+      "numero": 1,
+      "nombre": "Jurisdicción Sanitaria No. 1",
+      "parcial": true
+    },
+    {
+      "numero": 2,
+      "nombre": "Jurisdicción Sanitaria No. 2",
+      "parcial": true
+    },
+    {
+      "numero": 3,
+      "nombre": "Jurisdicción Sanitaria No. 3",
+      "parcial": true
+    }
+  ]
+}
