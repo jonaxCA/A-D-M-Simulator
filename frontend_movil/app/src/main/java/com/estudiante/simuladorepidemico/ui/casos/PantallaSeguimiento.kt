@@ -138,7 +138,9 @@ fun PantallaSeguimiento(modelo: SeguimientoViewModel, alVolver: () -> Unit) {
 @Composable
 private fun SeccionFotos(estado: EstadoSeguimiento, modelo: SeguimientoViewModel) {
     Text("Fotos", style = MaterialTheme.typography.titleMedium)
-    if (estado.fotos.isEmpty() && estado.errorFotos == null) {
+    if (estado.fotosSinAcceso) {
+        Text("Tu perfil no ve las fotos de los casos.", style = MaterialTheme.typography.bodyMedium)
+    } else if (estado.fotos.isEmpty() && estado.errorFotos == null) {
         Text("El caso no tiene fotos en el servidor.", style = MaterialTheme.typography.bodyMedium)
     }
     estado.fotos.forEachIndexed { indice, foto ->

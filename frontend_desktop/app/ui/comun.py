@@ -12,7 +12,7 @@ ESTADOS = {"borrador": ("Borrador", "gris"), "en_revision": ("En revisión", "az
            "encolado": ("En espera", "gris"), "ejecutando": ("Ejecutando", "azul"),
            "completado": ("Completada", "verde"), "fallido": ("Error", "rojo"),
            "cancelado": ("Cancelada", "ambar"), "publicado": ("Publicado", "verde"),
-           "archivado": ("Archivado", "gris")}
+           "archivado": ("Archivado", "gris"), "activo": ("Activo", "verde")}
 NOMBRES_ROL = {"ANALISTA": "Analista", "ADMINISTRADOR": "Administrador",
                "EPIDEMIOLOGO": "Epidemiólogo", "CAPTURISTA": "Capturista"}
 

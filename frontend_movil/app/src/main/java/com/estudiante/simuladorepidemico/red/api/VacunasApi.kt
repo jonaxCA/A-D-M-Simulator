@@ -1,5 +1,6 @@
 package com.estudiante.simuladorepidemico.red.api
 
+import com.estudiante.simuladorepidemico.red.ListaCampanas
 import com.estudiante.simuladorepidemico.red.ListaLotesVacuna
 import com.estudiante.simuladorepidemico.red.LoteVacuna
 import com.estudiante.simuladorepidemico.red.PedidoDosis
@@ -24,4 +25,8 @@ interface VacunasApi {
     // 409 si no alcanzan las dosis o el lote caducó: no descuenta nada.
     @POST("api/v1/vaccine-lots/{id}/doses")
     suspend fun aplicar(@Path("id") id: Long, @Body pedido: PedidoDosis): LoteVacuna
+
+    // Las campañas de salud (D49); `estado` null trae todas.
+    @GET("api/v1/campaigns")
+    suspend fun campanas(@Query("status") estado: String? = null, @Query("limit") limite: Int = 100): ListaCampanas
 }

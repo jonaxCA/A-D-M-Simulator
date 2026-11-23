@@ -89,7 +89,7 @@ def test_sin_token_es_401(cliente):
     assert cliente.post("/api/v1/vaccine-lots", json=LOTE).status_code == 401
 
 
-@pytest.mark.parametrize("rol", ["ANALISTA", "EPIDEMIOLOGO"])
+@pytest.mark.parametrize("rol", ["ANALISTA", "EPIDEMIOLOGO", "INVESTIGADOR", "AUTORIDAD_SANITARIA"])
 def test_quien_no_captura_no_registra_ni_aplica(cliente, token, mundo, rol):
     assert post(cliente, "/api/v1/vaccine-lots", token((rol,)), LOTE).status_code == 403
     assert post(cliente, "/api/v1/vaccine-lots/5/doses", token((rol,)), {"doses": 1}).status_code == 403

@@ -39,6 +39,18 @@ class AccionesInicio(
     val verAvisos: () -> Unit = {},
     val abrirPerfil: () -> Unit = {},
     val consultar: () -> Unit = {},
+    val verCasosServidor: () -> Unit = {},
+    val verCampanas: () -> Unit = {},
+)
+
+// Los números del panel; null es "se consultan con red".
+data class Panel(
+    val porEnviar: Int = 0,
+    val noLeidos: Int? = null,
+    val incompletos: Int? = null,
+    val formularios: Int = 0,
+    val porValidar: Int? = null,
+    val campanasActivas: Int? = null,
 )
 
 @Composable
@@ -46,81 +58,109 @@ fun PantallaInicio(
     modelo: InicioViewModel,
     alCapturar: () -> Unit,
     alVerCasos: () -> Unit,
-    alVerLotes: () -> Unit,
+    alVerLotes: (registra: Boolean) -> Unit,
     alVerAvisos: () -> Unit,
     alAbrirPerfil: () -> Unit,
     alConsultar: () -> Unit,
+    alVerCasosServidor: () -> Unit,
+    alVerCampanas: () -> Unit,
 ) {
     val porEnviar by modelo.porEnviar.collectAsStateWithLifecycle()
     val noLeidos by modelo.noLeidos.collectAsStateWithLifecycle()
-    val capturista by modelo.capturista.collectAsStateWithLifecycle()
+    val menu by modelo.menu.collectAsStateWithLifecycle()
     val incompletos by modelo.incompletos.collectAsStateWithLifecycle()
     val formularios by modelo.formularios.collectAsStateWithLifecycle()
+    val porValidar by modelo.porValidar.collectAsStateWithLifecycle()
+    val campanasActivas by modelo.campanasActivas.collectAsStateWithLifecycle()
     // Al llegar y al volver (de los avisos, por ejemplo).
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { modelo.contarAvisos() }
     MenuInicio(
-        porEnviar, noLeidos, capturista,
-        AccionesInicio(alCapturar, alVerCasos, alVerLotes, alVerAvisos, alAbrirPerfil, alConsultar),
-        incompletos, formularios,
+        menu, Panel(porEnviar, noLeidos, incompletos, formularios, porValidar, campanasActivas),
+        AccionesInicio(
+            alCapturar, alVerCasos, { alVerLotes(menu.lotesRegistra) }, alVerAvisos, alAbrirPerfil, alConsultar,
+            alVerCasosServidor, alVerCampanas,
+        ),
     )
 }
 
-// Con la forma del tablero de la web: la marca, los indicadores en tarjetas y el menú. Para el
-// CAPTURISTA es su panel: lo pendiente de enviar, lo que le falta completar, los formularios que ya
-// tiene el teléfono y los avisos.
+// Con la forma del tablero de la web: la marca, los indicadores en tarjetas y el menú de su perfil
+// (D56). Para el CAPTURISTA es su panel: lo pendiente de enviar, lo que le falta completar, los
+// formularios que ya tiene el teléfono y los avisos. Para quien revisa: los casos por validar de su
+// alcance, las campañas activas y los avisos.
 @Composable
-fun MenuInicio(
-    porEnviar: Int,
-    noLeidos: Int?,
-    capturista: Boolean,
-    acciones: AccionesInicio,
-    incompletos: Int? = null,
-    formularios: Int = 0,
-) {
+fun MenuInicio(menu: Menu, panel: Panel, acciones: AccionesInicio) {
     Scaffold { relleno ->
         Column(
             modifier = Modifier.fillMaxSize().padding(relleno).verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Marca()
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (capturista) {
+            if (menu.captura) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Indicador(
-                        "CASOS POR ENVIAR", "$porEnviar",
-                        if (porEnviar == 0) "Todo enviado" else "Se envían solos con red",
+                        "CASOS POR ENVIAR", "${panel.porEnviar}",
+                        if (panel.porEnviar == 0) "Todo enviado" else "Se envían solos con red",
                         Modifier.weight(1f),
                     )
-                }
-                if (capturista) {
                     Indicador(
-                        "DATOS FALTANTES", incompletos?.toString() ?: "—",
-                        if (incompletos == null) "Se consultan con red" else "Casos por completar",
+                        "DATOS FALTANTES", panel.incompletos?.toString() ?: "—",
+                        if (panel.incompletos == null) "Se consultan con red" else "Casos por completar",
                         Modifier.weight(1f), acciones.verCasos,
+                    )
+                }
+            }
+            if (menu.revisa) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Indicador(
+                        "POR VALIDAR", panel.porValidar?.toString() ?: "—",
+                        if (panel.porValidar == null) "Se consultan con red" else "Casos de tu alcance",
+                        Modifier.weight(1f), acciones.verCasosServidor,
+                    )
+                    Indicador(
+                        "CAMPAÑAS ACTIVAS", panel.campanasActivas?.toString() ?: "—",
+                        if (panel.campanasActivas == null) "Se consultan con red" else "En curso hoy",
+                        Modifier.weight(1f), acciones.verCampanas,
                     )
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Indicador(
-                    "AVISOS SIN LEER", noLeidos?.toString() ?: "—",
-                    if (noLeidos == null) "Se consultan con red" else "De tu cuenta",
+                    "AVISOS SIN LEER", panel.noLeidos?.toString() ?: "—",
+                    if (panel.noLeidos == null) "Se consultan con red" else "De tu cuenta",
                     Modifier.weight(1f), acciones.verAvisos,
                 )
-                if (capturista) {
+                if (menu.captura) {
                     Indicador(
-                        "FORMULARIOS", "$formularios",
-                        if (formularios == 1) "Enfermedad con campos propios" else "Enfermedades con campos propios",
+                        "FORMULARIOS", "${panel.formularios}",
+                        if (panel.formularios == 1) "Enfermedad con campos propios" else "Enfermedades con campos propios",
                         Modifier.weight(1f),
                     )
                 }
             }
-            if (capturista) {
+            if (menu.captura) {
                 Button(onClick = acciones.capturar, modifier = Modifier.fillMaxWidth()) { Text("+  Capturar caso") }
-                Opcion("📋", "Mis casos", "Pendientes, enviados y rechazados", acciones.verCasos)
             }
-            Opcion("💉", "Lotes de vacuna", "Leer el código y aplicar dosis", acciones.verLotes)
-            Opcion("🗺", "Consulta por zona", "Casos por municipio, enfermedad y periodo", acciones.consultar)
-            Opcion("🔔", "Avisos", "Casos nuevos, revisiones y corridas", acciones.verAvisos)
-            Opcion("👤", "Mi perfil", "Cuenta, teléfono y cerrar sesión", acciones.abrirPerfil)
+            if (Opcion.MIS_CASOS in menu.opciones) {
+                Entrada("📋", "Mis casos", "Pendientes, enviados y rechazados", acciones.verCasos)
+            }
+            if (Opcion.CASOS_SERVIDOR in menu.opciones) {
+                Entrada("🗂", "Casos", "Por validar, validados y descartados, con su seguimiento", acciones.verCasosServidor)
+            }
+            if (Opcion.CAMPANAS in menu.opciones) {
+                Entrada("📣", "Campañas", "Activas y programadas, por enfermedad y municipio", acciones.verCampanas)
+            }
+            if (Opcion.LOTES in menu.opciones) {
+                Entrada(
+                    "💉", "Lotes de vacuna",
+                    if (menu.lotesRegistra) "Leer el código y aplicar dosis" else "Consultar un lote por su código",
+                    acciones.verLotes,
+                )
+            }
+            if (Opcion.CONSULTA in menu.opciones) {
+                Entrada("🗺", "Consulta por zona", "Casos por municipio, enfermedad y periodo", acciones.consultar)
+            }
+            Entrada("🔔", "Avisos", "Casos nuevos, revisiones y corridas", acciones.verAvisos)
+            Entrada("👤", "Mi perfil", "Cuenta, teléfono y cerrar sesión", acciones.abrirPerfil)
         }
     }
 }
@@ -173,7 +213,7 @@ private fun Indicador(etiqueta: String, valor: String, nota: String, modifier: M
 }
 
 @Composable
-private fun Opcion(icono: String, titulo: String, descripcion: String, alTocar: () -> Unit) {
+private fun Entrada(icono: String, titulo: String, descripcion: String, alTocar: () -> Unit) {
     Tarjeta(Modifier.fillMaxWidth(), alTocar) {
         Row(
             Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -193,5 +233,5 @@ private fun Opcion(icono: String, titulo: String, descripcion: String, alTocar: 
 @Preview(showBackground = true)
 @Composable
 private fun VistaInicio() {
-    TemaEpidemia { MenuInicio(porEnviar = 3, noLeidos = 2, capturista = true, acciones = AccionesInicio()) }
+    TemaEpidemia { MenuInicio(menuDe(setOf("CAPTURISTA")), Panel(porEnviar = 3, noLeidos = 2), AccionesInicio()) }
 }

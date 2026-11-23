@@ -22,9 +22,13 @@ import androidx.navigation.toRoute
 import com.estudiante.simuladorepidemico.Contenedor
 import com.estudiante.simuladorepidemico.ui.avisos.AvisosViewModel
 import com.estudiante.simuladorepidemico.ui.avisos.PantallaAvisos
+import com.estudiante.simuladorepidemico.ui.campanas.CampanasViewModel
+import com.estudiante.simuladorepidemico.ui.campanas.PantallaCampanas
 import com.estudiante.simuladorepidemico.ui.casos.CapturaViewModel
+import com.estudiante.simuladorepidemico.ui.casos.CasosServidorViewModel
 import com.estudiante.simuladorepidemico.ui.casos.MisCasosViewModel
 import com.estudiante.simuladorepidemico.ui.casos.PantallaCaptura
+import com.estudiante.simuladorepidemico.ui.casos.PantallaCasosServidor
 import com.estudiante.simuladorepidemico.ui.casos.PantallaMisCasos
 import com.estudiante.simuladorepidemico.ui.casos.PantallaSeguimiento
 import com.estudiante.simuladorepidemico.ui.casos.SeguimientoViewModel
@@ -55,8 +59,9 @@ object Captura
 @Serializable
 object MisCasos
 
+// `registra`: registra lotes y aplica dosis; si no, solo los consulta (D56).
 @Serializable
-object Vacunas
+data class Vacunas(val registra: Boolean = true)
 
 @Serializable
 object Avisos
@@ -66,6 +71,13 @@ data class Seguimiento(val caso: Long)
 
 @Serializable
 object Consulta
+
+// D56: los casos del servidor y las campañas, para quien revisa en campo.
+@Serializable
+object CasosServidor
+
+@Serializable
+object Campanas
 
 @Composable
 fun Navegacion(contenedor: Contenedor, abrirAvisos: Boolean = false, alAbrirAvisos: () -> Unit = {}) {
@@ -99,10 +111,12 @@ fun Navegacion(contenedor: Contenedor, abrirAvisos: Boolean = false, alAbrirAvis
                 },
                 alCapturar = { nav.navigate(Captura) },
                 alVerCasos = { nav.navigate(MisCasos) },
-                alVerLotes = { nav.navigate(Vacunas) },
+                alVerLotes = { registra -> nav.navigate(Vacunas(registra)) },
                 alVerAvisos = { nav.navigate(Avisos) },
                 alAbrirPerfil = { nav.navigate(MiPerfil) },
                 alConsultar = { nav.navigate(Consulta) },
+                alVerCasosServidor = { nav.navigate(CasosServidor) },
+                alVerCampanas = { nav.navigate(Campanas) },
             )
         }
         composable<Captura> {
@@ -138,8 +152,22 @@ fun Navegacion(contenedor: Contenedor, abrirAvisos: Boolean = false, alAbrirAvis
         composable<Consulta> {
             PantallaConsulta(viewModel { ConsultaViewModel(contenedor.apis, contenedor.catalogo) }, alVolver = { nav.popBackStack() })
         }
-        composable<Vacunas> {
-            PantallaVacunas(viewModel { VacunasViewModel(contenedor.apis, contenedor.catalogo) }, alVolver = { nav.popBackStack() })
+        composable<Vacunas> { entrada ->
+            val registra = entrada.toRoute<Vacunas>().registra
+            PantallaVacunas(
+                viewModel { VacunasViewModel(contenedor.apis, contenedor.catalogo, registra) },
+                alVolver = { nav.popBackStack() },
+            )
+        }
+        composable<CasosServidor> {
+            PantallaCasosServidor(
+                viewModel { CasosServidorViewModel(contenedor.apis) },
+                alVolver = { nav.popBackStack() },
+                alAbrir = { nav.navigate(Seguimiento(it)) },
+            )
+        }
+        composable<Campanas> {
+            PantallaCampanas(viewModel { CampanasViewModel(contenedor.apis) }, alVolver = { nav.popBackStack() })
         }
         composable<Avisos> {
             PantallaAvisos(viewModel { AvisosViewModel(contenedor.avisos) }, alVolver = { nav.popBackStack() })

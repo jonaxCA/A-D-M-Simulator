@@ -38,10 +38,11 @@ def test_una_sola_consulta_con_los_filtros_de_siempre(consulta):
     assert "current_date - 6" in sql and "current_date - 13" in sql
 
 
-def test_los_siete_indicadores_en_orden(consulta):
+def test_los_diez_indicadores_en_orden(consulta):
     assert [i["clave"] for i in definidos.calcular()] == [
         "casos_activos", "tasa_incidencia", "tasa_mortalidad", "letalidad", "casos_graves",
-        "zonas_en_riesgo", "simulaciones_activas"]
+        "prevalencia", "hospitalizaciones", "capacidad_utilizada", "zonas_en_riesgo",
+        "simulaciones_activas"]
 
 
 def test_tasa_de_incidencia_con_numerador_denominador_y_periodo(consulta):
@@ -92,3 +93,45 @@ def test_sin_casos_ni_poblacion_no_divide_entre_cero(consulta):
     assert ind["tasa_incidencia"]["variacion_pct"] is None
     assert ind["letalidad"]["valor"] is None
     assert (ind["casos_activos"]["valor"], ind["casos_activos"]["variacion_pct"]) == (0, 0.0)
+
+
+# ---- prevalencia, hospitalizaciones y capacidad utilizada (D57) ------------------------------
+
+FUENTE = {"documento": "DGIS, Recursos en Salud Sectorial", "url": "http://x", "licencia": "abierta",
+          "corte": "2025-12-31", "alcance": "Sector público", "sha256": "0" * 64}
+
+
+@pytest.fixture
+def camas(monkeypatch):
+    monkeypatch.setattr(definidos.capacidad, "camas_censables", lambda: (3000, dict(FUENTE)))
+
+
+def test_prevalencia_con_los_casos_de_dos_semanas(consulta, camas):
+    prevalencia = por_clave(consulta)["prevalencia"]
+    # 120 + 104 casos en 14 días por 100 000 habitantes.
+    assert (prevalencia["valor"], prevalencia["numerador"]["valor"]) == (3.9, 224)
+    assert prevalencia["periodo"] == {"desde": "2026-11-08", "hasta": "2026-11-21", "dias": 14}
+    assert "D57" in prevalencia["numerador"]["descripcion"] and prevalencia["fuente"] is None
+
+
+def test_hospitalizaciones_estimadas_y_capacidad_utilizada_con_su_fuente(consulta, camas):
+    ind = por_clave(consulta)
+    hospitalizaciones = ind["hospitalizaciones"]
+    assert (hospitalizaciones["valor"], hospitalizaciones["denominador"]) == (21, None)
+    assert "se supone hospitalizado" in hospitalizaciones["numerador"]["descripcion"]
+    capacidad = ind["capacidad_utilizada"]
+    # 12 + 9 graves de 14 días entre 3000 camas censables.
+    assert (capacidad["valor"], capacidad["factor"], capacidad["unidad"]) == (0.7, 100, "% de las camas censables")
+    assert capacidad["denominador"] == {"valor": 3000, "descripcion":
+                                        "Camas censables del sector público de Nuevo León al 2025-12-31 (DGIS)"}
+    assert capacidad["fuente"] == FUENTE and capacidad["periodo"]["dias"] == 14
+
+
+def test_sin_el_archivo_de_camas_la_capacidad_sale_sin_valor(consulta, monkeypatch):
+    monkeypatch.setattr(definidos.capacidad, "camas_censables", lambda: (None, None))
+    capacidad = por_clave(consulta)["capacidad_utilizada"]
+    assert (capacidad["valor"], capacidad["denominador"], capacidad["fuente"]) == (None, None, None)
+
+
+def test_los_demas_indicadores_no_traen_fuente_propia(consulta, camas):
+    assert {i["clave"] for i in definidos.calcular() if i["fuente"]} == {"capacidad_utilizada"}

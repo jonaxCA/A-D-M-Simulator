@@ -51,17 +51,28 @@ class InicioViewModel(
     val formularios: StateFlow<Int> = catalogo.formularios().map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    // RF-I19: la captura es solo del CAPTURISTA. Mientras no se sabe, se muestra: el servidor es
-    // quien niega a los demás roles, y un CAPTURISTA sin red no se queda sin capturar.
-    private val esCapturista = MutableStateFlow(true)
-    val capturista: StateFlow<Boolean> = esCapturista.asStateFlow()
+    // D56: lo que ofrece el inicio según el perfil. RF-I19: la captura es solo del CAPTURISTA;
+    // mientras no se saben los roles se queda su menú (menuDe(null)): el servidor es quien niega a
+    // los demás, y un CAPTURISTA sin red no se queda sin capturar.
+    private val menuActual = MutableStateFlow(menuDe(null))
+    val menu: StateFlow<Menu> = menuActual.asStateFlow()
+    val capturista: StateFlow<Boolean> = menuActual.map { it.captura }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    // Para quien revisa (EPIDEMIOLOGO, AUTORIDAD_SANITARIA, ADMINISTRADOR): los casos por validar de
+    // su alcance y las campañas activas. null sin red.
+    private val casosPorValidar = MutableStateFlow<Int?>(null)
+    val porValidar: StateFlow<Int?> = casosPorValidar.asStateFlow()
+    private val campanasEnCurso = MutableStateFlow<Int?>(null)
+    val campanasActivas: StateFlow<Int?> = campanasEnCurso.asStateFlow()
 
     init {
         programarEnvio()
         programarAvisos()
         viewModelScope.launch {
             try {
-                esCapturista.value = "CAPTURISTA" in sesion.roles()
+                menuActual.value = menuDe(sesion.roles())
+                contarPanel()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -90,14 +101,23 @@ class InicioViewModel(
                 // Se queda lo que se sabía.
             }
         }
-        viewModelScope.launch {
+        contarPanel()
+    }
+
+    // Lo que el panel de cada perfil cuenta en el servidor. Sin red, se queda lo que se sabía.
+    private fun contarPanel() {
+        val menu = menuActual.value
+        fun cuenta(destino: MutableStateFlow<Int?>, consulta: suspend () -> Int) = viewModelScope.launch {
             try {
-                if (esCapturista.value) casosIncompletos.value = apis.casos().incompletos().total
+                destino.value = consulta()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 // Se queda lo que se sabía.
             }
         }
+        if (menu.captura) cuenta(casosIncompletos) { apis.casos().incompletos().total }
+        if (menu.revisa) cuenta(casosPorValidar) { apis.casos().lista(estado = "pendiente", tamano = 1).total }
+        if (menu.revisa) cuenta(campanasEnCurso) { apis.vacunas().campanas(estado = "activa").total }
     }
 }

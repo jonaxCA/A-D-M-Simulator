@@ -40,6 +40,8 @@ Variables de entorno opcionales:
 | `EPIDEMIA_DIRECTORIO`    | `http://localhost:5262`  | URL de `estado-servicios`; en la nube, la de nginx (D25)   |
 | `EPIDEMIA_CONTRATOS`     | `docs/contratos` del repo | Carpeta con los XSD                                        |
 | `EPIDEMIA_TIEMPO_ESPERA` | `15`                     | Segundos máximos por petición                              |
+| `EPIDEMIA_DISPOSITIVO`   | sin definir              | `1` manda el identificador del equipo al iniciar sesión (D41), para despliegues con MFA o `DISPOSITIVO_OBLIGATORIO=1` |
+| `EPIDEMIA_CARPETA_LOCAL` | `~/.epidemia-escritorio` | Dónde se guarda el identificador del equipo                |
 
 Cuentas de la base de demostración (`docs/INSTALACION.md`):
 
@@ -54,6 +56,10 @@ corridas de inmediato.
 
 **Sesión**
 - Inicio de sesión con captcha contra `auth`.
+- Segundo paso para los perfiles críticos (D40): código TOTP o de respaldo (`mfa/verify`), y alta
+  con el código que emite un ADMINISTRADOR (`mfa/enroll` y `mfa/confirm`, que muestra una vez los
+  códigos de respaldo). Con `EPIDEMIA_DISPOSITIVO=1` manda un identificador estable del equipo
+  (D41).
 - Revisa el rol con `sesiones` (la sesión está en Redis) y `usuarios`.
 - Renueva el token una sola vez cuando el servidor responde `TOKEN_EXPIRADO`.
 - Si la sesión fue revocada o cerrada, vuelve al login.
@@ -82,7 +88,22 @@ corridas de inmediato.
 - Frontera sobre medianas contra el costo de `pareto`.
 - Curvas de casos activos con banda.
 - Exporta CSV (tabla y curvas) y PDF, e imprime.
+- Sube el PDF a `evidencias` (`POST /api/v1/reports?runs=…`, con `X-Content-SHA256`) y lo abre con
+  la URL firmada de 15 minutos (`/reports/{id}/url`) (RF-F17, D35). En local va al emulador del
+  bucket.
 - Siempre muestra el aviso del servidor de que no es una predicción.
+
+**Datos** (D6, D53)
+- Lista las versiones de los conjuntos observados de `importacion`, con su fuente, licencia, corte,
+  huella y puntos (`serie_observada.xsd`).
+- Verifica la calidad de un CSV, JSON o XML sin guardarlo (`/datasets/validate`) e importa la
+  versión siguiente de su clave (`POST /datasets`).
+
+**Proyectos** (D54, RF-D12, RF-D19)
+- Lista, crea, cambia (solo lo que cambió), archiva y restaura proyectos de `escenarios`
+  (`/projects`). La enfermedad y la región se bloquean cuando el proyecto tiene escenarios.
+- Mete y saca escenarios de la misma enfermedad y región (`PUT /scenarios/{id}/project`), y los
+  archiva o restaura (`/scenarios/{id}/archive` y `/restore`).
 
 **Además**
 - La barra de estado muestra la salud de los servicios, la cola y los avisos de
@@ -90,10 +111,10 @@ corridas de inmediato.
 - Bitácora local de actividad (`actividad.log` en la carpeta de datos de la app; su ruta se
   imprime al arrancar). Nunca guarda tokens ni contraseñas.
 
-Usa 17 servicios: `estado-servicios`, `auth`, `sesiones`, `usuarios`, `enfermedades`,
+Usa, entre otros, `estado-servicios`, `auth`, `sesiones`, `usuarios`, `enfermedades`,
 `regiones`, `tipos-intervencion`, `escenarios`, `intervenciones`, `validacion`, `aprobacion`,
-`escenarios-xml`, `corridas`, `resultados` (por medio de `comparacion`), `comparacion`, `pareto`
-y `notificaciones`.
+`escenarios-xml`, `corridas`, `resultados`, `comparacion`, `pareto`, `zonas`, `roles`,
+`notificaciones`, `evidencias` e `importacion`.
 
 ## Qué cambió respecto al Figma
 

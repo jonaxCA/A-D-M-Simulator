@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import psycopg2
 from flask import current_app, g, request
 
-from epidemia_comun import limites
+from epidemia_comun import alcance, limites
 from epidemia_comun.auditoria import log_audit
 from epidemia_comun.bd import get_conn
 from epidemia_comun.errores import ErrorAPI
@@ -24,7 +24,10 @@ log = logging.getLogger(__name__)
 # ADMINISTRADOR); cases.read = los cuatro roles. El monolito deja capturar a cualquier
 # usuario autenticado; aquí se aplica la matriz.
 ROLES_ESCRITURA = ("CAPTURISTA",)
-ROLES_LECTURA = ("CAPTURISTA", "EPIDEMIOLOGO", "ANALISTA", "ADMINISTRADOR")
+# D42: INVESTIGADOR y AUTORIDAD_SANITARIA leen (cases.read); la app los deja consultar (D56). El
+# alcance por región de cada cuenta (D43) acota lo que ve cualquiera de ellos.
+ROLES_LECTURA = ("CAPTURISTA", "EPIDEMIOLOGO", "ANALISTA", "ADMINISTRADOR", "INVESTIGADOR",
+                 "AUTORIDAD_SANITARIA")
 # Los formularios por enfermedad los arman quienes dan de alta enfermedades (D48, D1).
 ROLES_FORMULARIOS = ("EPIDEMIOLOGO", "ADMINISTRADOR")
 
@@ -450,6 +453,23 @@ def _avisa_rechazo(caso):
         log.warning("No se pudo avisar el caso %s: %s", caso["id"], exc)
 
 
+def _en_su_alcance(condiciones, params):
+    """D43: una cuenta con alcance por región solo ve los casos de sus municipios. Una nacional
+    no cambia la consulta."""
+    permitidas = alcance.regiones_permitidas()
+    if permitidas is not None:
+        condiciones.append("c.region_id = ANY(%s)")
+        params.append(sorted(permitidas))
+
+
+def _region_del_caso(case_id):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT region_id FROM cases WHERE id = %s", (case_id,))
+            fila = cur.fetchone()
+    return fila[0] if fila else None
+
+
 def historial(case_id):
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -602,6 +622,7 @@ def registrar(app):
         if hasta:
             condiciones.append("c.report_date <= %s")
             params.append(hasta)
+        _en_su_alcance(condiciones, params)
         donde = (" WHERE " + " AND ".join(condiciones)) if condiciones else ""
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -631,6 +652,7 @@ def registrar(app):
         if set(g.usuario.get("roles") or []) <= {"CAPTURISTA"}:
             condiciones.append("c.reported_by = %s")
             params.append(g.usuario["sub"])
+        _en_su_alcance(condiciones, params)
         donde = " WHERE " + " AND ".join(condiciones)
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -655,6 +677,7 @@ def registrar(app):
         if fila is None:
             raise ErrorAPI(404, "NO_ENCONTRADO", "No existe el caso.")
         caso = _a_caso(fila)
+        alcance.exige_region(caso["region_id"])
         return _con_version(responder(caso, "caso"), caso)
 
     # Corregir datos (D47): el EPIDEMIOLOGO cualquiera pendiente o validado; el CAPTURISTA los
@@ -737,4 +760,5 @@ def registrar(app):
     @app.get("/api/v1/cases/<int:case_id>/history")
     @requiere_token(roles=ROLES_LECTURA)
     def historial_de_caso(case_id):
+        alcance.exige_region_de(lambda: _region_del_caso(case_id))
         return responder(historial(case_id), "historial_caso")

@@ -12,8 +12,8 @@ Puerto externo: 5225; puerto interno en Docker: 8000. Contrato en
 | Método | Ruta | Roles | Qué hace |
 |--------|------|-------|----------|
 | POST | `/api/v1/vaccine-lots` | CAPTURISTA, ADMINISTRADOR | Cuerpo `{lot_code, disease_id, doses_total, manufacturer?, region_id?, expires_on?}`. Registra el lote (**201**); si ya estaba con los mismos datos, **200** con el que había |
-| GET | `/api/v1/vaccine-lots?lot_code=&disease_id=&region_id=&limit=50` | Los cuatro | Busca lotes, los más recientes primero |
-| GET | `/api/v1/vaccine-lots/{lote_id}` | Los cuatro | Un lote, con `doses_remaining` y `vencido` |
+| GET | `/api/v1/vaccine-lots?lot_code=&disease_id=&region_id=&limit=50` | Los seis perfiles (D42, D56) | Busca lotes, los más recientes primero |
+| GET | `/api/v1/vaccine-lots/{lote_id}` | Los seis perfiles | Un lote, con `doses_remaining` y `vencido` |
 | POST | `/api/v1/vaccine-lots/{lote_id}/doses` | CAPTURISTA, ADMINISTRADOR | Cuerpo `{doses}`. Descuenta las dosis aplicadas |
 
 El flujo en la app:
@@ -69,8 +69,8 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/jso
 
 | Ruta | Roles | Qué hace |
 |---|---|---|
-| `GET /api/v1/campaigns` | los cuatro | De la más reciente a la más vieja; filtros `status`, `disease_id`, `region_id` (las de ese municipio y las de todo el estado) y `limit` |
-| `GET /api/v1/campaigns/{id}` | los cuatro | Una campaña |
+| `GET /api/v1/campaigns` | los seis perfiles | De la más reciente a la más vieja; filtros `status`, `disease_id`, `region_id` (las de ese municipio y las de todo el estado) y `limit` |
+| `GET /api/v1/campaigns/{id}` | los seis perfiles | Una campaña |
 | `POST /api/v1/campaigns` | EPIDEMIOLOGO, ADMINISTRADOR | Crea una; los CAPTURISTA reciben un aviso `CAMPAIGN` |
 | `PUT /api/v1/campaigns/{id}` | EPIDEMIOLOGO, ADMINISTRADOR | La edita (se manda todo) |
 | `POST /api/v1/campaigns/{id}/cancel` | EPIDEMIOLOGO, ADMINISTRADOR | La cancela con `reason`; aviso `CAMPAIGN` |

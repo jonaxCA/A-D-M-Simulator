@@ -159,9 +159,9 @@ def test_editar_y_cancelar(cliente, epi, avisos, almacen):
     assert cliente.put("/api/v1/campaigns/1?format=json", json=CAMPANA, headers=epi).status_code == 409
 
 
-def test_lista_y_consulta_para_los_cuatro_roles(cliente, epi, token):
+def test_lista_y_consulta_para_los_seis_perfiles(cliente, epi, token):
     cliente.post("/api/v1/campaigns?format=json", json=CAMPANA, headers=epi)
-    for rol in ("CAPTURISTA", "ANALISTA", "ADMINISTRADOR"):
+    for rol in ("CAPTURISTA", "ANALISTA", "ADMINISTRADOR", "INVESTIGADOR", "AUTORIDAD_SANITARIA"):
         cabeceras = token(roles=(rol,))
         assert cliente.get("/api/v1/campaigns?format=json", headers=cabeceras).get_json()["total"] == 1
         assert cliente.get("/api/v1/campaigns/1?format=json", headers=cabeceras).status_code == 200
