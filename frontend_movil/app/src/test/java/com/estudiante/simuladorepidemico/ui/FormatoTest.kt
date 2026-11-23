@@ -38,4 +38,13 @@ class FormatoTest {
         assertEquals("Versión rechazada", nombreDeAviso("SCENARIO_REJECTED"))
         assertEquals("Aviso", nombreDeAviso("OTRO_TIPO"))
     }
+
+    @Test
+    fun los_avisos_de_las_migraciones_057_y_060_y_los_estados_del_caso() {
+        assertEquals("Caso descartado", nombreDeAviso("CASE_REJECTED"))
+        assertEquals("Campaña", nombreDeAviso("CAMPAIGN"))
+        assertEquals("Datos incompletos", nombreDeAviso("DATA_INCOMPLETE"))
+        assertEquals("Recibido, por validar", nombreDeEstado("pendiente"))
+        assertEquals("Validado", nombreDeEstado("validado"))
+    }
 }

@@ -30,12 +30,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.estudiante.simuladorepidemico.red.Perfil
+import com.estudiante.simuladorepidemico.ui.navegacion.conexion
 import com.estudiante.simuladorepidemico.ui.fechaYHora
 import com.estudiante.simuladorepidemico.ui.momento
 import com.estudiante.simuladorepidemico.ui.nombreDeRol
@@ -43,7 +46,10 @@ import com.estudiante.simuladorepidemico.ui.tema.TemaEpidemia
 
 @Composable
 fun PantallaPerfil(modelo: PerfilViewModel, alVolver: () -> Unit) {
+    val contexto = LocalContext.current
+    val enLinea by remember { conexion(contexto.applicationContext) }.collectAsStateWithLifecycle(initialValue = null)
     FichaPerfil(
+        enLinea = enLinea,
         estado = modelo.estado,
         alVolver = alVolver,
         alReintentar = modelo::cargar,
@@ -56,6 +62,7 @@ fun PantallaPerfil(modelo: PerfilViewModel, alVolver: () -> Unit) {
 @Composable
 fun FichaPerfil(
     estado: EstadoPerfil,
+    enLinea: Boolean? = null,
     alVolver: () -> Unit,
     alReintentar: () -> Unit,
     alRegistrarTelefono: () -> Unit,
@@ -104,6 +111,9 @@ fun FichaPerfil(
                 HorizontalDivider()
                 Dato("Correo", perfil.email ?: "Sin correo")
                 Dato(if (perfil.roles.size > 1) "Roles" else "Rol", perfil.roles.joinToString { nombreDeRol(it) })
+                Dato("Institución", perfil.institucion ?: "Sin institución asignada")
+                Dato("Región asignada", perfil.region ?: "Sin región asignada")
+                enLinea?.let { Dato("Conexión", if (it) "Con conexión" else "Sin conexión: los casos esperan en el teléfono") }
                 Dato("Último inicio de sesión", fechaYHora(perfil.ultimoAcceso) ?: "Sin registro")
                 estado.vence?.let {
                     Dato("La sesión vence", momento(it), "Después hay que volver a iniciar sesión.")

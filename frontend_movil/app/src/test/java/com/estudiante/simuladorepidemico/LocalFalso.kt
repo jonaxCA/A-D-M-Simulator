@@ -7,6 +7,7 @@ import com.estudiante.simuladorepidemico.local.ConteoFotos
 import com.estudiante.simuladorepidemico.local.Enfermedad
 import com.estudiante.simuladorepidemico.local.EstadoCaso
 import com.estudiante.simuladorepidemico.local.EstadoFoto
+import com.estudiante.simuladorepidemico.local.FormularioLocal
 import com.estudiante.simuladorepidemico.local.FotoLocal
 import com.estudiante.simuladorepidemico.local.FotoPorSubir
 import com.estudiante.simuladorepidemico.local.Fotos
@@ -58,8 +59,12 @@ class CasosDaoFalso : CasosDao() {
         it.copy(
             estado = EstadoCaso.ENVIADO, caseId = caseId, lote = null, error = null, inicioSintomas = null,
             edad = null, sexo = null, resultadoPrueba = null, severidad = null, latitud = null, longitud = null,
+            datos = null,
         )
     }
+
+    override suspend fun parecidos(cuenta: Long, enfermedad: Long, municipio: Long, fecha: String) =
+        filas.value.filter { it.cuenta == cuenta && it.enfermedad == enfermedad && it.municipio == municipio && it.fechaReporte == fecha }
 
     override suspend fun marcarRechazado(localUuid: String, error: String) =
         cambiar(localUuid) { it.copy(estado = EstadoCaso.RECHAZADO, error = error, lote = null) }
@@ -130,6 +135,11 @@ class CatalogoDaoFalso(
     override suspend fun borrarMunicipios() { listaMunicipios.value = emptyList() }
     override suspend fun insertarEnfermedades(lista: List<Enfermedad>) { listaEnfermedades.update { it + lista } }
     override suspend fun insertarMunicipios(lista: List<Municipio>) { listaMunicipios.update { it + lista } }
+
+    val listaFormularios = MutableStateFlow<List<FormularioLocal>>(emptyList())
+    override fun formularios(): Flow<List<FormularioLocal>> = listaFormularios
+    override suspend fun borrarFormularios() { listaFormularios.value = emptyList() }
+    override suspend fun insertarFormularios(lista: List<FormularioLocal>) { listaFormularios.update { it + lista } }
 }
 
 fun casoDePrueba(

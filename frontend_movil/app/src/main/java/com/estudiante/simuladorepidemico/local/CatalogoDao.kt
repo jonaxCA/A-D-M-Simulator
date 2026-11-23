@@ -15,6 +15,10 @@ data class Enfermedad(@PrimaryKey val id: Long, val nombre: String)
 @Entity(tableName = "municipios")
 data class Municipio(@PrimaryKey val id: Long, val nombre: String)
 
+// La versión vigente del formulario de una enfermedad (D48), como la manda casos.
+@Entity(tableName = "formularios")
+data class FormularioLocal(@PrimaryKey val enfermedad: Long, val id: Long, val json: String)
+
 @Dao
 abstract class CatalogoDao {
     @Query("SELECT * FROM enfermedades ORDER BY nombre COLLATE LOCALIZED")
@@ -22,6 +26,21 @@ abstract class CatalogoDao {
 
     @Query("SELECT * FROM municipios ORDER BY nombre COLLATE LOCALIZED")
     abstract fun municipios(): Flow<List<Municipio>>
+
+    @Query("SELECT * FROM formularios")
+    abstract fun formularios(): Flow<List<FormularioLocal>>
+
+    @Query("DELETE FROM formularios")
+    abstract suspend fun borrarFormularios()
+
+    @Insert
+    abstract suspend fun insertarFormularios(lista: List<FormularioLocal>)
+
+    @Transaction
+    open suspend fun reemplazarFormularios(lista: List<FormularioLocal>) {
+        borrarFormularios()
+        insertarFormularios(lista)
+    }
 
     @Query("DELETE FROM enfermedades")
     abstract suspend fun borrarEnfermedades()

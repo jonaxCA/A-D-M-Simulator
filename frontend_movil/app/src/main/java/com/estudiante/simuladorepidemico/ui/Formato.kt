@@ -22,7 +22,7 @@ private val ROLES = mapOf(
 
 fun nombreDeRol(codigo: String): String = ROLES[codigo] ?: codigo
 
-// Los tipos de aviso (CHECK de notifications, migraciones 003, 029 y 037).
+// Los tipos de aviso (CHECK de notifications, migraciones 003, 029, 037, 057 y 060).
 private val TIPOS_DE_AVISO = mapOf(
     "RUN_FINISHED" to "Corrida terminada",
     "RUN_FAILED" to "Corrida con error",
@@ -33,10 +33,23 @@ private val TIPOS_DE_AVISO = mapOf(
     "SCENARIO_SUBMITTED" to "Versión por revisar",
     "SCENARIO_REJECTED" to "Versión rechazada",
     "NEW_CASES" to "Casos nuevos",
+    "CASE_REJECTED" to "Caso descartado",
+    "CAMPAIGN" to "Campaña",
+    "DATA_INCOMPLETE" to "Datos incompletos",
     "SYSTEM" to "Aviso del sistema",
 )
 
 fun nombreDeAviso(tipo: String): String = TIPOS_DE_AVISO[tipo] ?: "Aviso"
+
+// Los estados de un caso en el servidor (D47). Solo el servidor dice si se validó o se descartó.
+private val ESTADOS_DE_CASO = mapOf(
+    "pendiente" to "Recibido, por validar",
+    "validado" to "Validado",
+    "descartado" to "Descartado",
+    "duplicado" to "Duplicado",
+)
+
+fun nombreDeEstado(estado: String): String = ESTADOS_DE_CASO[estado] ?: estado
 
 // Los valores que acepta casos (backend_web/queries.py), con su nombre.
 val SEXOS = listOf("F" to "Femenino", "M" to "Masculino", "O" to "Otro")
