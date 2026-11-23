@@ -4,7 +4,6 @@ from xml.etree import ElementTree as ET
 import psycopg2
 import pytest
 
-from backend_web import queries
 from epidemia_comun.errores import ErrorAPI
 from microservicios.enfermedades import datos as bd
 from microservicios.enfermedades import rutas
@@ -173,13 +172,7 @@ def definiciones(monkeypatch, base, bitacora):
 @pytest.fixture
 def cliente(crear_cliente, base, bitacora, definiciones, monkeypatch):
     pedidos = []
-    monkeypatch.setattr(queries, "get_enfermedades",
-                        lambda **f: pedidos.append(f) or LISTADO)
-    monkeypatch.setattr(queries, "get_enfermedad",
-                        lambda i: {"id": 1, "code": "SARS_COV_2_ANCESTRAL", "name": "COVID-19",
-                                   "description": None, "is_active": True,
-                                   "created_at": "2026-09-01T00:00:00",
-                                   "default_params": {}} if i == 1 else None)
+    monkeypatch.setattr(bd, "lista", lambda **f: pedidos.append(f) or LISTADO)
     c = crear_cliente("enfermedades")
     c.pedidos = pedidos
     return c
@@ -201,7 +194,7 @@ def test_lista_xml_por_omision(cliente):
 def test_lista_xml_valido_con_letalidad_por_edad(cliente, monkeypatch):
     con_edades = {**LISTADO["enfermedades"][0],
                   "parametros": {"informativos": [{"valor": {"0-19": 0.0001, "80+": 0.08}}]}}
-    monkeypatch.setattr(queries, "get_enfermedades", lambda **f: dict(LISTADO, enfermedades=[con_edades]))
+    monkeypatch.setattr(bd, "lista", lambda **f: dict(LISTADO, enfermedades=[con_edades]))
     respuesta = cliente.get("/api/v1/diseases")
     assert respuesta.status_code == 200
     raiz = ET.fromstring(respuesta.data)
@@ -466,3 +459,26 @@ def test_solo_epidemiologo_y_admin_escriben_definiciones(cliente, token):
     r = cliente.post("/api/v1/diseases/1/case-definitions?format=json", json=DEFINICION,
                      headers=token(roles=("ADMINISTRADOR",)))
     assert r.status_code == 201
+
+
+def test_la_lista_pagina_y_deriva_la_actividad(monkeypatch):
+    consultas = []
+    filas = [{"id": 1, "code": "SARS_COV_2_ANCESTRAL", "name": "COVID-19", "description": None,
+              "is_active": True, "created_at": "2026-09-01", "default_params": {}, "casos_total": 4,
+              "casos_30d": 0, "ultimo_caso": "2026-08-01", "total_filtrado": 12}]
+    monkeypatch.setattr(bd, "query", lambda sql, p=None, one=False: consultas.append((sql, p)) or filas)
+    lista = bd.lista(busqueda="covid", estado="activa", pagina=2, por_pagina=5)
+    (enfermedad,) = lista["enfermedades"]
+    assert enfermedad["actividad"] == "historico"
+    assert enfermedad["parametros"]["simulable"] is False
+    assert (lista["total"], lista["paginas"], lista["desde"], lista["hasta"]) == (12, 3, 6, 10)
+    sql, params = consultas[0]
+    assert "d.is_active" in sql and params == ("19", "%covid%", "%covid%", 5, 5)
+    assert [bd._actividad(t, d) for t, d in ((3, 1), (3, 0), (0, 0))] == ["con_casos", "historico", "sin_casos"]
+
+
+def test_valida_el_codigo_y_el_nombre():
+    from microservicios.enfermedades.reglas import valida_enfermedad
+    assert valida_enfermedad("DENGUE_2", "Dengue") == []
+    assert valida_enfermedad("", "") == ["El código es obligatorio.", "El nombre es obligatorio."]
+    assert len(valida_enfermedad("2X", "x" * 121)) == 2

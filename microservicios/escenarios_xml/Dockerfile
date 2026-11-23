@@ -1,4 +1,4 @@
-FROM epidemia/base
+FROM epidemia/base-vigilancia
 COPY microservicios/escenarios_xml/ /app/microservicios/escenarios_xml/
 # openapi.json y escenario.xsd (el servicio publica el XSD y valida contra él)
 COPY docs/contratos/escenarios-xml/ /app/docs/contratos/escenarios-xml/

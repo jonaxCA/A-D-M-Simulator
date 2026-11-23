@@ -6,26 +6,31 @@ Puerto del catálogo: **5234** (8000 dentro del contenedor). Contrato:
 
 ## Qué hace
 
-Revisa un escenario contra las reglas del monolito (`backend_web.queries.valida_escenario`,
-`valida_intervencion`) y el motor (`procesamiento.motor`) **sin guardar nada**. Por eso no
-escribe en la bitácora. Lee `diseases`, `regions`, `region_age_groups`, `intervention_types`,
-`scenarios` y `scenario_versions`.
+Revisa un escenario contra sus reglas (`reglas.py`: `valida_escenario`, `valida_version` y
+`revisa_version`, E8) y el motor (`procesamiento.motor`) **sin guardar nada**. Por eso no escribe en
+la bitácora. Las reglas de cada intervención son de `intervenciones`: se las pide por HTTP
+(`POST /api/v1/interventions/validate`, con el token de la persona) solo si el escenario trae
+intervenciones (D37). Lee `diseases`, `regions`, `region_age_groups`, `scenarios`,
+`scenario_versions` y `scenario_interventions`; `datos.escenario_detalle` es copia de solo lectura
+del de `escenarios`, y `test_copias_de_lectura.py` revisa que sigan iguales. Su imagen parte de
+`epidemia/base-simulacion`.
 
 ## Rutas
 
 | Ruta | Qué hace |
 |---|---|
-| `POST /api/v1/validate` | Valida el escenario del cuerpo (JSON o XML). |
+| `POST /api/v1/validate` | Valida el escenario del cuerpo (JSON o XML) y regresa el formulario normalizado en `datos`. |
+| `POST /api/v1/validate/version` | Valida una versión nueva de un escenario que ya existe (`scenario_id` y los campos de la versión), con su región y sus parámetros; escenarios la pide antes de crearla. |
 | `GET /api/v1/versions/{id}/validation` | Valida la versión guardada `{id}` (`revisa_version`) y da su `huella` (D55). |
 | `GET /health`, `/docs`, `/openapi.json` | Comunes a todos los servicios. |
 
-Roles de las dos rutas: `ANALISTA`, `EPIDEMIOLOGO`, `ADMINISTRADOR`. Se llama con el token de
+Roles de las tres rutas: `ANALISTA`, `EPIDEMIOLOGO`, `ADMINISTRADOR`. Se llama con el token de
 la persona (los servicios que consumen este reenvían el suyo con `llamar()`); no acepta tokens
 de servicio.
 
 ### Respuesta y códigos
 
-`{valido, errores[], avisos[]}` (la ruta de versión añade `version_id`, `scenario_id`,
+`{valido, errores[], avisos[], datos}` (la ruta de versión guardada cambia `datos` por `version_id`, `scenario_id`,
 `version_number`, `status` y `huella`: la SHA-256 de la entrada canónica del motor, la misma que
 guardará cada corrida en `scenario_checksum`; `aprobacion` firma con ella la versión que aprueba).
 `huella.py` lee las filas con una copia de `simulador/datos.version_para_motor`, y una prueba revisa
@@ -36,7 +41,7 @@ inexistente, 413 cuerpo mayor de 1 MiB, 415 `Content-Type` no soportado, 422 cue
 (no es objeto, un campo simple trae objeto/lista, `interventions` no es lista de objetos) o
 `version_id` no entero, 503 Redis/base caída.
 
-Los mensajes de `errores` y `avisos` están en español y son los de `backend_web` y el motor.
+Los mensajes de `errores` y `avisos` están en español: los de las reglas, los de `intervenciones` y los del motor. Si `intervenciones` no responde, la validación de un escenario con intervenciones es 503.
 
 ### Cuerpo de `POST /api/v1/validate`
 

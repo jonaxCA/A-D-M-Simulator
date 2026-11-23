@@ -2,7 +2,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from backend_web import queries
+from microservicios.regiones import datos as bd
 
 MONTERREY = {"id": 39, "code": "19039", "name": "Monterrey", "level": "municipio",
              "parent_region_id": 1, "population": 1142994, "population_60plus": 158771}
@@ -19,8 +19,8 @@ CATALOGO = {
 @pytest.fixture
 def cliente(crear_cliente, monkeypatch):
     pedidos = []
-    monkeypatch.setattr(queries, "get_regiones_catalogo", lambda **f: pedidos.append(f) or CATALOGO)
-    monkeypatch.setattr(queries, "get_region_municipio",
+    monkeypatch.setattr(bd, "catalogo", lambda **f: pedidos.append(f) or CATALOGO)
+    monkeypatch.setattr(bd, "municipio",
                         lambda i: dict(MONTERREY) if i == 39 else None)
     c = crear_cliente("regiones")
     c.pedidos = pedidos
@@ -142,7 +142,6 @@ def test_el_catalogo_publico_limita_por_ip(cliente, monkeypatch):
 
 # ---- jerarquía, jurisdicciones y búsqueda (D58) -------------------------------------------------
 
-from microservicios.regiones import datos as bd  # noqa: E402
 
 REGION_ESTADO = {"id": 1, "code": "19", "nombre": "Nuevo León", "nivel": "estado", "poblacion": 5784442, "padre_id": None}
 JURISDICCION = {"numero": 3, "nombre": "Jurisdicción Sanitaria No. 3",
@@ -203,3 +202,31 @@ def test_busqueda_sin_acentos_en_estado_municipios_y_jurisdicciones(cliente, mon
     assert cliente.get("/api/v1/regions/search?q=19021&format=json").get_json()["coincidencias"][0]["id"] == 21
     assert cliente.get("/api/v1/regions/search?q=x&format=json").status_code == 422
     assert ET.fromstring(cliente.get("/api/v1/regions/search?q=monte").data).tag == "busqueda_territorial"
+
+
+def test_el_catalogo_marca_los_ajustes_manuales_y_los_del_censo(monkeypatch):
+    consultas = []
+
+    def query(sql, params=None, one=False):
+        consultas.append((sql, params))
+        if "FROM regions r WHERE" in sql:
+            return [{"id": 39, "code": "19039", "name": "Monterrey", "population": 1142994,
+                     "population_60plus": 158771},
+                    {"id": 40, "code": "19040", "name": "Montemorelos", "population": 67428,
+                     "population_60plus": 9000}]
+        if "region_population_adjustments" in sql:
+            return [{"region_id": 40, "reason": "Conteo municipal", "adjusted_at": "2026-11-20",
+                     "full_name": "Ana"}]
+        return [{"entity_id": "39", "reason": "Corrección", "occurred_at": "2026-11-21", "full_name": "Ana"}]
+    monkeypatch.setattr(bd, "query", query)
+    catalogo = bd.catalogo(busqueda="mont", orden="poblacion", direccion="desc")
+    monterrey, montemorelos = catalogo["municipios"]
+    assert monterrey["fuente_poblacion"] == {"tipo": "censal", "fuente": "INEGI, Censo 2020"}
+    assert monterrey["fuente_poblacion_60"]["tipo"] == "manual"
+    assert montemorelos["fuente_poblacion"]["motivo"] == "Conteo municipal"
+    assert montemorelos["fuente_poblacion_60"] == {"tipo": "derivado", "fuente": bd.FUENTE_60}
+    assert (catalogo["orden"], catalogo["direccion"], catalogo["busqueda"]) == ("poblacion", "desc", "mont")
+    sql, params = consultas[0]
+    assert "ORDER BY r.population DESC" in sql and params == ("19", "%mont%", "%mont%")
+    # El orden poblacion_60 no está en la lista: cae a nombre, como en el monolito.
+    assert bd.catalogo(orden="poblacion_60")["orden"] == "nombre"

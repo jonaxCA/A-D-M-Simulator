@@ -31,9 +31,10 @@ docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
 1. Busca el servicio en el catálogo. Si lo que te piden no es la tarea de ese servicio, va
    en otro o es un cambio al catálogo: pregunta, no lo metas donde ya hay un servidor
    levantado.
-2. Busca la regla en su servicio dueño (tabla de dueños de E8, D37). Si todavía vive en
-   `backend_web`, múdala al dueño con sus pruebas; no la importes desde `backend_web` ni la
-   reescribas sin pruebas. `procesamiento/` sí se importa en `simulador` y `validacion`.
+2. Busca la regla en su servicio dueño (tabla de dueños de E8, D37). Ningún servicio importa
+   `backend_web`: una regla que solo esté ahí se muda al dueño con sus pruebas. `procesamiento/`
+   sí se importa donde se corre o se revisa contra el motor: los de simulación, `calibracion`,
+   `enfermedades`, `parametros` y `validacion` (D37).
 3. Si una regla hace falta en dos servicios, el que no es dueño la pide por HTTP. En
    `epidemia_comun` solo va lo técnico (D37).
 4. Si `epidemia_comun` todavía no tiene lo que necesitas, agrégalo ahí o avisa a quien
@@ -176,8 +177,8 @@ Están en `docs/decisiones/decisiones.md`; si algo de aquí choca con ese archiv
   contenedor, su rol, su contrato y sus pruebas.
 - **MongoDB (D28):** `historial_servicios` (el historial de `estado-servicios`, con TTL) y
   `series_corridas` (un documento por día de cada corrida). Contenedor en `infra/`, cliente en
-  `epidemia_comun` (`mongo.py` y `series_corridas.py`) y `mongodb` en el `/health` de quien lo
-  usa. Ver «MongoDB» en `comun/README.md`.
+  `epidemia_comun` (`mongo.py`); la serie la escribe `simulador/serie.py` y la lee
+  `resultados/serie.py` (D37), y `mongodb` va en el `/health` de quien lo usa. Ver «MongoDB» en `comun/README.md`.
 - **Cloud Storage (D30):** `evidencias` guarda los archivos en un bucket, con URLs firmadas para
   los privados; PostgreSQL guarda solo los metadatos.
 - **Límites de consumo (D31):** contador `ratelimit:<usuario>:<ruta>` en Redis, en

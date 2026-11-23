@@ -6,11 +6,13 @@ from xml.etree import ElementTree as ET
 import psycopg2
 import pytest
 
-from backend_web import queries
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import a_xml
 from microservicios.escenarios import datos as bd
 from microservicios.escenarios import rutas
+from microservicios.validacion import datos as validacion_datos
+from microservicios.validacion import reglas as validacion_reglas
+from microservicios.validacion import rutas as validacion_rutas
 
 RAIZ = Path(__file__).resolve().parents[3]
 CONTRATO = RAIZ / "docs/contratos/escenarios"
@@ -125,45 +127,47 @@ def base(monkeypatch):
 
 
 @pytest.fixture
-def mundo(monkeypatch, base):
+def mundo(monkeypatch, base, crear_cliente):
     espia = Espia()
     espia.base = base
-    monkeypatch.setattr(queries, "get_regiones_para_escenario", lambda: [REGION])
-    monkeypatch.setattr(queries, "get_enfermedades_para_escenario", lambda: [ENFERMEDAD])
-    monkeypatch.setattr(queries, "get_escenarios", lambda busqueda=None: [{
+    monkeypatch.setattr(bd, "enfermedad_activa", lambda i: i == ENFERMEDAD["id"])
+    monkeypatch.setattr(bd, "region_de_nl", lambda i: i == REGION["id"])
+    monkeypatch.setattr(bd, "lista", lambda busqueda=None: [{
         "id": 12, "name": "E", "description": None, "status": "borrador",
         "created_at": "2026-09-20T15:30:00+00:00", "enfermedad": "Influenza", "region": "Monterrey",
         "autor": "Ana", "version_number": 1, "version_status": "borrador", "population_size": 100,
         "horizon_days": 90, "initial_infected": 5, "por_edad": False,
         "population_by_age": None}])
     espia.detalle = detalle()
-    monkeypatch.setattr(queries, "get_escenario_detalle",
+    monkeypatch.setattr(bd, "escenario_detalle",
                         lambda sid, numero=None: espia.detalle if sid == 12 else None)
-    monkeypatch.setattr(queries, "get_versiones", lambda sid: [{
-        "version_number": 1, "status": "borrador", "is_current": True, "population_size": 100,
-        "horizon_days": 90, "initial_infected": 5, "notes": None,
-        "created_at": "2026-09-20T15:30:00+00:00", "por_edad": False, "autor": "Ana",
-        "n_intervenciones": 0}])
-    # El motor real se prueba en backend_web; aquí solo importa el cableado.
-    monkeypatch.setattr(queries, "validar_escenario", lambda esc: [])
-    monkeypatch.setattr(queries, "query", lambda sql, params=(), one=False: {"default_params": {}})
+    # validacion atiende en el mismo proceso, con su app real y su base simulada. El motor se prueba
+    # en validacion; aquí solo importa el cableado.
+    monkeypatch.setattr(validacion_datos, "regiones_para_escenario", lambda: [dict(REGION)])
+    monkeypatch.setattr(validacion_datos, "enfermedades_para_escenario", lambda: [dict(ENFERMEDAD)])
+    monkeypatch.setattr(validacion_datos, "parametros_de", lambda i: {})
+    monkeypatch.setattr(validacion_datos, "escenario_detalle",
+                        lambda sid, numero=None: espia.detalle if sid == 12 else None)
+    monkeypatch.setattr(validacion_reglas, "validar_escenario", lambda esc: [])
+    monkeypatch.setattr(validacion_rutas, "resolver", lambda esc: {"avisos": []})
+    validacion = crear_cliente("validacion")
 
     def crea(datos, *, contexto):
         espia.llamadas.append(("crea_escenario", datos, contexto))
         return espia.resultado_crea
     espia.resultado_crea = (True, None, 13)
-    monkeypatch.setattr(queries, "crea_escenario", crea)
+    monkeypatch.setattr(bd, "crea_escenario", crea)
 
     def crea_v(sid, datos, *, contexto):
         espia.llamadas.append(("crea_version", sid, datos, contexto))
         return True, None, 3
-    monkeypatch.setattr(queries, "crea_version", crea_v)
+    monkeypatch.setattr(bd, "crea_version", crea_v)
 
     def dup(sid, numero, nombre, *, contexto):
         espia.llamadas.append(("duplica", sid, numero, nombre, contexto))
         return espia.resultado_dup
     espia.resultado_dup = (True, None, 14)
-    monkeypatch.setattr(queries, "duplica_escenario", dup)
+    monkeypatch.setattr(bd, "duplica_escenario", dup)
 
     class Resp:
         status_code = 200
@@ -178,8 +182,16 @@ def mundo(monkeypatch, base):
         espia.llamadas.append(("llamar", servicio, metodo, ruta, cuerpo))
         if isinstance(espia.validacion, Exception):
             raise espia.validacion
-        return espia.validacion
-    espia.validacion = Resp({"valido": True, "errores": [], "avisos": []})
+        if espia.validacion is not None:
+            return espia.validacion
+        from flask import request
+        r = validacion.open(ruta, method=metodo, json=cuerpo,
+                            headers={"Authorization": request.headers["Authorization"],
+                                     "Accept": "application/json"})
+        respuesta = Resp(r.get_json())
+        respuesta.status_code = r.status_code
+        return respuesta
+    espia.validacion = None
     espia.Resp = Resp
     monkeypatch.setattr(rutas, "llamar", llamar)
     return espia
@@ -318,6 +330,7 @@ def test_validacion_caida_503(cliente, token, mundo):
 
 
 def test_validacion_con_500_es_503(cliente, token, mundo):
+    mundo.validacion = mundo.Resp({"detail": "falla"})
     mundo.validacion.status_code = 500
     r = cliente.post("/api/v1/scenarios?format=json", headers=token(), **con_json(ALTA))
     assert r.status_code == 503
@@ -331,7 +344,7 @@ def test_crear_nombre_repetido_409(cliente, token, mundo):
 
 
 def test_crea_escenario_real_audita_en_la_misma_transaccion(monkeypatch):
-    """El alta del monolito: escenario, versión 1 y bitácora en un solo cursor."""
+    """El alta: escenario, versión 1 y bitácora en un solo cursor."""
     eventos = []
 
     class Cur:
@@ -365,14 +378,14 @@ def test_crea_escenario_real_audita_en_la_misma_transaccion(monkeypatch):
         assert isinstance(cur, Cur)
         eventos.append(("audit", accion, tipo, entidad))
 
-    monkeypatch.setattr(queries, "get_conn", get_conn)
-    monkeypatch.setattr(queries, "log_audit", log_audit)
-    from backend_web.contexto import Contexto
+    monkeypatch.setattr(bd, "get_conn", get_conn)
+    monkeypatch.setattr(bd, "log_audit", log_audit)
+    from epidemia_comun.auditoria import Contexto
     datos = {"name": "x", "description": None, "disease_id": 3, "region_id": 5,
              "population_size": 10, "horizon_days": 5, "initial_infected": 1,
              "population_by_age": None, "population_age_unknown": 0,
              "age_unknown_policy": None, "notes": None}
-    assert queries.crea_escenario(datos, contexto=Contexto(7, None, "t")) == (True, None, 101)
+    assert bd.crea_escenario(datos, contexto=Contexto(7, None, "t")) == (True, None, 101)
     assert [e[0] for e in eventos] == ["sql", "sql", "audit", "commit"]
     assert eventos[2] == ("audit", "CREATE", "scenarios", 101)
 
@@ -415,7 +428,7 @@ def test_nueva_version_sin_comentario_422_y_404(cliente, token, mundo):
 
 
 def test_nueva_version_concurrente_409(cliente, token, mundo, monkeypatch):
-    monkeypatch.setattr(queries, "crea_version", lambda *a, **k: (
+    monkeypatch.setattr(bd, "crea_version", lambda *a, **k: (
         False, "Otra persona creó una versión al mismo tiempo. Recarga.", None))
     r = cliente.post("/api/v1/scenarios/12/versions?format=json", headers=token(), **con_json(VERSION_NUEVA))
     assert r.status_code == 409
@@ -699,8 +712,8 @@ def test_archivar_y_restaurar_un_escenario(cliente, token, mundo):
 
 
 def test_la_lista_oculta_los_archivados_y_el_detalle_no_es_editable(cliente, token, mundo, monkeypatch):
-    fila = queries.get_escenarios()[0]
-    monkeypatch.setattr(queries, "get_escenarios", lambda busqueda=None: [dict(fila, status="archivado")])
+    fila = bd.lista()[0]
+    monkeypatch.setattr(bd, "lista", lambda busqueda=None: [dict(fila, status="archivado")])
     assert cliente.get("/api/v1/scenarios?format=json", headers=token()).get_json()["total"] == 0
     r = cliente.get("/api/v1/scenarios?archived=true&format=json", headers=token())
     assert r.get_json()["total"] == 1

@@ -145,4 +145,41 @@
     </xs:complexType>
   </xs:element>
 
+  <!-- POST /api/v1/interventions/validate (E8): el dictamen de las intervenciones de un escenario
+       que todavía no se guarda, sin escribir nada. Lo pide validacion. Cada intervención válida
+       sale normalizada; errores trae una línea por falla, con el número de la intervención. -->
+  <xs:complexType name="IntervencionValidada">
+    <xs:all>
+      <xs:element name="intervention_type_id" type="Entero"/>
+      <xs:element name="code" type="xs:string"/>
+      <xs:element name="start_day" type="Entero"/>
+      <xs:element name="end_day" type="EnteroONulo"/>
+      <xs:element name="coverage" type="NumeroONulo"/>
+      <xs:element name="compliance" type="NumeroONulo"/>
+      <xs:element name="params" type="Parametros"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:element name="validacion_intervenciones">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="valido" type="Booleano"/>
+        <xs:element name="errores">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="item" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="intervenciones">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="intervencion" type="IntervencionValidada" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
 </xs:schema>

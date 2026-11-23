@@ -139,22 +139,6 @@ def get_motor_run(run_id):
     return fila["engine"] if fila else None
 
 
-def _sincroniza_lote(cur, run_ids):
-    if not run_ids:
-        return
-    cur.execute(
-        """
-        UPDATE simulation_batches b
-        SET status = r.status,
-            finished_at = CASE WHEN r.status IN ('completado', 'fallido', 'cancelado')
-                               THEN r.finished_at END
-        FROM simulation_runs r
-        WHERE r.id = ANY(%s) AND b.id = r.batch_id
-        """,
-        (list(run_ids),),
-    )
-
-
 def cancelar_run(run_id, *, contexto):
     with get_conn() as conn:
         try:
@@ -172,7 +156,6 @@ def cancelar_run(run_id, *, contexto):
                 if not cur.fetchone():
                     conn.rollback()
                     return False
-                _sincroniza_lote(cur, [run_id])
                 log_audit(contexto, "CANCEL", "simulation_run", entity_id=str(run_id),
                           data_before={"estado": "encolado"},
                           data_after={"estado": "cancelado"}, cur=cur)
@@ -202,7 +185,6 @@ def reintentar_run(run_id, *, contexto, puede_alta=False):
                 if not fila:
                     conn.rollback()
                     return None
-                _sincroniza_lote(cur, [run_id])
                 log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
                           data_before={"estado": "fallido"},
                           data_after={"estado": "encolado", "seed": fila[1],

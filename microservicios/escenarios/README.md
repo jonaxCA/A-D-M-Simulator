@@ -6,14 +6,15 @@ Puerto externo: 5231; puerto interno en Docker: 8000. Contrato:
 ## Qué hace
 
 Alta de escenarios, versiones nuevas, historial con responsables, duplicado, proyectos de
-investigación y archivado (D54). El alta, las versiones y el duplicado reutilizan las reglas de
-`backend_web/queries.py` (`valida_escenario`, `crea_escenario`, `valida_version`, `crea_version`,
-`duplica_escenario`, `get_escenarios`, `get_escenario_detalle`), que escriben y registran la
-bitácora en la misma transacción con el `Contexto` del token (E8 pendiente). Lo de D54 vive en
-`datos.py`, con su SQL y su bitácora en la misma transacción.
+investigación y archivado (D54). Todo vive en `datos.py` (E8): el alta, la versión siguiente y el
+duplicado escriben y registran la bitácora en la misma transacción con el `Contexto` del token.
+Revisar el escenario es de `validacion` (D37): antes de guardar un alta (`POST /api/v1/validate`) o
+una versión nueva (`POST /api/v1/validate/version`) le pide el dictamen, y guarda el formulario
+normalizado que regresa. Su imagen parte de `epidemia/base-vigilancia`, sin `backend_web` ni el
+motor.
 
 - **Alta**: escenario y versión 1 (borrador, vigente) en una sola transacción, después de
-  pasar por las reglas del monolito y por el servicio `validacion`.
+  pasar por el servicio `validacion`. Si `validacion` no responde, 503 y no se guarda nada.
 - **Versión siguiente**: nunca sobrescribe; copia las intervenciones de la vigente.
 - **Duplicado**: escenario nuevo de quien duplica, con una versión copiada. Se queda en el
   proyecto del original si sigue activo.

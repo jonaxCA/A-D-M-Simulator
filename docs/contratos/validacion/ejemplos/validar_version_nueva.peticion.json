@@ -1,0 +1,7 @@
+{
+  "scenario_id": 12,
+  "population_size": 1200000,
+  "horizon_days": 90,
+  "initial_infected": 20,
+  "notes": "Más días de horizonte"
+}

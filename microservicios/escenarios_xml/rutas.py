@@ -7,8 +7,8 @@ from defusedxml import ElementTree as XMLSeguro
 from defusedxml.common import DefusedXmlException
 from flask import Response, current_app, g, request
 
-from backend_web.audit import log_audit
-from backend_web.db import get_conn
+from epidemia_comun.auditoria import log_audit
+from epidemia_comun.bd import get_conn
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import a_json, a_xml, de_xml, formato_solicitado, responder
 from epidemia_comun.http import llamar

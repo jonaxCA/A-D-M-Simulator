@@ -41,29 +41,12 @@ def get_motor_run(run_id):
     return fila["engine"] if fila else None
 
 
-def _sincroniza_lote(cur, run_ids):
-    if not run_ids:
-        return
-    cur.execute(
-        """
-        UPDATE simulation_batches b
-        SET status = r.status,
-            finished_at = CASE WHEN r.status IN ('completado', 'fallido', 'cancelado')
-                               THEN r.finished_at END
-        FROM simulation_runs r
-        WHERE r.id = ANY(%s) AND b.id = r.batch_id
-        """,
-        (list(run_ids),),
-    )
-
-
 def _transiciona_run(sql, params):
     with get_conn() as conn:
         try:
             with conn.cursor() as cur:
                 cur.execute(sql, params)
                 ids = [fila[0] for fila in cur.fetchall()]
-                _sincroniza_lote(cur, ids)
             conn.commit()
         except Exception:
             conn.rollback()
@@ -113,7 +96,6 @@ def guardar_resultado_run(run_id, resultado):
                 if cur.rowcount != 1:
                     conn.rollback()
                     return False
-                _sincroniza_lote(cur, [run_id])
             conn.commit()
         except Exception:
             conn.rollback()
@@ -147,7 +129,6 @@ def reencola_corridas_interrumpidas(engine, engine_version, max_intentos=3):
                     (max_intentos, engine_version, engine))
                 filas = [dict(zip(("id", "requested_by", "seed", "attempts"), f))
                          for f in cur.fetchall()]
-                _sincroniza_lote(cur, [f["id"] for f in filas])
             conn.commit()
         except Exception:
             conn.rollback()
@@ -178,7 +159,6 @@ def marca_corridas_interrumpidas(mensaje, run_ids=None, estados=("encolado", "ej
             )
             filas = [{"id": i, "requested_by": u, "seed": s}
                      for i, u, s in cur.fetchall()]
-            _sincroniza_lote(cur, [f["id"] for f in filas])
         conn.commit()
     return filas
 
