@@ -22,6 +22,9 @@ plantilla (bloque A), y **Redis** (bloque K).
   Los catálogos los consulta el servicio con lo que pasa en `catalogos` (`get_enfermedad` y
   `get_region_municipio`), sin `backend_web` (E8). La usan `series` y `zonas`.
 
+- `archivos.guardar(objeto, datos, tipo)`, `leer(objeto)`, `borrar(objeto)`, `url_firmada(objeto,
+  minutos=15, nombre=None)` y `ping()`: los archivos en disco o en Cloud Storage (D30). Ver «Archivos».
+
 - `alcance.regiones_permitidas()`, `exige_region(region_id)` y `exige_region_de(obtener)`: el cliente
   técnico de `GET /api/v1/scopes/me` de `roles` (D43). `None` es una cuenta nacional; si no, el
   conjunto de regiones cubiertas. Pide el alcance en cada petición con el token de la persona y, si
@@ -47,9 +50,9 @@ comprobación) y `tiempo_ms` (el total). `mongodb` y `bucket` valen:
 Un servicio declara lo que usa con `crear_app(..., dependencias=("mongodb",))` o, sin tocar
 código, con la variable `DEPENDENCIAS=mongodb,bucket`. Hoy declaran MongoDB `simulador`,
 `resultados` y `estado-servicios`. Las comprobaciones viven en `salud.py`: MongoDB hace un `ping`
-con el cliente de `mongo.py` (ver «MongoDB» abajo); el bucket hace un GET a `BUCKET_HEALTH_URL`
-(o, si falta, a `BUCKET_URL`) y cuenta como vivo con cualquier respuesta menor a 500. Cuando el
-bloque D2 agregue su cliente, basta cambiar `_bucket` por un listado del bucket.
+con el cliente de `mongo.py` (ver «MongoDB» abajo); el bucket, con `archivos.ping()` (ver «Archivos»
+abajo): con `ARCHIVOS=gcs` lista un objeto de `BUCKET_NOMBRE` (lo que permite `storage.objectAdmin`); sin nombre es `no_configurado`. Hoy lo
+declara `evidencias`, con `DEPENDENCIAS=bucket` en el compose.
 
 ## Errores contados (RF-K12)
 
@@ -267,6 +270,46 @@ mongo.opcional("simulador: guardar la serie", lambda: serie.guardar(docs))
 # resultados: sin MongoDB, 503.
 serie = mongo.requerido("resultados: leer la serie", lambda: serie.leer(run_id))
 ```
+
+## Archivos (D30)
+
+`archivos.py` guarda los archivos en el bucket de Cloud Storage o en una carpeta, según `ARCHIVOS`, con
+la biblioteca oficial `google-cloud-storage`. Solo lo usa `evidencias` (regla 12 de
+`microservicios/AGENTS.md`); la base guarda la ruta del objeto y sus metadatos, nunca el archivo.
+
+| Variable | Para qué | Por omisión |
+|---|---|---|
+| `ARCHIVOS` | `gcs` (el bucket) o `disco` (una carpeta) | `disco` |
+| `BUCKET_NOMBRE` | El bucket, con `gcs` | — (`/health` dice `no_configurado`) |
+| `STORAGE_EMULATOR_HOST` | Con un valor, habla con el emulador (`http://bucket:4443` en el compose) en vez de GCP | vacía |
+| `BUCKET_URL_PUBLICA` | Con el emulador, el host de las URLs firmadas, para que las abra el navegador | el de `STORAGE_EMULATOR_HOST` |
+| `ARCHIVOS_DIR` | La carpeta, con `disco` | `/var/lib/epidemia/archivos` |
+
+| Función | Qué hace | Si falla |
+|---|---|---|
+| `guardar(objeto, datos, tipo)` | Sube los bytes con su `Content-Type`, sin reintentar a ciegas | `BucketNoDisponible` |
+| `leer(objeto)` | Los bytes | `FileNotFoundError` si no existe; `BucketNoDisponible` si el bucket no responde |
+| `borrar(objeto)` | Lo borra; si no existía, no pasa nada | `BucketNoDisponible` |
+| `url_firmada(objeto, minutos=15, nombre=None)` | `(url, vence)`: URL V4 de lectura que vence (RNF-D17), con `Content-Disposition: inline` si trae `nombre` | `BucketNoDisponible`; con `disco` siempre, porque una carpeta no firma |
+| `ping()` | Si el bucket responde (lista un objeto, 2 s) o si la carpeta se puede escribir | — |
+
+- **Firma.** En GCP no hay llaves en el `.env`: la biblioteca firma con signBlob de IAM usando la cuenta
+  de servicio de la máquina (necesita el alcance `cloud-platform` y el rol
+  `roles/iam.serviceAccountTokenCreator` sobre sí misma; los da `infra/crea_bucket.sh`). Con el
+  emulador, que no revisa firmas, firma un firmante falso con la misma forma de V4.
+- **Bucket caído.** `crear_app` convierte `BucketNoDisponible` en 503 `SERVICIO_NO_DISPONIBLE` con
+  `Retry-After: 5`, como MongoDB.
+- **Tiempo.** Cada operación espera hasta 10 s (`ESPERA`); `ping()`, 2 s.
+
+```python
+from epidemia_comun import archivos
+
+archivos.guardar("evidencias/418/3f9a.jpg", datos, "image/jpeg")
+url, vence = archivos.url_firmada("evidencias/418/3f9a.jpg", nombre="evidencia-12.jpg")
+```
+
+Sus pruebas están en `tests/test_archivos.py`. Contra un emulador de verdad:
+`EMULADOR_BUCKET_PRUEBAS=http://localhost:4443 python -m pytest microservicios/comun/tests/test_archivos.py`.
 
 ## Pruebas
 

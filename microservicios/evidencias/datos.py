@@ -1,21 +1,21 @@
 """
 Evidencias de los casos: la tabla case_attachments (migraciones 005 y 032).
 
-La escribe solo el microservicio evidencias. El archivo vive en una carpeta del
-servicio (un volumen de Docker), no en la base: aqui va su ruta, su tipo, su
-tamano y su huella. El tipo sale del contenido, no de lo que diga el cliente.
-Subir la misma foto otra vez al mismo caso regresa la que ya estaba, para que un
-reintento de la app no la duplique.
+La escribe solo este servicio (E8: antes vivía en backend_web). El archivo va al bucket
+(epidemia_comun.archivos, D30) y aquí su ruta, su tipo, su tamaño y su huella. El tipo sale
+del contenido, no de lo que diga el cliente. Subir la misma foto otra vez al mismo caso
+regresa la que ya estaba, para que un reintento de la app no la duplique.
 """
 import hashlib
 import logging
+import re
 import uuid
-from pathlib import Path
 
 import psycopg2.extras
 
-from .audit import log_audit
-from .db import get_conn, query
+from epidemia_comun import archivos
+from epidemia_comun.auditoria import log_audit
+from epidemia_comun.bd import get_conn, query
 
 log = logging.getLogger(__name__)
 
@@ -23,11 +23,12 @@ log = logging.getLogger(__name__)
 MAXIMO = 20 * 1024 * 1024
 EXTENSIONES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp",
                "application/pdf": ".pdf"}
+HUELLA = re.compile(r"^[0-9a-f]{64}$")
 _COLUMNAS = "id, case_id, mime_type, size_bytes, sha256, privacy, uploaded_by, uploaded_at"
 
 
 def tipo_por_contenido(datos):
-    """El tipo segun los primeros bytes, o None si no es uno de EXTENSIONES."""
+    """El tipo según los primeros bytes, o None si no es uno de EXTENSIONES."""
     if datos.startswith(b"\xff\xd8\xff"):
         return "image/jpeg"
     if datos.startswith(b"\x89PNG\r\n\x1a\n"):
@@ -39,20 +40,38 @@ def tipo_por_contenido(datos):
     return None
 
 
-def valida_archivo(datos):
-    """Lista de errores en espanol; vacia si se puede guardar."""
+def valida_archivo(datos, huella=None, tipos=tuple(EXTENSIONES)):
+    """Errores en español; vacía si se puede guardar. `huella` es la SHA-256 que declara el
+    cliente (RNF-C09): si viene, tiene que ser la del archivo."""
     if not datos:
         return ["El archivo llegó vacío."]
     if len(datos) > MAXIMO:
         return ["El archivo pasa de 20 MB."]
-    if tipo_por_contenido(datos) is None:
+    if tipo_por_contenido(datos) not in tipos:
+        if tipos == ("application/pdf",):
+            return ["Solo se acepta un PDF, enviado tal cual en el cuerpo de la petición "
+                    "(no como formulario)."]
         return ["Solo se aceptan fotos JPEG, PNG o WebP, o un PDF, enviados tal cual en el "
                 "cuerpo de la petición (no como formulario)."]
+    if huella is not None:
+        huella = huella.strip().lower()
+        if not HUELLA.match(huella):
+            return ["La huella debe ser la SHA-256 del archivo en 64 caracteres hexadecimales."]
+        if huella != hashlib.sha256(datos).hexdigest():
+            return ["El archivo no coincide con su huella: llegó incompleto o cambió en el camino."]
     return []
 
 
+def quita_del_bucket(objeto):
+    """Borra el objeto sin fallar: si el bucket no responde, queda huérfano y se avisa."""
+    try:
+        archivos.borrar(objeto)
+    except archivos.BucketNoDisponible:
+        log.warning("No se pudo borrar el objeto %s del bucket", objeto)
+
+
 def get_caso(case_id):
-    """El caso con quien lo reporto, o None si no existe."""
+    """El caso con quien lo reportó, o None si no existe."""
     fila = query("SELECT id, reported_by FROM cases WHERE id = %s", (case_id,), one=True)
     return dict(fila) if fila else None
 
@@ -62,25 +81,23 @@ def _bitacora(case_id, tipo, tamano, huella, ruta):
             "storage_path": ruta}
 
 
-def guardar_evidencia(case_id, datos, user_id, carpeta, *, contexto):
-    """Guarda el archivo en `carpeta` y su registro. Recibe datos que ya pasaron
+def guardar_evidencia(case_id, datos, user_id, *, contexto):
+    """Guarda el archivo en el bucket y su registro. Recibe datos que ya pasaron
     valida_archivo. Devuelve (evidencia, creada)."""
     huella = hashlib.sha256(datos).hexdigest()
     tipo = tipo_por_contenido(datos)
     with get_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             # Dos subidas de la misma foto al mismo caso se esperan una a la otra.
-            cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
-                        (f"evidencia:{case_id}:{huella}",))
+            cur.execute("SELECT pg_advisory_xact_lock(hashtextextended('evidencia ' || %s || ' ' || %s, 0))",
+                        (case_id, huella))
             cur.execute(f"SELECT {_COLUMNAS} FROM case_attachments WHERE case_id = %s AND sha256 = %s",
                         (case_id, huella))
             previa = cur.fetchone()
             if previa:
                 return dict(previa), False
-            ruta = f"evidence/{case_id}/{uuid.uuid4().hex}{EXTENSIONES[tipo]}"
-            destino = Path(carpeta) / ruta
-            destino.parent.mkdir(parents=True, exist_ok=True)
-            destino.write_bytes(datos)
+            ruta = f"evidencias/{case_id}/{uuid.uuid4().hex}{EXTENSIONES[tipo]}"
+            archivos.guardar(ruta, datos, tipo)
             try:
                 cur.execute(
                     f"""INSERT INTO case_attachments
@@ -93,8 +110,8 @@ def guardar_evidencia(case_id, datos, user_id, carpeta, *, contexto):
                           data_after=_bitacora(case_id, tipo, len(datos), huella, ruta), cur=cur)
                 conn.commit()
             except Exception:
-                # Sin registro, el archivo no lo encontraria nadie.
-                destino.unlink(missing_ok=True)
+                # Sin registro, el objeto no lo encontraría nadie.
+                quita_del_bucket(ruta)
                 raise
     return dict(fila), True
 
@@ -110,19 +127,19 @@ def get_evidencia(evidencia_id):
     return dict(fila) if fila else None
 
 
-def archivo_de_evidencia(evidencia_id, carpeta):
-    """(evidencia, ruta del archivo en `carpeta`), o (None, None) si no existe."""
+def objeto_de_evidencia(evidencia_id):
+    """(evidencia, ruta del objeto en el bucket), o (None, None) si no existe."""
     fila = query(f"SELECT {_COLUMNAS}, storage_path FROM case_attachments WHERE id = %s",
                  (evidencia_id,), one=True)
     if not fila:
         return None, None
     fila = dict(fila)
-    return fila, Path(carpeta) / fila.pop("storage_path")
+    return fila, fila.pop("storage_path")
 
 
-def borrar_evidencia(evidencia_id, carpeta, *, contexto):
-    """Borra el registro y despues el archivo. Devuelve la evidencia borrada, o None si
-    no existia."""
+def borrar_evidencia(evidencia_id, *, contexto):
+    """Borra el registro y después el objeto. Devuelve la evidencia borrada, o None si no
+    existía."""
     with get_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(f"DELETE FROM case_attachments WHERE id = %s RETURNING {_COLUMNAS}, storage_path",
@@ -136,9 +153,6 @@ def borrar_evidencia(evidencia_id, carpeta, *, contexto):
                       data_before=_bitacora(fila["case_id"], fila["mime_type"], fila["size_bytes"],
                                             fila["sha256"], ruta), cur=cur)
         conn.commit()
-    # Despues del commit: si fallara, el registro seguiria apuntando a un archivo borrado.
-    try:
-        (Path(carpeta) / ruta).unlink(missing_ok=True)
-    except OSError:
-        log.warning("No se pudo borrar el archivo %s de la evidencia %s", ruta, evidencia_id)
+    # Después del commit: si fallara antes, el registro apuntaría a un objeto borrado.
+    quita_del_bucket(ruta)
     return fila

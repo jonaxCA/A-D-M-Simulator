@@ -31,6 +31,9 @@ services:
   redis: *cloud-logging
   postgres: *cloud-logging
   mongodb: *cloud-logging
+  # El emulador del bucket no corre en la nube (docker-compose.gcs.yml lo deja en un perfil), pero
+  # sin ese archivo sí.
+  bucket: *cloud-logging
   nginx: *cloud-logging
   certbot: *cloud-logging
   # Los servicios, la consola y la web. test_compose_pruebas.py revisa que no falte ninguno del
