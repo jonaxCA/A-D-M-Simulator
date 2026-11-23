@@ -175,6 +175,36 @@ class ServidorFalso : Dispatcher() {
         )
     }
 
+    // casos (D47, D48, D49): un caso del servidor con su versión, los incompletos y los formularios.
+    // PATCH con otra versión en If-Match responde 412, como el servicio.
+    @Volatile var formularios = """{"total":0,"formularios":[]}"""
+    @Volatile var casoRemoto = """{"id":41,"reported_by":12,"disease_id":1,"enfermedad":"Dengue","region_id":10,"municipio":"Monterrey","age":34,"sex":"F","onset_date":null,"report_date":"2026-11-05","latitude":null,"longitude":null,"test_result":null,"severity":"leve","status":"pendiente","version":1,"status_reason":null}"""
+    @Volatile var versionRemota = 1
+    val correcciones = CopyOnWriteArrayList<RecordedRequest>()
+
+    private fun casos(pedido: RecordedRequest, ruta: String): MockResponse? = when {
+        ruta == "/api/v1/forms/current" -> respuesta(200, formularios)
+        ruta == "/api/v1/cases/incomplete" -> respuesta(
+            200, """{"casos":[${casoRemoto.dropLast(1)},"faltantes":["edad","ubicación"]}],"total":1}""",
+        )
+        ruta == "/api/v1/cases/41/history" -> respuesta(
+            200, """{"case_id":41,"version":$versionRemota,"cambios":[{"version":2,"action":"correccion","changed_by":12,"changed_at":"2026-11-06T09:00:00+00:00","status_before":"pendiente","status_after":"pendiente","changes":{"age":{"antes":33,"despues":34}},"reason":"Edad mal capturada","device_id":3}]}""",
+        )
+        ruta == "/api/v1/cases/41" && pedido.method == "PATCH" -> {
+            correcciones += pedido
+            if (pedido.getHeader("If-Match") != "\"$versionRemota\"") problema(412, "CONFLICTO")
+            else {
+                versionRemota++
+                respuesta(200, casoRemoto.replace("\"version\":1", "\"version\":$versionRemota"))
+            }
+        }
+        ruta == "/api/v1/cases/41" -> respuesta(200, casoRemoto.replace("\"version\":1", "\"version\":$versionRemota"))
+        ruta == "/api/v1/zones" -> respuesta(
+            200, """{"zonas":[{"id":10,"zona":"Monterrey","casos":549,"incidencia":114.1,"variacion":0.0,"graves":77,"estado":"estable"}],"total":1}""",
+        )
+        else -> null
+    }
+
     // Las subidas a evidencias: el case_id de la ruta y el pedido.
     fun subidas(): List<Pair<Long, RecordedRequest>> = pedidos.mapNotNull { pedido ->
         SUBIDA.matchEntire(pedido.path.orEmpty().substringBefore('?'))?.let { it.groupValues[1].toLong() to pedido }
@@ -257,6 +287,7 @@ class ServidorFalso : Dispatcher() {
         pedidos += request
         vacunas(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
         notificaciones(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
+        casos(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
         SUBIDA.matchEntire(request.path.orEmpty().substringBefore('?'))?.let { ruta ->
             return evidencia ?: respuesta(
                 201,
@@ -293,7 +324,7 @@ class ServidorFalso : Dispatcher() {
         val base = url.trimEnd('/')
         return listOf(
             "auth", "sesiones", "usuarios", "dispositivos", "sincronizacion", "enfermedades", "regiones", "evidencias",
-            "vacunas", "notificaciones",
+            "vacunas", "notificaciones", "casos", "zonas",
         ).joinToString(",", "{\"servicios\":[", "]}") {
             "{\"nombre\":\"$it\",\"dominio\":\"prueba\",\"puerto\":1,\"url\":\"$base\"}"
         }

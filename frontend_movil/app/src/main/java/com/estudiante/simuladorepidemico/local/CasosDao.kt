@@ -21,6 +21,11 @@ abstract class CasosDao {
     @Query("SELECT COUNT(*) FROM casos WHERE cuenta = :cuenta AND estado = 'PENDIENTE'")
     abstract fun porEnviar(cuenta: Long): Flow<Int>
 
+    // Control de calidad: los casos de la cuenta aún en el teléfono con la misma enfermedad, municipio
+    // y fecha. La edad y el sexo van cifrados: se comparan al leerlos.
+    @Query("SELECT * FROM casos WHERE cuenta = :cuenta AND enfermedad = :enfermedad AND municipio = :municipio AND fechaReporte = :fecha")
+    abstract suspend fun parecidos(cuenta: Long, enfermedad: Long, municipio: Long, fecha: String): List<CasoLocal>
+
     @Query("SELECT lote FROM casos WHERE cuenta = :cuenta AND lote IS NOT NULL LIMIT 1")
     abstract suspend fun loteAbierto(cuenta: Long): String?
 
@@ -39,7 +44,7 @@ abstract class CasosDao {
     @Query(
         """UPDATE casos SET estado = 'ENVIADO', caseId = :caseId, lote = NULL, error = NULL,
                inicioSintomas = NULL, edad = NULL, sexo = NULL, resultadoPrueba = NULL,
-               severidad = NULL, latitud = NULL, longitud = NULL
+               severidad = NULL, latitud = NULL, longitud = NULL, datos = NULL
            WHERE localUuid = :localUuid"""
     )
     abstract suspend fun marcarEnviado(localUuid: String, caseId: Long?)
