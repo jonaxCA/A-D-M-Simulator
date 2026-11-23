@@ -15,7 +15,7 @@ programan.
   ni Redis, y no importa `epidemia_comun`. Mientras tanto, nada de SQL nuevo en `backend_web`.
   Consulta escenarios y corridas y el epidemiólogo aprueba en ella; crear y editar escenarios,
   enviarlos a revisión y lanzar corridas es de la app de escritorio (D4).
-- **Microservicios:** 30 servicios Flask pequeños en `microservicios/`, cada uno en su
+- **Microservicios:** 31 servicios Flask pequeños en `microservicios/`, cada uno en su
   contenedor de Docker, con Redis y JWT. Son para las apps de escritorio (XML) y móvil
   (JSON). La móvil ya tiene código en `frontend_movil/`.
   - Antes de tocar esa carpeta, lee `microservicios/AGENTS.md`.
@@ -24,13 +24,15 @@ programan.
   su `AGENTS.md`.
 - **Motor:** el SEIR de referencia (`seir-ref`, antes `python-ref`; D2) y el modelo basado
   en agentes (D22): `abm-ref`, en Python (`procesamiento/abm/`), corre en el contenedor
-  `simulador-abm`. FLAME GPU 2 (D23) solo si sobra tiempo.
+  `simulador-abm`. FLAME GPU 2 (D23) solo si sobra tiempo. `seir-ref` se calibra con el
+  servicio `calibracion` (D50, `procesamiento/calibracion/`).
 - **Por implementar en este parcial:** MongoDB (D28), el volumen de datos (D29), Cloud Storage
   (D30), los límites de consumo (D31) y nginx con HTTPS (D25 y D26).
 
 ## Fuera de alcance
 
-Calibración (D24), IA predictiva, visualización 3D y un modelo económico sofisticado.
+Calibrar los modelos basados en agentes (D50), IA predictiva, visualización 3D y un modelo
+económico sofisticado.
 
 ## Reglas
 

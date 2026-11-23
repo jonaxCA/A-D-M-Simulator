@@ -26,6 +26,8 @@ Es la segunda mitad del proceso **P3** de [`procesos_v3.md`](../../arquitectura/
 | RF-F08 | Las curvas de varias versiones se ven juntas, cada una con su banda | La gráfica muestra la mediana y la banda de cada versión | 3.5 | Escritorio | Alta | Hecho |
 | RF-F09 | La comparación se exporta a CSV | Salen la tabla y las curvas | 3.6 | Escritorio | Alta | Hecho |
 | RF-F11 | La comparación se exporta a un reporte en PDF, o se imprime | El reporte trae la tabla, la frontera, las curvas y el aviso de que no es una predicción | 3.6 | Escritorio | Alta | Hecho |
+| RF-F13 | La curva simulada se encima con la serie observada (D50, reabierto) | `GET /api/v1/calibrations/{id}/fit` de `calibracion` da, por semana, lo observado, la mediana y la banda p5–p95 de la calibración y la ventana (calibración o validación) a la que pertenece | 3.5 | Microservicios, Escritorio | Media | Hecho (servicio, E7): falta que el escritorio lo dibuje (A4) |
+| RF-F14 | Error cuadrático y R² contra datos reales (D50, reabierto) | `/fit` y `/evaluate` dan RMSE, R² y la cobertura de la banda, por separado en la ventana de calibración y en la de validación | 3.5 | Microservicios, Escritorio | Media | Hecho (servicio, E7): falta que el escritorio lo muestre (A4) |
 | RF-F17 | El reporte se sube a Cloud Storage y se comparte con una URL firmada | PostgreSQL guarda los metadatos del reporte, en una tabla nueva. La exportación queda en la auditoría. La web abre el reporte con una URL que vence en minutos | 3.6, 3.7 | Escritorio, Microservicios, Web | Alta | En parte: el servicio está hecho (D2, 2026-11-22): `comparison_reports` (039), `POST /api/v1/reports` de `evidencias` y su URL firmada de 15 minutos, con `CREATE` en la auditoría. Falta que el escritorio lo suba (A) y que la web lo abra (C) |
 | RF-F19 | Toda pantalla de resultados muestra el aviso de que no es una predicción (`AVISO_SIMULACION`) | El aviso llega del servidor y se ve en la web, en el escritorio y en el reporte (RN-35) | 3.5 a 3.7 | Web, Escritorio, Microservicios | Alta | Hecho |
 | RF-F20 | Los conteos se entregan junto con el factor de escala: habitantes del censo entre agentes simulados (D6) | `resultados` responde el factor. La pantalla lo muestra | 3.5 | Microservicios, Escritorio | Media | Hecho: el escritorio lo muestra en el diálogo de escala (RF-H21) |
@@ -42,8 +44,6 @@ Es la segunda mitad del proceso **P3** de [`procesos_v3.md`](../../arquitectura/
 | RF-F03 | Resultados por municipio | Un escenario es de una sola región |
 | RF-F10 | Exportar las gráficas en PNG | Se cubre con el PDF (RF-F11) |
 | RF-F12 | Análisis de sensibilidad | Reabierto: `pareto` ofrece una sensibilidad exploratoria de un factor a la vez (D46); falta que el escritorio la muestre (A4) |
-| RF-F13 | Encimar la curva simulada con datos reales | La calibración queda fuera (D24): los resultados son escenarios, no pronósticos |
-| RF-F14 | Error cuadrático y R² contra datos reales | Igual que RF-F13 |
 | RF-F15 | Mapa de incidencia | Es el mapa de casos del tablero web (RF-G03) |
 | RF-F16 | Animar la evolución sobre el mapa | La visualización 3D y las animaciones quedan fuera |
 | RF-F18 | Marcar resultados como favoritos | Ningún proceso lo pide |

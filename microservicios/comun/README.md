@@ -1,6 +1,6 @@
 # epidemia_comun
 
-Código que repiten los 30 microservicios: formatos, errores, tokens, `/health` y la
+Código que repiten los 31 microservicios: formatos, errores, tokens, `/health` y la
 plantilla (bloque A), y **Redis** (bloque K).
 **No es todavía un despliegue ni una prueba de aceptación completa.**
 
@@ -223,7 +223,7 @@ se cambian con `LIMITE_<PERFIL>="peticiones/segundos"`.
 |---|---|---|
 | `normal` | 120 / 60 s | todos los servicios y `GET /auth/captcha` |
 | `permisivo` | 600 / 60 s | `casos`, `sincronizacion` |
-| `estricto` | 10 / 60 s | escrituras de `corridas` (las lecturas son `normal`) |
+| `estricto` | 10 / 60 s | escrituras de `corridas` y `calibracion` (las lecturas son `normal`) |
 | `publico` | 10 / 60 s | `POST /auth/login` |
 
 Detrás de nginx, `remote_addr` será la IP del proxy: habrá que leer `X-Forwarded-For` entonces.

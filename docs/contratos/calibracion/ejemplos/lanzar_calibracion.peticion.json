@@ -1,0 +1,8 @@
+{
+  "dataset_id": 1,
+  "engine": "seir-ref",
+  "samples": 5000,
+  "seeds": 3,
+  "quantile": 0.01,
+  "sampling_seed": 1
+}

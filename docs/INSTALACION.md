@@ -591,7 +591,7 @@ done
 # cada uno: {"servicio": "...", "estado": "ok", "postgresql": true, "redis": true}
 ```
 
-Con `estado-servicios` arriba, una sola consulta trae la salud de los 30 (los que no están
+Con `estado-servicios` arriba, una sola consulta trae la salud de los 31 (los que no están
 arriba salen `caido`), y su directorio da la URL de cada uno:
 
 ```bash
@@ -618,7 +618,7 @@ deja `format` vacío y elige `application/xml` en **Media type**; para JSON, `fo
 
 **La consola de pruebas** queda en `http://localhost:5260` (perfil `plataforma`). Ábrela con
 `localhost`, no con `127.0.0.1`: cada servicio abre CORS solo para `CONSOLE_ORIGIN`, que en el
-compose es `http://localhost:5260`. Tiene el panel de salud de los 30, el inicio de sesión
+compose es `http://localhost:5260`. Tiene el panel de salud de los 31, el inicio de sesión
 (con captcha), Swagger de cada servicio con el token ya puesto y un probador que también
 exporta la petición como `curl`. La pestaña **Recorrido** tiene los pasos del guion de
 aceptación listos para correr en orden. El token vive solo en la memoria de la página:

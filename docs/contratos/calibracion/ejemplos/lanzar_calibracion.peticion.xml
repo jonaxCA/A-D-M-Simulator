@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<solicitud><dataset_id tipo="numero">1</dataset_id><engine>seir-ref</engine><samples tipo="numero">5000</samples><seeds tipo="numero">3</seeds><quantile tipo="numero">0.01</quantile><sampling_seed tipo="numero">1</sampling_seed></solicitud>

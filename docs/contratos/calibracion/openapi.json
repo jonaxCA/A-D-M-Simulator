@@ -1,0 +1,1513 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - calibracion",
+    "version": "0.1.0",
+    "description": "Calibración de seir-ref contra una serie semanal observada (D50): ABC por rechazo sobre un hipercubo latino de (r0, rho, phi), con la pérdida Σ(log(1+o) − log(1+s))² en las primeras ⅔ de las semanas; el último ⅓ valida. La lógica está en procesamiento/calibracion/; la API registra y encola, y calibracion-trabajador corre y guarda el resultado en calibrations (062). XML por defecto (D9); JSON con ?format=json o Accept: application/json."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5246"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token del servicio auth, con sesión activa en Redis."
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/calibrations": {
+      "post": {
+        "summary": "Lanzar una calibración",
+        "operationId": "lanzar_calibracion",
+        "description": "Revisa el conjunto (semanal, de casos confirmados, con al menos 6 semanas), la enfermedad (simulable) y la región (con población por edad), registra la calibración «encolado» con RUN en la bitácora y la mete a queue:calibraciones. La corre calibracion-trabajador: 5 000 muestras con 3 semillas son unas 15 000 corridas de seir-ref, unos 4 minutos. Solo seir-ref (otro motor es 422). Tiene el límite de consumo de las corridas (D31). EPIDEMIOLOGO, ANALISTA y ADMINISTRADOR (calibrations.run, 062).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Encolada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 5,
+                  "dataset_id": 1,
+                  "engine": "seir-ref",
+                  "engine_version": "seir-ref-0.1",
+                  "method": "abc-rechazo",
+                  "method_version": "calibracion-0.1",
+                  "config": {
+                    "muestras": 5000,
+                    "semillas": 3,
+                    "cuantil": 0.01,
+                    "semilla_muestreo": 1
+                  },
+                  "status": "encolado"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "calibracion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<calibracion><id tipo=\"numero\">5</id><dataset_id tipo=\"numero\">1</dataset_id><engine>seir-ref</engine><engine_version>seir-ref-0.1</engine_version><method>abc-rechazo</method><method_version>calibracion-0.1</method_version><config><muestras tipo=\"numero\">5000</muestras><semillas tipo=\"numero\">3</semillas><cuantil tipo=\"numero\">0.01</cuantil><semilla_muestreo tipo=\"numero\">1</semilla_muestreo></config><status>encolado</status></calibracion>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no calibra o la región del conjunto está fuera de su alcance"
+          },
+          "404": {
+            "description": "No existe el conjunto de datos"
+          },
+          "422": {
+            "description": "Campos desconocidos, otro motor, topes fuera de rango (samples 100 a 10 000, seeds 1 a 5, quantile 0.001 a 0.2, al menos 10 aceptadas), o el conjunto no sirve para calibrar"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "dataset_id"
+                ],
+                "properties": {
+                  "dataset_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Conjunto observado (observed_datasets, 061)"
+                  },
+                  "engine": {
+                    "type": "string",
+                    "enum": [
+                      "seir-ref"
+                    ],
+                    "default": "seir-ref",
+                    "description": "Solo seir-ref por ahora (D50)"
+                  },
+                  "samples": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 10000,
+                    "default": 5000,
+                    "description": "Combinaciones del hipercubo latino"
+                  },
+                  "seeds": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "default": 3,
+                    "description": "Semillas por combinación: las de 1 a seeds, las mismas para todas (D8)"
+                  },
+                  "quantile": {
+                    "type": "number",
+                    "minimum": 0.001,
+                    "maximum": 0.2,
+                    "default": 0.01,
+                    "description": "Fracción de las combinaciones que se acepta; quantile × samples debe dar al menos 10"
+                  },
+                  "sampling_seed": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 1,
+                    "description": "Semilla del hipercubo"
+                  }
+                }
+              },
+              "example": {
+                "dataset_id": 1,
+                "engine": "seir-ref",
+                "samples": 5000,
+                "seeds": 3,
+                "quantile": 0.01,
+                "sampling_seed": 1
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "dataset_id"
+                ],
+                "properties": {
+                  "dataset_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Conjunto observado (observed_datasets, 061)"
+                  },
+                  "engine": {
+                    "type": "string",
+                    "enum": [
+                      "seir-ref"
+                    ],
+                    "default": "seir-ref",
+                    "description": "Solo seir-ref por ahora (D50)"
+                  },
+                  "samples": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 10000,
+                    "default": 5000,
+                    "description": "Combinaciones del hipercubo latino"
+                  },
+                  "seeds": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "default": 3,
+                    "description": "Semillas por combinación: las de 1 a seeds, las mismas para todas (D8)"
+                  },
+                  "quantile": {
+                    "type": "number",
+                    "minimum": 0.001,
+                    "maximum": 0.2,
+                    "default": 0.01,
+                    "description": "Fracción de las combinaciones que se acepta; quantile × samples debe dar al menos 10"
+                  },
+                  "sampling_seed": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 1,
+                    "description": "Semilla del hipercubo"
+                  }
+                },
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><dataset_id tipo=\"numero\">1</dataset_id><engine>seir-ref</engine><samples tipo=\"numero\">5000</samples><seeds tipo=\"numero\">3</seeds><quantile tipo=\"numero\">0.01</quantile><sampling_seed tipo=\"numero\">1</sampling_seed></solicitud>"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Listar calibraciones",
+        "operationId": "listar_calibraciones",
+        "description": "Las más recientes primero. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (simulations.read), con el alcance por región de la cuenta (D43). CAPTURISTA recibe 403.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "encolado",
+                "ejecutando",
+                "completado",
+                "fallido",
+                "cancelado"
+              ]
+            },
+            "description": "Solo las de ese estado."
+          },
+          {
+            "in": "query",
+            "name": "dataset",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Solo las de ese conjunto."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "description": "Cuántas, 20 por omisión."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 2,
+                  "calibraciones": [
+                    {
+                      "id": 4,
+                      "dataset_id": 1,
+                      "dataset_code": "COVID19_NL_2020_SINTOMAS",
+                      "dataset_version": 1,
+                      "region_id": 1,
+                      "engine": "seir-ref",
+                      "engine_version": "seir-ref-0.1",
+                      "status": "ejecutando",
+                      "progress": 35,
+                      "requested_by_username": "ana",
+                      "created_at": "2026-11-23T18:10:00+00:00",
+                      "finished_at": null
+                    },
+                    {
+                      "id": 3,
+                      "dataset_id": 1,
+                      "dataset_code": "COVID19_NL_2020_SINTOMAS",
+                      "dataset_version": 1,
+                      "region_id": 1,
+                      "engine": "seir-ref",
+                      "engine_version": "seir-ref-0.1",
+                      "status": "completado",
+                      "progress": 100,
+                      "requested_by_username": "ana",
+                      "created_at": "2026-11-23T18:00:00+00:00",
+                      "finished_at": "2026-11-23T18:03:32+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "calibraciones"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<calibraciones><total tipo=\"numero\">2</total><calibraciones><calibracion><id tipo=\"numero\">4</id><dataset_id tipo=\"numero\">1</dataset_id><dataset_code>COVID19_NL_2020_SINTOMAS</dataset_code><dataset_version tipo=\"numero\">1</dataset_version><region_id tipo=\"numero\">1</region_id><engine>seir-ref</engine><engine_version>seir-ref-0.1</engine_version><status>ejecutando</status><progress tipo=\"numero\">35</progress><requested_by_username>ana</requested_by_username><created_at>2026-11-23T18:10:00+00:00</created_at><finished_at nil=\"true\" /></calibracion><calibracion><id tipo=\"numero\">3</id><dataset_id tipo=\"numero\">1</dataset_id><dataset_code>COVID19_NL_2020_SINTOMAS</dataset_code><dataset_version tipo=\"numero\">1</dataset_version><region_id tipo=\"numero\">1</region_id><engine>seir-ref</engine><engine_version>seir-ref-0.1</engine_version><status>completado</status><progress tipo=\"numero\">100</progress><requested_by_username>ana</requested_by_username><created_at>2026-11-23T18:00:00+00:00</created_at><finished_at>2026-11-23T18:03:32+00:00</finished_at></calibracion></calibraciones></calibraciones>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no consulta calibraciones"
+          },
+          "422": {
+            "description": "Un filtro no es válido"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        }
+      }
+    },
+    "/api/v1/calibrations/state": {
+      "get": {
+        "summary": "Estado de calibración de cada motor",
+        "operationId": "estado_calibracion",
+        "description": "Lo mismo que GET /api/v1/pareto/calibration (D46), que se retira cuando el escritorio use esta ruta: el estado de cada versión de motor en procesamiento/estado_validacion.json. Nadie declara un modelo calibrado desde una ruta: es un PR revisado (D50). ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (simulations.read), con el alcance por región de la cuenta (D43). CAPTURISTA recibe 403.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "engine",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Una versión de motor (seir-ref-0.1, abm-ref-0.1, abm-gpu-0.1)."
+          },
+          {
+            "in": "query",
+            "name": "disease",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Enfermedad para la categoría."
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Región para la categoría."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+                  "disponible": true,
+                  "motores_calibrables": [
+                    "seir-ref"
+                  ],
+                  "modelos": [
+                    {
+                      "engine_version": "seir-ref-0.1",
+                      "estado": "sin_calibrar",
+                      "verificado": true,
+                      "calibrado": [],
+                      "validado": [],
+                      "categoria": "exploratoria",
+                      "motivo": "El modelo seir-ref-0.1 no está calibrado para esta enfermedad y región.",
+                      "texto": "Simulación exploratoria: sirve para comparar escenarios entre sí, no para anticipar cifras reales. El modelo no está calibrado ni validado con datos observados de esta enfermedad y región.",
+                      "evidencia": "docs/arquitectura/ficha_simulador.md §13 a §15; docs/pruebas/validacion/2026-11-19"
+                    }
+                  ],
+                  "nota": "Calibrar es de este servicio (D50). Declarar un modelo calibrado o validado sigue siendo un PR revisado, con su evidencia en la ficha del simulador (D39)."
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "estado_calibracion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<estado_calibracion><aviso>Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.</aviso><disponible tipo=\"booleano\">true</disponible><motores_calibrables><motor>seir-ref</motor></motores_calibrables><modelos><modelo><engine_version>seir-ref-0.1</engine_version><estado>sin_calibrar</estado><verificado tipo=\"booleano\">true</verificado><calibrado /><validado /><categoria>exploratoria</categoria><motivo>El modelo seir-ref-0.1 no está calibrado para esta enfermedad y región.</motivo><texto>Simulación exploratoria: sirve para comparar escenarios entre sí, no para anticipar cifras reales. El modelo no está calibrado ni validado con datos observados de esta enfermedad y región.</texto><evidencia>docs/arquitectura/ficha_simulador.md §13 a §15; docs/pruebas/validacion/2026-11-19</evidencia></modelo></modelos><nota>Calibrar es de este servicio (D50). Declarar un modelo calibrado o validado sigue siendo un PR revisado, con su evidencia en la ficha del simulador (D39).</nota></estado_calibracion>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no consulta calibraciones"
+          },
+          "422": {
+            "description": "engine no es una versión de motor"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        }
+      }
+    },
+    "/api/v1/calibrations/evaluate": {
+      "get": {
+        "summary": "Evaluar un juego de parámetros",
+        "operationId": "evaluar_parametros",
+        "description": "Síncrona y sin escribir nada: corre seir-ref con (r0, rho, phi) y las semillas 1 a 5 contra la serie, y regresa la pérdida en la ventana de calibración, la banda semanal (solo ruido entre semillas) y RMSE, R² y cobertura por ventana. Es «ajustar y comparar» del escritorio. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (simulations.read), con el alcance por región de la cuenta (D43). CAPTURISTA recibe 403.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dataset",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Conjunto observado."
+          },
+          {
+            "in": "query",
+            "name": "r0",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 5
+            },
+            "description": "R0 nominal, de 1 a 5."
+          },
+          {
+            "in": "query",
+            "name": "rho",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": 0.01,
+              "maximum": 1
+            },
+            "description": "Fracción de contagios que se reporta, de 0.01 a 1."
+          },
+          {
+            "in": "query",
+            "name": "phi",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "description": "Reducción de contactos de la Jornada, de 0 a 1."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "aviso": "Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.",
+                  "dataset_id": 1,
+                  "dataset_code": "COVID19_NL_2020_SINTOMAS",
+                  "dataset_version": 1,
+                  "motor": "seir-ref",
+                  "engine_version": "seir-ref-0.1",
+                  "parametros": {
+                    "r0": 2.59,
+                    "rho": 0.3,
+                    "phi": 0.37
+                  },
+                  "semillas": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "perdida": 3.523312421128164,
+                  "ventanas": {
+                    "calibracion": {
+                      "desde": "2020-03-01",
+                      "hasta": "2020-06-07",
+                      "semanas": 15
+                    },
+                    "validacion": {
+                      "desde": "2020-06-14",
+                      "hasta": "2020-07-26",
+                      "semanas": 7
+                    }
+                  },
+                  "semanas": [
+                    {
+                      "inicio": "2020-03-01",
+                      "observado": 7,
+                      "mediana": 9.299999999999999,
+                      "p5": 7.8,
+                      "p95": 10.499999999999998,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-03-08",
+                      "observado": 38,
+                      "mediana": 12.0,
+                      "p5": 9.0,
+                      "p95": 13.86,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-03-15",
+                      "observado": 40,
+                      "mediana": 13.799999999999999,
+                      "p5": 12.18,
+                      "p95": 25.919999999999998,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-03-22",
+                      "observado": 18,
+                      "mediana": 28.799999999999997,
+                      "p5": 25.62,
+                      "p95": 39.17999999999999,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-03-29",
+                      "observado": 39,
+                      "mediana": 39.3,
+                      "p5": 33.0,
+                      "p95": 57.66,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-04-05",
+                      "observado": 95,
+                      "mediana": 56.4,
+                      "p5": 47.879999999999995,
+                      "p95": 74.93999999999998,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-04-12",
+                      "observado": 61,
+                      "mediana": 65.7,
+                      "p5": 62.81999999999999,
+                      "p95": 102.35999999999999,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-04-19",
+                      "observado": 94,
+                      "mediana": 101.7,
+                      "p5": 96.11999999999999,
+                      "p95": 149.7,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-04-26",
+                      "observado": 167,
+                      "mediana": 149.1,
+                      "p5": 129.54,
+                      "p95": 216.9,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-05-03",
+                      "observado": 254,
+                      "mediana": 201.29999999999998,
+                      "p5": 180.84,
+                      "p95": 301.02,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-05-10",
+                      "observado": 319,
+                      "mediana": 282.9,
+                      "p5": 235.85999999999999,
+                      "p95": 401.21999999999997,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-05-17",
+                      "observado": 359,
+                      "mediana": 378.3,
+                      "p5": 330.05999999999995,
+                      "p95": 579.72,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-05-24",
+                      "observado": 472,
+                      "mediana": 529.5,
+                      "p5": 456.24,
+                      "p95": 792.42,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-05-31",
+                      "observado": 853,
+                      "mediana": 737.4,
+                      "p5": 603.4799999999999,
+                      "p95": 1083.12,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-06-07",
+                      "observado": 1560,
+                      "mediana": 1014.9,
+                      "p5": 866.04,
+                      "p95": 1457.4,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-06-14",
+                      "observado": 1661,
+                      "mediana": 1398.0,
+                      "p5": 1206.8999999999999,
+                      "p95": 2033.9399999999998,
+                      "ventana": "validacion"
+                    },
+                    {
+                      "inicio": "2020-06-21",
+                      "observado": 2072,
+                      "mediana": 1927.1999999999998,
+                      "p5": 1655.4,
+                      "p95": 2747.7,
+                      "ventana": "validacion"
+                    },
+                    {
+                      "inicio": "2020-06-28",
+                      "observado": 2876,
+                      "mediana": 2641.2,
+                      "p5": 2293.5,
+                      "p95": 3723.72,
+                      "ventana": "validacion"
+                    },
+                    {
+                      "inicio": "2020-07-05",
+                      "observado": 3295,
+                      "mediana": 3573.2999999999997,
+                      "p5": 3154.8599999999997,
+                      "p95": 5112.24,
+                      "ventana": "validacion"
+                    },
+                    {
+                      "inicio": "2020-07-12",
+                      "observado": 3234,
+                      "mediana": 4863.0,
+                      "p5": 4375.44,
+                      "p95": 6941.5199999999995,
+                      "ventana": "validacion"
+                    },
+                    {
+                      "inicio": "2020-07-19",
+                      "observado": 2684,
+                      "mediana": 6791.099999999999,
+                      "p5": 5936.16,
+                      "p95": 9517.74,
+                      "ventana": "validacion"
+                    },
+                    {
+                      "inicio": "2020-07-26",
+                      "observado": 2061,
+                      "mediana": 9134.4,
+                      "p5": 8046.599999999999,
+                      "p95": 12899.34,
+                      "ventana": "validacion"
+                    }
+                  ],
+                  "metricas": {
+                    "calibracion": {
+                      "semanas": 15,
+                      "rmse": 146.43151300181256,
+                      "r2": 0.8690918446246195,
+                      "cobertura": 0.4666666666666667
+                    },
+                    "validacion": {
+                      "semanas": 7,
+                      "rmse": 3157.250543024511,
+                      "r2": -28.014968505749966,
+                      "cobertura": 0.5714285714285714
+                    }
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "evaluacion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<evaluacion><aviso>Los resultados representan escenarios simulados basados en parametros y supuestos. No constituyen una prediccion epidemiologica ni una recomendacion sanitaria.</aviso><dataset_id tipo=\"numero\">1</dataset_id><dataset_code>COVID19_NL_2020_SINTOMAS</dataset_code><dataset_version tipo=\"numero\">1</dataset_version><motor>seir-ref</motor><engine_version>seir-ref-0.1</engine_version><parametros><r0 tipo=\"numero\">2.59</r0><rho tipo=\"numero\">0.3</rho><phi tipo=\"numero\">0.37</phi></parametros><semillas><semilla tipo=\"numero\">1</semilla><semilla tipo=\"numero\">2</semilla><semilla tipo=\"numero\">3</semilla><semilla tipo=\"numero\">4</semilla><semilla tipo=\"numero\">5</semilla></semillas><perdida tipo=\"numero\">3.523312421128164</perdida><ventanas><calibracion><desde>2020-03-01</desde><hasta>2020-06-07</hasta><semanas tipo=\"numero\">15</semanas></calibracion><validacion><desde>2020-06-14</desde><hasta>2020-07-26</hasta><semanas tipo=\"numero\">7</semanas></validacion></ventanas><semanas><semana><inicio>2020-03-01</inicio><observado tipo=\"numero\">7</observado><mediana tipo=\"numero\">9.299999999999999</mediana><p5 tipo=\"numero\">7.8</p5><p95 tipo=\"numero\">10.499999999999998</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-03-08</inicio><observado tipo=\"numero\">38</observado><mediana tipo=\"numero\">12.0</mediana><p5 tipo=\"numero\">9.0</p5><p95 tipo=\"numero\">13.86</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-03-15</inicio><observado tipo=\"numero\">40</observado><mediana tipo=\"numero\">13.799999999999999</mediana><p5 tipo=\"numero\">12.18</p5><p95 tipo=\"numero\">25.919999999999998</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-03-22</inicio><observado tipo=\"numero\">18</observado><mediana tipo=\"numero\">28.799999999999997</mediana><p5 tipo=\"numero\">25.62</p5><p95 tipo=\"numero\">39.17999999999999</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-03-29</inicio><observado tipo=\"numero\">39</observado><mediana tipo=\"numero\">39.3</mediana><p5 tipo=\"numero\">33.0</p5><p95 tipo=\"numero\">57.66</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-04-05</inicio><observado tipo=\"numero\">95</observado><mediana tipo=\"numero\">56.4</mediana><p5 tipo=\"numero\">47.879999999999995</p5><p95 tipo=\"numero\">74.93999999999998</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-04-12</inicio><observado tipo=\"numero\">61</observado><mediana tipo=\"numero\">65.7</mediana><p5 tipo=\"numero\">62.81999999999999</p5><p95 tipo=\"numero\">102.35999999999999</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-04-19</inicio><observado tipo=\"numero\">94</observado><mediana tipo=\"numero\">101.7</mediana><p5 tipo=\"numero\">96.11999999999999</p5><p95 tipo=\"numero\">149.7</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-04-26</inicio><observado tipo=\"numero\">167</observado><mediana tipo=\"numero\">149.1</mediana><p5 tipo=\"numero\">129.54</p5><p95 tipo=\"numero\">216.9</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-05-03</inicio><observado tipo=\"numero\">254</observado><mediana tipo=\"numero\">201.29999999999998</mediana><p5 tipo=\"numero\">180.84</p5><p95 tipo=\"numero\">301.02</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-05-10</inicio><observado tipo=\"numero\">319</observado><mediana tipo=\"numero\">282.9</mediana><p5 tipo=\"numero\">235.85999999999999</p5><p95 tipo=\"numero\">401.21999999999997</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-05-17</inicio><observado tipo=\"numero\">359</observado><mediana tipo=\"numero\">378.3</mediana><p5 tipo=\"numero\">330.05999999999995</p5><p95 tipo=\"numero\">579.72</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-05-24</inicio><observado tipo=\"numero\">472</observado><mediana tipo=\"numero\">529.5</mediana><p5 tipo=\"numero\">456.24</p5><p95 tipo=\"numero\">792.42</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-05-31</inicio><observado tipo=\"numero\">853</observado><mediana tipo=\"numero\">737.4</mediana><p5 tipo=\"numero\">603.4799999999999</p5><p95 tipo=\"numero\">1083.12</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-06-07</inicio><observado tipo=\"numero\">1560</observado><mediana tipo=\"numero\">1014.9</mediana><p5 tipo=\"numero\">866.04</p5><p95 tipo=\"numero\">1457.4</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-06-14</inicio><observado tipo=\"numero\">1661</observado><mediana tipo=\"numero\">1398.0</mediana><p5 tipo=\"numero\">1206.8999999999999</p5><p95 tipo=\"numero\">2033.9399999999998</p95><ventana>validacion</ventana></semana><semana><inicio>2020-06-21</inicio><observado tipo=\"numero\">2072</observado><mediana tipo=\"numero\">1927.1999999999998</mediana><p5 tipo=\"numero\">1655.4</p5><p95 tipo=\"numero\">2747.7</p95><ventana>validacion</ventana></semana><semana><inicio>2020-06-28</inicio><observado tipo=\"numero\">2876</observado><mediana tipo=\"numero\">2641.2</mediana><p5 tipo=\"numero\">2293.5</p5><p95 tipo=\"numero\">3723.72</p95><ventana>validacion</ventana></semana><semana><inicio>2020-07-05</inicio><observado tipo=\"numero\">3295</observado><mediana tipo=\"numero\">3573.2999999999997</mediana><p5 tipo=\"numero\">3154.8599999999997</p5><p95 tipo=\"numero\">5112.24</p95><ventana>validacion</ventana></semana><semana><inicio>2020-07-12</inicio><observado tipo=\"numero\">3234</observado><mediana tipo=\"numero\">4863.0</mediana><p5 tipo=\"numero\">4375.44</p5><p95 tipo=\"numero\">6941.5199999999995</p95><ventana>validacion</ventana></semana><semana><inicio>2020-07-19</inicio><observado tipo=\"numero\">2684</observado><mediana tipo=\"numero\">6791.099999999999</mediana><p5 tipo=\"numero\">5936.16</p5><p95 tipo=\"numero\">9517.74</p95><ventana>validacion</ventana></semana><semana><inicio>2020-07-26</inicio><observado tipo=\"numero\">2061</observado><mediana tipo=\"numero\">9134.4</mediana><p5 tipo=\"numero\">8046.599999999999</p5><p95 tipo=\"numero\">12899.34</p95><ventana>validacion</ventana></semana></semanas><metricas><calibracion><semanas tipo=\"numero\">15</semanas><rmse tipo=\"numero\">146.43151300181256</rmse><r2 tipo=\"numero\">0.8690918446246195</r2><cobertura tipo=\"numero\">0.4666666666666667</cobertura></calibracion><validacion><semanas tipo=\"numero\">7</semanas><rmse tipo=\"numero\">3157.250543024511</rmse><r2 tipo=\"numero\">-28.014968505749966</r2><cobertura tipo=\"numero\">0.5714285714285714</cobertura></validacion></metricas></evaluacion>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no consulta calibraciones o el conjunto está fuera de su alcance"
+          },
+          "404": {
+            "description": "No existe el conjunto de datos"
+          },
+          "422": {
+            "description": "Un parámetro falta o está fuera de su rango, o el conjunto no sirve para calibrar"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        }
+      }
+    },
+    "/api/v1/calibrations/{cal_id}": {
+      "get": {
+        "summary": "Consultar una calibración",
+        "operationId": "consultar_calibracion",
+        "description": "Estado, avance (el vivo, de Redis, si no ha terminado), intentos, configuración y versiones. Completada, también los parámetros estimados con su p5-p95, la pérdida, las métricas y las ventanas; la serie semana a semana está en /fit. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (simulations.read), con el alcance por región de la cuenta (D43). CAPTURISTA recibe 403.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cal_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "dataset_id": 1,
+                  "dataset_code": "COVID19_NL_2020_SINTOMAS",
+                  "dataset_version": 1,
+                  "disease_id": 1,
+                  "region_id": 1,
+                  "engine": "seir-ref",
+                  "engine_version": "seir-ref-0.1",
+                  "method": "abc-rechazo",
+                  "method_version": "calibracion-0.1",
+                  "config": {
+                    "muestras": 5000,
+                    "semillas": 3,
+                    "cuantil": 0.01,
+                    "semilla_muestreo": 1
+                  },
+                  "status": "completado",
+                  "terminal": true,
+                  "attempts": 1,
+                  "progress": 100,
+                  "error": null,
+                  "requested_by": 4,
+                  "requested_by_username": "ana",
+                  "created_at": "2026-11-23T18:00:00+00:00",
+                  "started_at": "2026-11-23T18:00:04+00:00",
+                  "finished_at": "2026-11-23T18:03:32+00:00",
+                  "estimados": [
+                    {
+                      "nombre": "r0",
+                      "mediana": 2.592482823371249,
+                      "p5": 2.285074056353612,
+                      "p95": 3.045981687519636,
+                      "minimo": 1.0,
+                      "maximo": 5.0
+                    },
+                    {
+                      "nombre": "rho",
+                      "mediana": 0.3009150548048638,
+                      "p5": 0.02289577768816817,
+                      "p95": 0.6563101886971606,
+                      "minimo": 0.01,
+                      "maximo": 1.0
+                    },
+                    {
+                      "nombre": "phi",
+                      "mediana": 0.37494538973685865,
+                      "p5": 0.11534932339982798,
+                      "p95": 0.6286971500994931,
+                      "minimo": 0.0,
+                      "maximo": 1.0
+                    }
+                  ],
+                  "perdida": {
+                    "minima": 2.2511524317564526,
+                    "umbral": 3.3191840452137824,
+                    "aceptadas": 50,
+                    "corridas": 15000
+                  },
+                  "metricas": {
+                    "calibracion": {
+                      "semanas": 15,
+                      "rmse": 136.4546064634776,
+                      "r2": 0.8863226328921892,
+                      "cobertura": 0.6
+                    },
+                    "validacion": {
+                      "semanas": 7,
+                      "rmse": 3041.0122739698027,
+                      "r2": -25.917849232924773,
+                      "cobertura": 0.7142857142857143
+                    }
+                  },
+                  "ventanas": {
+                    "calibracion": {
+                      "desde": "2020-03-01",
+                      "hasta": "2020-06-07",
+                      "semanas": 15
+                    },
+                    "validacion": {
+                      "desde": "2020-06-14",
+                      "hasta": "2020-07-26",
+                      "semanas": 7
+                    }
+                  },
+                  "huella_configuracion": "b05b32a0bea0317537b3f5b6adfa35d0f33004a5496027a13cb4a9d88916bbdc"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "calibracion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<calibracion><id tipo=\"numero\">3</id><dataset_id tipo=\"numero\">1</dataset_id><dataset_code>COVID19_NL_2020_SINTOMAS</dataset_code><dataset_version tipo=\"numero\">1</dataset_version><disease_id tipo=\"numero\">1</disease_id><region_id tipo=\"numero\">1</region_id><engine>seir-ref</engine><engine_version>seir-ref-0.1</engine_version><method>abc-rechazo</method><method_version>calibracion-0.1</method_version><config><muestras tipo=\"numero\">5000</muestras><semillas tipo=\"numero\">3</semillas><cuantil tipo=\"numero\">0.01</cuantil><semilla_muestreo tipo=\"numero\">1</semilla_muestreo></config><status>completado</status><terminal tipo=\"booleano\">true</terminal><attempts tipo=\"numero\">1</attempts><progress tipo=\"numero\">100</progress><error nil=\"true\" /><requested_by tipo=\"numero\">4</requested_by><requested_by_username>ana</requested_by_username><created_at>2026-11-23T18:00:00+00:00</created_at><started_at>2026-11-23T18:00:04+00:00</started_at><finished_at>2026-11-23T18:03:32+00:00</finished_at><estimados><parametro><nombre>r0</nombre><mediana tipo=\"numero\">2.592482823371249</mediana><p5 tipo=\"numero\">2.285074056353612</p5><p95 tipo=\"numero\">3.045981687519636</p95><minimo tipo=\"numero\">1.0</minimo><maximo tipo=\"numero\">5.0</maximo></parametro><parametro><nombre>rho</nombre><mediana tipo=\"numero\">0.3009150548048638</mediana><p5 tipo=\"numero\">0.02289577768816817</p5><p95 tipo=\"numero\">0.6563101886971606</p95><minimo tipo=\"numero\">0.01</minimo><maximo tipo=\"numero\">1.0</maximo></parametro><parametro><nombre>phi</nombre><mediana tipo=\"numero\">0.37494538973685865</mediana><p5 tipo=\"numero\">0.11534932339982798</p5><p95 tipo=\"numero\">0.6286971500994931</p95><minimo tipo=\"numero\">0.0</minimo><maximo tipo=\"numero\">1.0</maximo></parametro></estimados><perdida><minima tipo=\"numero\">2.2511524317564526</minima><umbral tipo=\"numero\">3.3191840452137824</umbral><aceptadas tipo=\"numero\">50</aceptadas><corridas tipo=\"numero\">15000</corridas></perdida><metricas><calibracion><semanas tipo=\"numero\">15</semanas><rmse tipo=\"numero\">136.4546064634776</rmse><r2 tipo=\"numero\">0.8863226328921892</r2><cobertura tipo=\"numero\">0.6</cobertura></calibracion><validacion><semanas tipo=\"numero\">7</semanas><rmse tipo=\"numero\">3041.0122739698027</rmse><r2 tipo=\"numero\">-25.917849232924773</r2><cobertura tipo=\"numero\">0.7142857142857143</cobertura></validacion></metricas><ventanas><calibracion><desde>2020-03-01</desde><hasta>2020-06-07</hasta><semanas tipo=\"numero\">15</semanas></calibracion><validacion><desde>2020-06-14</desde><hasta>2020-07-26</hasta><semanas tipo=\"numero\">7</semanas></validacion></ventanas><huella_configuracion>b05b32a0bea0317537b3f5b6adfa35d0f33004a5496027a13cb4a9d88916bbdc</huella_configuracion></calibracion>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no consulta calibraciones o la región está fuera de su alcance"
+          },
+          "404": {
+            "description": "No existe la calibración"
+          },
+          "422": {
+            "description": "El id no es un entero positivo"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        }
+      }
+    },
+    "/api/v1/calibrations/{cal_id}/cancel": {
+      "post": {
+        "summary": "Cancelar una calibración",
+        "operationId": "cancelar_calibracion",
+        "description": "Una «encolado» o «ejecutando» pasa a «cancelado», con CANCEL en la bitácora; el trabajador la deja de correr en segundos. EPIDEMIOLOGO, ANALISTA y ADMINISTRADOR (calibrations.run, 062).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cal_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 4,
+                  "status": "cancelado"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "calibracion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<calibracion><id tipo=\"numero\">4</id><status>cancelado</status></calibracion>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no calibra o la región está fuera de su alcance"
+          },
+          "404": {
+            "description": "No existe la calibración"
+          },
+          "409": {
+            "description": "Ya terminó, falló o estaba cancelada"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        }
+      }
+    },
+    "/api/v1/calibrations/{cal_id}/fit": {
+      "get": {
+        "summary": "Ajuste de una calibración",
+        "operationId": "ajuste_calibracion",
+        "description": "Por semana: lo observado, la mediana y el p5-p95 de las 150 trayectorias aceptadas (50 combinaciones con 3 semillas), y la ventana a la que pertenece; RMSE, R² y cobertura en la ventana de calibración y en la de validación (RF-F13, RF-F14). ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (simulations.read), con el alcance por región de la cuenta (D43). CAPTURISTA recibe 403.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cal_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "calibration_id": 3,
+                  "dataset_id": 1,
+                  "dataset_code": "COVID19_NL_2020_SINTOMAS",
+                  "dataset_version": 1,
+                  "engine_version": "seir-ref-0.1",
+                  "ventanas": {
+                    "calibracion": {
+                      "desde": "2020-03-01",
+                      "hasta": "2020-06-07",
+                      "semanas": 15
+                    },
+                    "validacion": {
+                      "desde": "2020-06-14",
+                      "hasta": "2020-07-26",
+                      "semanas": 7
+                    }
+                  },
+                  "estimados": [
+                    {
+                      "nombre": "r0",
+                      "mediana": 2.592482823371249,
+                      "p5": 2.285074056353612,
+                      "p95": 3.045981687519636,
+                      "minimo": 1.0,
+                      "maximo": 5.0
+                    },
+                    {
+                      "nombre": "rho",
+                      "mediana": 0.3009150548048638,
+                      "p5": 0.02289577768816817,
+                      "p95": 0.6563101886971606,
+                      "minimo": 0.01,
+                      "maximo": 1.0
+                    },
+                    {
+                      "nombre": "phi",
+                      "mediana": 0.37494538973685865,
+                      "p5": 0.11534932339982798,
+                      "p95": 0.6286971500994931,
+                      "minimo": 0.0,
+                      "maximo": 1.0
+                    }
+                  ],
+                  "metricas": {
+                    "calibracion": {
+                      "semanas": 15,
+                      "rmse": 136.4546064634776,
+                      "r2": 0.8863226328921892,
+                      "cobertura": 0.6
+                    },
+                    "validacion": {
+                      "semanas": 7,
+                      "rmse": 3041.0122739698027,
+                      "r2": -25.917849232924773,
+                      "cobertura": 0.7142857142857143
+                    }
+                  },
+                  "semanas": [
+                    {
+                      "inicio": "2020-03-01",
+                      "observado": 7,
+                      "mediana": 8.979480195016937,
+                      "p5": 8.080774878584586,
+                      "p95": 9.887959954622573,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-03-08",
+                      "observado": 38,
+                      "mediana": 13.678593910984574,
+                      "p5": 10.190753131026474,
+                      "p95": 18.772265907736934,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-03-15",
+                      "observado": 40,
+                      "mediana": 22.120121653614063,
+                      "p5": 15.58890157805886,
+                      "p95": 29.549287292782704,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-03-22",
+                      "observado": 18,
+                      "mediana": 35.98742794051469,
+                      "p5": 23.245415438901833,
+                      "p95": 53.80513560268091,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-03-29",
+                      "observado": 39,
+                      "mediana": 46.503157604745695,
+                      "p5": 31.925682305989472,
+                      "p95": 66.70750266834672,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-04-05",
+                      "observado": 95,
+                      "mediana": 62.600625992752725,
+                      "p5": 46.270204069529655,
+                      "p95": 86.23846976698049,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-04-12",
+                      "observado": 61,
+                      "mediana": 86.6182525564335,
+                      "p5": 63.63734511778956,
+                      "p95": 122.40426930882464,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-04-19",
+                      "observado": 94,
+                      "mediana": 119.29195438314176,
+                      "p5": 90.44773139219173,
+                      "p95": 158.53938960932996,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-04-26",
+                      "observado": 167,
+                      "mediana": 163.43577045351083,
+                      "p5": 124.38584330711936,
+                      "p95": 221.2873739188532,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-05-03",
+                      "observado": 254,
+                      "mediana": 225.08617521392745,
+                      "p5": 170.71606808176847,
+                      "p95": 308.1869631334819,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-05-10",
+                      "observado": 319,
+                      "mediana": 308.2227691619846,
+                      "p5": 237.60735290221885,
+                      "p95": 425.9935723856189,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-05-17",
+                      "observado": 359,
+                      "mediana": 418.8233267135194,
+                      "p5": 316.4435442854945,
+                      "p95": 583.7234273849111,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-05-24",
+                      "observado": 472,
+                      "mediana": 564.8464211165718,
+                      "p5": 428.77630239291045,
+                      "p95": 817.1106296202207,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-05-31",
+                      "observado": 853,
+                      "mediana": 770.0459957111866,
+                      "p5": 567.4450370875827,
+                      "p95": 1166.8465869414492,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-06-07",
+                      "observado": 1560,
+                      "mediana": 1054.4194464430495,
+                      "p5": 756.9772503606388,
+                      "p95": 1634.8921179472866,
+                      "ventana": "calibracion"
+                    },
+                    {
+                      "inicio": "2020-06-14",
+                      "observado": 1661,
+                      "mediana": 1417.4979359667263,
+                      "p5": 1036.6072131323128,
+                      "p95": 2312.0347063282634,
+                      "ventana": "validacion"
+                    },
+                    {
+                      "inicio": "2020-06-21",
+                      "observado": 2072,
+                      "mediana": 1968.5816163208292,
+                      "p5": 1358.1213907801798,
+                      "p95": 3228.973430187753,
+                      "ventana": "validacion"
+                    },
+                    {
+                      "inicio": "2020-06-28",
+                      "observado": 2876,
+                      "mediana": 2672.011420774553,
+                      "p5": 1803.8694286201326,
+                      "p95": 4551.472606601871,
+                      "ventana": "validacion"
+                    },
+                    {
+                      "inicio": "2020-07-05",
+                      "observado": 3295,
+                      "mediana": 3649.863969088471,
+                      "p5": 2305.1147284774543,
+                      "p95": 6363.570088524014,
+                      "ventana": "validacion"
+                    },
+                    {
+                      "inicio": "2020-07-12",
+                      "observado": 3234,
+                      "mediana": 4870.236812357818,
+                      "p5": 2900.566207534478,
+                      "p95": 8925.50980051112,
+                      "ventana": "validacion"
+                    },
+                    {
+                      "inicio": "2020-07-19",
+                      "observado": 2684,
+                      "mediana": 6668.833716804384,
+                      "p5": 3683.67358932893,
+                      "p95": 12455.080346045985,
+                      "ventana": "validacion"
+                    },
+                    {
+                      "inicio": "2020-07-26",
+                      "observado": 2061,
+                      "mediana": 8838.9488418006,
+                      "p5": 4483.376453591008,
+                      "p95": 17423.138674451988,
+                      "ventana": "validacion"
+                    }
+                  ],
+                  "nota": "La banda p5-p95 junta la incertidumbre de los parámetros (las combinaciones aceptadas) y el ruido entre semillas. La banda de una corrida (/band) solo tiene el ruido entre semillas."
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "ajuste"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<ajuste><calibration_id tipo=\"numero\">3</calibration_id><dataset_id tipo=\"numero\">1</dataset_id><dataset_code>COVID19_NL_2020_SINTOMAS</dataset_code><dataset_version tipo=\"numero\">1</dataset_version><engine_version>seir-ref-0.1</engine_version><ventanas><calibracion><desde>2020-03-01</desde><hasta>2020-06-07</hasta><semanas tipo=\"numero\">15</semanas></calibracion><validacion><desde>2020-06-14</desde><hasta>2020-07-26</hasta><semanas tipo=\"numero\">7</semanas></validacion></ventanas><estimados><parametro><nombre>r0</nombre><mediana tipo=\"numero\">2.592482823371249</mediana><p5 tipo=\"numero\">2.285074056353612</p5><p95 tipo=\"numero\">3.045981687519636</p95><minimo tipo=\"numero\">1.0</minimo><maximo tipo=\"numero\">5.0</maximo></parametro><parametro><nombre>rho</nombre><mediana tipo=\"numero\">0.3009150548048638</mediana><p5 tipo=\"numero\">0.02289577768816817</p5><p95 tipo=\"numero\">0.6563101886971606</p95><minimo tipo=\"numero\">0.01</minimo><maximo tipo=\"numero\">1.0</maximo></parametro><parametro><nombre>phi</nombre><mediana tipo=\"numero\">0.37494538973685865</mediana><p5 tipo=\"numero\">0.11534932339982798</p5><p95 tipo=\"numero\">0.6286971500994931</p95><minimo tipo=\"numero\">0.0</minimo><maximo tipo=\"numero\">1.0</maximo></parametro></estimados><metricas><calibracion><semanas tipo=\"numero\">15</semanas><rmse tipo=\"numero\">136.4546064634776</rmse><r2 tipo=\"numero\">0.8863226328921892</r2><cobertura tipo=\"numero\">0.6</cobertura></calibracion><validacion><semanas tipo=\"numero\">7</semanas><rmse tipo=\"numero\">3041.0122739698027</rmse><r2 tipo=\"numero\">-25.917849232924773</r2><cobertura tipo=\"numero\">0.7142857142857143</cobertura></validacion></metricas><semanas><semana><inicio>2020-03-01</inicio><observado tipo=\"numero\">7</observado><mediana tipo=\"numero\">8.979480195016937</mediana><p5 tipo=\"numero\">8.080774878584586</p5><p95 tipo=\"numero\">9.887959954622573</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-03-08</inicio><observado tipo=\"numero\">38</observado><mediana tipo=\"numero\">13.678593910984574</mediana><p5 tipo=\"numero\">10.190753131026474</p5><p95 tipo=\"numero\">18.772265907736934</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-03-15</inicio><observado tipo=\"numero\">40</observado><mediana tipo=\"numero\">22.120121653614063</mediana><p5 tipo=\"numero\">15.58890157805886</p5><p95 tipo=\"numero\">29.549287292782704</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-03-22</inicio><observado tipo=\"numero\">18</observado><mediana tipo=\"numero\">35.98742794051469</mediana><p5 tipo=\"numero\">23.245415438901833</p5><p95 tipo=\"numero\">53.80513560268091</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-03-29</inicio><observado tipo=\"numero\">39</observado><mediana tipo=\"numero\">46.503157604745695</mediana><p5 tipo=\"numero\">31.925682305989472</p5><p95 tipo=\"numero\">66.70750266834672</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-04-05</inicio><observado tipo=\"numero\">95</observado><mediana tipo=\"numero\">62.600625992752725</mediana><p5 tipo=\"numero\">46.270204069529655</p5><p95 tipo=\"numero\">86.23846976698049</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-04-12</inicio><observado tipo=\"numero\">61</observado><mediana tipo=\"numero\">86.6182525564335</mediana><p5 tipo=\"numero\">63.63734511778956</p5><p95 tipo=\"numero\">122.40426930882464</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-04-19</inicio><observado tipo=\"numero\">94</observado><mediana tipo=\"numero\">119.29195438314176</mediana><p5 tipo=\"numero\">90.44773139219173</p5><p95 tipo=\"numero\">158.53938960932996</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-04-26</inicio><observado tipo=\"numero\">167</observado><mediana tipo=\"numero\">163.43577045351083</mediana><p5 tipo=\"numero\">124.38584330711936</p5><p95 tipo=\"numero\">221.2873739188532</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-05-03</inicio><observado tipo=\"numero\">254</observado><mediana tipo=\"numero\">225.08617521392745</mediana><p5 tipo=\"numero\">170.71606808176847</p5><p95 tipo=\"numero\">308.1869631334819</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-05-10</inicio><observado tipo=\"numero\">319</observado><mediana tipo=\"numero\">308.2227691619846</mediana><p5 tipo=\"numero\">237.60735290221885</p5><p95 tipo=\"numero\">425.9935723856189</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-05-17</inicio><observado tipo=\"numero\">359</observado><mediana tipo=\"numero\">418.8233267135194</mediana><p5 tipo=\"numero\">316.4435442854945</p5><p95 tipo=\"numero\">583.7234273849111</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-05-24</inicio><observado tipo=\"numero\">472</observado><mediana tipo=\"numero\">564.8464211165718</mediana><p5 tipo=\"numero\">428.77630239291045</p5><p95 tipo=\"numero\">817.1106296202207</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-05-31</inicio><observado tipo=\"numero\">853</observado><mediana tipo=\"numero\">770.0459957111866</mediana><p5 tipo=\"numero\">567.4450370875827</p5><p95 tipo=\"numero\">1166.8465869414492</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-06-07</inicio><observado tipo=\"numero\">1560</observado><mediana tipo=\"numero\">1054.4194464430495</mediana><p5 tipo=\"numero\">756.9772503606388</p5><p95 tipo=\"numero\">1634.8921179472866</p95><ventana>calibracion</ventana></semana><semana><inicio>2020-06-14</inicio><observado tipo=\"numero\">1661</observado><mediana tipo=\"numero\">1417.4979359667263</mediana><p5 tipo=\"numero\">1036.6072131323128</p5><p95 tipo=\"numero\">2312.0347063282634</p95><ventana>validacion</ventana></semana><semana><inicio>2020-06-21</inicio><observado tipo=\"numero\">2072</observado><mediana tipo=\"numero\">1968.5816163208292</mediana><p5 tipo=\"numero\">1358.1213907801798</p5><p95 tipo=\"numero\">3228.973430187753</p95><ventana>validacion</ventana></semana><semana><inicio>2020-06-28</inicio><observado tipo=\"numero\">2876</observado><mediana tipo=\"numero\">2672.011420774553</mediana><p5 tipo=\"numero\">1803.8694286201326</p5><p95 tipo=\"numero\">4551.472606601871</p95><ventana>validacion</ventana></semana><semana><inicio>2020-07-05</inicio><observado tipo=\"numero\">3295</observado><mediana tipo=\"numero\">3649.863969088471</mediana><p5 tipo=\"numero\">2305.1147284774543</p5><p95 tipo=\"numero\">6363.570088524014</p95><ventana>validacion</ventana></semana><semana><inicio>2020-07-12</inicio><observado tipo=\"numero\">3234</observado><mediana tipo=\"numero\">4870.236812357818</mediana><p5 tipo=\"numero\">2900.566207534478</p5><p95 tipo=\"numero\">8925.50980051112</p95><ventana>validacion</ventana></semana><semana><inicio>2020-07-19</inicio><observado tipo=\"numero\">2684</observado><mediana tipo=\"numero\">6668.833716804384</mediana><p5 tipo=\"numero\">3683.67358932893</p5><p95 tipo=\"numero\">12455.080346045985</p95><ventana>validacion</ventana></semana><semana><inicio>2020-07-26</inicio><observado tipo=\"numero\">2061</observado><mediana tipo=\"numero\">8838.9488418006</mediana><p5 tipo=\"numero\">4483.376453591008</p5><p95 tipo=\"numero\">17423.138674451988</p95><ventana>validacion</ventana></semana></semanas><nota>La banda p5-p95 junta la incertidumbre de los parámetros (las combinaciones aceptadas) y el ruido entre semillas. La banda de una corrida (/band) solo tiene el ruido entre semillas.</nota></ajuste>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no consulta calibraciones o la región está fuera de su alcance"
+          },
+          "404": {
+            "description": "No existe la calibración"
+          },
+          "409": {
+            "description": "La calibración no está completada"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        }
+      }
+    },
+    "/api/v1/calibrations/{cal_id}/scenario": {
+      "get": {
+        "summary": "Escenario calibrado",
+        "operationId": "escenario_calibrado",
+        "description": "La configuración calibrada como entrada de una versión: el alta del escenario (escenarios), sus intervenciones (intervenciones) y el r0 calibrado como ajuste de la versión (parametros, D59). rho fija los infectados iniciales y phi la reducción de la Jornada. Crearla es del escritorio, y pasa por revisión y aprobación (D4, D5). ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (simulations.read), con el alcance por región de la cuenta (D43). CAPTURISTA recibe 403.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cal_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "calibration_id": 3,
+                  "engine": "seir-ref",
+                  "engine_version": "seir-ref-0.1",
+                  "escenario": {
+                    "name": "Calibración n.º 3 (COVID19_NL_2020_SINTOMAS v1)",
+                    "disease_id": 1,
+                    "region_id": 1,
+                    "stratify": true,
+                    "age_unknown_policy": "prorratear",
+                    "horizon_days": 154,
+                    "initial_infected": 23,
+                    "notes": "Configuración calibrada contra COVID19_NL_2020_SINTOMAS v1; las intervenciones son las de la Jornada Nacional de Sana Distancia (D50)."
+                  },
+                  "intervenciones": [
+                    {
+                      "code": "CIERRE_ESCUELAS",
+                      "start_day": 22,
+                      "end_day": null,
+                      "coverage": 1.0,
+                      "compliance": 1.0,
+                      "params": {
+                        "reduccion": 1.0
+                      },
+                      "fuente": "Acuerdo SEP 02/03/20, DOF del 16-03-2020, ampliado al 30-05-2020"
+                    },
+                    {
+                      "code": "CIERRE_TRABAJO",
+                      "start_day": 29,
+                      "end_day": null,
+                      "coverage": 1.0,
+                      "compliance": 1.0,
+                      "params": {
+                        "reduccion": 0.37494538973685865
+                      },
+                      "fuente": "Acuerdo de Salud, DOF del 21-04-2020: actividades no esenciales del 30-03 al 30-05"
+                    },
+                    {
+                      "code": "REDUCCION_AFORO",
+                      "start_day": 22,
+                      "end_day": null,
+                      "coverage": 1.0,
+                      "compliance": 1.0,
+                      "params": {
+                        "reduccion": 0.37494538973685865
+                      },
+                      "fuente": "Jornada Nacional de Sana Distancia, desde el 23-03-2020"
+                    }
+                  ],
+                  "param_overrides": {
+                    "r0": {
+                      "valor": 2.592482823371249,
+                      "fuente": "Calibración n.º 3 (D50): abc-rechazo calibracion-0.1, seir-ref-0.1, conjunto COVID19_NL_2020_SINTOMAS v1; mediana y p5-p95 de las combinaciones aceptadas",
+                      "supuesto": false,
+                      "intervalo": {
+                        "min": 2.285074056353612,
+                        "max": 3.045981687519636,
+                        "tipo": "rango"
+                      }
+                    }
+                  },
+                  "observacion": {
+                    "rho": {
+                      "nombre": "rho",
+                      "mediana": 0.3009150548048638,
+                      "p5": 0.02289577768816817,
+                      "p95": 0.6563101886971606,
+                      "minimo": 0.01,
+                      "maximo": 1.0
+                    },
+                    "phi": {
+                      "nombre": "phi",
+                      "mediana": 0.37494538973685865,
+                      "p5": 0.11534932339982798,
+                      "p95": 0.6286971500994931,
+                      "minimo": 0.0,
+                      "maximo": 1.0
+                    }
+                  },
+                  "huella_configuracion": "b05b32a0bea0317537b3f5b6adfa35d0f33004a5496027a13cb4a9d88916bbdc"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "escenario_calibrado"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<escenario_calibrado><calibration_id tipo=\"numero\">3</calibration_id><engine>seir-ref</engine><engine_version>seir-ref-0.1</engine_version><escenario><name>Calibración n.º 3 (COVID19_NL_2020_SINTOMAS v1)</name><disease_id tipo=\"numero\">1</disease_id><region_id tipo=\"numero\">1</region_id><stratify tipo=\"booleano\">true</stratify><age_unknown_policy>prorratear</age_unknown_policy><horizon_days tipo=\"numero\">154</horizon_days><initial_infected tipo=\"numero\">23</initial_infected><notes>Configuración calibrada contra COVID19_NL_2020_SINTOMAS v1; las intervenciones son las de la Jornada Nacional de Sana Distancia (D50).</notes></escenario><intervenciones><intervencion><code>CIERRE_ESCUELAS</code><start_day tipo=\"numero\">22</start_day><end_day nil=\"true\" /><coverage tipo=\"numero\">1.0</coverage><compliance tipo=\"numero\">1.0</compliance><params><reduccion tipo=\"numero\">1.0</reduccion></params><fuente>Acuerdo SEP 02/03/20, DOF del 16-03-2020, ampliado al 30-05-2020</fuente></intervencion><intervencion><code>CIERRE_TRABAJO</code><start_day tipo=\"numero\">29</start_day><end_day nil=\"true\" /><coverage tipo=\"numero\">1.0</coverage><compliance tipo=\"numero\">1.0</compliance><params><reduccion tipo=\"numero\">0.37494538973685865</reduccion></params><fuente>Acuerdo de Salud, DOF del 21-04-2020: actividades no esenciales del 30-03 al 30-05</fuente></intervencion><intervencion><code>REDUCCION_AFORO</code><start_day tipo=\"numero\">22</start_day><end_day nil=\"true\" /><coverage tipo=\"numero\">1.0</coverage><compliance tipo=\"numero\">1.0</compliance><params><reduccion tipo=\"numero\">0.37494538973685865</reduccion></params><fuente>Jornada Nacional de Sana Distancia, desde el 23-03-2020</fuente></intervencion></intervenciones><param_overrides><r0><valor tipo=\"numero\">2.592482823371249</valor><fuente>Calibración n.º 3 (D50): abc-rechazo calibracion-0.1, seir-ref-0.1, conjunto COVID19_NL_2020_SINTOMAS v1; mediana y p5-p95 de las combinaciones aceptadas</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><min tipo=\"numero\">2.285074056353612</min><max tipo=\"numero\">3.045981687519636</max><tipo>rango</tipo></intervalo></r0></param_overrides><observacion><rho><nombre>rho</nombre><mediana tipo=\"numero\">0.3009150548048638</mediana><p5 tipo=\"numero\">0.02289577768816817</p5><p95 tipo=\"numero\">0.6563101886971606</p95><minimo tipo=\"numero\">0.01</minimo><maximo tipo=\"numero\">1.0</maximo></rho><phi><nombre>phi</nombre><mediana tipo=\"numero\">0.37494538973685865</mediana><p5 tipo=\"numero\">0.11534932339982798</p5><p95 tipo=\"numero\">0.6286971500994931</p95><minimo tipo=\"numero\">0.0</minimo><maximo tipo=\"numero\">1.0</maximo></phi></observacion><huella_configuracion>b05b32a0bea0317537b3f5b6adfa35d0f33004a5496027a13cb4a9d88916bbdc</huella_configuracion></escenario_calibrado>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no consulta calibraciones o la región está fuera de su alcance"
+          },
+          "404": {
+            "description": "No existe la calibración"
+          },
+          "409": {
+            "description": "La calibración no está completada"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        }
+      }
+    }
+  }
+}

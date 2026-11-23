@@ -49,6 +49,7 @@ SERVICIOS = {
     "resultados": ("simulacion", 5243),
     "comparacion": ("simulacion", 5244),
     "pareto": ("simulacion", 5245),
+    "calibracion": ("simulacion", 5246),
     "indicadores": ("analitica", 5251),
     "series": ("analitica", 5252),
     "zonas": ("analitica", 5253),
