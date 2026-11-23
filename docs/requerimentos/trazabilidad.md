@@ -88,5 +88,5 @@ Los que no están en «Hecho», agrupados por la brecha de [`brechas_v3.md`](../
 | D1 (permisos) | RF-A05, RF-G11, RF-L05 |
 | D8, D19 (corridas) | RF-E03, RF-E19, RNF-C03 |
 | Escritorio (bloque A) | RF-E15, RF-F20, RF-H20, RF-H21 |
-| Sin brecha registrada | RNF-D07, RNF-D21, RNF-E08, RNF-K07 |
+| Sin brecha registrada | RNF-D07, RNF-D21, RNF-E08 |
 | Por verificar | RF-F02, RF-H24, RF-I22, RNF-D05, RNF-D06, RNF-E03, RNF-E06 |
