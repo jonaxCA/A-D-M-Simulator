@@ -343,7 +343,7 @@ services:
   poblacion:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/poblacion/Dockerfile
     profiles: [catalogos]
     ports:
@@ -361,7 +361,7 @@ services:
   tipos-intervencion:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/tipos_intervencion/Dockerfile
     profiles: [catalogos]
     ports:

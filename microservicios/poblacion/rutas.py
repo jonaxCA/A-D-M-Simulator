@@ -1,14 +1,19 @@
+"""Servicio poblacion: la población de cada municipio de Nuevo León y sus bandas de edad, su
+corrección manual, sus versiones y sus periodos de referencia (D58). Sus reglas viven en datos.py
+(E8: ya no importa backend_web).
+"""
 from flask import g
 
-from backend_web import queries
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import diccionario, entero_positivo
 
+from . import datos as bd
+
 
 def _municipio(region_id):
-    item = queries.get_region_municipio(region_id)
+    item = bd.get_region_municipio(region_id)
     if item is None:
         raise ErrorAPI(404, "NO_ENCONTRADO", "No se encontró el municipio.")
     return dict(item)
@@ -42,11 +47,11 @@ def registrar(app):
         motivo = datos["reason"]
         if not isinstance(motivo, str):
             raise ErrorAPI(422, "DATOS_INVALIDOS", "reason debe ser texto.")
-        nueva, errores = queries.valida_poblacion_municipio(datos["population"], motivo,
+        nueva, errores = bd.valida_poblacion_municipio(datos["population"], motivo,
                                                              municipio["population_60plus"])
         if errores:
             raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
-        ok, error, resultado = queries.actualiza_poblacion_municipio(
+        ok, error, resultado = bd.actualiza_poblacion_municipio(
             region_id, nueva, motivo, esperado, contexto=g.contexto)
         if not ok:
             _conflicto_o_invalido(error)
@@ -55,7 +60,7 @@ def registrar(app):
     @app.get("/api/v1/regions/<int:region_id>/age-groups")
     def grupos(region_id):
         _municipio(region_id)
-        grupos_edad = queries.get_grupos_edad_municipio(region_id)
+        grupos_edad = bd.get_grupos_edad_municipio(region_id)
         if grupos_edad is None:
             raise ErrorAPI(404, "NO_ENCONTRADO", "No hay grupos de edad cargados.")
         return responder(grupos_edad, "grupos_edad")
@@ -71,10 +76,10 @@ def registrar(app):
             raise ErrorAPI(422, "DATOS_INVALIDOS", "groups y expected_groups deben ser objetos.")
         if not isinstance(datos["reason"], str):
             raise ErrorAPI(422, "DATOS_INVALIDOS", "reason debe ser texto.")
-        grupos_validados, errores = queries.valida_grupos_edad_municipio(datos["groups"])
+        grupos_validados, errores = bd.valida_grupos_edad_municipio(datos["groups"])
         if errores:
             raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
-        esperados, errores = queries.valida_grupos_edad_municipio(datos["expected_groups"])
+        esperados, errores = bd.valida_grupos_edad_municipio(datos["expected_groups"])
         if errores:
             raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
         # valida_grupos_edad_municipio solo regresa las cinco bandas; el control de
@@ -90,8 +95,28 @@ def registrar(app):
             raise ErrorAPI(422, "DATOS_INVALIDOS",
                            "expected_groups.edad_no_especificada debe ser un entero no negativo.")
         esperados["edad_no_especificada"] = sin_edad
-        ok, error, resultado = queries.actualiza_grupos_edad_municipio(
+        ok, error, resultado = bd.actualiza_grupos_edad_municipio(
             region_id, grupos_validados, esperados, datos["reason"], contexto=g.contexto)
         if not ok:
             _conflicto_o_invalido(error)
         return responder(resultado, "grupos_edad")
+
+    def _region(region_id):
+        item = bd.region_nl(region_id)
+        if item is None:
+            raise ErrorAPI(404, "NO_ENCONTRADO", "No se encontró la región.")
+        return item
+
+    @app.get("/api/v1/regions/<int:region_id>/population/versions")
+    def versiones(region_id):
+        item = _region(region_id)
+        filas = bd.versiones(region_id)
+        return responder({"region_id": region_id, "code": item["code"], "total": len(filas), "versiones": filas},
+                         "versiones_poblacion")
+
+    @app.get("/api/v1/regions/<int:region_id>/population/periods")
+    def periodos(region_id):
+        item = _region(region_id)
+        filas = bd.periodos(item["code"])
+        return responder({"region_id": region_id, "code": item["code"], "total": len(filas), "censos": filas},
+                         "periodos_poblacion")

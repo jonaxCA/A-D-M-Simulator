@@ -8,7 +8,7 @@ Revisado el 2026-11-23 contra [`RETROALIMENTACION_SEGUNDO_PARCIAL.txt`](RETROALI
 `evidencias` (D2) e `importacion` (D6) ya se cerraron aparte.
 
 **Cumple** = hay ruta y prueba. **Parcial** = una parte, o solo de lectura. **Falta** = no existe.
-Lo que se cerró después de la revisión dice **Hecho**, con su fecha.
+Lo que se cerró después de la revisión dice **Hecho**, con su fecha. Catálogos se cerró el mismo día con [D58](../../decisiones/D58-catalogos-con-fuente-y-versiones.md).
 
 El trabajo va en dos partes, decididas con el líder el 2026-11-23: primero **Escenarios** (lo que
 espera el escritorio, A4), con D54 y D55; después **Catálogos**, que necesita investigar fuentes
@@ -100,9 +100,9 @@ espera el escritorio, A4), con D54 y D55; después **Catálogos**, que necesita 
 |---|---|---|
 | Catálogo y estado | **Cumple** | Alta, edición, activar y desactivar (baja lógica), exportación auditada y estadísticas |
 | Características epidemiológicas | Parcial | Solo los parámetros (son de `parametros`) |
-| Clasificación | Falta | No hay columna (por ejemplo, transmisión de persona a persona o por vector) |
-| Fuentes de referencia | Parcial | Cada parámetro lleva su fuente; la enfermedad no |
-| Definiciones de caso versionadas | Falta | No existen. El patrón de `case_forms` (D48: versiones, borrador, publicado y retirado) sirve de modelo |
+| Clasificación | **Hecho** (2026-11-23, D58) | `transmission` (respiratoria o vectorial) e `icd10` en la ficha, con su fuente (DGE y, para COVID-19, la OMS); se cambian con `PUT /diseases/{id}` y su fuente |
+| Fuentes de referencia | **Hecho** (2026-11-23, D58) | La clasificación y cada definición de caso llevan su fuente (documento, fecha y páginas), además de la de cada parámetro |
+| Definiciones de caso versionadas | **Hecho** (2026-11-23, D58) | `/diseases/{id}/case-definitions`: borrador, vigente (una por enfermedad) y retirada; lo publicado no cambia. La 042 trae las de la DGE: enfermedad respiratoria viral de 2023 (COVID-19 e influenza), influenza de 2021 retirada, y dengue, paludismo y zika de 2021 |
 
 ### `parametros` (5212)
 
@@ -115,8 +115,8 @@ espera el escritorio, A4), con D54 y D55; después **Catálogos**, que necesita 
 | Unidades y límites | **Cumple** | `unidad`, `min` y `max` de cada parámetro; `/status` los da |
 | Fuentes | **Cumple** | Fuente o marca de supuesto obligatoria (RF-B09) |
 | Validaciones epidemiológicas | Parcial | Rango por parámetro; nada entre parámetros |
-| Incertidumbre | Falta | El PUT solo acepta valor, fuente y supuesto; los rangos de la bibliografía están como texto en la fuente |
-| Versionamiento | Falta | Se sobrescribe `diseases.default_params`; el historial es la bitácora. Cada versión de escenario congela su copia (D5) |
+| Incertidumbre | **Hecho** (2026-11-23, D58) | Cada parámetro puede llevar `intervalo` (min, max y tipo IC95, RIC o rango) que contiene el valor; `/parameters/status` lo muestra. La 042 trae los que ya daban las fuentes citadas (6 parámetros de COVID-19 e influenza) |
+| Versionamiento | **Hecho** (2026-11-23, D58) | Cada cambio guarda la versión completa con su motivo (`/parameters/versions`); la 1 son los parámetros de antes del historial. Cada versión de escenario sigue congelando su copia (D5) |
 
 ### `regiones` (5213)
 
@@ -126,11 +126,11 @@ espera el escritorio, A4), con D54 y D55; después **Catálogos**, que necesita 
 | Pide | Estado | Cómo, o qué falta |
 |---|---|---|
 | Estados y municipios | **Cumple** | Nuevo León y sus 51 municipios, con población y 60 y más |
-| Países | Falta | `regions.level` no admite `pais` |
-| Áreas sanitarias | Parcial | Las jurisdicciones están en `datos/geo/` y las sirve `zonas` (`/zones/jurisdictions`, F); `regiones` no las tiene |
+| Países | Fuera (D58) | El sistema es de Nuevo León; una fila de México cambiaría dos CHECK de `regions` y el código que supone que el estado no tiene padre |
+| Áreas sanitarias | **Hecho** (2026-11-23, D58) | Las 8 jurisdicciones de NL en la base (043, del mismo archivo que usa `zonas`): `/health-areas`, `/health-areas/{numero}` y `/regions/{id}/health-areas`; Monterrey está en tres, en parte |
 | Geometrías y datos para mapas | Parcial | Las sirve `zonas` (`/zones/geometry` y `/zones/map`); `regiones` solo tiene centroides y no los publica |
-| Jerarquías geográficas | Parcial | `parent_region_id` en la tabla; no hay ruta de hijos ni filtro por nivel |
-| Búsqueda territorial | Parcial | `q` busca por nombre o clave de municipio; ubicar un punto es de `zonas` (`/zones/locate`) |
+| Jerarquías geográficas | **Hecho** (2026-11-23, D58) | `/regions/{id}/children`: los municipios del estado; con las jurisdicciones como agrupación sanitaria |
+| Búsqueda territorial | **Hecho** (2026-11-23, D58) | `/regions/search?q=`: estado, municipios (nombre o clave) y jurisdicciones, sin importar acentos; ubicar un punto sigue en `zonas` (`/zones/locate`) |
 
 ### `poblacion` (5214)
 
@@ -142,8 +142,8 @@ espera el escritorio, A4), con D54 y D55; después **Catálogos**, que necesita 
 | Por región y edad; distribución | **Cumple** | Cinco grupos de edad más edad no especificada |
 | Otros grupos | Falta | El censo trae hombres y mujeres de 60 y más, pero no se cargan |
 | Validación y consistencia | **Cumple** | La suma de los grupos se conserva, total ≥ 60 y más, motivo obligatorio, 409 si otro cambió antes, y el estado es la suma de sus municipios |
-| Versiones | Falta | Se sobrescribe; `region_population_adjustments` guarda solo el último ajuste por campo. Los escenarios congelan su copia |
-| Periodos de referencia | Falta | No hay año en ninguna columna; el censo 2020 solo aparece como texto. La serie 1990–2020 está en `datos/censo/`, sin cargar |
+| Versiones | **Hecho** (2026-11-23, D58) | Cada ajuste guarda la versión siguiente de la región y, si cambió, la del estado (`/regions/{id}/population/versions`), en la misma transacción: la corrección pasó de `backend_web` a `poblacion` (E8) |
+| Periodos de referencia | **Hecho** (2026-11-23, D58) | La serie de censos y conteos de INEGI 1990-2020 por región (043, `/regions/{id}/population/periods`), y cada versión dice su año de referencia |
 
 ### `tipos-intervencion` (5215)
 
@@ -155,14 +155,14 @@ espera el escritorio, A4), con D54 y D55; después **Catálogos**, que necesita 
 | Catálogo | **Cumple** | Seis tipos: vacunación, prueba y aislamiento, reducción de aforo, cierre de escuelas, cierre de trabajo y cubrebocas |
 | Parámetros permitidos | **Cumple** | `param_schema` (JSON Schema con mínimo, máximo, opciones y obligatorios) |
 | Costos | **Cumple** | Costo unitario y personas-día, con fuente o supuesto (los escribe `intervenciones`) |
-| Supuestos de efectividad | Falta | `eficacia`, `reduccion` y `deteccion` se capturan en cada intervención, sin valor por omisión, fuente ni marca de supuesto |
+| Supuestos de efectividad | **Hecho** (2026-11-23, D58) | `/intervention-types/{code}/effectiveness`: valor de referencia, rango, fuente y marca de supuesto, general o por enfermedad; la 042 trae siete con fuente (Chu, Polack, Osterholm, Li y la movilidad de Google en NL). No cambian lo que se simula |
 
 ## Lo que cruza a todos
 
-- **E8:** `aprobacion` ya no importa `backend_web` (2026-11-23). Siguen `enfermedades`,
-  `parametros`, `regiones`, `poblacion`, `tipos-intervencion`, `escenarios`, `intervenciones`,
-  `validacion` y `escenarios-xml`, y `epidemia_comun/validaciones.py` (`parametros_epidemiologicos`)
-  espera a `parametros`.
+- **E8:** `aprobacion`, `poblacion` y `tipos-intervencion` ya no importan `backend_web`, y
+  `parametros` tampoco (usa los límites del motor y sigue en `epidemia/base`). La regla de los
+  rangos de los parámetros dejó `epidemia_comun/validaciones.py` (2026-11-23). Siguen
+  `enfermedades`, `regiones`, `escenarios`, `intervenciones`, `validacion` y `escenarios-xml`.
 - **D43:** `escenarios` aplica el alcance por región desde el 2026-11-23. `intervenciones`,
   `aprobacion` (envío, dictamen y bandeja) y `escenarios-xml` (exportar) todavía no.
 - **D42:** en los catálogos, las lecturas son públicas, así que INVESTIGADOR y AUTORIDAD_SANITARIA ya
@@ -175,11 +175,12 @@ espera el escritorio, A4), con D54 y D55; después **Catálogos**, que necesita 
 | ~~Mediano~~ | **Hecho** el 2026-11-23 (D54): proyectos de investigación y archivado | `escenarios` |
 | ~~Mediano~~ | **Hecho** el 2026-11-23 (D55): devolver y firmar; sin `backend_web` | `aprobacion` y `validacion` |
 | Chico | Alcance de D43 en `intervenciones`, `aprobacion` y `escenarios-xml` | los tres |
-| Mediano | Supuestos de efectividad por tipo, con fuente o marca de supuesto (falta la investigación de fuentes) | `tipos-intervencion` |
-| Mediano | Incertidumbre (intervalo con fuente) y versiones de los parámetros | `parametros` |
-| Mediano | Versiones y periodos de referencia de la población (censo 2020 como versión 1; la serie 1990–2020) | `poblacion` |
-| Mediano | Jerarquía (país, estado, municipio) con filtro por nivel e hijos, y las áreas sanitarias, sin duplicar lo que ya sirve `zonas` | `regiones` |
-| Grande | Definiciones de caso versionadas por enfermedad, con su fuente oficial (falta investigarlas) | `enfermedades` |
+| ~~Mediano~~ | **Hecho** el 2026-11-23 (D58): supuestos de efectividad por tipo, con fuente o marca de supuesto | `tipos-intervencion` |
+| ~~Mediano~~ | **Hecho** el 2026-11-23 (D58): intervalo de incertidumbre y versiones de los parámetros | `parametros` |
+| ~~Mediano~~ | **Hecho** el 2026-11-23 (D58): versiones y periodos de referencia de la población | `poblacion` |
+| ~~Mediano~~ | **Hecho** el 2026-11-23 (D58): jerarquía, jurisdicciones sanitarias y búsqueda territorial (sin país) | `regiones` |
+| ~~Grande~~ | **Hecho** el 2026-11-23 (D58): definiciones de caso versionadas con su fuente oficial, y clasificación | `enfermedades` |
+| Chico | Los sexos de la población (el censo cargado solo los trae para 60 y más) | `poblacion` |
 | Grande | Unidades, plausibilidad entre parámetros y compatibilidad por motor | `validacion` |
 | Grande | Compatibilidad entre versiones del contrato XML | `escenarios-xml` |
 | Transversal | Dejar de importar `backend_web` (E8) | los nueve restantes |

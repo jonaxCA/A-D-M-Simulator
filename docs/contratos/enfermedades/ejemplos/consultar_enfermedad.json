@@ -1,8 +1,11 @@
 {
-  "id": 1,
-  "code": "SARS_COV_2_ANCESTRAL",
-  "name": "COVID-19 (variante ancestral)",
-  "description": "SARS-CoV-2, linaje original de 2020.",
+  "id": 2,
+  "code": "INFLUENZA_ESTACIONAL",
+  "name": "Influenza estacional A(H1N1)",
+  "description": "Perfil de referencia para contrastar con un patogeno de menor letalidad.",
   "is_active": true,
-  "created_at": "2026-09-01T16:00:00+00:00"
+  "created_at": "2026-11-23T10:00:00+00:00",
+  "transmission": "respiratoria",
+  "icd10": "J09-J11",
+  "classification_source": "Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 31."
 }

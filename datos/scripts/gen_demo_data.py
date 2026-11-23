@@ -16,6 +16,7 @@ Ojo: cada corrida genera un hash bcrypt nuevo para cada una de las cuatro cuenta
 (sal aleatoria), asi que regenerar el archivo cambia esas cuatro lineas aunque los
 datos sean los mismos. Todo lo demas sale igual byte por byte.
 """
+import os
 import random
 import datetime
 import sys
@@ -55,6 +56,25 @@ DISEASES = [
 
 SEV_CHOICES = [("asintomatico", 0.30), ("leve", 0.55), ("grave", 0.13), ("fallecido", 0.02)]
 RESULT_CHOICES = [("positivo", 0.75), ("pendiente", 0.15), ("negativo", 0.10)]
+
+
+MIGRACION_042 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                             "postgres", "migraciones", "042_catalogos_con_fuente.sql")
+
+
+def datos_por_enfermedad():
+    """El bloque de datos por enfermedad de la 042 (clasificación, definiciones de caso, versiones e
+    intervalos de parámetros y supuestos de efectividad). En una instalación limpia el dump corre
+    antes que esta semilla, cuando DENGUE_DEMO, ZIKA_DEMO y MALARIA_DEMO todavía no existen: se
+    repite aquí, tal cual, para que también les llegue. Todo es idempotente."""
+    texto = open(MIGRACION_042, encoding="utf-8").read()
+    inicio = texto.index("-- <datos-por-enfermedad>")
+    fin = texto.index("-- </datos-por-enfermedad>") + len("-- </datos-por-enfermedad>")
+    return ("-- ---------------------------------------------------------------------------\n"
+            "-- Datos por enfermedad de la migracion 042 (D58), repetidos para las tres de arriba.\n"
+            "-- Los lee gen_demo_data.py de la migracion: no editar aqui.\n"
+            "-- ---------------------------------------------------------------------------\n"
+            + texto[inicio:fin] + "\n")
 
 
 def weighted_choice(pairs):
@@ -157,6 +177,7 @@ def main():
       }'::jsonb)
 ON CONFLICT (code) DO NOTHING;
 """)
+    out.append(datos_por_enfermedad())
 
     demo_password = "Epidemia2026!"
     admin_password = "Admin2026!"

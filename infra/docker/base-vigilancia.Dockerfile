@@ -1,7 +1,7 @@
 # Imagen base de los servicios de F, vigilancia, analítica y plataforma (casos, sincronizacion,
 # dispositivos, evidencias, vacunas, importacion, indicadores, series, zonas, notificaciones y
-# estado-servicios), y de los de D que ya no importan backend_web (evidencias, importacion y
-# aprobacion): solo Python y epidemia_comun. No lleva backend_web ni procesamiento (E8). La
+# estado-servicios), y de los de D que ya no importan backend_web (evidencias, importacion,
+# aprobacion, poblacion y tipos-intervencion): solo Python y epidemia_comun. No lleva backend_web ni procesamiento (E8). La
 # construye el compose antes que ellos.
 FROM python:3.12-slim
 WORKDIR /app

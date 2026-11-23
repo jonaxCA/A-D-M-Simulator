@@ -1,0 +1,27 @@
+{
+  "region": {
+    "id": 1,
+    "code": "19",
+    "nombre": "Nuevo Leon",
+    "nivel": "estado",
+    "poblacion": 5784442,
+    "padre_id": null
+  },
+  "total": 51,
+  "hijos": [
+    {
+      "id": 12,
+      "code": "19001",
+      "nombre": "Abasolo",
+      "nivel": "municipio",
+      "poblacion": 2974
+    },
+    {
+      "id": 13,
+      "code": "19002",
+      "nombre": "Agualeguas",
+      "nivel": "municipio",
+      "poblacion": 3382
+    }
+  ]
+}

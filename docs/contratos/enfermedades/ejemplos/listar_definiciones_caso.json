@@ -1,0 +1,64 @@
+{
+  "disease_id": 2,
+  "total": 2,
+  "definiciones": [
+    {
+      "version": 2,
+      "status": "vigente",
+      "criterios": [
+        {
+          "texto": "Persona de cualquier edad que en los últimos 5 días para casos de ETI (Ambulatorios) y en los últimos 7 días para casos IRAG (Hospitalizados) haya presentado al menos uno de los siguientes signos y síntomas: tos, fiebre o cefalea*. Acompañados de al menos uno de los siguientes signos o síntomas: Disnea; Mialgias; Artralgias; Odinofagia; Escalofríos; Dolor torácico; Rinorrea; Polipnea; Anosmia; Disgeusia; Conjuntivitis. *En menores de cinco años de edad, la irritabilidad puede sustituir a la cefalea.",
+          "clasificacion": "Caso sospechoso de enfermedad respiratoria viral"
+        },
+        {
+          "texto": "Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral y con presencia de alguno de los siguientes datos de gravedad: disnea y/o dolor torácico.",
+          "clasificacion": "Caso de infección respiratoria aguda grave (IRAG)"
+        },
+        {
+          "texto": "Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral en los últimos cinco días de inicio de los datos clínicos sin la presencia de datos de gravedad (disnea y/o dolor torácico).",
+          "clasificacion": "Caso de enfermedad tipo influenza (ETI)"
+        },
+        {
+          "texto": "Persona que cumpla con la definición operacional de caso sospechoso y que cuente con diagnóstico confirmado por laboratorio mediante la prueba RT-PCR. Son válidos para el sistema de vigilancia epidemiológica los resultados emitidos por los miembros del SINAVE (Red Nacional de Laboratorios de Salud Pública y Laboratorios de apoyo a la vigilancia epidemiológica-RNLSP/LAVE-) y aquellos laboratorios que hayan sido aprobados mediante la evaluación a la competencia técnica por el InDRE, registrando en el informe de prueba el estuche comercial utilizado para el procesamiento.",
+          "clasificacion": "Caso confirmado por laboratorio"
+        },
+        {
+          "texto": "Persona fallecida que cumpla con la definición operacional de caso sospechoso, que haya sido confirmado por laboratorio mediante la prueba RT-PCR.",
+          "clasificacion": "Defunción con diagnóstico confirmado por laboratorio"
+        }
+      ],
+      "fuente": "Secretaría de Salud, Dirección General de Epidemiología. Lineamiento estandarizado para la vigilancia epidemiológica y por laboratorio de la enfermedad respiratoria viral, septiembre de 2023, pp. 30-31. Las definiciones operacionales solo las actualiza el CONAVE.",
+      "url": "https://www.gob.mx/cms/uploads/attachment/file/636504/Lineamiento_Estandarizado_Para_La_Vigilancia_Epidemiol_gica_Y_Por_Laboratorio_De_La_Enfermedad_Respiratoria_Viral_-_Septiembre_2023.pdf",
+      "created_by": null,
+      "created_at": "2026-11-23T10:00:00+00:00",
+      "published_by": null,
+      "published_at": "2026-11-23T10:00:00+00:00",
+      "retired_at": null
+    },
+    {
+      "version": 1,
+      "status": "retirada",
+      "criterios": [
+        {
+          "texto": "Se considera caso sospechoso de influenza a todo caso o defunción que cumpla con los criterios de Enfermedad Tipo Influenza (ETI) o Infección Respiratoria Aguda Grave (IRAG).",
+          "clasificacion": "Caso sospechoso de influenza"
+        },
+        {
+          "texto": "Persona de cualquier edad que presente o refiera haber tenido fiebre mayor o igual a 38° C, tos y cefalea, acompañadas de uno o más de los siguientes signos o síntomas: rinorrea, coriza, artralgias, mialgias, postración, odinofagia, dolor torácico, dolor abdominal, congestión nasal o diarrea. Importante: En menores de cinco años de edad, se considera un signo cardinal la irritabilidad, en sustitución de la cefalea; En mayores de 65 años o en pacientes inmunocomprometidos, no se requerirá la fiebre como signo cardinal.",
+          "clasificacion": "Enfermedad tipo influenza (ETI)"
+        },
+        {
+          "texto": "Persona de cualquier edad que presente dificultad al respirar, con antecedente de fiebre mayor o igual a 38° C y tos, con uno o más de los siguientes síntomas: ataque al estado general, dolor torácico o polipnea. En pacientes inmunocomprometidos o con manejo terapéutico con antipiréticos no se presentará el pico febril descrito en la definición operacional; Así mismo en pacientes con apoyo respiratorio automatizado no se requerirá la tos como signo indispensable para su ingreso como sospechoso a influenza.",
+          "clasificacion": "Infección respiratoria aguda grave (IRAG)"
+        }
+      ],
+      "fuente": "Secretaría de Salud, Dirección General de Epidemiología. Vigilancia epidemiológica convencional de casos nuevos de enfermedad: definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 31.",
+      "url": "https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf",
+      "created_by": null,
+      "created_at": "2026-11-23T10:00:00+00:00",
+      "published_by": null,
+      "published_at": "2026-11-23T10:00:00+00:00",
+      "retired_at": "2026-11-23T10:00:00+00:00"
+    }
+  ]
+}

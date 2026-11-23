@@ -2,7 +2,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from backend_web import queries
+from microservicios.poblacion import datos as queries
 
 MONTERREY = {"id": 39, "code": "19039", "name": "Monterrey", "level": "municipio",
              "parent_region_id": 1, "population": 1142994, "population_60plus": 158771}
@@ -189,3 +189,49 @@ def test_correccion_de_grupos_invalida_es_422(cliente, admin, llamadas, cuerpo):
     r = cliente.put("/api/v1/regions/39/age-groups?format=json", headers=admin, json=cuerpo)
     assert r.status_code == 422
     assert llamadas["grupos"] == []
+
+
+
+# ---- versiones y periodos de referencia (D58) --------------------------------------------------
+
+@pytest.fixture
+def historial(monkeypatch):
+    monkeypatch.setattr(queries, "region_nl", lambda i: {1: {"id": 1, "code": "19", "name": "Nuevo León",
+                                                             "level": "estado"},
+                                                         39: {"id": 39, "code": "19039", "name": "Monterrey",
+                                                              "level": "municipio"}}.get(i))
+    monkeypatch.setattr(queries, "versiones", lambda i: [
+        {"version": 2, "population": 1150000, "population_60plus": 158771, "age_groups": dict(GRUPOS),
+         "reference_year": 2020, "source": "Ajuste manual de la población total", "reason": "Conteo 2026",
+         "created_by": 7, "created_at": "2026-11-23T10:00:00+00:00"},
+        {"version": 1, "population": 1142994, "population_60plus": 158771, "age_groups": dict(GRUPOS),
+         "reference_year": 2020, "source": "INEGI, Censo de Población y Vivienda 2020", "reason": None,
+         "created_by": None, "created_at": "2026-11-23T10:00:00+00:00"}])
+    monkeypatch.setattr(queries, "periodos", lambda code: [
+        {"anio": 1990, "poblacion": 1069238, "fuente": "INEGI"},
+        {"anio": 2020, "poblacion": 1142994, "fuente": "INEGI"}] if code == "19039" else [])
+
+
+def test_versiones_de_la_poblacion(cliente, historial):
+    datos = cliente.get("/api/v1/regions/39/population/versions?format=json").get_json()
+    assert datos["total"] == 2 and [v["version"] for v in datos["versiones"]] == [2, 1]
+    assert datos["versiones"][1]["source"].startswith("INEGI")
+    assert cliente.get("/api/v1/regions/1/population/versions?format=json").status_code == 200
+    assert cliente.get("/api/v1/regions/999/population/versions?format=json").status_code == 404
+    raiz = ET.fromstring(cliente.get("/api/v1/regions/39/population/versions").data)
+    assert raiz.find("versiones/item/version").text == "2"
+
+
+def test_periodos_de_referencia(cliente, historial):
+    datos = cliente.get("/api/v1/regions/39/population/periods?format=json").get_json()
+    assert datos["code"] == "19039" and [c["anio"] for c in datos["censos"]] == [1990, 2020]
+    assert cliente.get("/api/v1/regions/999/population/periods?format=json").status_code == 404
+    raiz = ET.fromstring(cliente.get("/api/v1/regions/39/population/periods").data)
+    assert raiz.find("censos/censo/anio").text == "1990"
+
+
+def test_el_ajuste_regresa_su_version(cliente, admin, llamadas):
+    llamadas["respuesta"] = (True, None, {"municipio": "Monterrey", "poblacion_antes": 1142994,
+                                          "poblacion_despues": 1150000, "estado_actualizado": True, "version": 2})
+    r = cliente.put("/api/v1/regions/39/population?format=json", headers=admin, json=correccion())
+    assert r.status_code == 200 and r.get_json()["version"] == 2
