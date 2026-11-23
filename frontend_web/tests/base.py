@@ -97,6 +97,36 @@ class PuenteServicios:
         return r.get_json(silent=True)
 
 
+# La matriz de role_permissions (migraciones 010, 034 y 052), para simular a roles sin la base.
+_COMUNES = {"catalogs.read", "scenarios.read", "simulations.read", "cases.read", "reports.read",
+            "reports.export"}
+PERMISOS_POR_ROL = {
+    "ADMINISTRADOR": {"users.read", "users.create", "users.update", "users.delete", "catalogs.read",
+                      "catalogs.create", "catalogs.update", "scenarios.read", "scenarios.create",
+                      "scenarios.update", "scenarios.delete", "scenarios.publish", "scenarios.export",
+                      "scenarios.approve", "simulations.read", "simulations.run", "simulations.delete",
+                      "cases.read", "cases.update", "cases.approve", "reports.read", "reports.export",
+                      "reports.upload", "audit.read", "settings.read", "settings.update"},
+    "EPIDEMIOLOGO": {"catalogs.read", "catalogs.create", "catalogs.update", "scenarios.read",
+                     "scenarios.publish", "scenarios.export", "scenarios.approve", "simulations.read",
+                     "cases.read", "cases.update", "cases.approve", "reports.read", "reports.export",
+                     "settings.read"},
+    "ANALISTA": {"catalogs.read", "scenarios.read", "scenarios.create", "scenarios.update",
+                 "scenarios.delete", "scenarios.export", "simulations.read", "simulations.run",
+                 "simulations.delete", "cases.read", "reports.read", "reports.export", "reports.upload"},
+    "CAPTURISTA": {"catalogs.read", "cases.read", "cases.create", "cases.update"},
+    "INVESTIGADOR": _COMUNES | {"scenarios.export"},
+    "AUTORIDAD_SANITARIA": set(_COMUNES),
+}
+
+
+def permisos_simulados(token, user_id):
+    """Lo que responderia roles (GET /permissions/me) por los roles del token de la prueba."""
+    from backend_web.auth import decode_token
+    payload = decode_token(token) or {}
+    return set().union(*(PERMISOS_POR_ROL.get(r, set()) for r in payload.get("roles") or []))
+
+
 def sesion_simulada(token):
     """Lo que responderia el servicio sesiones (D36) por un token que la prueba firmo a mano."""
     from backend_web.auth import decode_token
@@ -147,9 +177,11 @@ class AppTestCase(unittest.TestCase):
                 simulado.start()
                 self.addCleanup(simulado.stop)
         if not self.sesion_real:
-            simulado = patch("frontend_web.app.sesion_servicios._actual", side_effect=sesion_simulada)
-            simulado.start()
-            self.addCleanup(simulado.stop)
+            for objetivo, falso in (("frontend_web.app.sesion_servicios._actual", sesion_simulada),
+                                    ("frontend_web.app.permisos.permisos_de_la_sesion", permisos_simulados)):
+                simulado = patch(objetivo, side_effect=falso)
+                simulado.start()
+                self.addCleanup(simulado.stop)
 
     def _entre_servicios(self, servicio, metodo, ruta, cuerpo=None, token=None, **_):
         # Lo que un servicio le pide a otro (auth o usuarios a sesiones) por HTTP, aquí contra su app en el proceso.
