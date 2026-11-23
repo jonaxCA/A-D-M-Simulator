@@ -1,0 +1,68 @@
+# Camas censables (área de hospitalización) de los establecimientos del sector público de Nuevo León, por municipio.
+#
+# fuente: Secretaría de Salud, Dirección General de Información en Salud (DGIS). Recursos en Salud Sectorial, cierre anual 2025
+# url: http://www.dgis.salud.gob.mx/descargas/datosabiertos/recursosSalud/Recursos_Salud_Sectorial_2025.zip
+# pagina: http://www.dgis.salud.gob.mx/contenidos/basesdedatos/da_recursos_gobmx.html
+# archivo: BD ABIERTOS SECTORIAL 2025.csv
+# licencia: Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente
+# corte: 2025-12-31
+# publicado: 2026-09-23
+# sha256: cea7529a75253d6212a6a79c5c0082048a6f104e361a9b5137345af29e3fe747
+# consultado: 2026-11-23
+# filtro: Clave Estado = 19; camas censables = «TOTAL CAMAS AREA HOSPITALIZACIÓN» (el descriptor de la DGIS las llama censables)
+# alcance: Sector público: Secretaría de Salud, IMSS, ISSSTE, Servicios de Salud IMSS-Bienestar, DIF, servicios estatales, municipales y universitarios, y los demás que reporta la DGIS. No incluye hospitales privados.
+# total: 4339
+#
+# Lo genera datos/scripts/build_camas_censables.py: no se edita a mano.
+region_code,municipio,establecimientos,con_camas,camas_censables
+19001,Abasolo,1,0,0
+19002,Agualeguas,6,0,0
+19003,Los Aldamas,0,0,0
+19004,Allende,9,0,0
+19005,Anáhuac,9,0,0
+19006,Apodaca,29,1,173
+19007,Aramberri,16,0,0
+19008,Bustamante,1,0,0
+19009,Cadereyta Jiménez,22,1,22
+19010,El Carmen,8,0,0
+19011,Cerralvo,6,1,30
+19012,Ciénega de Flores,4,0,0
+19013,China,5,0,0
+19014,Doctor Arroyo,47,1,33
+19015,Doctor Coss,1,0,0
+19016,Doctor González,2,0,0
+19017,Galeana,37,1,30
+19018,García,8,0,0
+19019,San Pedro Garza García,8,0,0
+19020,General Bravo,4,0,0
+19021,General Escobedo,20,1,79
+19022,General Terán,11,0,0
+19023,General Treviño,1,0,0
+19024,General Zaragoza,8,0,0
+19025,General Zuazua,5,0,0
+19026,Guadalupe,71,2,397
+19027,Los Herreras,1,0,0
+19028,Higueras,1,0,0
+19029,Hualahuises,4,0,0
+19030,Iturbide,6,0,0
+19031,Juárez,12,1,29
+19032,Lampazos de Naranjo,6,0,0
+19033,Linares,30,2,56
+19034,Marín,1,0,0
+19035,Melchor Ocampo,1,0,0
+19036,Mier y Noriega,8,0,0
+19037,Mina,2,0,0
+19038,Montemorelos,20,2,85
+19039,Monterrey,123,15,2876
+19040,Parás,2,0,0
+19041,Pesquería,6,0,0
+19042,Los Ramones,5,0,0
+19043,Rayones,4,0,0
+19044,Sabinas Hidalgo,18,2,44
+19045,Salinas Victoria,10,0,0
+19046,San Nicolás de los Garza,21,2,485
+19047,Hidalgo,4,0,0
+19048,Santa Catarina,17,0,0
+19049,Santiago,16,0,0
+19050,Vallecillo,4,0,0
+19051,Villaldama,5,0,0
