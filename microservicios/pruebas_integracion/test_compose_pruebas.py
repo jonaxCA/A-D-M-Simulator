@@ -15,9 +15,9 @@ espec.loader.exec_module(SCRIPT)
 
 def test_cada_servicio_toma_la_base_de_postgres_db():
     urls = re.findall(r"^      DATABASE_URL: (.*)$", COMPOSE, re.M)
-    # Cada servicio y la web, que entra con epidemia_app (D18).
-    assert len(urls) == len(SERVICIOS) + 1
-    assert sum("epidemia_app:${EPIDEMIA_APP_PASSWORD:-}@" in u for u in urls) == 1
+    # Cada servicio; la web ya no se conecta a la base (D36, C6).
+    assert len(urls) == len(SERVICIOS)
+    assert not any("epidemia_app:" in u for u in urls)
     assert all(u.endswith("@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}") for u in urls)
     assert "      POSTGRES_DB: ${POSTGRES_DB:-simulador_epidemico}\n" in COMPOSE
 
@@ -157,9 +157,13 @@ def test_la_web_va_en_su_perfil_y_llama_a_los_servicios_por_la_red_interna():
     assert "SECRET_KEY_WEB" in (RAIZ / "infra/genera_env.py").read_text(encoding="utf-8")
     assert "\nSECRET_KEY_WEB=\n" in (RAIZ / "infra/.env.example").read_text(encoding="utf-8")
     assert "frontend_web/Dockerfile" in web
+    # Sin credenciales de PostgreSQL, MongoDB ni Redis (C6).
+    for credencial in ("DATABASE_URL", "MONGO", "REDIS"):
+        assert credencial not in web
     dockerfile = (RAIZ / "frontend_web/Dockerfile").read_text(encoding="utf-8")
     assert "FROM epidemia/base" in dockerfile and "/health" in dockerfile
-    assert '"frontend_web.run:app"' in dockerfile
+    # Arranca con su propio waitress, sin epidemia_comun (C6).
+    assert '"frontend_web.servir"' in dockerfile and "epidemia_comun" not in dockerfile.split("CMD", 1)[1]
 
 
 def test_nginx_manda_la_raiz_al_contenedor_de_la_web_y_lo_resuelve_en_cada_peticion():

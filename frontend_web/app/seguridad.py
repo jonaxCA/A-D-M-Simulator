@@ -36,7 +36,8 @@ def registrar(app):
 
     @app.before_request
     def revisa_csrf():
-        if request.method not in METODOS_QUE_ESCRIBEN:
+        # CSRF_ACTIVO solo se apaga en las pruebas que no prueban el CSRF.
+        if request.method not in METODOS_QUE_ESCRIBEN or not app.config.get("CSRF_ACTIVO", True):
             return None
         esperado = session.get("csrf")
         recibido = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token") or ""

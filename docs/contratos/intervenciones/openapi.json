@@ -2537,7 +2537,7 @@
         ],
         "requestBody": {
           "required": true,
-          "description": "Costo unitario y su fuente.",
+          "description": "Personas-día por dosis y su fuente.",
           "content": {
             "application/json": {
               "schema": {
@@ -2591,10 +2591,10 @@
                 },
                 "additionalProperties": false,
                 "xml": {
-                  "name": "factor_personas_dia"
+                  "name": "factor"
                 }
               },
-              "example": "<?xml version='1.0' encoding='utf-8'?>\n<factor_personas_dia><person_days_per_unit tipo=\"numero\">0.5</person_days_per_unit><person_days_source>Supuesto del equipo</person_days_source><person_days_is_assumption tipo=\"booleano\">true</person_days_is_assumption></factor_personas_dia>"
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<factor><person_days_per_unit tipo=\"numero\">0.5</person_days_per_unit><person_days_source>Supuesto del equipo</person_days_source><person_days_is_assumption tipo=\"booleano\">true</person_days_is_assumption></factor>\n"
             }
           }
         },
@@ -2628,13 +2628,7 @@
                     "name": "factor_personas_dia"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<costo_tipo><intervention_type_id tipo=\"numero\">2</intervention_type_id><unit_cost tipo=\"numero\">1500.0</unit_cost><cost_source>SSNL 2025</cost_source><cost_is_assumption tipo=\"booleano\">false</cost_is_assumption></costo_tipo>\n",
-                "examples": {
-                  "respuesta": {
-                    "summary": "Respuesta real",
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<factor_personas_dia><intervention_type_id tipo=\"numero\">4</intervention_type_id><person_days_per_unit tipo=\"numero\">0.5</person_days_per_unit><person_days_source>Supuesto del equipo</person_days_source><person_days_is_assumption tipo=\"booleano\">true</person_days_is_assumption></factor_personas_dia>"
-                  }
-                }
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<factor_personas_dia><intervention_type_id tipo=\"numero\">4</intervention_type_id><person_days_per_unit tipo=\"numero\">0.5</person_days_per_unit><person_days_source>Supuesto del equipo</person_days_source><person_days_is_assumption tipo=\"booleano\">true</person_days_is_assumption></factor_personas_dia>\n"
               }
             }
           },
