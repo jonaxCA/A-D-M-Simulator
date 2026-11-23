@@ -190,6 +190,12 @@ def corridas_encoladas(engine):
     return [fila["id"] for fila in filas]
 
 
+def corridas_completadas(engine):
+    return query("SELECT r.id, r.engine_version, r.scenario_checksum, r.resumen"
+                 " FROM simulation_runs r JOIN simulation_batches b ON b.id = r.batch_id"
+                 " WHERE r.status = 'completado' AND b.engine = %s ORDER BY r.id", (engine,))
+
+
 def prioridades(run_ids):
     if not run_ids:
         return {}

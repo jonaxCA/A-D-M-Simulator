@@ -31,3 +31,7 @@ def guardar(docs):
 
 def borrar(run_id):
     return mongo.coleccion(COLECCION).delete_many({"run_id": run_id}).deleted_count
+
+
+def con_serie(run_ids):
+    return set(mongo.coleccion(COLECCION).distinct("run_id", {"run_id": {"$in": list(run_ids)}}))
