@@ -35,8 +35,9 @@ Piden token con rol `ADMINISTRADOR`, como las pantallas de usuarios del monolito
 - **Bitácora (D1, D43).** `/audit` es solo del `ADMINISTRADOR`: trae la IP de todo el sistema. El historial
   de una entidad es una vista acotada, sin IP y solo de entidades de escenarios; una cuenta con alcance por región (D43) solo ve el de escenarios de sus regiones (403 si no), y `svc_roles` lee la región de `scenarios` por la migración 055.
 - **Alcance (D43).** `auth`, `sesiones`, `usuarios` y `roles` no guardan datos por región ni institución, así que no filtran nada: el ADMINISTRADOR administra cuentas, roles e instituciones a nivel nacional. Sin filas en `user_scopes` la cuenta es nacional. No va en el token ni cierra sesiones:
-  los servicios lo piden con `llamar()` y el token de la persona (`GET /scopes/me`). **Hoy ningún servicio
-  lo aplica**: cada dueño lo agrega a sus consultas de lectura y escritura donde corresponda: `casos` y
+  los servicios lo piden con `llamar()` y el token de la persona (`GET /scopes/me`). Cada dueño lo agrega a
+  sus consultas de lectura y escritura donde corresponda (ya lo aplican, entre otros, `corridas`, `importacion`
+  y, desde D54, `escenarios`, también en sus proyectos): `casos` y
   `sincronizacion` (`cases.region_id`), `escenarios`, `intervenciones` y `aprobacion` (`scenarios.region_id`),
   `vacunas` (`vaccine_lots.region_id`), `corridas`, `resultados`, `comparacion` y `pareto` (por el escenario de
   la corrida), `indicadores`, `series` y `zonas`. La institución se aplica por `users.institution_id` de quien

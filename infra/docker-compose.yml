@@ -540,6 +540,8 @@ services:
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_ESCENARIOS:-postgresql://svc_escenarios:${DB_PASSWORD_ESCENARIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       SERVICIO_VALIDACION_URL: http://validacion:8000
+      # El alcance por región de la cuenta (D43, D54).
+      SERVICIO_ROLES_URL: http://roles:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -568,7 +570,7 @@ services:
   aprobacion:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/aprobacion/Dockerfile
     profiles: [escenarios]
     ports:

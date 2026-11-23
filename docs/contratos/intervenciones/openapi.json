@@ -632,7 +632,7 @@
             }
           },
           "409": {
-            "description": "Conflicto (CONFLICTO).",
+            "description": "La versión no es el borrador vigente, el escenario está archivado (D54) u otro cambio ganó (CONFLICTO).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -957,7 +957,7 @@
             }
           },
           "409": {
-            "description": "Conflicto (CONFLICTO).",
+            "description": "La versión no es el borrador vigente, el escenario está archivado (D54) u otro cambio ganó (CONFLICTO).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1284,7 +1284,7 @@
             }
           },
           "409": {
-            "description": "Conflicto (CONFLICTO).",
+            "description": "La versión no es el borrador vigente, el escenario está archivado (D54) u otro cambio ganó (CONFLICTO).",
             "content": {
               "application/problem+json": {
                 "schema": {

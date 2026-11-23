@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - aprobacion",
     "version": "0.1.0",
-    "description": "Flujo de aprobación de escenarios: envío a revisión (pasando por validacion), aprobación y rechazo. Escribe solo las columnas de estado y revisión de scenario_versions. Ejemplos en docs/contratos/aprobacion/ejemplos. Sus respuestas XML validan contra docs/contratos/aprobacion/aprobacion.xsd."
+    "description": "Flujo de aprobación de escenarios: envío a revisión (pasando por validacion), aprobación con firma, rechazo y devolución para cambios (D55). Escribe solo las columnas de estado, revisión y firma de scenario_versions. Sus reglas ya no viven en backend_web (E8). Ejemplos en docs/contratos/aprobacion/ejemplos. Sus respuestas XML validan contra docs/contratos/aprobacion/aprobacion.xsd."
   },
   "servers": [
     {
@@ -57,13 +57,14 @@
             "type": "string",
             "enum": [
               "aprobar",
-              "rechazar"
+              "rechazar",
+              "devolver"
             ]
           },
           "comentario": {
             "type": "string",
             "maxLength": 1000,
-            "description": "Obligatorio al rechazar."
+            "description": "Obligatorio al rechazar y al devolver: es el motivo que lee quien va a corregir."
           }
         }
       },
@@ -83,15 +84,22 @@
             "type": "string",
             "enum": [
               "aprobado",
-              "rechazado"
+              "rechazado",
+              "borrador"
             ]
           },
           "decision": {
             "type": "string",
             "enum": [
               "aprobar",
-              "rechazar"
+              "rechazar",
+              "devolver"
             ]
+          },
+          "approval_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Solo al aprobar: la firma de la versión, SHA-256 de la entrada canónica del motor (D55)."
           }
         }
       },
@@ -175,6 +183,74 @@
             "type": "string"
           }
         }
+      },
+      "Firma": {
+        "type": "object",
+        "properties": {
+          "version_id": {
+            "type": "integer"
+          },
+          "scenario_id": {
+            "type": "integer"
+          },
+          "version_number": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "borrador",
+              "en_revision",
+              "aprobado",
+              "rechazado"
+            ]
+          },
+          "firmada": {
+            "type": "boolean",
+            "description": "false si no está aprobada o se aprobó antes de la 064."
+          },
+          "huella": {
+            "type": "string",
+            "nullable": true,
+            "description": "La firma guardada al aprobar."
+          },
+          "revisor": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "huella_actual": {
+            "type": "string",
+            "nullable": true,
+            "description": "La huella que da validacion hoy para la misma versión."
+          },
+          "integra": {
+            "type": "boolean",
+            "description": "Firmada y huella == huella_actual."
+          },
+          "corridas": {
+            "type": "object",
+            "description": "Corridas de la versión contra la firma.",
+            "properties": {
+              "coinciden": {
+                "type": "integer",
+                "description": "scenario_checksum igual a la firma."
+              },
+              "distintas": {
+                "type": "integer",
+                "description": "scenario_checksum distinto de la firma."
+              },
+              "sin_huella": {
+                "type": "integer",
+                "description": "Sin terminar, o anteriores a la 038."
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -191,7 +267,7 @@
         "tags": [
           "aprobacion"
         ],
-        "description": "Pide el dictamen al servicio validacion; si es válida, congela los parámetros de la enfermedad y pasa la versión de borrador a en_revision con un UPDATE condicional (WHERE status='borrador'), auditado (UPDATE) en la misma transacción. Roles: ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, y además quien creó el escenario o un ADMINISTRADOR (si no, 403). Sin cuerpo.",
+        "description": "Pide el dictamen al servicio validacion; si es válida, congela los parámetros de la enfermedad y pasa la versión de borrador a en_revision con un UPDATE condicional (WHERE status='borrador'), auditado (UPDATE) en la misma transacción. Roles: ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, y además quien creó el escenario o un ADMINISTRADOR (si no, 403). Sin cuerpo. También 409 si el escenario está archivado (D54). Una versión devuelta para cambios se reenvía igual que un borrador.",
         "security": [
           {
             "bearerAuth": []
@@ -444,7 +520,7 @@
         "tags": [
           "aprobacion"
         ],
-        "description": "EPIDEMIOLOGO y ADMINISTRADOR (scenarios.approve, D1). Rechazar exige comentario (422). Quien creó la versión no puede revisarla (409). El UPDATE es condicional (WHERE status='en_revision'): si alguien resolvió antes, 409. Auditado (UPDATE) en la misma transacción. Al aprobar y al rechazar se avisa al autor por notificaciones; si ese aviso falla, el dictamen se mantiene y solo se registra una advertencia en el log.",
+        "description": "EPIDEMIOLOGO y ADMINISTRADOR (scenarios.approve, D1). decision: aprobar, rechazar o devolver (D55). Rechazar cierra la versión: para corregir hay que crear otra. Devolver la regresa a borrador con el comentario, editable por su autor, que la corrige y la reenvía. Rechazar y devolver exigen comentario (422). Al aprobar, validacion tiene que dar la huella de la entrada del motor, que se guarda como la firma de la versión (approval_sha256); sin ella no se aprueba (503). Quien creó la versión no puede revisarla (409). El UPDATE es condicional (WHERE status='en_revision'): si alguien resolvió antes, 409. Auditado (UPDATE) en la misma transacción. Al aprobar, rechazar y devolver se avisa al autor por notificaciones (SCENARIO_APPROVED, SCENARIO_REJECTED o SCENARIO_RETURNED); si ese aviso falla, el dictamen se mantiene y solo se registra una advertencia en el log.",
         "security": [
           {
             "bearerAuth": []
@@ -521,7 +597,8 @@
                   "version_id": 11,
                   "version_number": 2,
                   "status": "aprobado",
-                  "decision": "aprobar"
+                  "decision": "aprobar",
+                  "approval_sha256": "9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab"
                 }
               },
               "application/xml": {
@@ -531,7 +608,7 @@
                     "name": "revision"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<revision><scenario_id tipo=\"numero\">3</scenario_id><version_id tipo=\"numero\">11</version_id><version_number tipo=\"numero\">2</version_number><status>aprobado</status><decision>aprobar</decision></revision>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<revision><scenario_id tipo=\"numero\">3</scenario_id><version_id tipo=\"numero\">11</version_id><version_number tipo=\"numero\">2</version_number><status>aprobado</status><decision>aprobar</decision><approval_sha256>9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab</approval_sha256></revision>\n"
               }
             }
           },
@@ -773,7 +850,7 @@
         "tags": [
           "aprobacion"
         ],
-        "description": "Versiones en estado en_revision, la más antigua primero. Roles: EPIDEMIOLOGO, ADMINISTRADOR.",
+        "description": "Versiones vigentes en estado en_revision, la más antigua primero. Roles: EPIDEMIOLOGO, ADMINISTRADOR.",
         "security": [
           {
             "bearerAuth": []
@@ -892,6 +969,240 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/...</instance></problem>"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis, la base o un servicio del que depende no responde. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "Redis no está disponible.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/..."
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>Redis no está disponible.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/...</instance></problem>"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/versions/{version_id}/signature": {
+      "get": {
+        "summary": "Firma de una versión",
+        "operationId": "firma_version",
+        "tags": [
+          "aprobacion"
+        ],
+        "description": "La firma guardada al aprobar (D55), quién la aprobó y cuándo, la huella que da hoy validacion para la misma versión (integra si coinciden) y cuántas corridas de la versión simularon exactamente lo firmado (su scenario_checksum). Roles: ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR, los mismos de validacion, que recibe el token de quien pregunta.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "description": "Id de la versión.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json. Si chocan manda ?format. Un valor distinto es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta el servicio genera uno y lo devuelve en la respuesta.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La firma y su verificación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Firma"
+                },
+                "example": {
+                  "version_id": 11,
+                  "scenario_id": 3,
+                  "version_number": 2,
+                  "status": "aprobado",
+                  "firmada": true,
+                  "huella": "9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab",
+                  "revisor": "Elena Epidemióloga",
+                  "reviewed_at": "2026-11-23T10:15:00+00:00",
+                  "huella_actual": "9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab",
+                  "integra": true,
+                  "corridas": {
+                    "coinciden": 2,
+                    "distintas": 0,
+                    "sin_huella": 1
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Firma",
+                  "xml": {
+                    "name": "firma"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<firma><version_id tipo=\"numero\">11</version_id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><status>aprobado</status><firmada tipo=\"booleano\">true</firmada><huella>9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab</huella><revisor>Elena Epidemióloga</revisor><reviewed_at>2026-11-23T10:15:00+00:00</reviewed_at><huella_actual>9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab</huella_actual><integra tipo=\"booleano\">true</integra><corridas><coinciden tipo=\"numero\">2</coinciden><distintas tipo=\"numero\">0</distintas><sin_huella tipo=\"numero\">1</sin_huella></corridas></firma>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, venció (TOKEN_EXPIRADO), es inválido (TOKEN_INVALIDO) o su sesión se revocó (TOKEN_REVOCADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/..."
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/...</instance></problem>"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no puede consultar la firma (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/..."
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/...</instance></problem>"
+              }
+            }
+          },
+          "404": {
+            "description": "No existe la versión (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el escenario.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/..."
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el escenario.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/...</instance></problem>"
+              }
+            }
+          },
+          "422": {
+            "description": "version_id no es un entero positivo (DATOS_INVALIDOS).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "El motor no puede correr esta versión, así que no se envía a revisión: ...",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/..."
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>El motor no puede correr esta versión, así que no se envía a revisión: ...</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/...</instance></problem>"
               }
             }
           },

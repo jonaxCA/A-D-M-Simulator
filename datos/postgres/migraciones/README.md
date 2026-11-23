@@ -54,6 +54,7 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `060_campanas_y_preferencias.sql` | `campaigns` (las escribe `svc_vacunas`), `notification_preferences` (los avisos que una persona apaga; SYSTEM no) y los tipos `CAMPAIGN` y `DATA_INCOMPLETE` (D49) |
 | `061_serie_observada.sql` | `observed_datasets` y `observed_points` (las series observadas, agregadas y versionadas, con fuente, licencia, corte y huella), el permiso `datasets.upload` y el rol `svc_importacion` (D53). Trae la serie de D50: casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, del 2020-03-01 al 2020-07-26 (DGE). La genera `datos/scripts/build_serie_observada.py`: no se edita a mano |
 | `063_casos_sinteticos.sql` | Nuevo `COMMENT ON TABLE cases`: en la demostración son sintéticos y no calibran (D50). La 062 es de E (`calibrations`) |
+| `064_proyectos_archivado_y_firma.sql` | `research_projects` y `scenarios.project_id` (proyectos de investigación, D54), el UPDATE de `scenarios.status` para archivar y `fn_version_aprobada` sin corridas de escenarios archivados (D54), `scenario_versions.approval_sha256` (la firma de la versión aprobada) y el aviso `SCENARIO_RETURNED` (devolver para cambios, D55) |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.
@@ -90,7 +91,8 @@ problema: ya falta la 018.
 | 061 | D | Serie observada: `observed_datasets` y `observed_points`, con los datos de la serie (D50) |
 | 062 | E | `calibrations`, el permiso `calibrations.run` y el rol `svc_calibracion` (D50) |
 | 063 | D | Nuevo `COMMENT ON TABLE cases`: sintéticos y sin uso para calibrar (D50) |
-| 064 en adelante | — | Se piden al líder |
+| 064 | D | Proyectos, archivado, devolución y firma de versiones (D54, D55). Pedida al líder el 2026-11-23: no cabe en la 042 porque rehace `ck_notifications_type`, y en una instalación limpia la 057 y la 060 lo volverían a dejar sin `SCENARIO_RETURNED` |
+| 065 en adelante | — | Se piden al líder |
 
 1. **Cada migración corre en cualquier orden.** El dump las tiene en el orden en
    que se integran, y una instalación limpia las corre por número: la 034 llegará

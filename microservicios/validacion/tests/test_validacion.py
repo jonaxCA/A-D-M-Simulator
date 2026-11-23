@@ -3,6 +3,7 @@ import copy
 import pytest
 
 from backend_web import queries
+from microservicios.validacion import huella
 from procesamiento.tests.corpus_resolver import ENFERMEDAD
 
 REGIONES = [
@@ -17,6 +18,8 @@ ENFERMEDADES = [
     {"id": 2, "code": "X", "name": "Incompleta", "simulable": False, "faltan": 2,
      "sin_fuente": 0, "supuestos": 0},
 ]
+HUELLA = "9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab"
+
 TIPOS = [{"id": 1, "code": "CIERRE_ESCUELAS", "name": "Cierre de escuelas",
           "param_schema": {"type": "object", "properties": {}}}]
 
@@ -175,6 +178,7 @@ def version(monkeypatch):
     monkeypatch.setattr(queries, "get_escenario_detalle",
                         lambda s, n=None: llamadas.append((s, n)) or detalle)
     monkeypatch.setattr(queries, "revisa_version", lambda d: ([], ["aviso uno"]))
+    monkeypatch.setattr(huella, "de_version", lambda i: HUELLA if i == 7 else None)
     return llamadas
 
 
@@ -183,7 +187,7 @@ def test_validacion_de_version(cliente, analista, version):
     assert r.status_code == 200
     assert r.get_json() == {"version_id": 7, "scenario_id": 3, "version_number": 2,
                             "status": "borrador", "valido": True, "errores": [],
-                            "avisos": ["aviso uno"]}
+                            "avisos": ["aviso uno"], "huella": HUELLA}
     assert version == [(3, 2)]
 
 
@@ -239,3 +243,64 @@ def test_ejemplos_de_peticion_se_aceptan_y_dan_la_respuesta_del_ejemplo(cliente,
     from epidemia_comun.formatos import a_xml
     assert a_xml(esperado, "validacion").decode() == (
         ejemplos / (nombre + ".xml")).read_text(encoding="utf-8").rstrip("\n")
+
+
+# ---- huella de la versión (D55) ------------------------------------------------------
+
+FILA_VERSION = {"id": 7, "scenario_id": 3, "version_number": 2, "status": "en_revision",
+                "population_size": 100000, "horizon_days": 60, "initial_infected": 10,
+                "population_by_age": None, "population_age_unknown": 0, "age_unknown_policy": None,
+                "disease_params": None, "default_params": None}
+# Parámetros como los guarda diseases.default_params, todos marcados como supuesto (regla 8).
+PARAMETROS = {clave: {"valor": valor, "fuente": "Supuesto de la prueba", "supuesto": True}
+              for clave, valor in (("r0", 1.6), ("incubacion_dias", 2.0), ("infeccioso_dias", 5.0),
+                                   ("letalidad", 0.001), ("tasa_hospitalizacion", 0.01),
+                                   ("dias_hospitalizacion", 5.0))}
+FILAS_INTERVENCION = [{"start_day": 5, "end_day": 20, "coverage": __import__("decimal").Decimal("0.800"),
+                       "compliance": None, "params": {"reduccion": 0.5}, "code": "CIERRE_ESCUELAS"}]
+
+
+def _base_falsa(consultas):
+    def query(sql, params=(), one=False):
+        consultas.append(" ".join(sql.split()))
+        if "FROM scenario_versions" in sql:
+            return dict(FILA_VERSION, disease_params=copy.deepcopy(PARAMETROS))
+        return [dict(f) for f in FILAS_INTERVENCION]
+    return query
+
+
+def test_la_huella_es_la_misma_que_calcula_el_simulador(monkeypatch):
+    from microservicios.simulador import datos as simulador_datos
+    from microservicios.simulador import ejecucion
+    from procesamiento.contrato import huella as canonica
+    nuestras, suyas = [], []
+    monkeypatch.setattr(huella, "query", _base_falsa(nuestras))
+    monkeypatch.setattr(simulador_datos, "query", _base_falsa(suyas))
+    calculada = huella.de_version(7)
+    # El simulador solo corre aprobadas; la entrada es la misma con cualquier estado.
+    FILA_VERSION["status"] = "aprobado"
+    try:
+        escenario, _, errores = ejecucion.escenario_de_version(7)
+    finally:
+        FILA_VERSION["status"] = "en_revision"
+    assert errores == [] and calculada == canonica(escenario)
+    assert nuestras == suyas      # la copia de version_para_motor sigue igual
+
+
+def test_sin_version_no_hay_huella(monkeypatch):
+    monkeypatch.setattr(huella, "query", lambda sql, params=(), one=False: None if one else [])
+    assert huella.de_version(99) is None
+
+
+def test_con_la_base_la_huella_coincide_con_la_del_simulador():
+    from microservicios.pruebas_bd import tiene_base
+    if not tiene_base():
+        pytest.skip("Requiere la base de pruebas")
+    from epidemia_comun.bd import query
+    from microservicios.simulador import ejecucion
+    from procesamiento.contrato import huella as canonica
+    fila = query("SELECT id FROM scenario_versions WHERE status = 'aprobado' ORDER BY id LIMIT 1", one=True)
+    if fila is None:
+        pytest.skip("La semilla no trae una versión aprobada")
+    escenario, _, errores = ejecucion.escenario_de_version(fila["id"])
+    assert errores == [] and huella.de_version(fila["id"]) == canonica(escenario)
