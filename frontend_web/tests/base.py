@@ -28,6 +28,12 @@ from frontend_web.app import create_app
 # atribuidos a alguien.
 CAPTURISTA_PRUEBA = "prueba.capturista"
 
+# Quien importa epidemia_comun.http.llamar para hablar con otro servicio.
+ENTRE_SERVICIOS = ("microservicios.auth.rutas.llamar", "epidemia_comun.sesiones.llamar",
+                   "epidemia_comun.alcance.llamar", "microservicios.comparacion.rutas.llamar",
+                   "microservicios.aprobacion.rutas.llamar", "microservicios.escenarios.rutas.llamar",
+                   "microservicios.casos.rutas.llamar", "microservicios.vacunas.rutas.llamar")
+
 
 def capturista_de_prueba():
     """Id de la cuenta CAPTURISTA de prueba; la crea o la reactiva."""
@@ -172,7 +178,9 @@ class AppTestCase(unittest.TestCase):
                 simulado = patch(objetivo, side_effect=self.puente)
                 simulado.start()
                 self.addCleanup(simulado.stop)
-            for objetivo in ("microservicios.auth.rutas.llamar", "epidemia_comun.sesiones.llamar"):
+            # Lo que un servicio le pide a otro por epidemia_comun.http.llamar (D36): el alcance a
+            # roles, las curvas a resultados, los avisos a notificaciones, la validación.
+            for objetivo in ENTRE_SERVICIOS:
                 simulado = patch(objetivo, side_effect=self._entre_servicios)
                 simulado.start()
                 self.addCleanup(simulado.stop)
@@ -183,12 +191,19 @@ class AppTestCase(unittest.TestCase):
                 simulado.start()
                 self.addCleanup(simulado.stop)
 
-    def _entre_servicios(self, servicio, metodo, ruta, cuerpo=None, token=None, **_):
-        # Lo que un servicio le pide a otro (auth o usuarios a sesiones) por HTTP, aquí contra su app en el proceso.
-        r = self.puente._cliente(servicio).open(
-            ruta, method=metodo.upper(), json=cuerpo,
-            headers=dict({"Accept": "application/json"}, **({"Authorization": "Bearer " + token} if token else {})))
-        return SimpleNamespace(status_code=r.status_code, json=r.get_json)
+    def _entre_servicios(self, servicio, metodo, ruta, cuerpo=None, token=None, cabeceras=None, **_):
+        # Lo que un servicio le pide a otro por HTTP, aquí contra su app en el proceso. Como el
+        # llamar de verdad, sin token explícito reenvía el de la petición en curso.
+        from flask import has_request_context, request
+        if token is None and has_request_context():
+            original = request.headers.get("Authorization", "")
+            token = original[7:].strip() if original.startswith("Bearer ") else None
+        encabezados = dict(cabeceras or {}, Accept="application/json")
+        if token:
+            encabezados["Authorization"] = "Bearer " + token
+        r = self.puente._cliente(servicio).open(ruta, method=metodo.upper(), json=cuerpo,
+                                                headers=encabezados)
+        return SimpleNamespace(status_code=r.status_code, json=r.get_json, content=r.data, text=r.get_data(as_text=True))
 
     def _captcha(self):
         """Los campos del captcha de auth, ya contestado (D36)."""

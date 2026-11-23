@@ -195,8 +195,7 @@ class AprobacionRutasTests(_ConEscenario):
         with self.app.test_client() as client:
             self._login(client, "alex.cavazos", "Epidemia2026!")
             resp = client.get("/revisiones", follow_redirects=False)
-            self.assertEqual(resp.status_code, 302)
-            self.assertIn("/dashboard", resp.headers["Location"])
+            self.assertEqual(resp.status_code, 403)  # C1: sin scenarios.approve, 403
 
     def test_el_epidemiologo_ve_la_bandeja_con_lo_enviado(self):
         self._envia()
@@ -247,17 +246,17 @@ class AprobacionRutasTests(_ConEscenario):
         self.assertEqual(self._estado(), "aprobado")
         self.assertFalse(queries.get_escenario_detalle(self.sid)["editable"])
 
-    def test_el_administrador_ve_la_bandeja_pero_no_dictamina(self):
+    def test_el_administrador_tambien_dictamina_una_version_ajena(self):
+        # D1 y migración 034: scenarios.approve es de EPIDEMIOLOGO y ADMINISTRADOR; nadie
+        # revisa la versión que creó (aquí la creó el analista).
         self._envia()
         with self.app.test_client() as admin:
             self._login(admin, "admin", "Admin2026!")
             self.assertEqual(admin.get("/revisiones").status_code, 200)
-            html = self._html(admin, f"/escenarios/{self.sid}")
-            self.assertNotIn("Dictamen", html,
-                             "quien opera el sistema no valida la epidemiología")
+            self.assertIn("Dictamen", self._html(admin, f"/escenarios/{self.sid}"))
             admin.post(f"/escenarios/{self.sid}/revisar", data={"decision": "aprobar"},
                        follow_redirects=True)
-        self.assertEqual(self._estado(), "en_revision")
+        self.assertEqual(self._estado(), "aprobado")
 
 
 if __name__ == "__main__":
