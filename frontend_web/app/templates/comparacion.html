@@ -132,6 +132,33 @@
   <div id="comparacion-fallecimientos" style="height: 340px;"></div>
 </div>
 
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3>Reporte de esta comparación</h3>
+      <p class="subtitle">El PDF que arma la app de escritorio se guarda en el bucket de archivos y se abre con un enlace que vence en minutos.</p>
+    </div>
+  </div>
+  {% set vacio = 'Todavía no hay un reporte de estas corridas.' %}
+  {% include "_reportes_tabla.html" %}
+  {% if puede('reports.upload') %}
+  <form method="post" action="{{ url_for('main.reporte_subir') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    {% for i in run_ids %}<input type="hidden" name="run_id" value="{{ i }}">{% endfor %}
+    <div class="field">
+      <label for="archivo">PDF del reporte</label>
+      <input type="file" id="archivo" name="archivo" accept="application/pdf" required>
+      <p class="field-hint">Hasta 20 MB. Se valida por su contenido y su huella antes de guardarlo.</p>
+    </div>
+    <div class="field">
+      <label for="titulo">Título (opcional)</label>
+      <input type="text" id="titulo" name="titulo" maxlength="200">
+    </div>
+    <div class="page-actions"><button type="submit" class="btn btn-primary">Subir reporte</button></div>
+  </form>
+  {% endif %}
+</div>
+
 {% if errores_pareto %}
 <div class="alert alert-error">
   <strong>No se pudo calcular la comparación de costo e impacto.</strong>

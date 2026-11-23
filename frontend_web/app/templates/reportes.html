@@ -43,12 +43,18 @@
           <td><strong>Reporte de una comparación</strong></td>
           <td>El reporte que arma la app de escritorio, con su frontera de Pareto</td>
           <td>Bucket de archivos (D30, D35)</td>
-          <td>—</td>
+          <td>Las corridas que compara</td>
           <td>PDF</td>
-          <td><span class="field-hint">Pendiente: falta el almacenamiento en el bucket (bloque D).</span></td>
+          <td>{% if puede('simulations.read') %}<a class="btn btn-mini" href="{{ url_for('main.comparacion') }}">Ir a Comparación</a>{% endif %}</td>
         </tr>
       </tbody>
     </table>
   </div>
+</div>
+
+<div class="card table-card">
+  <div class="detalle-titulo">Reportes de comparaciones guardados</div>
+  {% set vacio = 'Todavía no se ha subido ningún reporte de comparación.' %}
+  {% include "_reportes_tabla.html" %}
 </div>
 {% endblock %}
