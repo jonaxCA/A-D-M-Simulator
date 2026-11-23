@@ -38,8 +38,10 @@ gcloud compute instances create epidemia --zone us-central1-c --machine-type e2-
   --address epidemia-ip --tags http-server,https-server
 ```
 
-- La cuenta de servicio con los alcances por omisión: incluyen `logging.write`, que necesita
-  Cloud Logging (§7).
+- La cuenta de servicio con el alcance `cloud-platform` (`--scopes cloud-platform` al crearla): lo
+  necesita `evidencias` para escribir en el bucket y firmar las URLs (§6). Los permisos reales los
+  dan los roles de IAM; con los alcances por omisión solo lee Cloud Storage. También cubre
+  `logging.write`, que necesita Cloud Logging (§7).
 - Para cambiar el tipo de máquina: detenerla, **Editar → Configuración de la máquina**, guardar y
   encender. Conserva la IP, el disco y el certificado; Docker y los contenedores arrancan solos.
 
@@ -112,13 +114,30 @@ cadena llega a ISRG Root X1, que la app móvil y el escritorio ya traen. Más en
 
 ## 6. Levantar todo
 
+**La primera vez, el bucket de los archivos (D30, D2).** Desde tu PC, con gcloud:
+
+```bash
+bash infra/crea_bucket.sh
+```
+
+- Crea `gs://integracion-515321-archivos`, privado: acceso uniforme y sin acceso público.
+- Le da a la cuenta de servicio de la máquina `roles/storage.objectAdmin` solo sobre ese bucket, y
+  `roles/iam.serviceAccountTokenCreator` sobre sí misma, para firmar las URLs con signBlob sin
+  llaves.
+- Si la máquina no tiene el alcance `cloud-platform`, imprime cómo dárselo. Eso exige detenerla
+  unos minutos.
+- Al final dice qué poner en `infra/.env` de la máquina: `BUCKET_NOMBRE=integracion-515321-archivos`.
+
+En la nube no se levanta el emulador: `docker-compose.gcs.yml` apunta `evidencias` al bucket
+real. Las URLs firmadas son de `storage.googleapis.com` y vencen a los 15 minutos.
+
 ```bash
 bash infra/levanta_nube.sh
 ```
 
 Construye y levanta el compose principal con `docker-compose.nginx.yml`,
-`docker-compose.letsencrypt.yml` y `docker-compose.cloud-logging.yml`, y todos los perfiles con
-`web`, menos `gpu`. Deja la salida en `~/levanta.log` y termina con `salida=0` si todos los
+`docker-compose.letsencrypt.yml`, `docker-compose.cloud-logging.yml` y `docker-compose.gcs.yml`,
+y todos los perfiles con `web`, menos `gpu`. Deja la salida en `~/levanta.log` y termina con `salida=0` si todos los
 contenedores quedaron sanos. Para comprobar desde fuera:
 
 ```bash
@@ -172,6 +191,16 @@ sin daño; de otras, revisa antes si son repetibles.
 
 Después de actualizar la máquina, el simulador de `abm-gpu` de la PC también se reconstruye
 (`up -d --build`, §9).
+
+**Al pasar a D2 (el bucket, 2026-11-22):** antes de `levanta_nube.sh`, crea el bucket (§6), agrega
+`BUCKET_NOMBRE` a `infra/.env` y aplica la 039 (`sudo bash infra/aplica_migraciones.sh 039`). Las
+fotos que ya estaban en el volumen `epidemia_evidencias-datos` no se mudan solas. Para subirlas
+con la misma ruta, desde la máquina:
+
+```bash
+sudo docker run --rm -v epidemia_evidencias-datos:/datos:ro google/cloud-sdk:slim \
+  gcloud storage cp -r /datos/evidence gs://integracion-515321-archivos/
+```
 
 ## 9. El simulador de `abm-gpu` en una PC con GPU (D23)
 

@@ -1,0 +1,2 @@
+Carpeta inicial del emulador del bucket (infra/docker-compose.yml): crea el bucket
+epidemia-archivos al arrancar. Los archivos de verdad viven en el volumen bucket-datos.

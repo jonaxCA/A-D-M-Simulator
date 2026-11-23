@@ -15,6 +15,7 @@ def crear_app(nombre, contrato, registrar_rutas=None, dependencias=()):
     from .ajustes import cargar_ajustes
     from .errores import ErrorAPI, respuesta_error
     from .formatos import responder
+    from .archivos import BucketNoDisponible
     from .mongo import MongoNoDisponible
     from . import llaves, redis_compartido, registro, salud
 
@@ -73,6 +74,13 @@ def crear_app(nombre, contrato, registrar_rutas=None, dependencias=()):
         app.logger.warning("MongoDB no disponible para %s", nombre)
         return respuesta_error(ErrorAPI(503, "SERVICIO_NO_DISPONIBLE",
                                         "MongoDB no está disponible.", {"Retry-After": "5"}))
+
+    @app.errorhandler(BucketNoDisponible)
+    def bucket_caido(exc):
+        app.logger.warning("El bucket no está disponible para %s: %s", nombre, exc)
+        return respuesta_error(ErrorAPI(503, "SERVICIO_NO_DISPONIBLE",
+                                        "El almacenamiento de archivos no está disponible.",
+                                        {"Retry-After": "5"}))
 
     @app.errorhandler(Exception)
     def error_inesperado(exc):

@@ -22,14 +22,14 @@ Lo que pide la rúbrica en seguridad y cómo se cumple. El cotejo está en [`arq
 | RNF-D13 | Cada servicio toca solo sus datos | Un rol de PostgreSQL por servicio, con permiso solo sobre sus tablas (D18) | Bases de datos, Seguridad | Hecho |
 | RNF-D14 | La auditoría es completa | Ver RF-A06 | Seguridad | Hecho |
 | RNF-D15 | No se guardan datos que identifiquen a una persona | Un caso no lleva nombre, CURP ni domicilio: solo edad, sexo, fechas, resultado, severidad y ubicación | Bases de datos, Seguridad | Hecho |
-| RNF-D17 | Los archivos privados se abren solo con una URL firmada que vence | El servicio dueño revisa el permiso y responde la URL. Propuesta: 15 minutos. Ninguna URL es permanente | Microservicios, Seguridad | Falta (D-3) |
+| RNF-D17 | Los archivos privados se abren solo con una URL firmada que vence | El servicio dueño revisa el permiso y responde la URL. Propuesta: 15 minutos. Ninguna URL es permanente | Microservicios, Seguridad | Hecho (D2, 2026-11-22): `evidencias` revisa el rol y responde una URL V4 de lectura de 15 minutos (`/attachments/{id}/url`, `/reports/{id}/url`), sin caché |
 | RNF-D20 | Las contraseñas tienen un mínimo de 8 caracteres y no se guardan en claro | Una contraseña más corta se rechaza al crear o editar la cuenta. La base guarda solo su huella (`password_hash`) | Seguridad | Hecho |
 | RNF-D21 | La web manda los encabezados de seguridad | `X-Content-Type-Options`, `X-Frame-Options` y `Strict-Transport-Security`, desde nginx o desde la web | Web, Infraestructura | Falta: no hay código ni brecha registrada |
 | RNF-D23 | El teléfono protege lo que guarda | Ver RF-I13 y RF-I15 | Móvil, Seguridad | Hecho |
-| RNF-D24 | Las fotos de los casos solo las ve quien tiene permiso | El archivo se baja con token; cada uno lleva su nivel de privacidad | Microservicios, Seguridad | Hecho; con el bucket pasa a URL firmada (RNF-D17) |
+| RNF-D24 | Las fotos de los casos solo las ve quien tiene permiso | El archivo se baja con token; cada uno lleva su nivel de privacidad | Microservicios, Seguridad | Hecho: con token o con una URL firmada que vence (RNF-D17, D2) |
 | RNF-D25 | Los intentos fallidos de inicio de sesión se registran | Cada uno deja `LOGIN_FAILED` en la auditoría | Seguridad | Hecho (S3) |
 | RNF-D26 | Los errores no revelan cómo está hecho el sistema | Formato RFC 7807 con un `codigo` estable, sin traza ni SQL | Microservicios, Seguridad | Hecho |
-| RNF-D27 | Los archivos se validan al subirlos | Se revisan el tipo por su contenido (no por la extensión), el tamaño máximo y la huella | Microservicios, Seguridad | Falta: va con el bucket (D30) |
+| RNF-D27 | Los archivos se validan al subirlos | Se revisan el tipo por su contenido (no por la extensión), el tamaño máximo y la huella | Microservicios, Seguridad | Hecho (D2): tipo por contenido, hasta 20 MB y la huella de `X-Content-SHA256`; un reporte solo es PDF |
 | RNF-D28 | Las rutas internas solo aceptan a otros servicios | Una ruta con `@solo_servicios` rechaza el token de un usuario; así se crean los avisos | Microservicios, Seguridad | Hecho |
 
 ## Fuera de alcance

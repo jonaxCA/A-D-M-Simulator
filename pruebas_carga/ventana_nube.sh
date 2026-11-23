@@ -7,8 +7,9 @@
 #   ... la prueba de carga desde la PC (pruebas_carga/README.md) ...
 #   sudo bash pruebas_carga/ventana_nube.sh cierra   restaura la base, las fotos y los límites
 #
-# Respalda PostgreSQL (pg_dump), MongoDB (mongodump) y el volumen de las fotos en
-# /var/backups/epidemia-carga (700, solo root). Al cerrar detiene los servicios, vacía las colas
+# Respalda PostgreSQL (pg_dump), MongoDB (mongodump) y, si existe, el volumen de las fotos en
+# /var/backups/epidemia-carga (700, solo root). Desde D2 las fotos van al bucket: las que suba la
+# prueba se quedan ahí sin registro en la base, porque el bucket no se restaura. Al cerrar detiene los servicios, vacía las colas
 # de corridas de Redis, restaura las tres cosas y vuelve a levantar todo. Las sesiones de Redis
 # no se tocan: los tokens de la prueba vencen solos. Ninguna contraseña aparece en la línea de
 # comandos: cada herramienta la lee del entorno de su contenedor.
@@ -24,6 +25,7 @@ if [ -n "${COMPOSE_CMD:-}" ]; then
 else
     COMPOSE=(docker compose -f infra/docker-compose.yml -f infra/docker-compose.nginx.yml
              -f infra/docker-compose.letsencrypt.yml -f infra/docker-compose.cloud-logging.yml
+             -f infra/docker-compose.gcs.yml
              --profile identidad --profile catalogos --profile vigilancia --profile escenarios
              --profile simulacion --profile analitica --profile plataforma --profile web)
 fi
@@ -51,8 +53,13 @@ abre() {
     # La contraseña de root va en un archivo de configuración dentro del contenedor, no en la
     # línea de comandos, y se borra al terminar.
     "${COMPOSE[@]}" exec -T mongodb sh -c 'umask 077; c=$(mktemp); printf "password: %s\n" "$MONGO_INITDB_ROOT_PASSWORD" > "$c"; mongodump --quiet --config "$c" -u root --authenticationDatabase admin --archive --gzip; s=$?; rm -f "$c"; exit $s' > "$RESPALDO/mongo.archive.gz"
-    echo "Respaldando las fotos..."
-    docker run --rm --user 0 -v "$VOLUMEN_FOTOS":/datos:ro epidemia/base tar czf - -C /datos . > "$RESPALDO/evidencias.tgz"
+    if docker volume inspect "$VOLUMEN_FOTOS" > /dev/null 2>&1; then
+        echo "Respaldando las fotos..."
+        docker run --rm --user 0 -v "$VOLUMEN_FOTOS":/datos:ro epidemia/base tar czf - -C /datos . > "$RESPALDO/evidencias.tgz"
+    else
+        echo "Las fotos están en el bucket (D30): no se respaldan."
+        rm -f "$RESPALDO/evidencias.tgz"
+    fi
     cp infra/limites.env "$RESPALDO/limites.env"
     ls -la "$RESPALDO"
 
@@ -66,7 +73,7 @@ abre() {
 
 cierra() {
     [ -e "$MARCA" ] || { echo "No hay ventana abierta (falta $MARCA)." >&2; exit 1; }
-    for archivo in postgres.dump mongo.archive.gz evidencias.tgz limites.env; do
+    for archivo in postgres.dump mongo.archive.gz limites.env; do
         [ -s "$RESPALDO/$archivo" ] || { echo "Falta $RESPALDO/$archivo: no restauro nada." >&2; exit 1; }
     done
     echo "Al cerrar: $(conteos)" | tee "$RESPALDO/conteos_al_cerrar.txt"
@@ -83,8 +90,10 @@ cierra() {
     "${COMPOSE[@]}" exec -T postgres sh -c 'pg_restore -U postgres -d "$POSTGRES_DB" --clean --if-exists --single-transaction' < "$RESPALDO/postgres.dump"
     echo "Restaurando MongoDB..."
     "${COMPOSE[@]}" exec -T mongodb sh -c 'umask 077; c=$(mktemp); printf "password: %s\n" "$MONGO_INITDB_ROOT_PASSWORD" > "$c"; mongorestore --quiet --config "$c" -u root --authenticationDatabase admin --drop --archive --gzip; s=$?; rm -f "$c"; exit $s' < "$RESPALDO/mongo.archive.gz"
-    echo "Restaurando las fotos..."
-    docker run --rm -i --user 0 -v "$VOLUMEN_FOTOS":/datos epidemia/base sh -c 'find /datos -mindepth 1 -delete && tar xzf - -C /datos' < "$RESPALDO/evidencias.tgz"
+    if [ -s "$RESPALDO/evidencias.tgz" ]; then
+        echo "Restaurando las fotos..."
+        docker run --rm -i --user 0 -v "$VOLUMEN_FOTOS":/datos epidemia/base sh -c 'find /datos -mindepth 1 -delete && tar xzf - -C /datos' < "$RESPALDO/evidencias.tgz"
+    fi
     cp "$RESPALDO/limites.env" infra/limites.env
 
     echo "Levantando todo con los límites de siempre..."

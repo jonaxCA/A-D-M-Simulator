@@ -34,7 +34,10 @@ def test_el_script_revisa_todos_los_puertos_publicados():
     assert len(publicados) == len(SERVICIOS) + 2
     locales = {int(SCRIPT.FIJOS[v]) for v in ("REDIS_PUERTO_LOCAL", "POSTGRES_PUERTO_LOCAL",
                                               "MONGO_PUERTO_LOCAL")}
-    assert set(SCRIPT.PUERTOS) == publicados | locales
+    # El emulador del bucket (D30), fijo en 127.0.0.1:4443 porque ahí apuntan las URLs firmadas.
+    bucket = {int(p) for p in re.findall(r'^      - "127\.0\.0\.1:(\d+):4443"$', COMPOSE, re.M)}
+    assert bucket == {4443}
+    assert set(SCRIPT.PUERTOS) == publicados | locales | bucket
 
 
 def test_el_segundo_simulador_no_publica_puerto():

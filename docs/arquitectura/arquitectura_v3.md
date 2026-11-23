@@ -26,7 +26,7 @@ Cada pieza lleva su estado:
 | Población de un escenario | Habitantes | Agentes; el factor de escala se calcula fuera del motor | D6 | **Hecho** |
 | Réplicas | — | 30 por omisión, semillas 1..N; el escritorio resume, con aviso de bandas encimadas | D8 | **Hecho**. Reabierto: `resultados` con intervalos de incertidumbre (bloque E) |
 | MongoDB | Fuera de la etapa | `historial_servicios` y `series_corridas` | D28 | **Hecho** (D-1); ver §6 |
-| Archivos | Volumen de Docker de `evidencias` | Cloud Storage con URLs firmadas | D30, D35 | Falta (D-3; bloque D) |
+| Archivos | Volumen de Docker de `evidencias` | Cloud Storage con URLs firmadas | D30, D35 | **Hecho** en el servicio y en local con el emulador (D2, 2026-11-22); en GCP falta crear el bucket (`infra/crea_bucket.sh`, con F) |
 | Límites de consumo | Fuera de la etapa | Un contador por usuario y regla en Redis, en `epidemia_comun` | D31 | Hecho en la biblioteca (S2); ver §8 |
 | Salud y panel | `/health` con PostgreSQL y Redis; historial en Redis | Más MongoDB, bucket y tiempo de respuesta; historial en MongoDB y número de errores | D28 | Falta, en parte (N3, N4; bloque F) |
 | Despliegue | Pendiente | Compute Engine: una VM principal; la GPU, en una PC conectada por un túnel (D23) | D23, D25, D26 | **Hecho** (2026-11-20): la web, los 29 servicios y las bases corren en la VM detrás de nginx con Let's Encrypt, el firewall solo deja 80 y 443 y los registros de cada contenedor van a Cloud Logging (N1, N6). Aparte quedan el diagrama de distribución (N2) y decidir Secret Manager (S5) |
@@ -78,9 +78,9 @@ Los tres procesos integrales que pide la rúbrica, paso a paso, están en [`proc
 
 | Proceso | Usuario y app | Servicios | Redis | PostgreSQL o MongoDB | Archivo en bucket | Auditoría | Notificación | Visualización |
 |---|---|---|---|---|---|---|---|---|
-| P1 · Captura en campo | CAPTURISTA, Android | `auth`, `sesiones`, `dispositivos`, `enfermedades`, `regiones`, `sincronizacion`, `casos`, `evidencias`, `vacunas` | Sí: sesión, candado y resultado del lote | Sí: `cases` | Falta: las fotos a GCS (D-3; bloque D) | Sí | **Hecho**: `sincronizacion` avisa a los EPIDEMIOLOGO por lote con casos nuevos (`NEW_CASES`, D32) | Sí: tablero y mapa de la web |
+| P1 · Captura en campo | CAPTURISTA, Android | `auth`, `sesiones`, `dispositivos`, `enfermedades`, `regiones`, `sincronizacion`, `casos`, `evidencias`, `vacunas` | Sí: sesión, candado y resultado del lote | Sí: `cases` | **Hecho** en local: las fotos van al bucket y se abren con URL firmada (D2); en GCP, al crear el bucket | Sí | **Hecho**: `sincronizacion` avisa a los EPIDEMIOLOGO por lote con casos nuevos (`NEW_CASES`, D32) | Sí: tablero y mapa de la web |
 | P2 · Diseño y aprobación | ANALISTA en el escritorio; EPIDEMIOLOGO en la web | `escenarios`, `intervenciones`, `validacion`, `escenarios-xml`, `aprobacion`, `notificaciones` | Sí: sesión | Sí | No corresponde (D32); el XML de intercambio, solo si sobra tiempo | Sí | **Hecho**: `aprobacion` avisa a los EPIDEMIOLOGO al enviar a revisión y al autor al aprobar o rechazar; la web dictamina por medio de `aprobacion` (D32, D36) | Sí: estado de la versión |
-| P3 · Simulación y comparación | ANALISTA en el escritorio; consulta en la web | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto`, `notificaciones` | Sí: sesión, candado, cola y avance | Sí: el resumen en `simulation_runs` (038) y la serie en `series_corridas` (MongoDB); `simulation_results` se retiró (041) | Falta: el reporte a GCS con URL firmada (D-3; bloque D) | Sí | Sí: al terminar o fallar una corrida | Sí: escritorio y web |
+| P3 · Simulación y comparación | ANALISTA en el escritorio; consulta en la web | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto`, `notificaciones` | Sí: sesión, candado, cola y avance | Sí: el resumen en `simulation_runs` (038) y la serie en `series_corridas` (MongoDB); `simulation_results` se retiró (041) | En el servicio: `POST /api/v1/reports` y su URL firmada (D2); falta que el escritorio lo suba (A) | Sí | Sí: al terminar o fallar una corrida | Sí: escritorio y web |
 
 Los tres usan PostgreSQL, que basta para la rúbrica («PostgreSQL o MongoDB»). MongoDB entra por el monitoreo y por las series del simulador (§6).
 
@@ -123,7 +123,7 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
 | PostgreSQL | La fuente de verdad: usuarios y roles, catálogos, casos, escenarios y versiones, corridas y sus resúmenes, avisos, auditoría y los metadatos de cada archivo. Esquema: migraciones de `datos/postgres/migraciones/`, con los números reservados en su README | **Hecho** |
 | Redis | Lo temporal y reconstruible (v2 §5.2): sesiones, revocaciones, captcha, caché, candados, resultado de lotes, avance de corridas y una cola por motor. Nuevo: `ratelimit:<usuario|ip>:<MÉTODO:regla>` (D31) | **Hecho** |
 | MongoDB | El historial de salud de los servicios y las series diarias de las corridas (D28). Cliente e índices en `epidemia_comun/mongo.py` | **Hecho** (D1 del checklist del tercer parcial) |
-| Cloud Storage | Fotos y evidencias y el reporte de una comparación; el XML de intercambio no corresponde (D30, D32, D35) | Falta (bloque D) |
+| Cloud Storage | Fotos y evidencias y el reporte de una comparación; el XML de intercambio no corresponde (D30, D32, D35). Interfaz en `epidemia_comun/archivos.py`; solo la usa `evidencias` | **Hecho** en local con el emulador (D2); en GCP falta crear el bucket |
 
 **Diseño de MongoDB (D-1, D28).**
 
@@ -165,13 +165,18 @@ El criterio:
 - Si el trabajador muere después de guardar la serie y antes de confirmar, la corrida se reencola con la misma semilla y su serie se reescribe: el índice único `{run_id, dia}` impide los días duplicados (D38).
 - Si MongoDB no responde, la corrida termina con su resumen en PostgreSQL y la serie se reintenta.
 
-**Archivos en Cloud Storage (D-3, D30).**
+**Archivos en Cloud Storage (D-3, D30; hecho en D2, 2026-11-22).**
 
-- **Un bucket privado.** Propuesta: los prefijos `evidencias/`, `reportes/` y `xml/`, con acceso uniforme y sin lectura pública.
-- **Qué guarda la base:** de cada archivo, solo identificador, ruta, tipo, tamaño, propietario, fecha, huella SHA-256, nivel de privacidad, estado y metadatos. Las evidencias ya tienen esos campos en `case_attachments`. Los reportes de P3 necesitan su tabla: la migración 039, reservada para el bloque D (D30, D35).
-- **URLs firmadas:** el servicio dueño del archivo revisa el permiso y responde con una URL firmada de lectura que vence en minutos. Propuesta: V4 de 15 minutos. Ninguna URL es permanente.
-- **Validación de archivos:** al subir se revisan el tipo por su contenido (no por la extensión), el tamaño máximo y la huella. Las fotos llegan ya reducidas y sin EXIF desde la móvil.
-- **En local:** una interfaz de almacenamiento que cambia de disco a bucket por variable de entorno, o un emulador de GCS (D30).
+| Qué | Cómo |
+|---|---|
+| Bucket | Uno, privado: acceso uniforme y prevención de acceso público. Prefijos `evidencias/<case_id>/` y `reportes/<primera corrida>/`; el XML de intercambio no va (D32). En GCP lo crea `infra/crea_bucket.sh` (`<proyecto>-archivos`); en local, el emulador `fake-gcs-server` del compose (`bucket`, `epidemia-archivos`) |
+| Quién escribe | Solo `evidencias`, el servicio de los archivos, con la interfaz de `epidemia_comun/archivos.py` (`ARCHIVOS=gcs` o `disco`). La web y el escritorio suben por HTTP a sus rutas (D35, D36) |
+| Qué guarda la base | De cada archivo, solo identificador, ruta del objeto, tipo, tamaño, quién lo subió, fecha, huella SHA-256 y privacidad: `case_attachments` (fotos de casos) y `comparison_reports` (039: el reporte de una comparación, identificado por sus corridas, `run_ids`) |
+| Cómo se relacionan | La fila apunta al objeto por `storage_path`. Primero se sube el objeto y luego se escribe la fila con su `CREATE` en la bitácora; si la fila falla, se borra el objeto. Al borrar, primero la fila y, confirmada, el objeto. Lo peor que queda es un objeto huérfano, nunca una fila sin archivo |
+| URLs firmadas | El servicio revisa el rol y responde una URL V4 de lectura que vence en 15 minutos (`/attachments/{id}/url`, `/reports/{id}/url`). Ninguna es permanente. En GCP firma la cuenta de servicio de la máquina con signBlob, sin llaves en el `.env` |
+| Validación | Tipo por contenido (no por la extensión ni el `Content-Type`), hasta 20 MB y, si el cliente manda `X-Content-SHA256`, la huella. Un reporte solo es PDF. Las fotos llegan ya reducidas y sin EXIF desde la móvil |
+| Bucket caído | La subida responde 503 y no deja fila; el caso ya creado se queda y la app reintenta (RNF-C19). `/health` de `evidencias` sale `degradado` con `bucket: false` |
+| Volumen | Hasta 20 MB por archivo; unas cuantas fotos por caso y un reporte por comparación exportada. Los archivos no tienen vida fija: se borran solo por error (ADMINISTRADOR) |
 
 ## 7. Simulador
 
@@ -222,7 +227,6 @@ flowchart TB
             PG[(PostgreSQL 16<br/>volumen postgres-datos)]
             RD[(Redis<br/>sesiones, colas por motor, límites)]
             MG[(MongoDB<br/>series_corridas, historial_servicios)]
-            EV[(volumen evidencias-datos<br/>fotos de casos)]
         end
         LOG[Cloud Logging<br/>gcplogs, X-Correlation-ID]
     end
@@ -234,13 +238,12 @@ flowchart TB
     WEB -->|HTTP interno, URL_SERVICIOS| MS
     WEB --> PG
     MS --> PG & RD & MG
-    MS --> EV
     SIM --> PG & RD & MG
     SG -->|túnel SSH| IAP
     IAP --> PG & RD & MG
     LE -.->|certificado por HTTP 80, renovación cada 12 h| NG
     VM -->|registros de cada contenedor| LOG
-    MS -.->|pendiente D-3| GCS[(Cloud Storage)]
+    MS -.->|evidencias, D2: falta crear el bucket| GCS[(Cloud Storage<br/>fotos y reportes)]
 ```
 
 - **Monitoreo:** `estado-servicios` sondea el `/health` de los 29 servicios (PostgreSQL, Redis,
@@ -250,8 +253,9 @@ flowchart TB
   un servicio cae, se degrada o se recupera durante 30 s, los ADMINISTRADOR reciben un aviso
   `SYSTEM` de `notificaciones` (alertas técnicas, F7). Los registros de los 37 contenedores van a Cloud Logging. La web todavía lee
   PostgreSQL directo en los módulos que no pasaron a los servicios (D36).
-- **Archivos:** las fotos de los casos están en el volumen `evidencias-datos` de la VM; pasarlas
-  a Cloud Storage con URLs firmadas es del bloque D (D30, D35).
+- **Archivos:** desde D2 (2026-11-22) `evidencias` guarda en Cloud Storage con URLs firmadas
+  (D30, D35). En la VM se levanta con `infra/docker-compose.gcs.yml` después de crear el bucket con
+  `infra/crea_bucket.sh`; hasta entonces las fotos siguen en el volumen `evidencias-datos`.
 
 - **Máquinas:**
   - La VM principal corre el mismo `infra/docker-compose.yml` que en local, con nginx enfrente.
@@ -278,7 +282,7 @@ flowchart TB
 | Roles y permisos por recurso | `@requiere_token(roles=...)`, un rol de PostgreSQL por servicio, matriz de D1 | **Hecho** |
 | Rate limiting | D31; ver «Límites de consumo» abajo | **Hecho** en la biblioteca (S2); falta el `429` en los `openapi.json` |
 | Protección de endpoints | Token en toda ruta no pública; `@solo_servicios` para las internas; en la nube, solo nginx expuesto | **Hecho** (en la nube desde el 2026-11-20: solo 80 y 443 abiertos) |
-| Validación de archivos, XML y JSON | XSD con `xmlschema`, XML con `defusedxml`, validación de cada cuerpo; archivos según §6 | **Hecho** para XML y JSON; archivos, con GCS |
+| Validación de archivos, XML y JSON | XSD con `xmlschema`, XML con `defusedxml`, validación de cada cuerpo; archivos según §6 | **Hecho**: archivos por contenido, tamaño y huella desde D2 |
 | Intentos fallidos y auditoría | `LOGIN_FAILED` y `audit_log` en la misma transacción que cada escritura | **Hecho** (S3) |
 | Secretos protegidos | `.env` fuera de git; en GCP, según lo de arriba | Falta en GCP (S5) |
 | Manejo seguro de errores | RFC 7807 sin traza ni SQL | **Hecho** |
@@ -323,7 +327,7 @@ flowchart TB
 | Redis no responde | Las rutas protegidas responden 503 (fallan cerradas); las públicas y la caché de analítica siguen contra PostgreSQL; `corridas` no deja una corrida colgada; la web muestra el aviso en las pantallas protegidas (D36) | **Hecho** (`test_redis_caido.py`) |
 | MongoDB no responde | El panel lo marca como dependencia caída y se pierde el historial de ese lapso. La corrida termina con su resumen en `simulation_runs` (D28) y la serie se reintenta cada 30 s | La detección en `/health` y el panel, demostrada el 2026-11-16; el reintento, en `test_compose_mongo.py` |
 | PostgreSQL no responde | `/health` en 503, el panel los marca degradados, y las escrituras fallan sin dejar datos a medias (una transacción por escritura) | Demostrado el 2026-11-16; las lecturas responden 503 `SERVICIO_NO_DISPONIBLE` (la web, 503 con página amable) |
-| El bucket no está disponible | La subida responde 503 y la app conserva el archivo para reintentar; el caso ya creado no se pierde | La detección en `/health` y el panel, demostrada el 2026-11-16; falta la subida (bloque D) |
+| El bucket no está disponible | La subida responde 503 y la app conserva el archivo para reintentar; el caso ya creado no se pierde | **Hecho**: la detección en `/health` y el panel (2026-11-16) y la subida con 503 sin perder el caso (D2, `test_compose_evidencias.py`) |
 | Una petición excede el tiempo | `llamar()` corta a los 5 s y responde 503; nginx corta cualquier petición a los `NGINX_TIEMPO_MAXIMO` (30 s) con 504 | Demostrado el 2026-11-16 (5.0 s); nginx, en `test_compose_nginx.py` (2026-11-19) |
 
 **Plan de pruebas de fallos.** `python infra/demo_fallos.py` (demostración para humanos, contra el compose; `--lista` muestra los escenarios) detiene o pausa el contenedor, llama a las rutas, imprime lo esperado y lo observado, restaura y verifica la recuperación. La versión automática, `test_compose_fallos.py` y `test_compose_redis.py`, corre con `python infra/pruebas_integracion.py`. `demo_fallos.py` se ejecutó el 2026-11-16 contra el compose en local, con un MongoDB y un emulador del bucket de la demostración (`infra/docker-compose.fallos.yml`, hasta que el bloque D los agregue); evidencia en [`docs/pruebas/fallos/2026-11-16`](../pruebas/fallos/2026-11-16/LEEME.md). Las versiones automáticas (`test_compose_*.py`) no se han ejecutado en esta máquina.
@@ -334,7 +338,7 @@ flowchart TB
 | Redis caído | `stop redis` | Ruta protegida 503 `SERVICIO_NO_DISPONIBLE`; públicas 200; la web muestra el aviso en las pantallas protegidas (D36) | `demo_fallos.py redis`; `test_compose_redis.py`, `test_redis_caido.py` | **Demostrado** 2026-11-16, también la web, pero con la regla de D33 (conservar las sesiones abiertas); falta repetir la de la web con D36 |
 | PostgreSQL caído | `stop postgres` | `/health` 503; lecturas y escrituras fallan sin datos a medias; recupera al volver | `demo_fallos.py postgres`; `test_compose_fallos.py` | **Demostrado** 2026-11-16; las lecturas responden 503 `SERVICIO_NO_DISPONIBLE`, tras corregir el 500 inicial (ver LEEME de la evidencia) |
 | MongoDB caído | `stop mongodb` | Panel con dependencia caída; la corrida termina con su resumen en PostgreSQL | `demo_fallos.py mongodb` | **Demostrado** 2026-11-16 con el MongoDB de la demostración (`/health` y panel); falta la corrida con resumen en PostgreSQL (bloque D) |
-| Bucket caído | `stop bucket` | La subida responde 503 y el caso no se pierde | `demo_fallos.py bucket` | **Demostrado** 2026-11-16 con el emulador de la demostración (`/health` y panel); falta la subida (bloque D) |
+| Bucket caído | `stop bucket` | La subida responde 503 y el caso no se pierde | `demo_fallos.py bucket` | **Demostrado** 2026-11-16 con el emulador (`/health` y panel); la subida, en `test_compose_evidencias.py` (D2) |
 | Timeout | `docker compose pause validacion` | `escenarios` corta a los 5 s con 503 `SERVICIO_NO_DISPONIBLE` | `demo_fallos.py timeout`; `test_compose_fallos.py` | **Demostrado** 2026-11-16 (503 a los 5.0 s); automatizado (sin ejecutar) |
 | Token revocado | Cerrar sesión y reusar el token | 401 en los servicios y en la web | `test_compose_revocacion.py`; `demo_fallos.py web` | Automatizado en servicios; la web **demostrada** 2026-11-16 |
 | Sobrecarga | Rebasar el límite de una ruta | 429 con `Retry-After` y `LIMITE_EXCEDIDO`; pasada la ventana, vuelve a 200 | Pruebas de `epidemia_comun/limites.py` | Automatizado en la biblioteca; falta en contenedores |
@@ -386,14 +390,14 @@ Los entregables del tercer parcial y dónde los cubre la v3:
 | Microservicios desplegados | §5, §8 | En local **hecho**; en GCP falta |
 | Aplicación móvil Android funcional e integrada | §4 | **Hecho** |
 | Aplicación de escritorio funcional e integrada | §4 | **Hecho** |
-| Buckets configurados y URLs firmadas | §6 | Falta |
+| Buckets configurados y URLs firmadas | §6 | **Hecho** en local con el emulador (D2); en GCP falta crear el bucket |
 | Health checks y panel de monitoreo | §9 | En parte |
 | Algoritmo complejo | §7 | **Hecho** |
 | Conjunto de datos de alto volumen | §6, §9 | **Hecho** (falta confirmar la cifra con el profesor y repetir la inserción con `scenario_id`) |
 | Pruebas Locust y resultados de rendimiento | §9 | **Hecho** en local; falta en la nube |
 | Pruebas de fallos | §9 | Demostradas en local; falta en contenedores automatizados y en la nube |
 | Evidencia de seguridad | §8 | En parte |
-| Integración completa (tres procesos) | §3 | En parte: falta el bucket (fotos de P1 y reporte de P3) |
+| Integración completa (tres procesos) | §3 | En parte: el bucket ya está en el servicio (D2); faltan el bucket en GCP y que el escritorio suba el reporte de P3 |
 | Documentación actualizada | Este documento y los que enlaza | Borrador |
 | Demostración en la nube | §8 | Falta |
 
