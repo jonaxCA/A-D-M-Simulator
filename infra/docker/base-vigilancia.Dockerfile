@@ -1,7 +1,7 @@
 # Imagen base de los servicios de F, vigilancia, analítica y plataforma (casos, sincronizacion,
-# dispositivos, vacunas, indicadores, series, zonas, notificaciones y estado-servicios): solo
-# Python y epidemia_comun. No lleva backend_web ni procesamiento (E8). La construye el compose
-# antes que ellos.
+# dispositivos, evidencias, vacunas, importacion, indicadores, series, zonas, notificaciones y
+# estado-servicios): solo Python y epidemia_comun. No lleva backend_web ni procesamiento (E8). La
+# construye el compose antes que ellos.
 FROM python:3.12-slim
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1 PYTHONPATH=/app:/app/microservicios/comun

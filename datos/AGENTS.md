@@ -29,7 +29,8 @@
 - No relajes las reglas de negocio de la base para que el código pase: `fn_version_aprobada`,
   el CHECK que impide aprobar la versión propia y el trigger que hace de `audit_log` una tabla
   de solo inserción.
-- No edites a mano `censo/` ni `geo/`. Si un dato oficial está mal, corrígelo desde la fuente
-  que cita el archivo.
+- No edites a mano `censo/`, `geo/` ni `observados/`. Si un dato oficial está mal, corrígelo
+  desde la fuente que cita el archivo. Los registros por persona (como el archivo de casos de la
+  DGE) nunca entran: se procesan en local y solo se guarda el agregado (D50, RNF-I05).
 - `population_size` va de 1,000 a 20,000,000 (migración 023); Nuevo León completo
   (5,784,442 habitantes) cabe.

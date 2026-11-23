@@ -128,7 +128,7 @@ Una fila por dato: las tablas de PostgreSQL que dejan las migraciones, las llave
 | Sesión: `session:<h(sid)>`, `user:<id>:sessions`, `refresh:<h(rt)>`, `refresh:usado:<h(rt)>`, `jwt:revoked:<jti>` | `auth` (abre); `sesiones` (renueva y revoca) | Todas las rutas protegidas (`requiere_token`) | Redis | Temporal, con TTL y reconstruible (D19) | Sesión: 8 h desde el login; renovar no la alarga (`arquitectura_v2.md` §4.4). Token de acceso: 20 min (v2 §4.4). Revocado: lo que le quede al token, más 60 s | Una por sesión abierta; hasta 3 por cuenta (`MAX_SESIONES`, D41) |
 | Captcha `captcha:<id>` | `auth` (1.1, 2.1) | `auth` | Redis | Temporal (D19). Sirve para un solo intento | 5 min; se borra al usarlo | Uno por intento de inicio de sesión |
 | MFA: `mfa:<h(token)>`, `mfa:fallos:<id>`, `mfa:alta:<id>` | `auth` (1.1, 2.1, D40) | `auth` | Redis | Temporal (D19) | `mfa:`: 5 min, o se borra al usarlo o al quinto fallo. `mfa:fallos:`: 15 min. `mfa:alta:`: 15 min, o se borra al usarlo | Uno por inicio de sesión a medias de un perfil crítico |
-| Límite: `ratelimit:<usuario>:<ruta>` | `epidemia_comun`, en los 29 servicios (D31) | Los mismos servicios | Redis | Contador temporal (§9.3, D31) | La ventana: 60 s en los cuatro perfiles (`limites.py`) | Un contador por usuario y ruta. Sin sesión, por IP (`arquitectura_v3.md` §5) |
+| Límite: `ratelimit:<usuario>:<ruta>` | `epidemia_comun`, en los 30 servicios (D31) | Los mismos servicios | Redis | Contador temporal (§9.3, D31) | La ventana: 60 s en los cuatro perfiles (`limites.py`) | Un contador por usuario y ruta. Sin sesión, por IP (`arquitectura_v3.md` §5) |
 
 **Catálogos**
 
@@ -154,6 +154,9 @@ Una fila por dato: las tablas de PostgreSQL que dejan las migraciones, las llave
 | Candados: `lock:corrida:<version>`, `sync:lote:<id>:candado` | `corridas` (3.1); `sincronizacion` (1.6) | Los mismos servicios | Redis | Temporal. Vence solo (D19) | `lock:`: unos segundos. Candado de lote: 300 s | Uno por versión o lote en proceso |
 | Resultado de lote: `sync:lote:<id>` | `sincronizacion` (1.6) | `sincronizacion` (responde «duplicado»); la app reenvía el mismo lote | Redis | Temporal. Si se pierde, `casos` evita duplicados por `local_uuid` (D19) | 7 días (`SYNC_LOTE_TTL_SECONDS`, 604 800 s) | Uno por lote recibido. Un lote trae hasta 100 casos |
 | Lote crudo de `sincronizacion` | — | — | No se implementa: era MongoDB «solo si sobra tiempo» (D28, §9.3) | — | — | — |
+| `observed_datasets` (061) | `importacion` (D53), cuando EPIDEMIOLOGO, ANALISTA o ADMINISTRADOR importa una serie desde el escritorio (A4); la 061 carga la serie de D50 | `importacion` (lista y detalle, dentro del alcance de la cuenta); `calibracion` (E7, D50) | PostgreSQL | Integridad con la enfermedad y la región, versión por clave y auditoría | No se borra (D52): otra importación de la misma clave es una versión nueva | Uno por versión de cada serie; hoy, 1 (la de D50) |
+| `observed_points` (061) | `importacion`, con su conjunto | `importacion` (`/datasets/{id}/points`); `calibracion` (E7) | PostgreSQL | Solo agregados por periodo: ningún registro por persona (RNF-I05) | La de su conjunto (`ON DELETE CASCADE`), que no se borra | De 4 a 5 000 por conjunto; la serie de D50 trae 22 semanas |
+| Archivo de la DGE (`COVID19MEXICO2020.zip`) | — | — | No entra: trae un registro por persona y solo se procesa en local con `datos/scripts/build_serie_observada.py` (D50) | — | — | — |
 
 **Escenarios y simulación**
 
@@ -186,7 +189,7 @@ Una fila por dato: las tablas de PostgreSQL que dejan las migraciones, las llave
 | `schema_migrations` | Cada migración | `verifica_migraciones.py` y `prepara_base_pruebas.py` | PostgreSQL | Registro de lo aplicado (D17) | No se borra | Una por migración |
 | Salud: `health:<servicio>` | `estado-servicios` | `estado-servicios` (panel) | Redis | Temporal: el último sondeo. El historial está en MongoDB (`historial_servicios`) | Tres intervalos de sondeo: 30 s con `SONDEO_SEGUNDOS` en 10 | Una por servicio: 29 |
 | Alertas y errores: `alert:<servicio>`, `errors:<servicio>` | `estado-servicios` (alertas técnicas, F7); todos los servicios (`errors:`, cada 5xx) | `estado-servicios` (panel y alertas) | Redis | Temporal (D19) | `alert:`: 7 días desde el último aviso. `errors:`: 24 h desde el primer error de la ventana | Una de cada una por servicio: 29 |
-| `historial_servicios` (MongoDB) | `estado-servicios` (un documento por sondeo) | `estado-servicios` (panel: disponibilidad, latencia, último error) | MongoDB (D-1, D28) | Alta frecuencia y se agrega (§9.3, D28) | 30 días (TTL sobre `fecha`, `epidemia_comun/mongo.py`) | 29 servicios cada 10 s: unos 250 000 documentos al día y 7.5 millones con el TTL lleno |
+| `historial_servicios` (MongoDB) | `estado-servicios` (un documento por sondeo) | `estado-servicios` (panel: disponibilidad, latencia, último error) | MongoDB (D-1, D28) | Alta frecuencia y se agrega (§9.3, D28) | 30 días (TTL sobre `fecha`, `epidemia_comun/mongo.py`) | 30 servicios cada 10 s: unos 260 000 documentos al día y 7.8 millones con el TTL lleno |
 
 **Teléfono**
 
@@ -204,7 +207,7 @@ Una fila por dato: las tablas de PostgreSQL que dejan las migraciones, las llave
 
 ### 3. Mapa de servicios
 
-Los 29 servicios del catálogo. En P1, P2 y P3 van los pasos que los usan (según la columna *Servicio* de `procesos_v3.md`).
+Los 30 servicios del catálogo. En P1, P2 y P3 van los pasos que los usan (según la columna *Servicio* de `procesos_v3.md`).
 
 | Servicio | P1 | P2 | P3 | Soporte |
 |---|---|---|---|---|
@@ -237,8 +240,9 @@ Los 29 servicios del catálogo. En P1, P2 y P3 van los pasos que los usan (segú
 | `dispositivos` | 1.2 | — | — | — |
 | `evidencias` | 1.7, 1.9 (la foto) | — | 3.6, 3.7 (el reporte, D35) | — |
 | `vacunas` | 1.8 | — | — | — |
+| `importacion` | — | — | — | Gestión de datos y calibración (D50, D53) |
 
-- **Servicios que ningún proceso usa (3):** `roles`, `parametros` y `poblacion` son de soporte (administración y catálogos).
+- **Servicios que ningún proceso usa (4):** `roles`, `parametros` y `poblacion` son de soporte (administración y catálogos), e `importacion`, de la gestión de datos del escritorio y de la calibración (D53), que todavía no tienen proceso en `procesos_v3.md`.
 - **Pasos sin servicio:** solo los del teléfono, que son locales: 1.4 y 1.5. Desde D36 la web llama a los servicios en 1.9, 2.8 y 3.7, y desde D2 el reporte de 3.6 sube a `evidencias` (D35).
 - **Avisos en la app:** `notificaciones` aparece en P2 y P3, pero la app móvil también lee avisos (arquitectura_v3 §4, D32) y ningún paso de P1 lo tiene.
-- **Opcionales:** `recuperacion` y `configuracion` (`microservicios.md`) no están entre los 29 y no aparecen aquí.
+- **Opcionales:** `recuperacion` y `configuracion` (`microservicios.md`) no están entre los 30 y no aparecen aquí.

@@ -52,6 +52,8 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `058_centroide_de_marin.sql` | El marcador de Marín (`centroid_lat`, `centroid_lon`) dentro de su municipio: su centroide caía en Doctor González. Solo para bases que ya existen; las nuevas lo traen de la semilla |
 | `059_formularios_por_enfermedad.sql` | `case_forms` (el formulario de cada enfermedad, por versión: borrador, publicado o retirado) y `cases.form_id` y `form_answers` (D48). `svc_casos` lo administra |
 | `060_campanas_y_preferencias.sql` | `campaigns` (las escribe `svc_vacunas`), `notification_preferences` (los avisos que una persona apaga; SYSTEM no) y los tipos `CAMPAIGN` y `DATA_INCOMPLETE` (D49) |
+| `061_serie_observada.sql` | `observed_datasets` y `observed_points` (las series observadas, agregadas y versionadas, con fuente, licencia, corte y huella), el permiso `datasets.upload` y el rol `svc_importacion` (D53). Trae la serie de D50: casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, del 2020-03-01 al 2020-07-26 (DGE). La genera `datos/scripts/build_serie_observada.py`: no se edita a mano |
+| `063_casos_sinteticos.sql` | Nuevo `COMMENT ON TABLE cases`: en la demostración son sintéticos y no calibran (D50). La 062 es de E (`calibrations`) |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.

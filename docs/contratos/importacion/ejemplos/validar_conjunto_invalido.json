@@ -1,0 +1,9 @@
+{
+  "valido": false,
+  "sha256": "0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e",
+  "fallas": [
+    "Línea 5: valor debe ser un entero no negativo.",
+    "Faltan 1 periodos entre 2020-03-08 y 2020-03-22: un periodo sin casos se escribe con 0."
+  ],
+  "resumen": null
+}

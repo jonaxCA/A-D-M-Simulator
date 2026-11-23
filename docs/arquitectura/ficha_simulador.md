@@ -398,3 +398,36 @@ Ningún modelo está calibrado ni validado contra datos observados, así que **t
 - Para que una corrida sea una *predicción*, el modelo tiene que calibrarse contra una serie observada de esa enfermedad y región (D24, reabierto).
 - Para que sea un *resultado validado*, el modelo tiene que reproducir además datos que no se usaron para calibrar, dentro de la tolerancia que declare esta ficha.
 - Las §13 a §15 hacen del modelo un modelo *verificado*, que se muestra junto a la categoría pero no la sube.
+
+## 18. Serie observada (D50, D6)
+
+Es la serie con la que se va a calibrar y validar `seir-ref` (D50). Todavía no se calibra: falta el
+servicio `calibracion` (E7). Entra con la migración 061, como el conjunto
+`COVID19_NL_2020_SINTOMAS` versión 1, y la sirve `importacion` (D53).
+
+- **Qué es:** los casos confirmados de COVID-19 de residentes de Nuevo León, por semana
+  epidemiológica de inicio de síntomas (de domingo a sábado). Son conteos, sin registros por persona
+  (RNF-I05).
+- **Fuente:** Secretaría de Salud, Dirección General de Epidemiología, datos abiertos de COVID-19,
+  cierre anual 2020 (`COVID19MEXICO2020.zip`). Corte: 2021-10-31 (`FECHA_ACTUALIZACION`).
+  SHA-256: `64c90685b68a1164bfa093eeef8c8d33d35d93d9d8b8f3d2d6315359a18dab90`.
+- **Filtro:** `ENTIDAD_RES` = 19 y `CLASIFICACION_FINAL` 1, 2 o 3: confirmado por asociación
+  clínica epidemiológica, por dictaminación o por laboratorio (catálogo `CLASIFICACION_FINAL_COVID`
+  del diccionario del 2024-07-08). El cierre 2021 no trae casos de Nuevo León con inicio en 2020.
+- **Licencia:** datos abiertos, Decreto del DOF del 20-02-2015, art. 5, fr. III: «De libre uso:
+  Citarán la fuente de origen como único requerimiento para ser utilizados libremente».
+- **Ventana:** empieza en la primera semana con casos. El pico de la primera ola es la primera
+  semana seguida de tres descensos, y la ventana termina en el valle: la semana con menos casos
+  después del pico, entre las semanas completas de 2020.
+  - **Resultado:** del **2020-03-01 al 2020-07-26**, 22 semanas y 22 259 casos.
+  - **Pico:** la semana del 2020-07-05, con 3 295 casos.
+  - **Valle:** la semana del 2020-07-26, con 2 061 casos.
+  - Con la separación de D50, las primeras ⅔ de las semanas calibran y el último ⅓, que cae en el
+    pico y la primera bajada, valida.
+- **Lo que la ventana deja fuera:** después del valle no hay un hueco claro entre olas. La serie se
+  queda en una meseta de 2 200 a 2 800 casos por semana hasta septiembre, y sube en octubre y
+  noviembre (4 138 en la del 2020-11-01).
+- **Repetirla:** baja el zip a un directorio propio y corre
+  `python -I datos/scripts/build_serie_observada.py agrega <zip>`. Escribe
+  [`covid19_nl_2020_semanal.csv`](../../datos/observados/covid19_nl_2020_semanal.csv) con todas las
+  semanas de 2020. `python datos/scripts/build_serie_observada.py` regenera la 061 desde ese CSV.

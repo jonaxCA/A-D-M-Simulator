@@ -38,11 +38,11 @@ Es el proceso **P1** de [`procesos_v3.md`](../../arquitectura/procesos_v3.md): e
 | RF-C24 | Campañas de salud, con aviso a los capturistas | El EPIDEMIOLOGO o el ADMINISTRADOR crea, edita o cancela una campaña (enfermedad, municipio o estado, fechas); los CAPTURISTA reciben un aviso. Sin coberturas | Soporte | Microservicios | Media | Hecho en el servidor (D49, 2026-11-22) |
 | RF-C25 | Cada persona apaga los avisos que no quiere | De los que le tocan por su perfil; `SYSTEM` no se apaga, y un aviso apagado no se crea | Soporte | Microservicios | Media | Hecho en el servidor (D49, 2026-11-22); ninguna app tiene todavía la pantalla |
 | RF-C21 | Un teléfono revocado deja de sincronizar | `sincronizacion` rechaza el lote; los casos vuelven a pendientes en el teléfono y la app cierra la sesión | 1.6 | Microservicios, Móvil | Media | Hecho |
+| RF-C16 | Cargar series históricas para calibrar. Reabierto por D50 | La 061 trae la serie de D50 (casos confirmados de COVID-19 en Nuevo León por semana, DGE, del 2020-03-01 al 2020-07-26), con su fuente, licencia, corte y huella; otras series entran por `importacion` (D53). Nunca registros por persona, y `cases` no calibra (063) | Soporte | Bases de datos, Microservicios | Media | Hecho (D50, D53) |
 
 ## Fuera de alcance
 
 | ID | Qué pedía | Por qué sale |
 |---|---|---|
-| RF-C16 | Cargar series históricas para calibrar | La calibración queda fuera (D24) |
 | RF-C17 | Agregar casos por AGEB | El catálogo llega a municipio. El tablero y el mapa agregan por municipio (RF-G03) |
 | RF-C18 | No publicar zonas con menos de N casos | No hay umbral definido ni decisión que lo pida |

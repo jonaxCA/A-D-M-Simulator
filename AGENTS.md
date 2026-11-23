@@ -15,7 +15,7 @@ programan.
   ni Redis, y no importa `epidemia_comun`. Mientras tanto, nada de SQL nuevo en `backend_web`.
   Consulta escenarios y corridas y el epidemiólogo aprueba en ella; crear y editar escenarios,
   enviarlos a revisión y lanzar corridas es de la app de escritorio (D4).
-- **Microservicios:** 29 servicios Flask pequeños en `microservicios/`, cada uno en su
+- **Microservicios:** 30 servicios Flask pequeños en `microservicios/`, cada uno en su
   contenedor de Docker, con Redis y JWT. Son para las apps de escritorio (XML) y móvil
   (JSON). La móvil ya tiene código en `frontend_movil/`.
   - Antes de tocar esa carpeta, lee `microservicios/AGENTS.md`.
