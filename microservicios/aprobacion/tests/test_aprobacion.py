@@ -341,7 +341,7 @@ def test_review_responde_xml_y_acepta_cuerpo_xml(cliente, mundo, revisor):
 PENDIENTES = [{"scenario_id": 3, "name": "Brote", "version_number": 2,
                "submitted_at": "2026-10-01T10:00:00", "population_size": 1000, "horizon_days": 60,
                "created_by": AUTOR, "enfermedad": "Influenza", "region": "Monterrey",
-               "autor": "Ana", "n_intervenciones": 1}]
+               "autor": "Ana", "n_intervenciones": 1, "n_ajustes": 1}]
 
 
 def test_bandeja_para_epidemiologo_y_admin(cliente, token):

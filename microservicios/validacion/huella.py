@@ -5,13 +5,13 @@
 # sigan iguales (duenos_de_reglas.md).
 from epidemia_comun.bd import query
 from procesamiento.contrato import huella
-from procesamiento.entrada_motor import escenario_de_version
+from procesamiento.entrada_motor import escenario_de_version, parametros_efectivos
 
 VERSION = """
         SELECT sv.id, sv.scenario_id, sv.version_number, sv.status, sv.population_size,
                sv.horizon_days, sv.initial_infected, sv.population_by_age,
                sv.population_age_unknown, sv.age_unknown_policy, sv.disease_params,
-               d.default_params
+               sv.param_overrides, d.default_params
         FROM scenario_versions sv
         JOIN scenarios s ON s.id = sv.scenario_id
         JOIN diseases d ON d.id = s.disease_id
@@ -35,4 +35,4 @@ def de_version(version_id):
     intervenciones = [dict(r) for r in query(INTERVENCIONES, (version_id,))]
     return huella(escenario_de_version({
         "version": dict(version), "intervenciones": intervenciones,
-        "parametros_enfermedad": version["disease_params"] or version["default_params"]}))
+        "parametros_enfermedad": parametros_efectivos(version)}))

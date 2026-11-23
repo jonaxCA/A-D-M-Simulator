@@ -223,6 +223,14 @@ def registrar(app):
         return responder({"total": len(filas),
                           "corridas": [proyectar(f, CAMPOS_LISTADO) for f in filas]}, "listado")
 
+    # Los motores que este despliegue acepta en POST /runs (RF-E15): los clientes ofrecen solo estos.
+    @app.get("/api/v1/runs/engines")
+    @requiere_token(roles=ROLES_LEEN)
+    def motores():
+        habilitados = motores_habilitados()
+        return responder({"total": len(habilitados), "referencia": MOTOR_REFERENCIA, "motores": habilitados},
+                         "motores")
+
     @app.get("/api/v1/runs/<run_id>")
     @requiere_token(roles=ROLES_LEEN)
     def consultar(run_id):

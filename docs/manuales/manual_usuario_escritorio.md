@@ -172,9 +172,22 @@ Pulsa **+**, junto al buscador.
 El escenario nace como **Borrador v1** y se abre solo.
 
 En el resumen del escenario, **Consultar parámetros de la enfermedad** muestra el estado del
-catálogo vigente, con unidades, rangos, fuentes, supuestos y los parámetros que faltan. Pasa
-el puntero sobre el nombre de un parámetro para leer su definición. Para consultar los
-valores guardados de una corrida, abre su ficha en Simulaciones.
+catálogo vigente, con unidades, rangos, fuentes, supuestos y los parámetros que faltan. La
+columna **Incertidumbre** trae el intervalo con que se publica el valor (por ejemplo, `2.39 a 3.44
+(IC95)`); el motor solo usa el valor. Abajo se lista el **historial de versiones** de los
+parámetros de la enfermedad, cada una con su fecha y el motivo del cambio. Pasa el puntero sobre
+el nombre de un parámetro para leer su definición. Para consultar los valores guardados de una
+corrida, abre su ficha en Simulaciones.
+
+**Ajustar parámetros de esta versión** abre los parámetros que se simularán en la versión que ves:
+el valor del catálogo, el de la versión, su incertidumbre y su fuente. En el **borrador vigente de
+tu escenario** puedes cambiar uno: elígelo en la tabla, escribe el valor (las tasas, en %), su fuente
+o marca **Es un supuesto del equipo**, y si quieres un intervalo, y pulsa **Aplicar ajuste**.
+**Volver al catálogo** quita el ajuste. El catálogo no cambia y los demás escenarios tampoco: el ajuste
+es solo de esta versión. Al enviarla a revisión se congela el catálogo con tus ajustes, y quien
+revisa los ve como advertencias en la validación. En una versión ya enviada, o que no es tuya, la
+pantalla solo consulta. El servidor decide si el valor cabe en los límites del motor y si falta la
+fuente, y explica el rechazo.
 
 **Indicadores municipales** abre los datos registrados por el servicio `zonas` para la enfermedad.
 Elige 7, 30 o 60 días. Los polígonos muestran los límites oficiales de INEGI y sus colores
@@ -238,7 +251,11 @@ Con la versión en borrador, sin errores y siendo tú el autor o administrador, 
 
 - La versión pasa a **En revisión** y queda congelada.
 - Un epidemiólogo la aprueba o rechaza en el sistema web.
-- Si la aprueba, te llega un aviso (sección 10). Si la rechaza, la versión aparece como
+- Si la aprueba, te llega un aviso (sección 10) y la versión guarda su **firma**: la huella de
+  la entrada del motor. Al abrir una versión aprobada, bajo la validación se lee la firma, quién
+  aprobó y cuándo, si lo que hoy se simularía sigue siendo lo firmado, y cuántas corridas
+  simularon exactamente eso.
+- Si la rechaza, la versión aparece como
   **Rechazado** y el comentario del revisor se muestra arriba de la validación.
 
 ### 5.6 Versiones
@@ -302,7 +319,9 @@ En **Nuevo lote** (parte inferior):
 2. Elige las **réplicas** por escenario. Son 30 por omisión, con un máximo de 100. Si eliges
    menos de 30, la app pide confirmación: con pocas réplicas la comparación es menos confiable.
 3. Elige el **motor**: `seir-ref` (SEIR por grupo de edad) o `abm-ref` (modelo basado en
-   agentes, más lento). Si el servidor no tiene el de `abm-ref`, la app muestra el error.
+   agentes, más lento). La lista trae solo los motores que el servidor anuncia como disponibles:
+   `abm-gpu` aparece únicamente donde hay un simulador con GPU. Si el servidor no responde, se
+   ofrecen `seir-ref` y `abm-ref`.
 4. Pulsa **Encolar N escenarios**.
 
 Cada escenario usa las semillas **1, 2, …, N**. Todos los escenarios del lote usan las

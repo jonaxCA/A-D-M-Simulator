@@ -496,6 +496,31 @@ class VersionadoTests(_ConEscenarioBorrador):
         self.assertEqual(v1["initial_infected"], 500)
         self.assertEqual(v1["notes"], "Primera versión" if v1["notes"] == "Primera versión" else v1["notes"])
 
+    AJUSTES = '{"r0": {"valor": 3.2, "fuente": null, "supuesto": true}}'
+
+    def _ajusta_la_vigente(self):
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE scenario_versions SET param_overrides = %s::jsonb WHERE scenario_id = %s",
+                            (self.AJUSTES, self.sid))
+            conn.commit()
+
+    def test_la_version_nueva_conserva_los_ajustes_de_parametros(self):
+        # 044, D59: un borrador nuevo parte de la versión anterior, también en sus ajustes.
+        self._ajusta_la_vigente()
+        numero, errores = self._nueva(horizon_days="240")
+        self.assertEqual(numero, 2, errores)
+        v2 = queries.get_escenario_detalle(self.sid)
+        self.assertEqual(v2["version"]["param_overrides"]["r0"]["valor"], 3.2)
+        self.assertEqual(v2["parametros_enfermedad"]["r0"]["valor"], 3.2)
+
+    def test_duplicar_conserva_los_ajustes_de_parametros(self):
+        self._ajusta_la_vigente()
+        ok, error, nuevo_id = queries.duplica_escenario(
+            self.sid, 1, "ZZZ copia con ajustes", contexto=contexto_de_prueba(self.autor))
+        self.assertTrue(ok, error)
+        self.assertEqual(queries.get_escenario_detalle(nuevo_id)["version"]["param_overrides"]["r0"]["valor"], 3.2)
+
     def test_la_version_nueva_nace_borrador_aunque_la_anterior_estuviera_aprobada(self):
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -798,6 +823,21 @@ class ParametrosCongeladosTests(_ConEscenarioBorrador):
         detalle = queries.get_escenario_detalle(self.sid)
         self.assertEqual(_desempaqueta(detalle["parametros_enfermedad"]["r0"]), congelado,
                          "la versión enviada quedó con la fotografía")
+
+    def test_enviar_congela_el_catalogo_con_los_ajustes_de_la_version(self):
+        # 044, D59: el borrador ya ve sus ajustes, y la fotografía los conserva.
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE scenario_versions SET param_overrides = %s::jsonb WHERE scenario_id = %s",
+                            ('{"r0": {"valor": 3.2, "fuente": null, "supuesto": true}}', self.sid))
+            conn.commit()
+        self.assertEqual(queries.get_escenario_detalle(self.sid)["parametros_enfermedad"]["r0"]["valor"], 3.2)
+        ok, error = queries.envia_a_revision(self.sid, contexto=contexto_de_prueba(self.autor))
+        self.assertTrue(ok, error)
+        self._cambia_r0(9.5)
+        detalle = queries.get_escenario_detalle(self.sid)
+        self.assertTrue(detalle["parametros_congelados"])
+        self.assertEqual(detalle["parametros_enfermedad"]["r0"]["valor"], 3.2)
 
     def test_una_version_aprobada_sigue_congelada(self):
         self.assertTrue(queries.envia_a_revision(self.sid, contexto=contexto_de_prueba(self.autor))[0])

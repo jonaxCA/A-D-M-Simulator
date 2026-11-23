@@ -16,6 +16,16 @@ versión siguiente, completa, en la misma transacción; la respuesta trae `versi
 `GET .../parameters/versions` da el historial (público) y `GET .../parameters/versions/{version}`, una
 versión con sus parámetros. La versión 1 son los de antes del historial (042).
 
+**Ajustes de una versión de escenario (D59).** `GET /api/v1/versions/{id}/parameters` (ANALISTA,
+EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA, con el alcance de D43) da el
+`catalogo` de la enfermedad, los `ajustes` de esa versión, los `efectivos` y el `estado` de los
+efectivos. `PUT` (ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR) cambia los ajustes: `{"parametros": {clave:
+{valor, fuente | supuesto, intervalo?} | null}}`, con las mismas reglas que el catálogo y `null`
+para volver al catálogo. Solo el borrador vigente de un escenario sin archivar, y solo su dueño o un
+ADMINISTRADOR; si no, 409 o 403. Los ajustes viven en `scenario_versions.param_overrides` (044) y el
+catálogo no cambia; al enviar la versión, `aprobacion` congela el catálogo con ellos encima.
+`svc_parametros` solo puede leer la versión y su escenario y escribir esa columna.
+
 ## Ejecución en desarrollo
 
 Instalar los requerimientos de `procesamiento` y `microservicios/comun`,

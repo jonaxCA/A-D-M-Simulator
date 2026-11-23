@@ -42,7 +42,7 @@ La columna **Prueba** dice dónde están las pruebas que tocan ese paso, no que 
 |---|---|---|---|---|---|
 | Sesión de la web | RF-A11, RF-A12 | RNF-D06, RNF-D07, RNF-D21 | Web, Seguridad | — | `backend_web/tests` |
 | Roles, permisos y auditoría | RF-A04, RF-A05, RF-A06, RF-A13 | RNF-D13, RNF-D14, RNF-D25 | Seguridad, Bases de datos | `usuarios`, `roles` | `microservicios/usuarios/tests`, `microservicios/roles/tests`, `backend_web/tests/test_auditoria.py`, `test_bitacora.py` |
-| Catálogos | RF-B01 a RF-B03, RF-B09 a RF-B17 | RNF-I09 | Web, Microservicios | `enfermedades`, `parametros`, `regiones`, `poblacion`, `tipos-intervencion` | Las pruebas de cada servicio |
+| Catálogos | RF-B01 a RF-B03, RF-B09 a RF-B18 | RNF-I09 | Web, Microservicios | `enfermedades`, `parametros`, `regiones`, `poblacion`, `tipos-intervencion` | Las pruebas de cada servicio |
 | Tablero y monitoreo epidemiológico | RF-G04 a RF-G06, RF-G12, RF-G15, RF-G16 | RNF-A06, RNF-E03 | Web | — (`indicadores`, `series` y `zonas` existen, pero la web no los llama) | `backend_web/tests/test_monitoreo.py` |
 | App de escritorio, lo demás | RF-H14, RF-H18, RF-H19, RF-H23, RF-H24 | RNF-E01, RNF-E06 | Escritorio | `estado-servicios`, `sesiones` | `frontend_desktop/tests/test_humo.py` |
 | App Android, lo demás | RF-I02, RF-I09, RF-I15, RF-I18 a RF-I22 | RNF-E01, RNF-E11 | Móvil | `usuarios`, `notificaciones` | Móvil: `avisos/`, `ui/` |
