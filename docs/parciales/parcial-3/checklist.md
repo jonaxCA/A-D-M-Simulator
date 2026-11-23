@@ -481,8 +481,8 @@ Decidido con el líder (2026-11-22): `evidencias` pasa a ser el servicio de los 
 ### D4. Documentos
 
 - [x] Diseño de MongoDB y de los buckets en la arquitectura v3, con qué información va a PostgreSQL y cuál a MongoDB [Retro: MongoDB]. La parte de MongoDB está hecha (§6 y §9 de `arquitectura_v3.md`: criterio, tabla por dato, cómo se relacionan, consistencia y volumen medido). La de los buckets, con D2 (2026-11-22): §6, «Archivos en Cloud Storage».
-- [ ] Llenar la retención de cada dato en `matrices_v3.md`: hoy hay 48 «Por definir» (RNF-K07). Hechas las de MongoDB, `simulation_runs` y `simulation_results` (2026-11-18).
-- [ ] Actualizar `docs/arquitectura/microservicios.md` con lo que cada servicio escribe ahora.
+- [x] Llenar la retención de cada dato en `matrices_v3.md`: hoy hay 48 «Por definir» (RNF-K07). Hechas las de MongoDB, `simulation_runs` y `simulation_results` (2026-11-18). Hecho el 2026-11-22 con D52 (la retención de hoy, sin purgas por antigüedad): §2 tiene vida y volumen en cada fila, más las 17 tablas y las llaves de Redis que faltaban, y `test_inventario_de_datos.py` revisa que no falte ninguna tabla.
+- [x] Actualizar `docs/arquitectura/microservicios.md` con lo que cada servicio escribe ahora. Columna *Escribe* al día con los permisos de las migraciones (`test_catalogo_escribe_bd.py`), más el encabezado (D36, MongoDB, bucket y nginx), `pareto` sin `simulation_results`, el arranque de `simulador` (D38) y el diagrama.
 
 ### D5. MongoDB después de D1
 
