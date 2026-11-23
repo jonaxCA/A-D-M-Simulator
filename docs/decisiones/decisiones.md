@@ -54,3 +54,4 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D47 | Corrección y seguimiento de casos con control de versión                    | Aceptada | D1, D32 | [D47-correccion-y-seguimiento-de-casos.md](D47-correccion-y-seguimiento-de-casos.md) |
 | D48 | Formularios de captura por enfermedad, con versiones                          | Aceptada | D1, D47 | [D48-formularios-por-enfermedad.md](D48-formularios-por-enfermedad.md) |
 | D49 | Campañas, avisos de datos incompletos y preferencias de avisos                 | Aceptada | D1, D32, D47 | [D49-campanas-incompletos-y-preferencias.md](D49-campanas-incompletos-y-preferencias.md) |
+| D50 | Calibración de `seir-ref` contra una serie pública agregada, en el servicio `calibracion` | Propuesta | D22, D37, D39, D46 | [D50-calibracion-de-los-modelos.md](D50-calibracion-de-los-modelos.md) |
