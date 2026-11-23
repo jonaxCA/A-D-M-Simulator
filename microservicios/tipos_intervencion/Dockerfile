@@ -1,4 +1,4 @@
-FROM epidemia/base
+FROM epidemia/base-vigilancia
 COPY microservicios/tipos_intervencion/ /app/microservicios/tipos_intervencion/
 COPY docs/contratos/tipos-intervencion/ /app/docs/contratos/tipos-intervencion/
 USER epidemia

@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - tipos-intervencion",
     "version": "0.1.0",
-    "description": "Catálogo de tipos de intervención con el esquema de sus parámetros. Público y de solo lectura."
+    "description": "Catálogo de tipos de intervención con el esquema de sus parámetros y sus supuestos de efectividad, con fuente o marca de supuesto (D56). Leer es público; los supuestos los cambian EPIDEMIOLOGO y ADMINISTRADOR. Sus reglas ya no viven en backend_web."
   },
   "servers": [
     {
@@ -225,27 +225,75 @@
                   "type": "object"
                 },
                 "example": {
-                  "id": 1,
-                  "code": "CIERRE_ESCUELAS",
-                  "name": "Cierre de escuelas",
-                  "description": "Desactiva la capa escuela a partir del dia indicado.",
-                  "target_layer": "escuela",
-                  "primitive": "edge_modifier",
+                  "id": 5,
+                  "code": "VACUNACION",
+                  "name": "Campania de vacunacion",
+                  "description": "Reduce la susceptibilidad de los agentes seleccionados, con eficacia parcial y criterio de prioridad.",
+                  "target_layer": "todas",
+                  "primitive": "node_attr",
                   "param_schema": {
                     "type": "object",
+                    "required": [
+                      "eficacia",
+                      "dosis_diarias"
+                    ],
                     "properties": {
-                      "reduccion": {
+                      "eficacia": {
                         "type": "number",
-                        "default": 1.0,
                         "maximum": 1,
                         "minimum": 0
+                      },
+                      "prioridad": {
+                        "enum": [
+                          "edad_desc",
+                          "zona",
+                          "ocupacion",
+                          "aleatorio"
+                        ],
+                        "type": "string"
+                      },
+                      "edad_minima": {
+                        "type": "integer",
+                        "maximum": 120,
+                        "minimum": 0
+                      },
+                      "dosis_diarias": {
+                        "type": "integer",
+                        "minimum": 1
                       }
                     }
                   },
                   "unit_cost": null,
-                  "cost_unit": "por_habitante_dia",
+                  "cost_unit": "por_dosis",
                   "cost_source": null,
-                  "cost_is_assumption": true
+                  "cost_is_assumption": true,
+                  "person_days_per_unit": null,
+                  "person_days_source": null,
+                  "person_days_is_assumption": true,
+                  "efectividad": [
+                    {
+                      "parametro": "eficacia",
+                      "enfermedad": "INFLUENZA_ESTACIONAL",
+                      "valor": 0.59,
+                      "min": 0.51,
+                      "max": 0.67,
+                      "fuente": "Osterholm et al. 2012, Lancet Infect Dis 12(1):36-44: eficacia agrupada de la vacuna trivalente inactivada en adultos, 59% (IC95% 51-67), contra influenza confirmada por RT-PCR o cultivo. El motor la aplica como protección completa de una fracción de los vacunados. doi:10.1016/S1473-3099(11)70295-X",
+                      "supuesto": false,
+                      "updated_by": null,
+                      "updated_at": "2026-11-23T10:00:00+00:00"
+                    },
+                    {
+                      "parametro": "eficacia",
+                      "enfermedad": "SARS_COV_2_ANCESTRAL",
+                      "valor": 0.95,
+                      "min": 0.903,
+                      "max": 0.976,
+                      "fuente": "Polack et al. 2020, N Engl J Med 383(27):2603-2615: la vacuna BNT162b2 tuvo 95% de eficacia contra COVID-19 desde 7 días después de la segunda dosis (intervalo creíble 95%: 90.3-97.6). El motor la aplica como protección completa de una fracción de los vacunados. doi:10.1056/NEJMoa2034577",
+                      "supuesto": false,
+                      "updated_by": null,
+                      "updated_at": "2026-11-23T10:00:00+00:00"
+                    }
+                  ]
                 }
               },
               "application/xml": {
@@ -258,7 +306,7 @@
                 "examples": {
                   "respuesta": {
                     "summary": "Respuesta real (listas recortadas)",
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<tipo><id tipo=\"numero\">1</id><code>CIERRE_ESCUELAS</code><name>Cierre de escuelas</name><description>Desactiva la capa escuela a partir del dia indicado.</description><target_layer>escuela</target_layer><primitive>edge_modifier</primitive><param_schema><type>object</type><properties><reduccion><type>number</type><default tipo=\"numero\">1.0</default><maximum tipo=\"numero\">1</maximum><minimum tipo=\"numero\">0</minimum></reduccion></properties></param_schema><unit_cost nil=\"true\" /><cost_unit>por_habitante_dia</cost_unit><cost_source nil=\"true\" /><cost_is_assumption tipo=\"booleano\">true</cost_is_assumption></tipo>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<tipo><id tipo=\"numero\">5</id><code>VACUNACION</code><name>Campania de vacunacion</name><description>Reduce la susceptibilidad de los agentes seleccionados, con eficacia parcial y criterio de prioridad.</description><target_layer>todas</target_layer><primitive>node_attr</primitive><param_schema><type>object</type><required><item>eficacia</item><item>dosis_diarias</item></required><properties><eficacia><type>number</type><maximum tipo=\"numero\">1</maximum><minimum tipo=\"numero\">0</minimum></eficacia><prioridad><enum><item>edad_desc</item><item>zona</item><item>ocupacion</item><item>aleatorio</item></enum><type>string</type></prioridad><edad_minima><type>integer</type><maximum tipo=\"numero\">120</maximum><minimum tipo=\"numero\">0</minimum></edad_minima><dosis_diarias><type>integer</type><minimum tipo=\"numero\">1</minimum></dosis_diarias></properties></param_schema><unit_cost nil=\"true\" /><cost_unit>por_dosis</cost_unit><cost_source nil=\"true\" /><cost_is_assumption tipo=\"booleano\">true</cost_is_assumption><person_days_per_unit nil=\"true\" /><person_days_source nil=\"true\" /><person_days_is_assumption tipo=\"booleano\">true</person_days_is_assumption><efectividad><supuesto><parametro>eficacia</parametro><enfermedad>INFLUENZA_ESTACIONAL</enfermedad><valor tipo=\"numero\">0.59</valor><min tipo=\"numero\">0.51</min><max tipo=\"numero\">0.67</max><fuente>Osterholm et al. 2012, Lancet Infect Dis 12(1):36-44: eficacia agrupada de la vacuna trivalente inactivada en adultos, 59% (IC95% 51-67), contra influenza confirmada por RT-PCR o cultivo. El motor la aplica como protección completa de una fracción de los vacunados. doi:10.1016/S1473-3099(11)70295-X</fuente><supuesto tipo=\"booleano\">false</supuesto><updated_by nil=\"true\" /><updated_at>2026-11-23T10:00:00+00:00</updated_at></supuesto><supuesto><parametro>eficacia</parametro><enfermedad>SARS_COV_2_ANCESTRAL</enfermedad><valor tipo=\"numero\">0.95</valor><min tipo=\"numero\">0.903</min><max tipo=\"numero\">0.976</max><fuente>Polack et al. 2020, N Engl J Med 383(27):2603-2615: la vacuna BNT162b2 tuvo 95% de eficacia contra COVID-19 desde 7 días después de la segunda dosis (intervalo creíble 95%: 90.3-97.6). El motor la aplica como protección completa de una fracción de los vacunados. doi:10.1056/NEJMoa2034577</fuente><supuesto tipo=\"booleano\">false</supuesto><updated_by nil=\"true\" /><updated_at>2026-11-23T10:00:00+00:00</updated_at></supuesto></efectividad></tipo>\n"
                   }
                 }
               }
@@ -285,7 +333,354 @@
           "503": {
             "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
-        }
+        },
+        "description": "Un tipo activo, con su param_schema, su costo y sus supuestos de efectividad (D56): valor de referencia, rango, fuente y marca de supuesto, general o por enfermedad."
+      }
+    },
+    "/api/v1/intervention-types/{code}/effectiveness": {
+      "get": {
+        "summary": "Supuestos de efectividad de un tipo",
+        "operationId": "efectividad_tipo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "code": "CUBREBOCAS",
+                  "total": 1,
+                  "efectividad": [
+                    {
+                      "parametro": "eficacia",
+                      "enfermedad": null,
+                      "valor": 0.85,
+                      "min": 0.66,
+                      "max": 0.93,
+                      "fuente": "DERIVADO POR EL EQUIPO de Chu et al. 2020, Lancet 395(10242):1973-1987: el uso de cubrebocas se asoció con menos infecciones (aOR 0.15, IC95% 0.07-0.34; certeza baja), sobre todo en entornos de atención médica y con respiradores N95. La eficacia se toma como 1 - aOR; con cubrebocas de tela o quirúrgicos en la comunidad el efecto esperado es menor. doi:10.1016/S0140-6736(20)31142-9",
+                      "supuesto": true,
+                      "updated_by": null,
+                      "updated_at": "2026-11-23T10:00:00+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "efectividad_tipo"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (listas recortadas)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<efectividad_tipo><code>CUBREBOCAS</code><total tipo=\"numero\">1</total><efectividad><supuesto><parametro>eficacia</parametro><enfermedad nil=\"true\" /><valor tipo=\"numero\">0.85</valor><min tipo=\"numero\">0.66</min><max tipo=\"numero\">0.93</max><fuente>DERIVADO POR EL EQUIPO de Chu et al. 2020, Lancet 395(10242):1973-1987: el uso de cubrebocas se asoció con menos infecciones (aOR 0.15, IC95% 0.07-0.34; certeza baja), sobre todo en entornos de atención médica y con respiradores N95. La eficacia se toma como 1 - aOR; con cubrebocas de tela o quirúrgicos en la comunidad el efecto esperado es menor. doi:10.1016/S0140-6736(20)31142-9</fuente><supuesto tipo=\"booleano\">true</supuesto><updated_by nil=\"true\" /><updated_at>2026-11-23T10:00:00+00:00</updated_at></supuesto></efectividad></efectividad_tipo>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        },
+        "description": "Los supuestos de efectividad del tipo: el general primero y luego por enfermedad. No cambian lo que se simula: cada intervención lleva su propio valor."
+      },
+      "put": {
+        "summary": "Guardar un supuesto de efectividad",
+        "operationId": "guardar_efectividad",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Supuesto reemplazado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "parametro": "eficacia",
+                  "enfermedad": "INFLUENZA_ESTACIONAL",
+                  "valor": 0.5,
+                  "min": 0.3,
+                  "max": 0.7,
+                  "fuente": "SUPUESTO DEL EQUIPO: igual que para COVID-19, a falta de un estudio para influenza.",
+                  "supuesto": true,
+                  "updated_by": 2,
+                  "updated_at": "2026-11-23T10:00:00+00:00",
+                  "code": "CUBREBOCAS"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "supuesto"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (listas recortadas)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<supuesto><parametro>eficacia</parametro><enfermedad>INFLUENZA_ESTACIONAL</enfermedad><valor tipo=\"numero\">0.5</valor><min tipo=\"numero\">0.3</min><max tipo=\"numero\">0.7</max><fuente>SUPUESTO DEL EQUIPO: igual que para COVID-19, a falta de un estudio para influenza.</fuente><supuesto tipo=\"booleano\">true</supuesto><updated_by tipo=\"numero\">2</updated_by><updated_at>2026-11-23T10:00:00+00:00</updated_at><code>CUBREBOCAS</code></supuesto>\n"
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "parametro": "eficacia",
+                  "enfermedad": "INFLUENZA_ESTACIONAL",
+                  "valor": 0.5,
+                  "min": 0.3,
+                  "max": 0.7,
+                  "fuente": "SUPUESTO DEL EQUIPO: igual que para COVID-19, a falta de un estudio para influenza.",
+                  "supuesto": true,
+                  "updated_by": 2,
+                  "updated_at": "2026-11-23T10:00:00+00:00",
+                  "code": "CUBREBOCAS"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "supuesto"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (listas recortadas)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<supuesto><parametro>eficacia</parametro><enfermedad>INFLUENZA_ESTACIONAL</enfermedad><valor tipo=\"numero\">0.5</valor><min tipo=\"numero\">0.3</min><max tipo=\"numero\">0.7</max><fuente>SUPUESTO DEL EQUIPO: igual que para COVID-19, a falta de un estudio para influenza.</fuente><supuesto tipo=\"booleano\">true</supuesto><updated_by tipo=\"numero\">2</updated_by><updated_at>2026-11-23T10:00:00+00:00</updated_at><code>CUBREBOCAS</code></supuesto>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        },
+        "description": "Crea (201) o reemplaza (200) el supuesto de (tipo, parámetro, enfermedad). EPIDEMIOLOGO y ADMINISTRADOR; queda CREATE o UPDATE en la bitácora. Debe cumplirse min <= valor <= max.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "parametro",
+                  "fuente",
+                  "supuesto"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "parametro": {
+                    "type": "string",
+                    "enum": [
+                      "eficacia",
+                      "reduccion",
+                      "deteccion"
+                    ],
+                    "description": "El parámetro de efecto del param_schema del tipo."
+                  },
+                  "enfermedad": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Código de la enfermedad; sin él, el supuesto es general."
+                  },
+                  "valor": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "nullable": true
+                  },
+                  "min": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "nullable": true
+                  },
+                  "max": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "nullable": true
+                  },
+                  "fuente": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 2000
+                  },
+                  "supuesto": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "example": {
+                "parametro": "eficacia",
+                "enfermedad": "INFLUENZA_ESTACIONAL",
+                "valor": 0.5,
+                "min": 0.3,
+                "max": 0.7,
+                "fuente": "SUPUESTO DEL EQUIPO: igual que para COVID-19, a falta de un estudio para influenza.",
+                "supuesto": true
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "parametro",
+                  "fuente",
+                  "supuesto"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "parametro": {
+                    "type": "string",
+                    "enum": [
+                      "eficacia",
+                      "reduccion",
+                      "deteccion"
+                    ],
+                    "description": "El parámetro de efecto del param_schema del tipo."
+                  },
+                  "enfermedad": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Código de la enfermedad; sin él, el supuesto es general."
+                  },
+                  "valor": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "nullable": true
+                  },
+                  "min": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "nullable": true
+                  },
+                  "max": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "nullable": true
+                  },
+                  "fuente": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 2000
+                  },
+                  "supuesto": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     }
   }

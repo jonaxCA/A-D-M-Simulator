@@ -79,6 +79,151 @@ INSERT INTO diseases (code, name, description, default_params) VALUES
 ON CONFLICT (code) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
+-- Datos por enfermedad de la migracion 042 (D56), repetidos para las tres de arriba.
+-- Los lee gen_demo_data.py de la migracion: no editar aqui.
+-- ---------------------------------------------------------------------------
+-- <datos-por-enfermedad>
+-- Este bloque lo repite datos/postgres/semillas/demo_datos_nl.sql (gen_demo_data.py lo
+-- lee de aquí): en una instalación limpia, DENGUE_DEMO, ZIKA_DEMO y MALARIA_DEMO
+-- llegan con esa semilla, después del dump. Todo es idempotente.
+UPDATE diseases SET transmission = 'respiratoria', icd10 = 'U07.1, U07.2',
+       classification_source = 'OMS, códigos CIE-10 de uso de emergencia para COVID-19 (U07.1 virus identificado, U07.2 virus no identificado). https://www.who.int/standards/classifications/frequently-asked-questions/covid-19-emergency-icd-codes'
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND classification_source IS NULL;
+UPDATE diseases SET transmission = 'respiratoria', icd10 = 'J09-J11',
+       classification_source = 'Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 31.'
+ WHERE code = 'INFLUENZA_ESTACIONAL' AND classification_source IS NULL;
+UPDATE diseases SET transmission = 'vectorial', icd10 = 'A97.0, A97.1, A97.2, A97.9',
+       classification_source = 'Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, pp. 60-61 (transmitido por Aedes aegypti y Ae. albopictus).'
+ WHERE code = 'DENGUE_DEMO' AND classification_source IS NULL;
+UPDATE diseases SET transmission = 'vectorial', icd10 = 'U06.9',
+       classification_source = 'Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, pp. 66-67.'
+ WHERE code = 'ZIKA_DEMO' AND classification_source IS NULL;
+UPDATE diseases SET transmission = 'vectorial', icd10 = 'B50, B51',
+       classification_source = 'Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 62.'
+ WHERE code = 'MALARIA_DEMO' AND classification_source IS NULL;
+
+-- Enfermedad respiratoria viral (COVID-19 e influenza): DGE, septiembre de 2023.
+WITH erv AS (
+    SELECT jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Caso sospechoso de enfermedad respiratoria viral', 'texto',
+            'Persona de cualquier edad que en los últimos 5 días para casos de ETI (Ambulatorios) y en los últimos 7 días para casos IRAG (Hospitalizados) haya presentado al menos uno de los siguientes signos y síntomas: tos, fiebre o cefalea*. Acompañados de al menos uno de los siguientes signos o síntomas: Disnea; Mialgias; Artralgias; Odinofagia; Escalofríos; Dolor torácico; Rinorrea; Polipnea; Anosmia; Disgeusia; Conjuntivitis. *En menores de cinco años de edad, la irritabilidad puede sustituir a la cefalea.'),
+        jsonb_build_object('clasificacion', 'Caso de infección respiratoria aguda grave (IRAG)', 'texto',
+            'Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral y con presencia de alguno de los siguientes datos de gravedad: disnea y/o dolor torácico.'),
+        jsonb_build_object('clasificacion', 'Caso de enfermedad tipo influenza (ETI)', 'texto',
+            'Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral en los últimos cinco días de inicio de los datos clínicos sin la presencia de datos de gravedad (disnea y/o dolor torácico).'),
+        jsonb_build_object('clasificacion', 'Caso confirmado por laboratorio', 'texto',
+            'Persona que cumpla con la definición operacional de caso sospechoso y que cuente con diagnóstico confirmado por laboratorio mediante la prueba RT-PCR. Son válidos para el sistema de vigilancia epidemiológica los resultados emitidos por los miembros del SINAVE (Red Nacional de Laboratorios de Salud Pública y Laboratorios de apoyo a la vigilancia epidemiológica-RNLSP/LAVE-) y aquellos laboratorios que hayan sido aprobados mediante la evaluación a la competencia técnica por el InDRE, registrando en el informe de prueba el estuche comercial utilizado para el procesamiento.'),
+        jsonb_build_object('clasificacion', 'Defunción con diagnóstico confirmado por laboratorio', 'texto',
+            'Persona fallecida que cumpla con la definición operacional de caso sospechoso, que haya sido confirmado por laboratorio mediante la prueba RT-PCR.')
+    ) AS criterios
+)
+INSERT INTO case_definitions (disease_id, version, status, criteria, source, source_url, published_at)
+SELECT d.id, v.version, 'vigente', erv.criterios,
+       'Secretaría de Salud, Dirección General de Epidemiología. Lineamiento estandarizado para la vigilancia epidemiológica y por laboratorio de la enfermedad respiratoria viral, septiembre de 2023, pp. 30-31. Las definiciones operacionales solo las actualiza el CONAVE.',
+       'https://www.gob.mx/cms/uploads/attachment/file/636504/Lineamiento_Estandarizado_Para_La_Vigilancia_Epidemiol_gica_Y_Por_Laboratorio_De_La_Enfermedad_Respiratoria_Viral_-_Septiembre_2023.pdf',
+       now()
+FROM erv, (VALUES ('SARS_COV_2_ANCESTRAL', 1), ('INFLUENZA_ESTACIONAL', 2)) AS v(code, version)
+JOIN diseases d ON d.code = v.code
+ON CONFLICT (disease_id, version) DO NOTHING;
+
+-- Lo que sigue sale de un mismo documento de la DGE, de marzo de 2021.
+INSERT INTO case_definitions (disease_id, version, status, criteria, source, source_url, published_at, retired_at)
+SELECT d.id, 1, v.status, v.criterios,
+       'Secretaría de Salud, Dirección General de Epidemiología. Vigilancia epidemiológica convencional de casos nuevos de enfermedad: definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, ' || v.paginas || '.',
+       'https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf',
+       now(), CASE WHEN v.status = 'retirada' THEN now() END
+FROM (VALUES
+    -- Influenza de 2021: la reemplaza la de enfermedad respiratoria viral de 2023 (versión 2).
+    ('INFLUENZA_ESTACIONAL', 'retirada', 'p. 31', jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Caso sospechoso de influenza', 'texto',
+            'Se considera caso sospechoso de influenza a todo caso o defunción que cumpla con los criterios de Enfermedad Tipo Influenza (ETI) o Infección Respiratoria Aguda Grave (IRAG).'),
+        jsonb_build_object('clasificacion', 'Enfermedad tipo influenza (ETI)', 'texto',
+            'Persona de cualquier edad que presente o refiera haber tenido fiebre mayor o igual a 38° C, tos y cefalea, acompañadas de uno o más de los siguientes signos o síntomas: rinorrea, coriza, artralgias, mialgias, postración, odinofagia, dolor torácico, dolor abdominal, congestión nasal o diarrea. Importante: En menores de cinco años de edad, se considera un signo cardinal la irritabilidad, en sustitución de la cefalea; En mayores de 65 años o en pacientes inmunocomprometidos, no se requerirá la fiebre como signo cardinal.'),
+        jsonb_build_object('clasificacion', 'Infección respiratoria aguda grave (IRAG)', 'texto',
+            'Persona de cualquier edad que presente dificultad al respirar, con antecedente de fiebre mayor o igual a 38° C y tos, con uno o más de los siguientes síntomas: ataque al estado general, dolor torácico o polipnea. En pacientes inmunocomprometidos o con manejo terapéutico con antipiréticos no se presentará el pico febril descrito en la definición operacional; Así mismo en pacientes con apoyo respiratorio automatizado no se requerirá la tos como signo indispensable para su ingreso como sospechoso a influenza.'))),
+    ('DENGUE_DEMO', 'vigente', 'pp. 60-61', jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Dengue no grave (A97.0 y A97.9)', 'texto',
+            'Toda persona de cualquier edad que resida o que proceda, en los 14 días previos al inicio de signos y síntomas, de una región donde exista transmisión de la enfermedad y que presente fiebre y dos o más de los siguientes signos y síntomas: Náusea, vómitos, exantema; Mialgias, artralgia; Cefalea, dolor retro-ocular; Petequias o prueba del torniquete positiva; Leucopenia. En menores de 5 años, el único signo a considerar puede ser la fiebre.'),
+        jsonb_build_object('clasificacion', 'Dengue con signos de alarma (A97.1)', 'texto',
+            'Todo caso probable que además de cumplir con cuadro de Dengue No Grave, presente uno o más de los siguientes signos de alarma: Dolor abdominal intenso y continuo, o dolor a la palpación del abdomen; Vómito persistente o incoercible; Acumulación de líquidos (ascitis, derrame pleural, pericárdico); Sangrado de mucosas; Letargo o irritabilidad; Hipotensión postural (lipotimia); Hepatomegalia mayor de 2 cm; Aumento progresivo del hematocrito; Disminución progresiva de plaquetas; Disminución progresiva de la hemoglobina.'),
+        jsonb_build_object('clasificacion', 'Dengue grave (A97.2)', 'texto',
+            'Todo caso probable de Dengue que presenta uno o más de los siguientes hallazgos: Choque debido a extravasación grave de plasma evidenciado por: taquicardia, extremidades frías y llenado capilar igual o mayor a tres segundos, pulso débil o indetectable, presión diferencial convergente ≤ 20 mm hipotensión arterial en fase tardía, acumulación de líquidos que conlleve a insuficiencia respiratoria; Sangrado grave, según la evaluación del médico tratante (ejemplos: hematemesis, melena, metrorragia voluminosa, sangrado del sistema nervioso central); Compromiso grave de órganos tales como: daño hepático importante (AST o ALT>1000), afección renal, sistema nervioso central (alteración de la conciencia), corazón (miocarditis) u otros órganos.'))),
+    ('MALARIA_DEMO', 'vigente', 'p. 62', jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Paludismo por Plasmodium falciparum (B50)', 'texto',
+            'Toda persona que resida o provenga de área con antecedente de transmisión de paludismo (en los últimos tres años) y que en el último mes presente o haya presentado fiebre más los siguientes signos y síntomas: cefalea, diaforesis y escalofríos.'),
+        jsonb_build_object('clasificacion', 'Paludismo por Plasmodium vivax (B51)', 'texto',
+            'La enfermedad puede comenzar con malestar indefinido y fiebre, que aumenta poco a poco en un lapso de varios días, seguido por escalofríos fuertes y aumento rápido de la temperatura, que por lo regular se acompaña de cefalalgia y náusea y culmina en sudores profusos. Después de un lapso sin fiebre se repite el ciclo de escalofríos, fiebre y sudores todos los días, en días alternos o cada tercer día.'))),
+    ('ZIKA_DEMO', 'vigente', 'pp. 66-67', jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Infección por virus Zika (U06.9)', 'texto',
+            'Paciente que presente exantema y al menos dos o más de los siguientes signos o síntomas: Fiebre; Cefalea; Conjuntivitis (no purulenta/hiperemia); Artralgias; Mialgias; Edema periarticular; Prurito; Dolor retroocular. Y que se identifique alguna asociación epidemiológica: Presencia del vector Aedes aegypti o Aedes albopictus, o; Antecedente de visita o residencia en áreas de transmisión en las dos semanas previas al inicio del cuadro clínico, o; Existencia de casos confirmados en la localidad; Tenga antecedente de contacto sexual sin protección en las 2 semanas previas a la aparición de los síntomas, con una persona que en las 8 semanas previas al contacto sexual tenga antecedente de residencia o viaje a un área con transmisión local del VZIK o con presencia de vectores.')))
+) AS v(code, status, paginas, criterios)
+JOIN diseases d ON d.code = v.code
+ON CONFLICT (disease_id, version) DO NOTHING;
+
+-- Versión 1: los parámetros de hoy.
+INSERT INTO disease_parameter_versions (disease_id, version, params, reason)
+SELECT id, 1, default_params, 'Parámetros vigentes al crear el historial de versiones (042).'
+FROM diseases
+ON CONFLICT (disease_id, version) DO NOTHING;
+
+-- Los intervalos que ya traían las fuentes citadas en cada parámetro. Solo si el
+-- valor sigue siendo el de esa fuente y el parámetro aún no tiene intervalo. Un
+-- UPDATE por parámetro: con UPDATE ... FROM, una enfermedad con varias filas solo
+-- recibiría una.
+UPDATE diseases SET default_params = jsonb_set(default_params, '{r0,intervalo}', '{"min": 2.39, "max": 3.44, "tipo": "IC95"}')
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND jsonb_typeof(default_params -> 'r0') = 'object'
+   AND (default_params -> 'r0' ->> 'valor')::numeric = 2.87 AND NOT (default_params -> 'r0' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{letalidad,intervalo}', '{"min": 0.003, "max": 0.009, "tipo": "IC95"}')
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND jsonb_typeof(default_params -> 'letalidad') = 'object'
+   AND (default_params -> 'letalidad' ->> 'valor')::numeric = 0.005 AND NOT (default_params -> 'letalidad' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{incubacion_dias,intervalo}', '{"min": 4.5, "max": 5.8, "tipo": "IC95"}')
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND jsonb_typeof(default_params -> 'incubacion_dias') = 'object'
+   AND (default_params -> 'incubacion_dias' ->> 'valor')::numeric = 5.1 AND NOT (default_params -> 'incubacion_dias' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{dias_hospitalizacion,intervalo}', '{"min": 4, "max": 21, "tipo": "rango"}')
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND jsonb_typeof(default_params -> 'dias_hospitalizacion') = 'object'
+   AND (default_params -> 'dias_hospitalizacion' ->> 'valor')::numeric = 8.0 AND NOT (default_params -> 'dias_hospitalizacion' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{r0,intervalo}', '{"min": 1.19, "max": 1.37, "tipo": "RIC"}')
+ WHERE code = 'INFLUENZA_ESTACIONAL' AND jsonb_typeof(default_params -> 'r0') = 'object'
+   AND (default_params -> 'r0' ->> 'valor')::numeric = 1.28 AND NOT (default_params -> 'r0' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{infeccioso_dias,intervalo}', '{"min": 4.31, "max": 5.29, "tipo": "IC95"}')
+ WHERE code = 'INFLUENZA_ESTACIONAL' AND jsonb_typeof(default_params -> 'infeccioso_dias') = 'object'
+   AND (default_params -> 'infeccioso_dias' ->> 'valor')::numeric = 4.8 AND NOT (default_params -> 'infeccioso_dias' ? 'intervalo');
+
+-- Versión 2 donde los intervalos cambiaron algo.
+INSERT INTO disease_parameter_versions (disease_id, version, params, reason)
+SELECT d.id, 2, d.default_params,
+       'Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).'
+FROM diseases d
+JOIN disease_parameter_versions v ON v.disease_id = d.id AND v.version = 1
+WHERE d.default_params IS DISTINCT FROM v.params
+ON CONFLICT (disease_id, version) DO NOTHING;
+
+INSERT INTO intervention_effectiveness
+    (intervention_type_id, parameter, disease_id, reference_value, range_min, range_max, source, is_assumption)
+SELECT t.id, v.parametro, d.id, v.valor, v.minimo, v.maximo, v.fuente, v.supuesto
+FROM (VALUES
+    ('CUBREBOCAS', 'eficacia', NULL, 0.85, 0.66, 0.93, true,
+     'DERIVADO POR EL EQUIPO de Chu et al. 2020, Lancet 395(10242):1973-1987: el uso de cubrebocas se asoció con menos infecciones (aOR 0.15, IC95% 0.07-0.34; certeza baja), sobre todo en entornos de atención médica y con respiradores N95. La eficacia se toma como 1 - aOR; con cubrebocas de tela o quirúrgicos en la comunidad el efecto esperado es menor. doi:10.1016/S0140-6736(20)31142-9'),
+    ('VACUNACION', 'eficacia', 'SARS_COV_2_ANCESTRAL', 0.95, 0.903, 0.976, false,
+     'Polack et al. 2020, N Engl J Med 383(27):2603-2615: la vacuna BNT162b2 tuvo 95% de eficacia contra COVID-19 desde 7 días después de la segunda dosis (intervalo creíble 95%: 90.3-97.6). El motor la aplica como protección completa de una fracción de los vacunados. doi:10.1056/NEJMoa2034577'),
+    ('VACUNACION', 'eficacia', 'INFLUENZA_ESTACIONAL', 0.59, 0.51, 0.67, false,
+     'Osterholm et al. 2012, Lancet Infect Dis 12(1):36-44: eficacia agrupada de la vacuna trivalente inactivada en adultos, 59% (IC95% 51-67), contra influenza confirmada por RT-PCR o cultivo. El motor la aplica como protección completa de una fracción de los vacunados. doi:10.1016/S1473-3099(11)70295-X'),
+    ('TESTEO_AISLAMIENTO', 'deteccion', 'SARS_COV_2_ANCESTRAL', 0.14, 0.10, 0.18, true,
+     'DERIVADO POR EL EQUIPO de Li et al. 2020, Science 368(6490):489-493: entre el 10 y el 23 de enero de 2020 se reportó solo el 14% (IC95% 10-18%) de las infecciones en China. Se toma como la fracción de infecciosos que detecta un sistema de pruebas al inicio de una epidemia; con más pruebas es mayor. doi:10.1126/science.abb3221'),
+    ('CIERRE_TRABAJO', 'reduccion', NULL, 0.51, 0.30, 0.72, true,
+     'DERIVADO POR EL EQUIPO de los Informes de Movilidad Comunitaria COVID-19 de Google (archivo 2020_MX_Region_Mobility_Report.csv, Nuevo León, consultado el 2026-11-23): en los días hábiles de abril de 2020 las visitas a lugares de trabajo bajaron en promedio 50.6% respecto a la línea base de enero y febrero (de 41% a 72% según el día); de junio a diciembre, entre 30% y 38%. Se supone que los contactos en el trabajo bajan en la misma proporción que las visitas. https://www.google.com/covid19/mobility/'),
+    ('REDUCCION_AFORO', 'reduccion', NULL, 0.30, 0.18, 0.54, true,
+     'DERIVADO POR EL EQUIPO de los Informes de Movilidad Comunitaria COVID-19 de Google (archivo 2020_MX_Region_Mobility_Report.csv, Nuevo León, consultado el 2026-11-23): de agosto a octubre de 2020 las visitas a comercios y lugares de recreación bajaron entre 30% y 31% (promedio de días hábiles) respecto a la línea base de enero y febrero; en abril, 54%, y en diciembre, 18%. Se supone que los contactos en la comunidad bajan en la misma proporción que las visitas. https://www.google.com/covid19/mobility/'),
+    ('CIERRE_ESCUELAS', 'reduccion', NULL, 1.0, NULL, NULL, true,
+     'SUPUESTO DEL EQUIPO: un cierre total quita todos los contactos de la capa escuela, así que la reducción vale 1 por definición (es el valor por omisión de su param_schema). Un cierre parcial, con turnos alternados o aforo reducido, se captura con un valor menor. Ningún estudio lo mide de forma directa.')
+) AS v(tipo, parametro, enfermedad, valor, minimo, maximo, supuesto, fuente)
+JOIN intervention_types t ON t.code = v.tipo
+LEFT JOIN diseases d ON d.code = v.enfermedad
+WHERE v.enfermedad IS NULL OR d.id IS NOT NULL
+ON CONFLICT (intervention_type_id, parameter, disease_id) DO NOTHING;
+-- </datos-por-enfermedad>
+
+-- ---------------------------------------------------------------------------
 -- Usuarios de demostracion para el recorrido. Passwords reales (bcrypt).
 -- Son dos personas distintas a proposito: el flujo de aprobacion exige que
 -- quien construye el escenario no sea quien lo autoriza (ver migracion 013).

@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - parametros",
     "version": "0.1.0",
-    "description": "Servicio de parametros del sistema de respuesta a epidemias. Los ejemplos están en docs/contratos/parametros/ejemplos (listas recortadas). Pendiente: con letalidad_por_edad, el XML de la consulta usa claves como 0-19 como etiqueta y queda mal formado (falla en epidemia_comun.formatos.a_xml)."
+    "description": "Servicio de parametros del sistema de respuesta a epidemias: los parámetros epidemiológicos de cada enfermedad, con fuente, intervalo de incertidumbre y versiones (D56). Sus reglas ya no viven en backend_web. Los ejemplos están en docs/contratos/parametros/ejemplos (listas recortadas)."
   },
   "servers": [
     {
@@ -56,17 +56,27 @@
                   "type": "object"
                 },
                 "example": {
-                  "disease_id": 2,
+                  "disease_id": 1,
                   "parametros": {
                     "r0": {
-                      "valor": 1.3,
-                      "fuente": "Biggerstaff et al. 2014",
-                      "supuesto": false
+                      "valor": 2.87,
+                      "fuente": "Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128",
+                      "supuesto": false,
+                      "intervalo": {
+                        "max": 3.44,
+                        "min": 2.39,
+                        "tipo": "IC95"
+                      }
                     },
                     "incubacion_dias": {
-                      "valor": 1.4,
-                      "fuente": "Lessler et al. 2009",
-                      "supuesto": false
+                      "valor": 5.1,
+                      "fuente": "Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504",
+                      "supuesto": false,
+                      "intervalo": {
+                        "max": 5.8,
+                        "min": 4.5,
+                        "tipo": "IC95"
+                      }
                     }
                   }
                 }
@@ -78,7 +88,7 @@
                     "name": "parametros"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<parametros><disease_id tipo=\"numero\">2</disease_id><parametros><r0><valor tipo=\"numero\">1.3</valor><fuente>Biggerstaff et al. 2014</fuente><supuesto tipo=\"booleano\">false</supuesto></r0><incubacion_dias><valor tipo=\"numero\">1.4</valor><fuente>Lessler et al. 2009</fuente><supuesto tipo=\"booleano\">false</supuesto></incubacion_dias></parametros></parametros>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<parametros><disease_id tipo=\"numero\">1</disease_id><parametros><r0><valor tipo=\"numero\">2.87</valor><fuente>Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">3.44</max><min tipo=\"numero\">2.39</min><tipo>IC95</tipo></intervalo></r0><incubacion_dias><valor tipo=\"numero\">5.1</valor><fuente>Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">5.8</max><min tipo=\"numero\">4.5</min><tipo>IC95</tipo></intervalo></incubacion_dias></parametros></parametros>\n"
               }
             }
           },
@@ -108,7 +118,7 @@
       "put": {
         "summary": "Actualizar parámetros epidemiológicos",
         "operationId": "actualizar_par_metros_epidemiol_gicos",
-        "description": "Cada parámetro lleva fuente o supuesto=true; si no, 422. Las tasas van como fracción (0 a 1). Los parámetros que no se envían se conservan.",
+        "description": "Guarda los parámetros (EPIDEMIOLOGO y ADMINISTRADOR) y su versión siguiente, con el motivo si se da (D56). Cada parámetro lleva valor, fuente o supuesto y, opcional, su intervalo de incertidumbre: min <= valor <= max dentro de los límites del parámetro, y tipo IC95, RIC o rango (rango por omisión).",
         "parameters": [
           {
             "in": "path",
@@ -141,24 +151,20 @@
                   "type": "object"
                 },
                 "example": {
-                  "disease_id": 2,
+                  "disease_id": 1,
                   "parametros": {
                     "r0": {
-                      "valor": 1.3,
-                      "fuente": "Biggerstaff et al. 2014",
-                      "supuesto": false
-                    },
-                    "incubacion_dias": {
-                      "valor": 1.4,
-                      "fuente": "Lessler et al. 2009",
-                      "supuesto": false
-                    },
-                    "infeccioso_dias": {
-                      "valor": 4.8,
-                      "fuente": null,
-                      "supuesto": true
+                      "valor": 2.87,
+                      "fuente": "Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128",
+                      "supuesto": false,
+                      "intervalo": {
+                        "max": 3.44,
+                        "min": 2.39,
+                        "tipo": "IC95"
+                      }
                     }
-                  }
+                  },
+                  "version": 3
                 }
               },
               "application/xml": {
@@ -168,7 +174,7 @@
                     "name": "parametros"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<parametros><disease_id tipo=\"numero\">2</disease_id><parametros><r0><valor tipo=\"numero\">1.3</valor><fuente>Biggerstaff et al. 2014</fuente><supuesto tipo=\"booleano\">false</supuesto></r0><incubacion_dias><valor tipo=\"numero\">1.4</valor><fuente>Lessler et al. 2009</fuente><supuesto tipo=\"booleano\">false</supuesto></incubacion_dias><infeccioso_dias><valor tipo=\"numero\">4.8</valor><fuente nil=\"true\" /><supuesto tipo=\"booleano\">true</supuesto></infeccioso_dias></parametros></parametros>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<parametros><disease_id tipo=\"numero\">1</disease_id><parametros><r0><valor tipo=\"numero\">2.87</valor><fuente>Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">3.44</max><min tipo=\"numero\">2.39</min><tipo>IC95</tipo></intervalo></r0></parametros><version tipo=\"numero\">3</version></parametros>\n"
               }
             }
           },
@@ -234,9 +240,36 @@
                         },
                         "supuesto": {
                           "type": "boolean"
+                        },
+                        "intervalo": {
+                          "type": "object",
+                          "required": [
+                            "min",
+                            "max"
+                          ],
+                          "properties": {
+                            "min": {
+                              "type": "number"
+                            },
+                            "max": {
+                              "type": "number"
+                            },
+                            "tipo": {
+                              "type": "string",
+                              "enum": [
+                                "IC95",
+                                "RIC",
+                                "rango"
+                              ]
+                            }
+                          }
                         }
                       }
                     }
+                  },
+                  "motivo": {
+                    "type": "string",
+                    "maxLength": 500
                   }
                 }
               },
@@ -274,9 +307,36 @@
                         },
                         "supuesto": {
                           "type": "boolean"
+                        },
+                        "intervalo": {
+                          "type": "object",
+                          "required": [
+                            "min",
+                            "max"
+                          ],
+                          "properties": {
+                            "min": {
+                              "type": "number"
+                            },
+                            "max": {
+                              "type": "number"
+                            },
+                            "tipo": {
+                              "type": "string",
+                              "enum": [
+                                "IC95",
+                                "RIC",
+                                "rango"
+                              ]
+                            }
+                          }
                         }
                       }
                     }
+                  },
+                  "motivo": {
+                    "type": "string",
+                    "maxLength": 500
                   }
                 }
               }
@@ -335,37 +395,52 @@
                       "max": 20.0,
                       "paso": "0.01",
                       "ayuda": "Contagios que genera un caso en una población sin inmunidad.",
-                      "valor": 1.3,
-                      "valor_form": "1.3",
-                      "fuente": "Biggerstaff et al. 2014",
+                      "valor": 2.87,
+                      "valor_form": "2.87",
+                      "fuente": "Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128",
                       "supuesto": false,
+                      "intervalo": {
+                        "max": 3.44,
+                        "min": 2.39,
+                        "tipo": "IC95"
+                      },
                       "estado": "con_fuente"
                     },
                     {
-                      "clave": "infeccioso_dias",
-                      "etiqueta": "Período infeccioso",
+                      "clave": "incubacion_dias",
+                      "etiqueta": "Período de incubación",
                       "unidad": "días",
                       "min": 0.1,
                       "max": 60.0,
                       "paso": "0.1",
-                      "ayuda": "Cuánto tiempo puede contagiar una persona.",
-                      "valor": null,
-                      "valor_form": "",
-                      "fuente": "",
+                      "ayuda": "Del contagio al inicio de síntomas. El motor usa la media.",
+                      "valor": 5.1,
+                      "valor_form": "5.1",
+                      "fuente": "Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504",
                       "supuesto": false,
-                      "estado": "falta"
+                      "intervalo": {
+                        "max": 5.8,
+                        "min": 4.5,
+                        "tipo": "IC95"
+                      },
+                      "estado": "con_fuente"
                     }
                   ],
-                  "informativos": [],
-                  "faltan": [
-                    "infeccioso_dias",
-                    "dias_hospitalizacion",
-                    "tasa_hospitalizacion",
-                    "letalidad"
+                  "informativos": [
+                    {
+                      "etiqueta": "Proporción de asintomáticos",
+                      "valor": 0.35,
+                      "fuente": "",
+                      "supuesto": false
+                    }
                   ],
-                  "supuestos": [],
+                  "faltan": [],
+                  "supuestos": [
+                    "infeccioso_dias",
+                    "dias_hospitalizacion"
+                  ],
                   "sin_fuente": [],
-                  "simulable": false
+                  "simulable": true
                 }
               },
               "application/xml": {
@@ -375,7 +450,7 @@
                     "name": "estado_parametros"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<estado_parametros><detalle><item><clave>r0</clave><etiqueta>R₀ — número reproductivo básico</etiqueta><unidad>contagios por caso</unidad><min tipo=\"numero\">0.01</min><max tipo=\"numero\">20.0</max><paso>0.01</paso><ayuda>Contagios que genera un caso en una población sin inmunidad.</ayuda><valor tipo=\"numero\">1.3</valor><valor_form>1.3</valor_form><fuente>Biggerstaff et al. 2014</fuente><supuesto tipo=\"booleano\">false</supuesto><estado>con_fuente</estado></item><item><clave>infeccioso_dias</clave><etiqueta>Período infeccioso</etiqueta><unidad>días</unidad><min tipo=\"numero\">0.1</min><max tipo=\"numero\">60.0</max><paso>0.1</paso><ayuda>Cuánto tiempo puede contagiar una persona.</ayuda><valor nil=\"true\" /><valor_form /><fuente /><supuesto tipo=\"booleano\">false</supuesto><estado>falta</estado></item></detalle><informativos /><faltan><item>infeccioso_dias</item><item>dias_hospitalizacion</item><item>tasa_hospitalizacion</item><item>letalidad</item></faltan><supuestos /><sin_fuente /><simulable tipo=\"booleano\">false</simulable></estado_parametros>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<estado_parametros><detalle><item><clave>r0</clave><etiqueta>R₀ — número reproductivo básico</etiqueta><unidad>contagios por caso</unidad><min tipo=\"numero\">0.01</min><max tipo=\"numero\">20.0</max><paso>0.01</paso><ayuda>Contagios que genera un caso en una población sin inmunidad.</ayuda><valor tipo=\"numero\">2.87</valor><valor_form>2.87</valor_form><fuente>Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">3.44</max><min tipo=\"numero\">2.39</min><tipo>IC95</tipo></intervalo><estado>con_fuente</estado></item><item><clave>incubacion_dias</clave><etiqueta>Período de incubación</etiqueta><unidad>días</unidad><min tipo=\"numero\">0.1</min><max tipo=\"numero\">60.0</max><paso>0.1</paso><ayuda>Del contagio al inicio de síntomas. El motor usa la media.</ayuda><valor tipo=\"numero\">5.1</valor><valor_form>5.1</valor_form><fuente>Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">5.8</max><min tipo=\"numero\">4.5</min><tipo>IC95</tipo></intervalo><estado>con_fuente</estado></item></detalle><informativos><item><etiqueta>Proporción de asintomáticos</etiqueta><valor tipo=\"numero\">0.35</valor><fuente /><supuesto tipo=\"booleano\">false</supuesto></item></informativos><faltan /><supuestos><item>infeccioso_dias</item><item>dias_hospitalizacion</item></supuestos><sin_fuente /><simulable tipo=\"booleano\">true</simulable></estado_parametros>\n"
               }
             }
           },
@@ -401,6 +476,194 @@
             "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         }
+      }
+    },
+    "/api/v1/diseases/{disease_id}/parameters/versions": {
+      "get": {
+        "summary": "Versiones de los parámetros",
+        "operationId": "listar_versiones_parametros",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "disease_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "disease_id": 1,
+                  "total": 2,
+                  "versiones": [
+                    {
+                      "version": 2,
+                      "reason": "Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).",
+                      "changed_by": null,
+                      "created_at": "2026-11-23T10:00:00+00:00"
+                    },
+                    {
+                      "version": 1,
+                      "reason": "Parámetros vigentes al crear el historial de versiones (042).",
+                      "changed_by": null,
+                      "created_at": "2026-11-23T10:00:00+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "versiones_parametros"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<versiones_parametros><disease_id tipo=\"numero\">1</disease_id><total tipo=\"numero\">2</total><versiones><item><version tipo=\"numero\">2</version><reason>Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).</reason><changed_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at></item><item><version tipo=\"numero\">1</version><reason>Parámetros vigentes al crear el historial de versiones (042).</reason><changed_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at></item></versiones></versiones_parametros>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        },
+        "description": "El historial de los parámetros de la enfermedad, la versión más reciente primero (D56). La 1 son los de antes del historial; cada cambio agrega la siguiente."
+      }
+    },
+    "/api/v1/diseases/{disease_id}/parameters/versions/{version}": {
+      "get": {
+        "summary": "Una versión de los parámetros",
+        "operationId": "consultar_version_parametros",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "disease_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "version": 2,
+                  "params": {
+                    "r0": {
+                      "valor": 2.87,
+                      "fuente": "Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128",
+                      "supuesto": false,
+                      "intervalo": {
+                        "max": 3.44,
+                        "min": 2.39,
+                        "tipo": "IC95"
+                      }
+                    },
+                    "letalidad": {
+                      "valor": 0.005,
+                      "fuente": "Salje et al. 2020, Science 369(6500):208-211. IFR 0.5% (IC 0.3-0.9), Francia, linaje ancestral. doi:10.1126/science.abc3517",
+                      "supuesto": false,
+                      "intervalo": {
+                        "max": 0.009,
+                        "min": 0.003,
+                        "tipo": "IC95"
+                      }
+                    }
+                  },
+                  "reason": "Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).",
+                  "changed_by": null,
+                  "created_at": "2026-11-23T10:00:00+00:00",
+                  "disease_id": 1
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "version_parametros"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<version_parametros><version tipo=\"numero\">2</version><params><r0><valor tipo=\"numero\">2.87</valor><fuente>Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">3.44</max><min tipo=\"numero\">2.39</min><tipo>IC95</tipo></intervalo></r0><letalidad><valor tipo=\"numero\">0.005</valor><fuente>Salje et al. 2020, Science 369(6500):208-211. IFR 0.5% (IC 0.3-0.9), Francia, linaje ancestral. doi:10.1126/science.abc3517</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">0.009</max><min tipo=\"numero\">0.003</min><tipo>IC95</tipo></intervalo></letalidad></params><reason>Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).</reason><changed_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at><disease_id tipo=\"numero\">1</disease_id></version_parametros>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        },
+        "description": "Los parámetros completos de esa versión (el ejemplo, recortado)."
       }
     }
   }

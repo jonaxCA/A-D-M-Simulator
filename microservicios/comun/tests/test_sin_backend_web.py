@@ -9,9 +9,9 @@ IDENTIDAD = ("auth", "sesiones", "usuarios", "roles")
 SIMULACION = ("corridas", "resultados", "comparacion", "pareto")
 SERVICIOS_E = IDENTIDAD + SIMULACION
 PROHIBIDOS = ("backend_web",)
-# Pendiente de D: validaciones.py importa backend_web de forma diferida. Ningún servicio de E
-# lo usa; cuando se mude, se quita la exención. ambito.py (F) ya no lo importa (E8).
-COMUN_CON_REGLAS_AJENAS = {"validaciones.py"}
+# validaciones.py ya no importa backend_web: parametros_epidemiologicos se mudó a
+# microservicios/parametros/reglas.py (D7, 2026-11-23). ambito.py (F) tampoco lo importa (E8).
+COMUN_CON_REGLAS_AJENAS = set()
 
 
 def _importaciones(ruta):
@@ -52,8 +52,7 @@ def test_las_exenciones_son_exactamente_los_modulos_que_importan_backend_web():
     assert con_backend == COMUN_CON_REGLAS_AJENAS
 
 
-# validaciones.py tiene helpers genéricos (entero_positivo, diccionario) que sí se usan; lo ajeno
-# es esta función, que importa backend_web de forma diferida.
+# La regla de los rangos de los parámetros es de parametros (D37): ningún servicio de E la usa.
 FUNCIONES_AJENAS = ("parametros_epidemiologicos",)
 
 

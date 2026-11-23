@@ -1,8 +1,17 @@
+"""Servicio regiones: el estado y sus municipios, la jerarquía territorial, las jurisdicciones
+sanitarias y la búsqueda territorial (D56). El catálogo de municipios sigue con las reglas de
+backend_web.queries (E8 pendiente); lo nuevo vive en datos.py. Todo es público.
+"""
+from flask import request
+
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import responder
 from epidemia_comun.limites import limitar
+from epidemia_comun.validaciones import entero_positivo
 from backend_web import queries
 from backend_web.db import query
+
+from . import datos as bd
 
 ESTADO_NL = "19"
 FUENTE_60 = "Grupos 60-79 y 80+ del Censo 2020"
@@ -45,7 +54,6 @@ def registrar(app):
     @app.get("/api/v1/regions")
     @limitar("normal")
     def regiones():
-        from flask import request
         buscar = (request.args.get("q") or "").strip() or None
         orden = request.args.get("order", "nombre")
         direccion = request.args.get("direction", "asc")
@@ -63,3 +71,45 @@ def registrar(app):
         if item is None:
             raise ErrorAPI(404, "NO_ENCONTRADO", "No se encontró el municipio.")
         return responder(dict(item), "region")
+
+    @app.get("/api/v1/regions/<int:region_id>/children")
+    @limitar("normal")
+    def hijos(region_id):
+        padre = bd.region(region_id)
+        if padre is None:
+            raise ErrorAPI(404, "NO_ENCONTRADO", "No se encontró la región.")
+        filas = bd.hijos(region_id)
+        return responder({"region": padre, "total": len(filas), "hijos": filas}, "jerarquia")
+
+    @app.get("/api/v1/regions/<int:region_id>/health-areas")
+    @limitar("normal")
+    def jurisdicciones_de(region_id):
+        item = bd.region(region_id)
+        if item is None:
+            raise ErrorAPI(404, "NO_ENCONTRADO", "No se encontró la región.")
+        filas = bd.jurisdicciones_de(item["code"])
+        return responder({"region_id": region_id, "code": item["code"], "total": len(filas),
+                          "jurisdicciones_sanitarias": filas}, "jurisdicciones_de_region")
+
+    @app.get("/api/v1/health-areas")
+    @limitar("normal")
+    def jurisdicciones():
+        filas = bd.jurisdicciones()
+        return responder({"total": len(filas), "jurisdicciones_sanitarias": filas}, "jurisdicciones_sanitarias")
+
+    @app.get("/api/v1/health-areas/<numero>")
+    @limitar("normal")
+    def jurisdiccion(numero):
+        filas = bd.jurisdicciones(entero_positivo(numero, "numero"))
+        if not filas:
+            raise ErrorAPI(404, "NO_ENCONTRADO", "No existe esa jurisdicción sanitaria.")
+        return responder(filas[0], "jurisdiccion")
+
+    @app.get("/api/v1/regions/search")
+    @limitar("normal")
+    def buscar():
+        texto = (request.args.get("q") or "").strip()
+        if not 2 <= len(texto) <= 80:
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "q debe tener de 2 a 80 caracteres.")
+        filas = bd.busca(texto)
+        return responder({"q": texto, "total": len(filas), "coincidencias": filas}, "busqueda_territorial")

@@ -1,0 +1,12 @@
+{
+  "parametro": "eficacia",
+  "enfermedad": "INFLUENZA_ESTACIONAL",
+  "valor": 0.5,
+  "min": 0.3,
+  "max": 0.7,
+  "fuente": "SUPUESTO DEL EQUIPO: igual que para COVID-19, a falta de un estudio para influenza.",
+  "supuesto": true,
+  "updated_by": 2,
+  "updated_at": "2026-11-23T10:00:00+00:00",
+  "code": "CUBREBOCAS"
+}

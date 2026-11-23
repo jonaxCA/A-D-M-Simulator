@@ -138,3 +138,68 @@ def test_el_catalogo_publico_limita_por_ip(cliente, monkeypatch):
     estados = [cliente.get("/api/v1/regions").status_code for _ in range(3)]
     assert estados[:2] == [200, 200] and estados[2] == 429
     assert [cliente.get("/api/v1/regions/39").status_code for _ in range(3)] == [200, 200, 429]
+
+
+# ---- jerarquía, jurisdicciones y búsqueda (D56) -------------------------------------------------
+
+from microservicios.regiones import datos as bd  # noqa: E402
+
+REGION_ESTADO = {"id": 1, "code": "19", "nombre": "Nuevo León", "nivel": "estado", "poblacion": 5784442, "padre_id": None}
+JURISDICCION = {"numero": 3, "nombre": "Jurisdicción Sanitaria No. 3",
+                "circunscripcion": "Sur de Monterrey y los municipios de Villa de García, San Pedro Garza García y Santa Catarina",
+                "fuente": "Reglamento Interior, art. 27", "url": "http://www.ordenjuridico.gob.mx/x.pdf",
+                "municipios": [{"code": "19039", "parcial": True, "region_id": 39, "nombre": "Monterrey"}]}
+
+
+@pytest.fixture
+def territorio(monkeypatch):
+    monkeypatch.setattr(bd, "region", lambda i: {1: dict(REGION_ESTADO), 39: dict(REGION_ESTADO, id=39, code="19039", nombre="Monterrey",
+                                                                         nivel="municipio", padre_id=1)}.get(i))
+    monkeypatch.setattr(bd, "hijos", lambda i: [{"id": 39, "code": "19039", "nombre": "Monterrey",
+                                                "nivel": "municipio", "poblacion": 1142994}] if i == 1 else [])
+    monkeypatch.setattr(bd, "jurisdicciones", lambda numero=None: [dict(JURISDICCION)] if numero in (None, 3) else [])
+    monkeypatch.setattr(bd, "jurisdicciones_de", lambda code: [
+        {"numero": n, "nombre": "Jurisdicción Sanitaria No. %d" % n, "parcial": True} for n in (1, 2, 3)]
+        if code == "19039" else [])
+
+
+def test_hijos_de_una_region(cliente, territorio):
+    datos = cliente.get("/api/v1/regions/1/children?format=json").get_json()
+    assert datos["region"]["nivel"] == "estado" and datos["total"] == 1 and datos["hijos"][0]["code"] == "19039"
+    assert cliente.get("/api/v1/regions/39/children?format=json").get_json()["total"] == 0
+    assert cliente.get("/api/v1/regions/999/children?format=json").status_code == 404
+    raiz = ET.fromstring(cliente.get("/api/v1/regions/1/children").data)
+    assert raiz.find("hijos/region/nombre").text == "Monterrey"
+
+
+def test_jurisdicciones_sanitarias(cliente, territorio):
+    datos = cliente.get("/api/v1/health-areas?format=json").get_json()
+    assert datos["total"] == 1 and datos["jurisdicciones_sanitarias"][0]["municipios"][0]["parcial"] is True
+    assert cliente.get("/api/v1/health-areas/3?format=json").get_json()["numero"] == 3
+    assert cliente.get("/api/v1/health-areas/9?format=json").status_code == 404
+    assert cliente.get("/api/v1/health-areas/x?format=json").status_code == 422
+    de_mty = cliente.get("/api/v1/regions/39/health-areas?format=json").get_json()
+    assert [j["numero"] for j in de_mty["jurisdicciones_sanitarias"]] == [1, 2, 3]
+    assert cliente.get("/api/v1/regions/999/health-areas?format=json").status_code == 404
+    raiz = ET.fromstring(cliente.get("/api/v1/health-areas").data)
+    assert raiz.find("jurisdicciones_sanitarias/jurisdiccion/municipios/municipio/code").text == "19039"
+
+
+def test_busqueda_sin_acentos_en_estado_municipios_y_jurisdicciones(cliente, monkeypatch):
+    def query(sql, params=(), one=False):
+        if "FROM regions" in sql:
+            return [{"id": 1, "code": "19", "name": "Nuevo León", "level": "estado", "padre": None},
+                    {"id": 39, "code": "19039", "name": "Monterrey", "level": "municipio", "padre": "Nuevo León"},
+                    {"id": 21, "code": "19021", "name": "General Escobedo", "level": "municipio",
+                     "padre": "Nuevo León"}]
+        return [{"id": 3, "numero": 3, "nombre": "Jurisdicción Sanitaria No. 3", "circunscripcion": "Sur de Monterrey",
+                 "fuente": "F", "url": None}]
+    monkeypatch.setattr(bd, "query", query)
+    datos = cliente.get("/api/v1/regions/search?q=MONTERREY&format=json").get_json()
+    assert [(c["tipo"], c["nombre"]) for c in datos["coincidencias"]] == [
+        ("municipio", "Monterrey"), ("jurisdiccion", "Jurisdicción Sanitaria No. 3")]
+    assert cliente.get("/api/v1/regions/search?q=nuevo leon&format=json").get_json()["coincidencias"][0]["tipo"] == "estado"
+    assert cliente.get("/api/v1/regions/search?q=jurisdiccion&format=json").get_json()["total"] == 1
+    assert cliente.get("/api/v1/regions/search?q=19021&format=json").get_json()["coincidencias"][0]["id"] == 21
+    assert cliente.get("/api/v1/regions/search?q=x&format=json").status_code == 422
+    assert ET.fromstring(cliente.get("/api/v1/regions/search?q=monte").data).tag == "busqueda_territorial"

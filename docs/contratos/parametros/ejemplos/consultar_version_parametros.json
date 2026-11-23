@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "params": {
+    "r0": {
+      "valor": 2.87,
+      "fuente": "Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128",
+      "supuesto": false,
+      "intervalo": {
+        "max": 3.44,
+        "min": 2.39,
+        "tipo": "IC95"
+      }
+    },
+    "letalidad": {
+      "valor": 0.005,
+      "fuente": "Salje et al. 2020, Science 369(6500):208-211. IFR 0.5% (IC 0.3-0.9), Francia, linaje ancestral. doi:10.1126/science.abc3517",
+      "supuesto": false,
+      "intervalo": {
+        "max": 0.009,
+        "min": 0.003,
+        "tipo": "IC95"
+      }
+    }
+  },
+  "reason": "Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).",
+  "changed_by": null,
+  "created_at": "2026-11-23T10:00:00+00:00",
+  "disease_id": 1
+}

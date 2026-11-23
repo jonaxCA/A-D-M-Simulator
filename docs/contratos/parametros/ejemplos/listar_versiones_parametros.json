@@ -1,0 +1,18 @@
+{
+  "disease_id": 1,
+  "total": 2,
+  "versiones": [
+    {
+      "version": 2,
+      "reason": "Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).",
+      "changed_by": null,
+      "created_at": "2026-11-23T10:00:00+00:00"
+    },
+    {
+      "version": 1,
+      "reason": "Parámetros vigentes al crear el historial de versiones (042).",
+      "changed_by": null,
+      "created_at": "2026-11-23T10:00:00+00:00"
+    }
+  ]
+}

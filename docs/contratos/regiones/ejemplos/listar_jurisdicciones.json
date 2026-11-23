@@ -1,0 +1,41 @@
+{
+  "total": 8,
+  "jurisdicciones_sanitarias": [
+    {
+      "numero": 1,
+      "nombre": "Jurisdicción Sanitaria No. 1",
+      "circunscripcion": "Poniente del municipio de Monterrey",
+      "fuente": "Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.",
+      "url": "http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf",
+      "municipios": [
+        {
+          "code": "19039",
+          "parcial": true,
+          "region_id": 2,
+          "nombre": "Monterrey"
+        }
+      ]
+    },
+    {
+      "numero": 2,
+      "nombre": "Jurisdicción Sanitaria No. 2",
+      "circunscripcion": "Norte y oriente del municipio de Monterrey y los municipios de Abasolo, el Carmen, Ciénega de Flores, General Mariano Escobedo, General Zuazua, Mina, Salinas Victoria, San Nicolás de los Garza e Hidalgo",
+      "fuente": "Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.",
+      "url": "http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf",
+      "municipios": [
+        {
+          "code": "19001",
+          "parcial": false,
+          "region_id": 12,
+          "nombre": "Abasolo"
+        },
+        {
+          "code": "19012",
+          "parcial": false,
+          "region_id": 22,
+          "nombre": "Ciénega de Flores"
+        }
+      ]
+    }
+  ]
+}

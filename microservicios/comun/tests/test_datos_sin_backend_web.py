@@ -2,8 +2,9 @@
 
 Hoy evidencias (D2, 2026-11-22), cuyas reglas pasaron de backend_web/evidencias.py a
 microservicios/evidencias/; importacion (D6), que nació sin él, y aprobacion (D7, 2026-11-23), cuyo
-flujo de revisión pasó de backend_web.queries a microservicios/aprobacion/datos.py. Las tres imágenes
-parten de epidemia/base-vigilancia. Los demás servicios de D se agregan a SIN_BACKEND_WEB conforme se
+flujo de revisión pasó de backend_web.queries a microservicios/aprobacion/datos.py, y
+tipos_intervencion y poblacion (D7 Catálogos), cuyas reglas, versiones y supuestos viven en su
+datos.py. Sus imágenes parten de epidemia/base-vigilancia. Los demás servicios de D se agregan a SIN_BACKEND_WEB conforme se
 muden.
 """
 import ast
@@ -12,7 +13,7 @@ from pathlib import Path
 import pytest
 
 RAIZ = Path(__file__).resolve().parents[3]
-SIN_BACKEND_WEB = ("evidencias", "importacion", "aprobacion")
+SIN_BACKEND_WEB = ("evidencias", "importacion", "aprobacion", "tipos_intervencion", "poblacion")
 
 
 def _importaciones(ruta):
@@ -35,7 +36,7 @@ def test_la_imagen_parte_de_la_base_sin_backend_web(servicio):
     docker = (RAIZ / "microservicios" / servicio / "Dockerfile").read_text(encoding="utf-8")
     assert docker.startswith("FROM epidemia/base-vigilancia\n")
     compose = (RAIZ / "infra" / "docker-compose.yml").read_text(encoding="utf-8")
-    inicio = compose.index("\n  %s:\n" % servicio)
+    inicio = compose.index("\n  %s:\n" % servicio.replace("_", "-"))
     assert "<<: *construye-vigilancia" in compose[inicio:inicio + 200]
 
 

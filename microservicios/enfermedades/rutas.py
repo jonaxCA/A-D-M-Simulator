@@ -1,3 +1,8 @@
+"""Servicio enfermedades: el catálogo, su clasificación y las definiciones de caso versionadas (D56).
+
+La lista y el alta siguen con las reglas de backend_web.queries (E8 pendiente); la ficha, la
+clasificación y las definiciones de caso viven en datos.py.
+"""
 import psycopg2
 from flask import g, request
 
@@ -9,13 +14,56 @@ from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import diccionario, entero_positivo
 
+from . import datos as bd
 
-CAMPOS = ("id", "code", "name", "description", "is_active", "created_at")
 ESTADO_NL = "19"
+ROLES_EDITAN = ("EPIDEMIOLOGO", "ADMINISTRADOR")
+TRANSMISIONES = ("respiratoria", "vectorial")
+CRITERIOS_MAX = 20
+TEXTO_MAX = 4000
 
 
-def _ficha(fila):
-    return {clave: fila[clave] for clave in CAMPOS}
+def _invalido(mensaje):
+    return ErrorAPI(422, "DATOS_INVALIDOS", mensaje)
+
+
+def _texto(valor, campo, maximo, obligatorio=False):
+    if valor is None and not obligatorio:
+        return None
+    if not isinstance(valor, str) or not valor.strip() or len(valor.strip()) > maximo:
+        raise _invalido("%s debe ser texto de 1 a %d caracteres." % (campo, maximo))
+    return valor.strip()
+
+
+def _definicion_de(cuerpo):
+    # (criterios, fuente, url) validados. En XML: <criterios><criterio>...</criterio></criterios>.
+    cuerpo = diccionario(cuerpo)
+    if set(cuerpo) - {"criterios", "fuente", "url"}:
+        raise _invalido("Solo se aceptan criterios, fuente y url.")
+    criterios = cuerpo.get("criterios")
+    if isinstance(criterios, dict) and set(criterios) == {"criterio"}:
+        criterios = criterios["criterio"]
+    if isinstance(criterios, dict):
+        criterios = [criterios]
+    if not isinstance(criterios, list) or not 1 <= len(criterios) <= CRITERIOS_MAX:
+        raise _invalido("criterios debe ser una lista de 1 a %d criterios." % CRITERIOS_MAX)
+    limpios = []
+    for criterio in criterios:
+        if not isinstance(criterio, dict) or set(criterio) != {"clasificacion", "texto"}:
+            raise _invalido("Cada criterio lleva clasificacion y texto.")
+        limpios.append({"clasificacion": _texto(criterio["clasificacion"], "clasificacion", 200, True),
+                        "texto": _texto(criterio["texto"], "texto", TEXTO_MAX, True)})
+    url = _texto(cuerpo.get("url"), "url", 500)
+    if url and not url.startswith(("http://", "https://")):
+        raise _invalido("url debe empezar con http:// o https://.")
+    return limpios, _texto(cuerpo.get("fuente"), "fuente", 1000, True), url
+
+
+def _enfermedad(disease_id):
+    fila = bd.enfermedad(disease_id)
+    if fila is None:
+        raise ErrorAPI(404, "NO_ENCONTRADO", "No existe la enfermedad.")
+    return fila
 
 
 def registrar(app):
@@ -72,10 +120,53 @@ def registrar(app):
 
     @app.get("/api/v1/diseases/<int:disease_id>")
     def detalle(disease_id):
-        fila = queries.get_enfermedad(disease_id)
+        return responder(_enfermedad(disease_id), "enfermedad")
+
+    @app.get("/api/v1/diseases/<int:disease_id>/case-definitions")
+    def definiciones(disease_id):
+        _enfermedad(disease_id)
+        filas = bd.definiciones(disease_id)
+        return responder({"disease_id": disease_id, "total": len(filas), "definiciones": filas},
+                         "definiciones_caso")
+
+    @app.get("/api/v1/diseases/<int:disease_id>/case-definitions/current")
+    def definicion_vigente(disease_id):
+        _enfermedad(disease_id)
+        fila = bd.definicion(disease_id)
         if fila is None:
-            raise ErrorAPI(404, "NO_ENCONTRADO", "No existe la enfermedad.")
-        return responder(_ficha(fila), "enfermedad")
+            raise ErrorAPI(404, "NO_ENCONTRADO", "La enfermedad no tiene una definición de caso vigente.")
+        return responder(dict(fila, disease_id=disease_id), "definicion_caso")
+
+    @app.get("/api/v1/diseases/<int:disease_id>/case-definitions/<version>")
+    def definicion(disease_id, version):
+        fila = bd.definicion(disease_id, entero_positivo(version, "version"))
+        if fila is None:
+            raise ErrorAPI(404, "NO_ENCONTRADO", "No existe esa versión de la definición de caso.")
+        return responder(dict(fila, disease_id=disease_id), "definicion_caso")
+
+    @app.post("/api/v1/diseases/<int:disease_id>/case-definitions")
+    @requiere_token(roles=ROLES_EDITAN)
+    def crear_definicion(disease_id):
+        criterios, fuente, url = _definicion_de(leer_cuerpo())
+        version = bd.crea_borrador(disease_id, criterios, fuente, url, contexto=g.contexto)
+        return responder(dict(bd.definicion(disease_id, version), disease_id=disease_id), "definicion_caso",
+                         estado=201)
+
+    @app.put("/api/v1/diseases/<int:disease_id>/case-definitions/<version>")
+    @requiere_token(roles=ROLES_EDITAN)
+    def editar_definicion(disease_id, version):
+        numero = entero_positivo(version, "version")
+        criterios, fuente, url = _definicion_de(leer_cuerpo())
+        bd.edita_borrador(disease_id, numero, criterios, fuente, url, contexto=g.contexto)
+        return responder(dict(bd.definicion(disease_id, numero), disease_id=disease_id), "definicion_caso")
+
+    @app.post("/api/v1/diseases/<int:disease_id>/case-definitions/<version>/publish")
+    @requiere_token(roles=ROLES_EDITAN)
+    def publicar_definicion(disease_id, version):
+        numero = entero_positivo(version, "version")
+        retirada = bd.publica(disease_id, numero, contexto=g.contexto)
+        return responder(dict(bd.definicion(disease_id, numero), disease_id=disease_id, retirada=retirada),
+                         "definicion_caso")
 
     @app.post("/api/v1/diseases")
     @requiere_token(roles=("EPIDEMIOLOGO", "ADMINISTRADOR"))
@@ -108,7 +199,7 @@ def registrar(app):
         return responder({"id": nuevo_id}, "enfermedad", estado=201)
 
     @app.put("/api/v1/diseases/<int:disease_id>")
-    @requiere_token(roles=("EPIDEMIOLOGO", "ADMINISTRADOR"))
+    @requiere_token(roles=ROLES_EDITAN)
     def editar(disease_id):
         datos = diccionario(leer_cuerpo())
         nombre = datos.get("name")
@@ -117,21 +208,21 @@ def registrar(app):
             raise ErrorAPI(422, "DATOS_INVALIDOS", "name es obligatorio y de máximo 120 caracteres.")
         if descripcion is not None and not isinstance(descripcion, str):
             raise ErrorAPI(422, "DATOS_INVALIDOS", "description debe ser texto.")
-        if set(datos) - {"name", "description"}:
+        clasificacion = {"transmission", "icd10", "classification_source"}
+        if set(datos) - {"name", "description"} - clasificacion:
             raise ErrorAPI(422, "DATOS_INVALIDOS", "No se pueden modificar código, parámetros ni otros campos aquí.")
-        with get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT id, name, description FROM diseases WHERE id=%s FOR UPDATE", (disease_id,))
-                anterior = cur.fetchone()
-                if anterior is None:
-                    raise ErrorAPI(404, "NO_ENCONTRADO", "No existe la enfermedad.")
-                antes = {"name": anterior[1], "description": anterior[2]}
-                despues = {"name": nombre.strip(), "description": (descripcion or "").strip() or None}
-                cur.execute("UPDATE diseases SET name=%s, description=%s WHERE id=%s",
-                            (despues["name"], despues["description"], disease_id))
-                log_audit(g.contexto, "UPDATE", "diseases", disease_id,
-                          data_before=antes, data_after=despues, cur=cur)
-            conn.commit()
+        cambios = {"name": nombre.strip(), "description": (descripcion or "").strip() or None}
+        if set(datos) & clasificacion:
+            # La clasificación se cambia completa y con su fuente (regla 8).
+            transmision = datos.get("transmission")
+            if transmision is not None and transmision not in TRANSMISIONES:
+                raise _invalido("transmission debe ser una de: %s." % ", ".join(TRANSMISIONES))
+            cie = _texto(datos.get("icd10"), "icd10", 60)
+            fuente = _texto(datos.get("classification_source"), "classification_source", 1000)
+            if (transmision or cie) and not fuente:
+                raise _invalido("La clasificación necesita su fuente (classification_source).")
+            cambios.update(transmission=transmision, icd10=cie, classification_source=fuente)
+        bd.clasifica(disease_id, cambios, contexto=g.contexto)
         return responder({"id": disease_id, "actualizada": True}, "enfermedad")
 
     @app.post("/api/v1/diseases/<int:disease_id>/<accion>")

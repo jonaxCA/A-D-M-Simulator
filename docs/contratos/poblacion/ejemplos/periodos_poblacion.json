@@ -1,0 +1,42 @@
+{
+  "region_id": 2,
+  "code": "19039",
+  "total": 7,
+  "censos": [
+    {
+      "anio": 1990,
+      "poblacion": 1069238,
+      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+    },
+    {
+      "anio": 1995,
+      "poblacion": 1088143,
+      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+    },
+    {
+      "anio": 2000,
+      "poblacion": 1110997,
+      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+    },
+    {
+      "anio": 2005,
+      "poblacion": 1133814,
+      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+    },
+    {
+      "anio": 2010,
+      "poblacion": 1135550,
+      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+    },
+    {
+      "anio": 2015,
+      "poblacion": 1109171,
+      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+    },
+    {
+      "anio": 2020,
+      "poblacion": 1142994,
+      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+    }
+  ]
+}

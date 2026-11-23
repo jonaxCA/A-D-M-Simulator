@@ -29,12 +29,13 @@ D30), y entran por nginx con HTTPS (D25, D26). Cuánto vive cada dato: el invent
 - **Un contenedor por servicio.** Todos parten de una imagen base (`infra/docker/`), escuchan en
   el puerto 8000 dentro de su contenedor y publican un puerto propio hacia fuera, según la tabla.
 - **Cada regla con su servicio (E8, D37).** Los servicios de E y F, `evidencias` (D2),
-  `importacion` (D6) y `aprobacion` (D7) no importan `backend_web`: sus imágenes parten de
-  `base-identidad`, `base-simulacion` y `base-vigilancia`, y sus reglas viven en su carpeta
-  ([`duenos_de_reglas.md`](duenos_de_reglas.md)).
-  Los demás de catálogos y escenarios (`enfermedades`, `parametros`, `regiones`, `poblacion`,
-  `tipos-intervencion`, `escenarios`, `intervenciones`, `validacion` y `escenarios-xml`)
-  todavía lo importan desde `epidemia/base` (D7 del checklist).
+  `importacion` (D6), `aprobacion`, `poblacion` y `tipos-intervencion` (D7) no importan
+  `backend_web`: sus imágenes parten de `base-identidad`, `base-simulacion` y `base-vigilancia`, y
+  sus reglas viven en su carpeta ([`duenos_de_reglas.md`](duenos_de_reglas.md)). `parametros` ya
+  no lo importa, pero usa los límites del motor (`procesamiento.entrada_motor`) y sigue en
+  `epidemia/base`. Los demás de catálogos y escenarios (`enfermedades`, `regiones`, `escenarios`,
+  `intervenciones`, `validacion` y `escenarios-xml`) todavía lo importan desde `epidemia/base`
+  (D7 del checklist).
   `procesamiento/` (el motor) solo va en las imágenes que lo usan: `base-simulacion` y
   `epidemia/base`.
 
@@ -70,11 +71,11 @@ solo en local).
 
 | # | Servicio             | Hace una cosa                                                       | Rutas principales                                                                                 | Escribe                                                                    | Lee                            | Llama a | Puerto |
 |---|----------------------|---------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|--------------------------------|---------|--------|
-| 5 | `enfermedades`       | Alta, edición y baja lógica de enfermedades                         | `GET/POST /api/v1/diseases`, `GET /api/v1/diseases/stats`, `GET /api/v1/diseases/export` (con sesión; anota el `EXPORT`), `GET/PUT /api/v1/diseases/{id}`, `POST .../activate` y `/deactivate` | `diseases` (el alta, con sus parámetros iniciales; después, todo menos `default_params`) | `cases` y `regions` (para la actividad y las detectadas en NL) | —       | 5211   |
-| 6 | `parametros`         | Parámetros epidemiológicos, cada uno con fuente o marca de supuesto | `GET/PUT /api/v1/diseases/{id}/parameters`, `GET /api/v1/diseases/{id}/parameters/status`         | `diseases.default_params`                                                  | `diseases`                     | —       | 5212   |
-| 7 | `regiones`           | Nuevo León y sus 51 municipios, solo lectura                        | `GET /api/v1/regions`, `GET /api/v1/regions/state`, `GET /api/v1/regions/{id}`                     | —                                                                          | `regions`, `region_age_groups`, `audit_log` (la última corrección del 60+), `users` (`full_name`) | —       | 5213   |
-| 8 | `poblacion`          | Población y bandas de edad, con sus correcciones                    | `GET/PUT /api/v1/regions/{id}/population`, `GET/PUT /api/v1/regions/{id}/age-groups`              | `regions.population` y `regions.population_60plus`, `region_age_groups` (`population`), `region_population_adjustments` | `regions`                      | —       | 5214   |
-| 9 | `tipos-intervencion` | Tipos de intervención con el esquema de sus parámetros              | `GET /api/v1/intervention-types`, `GET /api/v1/intervention-types/{code}`                         | —                                                                          | `intervention_types`           | —       | 5215   |
+| 5 | `enfermedades`       | Alta, edición y baja lógica de enfermedades, su clasificación y sus definiciones de caso versionadas (D56) | `GET/POST /api/v1/diseases`, `GET /api/v1/diseases/stats`, `GET /api/v1/diseases/export` (con sesión; anota el `EXPORT`), `GET/PUT /api/v1/diseases/{id}`, `POST .../activate` y `/deactivate`, `GET/POST /api/v1/diseases/{id}/case-definitions`, `GET .../case-definitions/current`, `GET/PUT .../case-definitions/{version}`, `POST .../case-definitions/{version}/publish` | `diseases` (el alta, con sus parámetros iniciales; después, todo menos `default_params`), `case_definitions` | `cases` y `regions` (para la actividad y las detectadas en NL) | —       | 5211   |
+| 6 | `parametros`         | Parámetros epidemiológicos, cada uno con fuente o marca de supuesto, su intervalo de incertidumbre y su historial de versiones (D56) | `GET/PUT /api/v1/diseases/{id}/parameters`, `GET /api/v1/diseases/{id}/parameters/status`, `GET .../parameters/versions`, `GET .../parameters/versions/{version}` | `diseases.default_params`, `disease_parameter_versions` | `diseases`                     | —       | 5212   |
+| 7 | `regiones`           | Nuevo León y sus 51 municipios, la jerarquía, las jurisdicciones sanitarias y la búsqueda territorial (D56); solo lectura | `GET /api/v1/regions`, `GET /api/v1/regions/state`, `GET /api/v1/regions/{id}`, `GET /api/v1/regions/{id}/children`, `GET /api/v1/regions/{id}/health-areas`, `GET /api/v1/regions/search`, `GET /api/v1/health-areas`, `GET /api/v1/health-areas/{numero}` | — | `regions`, `region_age_groups`, `health_areas`, `health_area_municipalities`, `audit_log` (la última corrección del 60+), `users` (`full_name`) | —       | 5213   |
+| 8 | `poblacion`          | Población y bandas de edad, con sus correcciones, sus versiones y sus periodos de referencia (D56) | `GET/PUT /api/v1/regions/{id}/population`, `GET/PUT /api/v1/regions/{id}/age-groups`, `GET /api/v1/regions/{id}/population/versions`, `GET /api/v1/regions/{id}/population/periods` | `regions.population` y `regions.population_60plus`, `region_age_groups` (`population`), `region_population_adjustments`, `population_versions` | `regions`, `census_population` | —       | 5214   |
+| 9 | `tipos-intervencion` | Tipos de intervención con el esquema de sus parámetros y sus supuestos de efectividad (D56) | `GET /api/v1/intervention-types`, `GET /api/v1/intervention-types/{code}`, `GET/PUT /api/v1/intervention-types/{code}/effectiveness` | `intervention_effectiveness` | `intervention_types`, `diseases` (`id`, `code`) | —       | 5215   |
 
 ## Vigilancia
 

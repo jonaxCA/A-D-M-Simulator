@@ -50,6 +50,8 @@ SET client_encoding = 'UTF8';
 --                                                       061_serie_observada.sql
 --                                                       063_casos_sinteticos.sql
 --                                                       064_proyectos_archivado_y_firma.sql
+--                                                       042_catalogos_con_fuente.sql
+--                                                       043_jurisdicciones_y_censos.sql
 --
 -- Cada bloque original conserva su propio BEGIN/COMMIT y su propio INSERT en
 -- schema_migrations, asi que este archivo se comporta exactamente igual que
@@ -5696,6 +5698,934 @@ GRANT SELECT (scenario_version_id, scenario_checksum, status) ON simulation_runs
 
 INSERT INTO schema_migrations (version, description)
 VALUES ('064', 'Proyectos de investigación, archivado de escenarios y devolución y firma de versiones (D54, D55)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 042_catalogos_con_fuente.sql
+-- Dominio: catálogos. Definiciones de caso versionadas, clasificación de las
+-- enfermedades, versiones e intervalos de los parámetros y supuestos de
+-- efectividad de cada tipo de intervención (D56, D7 del checklist).
+--
+-- - diseases: vía de transmisión y códigos CIE-10, con su fuente.
+-- - case_definitions: la definición operacional de caso de cada enfermedad, con
+--   versiones (borrador, vigente o retirada; una vigente por enfermedad). Trae
+--   las de la DGE: enfermedad respiratoria viral (septiembre de 2023) para
+--   COVID-19 e influenza, la de influenza de marzo de 2021 ya retirada, y las de
+--   dengue, paludismo y zika de marzo de 2021. El texto es literal; solo se unen
+--   los renglones y las viñetas van separadas por punto y coma. PATOGENO_X es
+--   hipotético y no tiene definición.
+-- - disease_parameter_versions: cada cambio de diseases.default_params es una
+--   versión. La 1 son los parámetros al crear el historial; la 2 de COVID-19 e
+--   influenza agrega los intervalos que ya traían las fuentes citadas
+--   (intervalo: min, max y tipo IC95, RIC o rango).
+-- - intervention_effectiveness: el supuesto de efectividad de cada tipo de
+--   intervención (eficacia, reducción o detección), general o por enfermedad,
+--   con valor de referencia, rango, fuente y marca de supuesto. No cambia lo
+--   que se simula: cada intervención sigue llevando su propio valor.
+-- - Los datos por enfermedad van juntos al final, marcados: la semilla de la
+--   demostración los repite (gen_demo_data.py los lee de aquí), porque en una
+--   instalación limpia DENGUE_DEMO, ZIKA_DEMO y MALARIA_DEMO llegan con ella,
+--   después del dump.
+-- - Es la 042, reservada para D: no rehace ningún CHECK de otra migración.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+-- -----------------------------------------------------------------------------
+-- Clasificación de las enfermedades
+-- -----------------------------------------------------------------------------
+ALTER TABLE diseases
+    ADD COLUMN IF NOT EXISTS transmission          VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS icd10                 VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS classification_source TEXT;
+
+ALTER TABLE diseases
+    DROP CONSTRAINT IF EXISTS ck_diseases_transmission,
+    ADD  CONSTRAINT ck_diseases_transmission
+        CHECK (transmission IS NULL OR transmission IN ('respiratoria', 'vectorial'));
+
+COMMENT ON COLUMN diseases.transmission IS 'Vía de transmisión: respiratoria (de persona a persona) o vectorial. NULL si no está clasificada (PATOGENO_X es hipotético).';
+COMMENT ON COLUMN diseases.icd10 IS 'Códigos CIE-10 de la enfermedad, como los cita su fuente.';
+COMMENT ON COLUMN diseases.classification_source IS 'Fuente de la vía de transmisión y de los códigos CIE-10.';
+
+-- -----------------------------------------------------------------------------
+-- case_definitions
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS case_definitions (
+    id           BIGSERIAL     PRIMARY KEY,
+    disease_id   SMALLINT      NOT NULL,
+    version      INTEGER       NOT NULL,
+    status       VARCHAR(20)   NOT NULL DEFAULT 'borrador',
+    criteria     JSONB         NOT NULL,
+    source       TEXT          NOT NULL,
+    source_url   TEXT,
+    created_by   BIGINT,
+    created_at   TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    published_by BIGINT,
+    published_at TIMESTAMPTZ,
+    retired_at   TIMESTAMPTZ,
+
+    CONSTRAINT fk_case_definitions_disease
+        FOREIGN KEY (disease_id)   REFERENCES diseases (id) ON DELETE CASCADE,
+    CONSTRAINT fk_case_definitions_created_by
+        FOREIGN KEY (created_by)   REFERENCES users (id)    ON DELETE SET NULL,
+    CONSTRAINT fk_case_definitions_published_by
+        FOREIGN KEY (published_by) REFERENCES users (id)    ON DELETE SET NULL,
+    CONSTRAINT uq_case_definitions_version UNIQUE (disease_id, version),
+    CONSTRAINT ck_case_definitions_version CHECK (version >= 1),
+    CONSTRAINT ck_case_definitions_status CHECK (status IN ('borrador', 'vigente', 'retirada')),
+    CONSTRAINT ck_case_definitions_criteria CHECK (
+        jsonb_typeof(criteria) = 'array' AND jsonb_array_length(criteria) >= 1),
+    CONSTRAINT ck_case_definitions_source CHECK (char_length(btrim(source)) >= 3),
+    -- Publicada (vigente o retirada) sabe cuándo; solo una retirada tiene fecha de retiro.
+    CONSTRAINT ck_case_definitions_publicada CHECK (status = 'borrador' OR published_at IS NOT NULL),
+    CONSTRAINT ck_case_definitions_retiro CHECK ((status = 'retirada') = (retired_at IS NOT NULL))
+);
+
+-- Una sola definición vigente por enfermedad.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_case_definitions_vigente
+    ON case_definitions (disease_id) WHERE status = 'vigente';
+
+COMMENT ON TABLE case_definitions IS
+    'Definiciones operacionales de caso de cada enfermedad, versionadas (D56). Las escribe enfermedades: un borrador se edita; al publicarlo pasa a vigente y la vigente anterior a retirada. Lo publicado no cambia; solo se va en cascada si se borra la enfermedad, que el sistema da de baja lógica.';
+COMMENT ON COLUMN case_definitions.id IS 'Identificador de la versión.';
+COMMENT ON COLUMN case_definitions.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
+COMMENT ON COLUMN case_definitions.version IS 'Número de versión dentro de la enfermedad, desde 1.';
+COMMENT ON COLUMN case_definitions.status IS 'borrador (se edita), vigente (una por enfermedad) o retirada.';
+COMMENT ON COLUMN case_definitions.criteria IS 'Lista de criterios: [{clasificacion, texto}], por ejemplo caso sospechoso, caso confirmado o dengue con signos de alarma.';
+COMMENT ON COLUMN case_definitions.source IS 'Documento de donde sale el texto: institución, título, fecha y páginas.';
+COMMENT ON COLUMN case_definitions.source_url IS 'Dirección del documento, si la hay.';
+COMMENT ON COLUMN case_definitions.created_by IS 'Quien la capturó; NULL si la cargó una migración. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN case_definitions.created_at IS 'Alta del borrador.';
+COMMENT ON COLUMN case_definitions.published_by IS 'Quien la publicó; NULL si la cargó una migración. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN case_definitions.published_at IS 'Cuándo pasó a vigente.';
+COMMENT ON COLUMN case_definitions.retired_at IS 'Cuándo la reemplazó otra versión.';
+
+-- -----------------------------------------------------------------------------
+-- disease_parameter_versions
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS disease_parameter_versions (
+    id          BIGSERIAL    PRIMARY KEY,
+    disease_id  SMALLINT     NOT NULL,
+    version     INTEGER      NOT NULL,
+    params      JSONB        NOT NULL,
+    reason      TEXT,
+    changed_by  BIGINT,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_disease_parameter_versions_disease
+        FOREIGN KEY (disease_id) REFERENCES diseases (id) ON DELETE CASCADE,
+    CONSTRAINT fk_disease_parameter_versions_user
+        FOREIGN KEY (changed_by) REFERENCES users (id)    ON DELETE SET NULL,
+    CONSTRAINT uq_disease_parameter_versions UNIQUE (disease_id, version),
+    CONSTRAINT ck_disease_parameter_versions_version CHECK (version >= 1),
+    CONSTRAINT ck_disease_parameter_versions_params CHECK (jsonb_typeof(params) = 'object')
+);
+
+COMMENT ON TABLE disease_parameter_versions IS
+    'Cada versión de los parámetros de una enfermedad (diseases.default_params), completa (D56). La escribe parametros en la misma transacción que el cambio; no se edita ni se borra (D52), salvo en cascada si se borra la enfermedad, que el sistema da de baja lógica.';
+COMMENT ON COLUMN disease_parameter_versions.id IS 'Identificador.';
+COMMENT ON COLUMN disease_parameter_versions.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
+COMMENT ON COLUMN disease_parameter_versions.version IS 'Número de versión dentro de la enfermedad, desde 1.';
+COMMENT ON COLUMN disease_parameter_versions.params IS 'Los parámetros completos de esa versión, como quedaron en default_params.';
+COMMENT ON COLUMN disease_parameter_versions.reason IS 'Motivo del cambio, si se dio.';
+COMMENT ON COLUMN disease_parameter_versions.changed_by IS 'Quien hizo el cambio; NULL si lo hizo una migración. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN disease_parameter_versions.created_at IS 'Cuándo se guardó la versión.';
+
+-- -----------------------------------------------------------------------------
+-- intervention_effectiveness
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS intervention_effectiveness (
+    id                   BIGSERIAL     PRIMARY KEY,
+    intervention_type_id SMALLINT      NOT NULL,
+    parameter            VARCHAR(20)   NOT NULL,
+    disease_id           SMALLINT,
+    reference_value      NUMERIC(6,4),
+    range_min            NUMERIC(6,4),
+    range_max            NUMERIC(6,4),
+    source               TEXT          NOT NULL,
+    is_assumption        BOOLEAN       NOT NULL,
+    updated_by           BIGINT,
+    updated_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_intervention_effectiveness_type
+        FOREIGN KEY (intervention_type_id) REFERENCES intervention_types (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_intervention_effectiveness_disease
+        FOREIGN KEY (disease_id) REFERENCES diseases (id) ON DELETE CASCADE,
+    CONSTRAINT fk_intervention_effectiveness_user
+        FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL,
+    CONSTRAINT uq_intervention_effectiveness
+        UNIQUE NULLS NOT DISTINCT (intervention_type_id, parameter, disease_id),
+    CONSTRAINT ck_intervention_effectiveness_parameter
+        CHECK (parameter IN ('eficacia', 'reduccion', 'deteccion')),
+    CONSTRAINT ck_intervention_effectiveness_rango CHECK (
+        (reference_value IS NULL OR reference_value BETWEEN 0 AND 1)
+        AND (range_min IS NULL OR range_min BETWEEN 0 AND 1)
+        AND (range_max IS NULL OR range_max BETWEEN 0 AND 1)
+        AND (range_min IS NULL OR range_max IS NULL OR range_min <= range_max)
+        AND (reference_value IS NULL OR range_min IS NULL OR range_min <= reference_value)
+        AND (reference_value IS NULL OR range_max IS NULL OR reference_value <= range_max)),
+    CONSTRAINT ck_intervention_effectiveness_source CHECK (char_length(btrim(source)) >= 3)
+);
+
+COMMENT ON TABLE intervention_effectiveness IS
+    'Supuestos de efectividad de cada tipo de intervención (D56): el valor de referencia y el rango de su parámetro de efecto, general (disease_id NULL) o para una enfermedad, con su fuente o la marca de supuesto. Lo escribe tipos-intervencion. No cambia lo que se simula: cada intervención lleva su propio valor.';
+COMMENT ON COLUMN intervention_effectiveness.id IS 'Identificador.';
+COMMENT ON COLUMN intervention_effectiveness.intervention_type_id IS 'Tipo de intervención. Referencia a intervention_types.id. [llave foranea]';
+COMMENT ON COLUMN intervention_effectiveness.parameter IS 'Parámetro de efecto del tipo, como en su param_schema: eficacia, reduccion o deteccion.';
+COMMENT ON COLUMN intervention_effectiveness.disease_id IS 'Enfermedad a la que aplica; NULL si es general. Referencia a diseases.id. [llave foranea]';
+COMMENT ON COLUMN intervention_effectiveness.reference_value IS 'Valor de referencia, de 0 a 1.';
+COMMENT ON COLUMN intervention_effectiveness.range_min IS 'Límite inferior del rango plausible, de 0 a 1.';
+COMMENT ON COLUMN intervention_effectiveness.range_max IS 'Límite superior del rango plausible, de 0 a 1.';
+COMMENT ON COLUMN intervention_effectiveness.source IS 'Fuente con su cita, o el razonamiento del supuesto.';
+COMMENT ON COLUMN intervention_effectiveness.is_assumption IS 'true si el valor es un supuesto o una derivación del equipo, no una medición directa de la fuente.';
+COMMENT ON COLUMN intervention_effectiveness.updated_by IS 'Último que lo cambió; NULL si lo cargó una migración. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN intervention_effectiveness.updated_at IS 'Último cambio.';
+
+-- -----------------------------------------------------------------------------
+-- Datos por enfermedad
+-- -----------------------------------------------------------------------------
+-- <datos-por-enfermedad>
+-- Este bloque lo repite datos/postgres/semillas/demo_datos_nl.sql (gen_demo_data.py lo
+-- lee de aquí): en una instalación limpia, DENGUE_DEMO, ZIKA_DEMO y MALARIA_DEMO
+-- llegan con esa semilla, después del dump. Todo es idempotente.
+UPDATE diseases SET transmission = 'respiratoria', icd10 = 'U07.1, U07.2',
+       classification_source = 'OMS, códigos CIE-10 de uso de emergencia para COVID-19 (U07.1 virus identificado, U07.2 virus no identificado). https://www.who.int/standards/classifications/frequently-asked-questions/covid-19-emergency-icd-codes'
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND classification_source IS NULL;
+UPDATE diseases SET transmission = 'respiratoria', icd10 = 'J09-J11',
+       classification_source = 'Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 31.'
+ WHERE code = 'INFLUENZA_ESTACIONAL' AND classification_source IS NULL;
+UPDATE diseases SET transmission = 'vectorial', icd10 = 'A97.0, A97.1, A97.2, A97.9',
+       classification_source = 'Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, pp. 60-61 (transmitido por Aedes aegypti y Ae. albopictus).'
+ WHERE code = 'DENGUE_DEMO' AND classification_source IS NULL;
+UPDATE diseases SET transmission = 'vectorial', icd10 = 'U06.9',
+       classification_source = 'Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, pp. 66-67.'
+ WHERE code = 'ZIKA_DEMO' AND classification_source IS NULL;
+UPDATE diseases SET transmission = 'vectorial', icd10 = 'B50, B51',
+       classification_source = 'Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 62.'
+ WHERE code = 'MALARIA_DEMO' AND classification_source IS NULL;
+
+-- Enfermedad respiratoria viral (COVID-19 e influenza): DGE, septiembre de 2023.
+WITH erv AS (
+    SELECT jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Caso sospechoso de enfermedad respiratoria viral', 'texto',
+            'Persona de cualquier edad que en los últimos 5 días para casos de ETI (Ambulatorios) y en los últimos 7 días para casos IRAG (Hospitalizados) haya presentado al menos uno de los siguientes signos y síntomas: tos, fiebre o cefalea*. Acompañados de al menos uno de los siguientes signos o síntomas: Disnea; Mialgias; Artralgias; Odinofagia; Escalofríos; Dolor torácico; Rinorrea; Polipnea; Anosmia; Disgeusia; Conjuntivitis. *En menores de cinco años de edad, la irritabilidad puede sustituir a la cefalea.'),
+        jsonb_build_object('clasificacion', 'Caso de infección respiratoria aguda grave (IRAG)', 'texto',
+            'Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral y con presencia de alguno de los siguientes datos de gravedad: disnea y/o dolor torácico.'),
+        jsonb_build_object('clasificacion', 'Caso de enfermedad tipo influenza (ETI)', 'texto',
+            'Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral en los últimos cinco días de inicio de los datos clínicos sin la presencia de datos de gravedad (disnea y/o dolor torácico).'),
+        jsonb_build_object('clasificacion', 'Caso confirmado por laboratorio', 'texto',
+            'Persona que cumpla con la definición operacional de caso sospechoso y que cuente con diagnóstico confirmado por laboratorio mediante la prueba RT-PCR. Son válidos para el sistema de vigilancia epidemiológica los resultados emitidos por los miembros del SINAVE (Red Nacional de Laboratorios de Salud Pública y Laboratorios de apoyo a la vigilancia epidemiológica-RNLSP/LAVE-) y aquellos laboratorios que hayan sido aprobados mediante la evaluación a la competencia técnica por el InDRE, registrando en el informe de prueba el estuche comercial utilizado para el procesamiento.'),
+        jsonb_build_object('clasificacion', 'Defunción con diagnóstico confirmado por laboratorio', 'texto',
+            'Persona fallecida que cumpla con la definición operacional de caso sospechoso, que haya sido confirmado por laboratorio mediante la prueba RT-PCR.')
+    ) AS criterios
+)
+INSERT INTO case_definitions (disease_id, version, status, criteria, source, source_url, published_at)
+SELECT d.id, v.version, 'vigente', erv.criterios,
+       'Secretaría de Salud, Dirección General de Epidemiología. Lineamiento estandarizado para la vigilancia epidemiológica y por laboratorio de la enfermedad respiratoria viral, septiembre de 2023, pp. 30-31. Las definiciones operacionales solo las actualiza el CONAVE.',
+       'https://www.gob.mx/cms/uploads/attachment/file/636504/Lineamiento_Estandarizado_Para_La_Vigilancia_Epidemiol_gica_Y_Por_Laboratorio_De_La_Enfermedad_Respiratoria_Viral_-_Septiembre_2023.pdf',
+       now()
+FROM erv, (VALUES ('SARS_COV_2_ANCESTRAL', 1), ('INFLUENZA_ESTACIONAL', 2)) AS v(code, version)
+JOIN diseases d ON d.code = v.code
+ON CONFLICT (disease_id, version) DO NOTHING;
+
+-- Lo que sigue sale de un mismo documento de la DGE, de marzo de 2021.
+INSERT INTO case_definitions (disease_id, version, status, criteria, source, source_url, published_at, retired_at)
+SELECT d.id, 1, v.status, v.criterios,
+       'Secretaría de Salud, Dirección General de Epidemiología. Vigilancia epidemiológica convencional de casos nuevos de enfermedad: definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, ' || v.paginas || '.',
+       'https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf',
+       now(), CASE WHEN v.status = 'retirada' THEN now() END
+FROM (VALUES
+    -- Influenza de 2021: la reemplaza la de enfermedad respiratoria viral de 2023 (versión 2).
+    ('INFLUENZA_ESTACIONAL', 'retirada', 'p. 31', jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Caso sospechoso de influenza', 'texto',
+            'Se considera caso sospechoso de influenza a todo caso o defunción que cumpla con los criterios de Enfermedad Tipo Influenza (ETI) o Infección Respiratoria Aguda Grave (IRAG).'),
+        jsonb_build_object('clasificacion', 'Enfermedad tipo influenza (ETI)', 'texto',
+            'Persona de cualquier edad que presente o refiera haber tenido fiebre mayor o igual a 38° C, tos y cefalea, acompañadas de uno o más de los siguientes signos o síntomas: rinorrea, coriza, artralgias, mialgias, postración, odinofagia, dolor torácico, dolor abdominal, congestión nasal o diarrea. Importante: En menores de cinco años de edad, se considera un signo cardinal la irritabilidad, en sustitución de la cefalea; En mayores de 65 años o en pacientes inmunocomprometidos, no se requerirá la fiebre como signo cardinal.'),
+        jsonb_build_object('clasificacion', 'Infección respiratoria aguda grave (IRAG)', 'texto',
+            'Persona de cualquier edad que presente dificultad al respirar, con antecedente de fiebre mayor o igual a 38° C y tos, con uno o más de los siguientes síntomas: ataque al estado general, dolor torácico o polipnea. En pacientes inmunocomprometidos o con manejo terapéutico con antipiréticos no se presentará el pico febril descrito en la definición operacional; Así mismo en pacientes con apoyo respiratorio automatizado no se requerirá la tos como signo indispensable para su ingreso como sospechoso a influenza.'))),
+    ('DENGUE_DEMO', 'vigente', 'pp. 60-61', jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Dengue no grave (A97.0 y A97.9)', 'texto',
+            'Toda persona de cualquier edad que resida o que proceda, en los 14 días previos al inicio de signos y síntomas, de una región donde exista transmisión de la enfermedad y que presente fiebre y dos o más de los siguientes signos y síntomas: Náusea, vómitos, exantema; Mialgias, artralgia; Cefalea, dolor retro-ocular; Petequias o prueba del torniquete positiva; Leucopenia. En menores de 5 años, el único signo a considerar puede ser la fiebre.'),
+        jsonb_build_object('clasificacion', 'Dengue con signos de alarma (A97.1)', 'texto',
+            'Todo caso probable que además de cumplir con cuadro de Dengue No Grave, presente uno o más de los siguientes signos de alarma: Dolor abdominal intenso y continuo, o dolor a la palpación del abdomen; Vómito persistente o incoercible; Acumulación de líquidos (ascitis, derrame pleural, pericárdico); Sangrado de mucosas; Letargo o irritabilidad; Hipotensión postural (lipotimia); Hepatomegalia mayor de 2 cm; Aumento progresivo del hematocrito; Disminución progresiva de plaquetas; Disminución progresiva de la hemoglobina.'),
+        jsonb_build_object('clasificacion', 'Dengue grave (A97.2)', 'texto',
+            'Todo caso probable de Dengue que presenta uno o más de los siguientes hallazgos: Choque debido a extravasación grave de plasma evidenciado por: taquicardia, extremidades frías y llenado capilar igual o mayor a tres segundos, pulso débil o indetectable, presión diferencial convergente ≤ 20 mm hipotensión arterial en fase tardía, acumulación de líquidos que conlleve a insuficiencia respiratoria; Sangrado grave, según la evaluación del médico tratante (ejemplos: hematemesis, melena, metrorragia voluminosa, sangrado del sistema nervioso central); Compromiso grave de órganos tales como: daño hepático importante (AST o ALT>1000), afección renal, sistema nervioso central (alteración de la conciencia), corazón (miocarditis) u otros órganos.'))),
+    ('MALARIA_DEMO', 'vigente', 'p. 62', jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Paludismo por Plasmodium falciparum (B50)', 'texto',
+            'Toda persona que resida o provenga de área con antecedente de transmisión de paludismo (en los últimos tres años) y que en el último mes presente o haya presentado fiebre más los siguientes signos y síntomas: cefalea, diaforesis y escalofríos.'),
+        jsonb_build_object('clasificacion', 'Paludismo por Plasmodium vivax (B51)', 'texto',
+            'La enfermedad puede comenzar con malestar indefinido y fiebre, que aumenta poco a poco en un lapso de varios días, seguido por escalofríos fuertes y aumento rápido de la temperatura, que por lo regular se acompaña de cefalalgia y náusea y culmina en sudores profusos. Después de un lapso sin fiebre se repite el ciclo de escalofríos, fiebre y sudores todos los días, en días alternos o cada tercer día.'))),
+    ('ZIKA_DEMO', 'vigente', 'pp. 66-67', jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Infección por virus Zika (U06.9)', 'texto',
+            'Paciente que presente exantema y al menos dos o más de los siguientes signos o síntomas: Fiebre; Cefalea; Conjuntivitis (no purulenta/hiperemia); Artralgias; Mialgias; Edema periarticular; Prurito; Dolor retroocular. Y que se identifique alguna asociación epidemiológica: Presencia del vector Aedes aegypti o Aedes albopictus, o; Antecedente de visita o residencia en áreas de transmisión en las dos semanas previas al inicio del cuadro clínico, o; Existencia de casos confirmados en la localidad; Tenga antecedente de contacto sexual sin protección en las 2 semanas previas a la aparición de los síntomas, con una persona que en las 8 semanas previas al contacto sexual tenga antecedente de residencia o viaje a un área con transmisión local del VZIK o con presencia de vectores.')))
+) AS v(code, status, paginas, criterios)
+JOIN diseases d ON d.code = v.code
+ON CONFLICT (disease_id, version) DO NOTHING;
+
+-- Versión 1: los parámetros de hoy.
+INSERT INTO disease_parameter_versions (disease_id, version, params, reason)
+SELECT id, 1, default_params, 'Parámetros vigentes al crear el historial de versiones (042).'
+FROM diseases
+ON CONFLICT (disease_id, version) DO NOTHING;
+
+-- Los intervalos que ya traían las fuentes citadas en cada parámetro. Solo si el
+-- valor sigue siendo el de esa fuente y el parámetro aún no tiene intervalo. Un
+-- UPDATE por parámetro: con UPDATE ... FROM, una enfermedad con varias filas solo
+-- recibiría una.
+UPDATE diseases SET default_params = jsonb_set(default_params, '{r0,intervalo}', '{"min": 2.39, "max": 3.44, "tipo": "IC95"}')
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND jsonb_typeof(default_params -> 'r0') = 'object'
+   AND (default_params -> 'r0' ->> 'valor')::numeric = 2.87 AND NOT (default_params -> 'r0' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{letalidad,intervalo}', '{"min": 0.003, "max": 0.009, "tipo": "IC95"}')
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND jsonb_typeof(default_params -> 'letalidad') = 'object'
+   AND (default_params -> 'letalidad' ->> 'valor')::numeric = 0.005 AND NOT (default_params -> 'letalidad' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{incubacion_dias,intervalo}', '{"min": 4.5, "max": 5.8, "tipo": "IC95"}')
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND jsonb_typeof(default_params -> 'incubacion_dias') = 'object'
+   AND (default_params -> 'incubacion_dias' ->> 'valor')::numeric = 5.1 AND NOT (default_params -> 'incubacion_dias' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{dias_hospitalizacion,intervalo}', '{"min": 4, "max": 21, "tipo": "rango"}')
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND jsonb_typeof(default_params -> 'dias_hospitalizacion') = 'object'
+   AND (default_params -> 'dias_hospitalizacion' ->> 'valor')::numeric = 8.0 AND NOT (default_params -> 'dias_hospitalizacion' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{r0,intervalo}', '{"min": 1.19, "max": 1.37, "tipo": "RIC"}')
+ WHERE code = 'INFLUENZA_ESTACIONAL' AND jsonb_typeof(default_params -> 'r0') = 'object'
+   AND (default_params -> 'r0' ->> 'valor')::numeric = 1.28 AND NOT (default_params -> 'r0' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{infeccioso_dias,intervalo}', '{"min": 4.31, "max": 5.29, "tipo": "IC95"}')
+ WHERE code = 'INFLUENZA_ESTACIONAL' AND jsonb_typeof(default_params -> 'infeccioso_dias') = 'object'
+   AND (default_params -> 'infeccioso_dias' ->> 'valor')::numeric = 4.8 AND NOT (default_params -> 'infeccioso_dias' ? 'intervalo');
+
+-- Versión 2 donde los intervalos cambiaron algo.
+INSERT INTO disease_parameter_versions (disease_id, version, params, reason)
+SELECT d.id, 2, d.default_params,
+       'Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).'
+FROM diseases d
+JOIN disease_parameter_versions v ON v.disease_id = d.id AND v.version = 1
+WHERE d.default_params IS DISTINCT FROM v.params
+ON CONFLICT (disease_id, version) DO NOTHING;
+
+INSERT INTO intervention_effectiveness
+    (intervention_type_id, parameter, disease_id, reference_value, range_min, range_max, source, is_assumption)
+SELECT t.id, v.parametro, d.id, v.valor, v.minimo, v.maximo, v.fuente, v.supuesto
+FROM (VALUES
+    ('CUBREBOCAS', 'eficacia', NULL, 0.85, 0.66, 0.93, true,
+     'DERIVADO POR EL EQUIPO de Chu et al. 2020, Lancet 395(10242):1973-1987: el uso de cubrebocas se asoció con menos infecciones (aOR 0.15, IC95% 0.07-0.34; certeza baja), sobre todo en entornos de atención médica y con respiradores N95. La eficacia se toma como 1 - aOR; con cubrebocas de tela o quirúrgicos en la comunidad el efecto esperado es menor. doi:10.1016/S0140-6736(20)31142-9'),
+    ('VACUNACION', 'eficacia', 'SARS_COV_2_ANCESTRAL', 0.95, 0.903, 0.976, false,
+     'Polack et al. 2020, N Engl J Med 383(27):2603-2615: la vacuna BNT162b2 tuvo 95% de eficacia contra COVID-19 desde 7 días después de la segunda dosis (intervalo creíble 95%: 90.3-97.6). El motor la aplica como protección completa de una fracción de los vacunados. doi:10.1056/NEJMoa2034577'),
+    ('VACUNACION', 'eficacia', 'INFLUENZA_ESTACIONAL', 0.59, 0.51, 0.67, false,
+     'Osterholm et al. 2012, Lancet Infect Dis 12(1):36-44: eficacia agrupada de la vacuna trivalente inactivada en adultos, 59% (IC95% 51-67), contra influenza confirmada por RT-PCR o cultivo. El motor la aplica como protección completa de una fracción de los vacunados. doi:10.1016/S1473-3099(11)70295-X'),
+    ('TESTEO_AISLAMIENTO', 'deteccion', 'SARS_COV_2_ANCESTRAL', 0.14, 0.10, 0.18, true,
+     'DERIVADO POR EL EQUIPO de Li et al. 2020, Science 368(6490):489-493: entre el 10 y el 23 de enero de 2020 se reportó solo el 14% (IC95% 10-18%) de las infecciones en China. Se toma como la fracción de infecciosos que detecta un sistema de pruebas al inicio de una epidemia; con más pruebas es mayor. doi:10.1126/science.abb3221'),
+    ('CIERRE_TRABAJO', 'reduccion', NULL, 0.51, 0.30, 0.72, true,
+     'DERIVADO POR EL EQUIPO de los Informes de Movilidad Comunitaria COVID-19 de Google (archivo 2020_MX_Region_Mobility_Report.csv, Nuevo León, consultado el 2026-11-23): en los días hábiles de abril de 2020 las visitas a lugares de trabajo bajaron en promedio 50.6% respecto a la línea base de enero y febrero (de 41% a 72% según el día); de junio a diciembre, entre 30% y 38%. Se supone que los contactos en el trabajo bajan en la misma proporción que las visitas. https://www.google.com/covid19/mobility/'),
+    ('REDUCCION_AFORO', 'reduccion', NULL, 0.30, 0.18, 0.54, true,
+     'DERIVADO POR EL EQUIPO de los Informes de Movilidad Comunitaria COVID-19 de Google (archivo 2020_MX_Region_Mobility_Report.csv, Nuevo León, consultado el 2026-11-23): de agosto a octubre de 2020 las visitas a comercios y lugares de recreación bajaron entre 30% y 31% (promedio de días hábiles) respecto a la línea base de enero y febrero; en abril, 54%, y en diciembre, 18%. Se supone que los contactos en la comunidad bajan en la misma proporción que las visitas. https://www.google.com/covid19/mobility/'),
+    ('CIERRE_ESCUELAS', 'reduccion', NULL, 1.0, NULL, NULL, true,
+     'SUPUESTO DEL EQUIPO: un cierre total quita todos los contactos de la capa escuela, así que la reducción vale 1 por definición (es el valor por omisión de su param_schema). Un cierre parcial, con turnos alternados o aforo reducido, se captura con un valor menor. Ningún estudio lo mide de forma directa.')
+) AS v(tipo, parametro, enfermedad, valor, minimo, maximo, supuesto, fuente)
+JOIN intervention_types t ON t.code = v.tipo
+LEFT JOIN diseases d ON d.code = v.enfermedad
+WHERE v.enfermedad IS NULL OR d.id IS NOT NULL
+ON CONFLICT (intervention_type_id, parameter, disease_id) DO NOTHING;
+-- </datos-por-enfermedad>
+
+-- -----------------------------------------------------------------------------
+-- Permisos
+-- -----------------------------------------------------------------------------
+GRANT SELECT, INSERT ON case_definitions TO svc_enfermedades;
+GRANT UPDATE (status, criteria, source, source_url, published_by, published_at, retired_at)
+    ON case_definitions TO svc_enfermedades;
+GRANT USAGE ON SEQUENCE case_definitions_id_seq TO svc_enfermedades;
+GRANT UPDATE (transmission, icd10, classification_source) ON diseases TO svc_enfermedades;
+
+GRANT SELECT, INSERT ON disease_parameter_versions TO svc_parametros;
+GRANT USAGE ON SEQUENCE disease_parameter_versions_id_seq TO svc_parametros;
+
+GRANT SELECT, INSERT, UPDATE ON intervention_effectiveness TO svc_tipos_intervencion;
+GRANT USAGE ON SEQUENCE intervention_effectiveness_id_seq TO svc_tipos_intervencion;
+GRANT SELECT (id, code, name) ON diseases TO svc_tipos_intervencion;
+GRANT INSERT ON audit_log TO svc_tipos_intervencion;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('042', 'Definiciones de caso, clasificación, versiones e intervalos de parámetros y supuestos de efectividad (D56)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 043_jurisdicciones_y_censos.sql
+-- Generado por datos/scripts/build_censos_y_jurisdicciones.py: no editar a mano.
+--
+-- Dominio: catálogos. Jurisdicciones sanitarias, periodos de referencia y
+-- versiones de la población (D56, D7 del checklist).
+--
+-- - health_areas y health_area_municipalities: las 8 jurisdicciones sanitarias de
+--   Nuevo León y sus municipios (Reglamento Interior de Servicios de Salud de NL,
+--   art. 27; datos/geo/nl_jurisdicciones_sanitarias.json). Monterrey se reparte
+--   entre la 1, la 2 y la 3: va en las tres, marcado como parcial.
+-- - census_population: la población total de Nuevo León y de cada municipio en
+--   los censos y conteos de INEGI de 1990 a 2020 (7 años, 364 filas).
+-- - population_versions: cada ajuste de la población de una región (total, 60 y
+--   más y bandas de edad) es una versión, con su periodo de referencia, su fuente
+--   y su motivo. Las escribe poblacion en la misma transacción que el ajuste.
+-- - Los municipios se ligan por su clave INEGI (regions.code) y no por
+--   regions.id: en una instalación limpia el dump corre antes que la semilla de
+--   los 41 municipios que no trae la 010. Una prueba revisa que cada clave exista.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS health_areas (
+    id          SMALLSERIAL   PRIMARY KEY,
+    state_code  VARCHAR(2)    NOT NULL,
+    number      SMALLINT      NOT NULL,
+    name        VARCHAR(160)  NOT NULL,
+    description TEXT          NOT NULL,
+    source      TEXT          NOT NULL,
+    source_url  TEXT,
+
+    CONSTRAINT uq_health_areas_numero UNIQUE (state_code, number),
+    CONSTRAINT ck_health_areas_numero CHECK (number >= 1)
+);
+
+COMMENT ON TABLE health_areas IS
+    'Jurisdicciones sanitarias (áreas sanitarias) de cada estado, con su fuente (D56). Solo lectura: las carga esta migración.';
+COMMENT ON COLUMN health_areas.id IS 'Identificador.';
+COMMENT ON COLUMN health_areas.state_code IS 'Clave INEGI del estado (19, Nuevo León).';
+COMMENT ON COLUMN health_areas.number IS 'Número de la jurisdicción dentro del estado.';
+COMMENT ON COLUMN health_areas.name IS 'Nombre oficial.';
+COMMENT ON COLUMN health_areas.description IS 'Circunscripción tal como la escribe la fuente.';
+COMMENT ON COLUMN health_areas.source IS 'Documento de donde sale la división.';
+COMMENT ON COLUMN health_areas.source_url IS 'Dirección del documento.';
+
+CREATE TABLE IF NOT EXISTS health_area_municipalities (
+    health_area_id SMALLINT     NOT NULL,
+    region_code    VARCHAR(20)  NOT NULL,
+    partial        BOOLEAN      NOT NULL DEFAULT false,
+
+    CONSTRAINT pk_health_area_municipalities PRIMARY KEY (health_area_id, region_code),
+    CONSTRAINT fk_health_area_municipalities_area
+        FOREIGN KEY (health_area_id) REFERENCES health_areas (id) ON DELETE CASCADE,
+    CONSTRAINT ck_health_area_municipalities_clave CHECK (region_code ~ '^[0-9]{5}$')
+);
+
+CREATE INDEX IF NOT EXISTS ix_health_area_municipalities_region
+    ON health_area_municipalities (region_code);
+
+COMMENT ON TABLE health_area_municipalities IS
+    'Municipios de cada jurisdicción sanitaria (D56). Un municipio repartido entre varias, como Monterrey, aparece en cada una con partial = true.';
+COMMENT ON COLUMN health_area_municipalities.health_area_id IS 'Jurisdicción. Referencia a health_areas.id. [llave foranea]';
+COMMENT ON COLUMN health_area_municipalities.region_code IS 'Clave INEGI del municipio (regions.code). Sin llave foránea: ver el encabezado de la 043.';
+COMMENT ON COLUMN health_area_municipalities.partial IS 'true si solo una parte del municipio pertenece a la jurisdicción.';
+
+CREATE TABLE IF NOT EXISTS census_population (
+    region_code VARCHAR(20) NOT NULL,
+    year        SMALLINT    NOT NULL,
+    population  INTEGER     NOT NULL,
+    source      TEXT        NOT NULL,
+
+    CONSTRAINT pk_census_population PRIMARY KEY (region_code, year),
+    CONSTRAINT ck_census_population_clave CHECK (region_code ~ '^[0-9]{2}([0-9]{3})?$'),
+    CONSTRAINT ck_census_population_anio CHECK (year BETWEEN 1900 AND 2100),
+    CONSTRAINT ck_census_population_poblacion CHECK (population > 0)
+);
+
+COMMENT ON TABLE census_population IS
+    'Periodos de referencia de la población: el total de cada región en los censos y conteos de INEGI (D56). Solo lectura: lo carga esta migración.';
+COMMENT ON COLUMN census_population.region_code IS 'Clave INEGI del estado o del municipio (regions.code). Sin llave foránea: ver el encabezado de la 043.';
+COMMENT ON COLUMN census_population.year IS 'Año del censo o conteo.';
+COMMENT ON COLUMN census_population.population IS 'Población total.';
+COMMENT ON COLUMN census_population.source IS 'Tabulado de INEGI de donde sale.';
+
+CREATE TABLE IF NOT EXISTS population_versions (
+    id                BIGSERIAL    PRIMARY KEY,
+    region_id         INTEGER      NOT NULL,
+    version           INTEGER      NOT NULL,
+    population        INTEGER      NOT NULL,
+    population_60plus INTEGER,
+    age_groups        JSONB,
+    reference_year    SMALLINT     NOT NULL,
+    source            TEXT         NOT NULL,
+    reason            TEXT,
+    created_by        BIGINT,
+    created_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_population_versions_region
+        FOREIGN KEY (region_id)  REFERENCES regions (id) ON DELETE CASCADE,
+    CONSTRAINT fk_population_versions_user
+        FOREIGN KEY (created_by) REFERENCES users (id)   ON DELETE SET NULL,
+    CONSTRAINT uq_population_versions UNIQUE (region_id, version),
+    CONSTRAINT ck_population_versions_version CHECK (version >= 1),
+    CONSTRAINT ck_population_versions_poblacion CHECK (
+        population > 0 AND (population_60plus IS NULL OR population_60plus BETWEEN 0 AND population)),
+    CONSTRAINT ck_population_versions_grupos CHECK (age_groups IS NULL OR jsonb_typeof(age_groups) = 'object')
+);
+
+COMMENT ON TABLE population_versions IS
+    'Versiones de la población de cada región (D56). La 1 es la que había antes del primer ajuste (el Censo 2020); cada ajuste agrega la siguiente con el resultado. Las escribe poblacion; no se editan ni se borran (D52).';
+COMMENT ON COLUMN population_versions.id IS 'Identificador.';
+COMMENT ON COLUMN population_versions.region_id IS 'Región. Referencia a regions.id. [llave foranea]';
+COMMENT ON COLUMN population_versions.version IS 'Número de versión dentro de la región, desde 1.';
+COMMENT ON COLUMN population_versions.population IS 'Población total en esa versión.';
+COMMENT ON COLUMN population_versions.population_60plus IS 'Población de 60 y más en esa versión.';
+COMMENT ON COLUMN population_versions.age_groups IS 'Bandas de edad en esa versión: {grupo: personas}, con edad_no_especificada.';
+COMMENT ON COLUMN population_versions.reference_year IS 'Año al que se refieren las cifras (periodo de referencia).';
+COMMENT ON COLUMN population_versions.source IS 'De dónde salen: el censo, o el ajuste que las cambió.';
+COMMENT ON COLUMN population_versions.reason IS 'Motivo del ajuste; NULL en la versión 1.';
+COMMENT ON COLUMN population_versions.created_by IS 'Quien hizo el ajuste. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN population_versions.created_at IS 'Cuándo se guardó la versión.';
+
+INSERT INTO health_areas (state_code, number, name, description, source, source_url) VALUES
+    ('19', 1, 'Jurisdicción Sanitaria No. 1', 'Poniente del municipio de Monterrey', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 2, 'Jurisdicción Sanitaria No. 2', 'Norte y oriente del municipio de Monterrey y los municipios de Abasolo, el Carmen, Ciénega de Flores, General Mariano Escobedo, General Zuazua, Mina, Salinas Victoria, San Nicolás de los Garza e Hidalgo', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 3, 'Jurisdicción Sanitaria No. 3', 'Sur de Monterrey y los municipios de Villa de García, San Pedro Garza García y Santa Catarina', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 4, 'Jurisdicción Sanitaria No. 4', 'Municipios de Apodaca, Guadalupe y Benito Juárez', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 5, 'Jurisdicción Sanitaria No. 5', 'Municipios de Agualeguas, Anáhuac, Bustamante, General Treviño, Lampazos, Parás, Sabinas Hidalgo, Vallecillo y Villaldama', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 6, 'Jurisdicción Sanitaria No. 6', 'Municipios de Los Aldama, Cadereyta Jiménez, Cerralvo, China, Dr. Coss, Dr. González, General Bravo, Los Herrera, Higueras, Marín, Melchor Ocampo, Pesquería y Los Ramones', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 7, 'Jurisdicción Sanitaria No. 7', 'Municipios de Allende, General Terán, Hualahuises, Linares, Montemorelos, Los Rayones y Santiago', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 8, 'Jurisdicción Sanitaria No. 8', 'Municipios de Aramberri, Dr. Arroyo, Galeana, General Zaragoza, Mier y Noriega e Iturbide', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf')
+ON CONFLICT (state_code, number) DO NOTHING;
+
+INSERT INTO health_area_municipalities (health_area_id, region_code, partial)
+SELECT a.id, v.clave, v.parcial
+FROM (VALUES
+    (1, '19039', true),
+    (2, '19001', false),
+    (2, '19010', false),
+    (2, '19012', false),
+    (2, '19021', false),
+    (2, '19025', false),
+    (2, '19037', false),
+    (2, '19039', true),
+    (2, '19045', false),
+    (2, '19046', false),
+    (2, '19047', false),
+    (3, '19018', false),
+    (3, '19019', false),
+    (3, '19039', true),
+    (3, '19048', false),
+    (4, '19006', false),
+    (4, '19026', false),
+    (4, '19031', false),
+    (5, '19002', false),
+    (5, '19005', false),
+    (5, '19008', false),
+    (5, '19023', false),
+    (5, '19032', false),
+    (5, '19040', false),
+    (5, '19044', false),
+    (5, '19050', false),
+    (5, '19051', false),
+    (6, '19003', false),
+    (6, '19009', false),
+    (6, '19011', false),
+    (6, '19013', false),
+    (6, '19015', false),
+    (6, '19016', false),
+    (6, '19020', false),
+    (6, '19027', false),
+    (6, '19028', false),
+    (6, '19034', false),
+    (6, '19035', false),
+    (6, '19041', false),
+    (6, '19042', false),
+    (7, '19004', false),
+    (7, '19022', false),
+    (7, '19029', false),
+    (7, '19033', false),
+    (7, '19038', false),
+    (7, '19043', false),
+    (7, '19049', false),
+    (8, '19007', false),
+    (8, '19014', false),
+    (8, '19017', false),
+    (8, '19024', false),
+    (8, '19030', false),
+    (8, '19036', false)
+) AS v(numero, clave, parcial)
+JOIN health_areas a ON a.state_code = '19' AND a.number = v.numero
+ON CONFLICT (health_area_id, region_code) DO NOTHING;
+
+INSERT INTO census_population (region_code, year, population, source)
+SELECT v.clave, v.anio, v.poblacion, 'INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad.'
+FROM (VALUES
+    ('19', 1990, 3098736),
+    ('19001', 1990, 1373),
+    ('19002', 1990, 5095),
+    ('19003', 1990, 4140),
+    ('19004', 1990, 22211),
+    ('19005', 1990, 17316),
+    ('19006', 1990, 115913),
+    ('19007', 1990, 15295),
+    ('19008', 1990, 2976),
+    ('19009', 1990, 53582),
+    ('19010', 1990, 4906),
+    ('19011', 1990, 7653),
+    ('19012', 1990, 6708),
+    ('19013', 1990, 12404),
+    ('19014', 1990, 36946),
+    ('19015', 1990, 2961),
+    ('19016', 1990, 3011),
+    ('19017', 1990, 40972),
+    ('19018', 1990, 13164),
+    ('19019', 1990, 113040),
+    ('19020', 1990, 6759),
+    ('19021', 1990, 98147),
+    ('19022', 1990, 16656),
+    ('19023', 1990, 2182),
+    ('19024', 1990, 5532),
+    ('19025', 1990, 4647),
+    ('19026', 1990, 535560),
+    ('19027', 1990, 3363),
+    ('19028', 1990, 1060),
+    ('19029', 1990, 6222),
+    ('19030', 1990, 3638),
+    ('19031', 1990, 28014),
+    ('19032', 1990, 5288),
+    ('19033', 1990, 61569),
+    ('19034', 1990, 3292),
+    ('19035', 1990, 1641),
+    ('19036', 1990, 7240),
+    ('19037', 1990, 4564),
+    ('19038', 1990, 49302),
+    ('19039', 1990, 1069238),
+    ('19040', 1990, 1021),
+    ('19041', 1990, 8188),
+    ('19042', 1990, 6538),
+    ('19043', 1990, 3164),
+    ('19044', 1990, 27550),
+    ('19045', 1990, 9518),
+    ('19046', 1990, 436603),
+    ('19047', 1990, 11668),
+    ('19048', 1990, 163848),
+    ('19049', 1990, 30182),
+    ('19050', 1990, 2723),
+    ('19051', 1990, 4153),
+    ('19', 1995, 3550114),
+    ('19001', 1995, 1945),
+    ('19002', 1995, 4492),
+    ('19003', 1995, 2445),
+    ('19004', 1995, 23053),
+    ('19005', 1995, 18278),
+    ('19006', 1995, 219153),
+    ('19007', 1995, 15691),
+    ('19008', 1995, 3308),
+    ('19009', 1995, 62440),
+    ('19010', 1995, 6168),
+    ('19011', 1995, 8287),
+    ('19012', 1995, 8586),
+    ('19013', 1995, 12064),
+    ('19014', 1995, 37363),
+    ('19015', 1995, 2286),
+    ('19016', 1995, 2912),
+    ('19017', 1995, 42145),
+    ('19018', 1995, 23981),
+    ('19019', 1995, 120913),
+    ('19020', 1995, 6030),
+    ('19021', 1995, 176869),
+    ('19022', 1995, 16609),
+    ('19023', 1995, 1695),
+    ('19024', 1995, 5874),
+    ('19025', 1995, 5276),
+    ('19026', 1995, 618933),
+    ('19027', 1995, 2860),
+    ('19028', 1995, 1218),
+    ('19029', 1995, 6535),
+    ('19030', 1995, 3522),
+    ('19031', 1995, 50009),
+    ('19032', 1995, 5294),
+    ('19033', 1995, 66104),
+    ('19034', 1995, 4014),
+    ('19035', 1995, 1121),
+    ('19036', 1995, 7721),
+    ('19037', 1995, 4783),
+    ('19038', 1995, 51714),
+    ('19039', 1995, 1088143),
+    ('19040', 1995, 1087),
+    ('19041', 1995, 9359),
+    ('19042', 1995, 5236),
+    ('19043', 1995, 2791),
+    ('19044', 1995, 31521),
+    ('19045', 1995, 15925),
+    ('19046', 1995, 487924),
+    ('19047', 1995, 13552),
+    ('19048', 1995, 202156),
+    ('19049', 1995, 34187),
+    ('19050', 1995, 2188),
+    ('19051', 1995, 4354),
+    ('19', 2000, 3834141),
+    ('19001', 2000, 2514),
+    ('19002', 2000, 4390),
+    ('19003', 2000, 2464),
+    ('19004', 2000, 27773),
+    ('19005', 2000, 18524),
+    ('19006', 2000, 283497),
+    ('19007', 2000, 14840),
+    ('19008', 2000, 3499),
+    ('19009', 2000, 75059),
+    ('19010', 2000, 6644),
+    ('19011', 2000, 9343),
+    ('19012', 2000, 11204),
+    ('19013', 2000, 11540),
+    ('19014', 2000, 33721),
+    ('19015', 2000, 2246),
+    ('19016', 2000, 3185),
+    ('19017', 2000, 39519),
+    ('19018', 2000, 28974),
+    ('19019', 2000, 125978),
+    ('19020', 2000, 5799),
+    ('19021', 2000, 233457),
+    ('19022', 2000, 15475),
+    ('19023', 2000, 1699),
+    ('19024', 2000, 5576),
+    ('19025', 2000, 6033),
+    ('19026', 2000, 670162),
+    ('19027', 2000, 2795),
+    ('19028', 2000, 1371),
+    ('19029', 2000, 6413),
+    ('19030', 2000, 3484),
+    ('19031', 2000, 66497),
+    ('19032', 2000, 5305),
+    ('19033', 2000, 69205),
+    ('19034', 2000, 4719),
+    ('19035', 2000, 1215),
+    ('19036', 2000, 7078),
+    ('19037', 2000, 5049),
+    ('19038', 2000, 52741),
+    ('19039', 2000, 1110997),
+    ('19040', 2000, 1226),
+    ('19041', 2000, 11321),
+    ('19042', 2000, 6237),
+    ('19043', 2000, 2613),
+    ('19044', 2000, 32329),
+    ('19045', 2000, 19024),
+    ('19046', 2000, 496878),
+    ('19047', 2000, 14275),
+    ('19048', 2000, 227026),
+    ('19049', 2000, 36812),
+    ('19050', 2000, 2169),
+    ('19051', 2000, 4247),
+    ('19', 2005, 4199292),
+    ('19001', 2005, 2746),
+    ('19002', 2005, 3537),
+    ('19003', 2005, 1675),
+    ('19004', 2005, 29568),
+    ('19005', 2005, 17983),
+    ('19006', 2005, 418784),
+    ('19007', 2005, 14692),
+    ('19008', 2005, 3326),
+    ('19009', 2005, 73746),
+    ('19010', 2005, 6996),
+    ('19011', 2005, 8009),
+    ('19012', 2005, 14268),
+    ('19013', 2005, 10697),
+    ('19014', 2005, 33269),
+    ('19015', 2005, 1639),
+    ('19016', 2005, 3092),
+    ('19017', 2005, 38930),
+    ('19018', 2005, 51658),
+    ('19019', 2005, 122009),
+    ('19020', 2005, 5385),
+    ('19021', 2005, 299364),
+    ('19022', 2005, 14022),
+    ('19023', 2005, 1476),
+    ('19024', 2005, 5733),
+    ('19025', 2005, 6985),
+    ('19026', 2005, 691931),
+    ('19027', 2005, 1877),
+    ('19028', 2005, 1427),
+    ('19029', 2005, 6631),
+    ('19030', 2005, 3533),
+    ('19031', 2005, 144380),
+    ('19032', 2005, 4428),
+    ('19033', 2005, 71061),
+    ('19034', 2005, 5398),
+    ('19035', 2005, 1052),
+    ('19036', 2005, 7047),
+    ('19037', 2005, 5384),
+    ('19038', 2005, 53854),
+    ('19039', 2005, 1133814),
+    ('19040', 2005, 950),
+    ('19041', 2005, 12258),
+    ('19042', 2005, 6227),
+    ('19043', 2005, 2576),
+    ('19044', 2005, 32040),
+    ('19045', 2005, 27848),
+    ('19046', 2005, 476761),
+    ('19047', 2005, 15480),
+    ('19048', 2005, 259896),
+    ('19049', 2005, 37886),
+    ('19050', 2005, 1859),
+    ('19051', 2005, 4105),
+    ('19', 2010, 4653458),
+    ('19001', 2010, 2791),
+    ('19002', 2010, 3443),
+    ('19003', 2010, 1374),
+    ('19004', 2010, 32593),
+    ('19005', 2010, 18480),
+    ('19006', 2010, 523370),
+    ('19007', 2010, 15470),
+    ('19008', 2010, 3773),
+    ('19009', 2010, 86445),
+    ('19010', 2010, 16092),
+    ('19011', 2010, 7855),
+    ('19012', 2010, 24526),
+    ('19013', 2010, 10864),
+    ('19014', 2010, 35445),
+    ('19015', 2010, 1716),
+    ('19016', 2010, 3345),
+    ('19017', 2010, 39991),
+    ('19018', 2010, 143668),
+    ('19019', 2010, 122659),
+    ('19020', 2010, 5527),
+    ('19021', 2010, 357937),
+    ('19022', 2010, 14437),
+    ('19023', 2010, 1277),
+    ('19024', 2010, 5942),
+    ('19025', 2010, 55213),
+    ('19026', 2010, 678006),
+    ('19027', 2010, 2030),
+    ('19028', 2010, 1594),
+    ('19029', 2010, 6914),
+    ('19030', 2010, 3558),
+    ('19031', 2010, 256970),
+    ('19032', 2010, 5349),
+    ('19033', 2010, 78669),
+    ('19034', 2010, 5488),
+    ('19035', 2010, 862),
+    ('19036', 2010, 7095),
+    ('19037', 2010, 5447),
+    ('19038', 2010, 59113),
+    ('19039', 2010, 1135550),
+    ('19040', 2010, 1034),
+    ('19041', 2010, 20843),
+    ('19042', 2010, 5359),
+    ('19043', 2010, 2628),
+    ('19044', 2010, 34671),
+    ('19045', 2010, 32660),
+    ('19046', 2010, 443273),
+    ('19047', 2010, 16604),
+    ('19048', 2010, 268955),
+    ('19049', 2010, 40469),
+    ('19050', 2010, 1971),
+    ('19051', 2010, 4113),
+    ('19', 2015, 5119504),
+    ('19001', 2015, 2639),
+    ('19002', 2015, 2439),
+    ('19003', 2015, 1292),
+    ('19004', 2015, 34353),
+    ('19005', 2015, 18194),
+    ('19006', 2015, 597207),
+    ('19007', 2015, 16152),
+    ('19008', 2015, 3977),
+    ('19009', 2015, 95534),
+    ('19010', 2015, 38306),
+    ('19011', 2015, 7757),
+    ('19012', 2015, 42715),
+    ('19013', 2015, 10835),
+    ('19014', 2015, 34110),
+    ('19015', 2015, 1632),
+    ('19016', 2015, 2861),
+    ('19017', 2015, 41130),
+    ('19018', 2015, 247370),
+    ('19019', 2015, 123156),
+    ('19020', 2015, 5479),
+    ('19021', 2015, 425148),
+    ('19022', 2015, 14795),
+    ('19023', 2015, 1044),
+    ('19024', 2015, 6011),
+    ('19025', 2015, 67294),
+    ('19026', 2015, 682880),
+    ('19027', 2015, 1764),
+    ('19028', 2015, 1511),
+    ('19029', 2015, 6921),
+    ('19030', 2015, 3571),
+    ('19031', 2015, 333481),
+    ('19032', 2015, 5238),
+    ('19033', 2015, 79853),
+    ('19034', 2015, 5630),
+    ('19035', 2015, 955),
+    ('19036', 2015, 6996),
+    ('19037', 2015, 5326),
+    ('19038', 2015, 60829),
+    ('19039', 2015, 1109171),
+    ('19040', 2015, 971),
+    ('19041', 2015, 87168),
+    ('19042', 2015, 4469),
+    ('19043', 2015, 2640),
+    ('19044', 2015, 35456),
+    ('19045', 2015, 54192),
+    ('19046', 2015, 430143),
+    ('19047', 2015, 13836),
+    ('19048', 2015, 296954),
+    ('19049', 2015, 42407),
+    ('19050', 2015, 1632),
+    ('19051', 2015, 4080),
+    ('19', 2020, 5784442),
+    ('19001', 2020, 2974),
+    ('19002', 2020, 3382),
+    ('19003', 2020, 1407),
+    ('19004', 2020, 35289),
+    ('19005', 2020, 18030),
+    ('19006', 2020, 656464),
+    ('19007', 2020, 14992),
+    ('19008', 2020, 3661),
+    ('19009', 2020, 122337),
+    ('19010', 2020, 104478),
+    ('19011', 2020, 7340),
+    ('19012', 2020, 68747),
+    ('19013', 2020, 9930),
+    ('19014', 2020, 36088),
+    ('19015', 2020, 1360),
+    ('19016', 2020, 3256),
+    ('19017', 2020, 40903),
+    ('19018', 2020, 397205),
+    ('19019', 2020, 132169),
+    ('19020', 2020, 5506),
+    ('19021', 2020, 481213),
+    ('19022', 2020, 14109),
+    ('19023', 2020, 1808),
+    ('19024', 2020, 6282),
+    ('19025', 2020, 102149),
+    ('19026', 2020, 643143),
+    ('19027', 2020, 1959),
+    ('19028', 2020, 1386),
+    ('19029', 2020, 7026),
+    ('19030', 2020, 3298),
+    ('19031', 2020, 471523),
+    ('19032', 2020, 5351),
+    ('19033', 2020, 84666),
+    ('19034', 2020, 5119),
+    ('19035', 2020, 1483),
+    ('19036', 2020, 7652),
+    ('19037', 2020, 6048),
+    ('19038', 2020, 67428),
+    ('19039', 2020, 1142994),
+    ('19040', 2020, 906),
+    ('19041', 2020, 147624),
+    ('19042', 2020, 5389),
+    ('19043', 2020, 2377),
+    ('19044', 2020, 34709),
+    ('19045', 2020, 86766),
+    ('19046', 2020, 412199),
+    ('19047', 2020, 16086),
+    ('19048', 2020, 306322),
+    ('19049', 2020, 46784),
+    ('19050', 2020, 1552),
+    ('19051', 2020, 3573)
+) AS v(clave, anio, poblacion)
+ON CONFLICT (region_code, year) DO NOTHING;
+
+GRANT SELECT ON health_areas, health_area_municipalities TO svc_regiones;
+GRANT SELECT ON census_population TO svc_poblacion;
+GRANT SELECT, INSERT ON population_versions TO svc_poblacion;
+GRANT USAGE ON SEQUENCE population_versions_id_seq TO svc_poblacion;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('043', 'Jurisdicciones sanitarias, censos y conteos 1990-2020 y versiones de la población (D56)')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;
