@@ -51,7 +51,8 @@ def pendientes():
                   v.population_size, v.horizon_days, v.created_by,
                   d.name AS enfermedad, g.name AS region, u.full_name AS autor,
                   (SELECT count(*) FROM scenario_interventions i
-                   WHERE i.scenario_version_id = v.id) AS n_intervenciones
+                   WHERE i.scenario_version_id = v.id) AS n_intervenciones,
+                  (SELECT count(*) FROM jsonb_object_keys(v.param_overrides)) AS n_ajustes
            FROM scenario_versions v
            JOIN scenarios s ON s.id = v.scenario_id
            JOIN diseases  d ON d.id = s.disease_id
@@ -68,7 +69,8 @@ def envia(version_id, *, contexto):
         with conn.cursor() as cur:
             cur.execute(
                 """UPDATE scenario_versions v
-                   SET status = 'en_revision', submitted_at = now(), disease_params = d.default_params
+                   SET status = 'en_revision', submitted_at = now(),
+                       disease_params = d.default_params || v.param_overrides
                    FROM scenarios s
                    JOIN diseases d ON d.id = s.disease_id
                    WHERE v.id = %s AND v.status = 'borrador' AND v.is_current

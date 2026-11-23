@@ -200,6 +200,14 @@ def intervenciones_para_motor(filas):
 
 
 
+def parametros_efectivos(version):
+    """Los parametros de enfermedad que valen para una version: su fotografia (D5) o, en un borrador,
+    el catalogo vivo con los ajustes de la version encima (044, D59)."""
+    if version["disease_params"] is not None:
+        return version["disease_params"]
+    return {**(version["default_params"] or {}), **(version.get("param_overrides") or {})}
+
+
 def entrada_de_version(version, intervenciones):
     if not version:
         return None, None, ["La version de escenario no existe."]
@@ -209,7 +217,7 @@ def entrada_de_version(version, intervenciones):
             f"esta aprobada (estado: {version['status']}); solo se puede simular una version "
             f"aprobada."
         ]
-    parametros = version["disease_params"] or version["default_params"]
+    parametros = parametros_efectivos(version)
     estado = estado_parametros(parametros)
     if not estado["simulable"]:
         return None, version, [

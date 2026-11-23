@@ -665,6 +665,513 @@
         },
         "description": "Los parámetros completos de esa versión (el ejemplo, recortado)."
       }
+    },
+    "/api/v1/versions/{version_id}/parameters": {
+      "get": {
+        "summary": "Parámetros de una versión de escenario",
+        "operationId": "consultar_ajustes_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la versión"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "disease_id": 1,
+                  "version_id": 31,
+                  "scenario_id": 12,
+                  "version_number": 2,
+                  "status": "borrador",
+                  "editable": true,
+                  "catalogo": {
+                    "r0": {
+                      "valor": 2.87,
+                      "fuente": "Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128",
+                      "supuesto": false,
+                      "intervalo": {
+                        "max": 3.44,
+                        "min": 2.39,
+                        "tipo": "IC95"
+                      }
+                    },
+                    "incubacion_dias": {
+                      "valor": 5.1,
+                      "fuente": "Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504",
+                      "supuesto": false,
+                      "intervalo": {
+                        "max": 5.8,
+                        "min": 4.5,
+                        "tipo": "IC95"
+                      }
+                    }
+                  },
+                  "ajustes": {
+                    "r0": {
+                      "valor": 3.2,
+                      "fuente": null,
+                      "supuesto": true
+                    }
+                  },
+                  "efectivos": {
+                    "r0": {
+                      "valor": 3.2,
+                      "fuente": null,
+                      "supuesto": true
+                    },
+                    "incubacion_dias": {
+                      "valor": 5.1,
+                      "fuente": "Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504",
+                      "supuesto": false,
+                      "intervalo": {
+                        "max": 5.8,
+                        "min": 4.5,
+                        "tipo": "IC95"
+                      }
+                    }
+                  },
+                  "estado": {
+                    "detalle": [
+                      {
+                        "clave": "r0",
+                        "etiqueta": "R₀ — número reproductivo básico",
+                        "unidad": "contagios por caso",
+                        "min": 0.01,
+                        "max": 20.0,
+                        "paso": "0.01",
+                        "ayuda": "Contagios que genera un caso en una población sin inmunidad.",
+                        "valor": 3.2,
+                        "valor_form": "3.2",
+                        "fuente": "",
+                        "supuesto": true,
+                        "intervalo": null,
+                        "estado": "supuesto"
+                      },
+                      {
+                        "clave": "incubacion_dias",
+                        "etiqueta": "Período de incubación",
+                        "unidad": "días",
+                        "min": 0.1,
+                        "max": 60.0,
+                        "paso": "0.1",
+                        "ayuda": "Del contagio al inicio de síntomas. El motor usa la media.",
+                        "valor": 5.1,
+                        "valor_form": "5.1",
+                        "fuente": "Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504",
+                        "supuesto": false,
+                        "intervalo": {
+                          "max": 5.8,
+                          "min": 4.5,
+                          "tipo": "IC95"
+                        },
+                        "estado": "con_fuente"
+                      }
+                    ],
+                    "informativos": [],
+                    "faltan": [
+                      "infeccioso_dias",
+                      "dias_hospitalizacion",
+                      "tasa_hospitalizacion",
+                      "letalidad"
+                    ],
+                    "supuestos": [
+                      "r0"
+                    ],
+                    "sin_fuente": [],
+                    "simulable": false
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "ajustes_version"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<ajustes_version><disease_id tipo=\"numero\">1</disease_id><version_id tipo=\"numero\">31</version_id><scenario_id tipo=\"numero\">12</scenario_id><version_number tipo=\"numero\">2</version_number><status>borrador</status><editable tipo=\"booleano\">true</editable><catalogo><r0><valor tipo=\"numero\">2.87</valor><fuente>Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">3.44</max><min tipo=\"numero\">2.39</min><tipo>IC95</tipo></intervalo></r0><incubacion_dias><valor tipo=\"numero\">5.1</valor><fuente>Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">5.8</max><min tipo=\"numero\">4.5</min><tipo>IC95</tipo></intervalo></incubacion_dias></catalogo><ajustes><r0><valor tipo=\"numero\">3.2</valor><fuente nil=\"true\" /><supuesto tipo=\"booleano\">true</supuesto></r0></ajustes><efectivos><r0><valor tipo=\"numero\">3.2</valor><fuente nil=\"true\" /><supuesto tipo=\"booleano\">true</supuesto></r0><incubacion_dias><valor tipo=\"numero\">5.1</valor><fuente>Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">5.8</max><min tipo=\"numero\">4.5</min><tipo>IC95</tipo></intervalo></incubacion_dias></efectivos><estado><detalle><item><clave>r0</clave><etiqueta>R₀ — número reproductivo básico</etiqueta><unidad>contagios por caso</unidad><min tipo=\"numero\">0.01</min><max tipo=\"numero\">20.0</max><paso>0.01</paso><ayuda>Contagios que genera un caso en una población sin inmunidad.</ayuda><valor tipo=\"numero\">3.2</valor><valor_form>3.2</valor_form><fuente /><supuesto tipo=\"booleano\">true</supuesto><intervalo nil=\"true\" /><estado>supuesto</estado></item><item><clave>incubacion_dias</clave><etiqueta>Período de incubación</etiqueta><unidad>días</unidad><min tipo=\"numero\">0.1</min><max tipo=\"numero\">60.0</max><paso>0.1</paso><ayuda>Del contagio al inicio de síntomas. El motor usa la media.</ayuda><valor tipo=\"numero\">5.1</valor><valor_form>5.1</valor_form><fuente>Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">5.8</max><min tipo=\"numero\">4.5</min><tipo>IC95</tipo></intervalo><estado>con_fuente</estado></item></detalle><informativos /><faltan><item>infeccioso_dias</item><item>dias_hospitalizacion</item><item>tasa_hospitalizacion</item><item>letalidad</item></faltan><supuestos><item>r0</item></supuestos><sin_fuente /><simulable tipo=\"booleano\">false</simulable></estado></ajustes_version>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "No existe la versión"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE) o versión fuera del alcance de la cuenta (D43)"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "description": "Los parámetros de una versión de escenario: el catálogo de su enfermedad, los ajustes que la versión hace y los efectivos (el catálogo con los ajustes encima; en una versión ya enviada, su fotografía, D5). estado es el de GET /diseases/{id}/parameters/status sobre los efectivos. editable es verdadero solo en el borrador vigente de un escenario sin archivar. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA, con el alcance por región de D43.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "summary": "Ajustar los parámetros de una versión",
+        "operationId": "ajustar_parametros_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la versión"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "disease_id": 1,
+                  "version_id": 31,
+                  "scenario_id": 12,
+                  "version_number": 2,
+                  "status": "borrador",
+                  "editable": true,
+                  "catalogo": {
+                    "r0": {
+                      "valor": 2.87,
+                      "fuente": "Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128",
+                      "supuesto": false,
+                      "intervalo": {
+                        "max": 3.44,
+                        "min": 2.39,
+                        "tipo": "IC95"
+                      }
+                    },
+                    "incubacion_dias": {
+                      "valor": 5.1,
+                      "fuente": "Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504",
+                      "supuesto": false,
+                      "intervalo": {
+                        "max": 5.8,
+                        "min": 4.5,
+                        "tipo": "IC95"
+                      }
+                    }
+                  },
+                  "ajustes": {
+                    "r0": {
+                      "valor": 3.2,
+                      "fuente": null,
+                      "supuesto": true
+                    }
+                  },
+                  "efectivos": {
+                    "r0": {
+                      "valor": 3.2,
+                      "fuente": null,
+                      "supuesto": true
+                    },
+                    "incubacion_dias": {
+                      "valor": 5.1,
+                      "fuente": "Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504",
+                      "supuesto": false,
+                      "intervalo": {
+                        "max": 5.8,
+                        "min": 4.5,
+                        "tipo": "IC95"
+                      }
+                    }
+                  },
+                  "estado": {
+                    "detalle": [
+                      {
+                        "clave": "r0",
+                        "etiqueta": "R₀ — número reproductivo básico",
+                        "unidad": "contagios por caso",
+                        "min": 0.01,
+                        "max": 20.0,
+                        "paso": "0.01",
+                        "ayuda": "Contagios que genera un caso en una población sin inmunidad.",
+                        "valor": 3.2,
+                        "valor_form": "3.2",
+                        "fuente": "",
+                        "supuesto": true,
+                        "intervalo": null,
+                        "estado": "supuesto"
+                      },
+                      {
+                        "clave": "incubacion_dias",
+                        "etiqueta": "Período de incubación",
+                        "unidad": "días",
+                        "min": 0.1,
+                        "max": 60.0,
+                        "paso": "0.1",
+                        "ayuda": "Del contagio al inicio de síntomas. El motor usa la media.",
+                        "valor": 5.1,
+                        "valor_form": "5.1",
+                        "fuente": "Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504",
+                        "supuesto": false,
+                        "intervalo": {
+                          "max": 5.8,
+                          "min": 4.5,
+                          "tipo": "IC95"
+                        },
+                        "estado": "con_fuente"
+                      }
+                    ],
+                    "informativos": [],
+                    "faltan": [
+                      "infeccioso_dias",
+                      "dias_hospitalizacion",
+                      "tasa_hospitalizacion",
+                      "letalidad"
+                    ],
+                    "supuestos": [
+                      "r0"
+                    ],
+                    "sin_fuente": [],
+                    "simulable": false
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "ajustes_version"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<ajustes_version><disease_id tipo=\"numero\">1</disease_id><version_id tipo=\"numero\">31</version_id><scenario_id tipo=\"numero\">12</scenario_id><version_number tipo=\"numero\">2</version_number><status>borrador</status><editable tipo=\"booleano\">true</editable><catalogo><r0><valor tipo=\"numero\">2.87</valor><fuente>Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">3.44</max><min tipo=\"numero\">2.39</min><tipo>IC95</tipo></intervalo></r0><incubacion_dias><valor tipo=\"numero\">5.1</valor><fuente>Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">5.8</max><min tipo=\"numero\">4.5</min><tipo>IC95</tipo></intervalo></incubacion_dias></catalogo><ajustes><r0><valor tipo=\"numero\">3.2</valor><fuente nil=\"true\" /><supuesto tipo=\"booleano\">true</supuesto></r0></ajustes><efectivos><r0><valor tipo=\"numero\">3.2</valor><fuente nil=\"true\" /><supuesto tipo=\"booleano\">true</supuesto></r0><incubacion_dias><valor tipo=\"numero\">5.1</valor><fuente>Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">5.8</max><min tipo=\"numero\">4.5</min><tipo>IC95</tipo></intervalo></incubacion_dias></efectivos><estado><detalle><item><clave>r0</clave><etiqueta>R₀ — número reproductivo básico</etiqueta><unidad>contagios por caso</unidad><min tipo=\"numero\">0.01</min><max tipo=\"numero\">20.0</max><paso>0.01</paso><ayuda>Contagios que genera un caso en una población sin inmunidad.</ayuda><valor tipo=\"numero\">3.2</valor><valor_form>3.2</valor_form><fuente /><supuesto tipo=\"booleano\">true</supuesto><intervalo nil=\"true\" /><estado>supuesto</estado></item><item><clave>incubacion_dias</clave><etiqueta>Período de incubación</etiqueta><unidad>días</unidad><min tipo=\"numero\">0.1</min><max tipo=\"numero\">60.0</max><paso>0.1</paso><ayuda>Del contagio al inicio de síntomas. El motor usa la media.</ayuda><valor tipo=\"numero\">5.1</valor><valor_form>5.1</valor_form><fuente>Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">5.8</max><min tipo=\"numero\">4.5</min><tipo>IC95</tipo></intervalo><estado>con_fuente</estado></item></detalle><informativos /><faltan><item>infeccioso_dias</item><item>dias_hospitalizacion</item><item>tasa_hospitalizacion</item><item>letalidad</item></faltan><supuestos><item>r0</item></supuestos><sin_fuente /><simulable tipo=\"booleano\">false</simulable></estado></ajustes_version>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "No existe la versión"
+          },
+          "409": {
+            "description": "La versión ya no es un borrador vigente o su escenario está archivado (CONFLICTO)"
+          },
+          "422": {
+            "description": "Parámetro desconocido, fuera de rango, sin fuente ni supuesto o con un intervalo inválido (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso, versión fuera del alcance o escenario de otra persona"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "description": "Cambia los parámetros de la versión sin tocar el catálogo (D59). Solo el borrador vigente de un escenario sin archivar (409 si no), y solo su dueño o un ADMINISTRADOR (403). Cada ajuste se valida como en el catálogo: valor dentro de los límites del motor, fuente o supuesto=true e intervalo opcional. Al enviar la versión a revisión, la fotografía de D5 es el catálogo con estos ajustes encima. Queda UPDATE de scenario_versions en la bitácora. ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "parametros"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "parametros": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "valor": {
+                          "type": "number"
+                        },
+                        "fuente": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "supuesto": {
+                          "type": "boolean"
+                        },
+                        "intervalo": {
+                          "type": "object",
+                          "required": [
+                            "min",
+                            "max"
+                          ],
+                          "properties": {
+                            "min": {
+                              "type": "number"
+                            },
+                            "max": {
+                              "type": "number"
+                            },
+                            "tipo": {
+                              "type": "string",
+                              "enum": [
+                                "IC95",
+                                "RIC",
+                                "rango"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "description": "Cada parámetro lleva valor y fuente o supuesto=true; null quita el ajuste y vuelve al catálogo."
+                  }
+                }
+              },
+              "example": {
+                "parametros": {
+                  "r0": {
+                    "valor": 3.2,
+                    "supuesto": true
+                  }
+                }
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "parametros"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "parametros": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "valor": {
+                          "type": "number"
+                        },
+                        "fuente": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "supuesto": {
+                          "type": "boolean"
+                        },
+                        "intervalo": {
+                          "type": "object",
+                          "required": [
+                            "min",
+                            "max"
+                          ],
+                          "properties": {
+                            "min": {
+                              "type": "number"
+                            },
+                            "max": {
+                              "type": "number"
+                            },
+                            "tipo": {
+                              "type": "string",
+                              "enum": [
+                                "IC95",
+                                "RIC",
+                                "rango"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "description": "Cada parámetro lleva valor y fuente o supuesto=true; null quita el ajuste y vuelve al catálogo."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
     }
   }
 }

@@ -100,7 +100,7 @@ class VistaComparacion(QWidget):
             self.metrica.addItem(texto, clave)
         self.motor = QComboBox()
         self.motor.addItem("Todos", "")
-        for motor in config.MOTORES:
+        for motor in config.MOTORES_TODOS:
             self.motor.addItem(motor, motor)
         self.b_comparar = QPushButton("Comparar")
         self.b_comparar.setObjectName("primario")

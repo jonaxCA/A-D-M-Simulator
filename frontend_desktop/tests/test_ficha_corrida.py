@@ -134,7 +134,8 @@ def test_comparacion_muestra_corridas_de_la_curva_elegida(qt, monkeypatch):
 def test_catalogo_lee_parametros_publicos_y_xsd():
     cliente = ClienteFicha()
     datos = servicios.parametros_enfermedad(cliente, 2)
-    assert datos["r0"] == {"valor": 1.3, "fuente": "Biggerstaff et al. 2014", "supuesto": False}
+    assert datos["r0"]["valor"] == 2.87 and datos["r0"]["supuesto"] is False
+    assert datos["r0"]["intervalo"] == {"min": 2.39, "max": 3.44, "tipo": "IC95"}
 
 
 def test_intervencion_distingue_costo_cero_de_costo_ausente(qt):

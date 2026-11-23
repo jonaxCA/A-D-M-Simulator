@@ -103,3 +103,22 @@ Con una cuenta de demostración, elige un escenario de Nuevo León con eventos, 
 municipales** y **Historial de auditoría**. Comprueba con un analista que el historial de una
 región permitida abre y que una región fuera de alcance se rechaza. Repite con administrador
 para verificar el acceso autorizado. Los cambios de la aplicación no requieren migraciones.
+
+## Motores anunciados, parámetros con versiones y firma de la versión · 23 de noviembre
+
+| Verificación | Resultado |
+| --- | --- |
+| `abm-gpu` solo si el despliegue lo acepta (RF-H20, RF-E15) | `corridas` anuncia sus motores en `GET /api/v1/runs/engines` (`MOTORES_HABILITADOS`; `seir-ref` siempre). `test_motores.py`: el ejemplo del contrato ofrece lo que anuncia, `abm-gpu` aparece solo si viene en la respuesta, y con una respuesta que no cumple el XSD o sin la ruta quedan `seir-ref` y `abm-ref`. El filtro de la cola y el de Comparación siguen mostrando los tres, para buscar corridas viejas. |
+| Parámetros con incertidumbre y versiones (D58) | `test_parametros_y_firma.py`: el diálogo agrega la columna **Incertidumbre** (`2.39 a 3.44 (IC95)`) y la tabla de versiones con su motivo; las versiones se leen con el ejemplo del contrato. |
+| Firma de la versión aprobada (D55) | La pantalla Escenarios pide `GET /api/v1/versions/{id}/signature` al abrir una versión aprobada y muestra la huella, quién aprobó, si sigue íntegra y las corridas que simularon lo firmado, las distintas y las que no tienen huella. Sin firma (aprobada antes de la 064) lo dice; si `aprobacion` no responde, la pantalla queda como estaba. |
+| Corrección de dos pruebas | `test_parametros_usan_definicion_y_unidad_del_contrato` y `test_catalogo_lee_parametros_publicos_y_xsd` esperaban el ejemplo anterior de `parametros`, que D58 regeneró con los datos reales. |
+| Suite local de escritorio | 419 pruebas aprobadas con PySide6 (`QT_QPA_PLATFORM=offscreen python -m pytest frontend_desktop`); sin PySide6, 370 y 22 se saltan. |
+
+## Configuración del modelo: ajustar parámetros por versión · 23 de noviembre
+
+| Verificación | Resultado |
+| --- | --- |
+| Ajustes de una versión (D59, 044) | `parametros` sirve `GET/PUT /api/v1/versions/{id}/parameters`. `test_ajustes_version.py`: ajustar deja el catálogo y cambia lo efectivo, `null` vuelve al catálogo, sin fuente ni supuesto y fuera de rango dan 422, una versión enviada, archivada o no vigente da 409, otro usuario da 403, INVESTIGADOR lee y no escribe, el alcance por región aplica y el XML valida contra su XSD. `test_parametros_bd.py` lo prueba contra la base con la 044. |
+| Congelar y versionar | `aprobacion` y el monolito congelan el catálogo con los ajustes al enviar; una versión nueva y un duplicado los copian; la huella de un borrador cambia con un ajuste; la validación avisa de cada parámetro ajustado y la bandeja trae `n_ajustes`. |
+| Pantalla | `test_ajustes_parametros.py`: servicios con los ejemplos del contrato, la tabla (catálogo, versión, estado «Ajustado»), aplicar un ajuste manda el cuerpo del contrato, **Volver al catálogo** manda `null` solo si hay ajuste, las tasas se capturan en % y se mandan de 0 a 1, y una versión enviada o ajena solo se consulta. |
+| Suite local de escritorio | 432 pruebas aprobadas con PySide6 (`QT_QPA_PLATFORM=offscreen python -m pytest frontend_desktop`). |

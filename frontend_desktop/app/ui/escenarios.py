@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFileDialog, QFrame, Q
                                QPlainTextEdit, QPushButton, QScrollArea, QTabWidget, QVBoxLayout, QWidget)
 
 from .. import api, esquemas, servicios
+from .ajustes import DialogoAjustes
 from .auditoria import DialogoAuditoria
 from .comun import celda, dato_vertical, encabezado, estado, fecha, num, tabla, tarjeta
 from .formularios import DialogoEscenario, DialogoVersion, FormIntervencion, mostrar_parametros
@@ -21,8 +22,28 @@ def _detalle_completo(c, escenario_id, version):
     return detalle, servicios.versiones(c, escenario_id)
 
 
+def _estado_y_versiones(c, enfermedad_id):
+    return servicios.estado_parametros(c, enfermedad_id), servicios.versiones_parametros(c, enfermedad_id)
+
+
 def _catalogos(c):
     return servicios.enfermedades(c), servicios.regiones(c)
+
+
+def texto_firma(f):
+    # La firma de una versión aprobada (D55): lo que se aprobó contra lo que hoy se simularía y las corridas que lo simularon.
+    if not f.get("firmada"):
+        return "Firma: esta versión se aprobó antes de que se guardara la firma, así que no se puede verificar."
+    corridas = f.get("corridas") or {}
+    lineas = ["Firma: %s…" % (f.get("huella") or "")[:16] + " · aprobó %s el %s" % (f.get("revisor") or "—",
+                                                                                   fecha(f.get("reviewed_at")))]
+    if f.get("integra"):
+        lineas.append("La entrada del motor sigue siendo la que se firmó.")
+    else:
+        lineas.append("ATENCIÓN: lo que hoy se simularía no coincide con lo que se aprobó (parámetros o intervenciones cambiaron).")
+    lineas.append("Corridas que simularon exactamente lo firmado: %s; con otra entrada: %s; sin huella: %s." % (
+        corridas.get("coinciden", 0), corridas.get("distintas", 0), corridas.get("sin_huella", 0)))
+    return "\n".join(lineas)
 
 
 def _parametros(params):
@@ -117,6 +138,8 @@ class VistaEscenarios(QWidget):
         rejilla.addLayout(cuadro)
         self.b_parametros = QPushButton("Consultar parámetros de la enfermedad")
         self.b_parametros.clicked.connect(self.consultar_parametros)
+        self.b_ajustes = QPushButton("Ajustar parámetros de esta versión")
+        self.b_ajustes.clicked.connect(self.abrir_ajustes)
         self.b_zonas = QPushButton("Indicadores municipales")
         self.b_zonas.clicked.connect(self.abrir_zonas)
         self.b_auditoria = QPushButton("Historial de auditoría")
@@ -125,6 +148,7 @@ class VistaEscenarios(QWidget):
         self.b_modelo.clicked.connect(self.abrir_modelo)
         accesos = QHBoxLayout()
         accesos.addWidget(self.b_parametros)
+        accesos.addWidget(self.b_ajustes)
         accesos.addWidget(self.b_zonas)
         accesos.addWidget(self.b_auditoria)
         accesos.addWidget(self.b_modelo)
@@ -161,6 +185,12 @@ class VistaEscenarios(QWidget):
         self.validacion.setWordWrap(True)
         self.validacion.setTextFormat(Qt.RichText)
         capa.addWidget(self.validacion)
+        self.firma = QLabel()
+        self.firma.setObjectName("nota")
+        self.firma.setWordWrap(True)
+        self.firma.setTextFormat(Qt.PlainText)
+        self.firma.hide()
+        capa.addWidget(self.firma)
         capa.addStretch(1)
         desplazar = QScrollArea()
         desplazar.setWidgetResizable(True)
@@ -293,6 +323,20 @@ class VistaEscenarios(QWidget):
             self.form.poner_tipos(self.tipos, v.get("horizon_days") or 1095)
         self._habilitar()
         self.validar()
+        self._cargar_firma(v, solicitud)
+
+    def _cargar_firma(self, v, solicitud):
+        self.firma.hide()
+        if v.get("status") != "aprobado" or not v.get("id"):
+            return
+
+        def listo(datos):
+            if solicitud == self._solicitud:
+                self.firma.setText(texto_firma(datos))
+                self.firma.show()
+
+        # La firma es un dato de apoyo: si aprobacion no responde, la pantalla sigue como estaba.
+        en_hilo(servicios.firma_version, self.c, v["id"], listo=listo, fallo=lambda exc: None)
 
     def _mostrar_validacion(self, datos):
         errores = datos.get("errores") or []
@@ -325,6 +369,7 @@ class VistaEscenarios(QWidget):
         for b in (self.b_validar, self.b_exportar, self.b_duplicar):
             b.setEnabled(hay)
         self.b_parametros.setEnabled(bool(hay and self.detalle.get("disease_id")))
+        self.b_ajustes.setEnabled(bool(hay and self._version().get("id") and self.detalle.get("disease_id")))
         self.b_zonas.setEnabled(self.b_parametros.isEnabled())
         self.b_auditoria.setEnabled(hay)
         self.b_modelo.setEnabled(bool(hay and self.detalle.get("disease_id") and self.detalle.get("region_id")))
@@ -417,8 +462,16 @@ class VistaEscenarios(QWidget):
     def consultar_parametros(self):
         enfermedad_id = self.detalle["disease_id"]
         nombre = self.detalle.get("enfermedad") or "Enfermedad %s" % enfermedad_id
-        en_hilo(servicios.estado_parametros, self.c, enfermedad_id,
-                listo=lambda datos: mostrar_parametros(self, nombre, datos))
+        en_hilo(_estado_y_versiones, self.c, enfermedad_id,
+                listo=lambda datos: mostrar_parametros(self, nombre, *datos))
+
+    def abrir_ajustes(self):
+        d = self.detalle
+        dialogo = DialogoAjustes(self, self.v, self._version()["id"], d.get("enfermedad") or "Enfermedad",
+                                 self._editable())
+        # Un ajuste cambia los avisos de la validación: se consultan otra vez al cerrar.
+        dialogo.finished.connect(lambda _: self.validar())
+        dialogo.open()
 
     def abrir_zonas(self):
         d = self.detalle

@@ -627,3 +627,27 @@ def test_si_roles_no_responde_las_rutas_con_datos_dan_503(cliente, token, base, 
 
     monkeypatch.setattr(alcance, "llamar", caido)
     assert cliente.get("/api/v1/runs?format=json", headers=token()).status_code == 503
+
+
+def test_los_motores_habilitados_se_anuncian(cliente, token, monkeypatch):
+    monkeypatch.delenv("MOTORES_HABILITADOS", raising=False)
+    r = cliente.get("/api/v1/runs/engines?format=json", headers=token())
+    assert r.status_code == 200
+    assert r.get_json() == {"total": 1, "referencia": "seir-ref", "motores": ["seir-ref"]}
+    monkeypatch.setenv("MOTORES_HABILITADOS", "abm-ref, cuda")
+    assert cliente.get("/api/v1/runs/engines?format=json", headers=token(("INVESTIGADOR",))).get_json()[
+        "motores"] == ["seir-ref", "abm-ref", "abm-gpu"]
+
+
+def test_los_motores_en_xml_validan_contra_el_xsd(cliente, token, monkeypatch):
+    monkeypatch.setenv("MOTORES_HABILITADOS", "abm-ref")
+    xsd = xmlschema.XMLSchema(str(RAIZ / "docs/contratos/corridas/corrida.xsd"))
+    con = cliente.get("/api/v1/runs/engines", headers=token())
+    assert con.mimetype == "application/xml"
+    xsd.validate(con.data.decode("utf-8"))
+
+
+def test_los_motores_piden_sesion_y_rol(cliente, token, negados):
+    assert cliente.get("/api/v1/runs/engines").status_code == 401
+    assert cliente.get("/api/v1/runs/engines", headers=token(("CAPTURISTA",))).status_code == 403
+    assert negados[0][1:4] == ("PERMISSION_DENIED", "corridas", "/api/v1/runs/engines")

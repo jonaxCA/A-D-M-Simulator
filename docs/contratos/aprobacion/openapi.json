@@ -147,6 +147,10 @@
                 },
                 "n_intervenciones": {
                   "type": "integer"
+                },
+                "n_ajustes": {
+                  "type": "integer",
+                  "description": "Parámetros de la enfermedad que esta versión ajusta respecto del catálogo (D59)"
                 }
               }
             }
@@ -902,7 +906,8 @@
                       "enfermedad": "Influenza",
                       "region": "Monterrey",
                       "autor": "Ana Analista",
-                      "n_intervenciones": 1
+                      "n_intervenciones": 1,
+                      "n_ajustes": 1
                     }
                   ]
                 }
@@ -914,7 +919,7 @@
                     "name": "bandeja"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<bandeja><total tipo=\"numero\">1</total><pendientes><item><scenario_id tipo=\"numero\">3</scenario_id><name>Brote de influenza en Monterrey</name><version_number tipo=\"numero\">2</version_number><submitted_at>2026-10-01T10:00:00+00:00</submitted_at><population_size tipo=\"numero\">1100000</population_size><horizon_days tipo=\"numero\">60</horizon_days><created_by tipo=\"numero\">5</created_by><enfermedad>Influenza</enfermedad><region>Monterrey</region><autor>Ana Analista</autor><n_intervenciones tipo=\"numero\">1</n_intervenciones></item></pendientes></bandeja>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<bandeja><total tipo=\"numero\">1</total><pendientes><item><scenario_id tipo=\"numero\">3</scenario_id><name>Brote de influenza en Monterrey</name><version_number tipo=\"numero\">2</version_number><submitted_at>2026-10-01T10:00:00+00:00</submitted_at><population_size tipo=\"numero\">1100000</population_size><horizon_days tipo=\"numero\">60</horizon_days><created_by tipo=\"numero\">5</created_by><enfermedad>Influenza</enfermedad><region>Monterrey</region><autor>Ana Analista</autor><n_intervenciones tipo=\"numero\">1</n_intervenciones><n_ajustes tipo=\"numero\">1</n_ajustes></item></pendientes></bandeja>\n"
               }
             }
           },

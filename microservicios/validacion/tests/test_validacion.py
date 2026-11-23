@@ -304,3 +304,35 @@ def test_con_la_base_la_huella_coincide_con_la_del_simulador():
         pytest.skip("La semilla no trae una versión aprobada")
     escenario, _, errores = ejecucion.escenario_de_version(fila["id"])
     assert errores == [] and huella.de_version(fila["id"]) == canonica(escenario)
+
+
+def test_un_parametro_ajustado_en_la_version_es_un_aviso_para_quien_revisa(cliente, analista, version, monkeypatch):
+    # D59: el aviso dice el valor del catálogo, el de la versión y su respaldo.
+    detalle = {"version": {"id": 7, "param_overrides": {
+        "r0": {"valor": 3.2, "fuente": None, "supuesto": True},
+        "incubacion_dias": {"valor": 4.0, "fuente": "Estudio propio", "supuesto": False}}},
+        "escenario": {"id": 3, "default_params": {"r0": {"valor": 2.87}, "incubacion_dias": {"valor": 5.1}}}}
+    monkeypatch.setattr(queries, "get_escenario_detalle", lambda s, n=None: detalle)
+    avisos = cliente.get("/api/v1/versions/7/validation?format=json", headers=analista).get_json()["avisos"]
+    assert avisos == ["aviso uno",
+                      "El parámetro incubacion_dias se ajustó en esta versión: catálogo 5.1, versión 4.0 "
+                      "(fuente: Estudio propio).",
+                      "El parámetro r0 se ajustó en esta versión: catálogo 2.87, versión 3.2 (supuesto)."]
+
+
+def test_la_huella_de_un_borrador_cambia_con_un_ajuste(monkeypatch):
+    from procesamiento.contrato import huella as canonica
+    from procesamiento.entrada_motor import escenario_de_version, parametros_efectivos
+    base = dict(FILA_VERSION, disease_params=None, default_params=copy.deepcopy(PARAMETROS), param_overrides={})
+    ajustada = dict(base, param_overrides={"r0": {"valor": 3.2, "fuente": None, "supuesto": True}})
+    assert parametros_efectivos(base) == PARAMETROS
+    assert parametros_efectivos(ajustada)["r0"]["valor"] == 3.2
+    assert parametros_efectivos(ajustada)["letalidad"] == PARAMETROS["letalidad"]
+    # Una versión enviada usa su foto, no el catálogo ni los ajustes.
+    assert parametros_efectivos(dict(ajustada, disease_params={"r0": {"valor": 1.1}})) == {"r0": {"valor": 1.1}}
+
+    def huella_de(fila):
+        intervenciones = [dict(f) for f in FILAS_INTERVENCION]
+        return canonica(escenario_de_version({"version": fila, "intervenciones": intervenciones,
+                                              "parametros_enfermedad": parametros_efectivos(fila)}))
+    assert huella_de(base) != huella_de(ajustada)
