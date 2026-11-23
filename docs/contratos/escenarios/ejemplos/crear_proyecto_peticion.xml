@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<proyecto><name>Influenza en Monterrey, temporada 2026</name><objective>Comparar el cierre de escuelas contra la vacunación por edad.</objective><disease_id tipo="numero">3</disease_id><region_id tipo="numero">5</region_id><period_start>2026-10-01</period_start><period_end>2027-03-31</period_end><motores><motor>seir-ref</motor><motor>abm-ref</motor></motores></proyecto>

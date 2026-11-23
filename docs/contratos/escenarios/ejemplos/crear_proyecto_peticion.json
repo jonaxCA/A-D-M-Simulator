@@ -1,0 +1,12 @@
+{
+  "name": "Influenza en Monterrey, temporada 2026",
+  "objective": "Comparar el cierre de escuelas contra la vacunación por edad.",
+  "disease_id": 3,
+  "region_id": 5,
+  "period_start": "2026-10-01",
+  "period_end": "2027-03-31",
+  "motores": [
+    "seir-ref",
+    "abm-ref"
+  ]
+}

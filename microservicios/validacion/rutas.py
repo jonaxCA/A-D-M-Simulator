@@ -6,12 +6,17 @@ campos, valida_intervencion para cada intervención y el motor
 error HTTP: la petición se atendió bien y la respuesta es el dictamen
 ({valido, errores, avisos}). Un 4xx/5xx solo significa que la petición misma está mal
 (cuerpo ilegible, tipos erróneos), que no hay permiso o que la versión no existe.
+
+GET /versions/{id}/validation da además la huella de la entrada del motor (huella.py, D55),
+con la que aprobacion firma la versión que aprueba.
 """
 from backend_web import queries
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import diccionario, entero_positivo
+
+from . import huella
 
 ROLES = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 
@@ -155,4 +160,5 @@ def registrar(app):
             "version_id": fila["id"], "scenario_id": fila["scenario_id"],
             "version_number": fila["version_number"], "status": fila["status"],
             "valido": not errores, "errores": list(errores), "avisos": list(avisos),
+            "huella": huella.de_version(fila["id"]),
         }, "validacion")

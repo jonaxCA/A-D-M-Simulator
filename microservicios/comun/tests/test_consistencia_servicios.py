@@ -321,17 +321,21 @@ def test_sincronizacion_y_casos_reales_201_nuevo_y_200_duplicado(crear_cliente, 
 
 def test_aprobacion_lee_el_dictamen_de_la_validacion_real(red, monkeypatch):
     from microservicios.aprobacion import rutas as rutas_aprobacion
+    from microservicios.validacion import huella as huella_validacion
     monkeypatch.setattr(queries, "get_version_simulacion",
                         lambda vid: {"id": 31, "scenario_id": 12, "version_number": 1,
                                      "status": "borrador"} if vid == 31 else None)
     monkeypatch.setattr(queries, "revisa_version", lambda detalle: ([], ["Aviso del motor"]))
+    # La huella con la que aprobacion firma (D55); su cálculo se prueba en validacion.
+    monkeypatch.setattr(huella_validacion, "de_version", lambda vid: "ab" * 32)
 
     def llamar(servicio, metodo, ruta, formato="json", cuerpo=None, **_):
         assert servicio == "validacion"
         return Respuesta(red["clientes"]["validacion"].open(
             ruta + "?format=json", method=metodo, headers=red["cabeceras"]))
     monkeypatch.setattr(rutas_aprobacion, "llamar", llamar)
-    assert rutas_aprobacion._revisar_con_validacion(31) == ["Aviso del motor"]
+    dictamen = rutas_aprobacion._revisar_con_validacion(31, "envía a revisión")
+    assert dictamen["avisos"] == ["Aviso del motor"] and dictamen["huella"] == "ab" * 32
     with pytest.raises(Exception) as exc:
-        rutas_aprobacion._revisar_con_validacion(99)
+        rutas_aprobacion._revisar_con_validacion(99, "envía a revisión")
     assert getattr(exc.value, "estado", None) == 404

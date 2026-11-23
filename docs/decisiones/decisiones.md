@@ -58,3 +58,5 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D51 | Seguimiento de intervenciones en la web, con lo que ya dan los servicios | Propuesta (C; falta E) | D3, D4, D36, D49 | [D51-seguimiento-de-intervenciones.md](D51-seguimiento-de-intervenciones.md) |
 | D52 | Retención de los datos: cómo termina cada uno, sin purgas por antigüedad      | Aceptada | D19, D28, D30 | [D52-retencion-de-los-datos.md](D52-retencion-de-los-datos.md) |
 | D53 | Importación de series observadas: el servicio `importacion` y la serie de D50 en la 061 | Aceptada | D43, D50, D52 | [D53-importacion-de-series-observadas.md](D53-importacion-de-series-observadas.md) |
+| D54 | Proyectos de investigación y archivado de escenarios | Aceptada | D5, D42, D43, D52 | [D54-proyectos-y-archivado.md](D54-proyectos-y-archivado.md) |
+| D55 | Devolver una versión para cambios y firmar la versión aprobada | Aceptada | D5, D37, D54 | [D55-devolver-y-firmar-versiones.md](D55-devolver-y-firmar-versiones.md) |
