@@ -1064,6 +1064,7 @@ datos/scripts/build_regiones_sql.py      censo + centroides + catalogo -> semill
 datos/scripts/build_grupos_edad.py       ITER -> censo/nl_estructura_edad_municipios_2020.tsv + migracion 021
 datos/scripts/build_letalidad_edad.py    literatura + censo -> migracion 020
 datos/scripts/gen_demo_data.py           generador de los datos de demostracion (semilla fija)
+datos/scripts/refresca_fechas_demo.sql   mueve los casos de demostracion al presente (psql "$DATABASE_URL" -f ...)
 datos/scripts/verifica_migraciones.py    comprueba migraciones sueltas contra el dump
 datos/scripts/prepara_base_pruebas.py    crea la base en la que corren las pruebas
 datos/geo/inegi_mg2024/      capa municipal oficial (Marco Geoestadistico 2024, ent. 19)
