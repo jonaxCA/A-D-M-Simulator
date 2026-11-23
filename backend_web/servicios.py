@@ -514,8 +514,9 @@ def bitacora_filtros(token):
 
 def avisos(token, solo_no_leidas=False, limite=50):
     datos = llamar("notificaciones", "GET", "/api/v1/notifications", token=token,
-                   params={"unread": "true" if solo_no_leidas else None, "limit": limite})
-    return con_fechas(datos["notificaciones"], "created_at", "read_at"), datos["no_leidas"]
+                   params={"unread": "true" if solo_no_leidas else None, "limit": limite}) or {}
+    return (con_fechas(list(datos.get("notificaciones") or []), "created_at", "read_at"),
+            datos.get("no_leidas") or 0)
 
 
 def marca_aviso_leido(token, aviso_id):

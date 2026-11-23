@@ -30,6 +30,8 @@ COOKIE_DISPOSITIVO = "dispositivo_web"
 
 # Las exportaciones bajan todo lo que pasa el filtro de la pantalla; enfermedades pagina de 100.
 EXPORT_POR_PAGINA = 100
+# Tope de filas de una exportación (el de zonas en el servicio es el mismo, 1000).
+EXPORT_MAX_FILAS = 1000
 MENSAJE_NO_GUARDADO = "El cambio no se guardó."
 
 
