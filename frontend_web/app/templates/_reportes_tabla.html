@@ -1,0 +1,20 @@
+<div class="tabla-scroll">
+  <table class="situacion-table catalogo-table">
+    <thead><tr><th>Reporte</th><th>Título</th><th>Corridas</th><th>Tamaño</th><th>Huella (SHA-256)</th><th>Subido</th><th></th></tr></thead>
+    <tbody>
+      {% for r in reportes %}
+      <tr>
+        <td>#{{ r.id }}</td>
+        <td>{{ r.title or '—' }}</td>
+        <td>{% for i in r.run_ids %}<code class="codigo-chip">{{ i | id_sim }}</code> {% endfor %}</td>
+        <td>{{ (r.size_bytes / 1024) | round | int }} KB</td>
+        <td><code>{{ r.sha256[:12] }}…</code></td>
+        <td>{{ r.uploaded_at | fecha_hora }}</td>
+        <td><a class="btn btn-mini" href="{{ url_for('main.reporte_abrir', reporte_id=r.id) }}" target="_blank" rel="noopener">Abrir</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="tabla-vacia">{{ vacio }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

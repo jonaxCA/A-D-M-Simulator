@@ -16,7 +16,7 @@ from flask import (Blueprint, abort, current_app, jsonify, render_template, requ
                    url_for, make_response, g, flash, session)
 from werkzeug.exceptions import HTTPException
 
-from backend_web import catalogo, formato, servicios
+from backend_web import archivos, catalogo, formato, servicios
 from backend_web.servicios import ErrorServicio, ServicioNoDisponible
 
 from . import formularios, presentacion, sesion_servicios
@@ -45,6 +45,20 @@ def seccion(servicio, funcion, *args, defecto=None, **kwargs):
         if exc.servicio not in caidos:
             caidos.append(exc.servicio)
         return defecto
+
+
+def _a_url_firmada(funcion, objeto_id):
+    """Pide a evidencias la URL firmada del archivo en el momento de abrirlo: vence en minutos
+    (D30), así que no se deja escrita en la página."""
+    try:
+        url = funcion(token_de_sesion(), objeto_id)["url"]
+    except ErrorServicio as exc:
+        if exc.estado == 404:
+            abort(404)
+        raise
+    respuesta = redirect(url)
+    respuesta.headers["Cache-Control"] = "private, no-store"
+    return respuesta
 
 
 def _falla_de_escritura(exc):
@@ -848,11 +862,48 @@ def comparacion():
         except ServicioNoDisponible as exc:
             g.setdefault("servicios_caidos", []).append(exc.servicio)
     runs = seccion("corridas", servicios.corridas, token, 100, "completado", defecto=[])
+    reportes_guardados = []
+    if len(run_ids) >= 2 and tiene_permiso(g.user, "reports.read"):
+        reportes_guardados = seccion("evidencias", servicios.reportes_comparacion, token, run_ids,
+                                     defecto=[])
     return render_template(
-        "comparacion.html", runs=runs, corridas=corridas,
+        "comparacion.html", runs=runs, corridas=corridas, reportes=reportes_guardados,
+        run_ids=run_ids,
         sin_curvas=[c["id"] for c in corridas if not c.get("serie")],
         seleccionados=seleccionados, comparacion_pareto=comparacion_pareto,
         errores_pareto=errores_pareto, active_nav="comparacion")
+
+
+@bp.route("/comparacion/reportes", methods=["POST"])
+@requiere_permiso("reports.upload", "reports")
+def reporte_subir():
+    """El PDF que armó la app de escritorio (o cualquier otro) va al bucket por evidencias, que
+    lo vuelve a validar por su contenido, su tamaño y su huella (D35, RF-G16)."""
+    run_ids = formularios.ids_de(request.form.getlist("run_id"))
+    destino = redirect(url_for("main.comparacion", run_id=run_ids))
+    if not run_ids:
+        flash("Elige las corridas de la comparación antes de subir su reporte.", "error")
+        return destino
+    archivo = request.files.get("archivo")
+    pdf = archivo.stream.read(archivos.MAXIMO + 1) if archivo else b""
+    huella, errores = archivos.valida_pdf(pdf)
+    if errores:
+        flash(" ".join(errores), "error")
+        return destino
+    titulo = (request.form.get("titulo") or "").strip()[:200] or None
+    try:
+        reporte = servicios.sube_reporte(token_de_sesion(), run_ids, titulo, pdf, huella)
+        flash("Reporte %d guardado (%d KB, huella %s…)."
+              % (reporte["id"], round(reporte["size_bytes"] / 1024), reporte["sha256"][:12]), "ok")
+    except ErrorServicio as exc:
+        flash(_falla_de_escritura(exc), "error")
+    return destino
+
+
+@bp.route("/comparacion/reportes/<int:reporte_id>")
+@requiere_permiso("reports.read", "reports")
+def reporte_abrir(reporte_id):
+    return _a_url_firmada(servicios.url_reporte, reporte_id)
 
 
 @bp.route("/comparacion/costos", methods=["GET", "POST"])
@@ -962,8 +1013,25 @@ def caso_detalle(case_id):
         flash("Ese caso no existe.", "error")
         return redirect(url_for("main.vigilancia"))
     historial = seccion("casos", servicios.historial_caso, token, case_id, defecto=[])
+    evidencias = seccion("evidencias", _evidencias_del_caso, token, case_id, defecto=[])
     return render_template("caso_detalle.html", caso=caso, historial=historial, estados=ESTADOS_CASO,
-                           active_nav="vigilancia")
+                           evidencias=evidencias, active_nav="vigilancia")
+
+
+def _evidencias_del_caso(token, case_id):
+    # evidencias solo deja ver las fotos a los roles que capturan o leen casos.
+    try:
+        return servicios.evidencias_caso(token, case_id)
+    except ErrorServicio as exc:
+        if exc.estado == 403:
+            return []
+        raise
+
+
+@bp.route("/vigilancia/evidencias/<int:evidencia_id>")
+@requiere_permiso("cases.read", "cases")
+def evidencia_abrir(evidencia_id):
+    return _a_url_firmada(servicios.url_evidencia, evidencia_id)
 
 
 # ---------------------------------------------------------------------------
@@ -1047,7 +1115,9 @@ def seguimiento_intervenciones():
 @bp.route("/reportes")
 @requiere_permiso("reports.read", "reports")
 def reportes():
-    return render_template("reportes.html", active_nav="reportes")
+    guardados = seccion("evidencias", servicios.reportes_comparacion, token_de_sesion(),
+                        defecto=[])
+    return render_template("reportes.html", reportes=guardados, active_nav="reportes")
 
 
 # ---------------------------------------------------------------------------
@@ -1252,6 +1322,12 @@ def no_encontrado(_):
 def metodo_no_permitido(_):
     return _error(405, "Esa acción no está disponible aquí",
                   "Vuelve a la pantalla anterior y usa sus botones.")
+
+
+@bp.app_errorhandler(413)
+def archivo_muy_grande(_):
+    return _error(413, "El archivo es demasiado grande",
+                  "Un reporte pesa hasta 20 MB. Genera uno más ligero y vuelve a subirlo.")
 
 
 @bp.app_errorhandler(ServicioNoDisponible)

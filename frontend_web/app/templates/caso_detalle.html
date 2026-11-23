@@ -24,6 +24,21 @@
   </ul>
 </div>
 
+<div class="card">
+  <div class="detalle-titulo">Evidencias ({{ evidencias|length }})</div>
+  {% for e in evidencias %}
+  <div class="detalle-texto">
+    <a href="{{ url_for('main.evidencia_abrir', evidencia_id=e.id) }}" target="_blank" rel="noopener">
+      {% if e.mime_type.startswith('image/') %}<img src="{{ url_for('main.evidencia_abrir', evidencia_id=e.id) }}" alt="Foto del caso #{{ caso.id }}" loading="lazy" style="max-width: 240px; max-height: 240px;"><br>{% endif %}
+      Evidencia #{{ e.id }} · {{ 'PDF' if e.mime_type == 'application/pdf' else 'Foto' }} · {{ (e.size_bytes / 1024) | round | int }} KB · {{ e.uploaded_at | fecha_hora }}
+    </a>
+  </div>
+  {% else %}
+  <p class="tabla-vacia">Este caso no tiene fotos ni PDF.</p>
+  {% endfor %}
+  <p class="field-hint">Se abren con un enlace que vence en minutos.</p>
+</div>
+
 {% if puede('cases.approve') %}
 <div class="card form-card">
   <div class="detalle-titulo">Seguimiento</div>
