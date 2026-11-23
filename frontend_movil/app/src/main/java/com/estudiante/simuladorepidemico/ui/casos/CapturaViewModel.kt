@@ -8,12 +8,19 @@ import androidx.lifecycle.viewModelScope
 import com.estudiante.simuladorepidemico.local.CasoLocal
 import com.estudiante.simuladorepidemico.local.CasosDao
 import com.estudiante.simuladorepidemico.local.CatalogoDao
+import com.estudiante.simuladorepidemico.local.DatosDeSalud
+import com.estudiante.simuladorepidemico.local.cifrados
+import com.estudiante.simuladorepidemico.local.salud
 import com.estudiante.simuladorepidemico.local.Catalogos
 import com.estudiante.simuladorepidemico.local.Enfermedad
 import com.estudiante.simuladorepidemico.local.FotoLocal
 import com.estudiante.simuladorepidemico.local.Fotos
 import com.estudiante.simuladorepidemico.local.Municipio
+import com.estudiante.simuladorepidemico.red.CampoDeFormulario
+import com.estudiante.simuladorepidemico.red.Formulario
+import com.estudiante.simuladorepidemico.red.json
 import com.estudiante.simuladorepidemico.red.mensajeDeError
+import com.estudiante.simuladorepidemico.sesion.Cifrador
 import com.estudiante.simuladorepidemico.sesion.Sesion
 import com.estudiante.simuladorepidemico.ubicacion.Lectura
 import com.estudiante.simuladorepidemico.ubicacion.Ubicacion
@@ -21,6 +28,11 @@ import com.estudiante.simuladorepidemico.ubicacion.Ubicador
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.io.File
 import java.io.InputStream
 import java.time.LocalDate
@@ -49,7 +61,19 @@ data class EstadoCaptura(
     val fotos: List<String> = emptyList(),
     val agregandoFoto: Boolean = false,
     val errorFoto: String? = null,
+    // El formulario de cada enfermedad (D48) y lo que se va contestando, como texto por clave.
+    val formularios: Map<Long, Formulario> = emptyMap(),
+    val respuestas: Map<String, String> = emptyMap(),
+    // Coordenadas escritas a mano, cuando el GPS no conviene (bajo techo, o se captura después).
+    val manual: Boolean = false,
+    val latitudManual: String = "",
+    val longitudManual: String = "",
+    // Hay otro caso igual en el teléfono: se guarda solo si la persona lo confirma.
+    val posibleDuplicado: Boolean = false,
 ) {
+    val formulario: Formulario?
+        get() = enfermedad?.let { formularios[it] }
+
     val sinCatalogos: Boolean
         get() = enfermedades.isEmpty() || municipios.isEmpty()
 
@@ -70,7 +94,60 @@ fun erroresDe(estado: EstadoCaptura, hoy: LocalDate): List<String> = buildList {
         if (it > estado.fechaReporte) add("El inicio de síntomas no puede ser posterior a la fecha de reporte.")
     }
     if (estado.edad.isNotEmpty() && estado.edad.toIntOrNull() !in 0..120) add("La edad va de 0 a 120 años.")
+    if (estado.manual && coordenadasManuales(estado) == null) {
+        add("Escribe la latitud (de -90 a 90) y la longitud (de -180 a 180), o quita la ubicación.")
+    }
+    estado.formulario?.campos?.forEach { campo -> errorDeCampo(campo, estado.respuestas[campo.clave].orEmpty())?.let(::add) }
 }
+
+fun coordenadasManuales(estado: EstadoCaptura): Pair<Double, Double>? {
+    val latitud = estado.latitudManual.replace(',', '.').toDoubleOrNull() ?: return null
+    val longitud = estado.longitudManual.replace(',', '.').toDoubleOrNull() ?: return null
+    return (latitud to longitud).takeIf { latitud in -90.0..90.0 && longitud in -180.0..180.0 }
+}
+
+// Las mismas reglas que casos al validar las respuestas (formularios.py): obligatorio, tipo y rango.
+fun errorDeCampo(campo: CampoDeFormulario, texto: String): String? {
+    if (texto.isBlank()) return if (campo.obligatorio) "Falta «${campo.etiqueta}»." else null
+    fun numero(valor: Double?) = valor?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() }
+    val fueraDeRango = "«${campo.etiqueta}» va de ${numero(campo.minimo) ?: "-∞"} a ${numero(campo.maximo) ?: "∞"}."
+    return when (campo.tipo) {
+        "entero", "decimal" -> {
+            val numero = (if (campo.tipo == "entero") texto.toLongOrNull()?.toDouble() else texto.replace(',', '.').toDoubleOrNull())
+                ?: return "«${campo.etiqueta}» es un número${if (campo.tipo == "entero") " entero" else ""}."
+            fueraDeRango.takeIf { campo.minimo?.let { numero < it } == true || campo.maximo?.let { numero > it } == true }
+        }
+        "texto" -> "«${campo.etiqueta}» admite hasta ${campo.largoMaximo} caracteres."
+            .takeIf { campo.largoMaximo != null && texto.length > campo.largoMaximo }
+        "fecha" -> "«${campo.etiqueta}» es una fecha.".takeIf { runCatching { LocalDate.parse(texto) }.isFailure }
+        else -> null
+    }
+}
+
+// Las respuestas con su tipo, como las espera casos. Lo vacío no viaja.
+fun respuestasDe(formulario: Formulario, respuestas: Map<String, String>): JsonObject = buildJsonObject {
+    formulario.campos.forEach { campo ->
+        val texto = respuestas[campo.clave].orEmpty()
+        if (texto.isBlank()) return@forEach
+        when (campo.tipo) {
+            "entero" -> put(campo.clave, texto.toLong())
+            "decimal" -> put(campo.clave, texto.replace(',', '.').toDouble())
+            "booleano" -> put(campo.clave, texto == "true")
+            "opciones" -> put(campo.clave, JsonArray(texto.split(',').map(::JsonPrimitive)))
+            else -> put(campo.clave, texto)
+        }
+    }
+}
+
+// Control de calidad: lo que casos marca como incompleto (D49). No impide guardar.
+fun faltantesDe(estado: EstadoCaptura): List<String> = listOfNotNull(
+    "edad".takeIf { estado.edad.isEmpty() },
+    "sexo".takeIf { estado.sexo == null },
+    "inicio de síntomas".takeIf { estado.inicioSintomas == null },
+    "resultado".takeIf { estado.resultadoPrueba == null },
+    "gravedad".takeIf { estado.severidad == null },
+    "ubicación".takeIf { estado.ubicacion == null && !estado.manual },
+)
 
 // Guarda en el teléfono y pide el envío: el caso se manda cuando haya red, aunque se cierre la app.
 class CapturaViewModel(
@@ -81,6 +158,7 @@ class CapturaViewModel(
     private val programarEnvio: () -> Unit,
     private val ubicador: Ubicador,
     private val fotos: Fotos,
+    private val cifrador: Cifrador,
     private val hoy: () -> LocalDate = { LocalDate.now() },
     private val ahora: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
@@ -91,13 +169,25 @@ class CapturaViewModel(
         // Un solo formulario a la vez: lo que haya en borradores es de uno que no se guardó.
         fotos.limpiarBorradores()
         viewModelScope.launch {
-            combine(catalogo.enfermedades(), catalogo.municipios(), ::Pair).collect { (enfermedades, municipios) ->
-                estado = estado.copy(enfermedades = enfermedades, municipios = municipios)
-            }
+            combine(catalogo.enfermedades(), catalogo.municipios(), catalogo.formularios(), ::Triple)
+                .collect { (enfermedades, municipios, formularios) ->
+                    estado = estado.copy(
+                        enfermedades = enfermedades, municipios = municipios,
+                        formularios = formularios.associate { it.enfermedad to json.decodeFromString<Formulario>(it.json) },
+                    )
+                }
         }
     }
 
-    fun elegirEnfermedad(id: Long) = cambiar { copy(enfermedad = id) }
+    // Otra enfermedad trae otro formulario: las respuestas no pasan de uno a otro.
+    fun elegirEnfermedad(id: Long) = cambiar { copy(enfermedad = id, respuestas = if (id == enfermedad) respuestas else emptyMap()) }
+    fun cambiarRespuesta(clave: String, valor: String) = cambiar { copy(respuestas = respuestas + (clave to valor)) }
+    fun escribirUbicacion(latitud: String, longitud: String) = cambiar { copy(latitudManual = latitud, longitudManual = longitud) }
+
+    // Escribir las coordenadas reemplaza a las del GPS, y al revés.
+    fun alternarManual() = cambiar {
+        copy(manual = !manual, ubicacion = null, errorUbicacion = null, latitudManual = "", longitudManual = "")
+    }
     fun elegirMunicipio(id: Long) = cambiar { copy(municipio = id) }
     fun cambiarFechaReporte(dia: LocalDate) = cambiar { copy(fechaReporte = dia) }
     fun cambiarInicioSintomas(dia: LocalDate?) = cambiar { copy(inicioSintomas = dia) }
@@ -109,7 +199,7 @@ class CapturaViewModel(
     fun elegirSeveridad(valor: String?) = cambiar { copy(severidad = valor) }
 
     private fun cambiar(cambio: EstadoCaptura.() -> EstadoCaptura) {
-        estado = estado.cambio().copy(errores = emptyList())
+        estado = estado.cambio().copy(errores = emptyList(), posibleDuplicado = false)
     }
 
     // La pantalla ya pidió el permiso; `precisa` dice si se dio el fino o solo el aproximado.
@@ -203,7 +293,8 @@ class CapturaViewModel(
         }
     }
 
-    fun guardar() {
+    // `confirmado`: la persona ya vio el aviso de posible duplicado y lo guarda de todos modos.
+    fun guardar(confirmado: Boolean = false) {
         if (estado.guardando) return
         val errores = erroresDe(estado, hoy())
         if (errores.isNotEmpty()) {
@@ -218,20 +309,31 @@ class CapturaViewModel(
                 estado = estado.copy(guardando = false, errores = listOf("La sesión se cerró: vuelve a iniciar sesión."))
                 return@launch
             }
+            val repetido = !confirmado && casos.parecidos(cuenta, datos.enfermedad!!, datos.municipio!!, datos.fechaReporte.toString())
+                .map { it.salud(cifrador) }.any { it.edad == datos.edad.toIntOrNull() && it.sexo == datos.sexo }
+            if (repetido) {
+                estado = estado.copy(guardando = false, posibleDuplicado = true)
+                return@launch
+            }
+            val coordenadas = datos.ubicacion?.let { it.latitud to it.longitud } ?: coordenadasManuales(datos).takeIf { datos.manual }
             val caso = CasoLocal(
                 localUuid = UUID.randomUUID().toString(),
                 cuenta = cuenta,
                 enfermedad = datos.enfermedad!!,
                 municipio = datos.municipio!!,
                 fechaReporte = datos.fechaReporte.toString(),
-                inicioSintomas = datos.inicioSintomas?.toString(),
-                edad = datos.edad.toIntOrNull(),
-                sexo = datos.sexo,
-                resultadoPrueba = datos.resultadoPrueba,
-                severidad = datos.severidad,
-                latitud = datos.ubicacion?.latitud,
-                longitud = datos.ubicacion?.longitud,
                 capturadoEn = ahora(),
+                formulario = datos.formulario?.id,
+                datos = DatosDeSalud(
+                    inicioSintomas = datos.inicioSintomas?.toString(),
+                    edad = datos.edad.toIntOrNull(),
+                    sexo = datos.sexo,
+                    resultadoPrueba = datos.resultadoPrueba,
+                    severidad = datos.severidad,
+                    latitud = coordenadas?.first,
+                    longitud = coordenadas?.second,
+                    respuestas = datos.formulario?.let { respuestasDe(it, datos.respuestas) }?.takeIf { it.isNotEmpty() },
+                ).cifrados(cifrador),
             )
             // tomadaEn sigue el orden en que se agregaron.
             val filas = datos.fotos.mapIndexed { i, id -> FotoLocal(id, caso.localUuid, tomadaEn = caso.capturadoEn + i) }
@@ -250,6 +352,7 @@ class CapturaViewModel(
             estado = estado.copy(
                 guardando = false, inicioSintomas = null, edad = "", sexo = null, resultadoPrueba = null,
                 severidad = null, ubicacion = null, errorUbicacion = null, fotos = emptyList(), errorFoto = null,
+                respuestas = emptyMap(), latitudManual = "", longitudManual = "", posibleDuplicado = false,
                 guardados = estado.guardados + 1,
             )
         }

@@ -3,7 +3,9 @@ package com.estudiante.simuladorepidemico.ui.inicio
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.estudiante.simuladorepidemico.avisos.Avisos
+import com.estudiante.simuladorepidemico.local.CatalogoDao
 import com.estudiante.simuladorepidemico.local.Catalogos
+import com.estudiante.simuladorepidemico.red.Apis
 import com.estudiante.simuladorepidemico.local.CasosDao
 import com.estudiante.simuladorepidemico.sesion.Sesion
 import kotlinx.coroutines.CancellationException
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -27,6 +30,8 @@ class InicioViewModel(
     casos: CasosDao,
     catalogos: Catalogos,
     private val avisos: Avisos,
+    private val apis: Apis,
+    catalogo: CatalogoDao,
     programarEnvio: () -> Unit,
     programarAvisos: () -> Unit,
 ) : ViewModel() {
@@ -37,6 +42,14 @@ class InicioViewModel(
     // null mientras no se sabe (sin red, por ejemplo).
     private val avisosNoLeidos = MutableStateFlow<Int?>(null)
     val noLeidos: StateFlow<Int?> = avisosNoLeidos.asStateFlow()
+
+    // Los casos de la cuenta a los que el servidor les marca datos faltantes (D49). null sin red.
+    private val casosIncompletos = MutableStateFlow<Int?>(null)
+    val incompletos: StateFlow<Int?> = casosIncompletos.asStateFlow()
+
+    // Las enfermedades con formulario propio ya guardado para capturar sin red (D48).
+    val formularios: StateFlow<Int> = catalogo.formularios().map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     // RF-I19: la captura es solo del CAPTURISTA. Mientras no se sabe, se muestra: el servidor es
     // quien niega a los demás roles, y un CAPTURISTA sin red no se queda sin capturar.
@@ -71,6 +84,15 @@ class InicioViewModel(
         viewModelScope.launch {
             try {
                 avisosNoLeidos.value = avisos.noLeidos()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Se queda lo que se sabía.
+            }
+        }
+        viewModelScope.launch {
+            try {
+                if (esCapturista.value) casosIncompletos.value = apis.casos().incompletos().total
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

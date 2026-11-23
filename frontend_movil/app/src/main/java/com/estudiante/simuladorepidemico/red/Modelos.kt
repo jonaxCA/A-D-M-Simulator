@@ -2,6 +2,7 @@ package com.estudiante.simuladorepidemico.red
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class Servicio(val nombre: String, val url: String)
@@ -71,6 +72,8 @@ data class Perfil(
     val email: String? = null,
     @SerialName("last_login_at") val ultimoAcceso: String? = null,
     val roles: List<String> = emptyList(),
+    val institucion: String? = null,
+    val region: String? = null,
 )
 
 @Serializable
@@ -99,6 +102,8 @@ data class CasoDeLote(
     val severity: String? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
+    @SerialName("form_id") val formulario: Long? = null,
+    @SerialName("form_answers") val respuestas: JsonObject? = null,
 )
 
 @Serializable
@@ -183,6 +188,89 @@ data class ListaAvisos(
     @SerialName("no_leidas") val noLeidas: Int,
     @SerialName("notificaciones") val avisos: List<Aviso>,
 )
+
+// El formulario de una enfermedad (D48): los campos que suma a los fijos del caso.
+@Serializable
+data class OpcionDeCampo(val valor: String, val etiqueta: String)
+
+@Serializable
+data class CampoDeFormulario(
+    val clave: String,
+    val etiqueta: String,
+    val tipo: String,
+    val obligatorio: Boolean = false,
+    val minimo: Double? = null,
+    val maximo: Double? = null,
+    @SerialName("max_largo") val largoMaximo: Int? = null,
+    val opciones: List<OpcionDeCampo> = emptyList(),
+    val ayuda: String? = null,
+)
+
+@Serializable
+data class Formulario(
+    val id: Long,
+    @SerialName("disease_id") val enfermedad: Long,
+    val version: Int,
+    @SerialName("title") val titulo: String,
+    @SerialName("fields") val campos: List<CampoDeFormulario>,
+)
+
+@Serializable
+data class ListaFormularios(val formularios: List<Formulario>)
+
+// Un caso como lo tiene el servidor (casos), para el seguimiento (D47) y los incompletos (D49).
+@Serializable
+data class CasoRemoto(
+    val id: Long,
+    @SerialName("reported_by") val capturadoPor: Long? = null,
+    @SerialName("disease_id") val enfermedad: Long,
+    @SerialName("enfermedad") val nombreEnfermedad: String? = null,
+    @SerialName("region_id") val municipio: Long,
+    @SerialName("municipio") val nombreMunicipio: String? = null,
+    val age: Int? = null,
+    val sex: String? = null,
+    @SerialName("onset_date") val inicioSintomas: String? = null,
+    @SerialName("report_date") val fechaReporte: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    @SerialName("test_result") val resultadoPrueba: String? = null,
+    val severity: String? = null,
+    val status: String,
+    val version: Int = 1,
+    @SerialName("status_reason") val motivo: String? = null,
+    val faltantes: List<String> = emptyList(),
+)
+
+@Serializable
+data class ListaCasosRemotos(val casos: List<CasoRemoto>, val total: Int = 0)
+
+@Serializable
+data class CambioDeCaso(
+    val version: Int,
+    val action: String,
+    @SerialName("changed_at") val cuando: String,
+    @SerialName("status_before") val estadoAntes: String? = null,
+    @SerialName("status_after") val estadoDespues: String? = null,
+    @SerialName("changes") val cambios: JsonObject = JsonObject(emptyMap()),
+    val reason: String? = null,
+)
+
+@Serializable
+data class HistorialDeCaso(val cambios: List<CambioDeCaso> = emptyList())
+
+// Una fila de la consulta por zona (zonas): casos e incidencia por 100 mil en el periodo.
+@Serializable
+data class Zona(
+    val id: Long,
+    val zona: String,
+    val casos: Int,
+    val incidencia: Double,
+    val graves: Int = 0,
+    val estado: String,
+)
+
+@Serializable
+data class ListaZonas(val zonas: List<Zona>, val total: Int = 0)
 
 // RFC 7807, como lo arma epidemia_comun.errores.
 @Serializable

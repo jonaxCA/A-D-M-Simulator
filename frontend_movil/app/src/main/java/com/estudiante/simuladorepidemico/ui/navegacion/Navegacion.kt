@@ -6,7 +6,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -15,6 +18,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.estudiante.simuladorepidemico.Contenedor
 import com.estudiante.simuladorepidemico.ui.avisos.AvisosViewModel
 import com.estudiante.simuladorepidemico.ui.avisos.PantallaAvisos
@@ -22,6 +26,10 @@ import com.estudiante.simuladorepidemico.ui.casos.CapturaViewModel
 import com.estudiante.simuladorepidemico.ui.casos.MisCasosViewModel
 import com.estudiante.simuladorepidemico.ui.casos.PantallaCaptura
 import com.estudiante.simuladorepidemico.ui.casos.PantallaMisCasos
+import com.estudiante.simuladorepidemico.ui.casos.PantallaSeguimiento
+import com.estudiante.simuladorepidemico.ui.casos.SeguimientoViewModel
+import com.estudiante.simuladorepidemico.ui.consulta.ConsultaViewModel
+import com.estudiante.simuladorepidemico.ui.consulta.PantallaConsulta
 import com.estudiante.simuladorepidemico.ui.inicio.InicioViewModel
 import com.estudiante.simuladorepidemico.ui.inicio.PantallaInicio
 import com.estudiante.simuladorepidemico.ui.login.LoginViewModel
@@ -53,6 +61,12 @@ object Vacunas
 @Serializable
 object Avisos
 
+@Serializable
+data class Seguimiento(val caso: Long)
+
+@Serializable
+object Consulta
+
 @Composable
 fun Navegacion(contenedor: Contenedor, abrirAvisos: Boolean = false, alAbrirAvisos: () -> Unit = {}) {
     val activa by contenedor.sesion.activa.collectAsStateWithLifecycle(initialValue = null)
@@ -62,6 +76,7 @@ fun Navegacion(contenedor: Contenedor, abrirAvisos: Boolean = false, alAbrirAvis
     }
     val nav = rememberNavController()
     val primera = remember { if (conSesion) Inicio else Login }
+    var sesionTerminada by rememberSaveable { mutableStateOf(false) }
 
     // Al cambiar de sesión se vacía la pila: con "atrás" no se regresa al login ni a una pantalla
     // sin sesión.
@@ -69,14 +84,17 @@ fun Navegacion(contenedor: Contenedor, abrirAvisos: Boolean = false, alAbrirAvis
 
     NavHost(navController = nav, startDestination = primera) {
         composable<Login> {
-            PantallaLogin(viewModel { LoginViewModel(contenedor.sesion) }, alQuedarDentro = { soloEn(Inicio) })
+            PantallaLogin(
+                viewModel { LoginViewModel(contenedor.sesion) }, alQuedarDentro = { soloEn(Inicio) },
+                sesionTerminada = sesionTerminada,
+            )
         }
         composable<Inicio> {
             PantallaInicio(
                 viewModel {
                     InicioViewModel(
-                        contenedor.sesion, contenedor.casos, contenedor.catalogos, contenedor.avisos,
-                        contenedor.programarEnvio, contenedor.programarAvisos,
+                        contenedor.sesion, contenedor.casos, contenedor.catalogos, contenedor.avisos, contenedor.apis,
+                        contenedor.catalogo, contenedor.programarEnvio, contenedor.programarAvisos,
                     )
                 },
                 alCapturar = { nav.navigate(Captura) },
@@ -84,6 +102,7 @@ fun Navegacion(contenedor: Contenedor, abrirAvisos: Boolean = false, alAbrirAvis
                 alVerLotes = { nav.navigate(Vacunas) },
                 alVerAvisos = { nav.navigate(Avisos) },
                 alAbrirPerfil = { nav.navigate(MiPerfil) },
+                alConsultar = { nav.navigate(Consulta) },
             )
         }
         composable<Captura> {
@@ -91,7 +110,7 @@ fun Navegacion(contenedor: Contenedor, abrirAvisos: Boolean = false, alAbrirAvis
                 viewModel {
                     CapturaViewModel(
                         contenedor.sesion, contenedor.casos, contenedor.catalogo, contenedor.catalogos,
-                        contenedor.programarEnvio, contenedor.ubicador, contenedor.fotos,
+                        contenedor.programarEnvio, contenedor.ubicador, contenedor.fotos, contenedor.cifrador,
                     )
                 },
                 alVolver = { nav.popBackStack() },
@@ -101,11 +120,23 @@ fun Navegacion(contenedor: Contenedor, abrirAvisos: Boolean = false, alAbrirAvis
             PantallaMisCasos(
                 viewModel {
                     MisCasosViewModel(
-                        contenedor.sesion, contenedor.casos, contenedor.catalogo, contenedor.fotos, contenedor.programarEnvio,
+                        contenedor.sesion, contenedor.apis, contenedor.casos, contenedor.catalogo, contenedor.fotos,
+                        contenedor.programarEnvio,
                     )
                 },
                 alVolver = { nav.popBackStack() },
+                alAbrir = { nav.navigate(Seguimiento(it)) },
             )
+        }
+        composable<Seguimiento> { entrada ->
+            val caso = entrada.toRoute<Seguimiento>().caso
+            PantallaSeguimiento(
+                viewModel { SeguimientoViewModel(contenedor.apis, contenedor.sesion, caso) },
+                alVolver = { nav.popBackStack() },
+            )
+        }
+        composable<Consulta> {
+            PantallaConsulta(viewModel { ConsultaViewModel(contenedor.apis, contenedor.catalogo) }, alVolver = { nav.popBackStack() })
         }
         composable<Vacunas> {
             PantallaVacunas(viewModel { VacunasViewModel(contenedor.apis, contenedor.catalogo) }, alVolver = { nav.popBackStack() })
@@ -124,7 +155,11 @@ fun Navegacion(contenedor: Contenedor, abrirAvisos: Boolean = false, alAbrirAvis
     // Cerrar o perder la sesión (revocada o vencida) regresa al login desde cualquier pantalla.
     // Al iniciarla, el login pasa al inicio por su cuenta, cuando también registró el teléfono.
     LaunchedEffect(conSesion) {
-        if (!conSesion && nav.currentDestination?.hasRoute(Login::class) != true) soloEn(Login)
+        if (!conSesion && nav.currentDestination?.hasRoute(Login::class) != true) {
+            sesionTerminada = true
+            soloEn(Login)
+        }
+        if (conSesion) sesionTerminada = false
     }
 
     // Al tocar la notificación de avisos. Sin sesión se queda en el login: los avisos son de la cuenta.

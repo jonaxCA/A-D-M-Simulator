@@ -28,7 +28,7 @@ import com.estudiante.simuladorepidemico.ubicacion.Ubicador
 // en la app; en las pruebas, nada o un contador).
 class Contenedor(
     datos: DataStore<Preferences>,
-    cifrador: Cifrador,
+    val cifrador: Cifrador,
     directorioUrl: String,
     telefono: DescripcionTelefono,
     val casos: CasosDao,
@@ -49,6 +49,6 @@ class Contenedor(
     val apis = Apis(directorio, clienteConToken(sinToken, almacen, renovador), sinToken)
     val sesion = Sesion(apis, almacen, Telefono(datos, apis, telefono))
     val catalogos = Catalogos(apis, catalogo)
-    val sincronizador = Sincronizador(sesion, apis, casos, fotos)
+    val sincronizador = Sincronizador(sesion, apis, casos, fotos, cifrador)
     val avisos = Avisos(apis, datos, sesion)
 }
