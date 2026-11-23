@@ -40,9 +40,7 @@ La app de escritorio solo deja entrar a ANALISTA y ADMINISTRADOR. En la app Andr
 
 ## Pendiente
 
-- **Migración 034:** crea `scenarios.approve`, lo da a EPIDEMIOLOGO y ADMINISTRADOR, quita `audit.read` al EPIDEMIOLOGO, quita `cases.create` al ADMINISTRADOR y crea `reports.upload` (D35). No está aplicada (ver [`decisiones/todo.md`](../decisiones/todo.md), «Cambios pendientes por D1»).
-- **Candados de la web contra esta matriz:** hoy el monitoreo epidemiológico y las exportaciones solo piden sesión, así que el CAPTURISTA también entra. Falta limitarlo al tablero y al mapa (RF-G11).
-- **La captura de casos en la web** (`/reportes/nuevo`) sigue en el código; D1 la quita.
+- Hecho el 2026-11-22: la migración 034, los candados de la web por permiso (`requiere_permiso`; el CAPTURISTA solo entra al tablero y al mapa) y el retiro de `/reportes/nuevo`. Falta aplicar la 034 a la base de la máquina (`infra/aplica_migraciones.sh 034`).
 
 ## Operaciones que salieron
 

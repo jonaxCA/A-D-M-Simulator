@@ -109,11 +109,14 @@ def get_runs_recientes(limit=20, *, scenario_id=None, scenario_version_id=None, 
         f"""
         SELECT r.id, r.status, r.seed, b.engine, r.queued_at, r.started_at, r.finished_at,
                r.error_message, r.scenario_version_id, sv.scenario_id, sv.version_number,
-               s.name AS scenario_name, u.username AS requested_by_username
+               s.name AS scenario_name, u.username AS requested_by_username,
+               d.name AS disease_name, reg.name AS region_name
         FROM simulation_runs r
         LEFT JOIN simulation_batches b ON b.id = r.batch_id
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
         JOIN scenarios s ON s.id = sv.scenario_id
+        JOIN diseases d  ON d.id = s.disease_id
+        JOIN regions reg ON reg.id = s.region_id
         JOIN users u     ON u.id = r.requested_by
         {where}
         ORDER BY r.queued_at DESC

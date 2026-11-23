@@ -1,0 +1,22 @@
+{
+  "user_id": 2,
+  "roles": [
+    "EPIDEMIOLOGO"
+  ],
+  "permisos": [
+    "catalogs.create",
+    "catalogs.read",
+    "catalogs.update",
+    "cases.approve",
+    "cases.read",
+    "cases.update",
+    "reports.export",
+    "reports.read",
+    "scenarios.approve",
+    "scenarios.export",
+    "scenarios.publish",
+    "scenarios.read",
+    "settings.read",
+    "simulations.read"
+  ]
+}

@@ -33,6 +33,7 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `031_rol_dispositivos.sql` | El rol de `dispositivos`, dueño de `devices`, y la lectura de `devices` (dueño y revocado) que necesita `casos` |
 | `032_rol_evidencias.sql` | El rol de `evidencias`, dueño de `case_attachments` (sin UPDATE: una evidencia se sube o se borra) |
 | `033_rol_vacunas.sql` | El rol de `vacunas`, dueño de `vaccine_lots`; de un lote ya registrado solo cambia `doses_used` |
+| `034_permisos_d1_y_reportes.sql` | Permisos de D1 y D35: crea `scenarios.approve` (EPIDEMIOLOGO y ADMINISTRADOR) y `reports.upload` (ANALISTA y ADMINISTRADOR), quita `audit.read` al EPIDEMIOLOGO y `cases.create` al ADMINISTRADOR |
 | `035_nombres_de_motores.sql` | Los motores cambian de nombre (D2): `python-ref` → `seir-ref`, `numba` → `abm-ref` y `cuda` → `abm-gpu`, en el CHECK, el DEFAULT y los lotes que ya existen. La 034 queda reservada para D1 |
 | `036_tope_de_replicas_100.sql` | El tope de réplicas por lote baja de 200 a 100 (D8): CHECK de `simulation_batches.replicas` y `max_replicas_por_lote` de `system_settings` |
 | `037_avisos_de_casos_y_revision.sql` | Tipos de aviso `NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED` en el CHECK, y lectura de `users`, `user_roles` y `roles` para `svc_notificaciones`. La 036 queda reservada |

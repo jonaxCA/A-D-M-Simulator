@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<permisos><user_id tipo="numero">2</user_id><roles><item>EPIDEMIOLOGO</item></roles><permisos><item>catalogs.create</item><item>catalogs.read</item><item>catalogs.update</item><item>cases.approve</item><item>cases.read</item><item>cases.update</item><item>reports.export</item><item>reports.read</item><item>scenarios.approve</item><item>scenarios.export</item><item>scenarios.publish</item><item>scenarios.read</item><item>settings.read</item><item>simulations.read</item></permisos></permisos>

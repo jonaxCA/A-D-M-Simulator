@@ -42,7 +42,8 @@
     "revisor": null,
     "submitted_at": null,
     "reviewed_at": null,
-    "review_comment": null
+    "review_comment": null,
+    "created_by": 3
   },
   "intervenciones": [
     {
@@ -59,5 +60,8 @@
       },
       "order_index": 0
     }
-  ]
+  ],
+  "region_poblacion": 1142994,
+  "parametros_congelados": true,
+  "parametros_sin_congelar": false
 }

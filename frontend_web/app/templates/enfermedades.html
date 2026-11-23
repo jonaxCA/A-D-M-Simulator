@@ -127,6 +127,7 @@
                title="Editar ficha y parámetros">✎</a>
             <form method="post" action="{{ url_for('main.enfermedad_estado', disease_id=e.id) }}"
                   class="form-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
               <input type="hidden" name="activa" value="{{ '0' if e.activa else '1' }}">
               <button type="submit" class="btn-detalle"
                       title="{{ 'Dar de baja en el catálogo' if e.activa else 'Reactivar en el catálogo' }}">

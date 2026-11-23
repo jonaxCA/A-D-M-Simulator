@@ -1,125 +1,127 @@
-"""
-EPIDEMIA -- Sistema Monolitico v0.1 (Flask + Jinja2 + PostgreSQL).
+"""Rutas de la web (D36): cada pantalla pide sus datos a los servicios.
 
-Primera version funcional del monolito, correspondiente al Primer Avance.
-
-Recorrido funcional actual:
-    dashboard publico (sin login) -> login -> dashboard autenticado -> mapa
-    -> monitoreo -> captura de caso
-
-Alcance de esta version:
-    - Pantallas funcionales: dashboard publico, login, dashboard autenticado,
-      mapa, monitoreo, catalogo de enfermedades, captura de casos, regiones,
-      usuarios, auditoria, escenarios (consulta y aprobacion), simulaciones
-      (consulta de corridas, con resultados e indicadores) y comparacion de
-      corridas con costos y frontera de Pareto.
-    - Crear y editar escenarios, enviarlos a revision y lanzar corridas es de
-      la app de escritorio (D4): la web consulta y aprueba.
-    - Todo corre en un solo proceso Flask contra PostgreSQL directamente,
-      sin la capa de microservicios.
-    - Mapa acotado a Nuevo Leon.
+La web no tiene SQL ni credenciales de PostgreSQL, MongoDB o Redis. backend_web/servicios.py es
+el cliente HTTP; la bitácora la escribe el servicio que hace cada cambio. Crear y editar
+escenarios, enviarlos a revisión y lanzar corridas es de la app de escritorio (D4): aquí se
+consulta y se aprueba. Cada ruta lleva requiere_permiso con su permiso de la matriz (D1); solo el
+tablero y el mapa, que ven todos los roles, usan login_required.
 """
 import csv
 import io
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
-import psycopg2
 from flask import (Blueprint, current_app, jsonify, render_template, request, redirect,
                    url_for, make_response, g, flash)
 
-from backend_web import queries, resultados, servicios, simulaciones
-from backend_web.audit import log_audit
-from backend_web.auth import hash_password
+from backend_web import catalogo, formato, servicios
 from backend_web.servicios import ErrorServicio, ServicioNoDisponible
 
 from . import formularios, presentacion, sesion_servicios
 from .sesion_servicios import COOKIE_REFRESH, MENSAJE_CREDENCIALES, MENSAJE_SIN_SESIONES
-from .permisos import (login_required, admin_required, roles_required, tiene_rol, MENSAJE_SIN_PERMISO,
-                       get_current_user, contexto_de_peticion, token_de_sesion, COOKIE_NAME)
+from .permisos import (login_required, requiere_permiso, tiene_permiso, get_current_user,
+                       token_de_sesion, COOKIE_NAME)
 
 bp = Blueprint("main", __name__)
 
-# Roles con 'simulations.read' en la matriz de permisos de
-# 010_datos_iniciales.sql. CAPTURISTA no lo tiene: no ve escenarios, corridas
-# ni resultados. Lanzar corridas ('simulations.run') ya no es de la web (D4).
-ROLES_LEEN_SIMULACION = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
-ROLES_LEEN_ESCENARIO = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
+# Las exportaciones bajan todo lo que pasa el filtro de la pantalla; enfermedades pagina de 100.
+EXPORT_POR_PAGINA = 100
+MENSAJE_NO_GUARDADO = "El cambio no se guardó."
 
-# Quien fija los parametros epidemiologicos del catalogo (R0, letalidad...),
-# tanto al editar una enfermedad como al darla de alta. Una sola tupla para el
-# candado de las rutas y para lo que pinta la plantilla.
-ROLES_FIJAN_PARAMETROS = ("EPIDEMIOLOGO", "ADMINISTRADOR")
 
-# El catalogo es chico por naturaleza; el export no pagina, baja todo lo que
-# pase el filtro de la pantalla.
-EXPORT_MAX_FILAS = 1000
+def seccion(servicio, funcion, *args, defecto=None, **kwargs):
+    """Lo que regresa `funcion`, o `defecto` si su servicio no responde. La pantalla sigue y el
+    aviso de base_app.html dice qué servicio faltó (D36)."""
+    try:
+        return funcion(*args, **kwargs)
+    except ServicioNoDisponible as exc:
+        caidos = g.setdefault("servicios_caidos", [])
+        if exc.servicio not in caidos:
+            caidos.append(exc.servicio)
+        return defecto
+
+
+def _falla_de_escritura(exc):
+    """El texto de un rechazo del servicio para un formulario. 401 y 403 suben a su manejador."""
+    if exc.estado in (401, 403):
+        raise exc
+    return exc.detalle or "El servicio rechazó el cambio."
 
 
 @bp.app_context_processor
 def inject_globals():
-    user = get_current_user()
+    # Solo pintan u ocultan opciones; el control real es requiere_permiso en cada ruta.
+    try:
+        user = get_current_user()
+    except ServicioNoDisponible:
+        user = None
+
+    def puede(codigo=None):
+        return tiene_permiso(user, codigo)
+
+    def avisos_sin_leer():
+        # La campana no tumba la página: sin notificaciones, no muestra número.
+        try:
+            return servicios.avisos(token_de_sesion(), True, 1)[1]
+        except (ServicioNoDisponible, ErrorServicio):
+            return 0
+
     return {
         "current_user": user,
         "now": datetime.now(timezone.utc),
-        "es_admin": tiene_rol(user, "ADMINISTRADOR"),
-        # Quien puede fijar los parametros epidemiologicos del catalogo. Es
-        # solo para mostrar u ocultar botones: el control real esta en
-        # roles_required, en cada ruta.
-        "puede_editar_catalogo": tiene_rol(user, *ROLES_FIJAN_PARAMETROS),
-        # Quien decide una revision. Aprobar o rechazar es del EPIDEMIOLOGO y de
-        # nadie mas: el ADMINISTRADOR ve la bandeja, pero no dictamina.
-        "puede_revisar": tiene_rol(user, "EPIDEMIOLOGO"),
-        "ve_bandeja": tiene_rol(user, "EPIDEMIOLOGO", "ADMINISTRADOR"),
-        # Solo pinta u oculta la opcion del menu; el candado real esta en
-        # roles_required, en cada ruta de simulaciones.
-        "ve_simulaciones": tiene_rol(user, *ROLES_LEEN_SIMULACION),
-        #IGUAL QUE LO ANTERIOR PERO ESCENARIOS
-        "ve_escenarios": tiene_rol(user, *ROLES_LEEN_ESCENARIO),
+        "puede": puede,
+        "avisos_sin_leer": avisos_sin_leer,
+        "servicios_caidos": g.get("servicios_caidos", []),
+        "es_admin": puede("users.read"),
+        "puede_editar_catalogo": puede("catalogs.update"),
+        # Aprobar o rechazar (scenarios.approve): EPIDEMIOLOGO y ADMINISTRADOR, nunca la suya.
+        "puede_revisar": puede("scenarios.approve"),
+        "ve_bandeja": puede("scenarios.approve"),
+        "ve_simulaciones": puede("simulations.read"),
+        "ve_escenarios": puede("scenarios.read"),
         # Aviso obligatorio en simulacion, resultados y comparacion.
-        "aviso_simulacion": simulaciones.AVISO_SIMULACION,
+        "aviso_simulacion": formato.AVISO_SIMULACION,
     }
-
 
 
 @bp.route("/health")
 def salud():
-    """Para el healthcheck del contenedor (frontend_web/Dockerfile): el proceso responde. No toca
-    la base ni los servicios, para que la web no se reinicie cuando uno de ellos cae."""
+    """Para el healthcheck del contenedor: el proceso responde. No llama a los servicios, para
+    que la web no se reinicie cuando uno de ellos cae."""
     return {"servicio": "web", "estado": "ok"}
 
 
 # ---------------------------------------------------------------------------
-# 1. Dashboard publico -- sin login
+# Tablero público y tablero -- indicadores (RF-G11: lo ven todos los roles)
 # ---------------------------------------------------------------------------
+INDICADORES_VACIOS = {"casos_activos": 0, "casos_pct": 0, "tasa_incidencia": 0, "tasa_pct": 0,
+                      "zonas_en_riesgo": 0, "simulaciones_activas": 0, "indicadores": []}
+
+
+def _panorama():
+    return {
+        "indicadores": seccion("indicadores", servicios.indicadores_tablero, defecto=INDICADORES_VACIOS),
+        "situacion": seccion("indicadores", servicios.resumen_situacion, defecto=[]),
+        "curva": seccion("indicadores", servicios.curva_tablero, defecto=[]),
+    }
+
+
 @bp.route("/")
 def dashboard_publico():
-    if get_current_user():
-        return redirect(url_for("main.dashboard"))
-    indicadores = queries.get_resumen_indicadores()
-    situacion = queries.get_resumen_situacion()
-    curva = queries.get_curva_epidemica(30)
-    return render_template(
-        "dashboard_publico.html",
-        indicadores=indicadores,
-        situacion=situacion,
-        curva=curva,
-        report_link=url_for("main.login"),
-    )
+    try:
+        if get_current_user():
+            return redirect(url_for("main.dashboard"))
+    except ServicioNoDisponible:
+        pass
+    return render_template("dashboard_publico.html", report_link=url_for("main.login"),
+                           **_panorama())
 
 
 # ---------------------------------------------------------------------------
-# 2. Login
+# Login y logout -- auth y sesiones (D36)
 # ---------------------------------------------------------------------------
 def destino_seguro(destino):
-    """`destino` si es una ruta de ESTE sitio; None si no.
-
-    `?next=` llega en la URL, asi que cualquiera puede armar un enlace
-    `/login?next=https://sitio-falso` y usar nuestro login para mandar a la
-    gente, ya autenticada, a otro dominio. Solo se acepta una ruta absoluta
-    local. `//host` y `/\\host` se rechazan aparte: los navegadores los leen
-    como "mismo esquema, otro dominio".
-    """
+    """`destino` si es una ruta de ESTE sitio; None si no (evita el redirect abierto)."""
     if not destino or not destino.startswith("/"):
         return None
     if destino.startswith(("//", "/\\")) or "\\" in destino:
@@ -140,8 +142,7 @@ def _pantalla_login(error, usuario, estado=200):
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():
-    # D36: auth revisa captcha y contraseña y audita LOGIN y LOGIN_FAILED; la web solo guarda
-    # los tokens que regresa.
+    # auth revisa captcha y contraseña y audita LOGIN y LOGIN_FAILED; la web guarda los tokens.
     if request.method == "GET":
         try:
             if get_current_user():
@@ -158,14 +159,14 @@ def login():
     except ServicioNoDisponible:
         return _pantalla_login(MENSAJE_SIN_SESIONES, usuario, 503)
     except ErrorServicio as exc:
-        mensaje = MENSAJE_CREDENCIALES if exc.estado in (400, 401, 422) else (exc.detalle or MENSAJE_CREDENCIALES)
-        return _pantalla_login(mensaje, usuario, 401 if exc.estado in (400, 401, 422) else exc.estado)
+        credenciales = exc.estado in (400, 401, 422)
+        mensaje = MENSAJE_CREDENCIALES if credenciales else (exc.detalle or MENSAJE_CREDENCIALES)
+        return _pantalla_login(mensaje, usuario, 401 if credenciales else exc.estado)
     next_url = destino_seguro(request.args.get("next")) or url_for("main.dashboard")
     resp = make_response(redirect(next_url))
-    resp.set_cookie(COOKIE_NAME, datos["access_token"], httponly=True, secure=request.is_secure, samesite="Lax",
-                    max_age=60 * 60 * 8)
-    resp.set_cookie(COOKIE_REFRESH, datos["refresh_token"], httponly=True, secure=request.is_secure, samesite="Lax",
-                    max_age=60 * 60 * 8)
+    for nombre, valor in ((COOKIE_NAME, datos["access_token"]), (COOKIE_REFRESH, datos["refresh_token"])):
+        resp.set_cookie(nombre, valor, httponly=True, secure=request.is_secure, samesite="Lax",
+                        max_age=60 * 60 * 8)
     return resp
 
 
@@ -179,125 +180,52 @@ def logout():
     return resp
 
 
-# ---------------------------------------------------------------------------
-# 3. Dashboard autenticado
-# ---------------------------------------------------------------------------
 @bp.route("/dashboard")
 @login_required
 def dashboard():
-    indicadores = queries.get_resumen_indicadores()
-    situacion = queries.get_resumen_situacion()
-    curva = queries.get_curva_epidemica(30)
-    return render_template(
-        "dashboard.html",
-        indicadores=indicadores,
-        situacion=situacion,
-        curva=curva,
-        active_nav="dashboard",
-        report_link=url_for("main.export_resumen_csv"),
-    )
+    enlace = (url_for("main.export_resumen_csv") if tiene_permiso(g.user, "reports.export")
+              else url_for("main.mapa"))
+    return render_template("dashboard.html", active_nav="dashboard", report_link=enlace,
+                           **_panorama())
 
 
 # ---------------------------------------------------------------------------
-# 4. Mapa epidemiologico -- Nuevo Leon
+# Mapa epidemiológico -- zonas (RF-G11: lo ven todos los roles)
 # ---------------------------------------------------------------------------
+PERIODOS_MAPA = (7, 30, 60)
+
+
+def _filtros_mapa():
+    dias = request.args.get("dias", default=30, type=int)
+    return (request.args.get("enfermedad", default=None, type=int),
+            dias if dias in PERIODOS_MAPA else 30)
+
+
 @bp.route("/mapa")
 @login_required
 def mapa():
-    dias = request.args.get("dias", default=30, type=int)
-    disease_id = request.args.get("enfermedad", default=None, type=int)
-    if dias not in (7, 30, 60):
-        dias = 30
-
-    municipios = queries.get_mapa_municipios(disease_id=disease_id, dias=dias)
-    for m in municipios:
-        m["tendencia"] = queries.get_tendencia_zona(m["id"], disease_id=disease_id, dias=14)
-    enfermedades = queries.get_enfermedades_catalogo()
-
-    return render_template(
-        "mapa.html",
-        municipios=municipios,
-        enfermedades=enfermedades,
-        dias=dias,
-        disease_id=disease_id,
-        active_nav="mapa",
-    )
+    disease_id, dias = _filtros_mapa()
+    enfermedades = seccion("zonas", servicios.enfermedades_con_casos, token_de_sesion(), defecto=[])
+    return render_template("mapa.html", enfermedades=enfermedades, dias=dias,
+                           disease_id=disease_id, active_nav="mapa")
 
 
 @bp.route("/api/mapa")
 @login_required
 def api_mapa():
-    dias = request.args.get("dias", default=30, type=int)
-    disease_id = request.args.get("enfermedad", default=None, type=int)
-    if dias not in (7, 30, 60):
-        dias = 30
-    municipios = queries.get_mapa_municipios(disease_id=disease_id, dias=dias)
-    for m in municipios:
-        m["tendencia"] = queries.get_tendencia_zona(m["id"], disease_id=disease_id, dias=14)
-    # `serie` alimenta la linea de tiempo: mismo corte y misma ventana movil que
-    # `municipios`, asi que su ultimo cuadro es identico al mapa estatico.
-    serie = queries.get_mapa_serie_temporal(disease_id=disease_id, dias=dias)
-    return {"municipios": municipios, "serie": serie}
-
-
-@bp.route("/reportes/nuevo", methods=["GET", "POST"])
-@login_required
-def reporte_nuevo():
-    """Captura de un caso epidemiologico -- el "+ Nuevo Reporte" del dashboard.
-
-    Abierta a cualquier usuario autenticado: capturar es justamente el trabajo
-    de campo del EPIDEMIOLOGO, no del administrador. El reporte queda firmado
-    con `reported_by` y ademas deja un CREATE en audit_log.
-
-    Nota de alcance: con esto `cases` deja de ser de solo lectura, que era una
-    restriccion explicita del proyecto. Es el unico camino de escritura hacia
-    esa tabla y solo inserta -- no edita ni borra casos existentes.
-    """
-    catalogos = {
-        "enfermedades": queries.get_enfermedades_para_captura(),
-        "municipios": queries.get_municipios_catalogo(),
-        "sexos": queries.SEXOS,
-        "resultados": queries.RESULTADOS,
-        "severidades": queries.SEVERIDADES,
-        "hoy": date.today().isoformat(),
-    }
-
-    if request.method == "GET":
-        return render_template("reporte_form.html", catalogos=catalogos,
-                               form={}, errores=[], active_nav="dashboard")
-
-    datos, errores = queries.valida_caso(request.form, catalogos["enfermedades"],
-                                         catalogos["municipios"])
-    if errores:
-        return render_template("reporte_form.html", catalogos=catalogos,
-                               form=request.form, errores=errores,
-                               active_nav="dashboard"), 400
-
-    nuevo_id, error = queries.crear_caso(datos, g.user["sub"])
-    if error:
-        return render_template("reporte_form.html", catalogos=catalogos,
-                               form=request.form, errores=[error],
-                               active_nav="dashboard"), 400
-
-    caso = queries.get_caso(nuevo_id)
-    log_audit(contexto_de_peticion(), "CREATE", "cases", entity_id=str(nuevo_id),
-              data_after=dict(caso))
-    flash(f"Reporte #{nuevo_id} capturado: {caso['enfermedad']} en "
-          f"{caso['municipio']}, {caso['report_date']}. Queda pendiente de validación.", "ok")
-    return redirect(url_for("main.dashboard"))
+    disease_id, dias = _filtros_mapa()
+    try:
+        return servicios.mapa(token_de_sesion(), disease_id, dias)
+    except ServicioNoDisponible as exc:
+        return jsonify({"error": "Este dato no está disponible por ahora (servicio «%s»)."
+                                 % exc.servicio}), 503
 
 
 # ---------------------------------------------------------------------------
-# 5. Catalogo de enfermedades
+# Catálogo de enfermedades -- enfermedades y parametros
 # ---------------------------------------------------------------------------
 def _filtros_enfermedades(args):
-    """Normaliza los filtros de la pantalla. Lo comparten la vista y el export
-    para que el CSV baje exactamente lo que se esta viendo.
-
-    Un estado fuera del dominio se descarta en vez de llegar a la consulta: el
-    filtro se arma concatenando fragmentos de WHERE, asi que solo pasan claves
-    conocidas.
-    """
+    """Los filtros de la pantalla; los comparten la vista y el export."""
     estado = args.get("estado") or ""
     return {
         "busqueda": (args.get("q") or "").strip(),
@@ -306,192 +234,131 @@ def _filtros_enfermedades(args):
 
 
 def _filtros_url(filtros):
-    """Los mismos filtros con el nombre que llevan en la URL, sin los vacios,
-    para reinyectarlos en los links de paginado y de export."""
     nombres = {"busqueda": "q", "estado": "estado"}
     return {nombres[k]: v for k, v in filtros.items() if v}
 
 
+LISTADO_VACIO = {"enfermedades": [], "total": 0, "pagina": 1, "por_pagina": 10, "paginas": 1,
+                 "desde": 0, "hasta": 0}
+STATS_VACIAS = {"registradas": 0, "altas_30d": 0, "activas": 0, "activas_pct": 0,
+                "inactivas": 0, "detectadas_30d": 0}
+
+
 @bp.route("/enfermedades")
-@login_required
+@requiere_permiso("catalogs.read", "diseases")
 def enfermedades():
     filtros = _filtros_enfermedades(request.args)
-    pagina = request.args.get("pagina", default=1, type=int)
+    pagina = max(1, request.args.get("pagina", default=1, type=int))
     return render_template(
         "enfermedades.html",
-        stats=queries.get_enfermedades_stats(),
-        listado=queries.get_enfermedades(pagina=pagina, **filtros),
-        filtros=filtros,
-        filtros_url=_filtros_url(filtros),
-        active_nav="enfermedades",
-    )
+        stats=seccion("enfermedades", servicios.enfermedades_stats, defecto=STATS_VACIAS),
+        listado=seccion("enfermedades", servicios.enfermedades, filtros["busqueda"],
+                        filtros["estado"], pagina, defecto=LISTADO_VACIO),
+        filtros=filtros, filtros_url=_filtros_url(filtros), active_nav="enfermedades")
+
+
+def _form_enfermedad(enfermedad, params, errores, estado=200):
+    return render_template("enfermedad_form.html", enfermedad=enfermedad,
+                           parametros=catalogo.estado_parametros(params), errores=errores,
+                           active_nav="enfermedades"), estado
 
 
 @bp.route("/enfermedades/nueva", methods=["GET", "POST"])
-@login_required
+@requiere_permiso("catalogs.create", "diseases")
 def enfermedad_nueva():
-    """Alta en el catalogo de enfermedades.
-
-    Abierta a cualquier usuario autenticado, no solo al administrador: quien
-    detecta un padecimiento que no esta en el catalogo es la gente de campo.
-    Queda registrada en audit_log con el usuario que la dio de alta, que es lo
-    que hace aceptable abrirla.
-
-    Nota de alcance: este es el segundo camino de escritura de la app (el
-    primero es el CRUD de usuarios) y el unico que toca una tabla del dominio
-    epidemiologico. Los casos, escenarios y simulaciones siguen siendo de solo
-    lectura.
-
-    Lo que SI esta restringido son los parametros de simulacion: fijar R0 o la
-    letalidad es de EPIDEMIOLOGO y ADMINISTRADOR, igual que en la edicion. Para
-    cualquier otro rol la enfermedad nace sin parametros (no simulable) y el
-    formulario ni siquiera los muestra; un POST armado a mano que los traiga
-    se procesa como si no vinieran.
-    """
+    """Alta en el catálogo (EPIDEMIOLOGO y ADMINISTRADOR, D1). enfermedades da de alta la ficha
+    y parametros guarda R0, letalidad y demás, cada uno con su bitácora."""
     if request.method == "GET":
-        return render_template("enfermedad_form.html", enfermedad=None,
-                               parametros=queries.estado_parametros({}),
-                               errores=[], active_nav="enfermedades")
+        return _form_enfermedad(None, {}, [])
 
-    fija_parametros = tiene_rol(g.user, *ROLES_FIJAN_PARAMETROS)
-    datos = {
-        "code": queries.normaliza_codigo(request.form.get("code")),
-        "name": (request.form.get("name") or "").strip(),
-        "description": (request.form.get("description") or "").strip(),
-    }
-    if fija_parametros:
-        params, errores = queries.parametros_desde_form(request.form)
-    else:
-        params, errores = {}, []
-    errores = queries.valida_enfermedad(datos["code"], datos["name"]) + errores
-
+    datos = {"code": catalogo.normaliza_codigo(request.form.get("code")),
+             "name": (request.form.get("name") or "").strip(),
+             "description": (request.form.get("description") or "").strip()}
+    params, errores = catalogo.parametros_desde_form(request.form)
+    errores = catalogo.valida_enfermedad(datos["code"], datos["name"]) + errores
     if errores:
-        return render_template("enfermedad_form.html", enfermedad=datos,
-                               parametros=queries.estado_parametros(params),
-                               errores=errores, active_nav="enfermedades"), 400
+        return _form_enfermedad(datos, params, errores, 400)
 
-    nuevo_id, error = queries.crear_enfermedad(
-        datos["code"], datos["name"], datos["description"], params)
-    if error:
-        return render_template("enfermedad_form.html", enfermedad=datos,
-                               parametros=queries.estado_parametros(params),
-                               errores=[error], active_nav="enfermedades"), 400
-
-    log_audit(contexto_de_peticion(), "CREATE", "diseases", entity_id=str(nuevo_id),
-              data_after=_snapshot_enfermedad(queries.get_enfermedad(nuevo_id)))
+    token = token_de_sesion()
+    try:
+        nuevo_id = servicios.crea_enfermedad(token, datos["code"], datos["name"], datos["description"])
+    except ErrorServicio as exc:
+        return _form_enfermedad(datos, params, [_falla_de_escritura(exc)], 400)
+    if params:
+        try:
+            servicios.fija_parametros(token, nuevo_id, params)
+        except (ErrorServicio, ServicioNoDisponible) as exc:
+            detalle = exc.detalle if isinstance(exc, ErrorServicio) else "el servicio parametros no respondió"
+            flash(f"«{datos['name']}» quedó registrada, pero sus parámetros no se guardaron: "
+                  f"{detalle}. Captúralos al editarla.", "warn")
+            return redirect(url_for("main.enfermedad_editar", disease_id=nuevo_id))
     flash(f"Enfermedad «{datos['name']}» registrada con el código {datos['code']}.", "ok")
     return redirect(url_for("main.enfermedades"))
 
 
-def _snapshot_enfermedad(e):
-    """Lo que se guarda en audit_log. created_at no viaja: no cambia nunca y
-    json no serializa datetime sin ayuda."""
-    if not e:
-        return None
-    return {"id": e["id"], "code": e["code"], "name": e["name"],
-            "description": e["description"], "is_active": e["is_active"],
-            "default_params": e["default_params"]}
-
-
 @bp.route("/enfermedades/<int:disease_id>/editar", methods=["GET", "POST"])
-@roles_required(*ROLES_FIJAN_PARAMETROS)
+@requiere_permiso("catalogs.update", "diseases")
 def enfermedad_editar(disease_id):
-    """Edicion del catalogo, incluidos los parametros que consume el motor.
-
-    Restringida a EPIDEMIOLOGO y ADMINISTRADOR: el alta la puede hacer
-    cualquiera (quien detecta un padecimiento nuevo es la gente de campo), pero
-    fijar R0 o la letalidad es una decision tecnica con consecuencias en cada
-    simulacion que se corra despues.
-
-    El codigo no se edita: es la llave natural con la que ya estan ligados los
-    casos y los escenarios.
-    """
-    actual = queries.get_enfermedad(disease_id)
+    """El código no se edita: es la llave con la que están ligados casos y escenarios."""
+    actual = servicios.enfermedad(disease_id)
     if not actual:
         flash("Esa enfermedad ya no existe en el catálogo.", "error")
         return redirect(url_for("main.enfermedades"))
-
     if request.method == "GET":
-        return render_template("enfermedad_form.html", enfermedad=actual,
-                               parametros=queries.estado_parametros(actual["default_params"]),
-                               errores=[], active_nav="enfermedades")
+        return _form_enfermedad(actual, actual["default_params"], [])
 
-    datos = {
-        "code": actual["code"],
-        "name": (request.form.get("name") or "").strip(),
-        "description": (request.form.get("description") or "").strip(),
-    }
-    params, errores = queries.parametros_desde_form(request.form, actual["default_params"])
-    errores = queries.valida_enfermedad(datos["code"], datos["name"]) + errores
-
+    datos = {"name": (request.form.get("name") or "").strip(),
+             "description": (request.form.get("description") or "").strip()}
+    params, errores = catalogo.parametros_desde_form(request.form, actual["default_params"])
+    errores = catalogo.valida_enfermedad(actual["code"], datos["name"]) + errores
+    vista = {**actual, **datos}
     if errores:
-        return render_template("enfermedad_form.html",
-                               enfermedad={**actual, **datos},
-                               parametros=queries.estado_parametros(params),
-                               errores=errores, active_nav="enfermedades"), 400
+        return _form_enfermedad(vista, params, errores, 400)
 
-    antes = _snapshot_enfermedad(actual)
-    ok, error = queries.actualiza_enfermedad(
-        disease_id, datos["name"], datos["description"], params)
-    if not ok:
-        return render_template("enfermedad_form.html",
-                               enfermedad={**actual, **datos},
-                               parametros=queries.estado_parametros(params),
-                               errores=[error], active_nav="enfermedades"), 400
-
-    log_audit(contexto_de_peticion(), "UPDATE", "diseases", entity_id=str(disease_id),
-              data_before=antes,
-              data_after=_snapshot_enfermedad(queries.get_enfermedad(disease_id)))
+    token = token_de_sesion()
+    try:
+        servicios.edita_enfermedad(token, disease_id, datos["name"], datos["description"])
+        if params != (actual["default_params"] or {}):
+            servicios.fija_parametros(token, disease_id, params)
+    except ErrorServicio as exc:
+        return _form_enfermedad(vista, params, [_falla_de_escritura(exc)], 400)
     flash(f"«{datos['name']}» actualizada.", "ok")
     return redirect(url_for("main.enfermedades"))
 
 
 @bp.route("/enfermedades/<int:disease_id>/estado", methods=["POST"])
-@roles_required(*ROLES_FIJAN_PARAMETROS)
+@requiere_permiso("catalogs.update", "diseases")
 def enfermedad_estado(disease_id):
-    """Baja y alta logica del catalogo. Nunca borra: los casos capturados
-    apuntan a la enfermedad con ON DELETE RESTRICT."""
-    actual = queries.get_enfermedad(disease_id)
+    """Baja y alta lógica: nunca borra, los casos apuntan a la enfermedad."""
+    actual = servicios.enfermedad(disease_id)
     if not actual:
         flash("Esa enfermedad ya no existe en el catálogo.", "error")
         return redirect(url_for("main.enfermedades"))
-
     activa = request.form.get("activa") == "1"
-    queries.set_enfermedad_activa(disease_id, activa)
-    log_audit(contexto_de_peticion(), "UPDATE", "diseases", entity_id=str(disease_id),
-              data_before=_snapshot_enfermedad(actual),
-              data_after=_snapshot_enfermedad(queries.get_enfermedad(disease_id)))
+    try:
+        servicios.activa_enfermedad(token_de_sesion(), disease_id, activa)
+    except ErrorServicio as exc:
+        flash(_falla_de_escritura(exc), "error")
+        return redirect(url_for("main.enfermedades"))
     flash(f"«{actual['name']}» quedó {'activa' if activa else 'inactiva'} en el catálogo.", "ok")
-    return redirect(request.referrer or url_for("main.enfermedades"))
+    return redirect(destino_seguro(urlsplit(request.referrer or "").path) or url_for("main.enfermedades"))
 
 
-# Una hoja de calculo lee como formula la celda que empieza con alguno de estos
-# caracteres. Los nombres de enfermedad los escribe cualquier usuario
-# autenticado, asi que un nombre como =HYPERLINK(...) se ejecutaria en la
-# computadora de quien abra el export.
+# Una hoja de cálculo lee como fórmula la celda que empieza con alguno de estos caracteres.
 _INICIO_DE_FORMULA = ("=", "+", "-", "@", "\t", "\r")
 
 
 def _celda_csv(valor):
-    """El valor tal cual, salvo el texto que una hoja de calculo leeria como
-    formula: a ese se le antepone un apostrofo, como recomienda OWASP. Los
-    numeros no se tocan: un -12.5 de monitoreo es un numero, no una formula."""
+    """El texto que una hoja de cálculo leería como fórmula lleva un apóstrofo (OWASP)."""
     if isinstance(valor, str) and valor.startswith(_INICIO_DE_FORMULA):
         return "'" + valor
     return valor
 
 
 def _csv(nombre_archivo, encabezados, filas):
-    """Respuesta de descarga con un CSV. Todas las exportaciones pasan por aqui
-    para que el formato del archivo se decida en un solo lugar.
-
-    Empieza con el BOM de UTF-8: sin el, Excel en Windows abre el archivo con
-    la codificacion local y muestra "CÃ³digo" en vez de "Código". Quien lo lea
-    con un programa tiene que usar `utf-8-sig`, que acepta el archivo con o
-    sin BOM.
-    """
+    """Descarga CSV en UTF-8 con BOM, para que Excel en Windows lea bien los acentos."""
     buf = io.StringIO()
-    buf.write("\ufeff")
+    buf.write("﻿")
     writer = csv.writer(buf)
     writer.writerow(encabezados)
     writer.writerows([_celda_csv(v) for v in fila] for fila in filas)
@@ -502,11 +369,16 @@ def _csv(nombre_archivo, encabezados, filas):
 
 
 @bp.route("/export/enfermedades.csv")
-@login_required
+@requiere_permiso("reports.export", "reports")
 def export_enfermedades_csv():
-    log_audit(contexto_de_peticion(), "EXPORT", "reports", entity_id="catalogo_enfermedades")
     filtros = _filtros_enfermedades(request.args)
-    listado = queries.get_enfermedades(pagina=1, por_pagina=EXPORT_MAX_FILAS, **filtros)
+    filas, pagina = [], 1
+    while True:
+        listado = servicios.enfermedades(filtros["busqueda"], filtros["estado"], pagina, EXPORT_POR_PAGINA)
+        filas += listado["enfermedades"]
+        if pagina >= listado["paginas"]:
+            break
+        pagina += 1
     return _csv(
         "catalogo_enfermedades.csv",
         ["Código", "Enfermedad", "Estado", "Actividad", "Alta en catálogo",
@@ -517,18 +389,14 @@ def export_enfermedades_csv():
           e["casos_total"], e["casos_30d"],
           "Sí" if e["parametros"]["simulable"] else "No",
           len(e["parametros"]["faltan"]), len(e["parametros"]["supuestos"])]
-         for e in listado["enfermedades"]),
+         for e in filas),
     )
 
 
-# ---------------------------------------------------------------------------
-# Extras chicos pero reales: exportar CSV, y el resto del sidebar
-# ---------------------------------------------------------------------------
 @bp.route("/export/resumen.csv")
-@login_required
+@requiere_permiso("reports.export", "reports")
 def export_resumen_csv():
-    log_audit(contexto_de_peticion(), "EXPORT", "reports", entity_id="resumen_situacion")
-    situacion = queries.get_resumen_situacion(limit=20)
+    situacion = servicios.exporta_situacion(token_de_sesion(), 20)
     return _csv(
         "resumen_situacion.csv",
         ["Enfermedad", "Estado", "Casos (7 dias)"],
@@ -538,265 +406,208 @@ def export_resumen_csv():
 
 
 # ---------------------------------------------------------------------------
-# Regiones -- Nuevo Leon y sus 51 municipios
+# Regiones -- regiones y poblacion. Corregir población es solo del ADMINISTRADOR.
 # ---------------------------------------------------------------------------
-# Consulta abierta a cualquier usuario autenticado (igual que Enfermedades).
-# La edicion de poblacion, mas abajo, es exclusiva de ADMINISTRADOR: tanto el
-# GET como el POST pasan por admin_required(entity_type="regions"), asi que un
-# intento por URL directa o por un POST armado a mano tambien rebota y queda
-# en la bitacora como PERMISSION_DENIED sobre "regions".
+CATALOGO_VACIO = {"municipios": [], "total": 0, "busqueda": "", "orden": "nombre", "direccion": "asc"}
+
+
 @bp.route("/regiones")
-@login_required
+@requiere_permiso("catalogs.read", "regions")
 def regiones():
     busqueda = (request.args.get("q") or "").strip() or None
     orden = request.args.get("orden") or "nombre"
     direccion = request.args.get("dir") or "asc"
-    catalogo = queries.get_regiones_catalogo(busqueda=busqueda, orden=orden, direccion=direccion)
+    if orden not in ("nombre", "poblacion", "poblacion_60"):
+        orden = "nombre"
+    if direccion not in ("asc", "desc"):
+        direccion = "asc"
     return render_template(
         "regiones.html",
-        estado=queries.get_estado_nl(),
-        catalogo=catalogo,
-        active_nav="regiones",
-    )
+        estado=seccion("regiones", servicios.estado_nl),
+        catalogo=seccion("regiones", servicios.regiones_catalogo, busqueda, orden, direccion,
+                         defecto=dict(CATALOGO_VACIO, busqueda=busqueda or "")),
+        active_nav="regiones")
 
 
 @bp.route("/regiones/<int:region_id>/editar", methods=["GET", "POST"])
-@admin_required(entity_type="regions")
+@requiere_permiso("settings.update", "regions")
 def region_editar(region_id):
-    """Correccion manual de la poblacion total de un municipio. Exclusiva de
-    ADMINISTRADOR: la clave INEGI, el nombre, el nivel y el padre no se tocan
-    aqui, y el estado no se edita aparte -- se recalcula solo, como el agregado
-    de sus 51 municipios (queries.actualiza_poblacion_municipio).
-
-    La poblacion de 60 y mas tampoco se edita: desde la migracion 022 se deriva
-    de los grupos de edad del censo. Se muestra, pero de solo lectura."""
-    municipio = queries.get_region_municipio(region_id)
+    """Corrección manual de la población total de un municipio (poblacion valida, guarda,
+    recalcula el estado y audita). El 60+ se deriva de los grupos de edad (022)."""
+    municipio = servicios.municipio(region_id)
     if not municipio:
         flash("Ese municipio ya no existe en el catálogo.", "error")
         return redirect(url_for("main.regiones"))
 
     if request.method == "GET":
-        valores = {"population": municipio["population"], "motivo": ""}
         return render_template("region_form.html", municipio=municipio, errores=[],
-                               valores=valores, active_nav="regiones")
+                               valores={"population": municipio["population"], "motivo": ""},
+                               active_nav="regiones")
 
-    population_raw = request.form.get("population")
-    motivo = request.form.get("motivo") or ""
-    esperado_population, ok_pob = formularios.esperado(request.form, "esperado_population")
-    valores = {"population": population_raw, "motivo": motivo}
-
-    poblacion, errores = queries.valida_poblacion_municipio(
-        population_raw, motivo, municipio["population_60plus"])
+    valores = {"population": request.form.get("population"), "motivo": request.form.get("motivo") or ""}
+    esperado, ok_pob = formularios.esperado(request.form, "esperado_population")
     if not ok_pob:
-        errores.append("No se pudo verificar el estado del formulario. Recarga la página e intenta de nuevo.")
-
+        errores = ["No se pudo verificar el estado del formulario. Recarga la página e intenta de nuevo."]
+    else:
+        try:
+            resultado = servicios.corrige_poblacion(token_de_sesion(), region_id,
+                                                    valores["population"], esperado, valores["motivo"])
+            errores = []
+        except ErrorServicio as exc:
+            errores = [_falla_de_escritura(exc)]
     if errores:
         return render_template("region_form.html", municipio=municipio, errores=errores,
-                               valores=valores, active_nav="regiones"), 400
-
-    ok, error, resultado = queries.actualiza_poblacion_municipio(
-        region_id, poblacion, motivo, esperado_population,
-        contexto=contexto_de_peticion(),
-    )
-    if not ok:
-        return render_template("region_form.html", municipio=municipio, errores=[error],
                                valores=valores, active_nav="regiones"), 400
 
     mensaje = f"Población de «{resultado['municipio']}» actualizada."
     if resultado["estado_actualizado"]:
         mensaje += " El total de Nuevo León se recalculó con la suma de sus 51 municipios."
     flash(mensaje, "ok")
-
-    # Si a algun municipio le falta el dato, el total del estado se queda como
-    # estaba: sumarlo daria una cifra mas baja que la real y se veria como si
-    # fuera el total verdadero. Se avisa en vez de publicar una suma incompleta.
     if resultado["municipios_sin_poblacion"]:
-        flash(
-            f"El total de población de Nuevo León no se recalculó: "
-            f"{resultado['municipios_sin_poblacion']} municipio(s) no tienen ese "
-            f"dato capturado.",
-            "warn",
-        )
+        flash(f"El total de población de Nuevo León no se recalculó: "
+              f"{resultado['municipios_sin_poblacion']} municipio(s) no tienen ese dato capturado.",
+              "warn")
     return redirect(url_for("main.regiones"))
 
 
+GRUPOS_FORM = (("0-19", "grupo_0_19", "esperado_0_19"), ("20-39", "grupo_20_39", "esperado_20_39"),
+               ("40-59", "grupo_40_59", "esperado_40_59"), ("60-79", "grupo_60_79", "esperado_60_79"),
+               ("80+", "grupo_80_mas", "esperado_80_mas"))
+
+
 @bp.route("/regiones/<int:region_id>/edades", methods=["GET", "POST"])
-@admin_required(entity_type="regions")
+@requiere_permiso("settings.update", "regions")
 def region_edades_editar(region_id):
-    """Corrige bandas de edad en un municipio; el 60+ se deriva de 60-79 y 80+."""
-    municipio = queries.get_region_municipio(region_id)
+    """Corrige las bandas de edad de un municipio; el 60+ se deriva de 60-79 y 80+."""
+    municipio = servicios.municipio(region_id)
     if not municipio:
         flash("Ese municipio ya no existe en el catálogo.", "error")
         return redirect(url_for("main.regiones"))
 
-    desglose = queries.get_grupos_edad_municipio(region_id)
-    campos = [
-        {"grupo": grupo, "campo": campo, "esperado": esperado}
-        for grupo, campo, esperado in (
-            ("0-19", "grupo_0_19", "esperado_0_19"),
-            ("20-39", "grupo_20_39", "esperado_20_39"),
-            ("40-59", "grupo_40_59", "esperado_40_59"),
-            ("60-79", "grupo_60_79", "esperado_60_79"),
-            ("80+", "grupo_80_mas", "esperado_80_mas"),
-        )
-    ]
-    for campo in campos:
-        campo["etiqueta"] = (
-            "80 años o más" if campo["grupo"] == "80+"
-            else f"{campo['grupo']} años")
+    desglose = servicios.grupos_edad_municipio(region_id)
+    campos = [{"grupo": grupo, "campo": campo, "esperado": esperado,
+               "etiqueta": "80 años o más" if grupo == "80+" else f"{grupo} años"}
+              for grupo, campo, esperado in GRUPOS_FORM]
     if not desglose or any(c["grupo"] not in desglose["grupos"] for c in campos):
-        flash(
-            "Este municipio no tiene todas sus bandas de edad cargadas. "
-            "Vuelve a ejecutar datos/postgres/semillas/nl_municipios_completos.sql.",
-            "error",
-        )
+        flash("Este municipio no tiene todas sus bandas de edad cargadas. "
+              "Vuelve a ejecutar datos/postgres/semillas/nl_municipios_completos.sql.", "error")
         return redirect(url_for("main.regiones"))
+
+    def pantalla(valores, errores, estado=200):
+        return render_template("region_edades_form.html", municipio=municipio, campos=campos,
+                               desglose=desglose, valores=valores, errores=errores,
+                               active_nav="regiones"), estado
 
     if request.method == "GET":
         valores = {c["campo"]: desglose["grupos"][c["grupo"]] for c in campos}
-        valores["motivo"] = ""
-        return render_template(
-            "region_edades_form.html", municipio=municipio, campos=campos,
-            desglose=desglose, valores=valores, errores=[], active_nav="regiones",
-        )
+        return pantalla(dict(valores, motivo=""), [])
 
     valores = {c["campo"]: request.form.get(c["campo"]) for c in campos}
-    valores["motivo"] = request.form.get("motivo") or ""
-    grupos_raw = {c["grupo"]: valores[c["campo"]] for c in campos}
-    grupos, errores = queries.valida_grupos_edad_municipio(
-        grupos_raw, desglose["grupos"])
-    motivo = valores["motivo"].strip()
-    if not motivo:
-        errores.append("Indica la fuente o el motivo de la corrección.")
-    elif len(motivo) > 500:
-        errores.append("La fuente o motivo no puede pasar de 500 caracteres.")
-
-    esperados = {}
+    valores["motivo"] = (request.form.get("motivo") or "").strip()
+    errores, esperados = [], {}
     for c in campos:
         esperados[c["grupo"]], valido = formularios.esperado(request.form, c["esperado"])
         if not valido:
-            errores.append("No se pudo verificar el estado del formulario. Recarga la página.")
-    esperados["edad_no_especificada"], valido_sin_edad = formularios.esperado(
+            errores = ["No se pudo verificar el estado del formulario. Recarga la página."]
+    esperados["edad_no_especificada"], valido = formularios.esperado(
         request.form, "esperado_edad_no_especificada")
-    if not valido_sin_edad:
+    if not valido:
         errores.append("No se pudo verificar la edad no especificada. Recarga la página.")
-
+    if not valores["motivo"]:
+        errores.append("Indica la fuente o el motivo de la corrección.")
     if errores:
-        return render_template(
-            "region_edades_form.html", municipio=municipio, campos=campos,
-            desglose=desglose, valores=valores, errores=errores,
-            active_nav="regiones",
-        ), 400
+        return pantalla(valores, errores, 400)
 
-    ok, error, resultado = queries.actualiza_grupos_edad_municipio(
-        region_id, grupos, esperados, motivo, contexto=contexto_de_peticion())
-    if not ok:
-        return render_template(
-            "region_edades_form.html", municipio=municipio, campos=campos,
-            desglose=desglose, valores=valores, errores=[error],
-            active_nav="regiones",
-        ), 400
+    grupos = {c["grupo"]: valores[c["campo"]] for c in campos}
+    try:
+        resultado = servicios.corrige_grupos_edad(token_de_sesion(), region_id, grupos, esperados,
+                                                  valores["motivo"])
+    except ErrorServicio as exc:
+        return pantalla(valores, [_falla_de_escritura(exc)], 400)
 
     mensaje = f"Bandas de edad de «{resultado['municipio']}» actualizadas. "
     mensaje += f"El 60+ derivado ahora es {resultado['population_60plus']:,}."
-    if resultado["estado_actualizado"]:
+    if resultado.get("estado_actualizado"):
         mensaje += " También se recalcularon las bandas agregadas de Nuevo León."
     flash(mensaje, "ok")
     return redirect(url_for("main.regiones"))
 
 
 # ---------------------------------------------------------------------------
-# Escenarios -- consulta y dictamen
+# Escenarios y aprobación -- escenarios, validacion y aprobacion (D36, paso 2)
 # ---------------------------------------------------------------------------
-# Crear, versionar, duplicar, editar intervenciones y enviar a revision es de
-# la app de escritorio, por medio de los servicios (D4). Aqui se consulta, de
-# ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR, y el EPIDEMIOLOGO dictamina.
 @bp.route("/escenarios")
-@roles_required(*ROLES_LEEN_ESCENARIO, entity_type="scenarios")
+@requiere_permiso("scenarios.read", "scenarios")
 def escenarios():
     busqueda = (request.args.get("q") or "").strip() or None
     return render_template(
         "escenarios.html",
-        escenarios=queries.get_escenarios(busqueda=busqueda),
-        busqueda=busqueda or "",
-        active_nav="escenarios",
-    )
+        escenarios=seccion("escenarios", servicios.escenarios, token_de_sesion(), busqueda, defecto=[]),
+        busqueda=busqueda or "", active_nav="escenarios")
 
 
 @bp.route("/escenarios/<int:scenario_id>")
-@roles_required(*ROLES_LEEN_ESCENARIO, entity_type="scenarios")
+@requiere_permiso("scenarios.read", "scenarios")
 def escenario_detalle(scenario_id):
-    """Detalle de una version, de solo lectura. Sin `?version=` muestra la
-    vigente; con uno, esa: un historial que no se puede abrir no sirve para
-    entender como llego el escenario a donde esta. El motor revisa la version
-    para que quien dictamina vea lo que la simulacion haria con ella."""
-    pedida = request.args.get("version", type=int)
-    detalle = queries.get_escenario_detalle(scenario_id, pedida)
+    """Detalle de una versión, de solo lectura. Sin `?version=` muestra la vigente."""
+    token = token_de_sesion()
+    detalle = servicios.escenario_detalle(token, scenario_id, request.args.get("version", type=int))
     if detalle is None:
         flash("Ese escenario o esa versión no existe.", "error")
         return redirect(url_for("main.escenarios"))
-
-    errores_motor, avisos_motor = queries.revisa_version(detalle)
-    # D6: population_size son agentes; cuantos habitantes representa cada uno.
-    escala = (simulaciones.escala(detalle["escenario"]["region_poblacion"],
-                                  detalle["version"]["population_size"])
-              if detalle["version"] else None)
+    version = detalle["version"]
+    errores_motor, avisos_motor = (seccion("validacion", servicios.revisa_version, token, version["id"],
+                                           defecto=([], [])) if version else ([], []))
+    # D6: population_size son agentes; cuántos habitantes representa cada uno.
+    escala = (formato.escala(detalle["escenario"].get("region_poblacion"), version["population_size"])
+              if version else None)
     return render_template(
         "escenario_detalle.html", **detalle,
-        versiones=queries.get_versiones(scenario_id),
+        versiones=seccion("escenarios", servicios.versiones, token, scenario_id, defecto=[]),
         errores_motor=errores_motor, avisos_motor=avisos_motor, escala=escala,
+        validacion_caida="validacion" in g.get("servicios_caidos", []),
         active_nav="escenarios")
 
 
-# ---------------------------------------------------------------------------
-# Flujo de aprobacion
-# ---------------------------------------------------------------------------
-# Enviar a revision es de quien armo el escenario, desde la app de escritorio
-# (D4). Dictaminar es del EPIDEMIOLOGO, y solo de el: el ADMINISTRADOR ve la
-# bandeja pero no aprueba, porque quien opera el sistema no es quien valida la
-# epidemiologia. La base ademas impide que nadie revise su propia version
-# (ck_scenario_versions_no_autoaprobacion).
 @bp.route("/escenarios/<int:scenario_id>/revisar", methods=["POST"])
-@roles_required("EPIDEMIOLOGO", entity_type="scenario_versions")
+@requiere_permiso("scenarios.approve", "scenario_versions")
 def version_revisar(scenario_id):
-    # D36: el dictamen lo resuelve el servicio aprobacion (valida, audita y avisa al autor).
+    # aprobacion valida, impide revisar la propia, audita y avisa al autor en los dos casos (I1).
     try:
         estado = servicios.revisar(token_de_sesion(), scenario_id, request.form.get("decision"),
                                    request.form.get("comentario"))
     except ErrorServicio as exc:
-        if exc.estado in (401, 403):
-            raise
-        flash(exc.detalle or "No se pudo registrar el dictamen.", "error")
+        flash(_falla_de_escritura(exc), "error")
         return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
-    # "Versión aprobado" chirría: el estado de la base es masculino y la
-    # versión es femenina, así que el mensaje usa su propia palabra.
     if estado == "aprobado":
-        flash("Versión aprobada. Ya se puede simular.", "ok")
+        flash("Versión aprobada. Ya se puede simular. Se avisó a quien la armó.", "ok")
     else:
-        flash("Versión rechazada. Quien la armó puede crear una versión nueva con "
-              "las correcciones en la app de escritorio.", "ok")
+        flash("Versión rechazada. Se avisó a quien la armó, que puede crear una versión nueva "
+              "con las correcciones en la app de escritorio.", "ok")
     return redirect(url_for("main.escenario_detalle", scenario_id=scenario_id))
 
 
 @bp.route("/revisiones")
-@roles_required("EPIDEMIOLOGO", "ADMINISTRADOR", entity_type="scenario_versions")
+@requiere_permiso("scenarios.approve", "scenario_versions")
 def revisiones():
-    """Bandeja de versiones esperando dictamen, la mas antigua primero (servicio aprobacion)."""
-    return render_template("revisiones.html",
-                           pendientes=servicios.pendientes_revision(token_de_sesion()),
-                           active_nav="revisiones")
+    """Bandeja de versiones esperando dictamen, la más antigua primero."""
+    return render_template(
+        "revisiones.html",
+        pendientes=seccion("aprobacion", servicios.pendientes_revision, token_de_sesion(), defecto=[]),
+        active_nav="revisiones")
 
 
 # ---------------------------------------------------------------------------
-# 6. Monitoreo -- analisis epidemiologico
+# Monitoreo -- series y zonas
 # ---------------------------------------------------------------------------
 INDICADORES = {"incidencia": "Incidencia / 100k", "casos": "Casos confirmados"}
 PERIODOS = (7, 30, 90)
+ZONAS_VACIAS = {"zonas": [], "total": 0, "pagina": 1, "paginas": 1, "desde": 0, "hasta": 0}
+TOTALES_VACIOS = {"casos": 0, "casos_previo": 0, "casos_pct": 0, "incidencia": 0, "incidencia_previa": 0}
 
 
 def _filtros_monitoreo(args):
-    """Normaliza los filtros de Monitoreo. Igual que en Enfermedades, lo que no
-    pertenece al dominio se descarta antes de llegar a la consulta."""
+    """Lo que no pertenece al dominio se descarta antes de llegar al servicio."""
     indicador = args.get("indicador") or ""
     dias = args.get("dias", type=int)
     return {
@@ -815,51 +626,37 @@ def _monitoreo_url(filtros):
 
 
 @bp.route("/monitoreo")
-@login_required
+@requiere_permiso("reports.read", "reports")
 def monitoreo():
     f = _filtros_monitoreo(request.args)
-    pagina = request.args.get("pagina", default=1, type=int)
-    ambito = {"disease_id": f["disease_id"], "region_id": f["region_id"], "dias": f["dias"]}
+    pagina = max(1, request.args.get("pagina", default=1, type=int))
+    token = token_de_sesion()
+    ambito = (token, f["disease_id"], f["region_id"], f["dias"])
 
-    serie = queries.get_monitoreo_serie(**ambito)
-    edades = queries.get_monitoreo_edad(**ambito)
-    sexos = queries.get_monitoreo_sexo(**ambito)
-    totales = queries.get_monitoreo_totales(**ambito)
-    zonas = queries.get_monitoreo_zonas(busqueda=f["busqueda"] or None,
-                                        orden=f["indicador"], pagina=pagina, **ambito)
-    # La tarjeta geografica compara todas las zonas del ambito, como las otras
-    # dos tarjetas, y en el orden fijo de la consulta: no depende de la pagina,
-    # la busqueda ni el orden que se eligieron para la tabla.
-    todas = queries.get_monitoreo_zonas(pagina=1, por_pagina=EXPORT_MAX_FILAS, **ambito)
+    serie = seccion("series", servicios.monitoreo_serie, *ambito, defecto=[])
+    edades = seccion("series", servicios.monitoreo_edad, *ambito, defecto=[])
+    sexos = seccion("series", servicios.monitoreo_sexo, *ambito, defecto=[])
+    totales = seccion("series", servicios.monitoreo_totales, *ambito, defecto=TOTALES_VACIOS)
+    zonas = seccion("zonas", servicios.monitoreo_zonas, *ambito, f["busqueda"] or None,
+                    f["indicador"], pagina, defecto=ZONAS_VACIAS)
+    # La tarjeta geográfica compara todas las zonas del ámbito, en el orden fijo del servicio.
+    todas = seccion("zonas", servicios.monitoreo_zonas, *ambito, por_pagina=100, defecto=ZONAS_VACIAS)
 
     return render_template(
-        "monitoreo.html",
-        serie=serie,
-        edades=edades,
-        sexos=sexos,
-        totales=totales,
-        zonas=zonas,
+        "monitoreo.html", serie=serie, edades=edades, sexos=sexos, totales=totales, zonas=zonas,
         insights=presentacion.monitoreo_insights(todas["zonas"], edades, totales, f["dias"]),
-        enfermedades=queries.get_enfermedades_catalogo(),
-        municipios=queries.get_municipios_catalogo(),
-        indicadores=INDICADORES,
-        periodos=PERIODOS,
-        filtros=f,
-        filtros_url=_monitoreo_url(f),
-        active_nav="monitoreo",
-    )
+        enfermedades=seccion("zonas", servicios.enfermedades_con_casos, token, defecto=[]),
+        municipios=seccion("regiones", servicios.municipios_catalogo, defecto=[]),
+        indicadores=INDICADORES, periodos=PERIODOS, filtros=f, filtros_url=_monitoreo_url(f),
+        active_nav="monitoreo")
 
 
 @bp.route("/export/monitoreo.csv")
-@login_required
+@requiere_permiso("reports.export", "reports")
 def export_monitoreo_csv():
     f = _filtros_monitoreo(request.args)
-    log_audit(contexto_de_peticion(), "EXPORT", "reports", entity_id="monitoreo_zonas")
-    zonas = queries.get_monitoreo_zonas(
-        disease_id=f["disease_id"], region_id=f["region_id"], dias=f["dias"],
-        busqueda=f["busqueda"] or None, orden=f["indicador"],
-        pagina=1, por_pagina=EXPORT_MAX_FILAS,
-    )
+    zonas = servicios.exporta_zonas(token_de_sesion(), f["disease_id"], f["region_id"], f["dias"],
+                                    f["busqueda"] or None, f["indicador"])
     return _csv(
         "monitoreo_zonas.csv",
         ["Zona", f"Casos ({f['dias']} días)", "Incidencia / 100k",
@@ -871,450 +668,480 @@ def export_monitoreo_csv():
 
 
 # ---------------------------------------------------------------------------
-# 6.5 Simulaciones -- estados y resultados
+# Simulaciones -- corridas y resultados (D36, paso 3). Solo lectura (D4).
 # ---------------------------------------------------------------------------
-# De solo lectura. Las corridas las lanza la app de escritorio por medio de
-# `corridas`, y el simulador las ejecuta desde la cola de Redis (D4): la web
-# no corre simulaciones.
 @bp.route("/simulaciones")
-@roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
+@requiere_permiso("simulations.read", "simulations")
 def simulaciones_lista():
+    token = token_de_sesion()
     return render_template(
         "simulaciones.html",
-        versiones=queries.listar_versiones_escenario(),
-        runs=queries.get_runs_recientes(20),
-        aviso_simulacion=simulaciones.AVISO_SIMULACION,
-        active_nav="simulaciones",
-    )
-
-
-def _sin_acceso_a_resultados(sin_acceso):
-    if sin_acceso.args[0] == 401:
-        return redirect(url_for("main.login"))
-    log_audit(contexto_de_peticion(), "PERMISSION_DENIED", "simulations", entity_id=request.path)
-    flash(MENSAJE_SIN_PERMISO, "error")
-    return redirect(url_for("main.dashboard", denegado=1))
-
-
-def _curvas(run_id):
-    """La serie de una corrida, que vive en MongoDB y solo la da resultados (D28); None si
-    resultados no responde. Lanza SinAcceso con un 401 o un 403."""
-    return resultados.curvas_de_corrida(request.cookies.get(COOKIE_NAME), run_id,
-                                        getattr(g, "correlation_id", None))
+        versiones=seccion("escenarios", servicios.todas_las_versiones, token, defecto=[]),
+        runs=seccion("corridas", servicios.corridas, token, 20, defecto=[]),
+        active_nav="simulaciones")
 
 
 @bp.route("/simulaciones/corridas/<int:run_id>")
-@roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
+@requiere_permiso("simulations.read", "simulations")
 def simulacion_detalle(run_id):
-    run = queries.get_run(run_id)
+    token = token_de_sesion()
+    run = servicios.corrida(token, run_id)
     if not run:
         flash("Esa corrida ya no existe.", "error")
         return redirect(url_for("main.simulaciones_lista"))
 
-    resultado = queries.get_resultado_run(run_id) if run["status"] == "completado" else None
-    equivalente = None
-    if resultado:
-        try:
-            # Sin resultados, el resumen sin curvas (RF-F21).
-            resultado = {**resultado, "serie": _curvas(run_id)}
-        except resultados.SinAcceso as sin_acceso:
-            return _sin_acceso_a_resultados(sin_acceso)
-        equivalente = queries.buscar_run_equivalente(
-            run_id, run["scenario_version_id"], run["seed"], resultado["scenario_checksum"],
-        )
-        if equivalente:
-            # scenario_checksum ya prueba que la ENTRADA fue identica; esto
-            # ademas compara la SALIDA, para que la pantalla nunca afirme una
-            # reproduccion que en realidad no coincidio (lo que delataria un
-            # bug de no-determinismo en el motor).
-            equivalente["coincide"] = (equivalente["resumen"] == resultado["resumen"])
+    resultado = equivalente = None
+    if run["status"] == "completado":
+        # Sin MongoDB, el resumen sin curvas (RF-F21); sin resultados, solo los datos de la corrida.
+        resultado = seccion("resultados", servicios.resultado, token, run_id)
+        otra = seccion("corridas", servicios.corrida_equivalente, token, run_id)
+        if resultado and otra:
+            # La huella prueba que la ENTRADA fue idéntica; esto compara además la SALIDA.
+            equivalente = dict(otra, coincide=otra.get("resumen") == resultado.get("resumen"))
 
-    # Las simplificaciones son las del motor que corrio (seir-ref o abm-ref, D2).
-    version_actual, simplificaciones = (
-        simulaciones.motor_de_resultado(resultado["engine_version"]) if resultado
-        else (simulaciones.ENGINE_VERSION, simulaciones.SIMPLIFICACIONES))
+    motor = (resultado or {}).get("engine_version") or run.get("engine_version")
+    version_actual, simplificaciones = (formato.motor_de_resultado(motor) if motor
+                                        else (formato.ENGINE_VERSION, formato.SIMPLIFICACIONES))
+    if resultado and resultado.get("simplificaciones"):
+        simplificaciones = resultado["simplificaciones"]
+    # resultados trae la escala de D6; sin ella, la pantalla no muestra equivalentes.
+    escala = (resultado or {}).get("escala") or {"factor": None, "avisos": [], "representados": {}}
+    if resultado and not resultado.get("engine_version"):
+        resultado["engine_version"] = run.get("engine_version")
     return render_template(
-        "simulacion_detalle.html",
-        run=run,
-        resultado=resultado,
-        equivalente=equivalente,
-        aviso_simulacion=simulaciones.AVISO_SIMULACION,
-        simplificaciones=simplificaciones,
-        engine_version_actual=version_actual,
-        # D6: los conteos de la corrida son de agentes; su equivalente en habitantes.
-        escala=simulaciones.escala(run["region_population"], run["population_size"],
-                                   resultado["resumen"] if resultado else None),
-        active_nav="simulaciones",
-    )
+        "simulacion_detalle.html", run=run, resultado=resultado, equivalente=equivalente,
+        categoria=(resultado or {}).get("categoria"), simplificaciones=simplificaciones,
+        engine_version_actual=version_actual, escala=escala, active_nav="simulaciones")
 
 
 @bp.route("/simulaciones/corridas/<int:run_id>/estado")
-@roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
+@requiere_permiso("simulations.read", "simulations")
 def simulacion_estado(run_id):
-    """Endpoint de polling: la pantalla de detalle lo consulta cada segundo
-    mientras la corrida esta encolada o ejecutandose, y recarga la pagina
-    completa (para pintar indicadores y graficas) en cuanto cambia a un
-    estado terminal."""
-    run = queries.get_run(run_id)
+    """Polling de la pantalla de detalle mientras la corrida está encolada o ejecutándose."""
+    try:
+        run = servicios.corrida(token_de_sesion(), run_id)
+    except ServicioNoDisponible:
+        return jsonify({"error": "El servicio «corridas» no respondió."}), 503
     if not run:
         return jsonify({"error": "no encontrada"}), 404
     return jsonify({
         "status": run["status"],
-        "estado_visible": simulaciones.estado_visible(run["status"]),
+        "estado_visible": formato.estado_visible(run["status"]),
         "progress": run["progress"],
         "error_message": run["error_message"],
         "terminal": run["status"] in ("completado", "fallido", "cancelado"),
     })
 
 
+@bp.route("/comparacion")
+@requiere_permiso("simulations.read", "simulations")
+def comparacion():
+    """Curvas (comparacion, que las pide a resultados) y costo contra impacto (pareto)."""
+    token = token_de_sesion()
+    seleccionados = request.args.getlist("run_id")
+    run_ids = formularios.ids_de(seleccionados)
+    corridas, comparacion_pareto, errores_pareto = [], None, []
+    if len(run_ids) == 1:
+        flash("Selecciona al menos dos corridas completadas para compararlas.", "warn")
+    elif len(run_ids) >= 2:
+        try:
+            corridas = servicios.comparacion(token, run_ids)
+        except ErrorServicio as exc:
+            flash(_falla_de_escritura(exc), "error")
+        except ServicioNoDisponible as exc:
+            g.setdefault("servicios_caidos", []).append(exc.servicio)
+        try:
+            comparacion_pareto = servicios.pareto(token, run_ids)
+        except ErrorServicio as exc:
+            # Sin personas-día por dosis (D3) u otro dato, pareto se niega y dice por qué.
+            errores_pareto = [_falla_de_escritura(exc)]
+        except ServicioNoDisponible as exc:
+            g.setdefault("servicios_caidos", []).append(exc.servicio)
+    runs = seccion("corridas", servicios.corridas, token, 100, "completado", defecto=[])
+    return render_template(
+        "comparacion.html", runs=runs, corridas=corridas,
+        sin_curvas=[c["id"] for c in corridas if not c.get("serie")],
+        seleccionados=seleccionados, comparacion_pareto=comparacion_pareto,
+        errores_pareto=errores_pareto, active_nav="comparacion")
+
+
+@bp.route("/comparacion/costos", methods=["GET", "POST"])
+@requiere_permiso("catalogs.update", "intervention_types")
+def comparacion_costos():
+    # tipos-intervencion da el catálogo; intervenciones valida, guarda y audita (D36).
+    tipos = servicios.tipos_intervencion()
+    if request.method == "GET":
+        return render_template("comparacion_costos.html", tipos=tipos, errores=[],
+                               active_nav="comparacion")
+
+    tipo_id = request.form.get("intervention_type_id", type=int)
+    if not any(t["id"] == tipo_id for t in tipos):
+        flash("El tipo de intervención no existe.", "error")
+        return redirect(url_for("main.comparacion_costos"))
+    try:
+        if request.form.get("campo") == "personas_dia":
+            servicios.fija_personas_dia_tipo(
+                token_de_sesion(), tipo_id, request.form.get("person_days_per_unit"),
+                request.form.get("person_days_source"),
+                request.form.get("person_days_is_assumption") == "1")
+            flash("Personas-día por dosis actualizadas.", "ok")
+        else:
+            servicios.fija_costo_tipo(
+                token_de_sesion(), tipo_id, request.form.get("unit_cost"),
+                request.form.get("cost_source"), request.form.get("cost_is_assumption") == "1")
+            flash("Costo de la intervención actualizado.", "ok")
+    except ErrorServicio as exc:
+        return render_template("comparacion_costos.html", tipos=tipos,
+                               errores=[_falla_de_escritura(exc)], active_nav="comparacion"), 400
+    return redirect(url_for("main.comparacion_costos"))
+
+
 # ---------------------------------------------------------------------------
-# 7. Usuarios y Auditoria -- con datos reales de Postgres (ver notas de
-#    alcance en queries.py)
+# Vigilancia -- casos por región y periodo, con su seguimiento (C7, D47)
 # ---------------------------------------------------------------------------
+ESTADOS_CASO = {"pendiente": "Pendiente", "validado": "Validado", "duplicado": "Duplicado",
+                "descartado": "Descartado"}
+CASOS_VACIOS = {"casos": [], "total": 0, "pagina": 1, "por_pagina": 20, "paginas": 0}
+
+
+def _fecha_iso(texto):
+    try:
+        return date.fromisoformat(texto).isoformat() if texto else None
+    except ValueError:
+        return None
+
+
+@bp.route("/vigilancia")
+@requiere_permiso("cases.read", "cases")
+def vigilancia():
+    hoy = date.today()
+    filtros = {
+        "disease_id": request.args.get("enfermedad", type=int),
+        "region_id": request.args.get("municipio", type=int),
+        "estado": request.args.get("estado") if request.args.get("estado") in ESTADOS_CASO else None,
+        "desde": _fecha_iso(request.args.get("desde")) or (hoy - timedelta(days=30)).isoformat(),
+        "hasta": _fecha_iso(request.args.get("hasta")) or hoy.isoformat(),
+    }
+    pagina = max(1, request.args.get("pagina", default=1, type=int))
+    token = token_de_sesion()
+    try:
+        listado = servicios.casos(token, filtros["disease_id"], filtros["region_id"], filtros["estado"],
+                                  filtros["desde"], filtros["hasta"], pagina)
+    except ErrorServicio as exc:
+        flash(_falla_de_escritura(exc), "error")
+        listado = CASOS_VACIOS
+    except ServicioNoDisponible as exc:
+        g.setdefault("servicios_caidos", []).append(exc.servicio)
+        listado = CASOS_VACIOS
+    return render_template(
+        "vigilancia.html", listado=listado, filtros=filtros, estados=ESTADOS_CASO,
+        enfermedades=seccion("zonas", servicios.enfermedades_con_casos, token, defecto=[]),
+        municipios=seccion("regiones", servicios.municipios_catalogo, defecto=[]),
+        filtros_url={k: v for k, v in {"enfermedad": filtros["disease_id"],
+                                       "municipio": filtros["region_id"], "estado": filtros["estado"],
+                                       "desde": filtros["desde"], "hasta": filtros["hasta"]}.items() if v},
+        active_nav="vigilancia")
+
+
+@bp.route("/vigilancia/casos/<int:case_id>", methods=["GET", "POST"])
+@requiere_permiso("cases.read", "cases")
+def caso_detalle(case_id):
+    """El caso y su historial (casos). Validar, descartar o marcar duplicado es del
+    EPIDEMIOLOGO (cases.approve, D47), con la versión que se leyó para no pisar otro cambio."""
+    token = token_de_sesion()
+    if request.method == "POST":
+        if not tiene_permiso(g.user, "cases.approve"):
+            from flask import abort
+            abort(403)
+        try:
+            servicios.cambia_estado_caso(
+                token, case_id, request.form.get("version", type=int), request.form.get("estado"),
+                (request.form.get("motivo") or "").strip() or None,
+                request.form.get("duplicado_de", type=int))
+            flash("Estado del caso actualizado. Si lo descartaste o lo marcaste duplicado, se "
+                  "avisó a quien lo capturó.", "ok")
+        except ErrorServicio as exc:
+            if exc.estado == 412:
+                flash("Otra persona cambió este caso mientras lo veías. Revisa la versión actual y "
+                      "vuelve a intentarlo.", "warn")
+            else:
+                flash(_falla_de_escritura(exc), "error")
+        return redirect(url_for("main.caso_detalle", case_id=case_id))
+
+    caso = servicios.caso(token, case_id)
+    if not caso:
+        flash("Ese caso no existe.", "error")
+        return redirect(url_for("main.vigilancia"))
+    historial = seccion("casos", servicios.historial_caso, token, case_id, defecto=[])
+    return render_template("caso_detalle.html", caso=caso, historial=historial, estados=ESTADOS_CASO,
+                           active_nav="vigilancia")
+
+
+# ---------------------------------------------------------------------------
+# Campañas de salud -- vacunas (D49)
+# ---------------------------------------------------------------------------
+ESTADOS_CAMPANA = {"programada": "Programada", "activa": "Activa", "terminada": "Terminada",
+                   "cancelada": "Cancelada"}
+
+
+@bp.route("/campanas", methods=["GET", "POST"])
+@requiere_permiso("cases.read", "campaigns")
+def campanas():
+    """Consulta las campañas; las crean y cancelan EPIDEMIOLOGO y ADMINISTRADOR (catalogs.update),
+    y vacunas avisa a los CAPTURISTA."""
+    token = token_de_sesion()
+    errores, valores = [], {}
+    if request.method == "POST":
+        if not tiene_permiso(g.user, "catalogs.update"):
+            from flask import abort
+            abort(403)
+        valores = {k: (request.form.get(k) or "").strip() for k in
+                   ("name", "disease_id", "region_id", "starts_on", "ends_on", "target_population",
+                    "description")}
+        try:
+            if request.form.get("cancelar"):
+                servicios.cancela_campana(token, request.form.get("cancelar", type=int),
+                                          (request.form.get("motivo") or "").strip())
+                flash("Campaña cancelada.", "ok")
+            else:
+                servicios.crea_campana(token, valores)
+                flash("Campaña registrada. Se avisó a los capturistas.", "ok")
+            return redirect(url_for("main.campanas"))
+        except ErrorServicio as exc:
+            errores = [_falla_de_escritura(exc)]
+    estado = request.args.get("estado") if request.args.get("estado") in ESTADOS_CAMPANA else None
+    return render_template(
+        "campanas.html",
+        campanas=seccion("vacunas", servicios.campanas, token, estado, defecto=[]),
+        estado=estado, estados=ESTADOS_CAMPANA, errores=errores, valores=valores,
+        enfermedades=seccion("enfermedades", servicios.enfermedades, None, "activa", 1, 100,
+                             defecto=LISTADO_VACIO)["enfermedades"],
+        municipios=seccion("regiones", servicios.municipios_catalogo, defecto=[]),
+        active_nav="campanas"), 400 if errores else 200
+
+
+# ---------------------------------------------------------------------------
+# Reportes -- las descargas de la web en un solo lugar (C7)
+# ---------------------------------------------------------------------------
+@bp.route("/reportes")
+@requiere_permiso("reports.read", "reports")
+def reportes():
+    return render_template("reportes.html", active_nav="reportes")
+
+
+# ---------------------------------------------------------------------------
+# Usuarios -- usuarios y roles (D36, paso 7). Solo ADMINISTRADOR.
+# ---------------------------------------------------------------------------
+RESUMEN_VACIO = {"total": 0, "activos": 0, "pendientes": 0, "inactivos": 0}
+
+
 @bp.route("/usuarios")
-@admin_required
+@requiere_permiso("users.read", "users")
 def usuarios():
+    token = token_de_sesion()
     busqueda = request.args.get("q") or None
     rol_id = request.args.get("rol", type=int)
     estado = request.args.get("estado") or None
-
-    resumen = queries.get_usuarios_resumen()
-    roles = queries.get_roles_catalogo()
-    lista = queries.get_usuarios_lista(busqueda=busqueda, rol_id=rol_id, estado=estado)
-
+    if estado not in (None, "activo", "pendiente", "inactivo"):
+        estado = None
     return render_template(
         "usuarios.html",
-        resumen=resumen,
-        roles=roles,
-        usuarios=lista,
-        filtro_q=busqueda or "",
-        filtro_rol=rol_id,
-        filtro_estado=estado,
-        active_nav="usuarios",
-    )
+        resumen=seccion("usuarios", servicios.usuarios_resumen, token, defecto=RESUMEN_VACIO),
+        roles=seccion("roles", servicios.roles, token, defecto=[]),
+        usuarios=seccion("usuarios", servicios.usuarios, token, busqueda, rol_id, estado, defecto=[]),
+        filtro_q=busqueda or "", filtro_rol=rol_id, filtro_estado=estado, active_nav="usuarios")
 
 
-# ---------------------------------------------------------------------------
-# CRUD de usuarios -- solo ADMINISTRADOR (admin_required)
-# ---------------------------------------------------------------------------
-# Cada operacion queda en audit_log con el estado antes/despues.
+def _form_usuario(token, usuario, errores, estado=200):
+    return render_template(
+        "usuario_form.html", usuario=usuario, errores=errores,
+        roles=seccion("roles", servicios.roles, token, defecto=[]),
+        instituciones=seccion("usuarios", servicios.instituciones, token, defecto=[]),
+        municipios=seccion("regiones", servicios.municipios_catalogo, defecto=[]),
+        active_nav="usuarios"), estado
 
-def _snapshot(u):
-    """Lo que se guarda en audit_log. Nunca incluye password_hash."""
-    if not u:
-        return None
-    return {
-        "id": u["id"],
-        "username": u["username"],
-        "email": u["email"],
-        "full_name": u["full_name"],
-        "is_active": u["is_active"],
-        "role_id": u.get("role_id"),
-    }
+
+def _datos_usuario(form):
+    return {"email": (form.get("email") or "").strip(),
+            "full_name": (form.get("full_name") or "").strip(),
+            "institution_id": form.get("institution_id", type=int),
+            "region_id": form.get("region_id", type=int)}
 
 
 @bp.route("/usuarios/nuevo", methods=["GET", "POST"])
-@admin_required
+@requiere_permiso("users.create", "users")
 def usuario_nuevo():
-    roles = queries.get_roles_catalogo()
+    """usuarios valida y da de alta la cuenta; roles le asigna el rol. Cada uno audita."""
+    token = token_de_sesion()
     if request.method == "GET":
-        return render_template("usuario_form.html", roles=roles, usuario=None,
-                               errores=[], active_nav="usuarios")
-
-    datos = {
-        "username": (request.form.get("username") or "").strip(),
-        "email": (request.form.get("email") or "").strip(),
-        "full_name": (request.form.get("full_name") or "").strip(),
-        "is_active": request.form.get("is_active") == "on",
-    }
-    password = request.form.get("password") or ""
+        return _form_usuario(token, None, [])
+    datos = dict(_datos_usuario(request.form), username=(request.form.get("username") or "").strip(),
+                 is_active=request.form.get("is_active") == "on")
     role_id = request.form.get("role_id", type=int)
-
-    errores = queries.valida_usuario(datos["username"], datos["email"],
-                                     datos["full_name"], es_alta=True,
-                                     password=password)
+    vista = dict(datos, role_id=role_id)
     if not role_id:
-        errores.append("Selecciona un rol.")
-    if errores:
-        return render_template("usuario_form.html", roles=roles, usuario=datos,
-                               errores=errores, active_nav="usuarios"), 400
-
-    nuevo_id, error = queries.crear_usuario(
-        datos["username"], datos["email"], datos["full_name"],
-        hash_password(password), role_id, datos["is_active"],
-    )
-    if error:
-        return render_template("usuario_form.html", roles=roles, usuario=datos,
-                               errores=[error], active_nav="usuarios"), 400
-
-    log_audit(contexto_de_peticion(), "CREATE", "users", entity_id=str(nuevo_id),
-              data_after=_snapshot(queries.get_usuario(nuevo_id)))
+        return _form_usuario(token, vista, ["Selecciona un rol."], 400)
+    try:
+        servicios.crea_usuario(token, datos, request.form.get("password") or "", role_id)
+    except ErrorServicio as exc:
+        return _form_usuario(token, vista, [_falla_de_escritura(exc)], 400)
     flash(f"Usuario '{datos['username'].lower()}' creado.", "ok")
     return redirect(url_for("main.usuarios"))
 
 
 @bp.route("/usuarios/<int:user_id>/editar", methods=["GET", "POST"])
-@admin_required
+@requiere_permiso("users.update", "users")
 def usuario_editar(user_id):
-    actual = queries.get_usuario(user_id)
+    token = token_de_sesion()
+    actual = servicios.usuario(token, user_id)
     if not actual:
         flash("Ese usuario ya no existe.", "error")
         return redirect(url_for("main.usuarios"))
-
-    roles = queries.get_roles_catalogo()
     if request.method == "GET":
-        return render_template("usuario_form.html", roles=roles, usuario=actual,
-                               errores=[], active_nav="usuarios")
+        return _form_usuario(token, actual, [])
 
-    datos = {
-        "id": user_id,
-        "username": actual["username"],   # el username no se edita
-        "email": (request.form.get("email") or "").strip(),
-        "full_name": (request.form.get("full_name") or "").strip(),
-        "is_active": request.form.get("is_active") == "on",
-    }
-    password = request.form.get("password") or ""
+    datos = _datos_usuario(request.form)
+    activo = request.form.get("is_active") == "on"
     role_id = request.form.get("role_id", type=int)
-
-    errores = queries.valida_usuario(datos["username"], datos["email"],
-                                     datos["full_name"], es_alta=False,
-                                     password=password)
+    vista = {**actual, **datos, "is_active": activo, "role_id": role_id}
     if not role_id:
-        errores.append("Selecciona un rol.")
-
-    # No dejar que el admin se quite a si mismo el acceso.
-    if user_id == g.user["sub"] and not datos["is_active"]:
-        errores.append("No puedes desactivar tu propia cuenta.")
-    if user_id == g.user["sub"]:
-        rol_admin = next((r for r in roles if r["code"] == "ADMINISTRADOR"), None)
-        if rol_admin and role_id != rol_admin["id"]:
-            errores.append("No puedes quitarte a ti mismo el rol de administrador.")
-
-    if errores:
-        vista = {**actual, **datos, "role_id": role_id}
-        return render_template("usuario_form.html", roles=roles, usuario=vista,
-                               errores=errores, active_nav="usuarios"), 400
-
-    antes = _snapshot(actual)
-    ok, error = queries.actualizar_usuario(
-        user_id, datos["email"], datos["full_name"], datos["is_active"], role_id,
-        password_hash=hash_password(password) if password else None,
-    )
-    if not ok:
-        vista = {**actual, **datos, "role_id": role_id}
-        return render_template("usuario_form.html", roles=roles, usuario=vista,
-                               errores=[error], active_nav="usuarios"), 400
-
-    log_audit(contexto_de_peticion(), "UPDATE", "users", entity_id=str(user_id),
-              data_before=antes,
-              data_after=_snapshot(queries.get_usuario(user_id)))
+        return _form_usuario(token, vista, ["Selecciona un rol."], 400)
+    if user_id == g.user["sub"] and not activo:
+        return _form_usuario(token, vista, ["No puedes desactivar tu propia cuenta."], 400)
+    try:
+        servicios.edita_usuario(token, user_id, datos, request.form.get("password") or "", role_id,
+                                activo, actual["is_active"], actual.get("role_id"))
+    except ErrorServicio as exc:
+        return _form_usuario(token, vista, [_falla_de_escritura(exc)], 400)
     flash(f"Usuario '{actual['username']}' actualizado.", "ok")
     return redirect(url_for("main.usuarios"))
 
 
 @bp.route("/usuarios/<int:user_id>/estado", methods=["POST"])
-@admin_required
+@requiere_permiso("users.update", "users")
 def usuario_estado(user_id):
-    """Baja / alta logica (is_active). Es la via correcta cuando el usuario ya
-    tiene registros y por eso no se puede borrar de verdad."""
-    actual = queries.get_usuario(user_id)
-    if not actual:
-        flash("Ese usuario ya no existe.", "error")
-        return redirect(url_for("main.usuarios"))
-
+    """Baja y alta lógica. Desactivar cierra las sesiones de la cuenta (usuarios)."""
     activar = request.form.get("activar") == "1"
-    if user_id == g.user["sub"] and not activar:
-        flash("No puedes desactivar tu propia cuenta.", "error")
-        return redirect(url_for("main.usuarios"))
-
-    queries.desactivar_usuario(user_id, activo=activar)
-    log_audit(contexto_de_peticion(), "UPDATE", "users", entity_id=str(user_id),
-              data_before=_snapshot(actual),
-              data_after=_snapshot(queries.get_usuario(user_id)))
-    flash(("Usuario reactivado." if activar else "Usuario desactivado (baja logica)."), "ok")
+    try:
+        servicios.activa_usuario(token_de_sesion(), user_id, activar)
+        flash("Usuario reactivado." if activar else "Usuario desactivado (baja lógica).", "ok")
+    except ErrorServicio as exc:
+        flash(_falla_de_escritura(exc), "error")
     return redirect(url_for("main.usuarios"))
 
 
 @bp.route("/usuarios/<int:user_id>/eliminar", methods=["POST"])
-@admin_required
+@requiere_permiso("users.delete", "users")
 def usuario_eliminar(user_id):
-    actual = queries.get_usuario(user_id)
-    if not actual:
-        flash("Ese usuario ya no existe.", "error")
-        return redirect(url_for("main.usuarios"))
-
-    if user_id == g.user["sub"]:
-        flash("No puedes eliminar tu propia cuenta.", "error")
-        return redirect(url_for("main.usuarios"))
-
-    dependencias = queries.dependencias_usuario(user_id)
-    if dependencias:
-        detalle = ", ".join(f"{n} {etiqueta}" for etiqueta, n in dependencias)
-        flash(f"No se puede eliminar a '{actual['username']}': tiene {detalle}. "
-              f"Usa 'Desactivar' para darlo de baja sin perder esa trazabilidad.",
-              "error")
-        return redirect(url_for("main.usuarios"))
-
-    antes = _snapshot(actual)
-    ok, error = queries.eliminar_usuario(user_id)
-    if not ok:
-        flash(error, "error")
-        return redirect(url_for("main.usuarios"))
-
-    log_audit(contexto_de_peticion(), "DELETE", "users", entity_id=str(user_id),
-              data_before=antes)
-    flash(f"Usuario '{actual['username']}' eliminado.", "ok")
+    # usuarios se niega si la cuenta tiene registros: entonces va la baja lógica.
+    try:
+        servicios.elimina_usuario(token_de_sesion(), user_id)
+        flash("Usuario eliminado.", "ok")
+    except ErrorServicio as exc:
+        flash(_falla_de_escritura(exc), "error")
     return redirect(url_for("main.usuarios"))
 
 
 @bp.route("/auditoria")
-@admin_required
+@requiere_permiso("audit.read", "audit")
 def auditoria():
-    # Solo ADMINISTRADOR: la bitacora expone quien hizo que y desde que IP en
-    # todo el sistema, incluidos los snapshots del CRUD de usuarios. Ocultar el
-    # item del sidebar no basta -- la URL se puede escribir a mano, asi que el
-    # candado va aqui y el intento queda registrado como PERMISSION_DENIED.
+    """La bitácora, solo del ADMINISTRADOR (RF-L05). La consulta roles (D37)."""
+    token = token_de_sesion()
     busqueda = request.args.get("q") or None
     usuario_id = request.args.get("usuario", type=int)
     modulo = request.args.get("modulo") or None
     accion = request.args.get("accion") or None
-
-    resumen = queries.get_auditoria_resumen()
-    eventos = presentacion.filas_bitacora(queries.get_auditoria_lista(
-        busqueda=busqueda, usuario_id=usuario_id, modulo=modulo, accion=accion, limit=100
-    ))
-    usuarios_filtro = queries.get_usuarios_para_filtro()
-    modulos = queries.get_modulos_auditoria()
-    acciones = presentacion.opciones_accion(queries.get_acciones_auditoria())
-
+    filtros = seccion("roles", servicios.bitacora_filtros, token,
+                      defecto={"modulos": [], "acciones": [], "usuarios": []})
+    eventos = seccion("roles", servicios.bitacora, token, busqueda, usuario_id, modulo, accion, 100,
+                      defecto=[])
     return render_template(
         "auditoria.html",
-        resumen=resumen,
-        eventos=eventos,
-        usuarios_filtro=usuarios_filtro,
-        modulos=modulos,
-        acciones=acciones,
-        filtro_q=busqueda or "",
-        filtro_usuario=usuario_id,
-        filtro_modulo=modulo,
-        filtro_accion=accion,
-        active_nav="auditoria",
-    )
+        resumen=seccion("roles", servicios.bitacora_resumen, token,
+                        defecto={"eventos_totales": 0, "criticas": 0, "fallidos": 0, "activos_24h": 0}),
+        eventos=presentacion.filas_bitacora(eventos),
+        usuarios_filtro=filtros["usuarios"], modulos=filtros["modulos"],
+        acciones=presentacion.opciones_accion(filtros["acciones"]),
+        filtro_q=busqueda or "", filtro_usuario=usuario_id, filtro_modulo=modulo,
+        filtro_accion=accion, active_nav="auditoria")
 
 
-@bp.route("/comparacion")
-@roles_required(*ROLES_LEEN_SIMULACION, entity_type="simulations")
-def comparacion():
-    seleccionados = request.args.getlist("run_id")
-    run_ids = formularios.ids_de(seleccionados)
-    corridas = queries.get_corridas_para_comparar(run_ids)
+# ---------------------------------------------------------------------------
+# Avisos -- servicio notificaciones (RF-D15, RF-C19)
+# ---------------------------------------------------------------------------
+TIPOS_DE_AVISO = {
+    "SCENARIO_SUBMITTED": "Versión por revisar", "SCENARIO_APPROVED": "Versión aprobada",
+    "SCENARIO_REJECTED": "Versión rechazada", "SCENARIO_PUBLISHED": "Escenario publicado",
+    "NEW_CASES": "Casos nuevos", "CASE_REJECTED": "Caso descartado",
+    "DATA_INCOMPLETE": "Datos incompletos", "CAMPAIGN": "Campaña",
+    "RUN_FINISHED": "Corrida terminada", "RUN_FAILED": "Corrida fallida",
+    "THRESHOLD_EXCEEDED": "Umbral superado", "ASSIGNMENT": "Asignación", "SYSTEM": "Sistema",
+}
+
+
+@bp.route("/avisos")
+@requiere_permiso(None, "notifications")
+def avisos():
+    solo_no_leidas = request.args.get("no_leidas") == "1"
+    lista, no_leidas = seccion("notificaciones", servicios.avisos, token_de_sesion(), solo_no_leidas,
+                               defecto=([], 0))
+    return render_template("avisos.html", avisos=lista, no_leidas=no_leidas,
+                           solo_no_leidas=solo_no_leidas,
+                           sin_servicio="notificaciones" in g.get("servicios_caidos", []),
+                           tipos_aviso=TIPOS_DE_AVISO, active_nav="avisos")
+
+
+@bp.route("/avisos/<int:aviso_id>/leido", methods=["POST"])
+@requiere_permiso(None, "notifications")
+def aviso_leido(aviso_id):
     try:
-        corridas = [dict(c, serie=_curvas(c["id"])) for c in corridas]
-    except resultados.SinAcceso as sin_acceso:
-        return _sin_acceso_a_resultados(sin_acceso)
-    comparacion_pareto = None
-    errores_pareto = []
-    if len(seleccionados) >= 2:
-        comparacion_pareto, errores_pareto = (
-            simulaciones.construir_comparacion_costo_impacto(run_ids)
-        )
-    return render_template(
-        "comparacion.html",
-        runs=queries.get_runs_completados_para_comparar(),
-        corridas=corridas,
-        sin_curvas=[c["id"] for c in corridas if c["serie"] is None],
-        seleccionados=seleccionados,
-        comparacion_pareto=comparacion_pareto,
-        errores_pareto=errores_pareto,
-        active_nav="comparacion",
-    )
+        servicios.marca_aviso_leido(token_de_sesion(), aviso_id)
+    except ErrorServicio as exc:
+        flash(_falla_de_escritura(exc), "error")
+    return redirect(url_for("main.avisos"))
 
-@bp.route("/comparacion/costos", methods=["GET", "POST"])
-@roles_required("EPIDEMIOLOGO", "ADMINISTRADOR", entity_type="intervention_types")
-def comparacion_costos():
-    tipos = queries.get_tipos_intervencion()
 
-    if request.method == "GET":
-        return render_template(
-            "comparacion_costos.html",
-            tipos=tipos,
-            errores=[],
-            active_nav="comparacion",
-        )
+# ---------------------------------------------------------------------------
+# Errores: se explican sin mostrar la traza (RNF-E06, D36)
+# ---------------------------------------------------------------------------
+def _error(codigo, titulo, mensaje):
+    return render_template("error.html", codigo=str(codigo), titulo=titulo, mensaje=mensaje), codigo
 
-    intervention_type_id = request.form.get("intervention_type_id", type=int)
-    actual = next(
-        (tipo for tipo in tipos if tipo["id"] == intervention_type_id),
-        None,
-    )
 
-    if not actual:
-        flash("El tipo de intervencion no existe.", "error")
-        return redirect(url_for("main.comparacion_costos"))
-
-    datos, errores = queries.valida_costo_intervencion(
-        request.form.get("unit_cost"),
-        request.form.get("cost_source"),
-        request.form.get("cost_is_assumption") == "1",
-    )
-
-    if errores:
-        return render_template(
-            "comparacion_costos.html",
-            tipos=tipos,
-            errores=errores,
-            active_nav="comparacion",
-        ), 400
-
-    antes = {
-        "unit_cost": actual["unit_cost"],
-        "cost_source": actual["cost_source"],
-        "cost_is_assumption": actual["cost_is_assumption"],
-    }
-
-    queries.actualiza_costo_intervencion(intervention_type_id, datos)
-
-    log_audit(
-        contexto_de_peticion(),
-        "UPDATE",
-        "intervention_types",
-        entity_id=str(intervention_type_id),
-        data_before=antes,
-        data_after=datos,
-    )
-
-    flash("Costo de la intervencion actualizado.", "ok")
-    return redirect(url_for("main.comparacion_costos"))
+@bp.app_errorhandler(400)
+def solicitud_invalida(exc):
+    return _error(400, "No se pudo procesar la solicitud",
+                  getattr(exc, "description", None) or "Revisa los datos e intenta de nuevo.")
 
 
 @bp.app_errorhandler(403)
 def sin_permiso(_):
-    return render_template(
-        "error.html", codigo="403", titulo="No tienes acceso a esta sección",
-        mensaje="Tu rol no incluye permiso para ver esta página. "
-                "Pide acceso a un administrador si lo necesitas.",
-    ), 403
+    return _error(403, "No tienes acceso a esta sección",
+                  "Tu rol no incluye permiso para ver esta página. "
+                  "Pide acceso a un administrador si lo necesitas.")
 
 
 @bp.app_errorhandler(404)
 def no_encontrado(_):
-    return render_template(
-        "error.html", codigo="404", titulo="Esta página no existe",
-        mensaje="Revisa la dirección o vuelve al panorama epidemiológico.",
-    ), 404
+    return _error(404, "Esta página no existe",
+                  "Revisa la dirección o vuelve al panorama epidemiológico.")
+
+
+@bp.app_errorhandler(405)
+def metodo_no_permitido(_):
+    return _error(405, "Esa acción no está disponible aquí",
+                  "Vuelve a la pantalla anterior y usa sus botones.")
 
 
 @bp.app_errorhandler(ServicioNoDisponible)
 def servicio_caido(exc):
-    # D36: la pantalla dice qué servicio falta; si era una escritura, que no se guardó.
+    # La pantalla dice qué servicio falta; si era una escritura, que no se guardó.
     current_app.logger.warning("Servicio no disponible: %s", exc.servicio)
     g._usuario_actual = None
     escritura = request.method not in ("GET", "HEAD")
-    return render_template(
-        "error.html", codigo="503", titulo="Este dato no está disponible por ahora",
-        mensaje="El servicio «%s» no respondió. %sIntenta de nuevo en unos minutos."
-                % (exc.servicio, "El cambio no se guardó. " if escritura else ""),
-    ), 503
+    return _error(503, "Este dato no está disponible por ahora",
+                  "El servicio «%s» no respondió. %sIntenta de nuevo en unos minutos."
+                  % (exc.servicio, MENSAJE_NO_GUARDADO + " " if escritura else ""))
 
 
 @bp.app_errorhandler(ErrorServicio)
@@ -1325,30 +1152,27 @@ def error_de_servicio(exc):
         return sin_permiso(exc)
     if exc.estado == 404:
         return no_encontrado(exc)
-    return render_template(
-        "error.html", codigo=str(exc.estado), titulo="No se pudo completar la operación",
-        mensaje=exc.detalle or "El servicio rechazó la petición.",
-    ), exc.estado
+    return _error(exc.estado, "No se pudo completar la operación",
+                  exc.detalle or "El servicio rechazó la petición.")
+
+
+@bp.app_errorhandler(Exception)
+def error_inesperado(exc):
+    # La traza va al registro, nunca a la pantalla (RNF-E06).
+    from werkzeug.exceptions import HTTPException
+    if isinstance(exc, HTTPException):
+        return exc
+    current_app.logger.exception("Error inesperado en %s", request.path)
+    return _error(500, "Algo salió mal",
+                  "Ocurrió un error inesperado y quedó registrado. Intenta de nuevo; si sigue "
+                  "pasando, avisa al administrador con la hora en que ocurrió.")
 
 
 @bp.after_app_request
 def guarda_tokens_renovados(respuesta):
     nuevos = g.get("tokens_nuevos")
     if nuevos:
-        respuesta.set_cookie(COOKIE_NAME, nuevos[0], httponly=True, secure=request.is_secure, samesite="Lax", max_age=60 * 60 * 8)
-        respuesta.set_cookie(COOKIE_REFRESH, nuevos[1], httponly=True, secure=request.is_secure, samesite="Lax", max_age=60 * 60 * 8)
+        for nombre, valor in zip((COOKIE_NAME, COOKIE_REFRESH), nuevos):
+            respuesta.set_cookie(nombre, valor, httponly=True, secure=request.is_secure,
+                                 samesite="Lax", max_age=60 * 60 * 8)
     return respuesta
-
-
-@bp.app_errorhandler(psycopg2.OperationalError)
-@bp.app_errorhandler(psycopg2.InterfaceError)
-def sin_base(exc):
-    if isinstance(exc, psycopg2.OperationalError) and not (exc.pgcode or "08").startswith(("08", "57P")):
-        raise exc
-    current_app.logger.warning("PostgreSQL no disponible: %s", type(exc).__name__)
-    g._usuario_actual = None
-    return render_template(
-        "error.html", codigo="503", titulo="El sistema no está disponible por ahora",
-        mensaje="No se pudo conectar con la base de datos. Tus datos no se perdieron; "
-                "vuelve a intentarlo en unos minutos.",
-    ), 503
