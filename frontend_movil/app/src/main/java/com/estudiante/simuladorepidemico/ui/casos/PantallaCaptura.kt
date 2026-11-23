@@ -78,6 +78,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.estudiante.simuladorepidemico.local.Enfermedad
 import com.estudiante.simuladorepidemico.local.Municipio
+import com.estudiante.simuladorepidemico.red.Formulario
 import com.estudiante.simuladorepidemico.ui.CampoFecha
 import com.estudiante.simuladorepidemico.ui.RESULTADOS_DE_PRUEBA
 import com.estudiante.simuladorepidemico.ui.SEVERIDADES
@@ -112,6 +113,10 @@ class AccionesCaptura(
     val quitarFoto: (String) -> Unit = {},
     // El archivo de una foto, para su miniatura; null en las pruebas, que no tienen archivos.
     val archivoDeFoto: (String) -> File? = { null },
+    val cambiarRespuesta: (String, String) -> Unit = { _, _ -> },
+    val alternarManual: () -> Unit = {},
+    val escribirUbicacion: (String, String) -> Unit = { _, _ -> },
+    val guardarDeTodosModos: () -> Unit = {},
 )
 
 private const val PRECISA = Manifest.permission.ACCESS_FINE_LOCATION
@@ -175,7 +180,7 @@ fun PantallaCaptura(modelo: CapturaViewModel, alVolver: () -> Unit) {
             elegirSexo = modelo::elegirSexo,
             elegirResultado = modelo::elegirResultado,
             elegirSeveridad = modelo::elegirSeveridad,
-            guardar = modelo::guardar,
+            guardar = { modelo.guardar() },
             descargarCatalogos = modelo::descargarCatalogos,
             ubicar = {
                 when {
@@ -196,6 +201,10 @@ fun PantallaCaptura(modelo: CapturaViewModel, alVolver: () -> Unit) {
             elegirFoto = { elegirFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             quitarFoto = modelo::quitarFoto,
             archivoDeFoto = modelo::archivoDeFoto,
+            cambiarRespuesta = modelo::cambiarRespuesta,
+            alternarManual = modelo::alternarManual,
+            escribirUbicacion = modelo::escribirUbicacion,
+            guardarDeTodosModos = { modelo.guardar(confirmado = true) },
         ),
     )
 }
@@ -288,8 +297,28 @@ fun FormularioCaso(estado: EstadoCaptura, hoy: LocalDate, acciones: AccionesCapt
                 alElegir = acciones.elegirSeveridad,
                 alQuitar = { acciones.elegirSeveridad(null) },
             )
+            estado.formulario?.let { SeccionFormulario(it, estado.respuestas, hoy, acciones.cambiarRespuesta) }
             SeccionUbicacion(estado, acciones)
             SeccionFotos(estado, acciones)
+            val faltantes = faltantesDe(estado)
+            if (faltantes.isNotEmpty()) {
+                Text(
+                    "Faltan datos: ${faltantes.joinToString()}. Puedes guardarlo así y completarlo después en Mis casos.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+            }
+            if (estado.posibleDuplicado) {
+                Text(
+                    "Ya hay en este teléfono un caso de la misma enfermedad, municipio, fecha, edad y sexo. " +
+                        "Revisa que no sea el mismo antes de guardarlo.",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
+                OutlinedButton(onClick = acciones.guardarDeTodosModos, modifier = Modifier.fillMaxWidth()) {
+                    Text("Es otro caso: guardarlo")
+                }
+            }
             if (estado.errores.isNotEmpty()) {
                 Text(
                     estado.errores.joinToString("\n"),
@@ -310,11 +339,96 @@ fun FormularioCaso(estado: EstadoCaptura, hoy: LocalDate, acciones: AccionesCapt
     }
 }
 
-// Sin red funciona con el GPS: puede tardar, sobre todo bajo techo.
+// Los campos que la enfermedad suma a los del caso (D48), en el orden del formulario.
+@Composable
+private fun SeccionFormulario(formulario: Formulario, respuestas: Map<String, String>, hoy: LocalDate, alCambiar: (String, String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(formulario.titulo, style = MaterialTheme.typography.titleSmall)
+        formulario.campos.forEach { campo ->
+            val etiqueta = campo.etiqueta + if (campo.obligatorio) "" else " (opcional)"
+            val valor = respuestas[campo.clave].orEmpty()
+            when (campo.tipo) {
+                "booleano" -> Selector(
+                    etiqueta, listOf("true" to "Sí", "false" to "No"), valor.ifEmpty { null },
+                    alElegir = { alCambiar(campo.clave, it) }, alQuitar = { alCambiar(campo.clave, "") },
+                )
+                "opcion" -> Selector(
+                    etiqueta, campo.opciones.map { it.valor to it.etiqueta }, valor.ifEmpty { null },
+                    alElegir = { alCambiar(campo.clave, it) }, alQuitar = { alCambiar(campo.clave, "") },
+                )
+                "opciones" -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(etiqueta, style = MaterialTheme.typography.labelLarge)
+                    val elegidas = valor.split(',').filter { it.isNotEmpty() }
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        campo.opciones.forEach { opcion ->
+                            FilterChip(
+                                selected = opcion.valor in elegidas,
+                                onClick = {
+                                    val nuevas = if (opcion.valor in elegidas) elegidas - opcion.valor else elegidas + opcion.valor
+                                    alCambiar(campo.clave, campo.opciones.map { it.valor }.filter { it in nuevas }.joinToString(","))
+                                },
+                                label = { Text(opcion.etiqueta) },
+                            )
+                        }
+                    }
+                }
+                "fecha" -> CampoFecha(
+                    etiqueta, runCatching { LocalDate.parse(valor) }.getOrNull(), { alCambiar(campo.clave, it.toString()) },
+                    inicial = hoy, alQuitar = { alCambiar(campo.clave, "") },
+                )
+                else -> OutlinedTextField(
+                    value = valor,
+                    onValueChange = { alCambiar(campo.clave, it) },
+                    label = { Text(etiqueta) },
+                    supportingText = campo.ayuda?.let { { Text(it) } },
+                    singleLine = campo.tipo != "texto",
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = when (campo.tipo) {
+                            "entero" -> KeyboardType.Number
+                            "decimal" -> KeyboardType.Decimal
+                            else -> KeyboardType.Text
+                        },
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+}
+
+// Sin red funciona con el GPS: puede tardar, sobre todo bajo techo. Si no conviene, las
+// coordenadas se escriben a mano.
 @Composable
 private fun SeccionUbicacion(estado: EstadoCaptura, acciones: AccionesCaptura) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("Ubicación (opcional)", style = MaterialTheme.typography.labelLarge)
+        if (estado.manual) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = estado.latitudManual,
+                    onValueChange = { acciones.escribirUbicacion(it, estado.longitudManual) },
+                    label = { Text("Latitud") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = estado.longitudManual,
+                    onValueChange = { acciones.escribirUbicacion(estado.latitudManual, it) },
+                    label = { Text("Longitud") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Text(
+                "Por ejemplo, 25.686613 y -100.316116 para el centro de Monterrey.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(onClick = acciones.alternarManual) { Text("Usar el GPS") }
+            return@Column
+        }
         val ubicacion = estado.ubicacion
         if (ubicacion != null) {
             Text("%.6f, %.6f".format(Locale.ROOT, ubicacion.latitud, ubicacion.longitud), style = MaterialTheme.typography.bodyLarge)
@@ -348,6 +462,7 @@ private fun SeccionUbicacion(estado: EstadoCaptura, acciones: AccionesCaptura) {
         if (estado.sinPermisoDeUbicacion) {
             TextButton(onClick = acciones.abrirAjustes) { Text("Abrir ajustes") }
         }
+        TextButton(onClick = acciones.alternarManual) { Text("Escribir las coordenadas") }
     }
 }
 

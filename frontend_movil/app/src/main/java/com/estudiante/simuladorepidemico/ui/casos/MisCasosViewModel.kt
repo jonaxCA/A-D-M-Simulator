@@ -7,10 +7,15 @@ import com.estudiante.simuladorepidemico.local.CasosDao
 import com.estudiante.simuladorepidemico.local.CatalogoDao
 import com.estudiante.simuladorepidemico.local.ConteoFotos
 import com.estudiante.simuladorepidemico.local.Fotos
+import com.estudiante.simuladorepidemico.red.Apis
+import com.estudiante.simuladorepidemico.red.CasoRemoto
 import com.estudiante.simuladorepidemico.sesion.Sesion
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -29,6 +34,7 @@ data class FilaCaso(
 @OptIn(ExperimentalCoroutinesApi::class)
 class MisCasosViewModel(
     sesion: Sesion,
+    private val apis: Apis,
     private val casos: CasosDao,
     catalogo: CatalogoDao,
     private val fotos: Fotos,
@@ -55,6 +61,22 @@ class MisCasosViewModel(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // Los casos de la cuenta a los que el servidor les marca datos faltantes (D49). null sin red.
+    private val faltantes = MutableStateFlow<List<CasoRemoto>?>(null)
+    val incompletos: StateFlow<List<CasoRemoto>?> = faltantes.asStateFlow()
+
+    fun cargarIncompletos() {
+        viewModelScope.launch {
+            try {
+                faltantes.value = apis.casos().incompletos().casos
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Sin red se quedan los que ya se sabían.
+            }
+        }
+    }
 
     fun enviarAhora() = programarEnvio()
 

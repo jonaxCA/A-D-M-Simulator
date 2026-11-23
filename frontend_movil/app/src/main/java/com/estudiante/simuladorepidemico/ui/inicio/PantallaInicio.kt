@@ -38,6 +38,7 @@ class AccionesInicio(
     val verLotes: () -> Unit = {},
     val verAvisos: () -> Unit = {},
     val abrirPerfil: () -> Unit = {},
+    val consultar: () -> Unit = {},
 )
 
 @Composable
@@ -48,18 +49,34 @@ fun PantallaInicio(
     alVerLotes: () -> Unit,
     alVerAvisos: () -> Unit,
     alAbrirPerfil: () -> Unit,
+    alConsultar: () -> Unit,
 ) {
     val porEnviar by modelo.porEnviar.collectAsStateWithLifecycle()
     val noLeidos by modelo.noLeidos.collectAsStateWithLifecycle()
     val capturista by modelo.capturista.collectAsStateWithLifecycle()
+    val incompletos by modelo.incompletos.collectAsStateWithLifecycle()
+    val formularios by modelo.formularios.collectAsStateWithLifecycle()
     // Al llegar y al volver (de los avisos, por ejemplo).
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { modelo.contarAvisos() }
-    MenuInicio(porEnviar, noLeidos, capturista, AccionesInicio(alCapturar, alVerCasos, alVerLotes, alVerAvisos, alAbrirPerfil))
+    MenuInicio(
+        porEnviar, noLeidos, capturista,
+        AccionesInicio(alCapturar, alVerCasos, alVerLotes, alVerAvisos, alAbrirPerfil, alConsultar),
+        incompletos, formularios,
+    )
 }
 
-// Con la forma del tablero de la web: la marca, los indicadores en tarjetas y el menú.
+// Con la forma del tablero de la web: la marca, los indicadores en tarjetas y el menú. Para el
+// CAPTURISTA es su panel: lo pendiente de enviar, lo que le falta completar, los formularios que ya
+// tiene el teléfono y los avisos.
 @Composable
-fun MenuInicio(porEnviar: Int, noLeidos: Int?, capturista: Boolean, acciones: AccionesInicio) {
+fun MenuInicio(
+    porEnviar: Int,
+    noLeidos: Int?,
+    capturista: Boolean,
+    acciones: AccionesInicio,
+    incompletos: Int? = null,
+    formularios: Int = 0,
+) {
     Scaffold { relleno ->
         Column(
             modifier = Modifier.fillMaxSize().padding(relleno).verticalScroll(rememberScrollState()).padding(20.dp),
@@ -74,17 +91,34 @@ fun MenuInicio(porEnviar: Int, noLeidos: Int?, capturista: Boolean, acciones: Ac
                         Modifier.weight(1f),
                     )
                 }
+                if (capturista) {
+                    Indicador(
+                        "DATOS FALTANTES", incompletos?.toString() ?: "—",
+                        if (incompletos == null) "Se consultan con red" else "Casos por completar",
+                        Modifier.weight(1f), acciones.verCasos,
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Indicador(
                     "AVISOS SIN LEER", noLeidos?.toString() ?: "—",
                     if (noLeidos == null) "Se consultan con red" else "De tu cuenta",
-                    Modifier.weight(1f),
+                    Modifier.weight(1f), acciones.verAvisos,
                 )
+                if (capturista) {
+                    Indicador(
+                        "FORMULARIOS", "$formularios",
+                        if (formularios == 1) "Enfermedad con campos propios" else "Enfermedades con campos propios",
+                        Modifier.weight(1f),
+                    )
+                }
             }
             if (capturista) {
                 Button(onClick = acciones.capturar, modifier = Modifier.fillMaxWidth()) { Text("+  Capturar caso") }
                 Opcion("📋", "Mis casos", "Pendientes, enviados y rechazados", acciones.verCasos)
             }
             Opcion("💉", "Lotes de vacuna", "Leer el código y aplicar dosis", acciones.verLotes)
+            Opcion("🗺", "Consulta por zona", "Casos por municipio, enfermedad y periodo", acciones.consultar)
             Opcion("🔔", "Avisos", "Casos nuevos, revisiones y corridas", acciones.verAvisos)
             Opcion("👤", "Mi perfil", "Cuenta, teléfono y cerrar sesión", acciones.abrirPerfil)
         }
@@ -123,8 +157,8 @@ private fun Tarjeta(modifier: Modifier = Modifier, alTocar: (() -> Unit)? = null
 }
 
 @Composable
-private fun Indicador(etiqueta: String, valor: String, nota: String, modifier: Modifier) {
-    Tarjeta(modifier) {
+private fun Indicador(etiqueta: String, valor: String, nota: String, modifier: Modifier, alTocar: (() -> Unit)? = null) {
+    Tarjeta(modifier, alTocar) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 etiqueta,

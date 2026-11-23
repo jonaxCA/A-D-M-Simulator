@@ -3,6 +3,8 @@ package com.estudiante.simuladorepidemico.trabajos
 import com.estudiante.simuladorepidemico.local.CasoLocal
 import com.estudiante.simuladorepidemico.local.CasosDao
 import com.estudiante.simuladorepidemico.local.Fotos
+import com.estudiante.simuladorepidemico.local.salud
+import com.estudiante.simuladorepidemico.sesion.Cifrador
 import com.estudiante.simuladorepidemico.red.Apis
 import com.estudiante.simuladorepidemico.red.CasoDeLote
 import com.estudiante.simuladorepidemico.red.PedidoLote
@@ -35,6 +37,7 @@ class Sincronizador(
     private val apis: Apis,
     private val casos: CasosDao,
     private val fotos: Fotos,
+    private val cifrador: Cifrador,
     private val nuevoLote: () -> String = { UUID.randomUUID().toString() },
 ) {
     private val candado = Mutex()
@@ -125,19 +128,23 @@ class Sincronizador(
         return Envio.REINTENTAR
     }
 
-    private fun paraLote(caso: CasoLocal) = CasoDeLote(
-        localUuid = caso.localUuid,
-        enfermedad = caso.enfermedad,
-        municipio = caso.municipio,
-        fechaReporte = caso.fechaReporte,
-        inicioSintomas = caso.inicioSintomas,
-        age = caso.edad,
-        sex = caso.sexo,
-        resultadoPrueba = caso.resultadoPrueba,
-        severity = caso.severidad,
-        latitude = caso.latitud,
-        longitude = caso.longitud,
-    )
+    private fun paraLote(caso: CasoLocal) = caso.salud(cifrador).let { salud ->
+        CasoDeLote(
+            localUuid = caso.localUuid,
+            enfermedad = caso.enfermedad,
+            municipio = caso.municipio,
+            fechaReporte = caso.fechaReporte,
+            inicioSintomas = salud.inicioSintomas,
+            age = salud.edad,
+            sex = salud.sexo,
+            resultadoPrueba = salud.resultadoPrueba,
+            severity = salud.severidad,
+            latitude = salud.latitud,
+            longitude = salud.longitud,
+            formulario = caso.formulario,
+            respuestas = salud.respuestas,
+        )
+    }
 
     private companion object {
         const val REVOCADO = "CONFLICTO"

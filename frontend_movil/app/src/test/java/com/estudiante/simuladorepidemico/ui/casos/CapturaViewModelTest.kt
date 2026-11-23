@@ -8,8 +8,11 @@ import com.estudiante.simuladorepidemico.CasosDaoFalso
 import com.estudiante.simuladorepidemico.CatalogoDaoFalso
 import com.estudiante.simuladorepidemico.ServidorFalso
 import com.estudiante.simuladorepidemico.contenedorDePrueba
+import com.estudiante.simuladorepidemico.local.CasoLocal
 import com.estudiante.simuladorepidemico.local.Enfermedad
+import com.estudiante.simuladorepidemico.local.salud
 import com.estudiante.simuladorepidemico.local.EstadoCaso
+import com.estudiante.simuladorepidemico.local.FormularioLocal
 import com.estudiante.simuladorepidemico.local.Municipio
 import com.estudiante.simuladorepidemico.tokens
 import com.estudiante.simuladorepidemico.ubicacion.Lectura
@@ -62,9 +65,28 @@ class CapturaViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private fun salud(caso: CasoLocal = casos.filas.value.single()) = caso.salud(contenedor.cifrador)
+
+    // Los datos de salud se guardan cifrados: en la base no aparecen en claro.
+    @Test
+    fun los_datos_de_salud_se_guardan_cifrados() {
+        val modelo = modelo()
+        modelo.espera { !it.sinCatalogos }
+        modelo.elegirEnfermedad(1)
+        modelo.elegirMunicipio(10)
+        modelo.cambiarEdad("34")
+        modelo.guardar()
+        modelo.espera { it.guardados == 1 }
+
+        val caso = casos.filas.value.single()
+        assertFalse(caso.datos!!.contains("34"))
+        assertNull(caso.edad)
+        assertEquals(34, salud(caso).edad)
+    }
+
     private fun modelo() = CapturaViewModel(
         contenedor.sesion, casos, catalogo, contenedor.catalogos, contenedor.programarEnvio, ubicador, contenedor.fotos,
-        hoy = { hoy }, ahora = { 1_000L },
+        contenedor.cifrador, hoy = { hoy }, ahora = { 1_000L },
     )
 
     @Test
@@ -79,7 +101,7 @@ class CapturaViewModelTest {
         modelo.guardar()
 
         val estado = modelo.espera { it.guardados == 1 }
-        assertEquals(25.686613 to -100.316116, casos.filas.value.single().let { it.latitud to it.longitud })
+        assertEquals(25.686613 to -100.316116, salud().let { it.latitud to it.longitud })
         assertNull(estado.ubicacion)
         assertEquals(listOf(true), pedidas)
     }
@@ -179,8 +201,9 @@ class CapturaViewModelTest {
         val caso = casos.filas.value.single()
         assertEquals(12L, caso.cuenta)
         assertTrue(Regex("[0-9a-f-]{36}").matches(caso.localUuid))
-        assertEquals("2026-11-05" to "2026-11-03", caso.fechaReporte to caso.inicioSintomas)
-        assertEquals(Triple(34, "F", "leve"), Triple(caso.edad, caso.sexo, caso.severidad))
+        val salud = salud(caso)
+        assertEquals("2026-11-05" to "2026-11-03", caso.fechaReporte to salud.inicioSintomas)
+        assertEquals(Triple(34, "F", "leve"), Triple(salud.edad, salud.sexo, salud.severidad))
         assertEquals(EstadoCaso.PENDIENTE, caso.estado)
         assertEquals(1_000L, caso.capturadoEn)
         assertEquals(1, envios)
@@ -280,6 +303,81 @@ class CapturaViewModelTest {
         assertFalse(archivo.exists())
         assertEquals(4, modelo.estado.fotos.size)
         assertTrue(modelo.estado.caben)
+    }
+
+    // D48: el formulario de Dengue con un entero obligatorio de 0 a 30 y una lista de opciones.
+    private val formulario = """{"id":4,"disease_id":1,"version":1,"status":"publicado","title":"Dengue: datos clínicos","fields":[{"clave":"fiebre_dias","etiqueta":"Días con fiebre","tipo":"entero","obligatorio":true,"minimo":0,"maximo":30},{"clave":"signos","etiqueta":"Signos de alarma","tipo":"opciones","obligatorio":false,"opciones":[{"valor":"vomito","etiqueta":"Vómito"},{"valor":"sangrado","etiqueta":"Sangrado"}]}],"required":false}"""
+
+    @Test
+    fun el_formulario_de_la_enfermedad_se_valida_y_sus_respuestas_van_con_el_caso() {
+        catalogo.listaFormularios.value = listOf(FormularioLocal(1, 4, formulario))
+        val modelo = modelo()
+        modelo.espera { it.formularios.isNotEmpty() }
+        modelo.elegirEnfermedad(1)
+        modelo.elegirMunicipio(10)
+
+        modelo.guardar()
+        assertEquals(listOf("Falta «Días con fiebre»."), modelo.estado.errores)
+        modelo.cambiarRespuesta("fiebre_dias", "45")
+        modelo.guardar()
+        assertEquals(listOf("«Días con fiebre» va de 0 a 30."), modelo.estado.errores)
+
+        modelo.cambiarRespuesta("fiebre_dias", "3")
+        modelo.cambiarRespuesta("signos", "sangrado,vomito")
+        modelo.guardar()
+        modelo.espera { it.guardados == 1 }
+
+        val caso = casos.filas.value.single()
+        assertEquals(4L, caso.formulario)
+        assertEquals("""{"fiebre_dias":3,"signos":["sangrado","vomito"]}""", salud().respuestas.toString())
+        assertTrue(modelo.estado.respuestas.isEmpty())
+    }
+
+    @Test
+    fun las_coordenadas_se_pueden_escribir_a_mano() {
+        val modelo = modelo()
+        modelo.espera { !it.sinCatalogos }
+        modelo.elegirEnfermedad(1)
+        modelo.elegirMunicipio(10)
+        modelo.alternarManual()
+
+        modelo.escribirUbicacion("25,6866", "")
+        modelo.guardar()
+        assertEquals(
+            listOf("Escribe la latitud (de -90 a 90) y la longitud (de -180 a 180), o quita la ubicación."),
+            modelo.estado.errores,
+        )
+        modelo.escribirUbicacion("25,6866", "-100.3161")
+        modelo.guardar()
+        modelo.espera { it.guardados == 1 }
+
+        assertEquals(25.6866 to -100.3161, salud().let { it.latitud to it.longitud })
+    }
+
+    @Test
+    fun un_posible_duplicado_se_avisa_y_se_guarda_solo_si_se_confirma() {
+        val modelo = modelo()
+        modelo.espera { !it.sinCatalogos }
+        modelo.elegirEnfermedad(1)
+        modelo.elegirMunicipio(10)
+        modelo.cambiarEdad("34")
+        modelo.guardar()
+        modelo.espera { it.guardados == 1 }
+        modelo.cambiarEdad("34")
+
+        modelo.guardar()
+        assertTrue(modelo.espera { !it.guardando }.posibleDuplicado)
+        assertEquals(1, casos.filas.value.size)
+
+        modelo.guardar(confirmado = true)
+        modelo.espera { it.guardados == 2 }
+        assertEquals(2, casos.filas.value.size)
+    }
+
+    @Test
+    fun los_datos_que_faltan_se_avisan_sin_impedir_guardar() {
+        val estado = EstadoCaptura(fechaReporte = hoy, edad = "34", sexo = "F")
+        assertEquals(listOf("inicio de síntomas", "resultado", "gravedad", "ubicación"), faltantesDe(estado))
     }
 
     @Test
