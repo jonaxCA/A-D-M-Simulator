@@ -1,5 +1,7 @@
 package com.estudiante.simuladorepidemico.ui.casos
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,11 +25,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -114,6 +122,8 @@ fun PantallaSeguimiento(modelo: SeguimientoViewModel, alVolver: () -> Unit) {
             }
             estado.error?.takeIf { estado.caso != null }?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             HorizontalDivider()
+            SeccionFotos(estado, modelo)
+            HorizontalDivider()
             Text("Historial", style = MaterialTheme.typography.titleMedium)
             if (estado.historial.isEmpty()) {
                 Text("Sin cambios desde que llegó.", style = MaterialTheme.typography.bodyMedium)
@@ -121,6 +131,78 @@ fun PantallaSeguimiento(modelo: SeguimientoViewModel, alVolver: () -> Unit) {
             estado.historial.forEach { CambioEnHistorial(it) }
         }
     }
+}
+
+// Las fotos que el caso tiene en evidencias (D30). Se bajan una a la vez, al pedirlas: en el
+// teléfono no se guardan, igual que las que ya se subieron.
+@Composable
+private fun SeccionFotos(estado: EstadoSeguimiento, modelo: SeguimientoViewModel) {
+    Text("Fotos", style = MaterialTheme.typography.titleMedium)
+    if (estado.fotos.isEmpty() && estado.errorFotos == null) {
+        Text("El caso no tiene fotos en el servidor.", style = MaterialTheme.typography.bodyMedium)
+    }
+    estado.fotos.forEachIndexed { indice, foto ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(if (foto.tipo.startsWith("image/")) "Foto ${indice + 1}" else "Documento ${indice + 1}")
+                Text(
+                    listOfNotNull(tamanoLegible(foto.tamano), foto.subida?.let { fechaYHora(it) ?: it }).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (foto.tipo.startsWith("image/")) {
+                OutlinedButton(onClick = { modelo.verFoto(foto) }, enabled = estado.bajandoFoto == null) {
+                    Text(if (estado.bajandoFoto == foto.id) "Bajando…" else "Ver")
+                }
+            } else {
+                Text("Se abre en la web", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+    estado.errorFotos?.let {
+        Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+    }
+    estado.fotoAbierta?.let { VisorDeFoto(it, alCerrar = modelo::cerrarFoto) }
+}
+
+fun tamanoLegible(bytes: Long): String? = when {
+    bytes <= 0 -> null
+    bytes < 1_048_576 -> "%d KB".format(Locale.ROOT, (bytes + 1023) / 1024)
+    else -> "%.1f MB".format(Locale.ROOT, bytes / 1_048_576.0)
+}
+
+@Composable
+private fun VisorDeFoto(foto: FotoAbierta, alCerrar: () -> Unit) {
+    val imagen = remember(foto.id) { decodificar(foto.bytes) }
+    Dialog(onDismissRequest = alCerrar) {
+        Surface(shape = MaterialTheme.shapes.large) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (imagen != null) {
+                    Image(imagen, contentDescription = "Foto del caso", modifier = Modifier.fillMaxWidth(), contentScale = ContentScale.Fit)
+                } else {
+                    Text("El archivo no es una imagen que el teléfono pueda mostrar.", color = MaterialTheme.colorScheme.error)
+                }
+                Button(onClick = alCerrar, modifier = Modifier.fillMaxWidth()) { Text("Cerrar") }
+            }
+        }
+    }
+}
+
+// Reducida a no más de 2048 px por lado: una foto de cámara entera no cabe en la memoria de un
+// teléfono modesto.
+private fun decodificar(bytes: ByteArray): ImageBitmap? {
+    val medidas = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, medidas)
+    if (medidas.outWidth <= 0 || medidas.outHeight <= 0) return null
+    var muestra = 1
+    while (maxOf(medidas.outWidth, medidas.outHeight) / muestra > 2048) muestra *= 2
+    val opciones = BitmapFactory.Options().apply { inSampleSize = muestra }
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opciones)?.asImageBitmap()
 }
 
 @Composable

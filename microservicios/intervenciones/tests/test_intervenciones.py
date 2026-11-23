@@ -226,6 +226,16 @@ def test_version_no_editable_409_en_todas_las_escrituras(cliente, token, mundo, 
     assert cliente.get(BASE + "?format=json", headers=cabecera).get_json()["editable"] is False
 
 
+def test_un_escenario_archivado_no_cambia_sus_intervenciones(cliente, token, mundo):
+    mundo.version["scenario_status"] = "archivado"
+    for r in (cliente.post(BASE + "?format=json", headers=token(), **con_json(NUEVA)),
+              cliente.delete(BASE + "/77?format=json", headers=token()),
+              cliente.post(BASE + "/77/move?format=json", headers=token(), **con_json({"direction": "bajar"}))):
+        assert r.status_code == 409 and "archivado" in r.get_json()["detail"]
+    assert not mundo.llamadas
+    assert cliente.get(BASE + "?format=json", headers=token()).get_json()["editable"] is False
+
+
 def test_solo_dueno_o_admin_edita(cliente, token, mundo):
     mundo.version["owner_id"] = 99
     r = cliente.post(BASE + "?format=json", headers=token(), **con_json(NUEVA))

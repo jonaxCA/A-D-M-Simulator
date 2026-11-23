@@ -2,8 +2,10 @@
 <!-- Las respuestas del servicio aprobacion (puerto 5233).
        POST /api/v1/scenarios/{id}/submit   raíz <envio>: la versión quedó en_revision, con los
                                             avisos del servicio validacion
-       POST /api/v1/scenarios/{id}/review   raíz <revision>: aprobado o rechazado
+       POST /api/v1/scenarios/{id}/review   raíz <revision>: aprobado (con su firma), rechazado o
+                                            devuelto a borrador (D55)
        GET  /api/v1/reviews/pending         raíz <bandeja>: las versiones en revisión
+       GET  /api/v1/versions/{id}/signature raíz <firma>: la firma de la versión y su verificación
      El cuerpo de .../review (raíz <solicitud>) lo valida el servicio. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
 
@@ -22,6 +24,7 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="aprobar"/>
       <xs:enumeration value="rechazar"/>
+      <xs:enumeration value="devolver"/>
     </xs:restriction>
   </xs:simpleType>
 
@@ -51,6 +54,52 @@
         <xs:element name="version_number" type="Entero"/>
         <xs:element name="status" type="estadoVersion"/>
         <xs:element name="decision" type="decision"/>
+        <xs:element name="approval_sha256" type="sha256" minOccurs="0"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- La firma de una versión aprobada (D55): SHA-256 de la entrada canónica del motor. -->
+  <xs:simpleType name="sha256">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[0-9a-f]{64}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="Sha256ONulo">
+    <xs:simpleContent>
+      <xs:extension base="sha256OVacio">
+        <xs:attribute name="nil" type="xs:string" fixed="true"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:simpleType name="sha256OVacio">
+    <xs:union memberTypes="sha256 vacio"/>
+  </xs:simpleType>
+
+  <xs:element name="firma">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="version_id" type="Entero"/>
+        <xs:element name="scenario_id" type="Entero"/>
+        <xs:element name="version_number" type="Entero"/>
+        <xs:element name="status" type="estadoVersion"/>
+        <xs:element name="firmada" type="Booleano"/>
+        <xs:element name="huella" type="Sha256ONulo"/>
+        <xs:element name="revisor" type="TextoONulo"/>
+        <xs:element name="reviewed_at" type="FechaHoraONulo"/>
+        <xs:element name="huella_actual" type="Sha256ONulo"/>
+        <xs:element name="integra" type="Booleano"/>
+        <xs:element name="corridas">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="coinciden" type="Entero"/>
+              <xs:element name="distintas" type="Entero"/>
+              <xs:element name="sin_huella" type="Entero"/>
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
       </xs:all>
     </xs:complexType>
   </xs:element>

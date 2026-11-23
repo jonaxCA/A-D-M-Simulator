@@ -90,10 +90,10 @@ distingue lo terminado en la rama, lo parcial y lo bloqueado.
 | Reporte al bucket (RF-F17) | El PDF va tal cual con `Content-Type: application/pdf`, `X-Content-SHA256` y sus corridas ordenadas; no se manda lo que el servidor rechazaría (no PDF, sin corridas, más de 100); la URL firmada se abre en el navegador y otra comparación apaga el botón. |
 | Gestión de datos (D6, D53) | Verificar calidad e importar mandan el archivo con su tipo y solo los metadatos del contrato; se muestran todas las fallas y si el archivo ya estaba; la lista trae las versiones y los puntos validan con `serie_observada.xsd`. |
 | Lector XML | Una etiqueta plural con valor (`<puntos tipo="numero">4</puntos>` del resumen de un conjunto) es escalar, igual que `epidemia_comun.formatos.de_xml`. |
-| Suite local de escritorio | 360 pruebas aprobadas (`QT_QPA_PLATFORM=offscreen python -m pytest frontend_desktop`). |
+| Suite local de escritorio | 375 pruebas aprobadas sobre `feat/tercer-parcial` del 23 de noviembre (`QT_QPA_PLATFORM=offscreen python -m pytest frontend_desktop`). |
 
-Pendiente para la prueba con servicios levantados: subir un reporte al emulador del bucket y abrir
-su URL, e importar `docs/contratos/importacion/ejemplos/entrada_serie.csv` con un analista. Con
+Pendiente para la prueba con servicios levantados: subir un reporte al bucket (el emulador en
+local, `gs://integracion-515321-archivos` en GCP) y abrir su URL, e importar `docs/contratos/importacion/ejemplos/entrada_serie.csv` con un analista. Con
 `MFA_PERFILES=ADMINISTRADOR` en `auth`, entrar con `admin` y enrolar con un código de alta.
 
 Para el ensayo, abre el escritorio con `EPIDEMIA_DIRECTORIO=https://epidemos.app/estado-servicios`.

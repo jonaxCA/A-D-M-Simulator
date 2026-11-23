@@ -103,6 +103,30 @@ class ServidorFalso : Dispatcher() {
 
     // evidencias: responde 201 con un id nuevo, o `evidencia` si está puesto.
     @Volatile var evidencia: MockResponse? = null
+
+    // Las fotos del caso 41 en evidencias (D30): la 12 es una imagen que se baja de `/bucket/...`
+    // con su URL firmada; `huellaDeLaFoto` es la que anuncia la lista. Con `listaDeFotos` puesta,
+    // la lista responde eso.
+    @Volatile var fotoEnBucket: ByteArray = byteArrayOf(-1, -40, -1, -32, 0, 16, 74, 70, 73, 70)
+    @Volatile var huellaDeLaFoto: String? = null
+    @Volatile var listaDeFotos: MockResponse? = null
+    @Volatile var bucketResponde = 200
+
+    private fun evidencias(pedido: RecordedRequest, ruta: String): MockResponse? = when {
+        ruta == "/api/v1/cases/41/attachments" && pedido.method == "GET" -> listaDeFotos ?: respuesta(
+            200,
+            """{"case_id":41,"total":2,"evidencias":[""" +
+                """{"id":12,"case_id":41,"mime_type":"image/jpeg","size_bytes":${fotoEnBucket.size},"sha256":"${huellaDeLaFoto ?: sha256(fotoEnBucket)}","uploaded_at":"2026-11-05T17:42:00+00:00"},""" +
+                """{"id":13,"case_id":41,"mime_type":"application/pdf","size_bytes":254310,"sha256":"${"0".repeat(64)}","uploaded_at":"2026-11-05T17:45:00+00:00"}]}""",
+        )
+        ruta == "/api/v1/attachments/12/url" -> respuesta(
+            200, """{"id":12,"url":"${url}bucket/evidencias/41/12.jpg?X-Goog-Signature=abc","expires_at":"2026-11-05T18:00:00+00:00","minutes":15}""",
+        )
+        ruta.startsWith("/bucket/") ->
+            if (bucketResponde != 200) MockResponse().setResponseCode(bucketResponde)
+            else MockResponse().setResponseCode(200).setHeader("Content-Type", "image/jpeg").setBody(okio.Buffer().write(fotoEnBucket))
+        else -> null
+    }
     private val siguienteEvidencia = AtomicLong(12)
 
     // vacunas, como el servicio: un lote por código; aplicar nunca pasa de las que quedan ni a uno
@@ -206,7 +230,7 @@ class ServidorFalso : Dispatcher() {
     }
 
     // Las subidas a evidencias: el case_id de la ruta y el pedido.
-    fun subidas(): List<Pair<Long, RecordedRequest>> = pedidos.mapNotNull { pedido ->
+    fun subidas(): List<Pair<Long, RecordedRequest>> = pedidos.filter { it.method == "POST" }.mapNotNull { pedido ->
         SUBIDA.matchEntire(pedido.path.orEmpty().substringBefore('?'))?.let { it.groupValues[1].toLong() to pedido }
     }
 
@@ -288,7 +312,8 @@ class ServidorFalso : Dispatcher() {
         vacunas(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
         notificaciones(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
         casos(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
-        SUBIDA.matchEntire(request.path.orEmpty().substringBefore('?'))?.let { ruta ->
+        evidencias(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
+        SUBIDA.matchEntire(request.path.orEmpty().substringBefore('?'))?.takeIf { request.method == "POST" }?.let { ruta ->
             return evidencia ?: respuesta(
                 201,
                 """{"id":${siguienteEvidencia.getAndIncrement()},"case_id":${ruta.groupValues[1]},"mime_type":"image/jpeg","size_bytes":${request.bodySize}}""",
@@ -337,6 +362,9 @@ class ServidorFalso : Dispatcher() {
         private val LEIDO = Regex("/api/v1/notifications/(\\d+)/read")
 
         const val PERFIL = """{"id":12,"username":"capturista1","email":"c@ejemplo.mx","full_name":"Carla Captura","is_active":true,"last_login_at":null,"created_at":"2026-09-01T10:00:00-06:00","role_id":4,"roles":["CAPTURISTA"]}"""
+
+        fun sha256(bytes: ByteArray): String =
+            java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
         fun respuesta(estado: Int, cuerpo: String): MockResponse = MockResponse()
             .setResponseCode(estado).setHeader("Content-Type", "application/json").setBody(cuerpo)

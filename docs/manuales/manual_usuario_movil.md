@@ -92,6 +92,9 @@ Mientras esté por validar, puedes tocar **Corregir datos**, cambiar lo que est�
 motivo y **Guardar**. Necesita conexión. Si otra persona lo cambió mientras tanto, la app no lo
 sobrescribe: te avisa y te muestra cómo quedó, para que decidas.
 
+En **Fotos** están las que el caso tiene en el servidor. **Ver** la baja y la muestra; necesita
+conexión y no se guarda en el teléfono. Los documentos PDF se abren en la web.
+
 ## 6. Consulta por zona
 
 En el inicio, **Consulta por zona**. Elige una enfermedad (o ninguna, para todas) y el periodo de 7,

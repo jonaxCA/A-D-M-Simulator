@@ -29,19 +29,25 @@ unos 40 usuarios; con 4 vCPU y las conexiones a PostgreSQL reutilizadas aguanta 
 
 ## 2. La máquina
 
-En la consola (Compute Engine → Crear instancia) o con gcloud:
+Primero, desde tu PC, `bash infra/crea_bucket.sh` (§6): crea la cuenta de servicio de la máquina,
+`epidemia-vm`, y el bucket. Luego, en la consola (Compute Engine → Crear instancia, con esa cuenta
+y «Permitir acceso total a todas las API de Cloud») o con gcloud:
 
 ```bash
 gcloud compute addresses create epidemia-ip --region us-central1
 gcloud compute instances create epidemia --zone us-central1-c --machine-type e2-standard-4 \
   --image-family debian-13 --image-project debian-cloud --boot-disk-size 50GB \
-  --address epidemia-ip --tags http-server,https-server
+  --address epidemia-ip --tags http-server,https-server \
+  --service-account epidemia-vm@integracion-515321.iam.gserviceaccount.com --scopes cloud-platform
 ```
 
-- La cuenta de servicio con el alcance `cloud-platform` (`--scopes cloud-platform` al crearla): lo
-  necesita `evidencias` para escribir en el bucket y firmar las URLs (§6). Los permisos reales los
-  dan los roles de IAM; con los alcances por omisión solo lee Cloud Storage. También cubre
-  `logging.write`, que necesita Cloud Logging (§7).
+- **El alcance `cloud-platform`** lo necesita `evidencias` para escribir en el bucket y firmar las
+  URLs (§6); con los alcances por omisión solo lee Cloud Storage. Con `cloud-platform` el alcance
+  ya no limita nada: lo que la máquina puede hacer lo deciden solo los roles de IAM de su cuenta.
+- **Por eso no la cuenta de Compute por omisión** (`<número>-compute@developer.gserviceaccount.com`):
+  tiene Editor en todo el proyecto. Con `cloud-platform`, cualquier contenedor que lea el servidor
+  de metadatos (todos pueden) sacaría un token para modificar casi todo en GCP. `epidemia-vm` solo
+  tiene los cuatro roles de §6.
 - Para cambiar el tipo de máquina: detenerla, **Editar → Configuración de la máquina**, guardar y
   encender. Conserva la IP, el disco y el certificado; Docker y los contenedores arrancan solos.
 
@@ -120,12 +126,19 @@ cadena llega a ISRG Root X1, que la app móvil y el escritorio ya traen. Más en
 bash infra/crea_bucket.sh
 ```
 
+- Crea, si no existe, la cuenta de servicio de la máquina,
+  `epidemia-vm@integracion-515321.iam.gserviceaccount.com`, con solo estos roles:
+
+  | Rol | Sobre | Para |
+  |---|---|---|
+  | `roles/storage.objectAdmin` | El bucket, nada más | Subir, leer y borrar los archivos |
+  | `roles/logging.logWriter` | El proyecto | Mandar los registros a Cloud Logging (§7) |
+  | `roles/monitoring.metricWriter` | El proyecto | Las métricas del agente de la máquina |
+  | `roles/iam.serviceAccountTokenCreator` | La propia cuenta | Firmar las URLs con signBlob, sin llaves |
+
 - Crea `gs://integracion-515321-archivos`, privado: acceso uniforme y sin acceso público.
-- Le da a la cuenta de servicio de la máquina `roles/storage.objectAdmin` solo sobre ese bucket, y
-  `roles/iam.serviceAccountTokenCreator` sobre sí misma, para firmar las URLs con signBlob sin
-  llaves.
-- Si la máquina no tiene el alcance `cloud-platform`, imprime cómo dárselo. Eso exige detenerla
-  unos minutos.
+- Si la máquina no existe, recuerda crearla con esa cuenta (§2). Si existe y no usa `epidemia-vm`
+  con `cloud-platform`, imprime cómo cambiarla; eso exige detenerla unos minutos.
 - Al final dice qué poner en `infra/.env` de la máquina: `BUCKET_NOMBRE=integracion-515321-archivos`.
 
 En la nube no se levanta el emulador: `docker-compose.gcs.yml` apunta `evidencias` al bucket
@@ -156,7 +169,7 @@ nginx manda a cada servicio solo sus rutas (`/<servicio>/api/...`, `/health`, `/
 `docker-compose.cloud-logging.yml` manda lo que escribe cada contenedor a Cloud Logging, al
 registro `gcplogs-docker-driver`. La web y los servicios anotan cada petición con su
 `X-Correlation-ID`, y la web pasa el suyo a cada servicio que llama, así que una petición se
-sigue de punta a punta:
+sigue de punta a punta. Escribe con `roles/logging.logWriter` de `epidemia-vm` (§6):
 
 ```bash
 gcloud logging read 'logName="projects/integracion-515321/logs/gcplogs-docker-driver" AND jsonPayload.message:"<id>"' --freshness 1h

@@ -66,20 +66,25 @@ copia, abajo.
 | `get_run` (corrida con su versión, escenario y región) | `corridas` | `corridas/datos.py`; copias en `resultados/datos.py`, `simulador/datos.py` y `pareto/datos.py` | E | copia: las lecturas de solo consulta quedan, la regla es de `corridas` |
 | `_sincroniza_lote` (estado del lote según sus corridas) | `simulador` | `simulador/datos.py`; copia en `corridas/datos.py` (cancelar y reintentar) | E | copia: pendiente dejar una |
 | `region_de_version` (para el alcance) | `corridas` | `corridas/datos.py`; copia en `pareto/datos.py` | E | copia |
+| `version_para_motor` (las filas de una versión que entran al motor) | `simulador` | `simulador/datos.py`; copia en `validacion/huella.py` para la huella con la que se firma una versión (D55) | D | copia: `test_la_huella_es_la_misma_que_calcula_el_simulador` exige que las consultas sigan iguales |
 | Monolito `backend_web` (`queries.py`, `simulaciones.py`) | los de arriba | `backend_web/` | C | se retira cuando la web consuma los servicios (D36, E9) |
 | Consultas del tablero, de Monitoreo y del mapa; validación y catálogos de la captura | `indicadores`, `series`, `zonas` y `casos` | sus `consultas.py`, `casos/captura.py` y `casos/conversion.py`; copia en `backend_web/queries.py` y `backend_web/conversion.py`, que la web todavía lee | F (la web, C) | copia: la del monolito se va cuando la web consuma el servicio (D36); hasta entonces `test_copias_del_monolito.py` exige que sean iguales |
 | `estado_para_captura` (si un dispositivo puede capturar) | `dispositivos` | `dispositivos/almacen.py`; lectura de solo consulta en `casos/captura.py` | F | copia (la misma prueba) |
 | `get_enfermedad` y `get_region_municipio` (que existan la enfermedad y el municipio de un filtro) | `enfermedades` y `regiones` | lecturas de solo consulta en `series/consultas.py` y `zonas/consultas.py` | F | copia (la misma prueba) |
 
-## Bloque D: archivos y series observadas
+## Bloque D: archivos, series observadas, revisión y proyectos
 
-`evidencias` e `importacion` no importan `backend_web` y sus imágenes parten de
-`epidemia/base-vigilancia` (`test_datos_sin_backend_web.py`).
+`evidencias`, `importacion` y `aprobacion` no importan `backend_web` y sus imágenes parten de
+`epidemia/base-vigilancia` (`test_datos_sin_backend_web.py`). `escenarios` todavía lo importa para
+el alta, las versiones y el duplicado, pero lo nuevo de D54 ya vive en su carpeta.
 
 | Regla de negocio | Servicio dueño | Dónde vive | Bloque | Estado |
 |---|---|---|---|---|
 | Validar un archivo por su contenido, su tamaño y su huella; guardarlo en el bucket (D30, D35) | `evidencias` | `evidencias/datos.py` y `evidencias/reportes.py` | D | movida (D2) |
 | Revisar una serie observada: solo agregados, periodos seguidos, metadatos de fuente, licencia y corte; versionarla por clave (D53) | `importacion` | `importacion/lectura.py` y `importacion/datos.py` | D | nació ahí (D6) |
+| Enviar a revisión, aprobar con firma, rechazar y devolver una versión; la bandeja (D55) | `aprobacion` | `aprobacion/datos.py` (`envia_a_revision`, `resuelve_revision` y `get_pendientes_revision` siguen en `backend_web`, ya sin uso fuera de sus pruebas, hasta que se retire el monolito) | D | movida (D7) |
+| La huella de la entrada del motor de una versión (la firma, D55) | `validacion` | `validacion/huella.py`, con `procesamiento.contrato.huella` | D | nació ahí (D7) |
+| Proyectos de investigación, archivar un escenario y los responsables de cada versión (D54) | `escenarios` | `escenarios/datos.py` | D | nació ahí (D7) |
 
 ## Pendientes de D
 
