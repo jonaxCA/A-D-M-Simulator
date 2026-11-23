@@ -1,5 +1,5 @@
 """Servicio tipos-intervencion: el catálogo de tipos de intervención y los supuestos de efectividad de
-cada uno (D56). Leer es público, como regiones; los supuestos los cambian EPIDEMIOLOGO y
+cada uno (D58). Leer es público, como regiones; los supuestos los cambian EPIDEMIOLOGO y
 ADMINISTRADOR. Sus reglas viven en datos.py (E8: ya no importa backend_web).
 """
 import math

@@ -140,7 +140,7 @@ def test_el_catalogo_publico_limita_por_ip(cliente, monkeypatch):
     assert [cliente.get("/api/v1/regions/39").status_code for _ in range(3)] == [200, 200, 429]
 
 
-# ---- jerarquía, jurisdicciones y búsqueda (D56) -------------------------------------------------
+# ---- jerarquía, jurisdicciones y búsqueda (D58) -------------------------------------------------
 
 from microservicios.regiones import datos as bd  # noqa: E402
 

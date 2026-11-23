@@ -79,7 +79,7 @@ INSERT INTO diseases (code, name, description, default_params) VALUES
 ON CONFLICT (code) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
--- Datos por enfermedad de la migracion 042 (D56), repetidos para las tres de arriba.
+-- Datos por enfermedad de la migracion 042 (D58), repetidos para las tres de arriba.
 -- Los lee gen_demo_data.py de la migracion: no editar aqui.
 -- ---------------------------------------------------------------------------
 -- <datos-por-enfermedad>
@@ -192,7 +192,7 @@ UPDATE diseases SET default_params = jsonb_set(default_params, '{infeccioso_dias
 -- Versión 2 donde los intervalos cambiaron algo.
 INSERT INTO disease_parameter_versions (disease_id, version, params, reason)
 SELECT d.id, 2, d.default_params,
-       'Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).'
+       'Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D58).'
 FROM diseases d
 JOIN disease_parameter_versions v ON v.disease_id = d.id AND v.version = 1
 WHERE d.default_params IS DISTINCT FROM v.params

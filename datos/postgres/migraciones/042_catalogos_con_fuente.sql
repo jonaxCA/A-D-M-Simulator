@@ -3,7 +3,7 @@ SET client_encoding = 'UTF8';
 -- 042_catalogos_con_fuente.sql
 -- Dominio: catálogos. Definiciones de caso versionadas, clasificación de las
 -- enfermedades, versiones e intervalos de los parámetros y supuestos de
--- efectividad de cada tipo de intervención (D56, D7 del checklist).
+-- efectividad de cada tipo de intervención (D58, D7 del checklist).
 --
 -- - diseases: vía de transmisión y códigos CIE-10, con su fuente.
 -- - case_definitions: la definición operacional de caso de cada enfermedad, con
@@ -87,7 +87,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_case_definitions_vigente
     ON case_definitions (disease_id) WHERE status = 'vigente';
 
 COMMENT ON TABLE case_definitions IS
-    'Definiciones operacionales de caso de cada enfermedad, versionadas (D56). Las escribe enfermedades: un borrador se edita; al publicarlo pasa a vigente y la vigente anterior a retirada. Lo publicado no cambia; solo se va en cascada si se borra la enfermedad, que el sistema da de baja lógica.';
+    'Definiciones operacionales de caso de cada enfermedad, versionadas (D58). Las escribe enfermedades: un borrador se edita; al publicarlo pasa a vigente y la vigente anterior a retirada. Lo publicado no cambia; solo se va en cascada si se borra la enfermedad, que el sistema da de baja lógica.';
 COMMENT ON COLUMN case_definitions.id IS 'Identificador de la versión.';
 COMMENT ON COLUMN case_definitions.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
 COMMENT ON COLUMN case_definitions.version IS 'Número de versión dentro de la enfermedad, desde 1.';
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS disease_parameter_versions (
 );
 
 COMMENT ON TABLE disease_parameter_versions IS
-    'Cada versión de los parámetros de una enfermedad (diseases.default_params), completa (D56). La escribe parametros en la misma transacción que el cambio; no se edita ni se borra (D52), salvo en cascada si se borra la enfermedad, que el sistema da de baja lógica.';
+    'Cada versión de los parámetros de una enfermedad (diseases.default_params), completa (D58). La escribe parametros en la misma transacción que el cambio; no se edita ni se borra (D52), salvo en cascada si se borra la enfermedad, que el sistema da de baja lógica.';
 COMMENT ON COLUMN disease_parameter_versions.id IS 'Identificador.';
 COMMENT ON COLUMN disease_parameter_versions.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
 COMMENT ON COLUMN disease_parameter_versions.version IS 'Número de versión dentro de la enfermedad, desde 1.';
@@ -169,7 +169,7 @@ CREATE TABLE IF NOT EXISTS intervention_effectiveness (
 );
 
 COMMENT ON TABLE intervention_effectiveness IS
-    'Supuestos de efectividad de cada tipo de intervención (D56): el valor de referencia y el rango de su parámetro de efecto, general (disease_id NULL) o para una enfermedad, con su fuente o la marca de supuesto. Lo escribe tipos-intervencion. No cambia lo que se simula: cada intervención lleva su propio valor.';
+    'Supuestos de efectividad de cada tipo de intervención (D58): el valor de referencia y el rango de su parámetro de efecto, general (disease_id NULL) o para una enfermedad, con su fuente o la marca de supuesto. Lo escribe tipos-intervencion. No cambia lo que se simula: cada intervención lleva su propio valor.';
 COMMENT ON COLUMN intervention_effectiveness.id IS 'Identificador.';
 COMMENT ON COLUMN intervention_effectiveness.intervention_type_id IS 'Tipo de intervención. Referencia a intervention_types.id. [llave foranea]';
 COMMENT ON COLUMN intervention_effectiveness.parameter IS 'Parámetro de efecto del tipo, como en su param_schema: eficacia, reduccion o deteccion.';
@@ -295,7 +295,7 @@ UPDATE diseases SET default_params = jsonb_set(default_params, '{infeccioso_dias
 -- Versión 2 donde los intervalos cambiaron algo.
 INSERT INTO disease_parameter_versions (disease_id, version, params, reason)
 SELECT d.id, 2, d.default_params,
-       'Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).'
+       'Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D58).'
 FROM diseases d
 JOIN disease_parameter_versions v ON v.disease_id = d.id AND v.version = 1
 WHERE d.default_params IS DISTINCT FROM v.params
@@ -344,7 +344,7 @@ GRANT SELECT (id, code, name) ON diseases TO svc_tipos_intervencion;
 GRANT INSERT ON audit_log TO svc_tipos_intervencion;
 
 INSERT INTO schema_migrations (version, description)
-VALUES ('042', 'Definiciones de caso, clasificación, versiones e intervalos de parámetros y supuestos de efectividad (D56)')
+VALUES ('042', 'Definiciones de caso, clasificación, versiones e intervalos de parámetros y supuestos de efectividad (D58)')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;

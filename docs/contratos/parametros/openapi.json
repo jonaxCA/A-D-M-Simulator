@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - parametros",
     "version": "0.1.0",
-    "description": "Servicio de parametros del sistema de respuesta a epidemias: los parámetros epidemiológicos de cada enfermedad, con fuente, intervalo de incertidumbre y versiones (D56). Sus reglas ya no viven en backend_web. Los ejemplos están en docs/contratos/parametros/ejemplos (listas recortadas)."
+    "description": "Servicio de parametros del sistema de respuesta a epidemias: los parámetros epidemiológicos de cada enfermedad, con fuente, intervalo de incertidumbre y versiones (D58). Sus reglas ya no viven en backend_web. Los ejemplos están en docs/contratos/parametros/ejemplos (listas recortadas)."
   },
   "servers": [
     {
@@ -118,7 +118,7 @@
       "put": {
         "summary": "Actualizar parámetros epidemiológicos",
         "operationId": "actualizar_par_metros_epidemiol_gicos",
-        "description": "Guarda los parámetros (EPIDEMIOLOGO y ADMINISTRADOR) y su versión siguiente, con el motivo si se da (D56). Cada parámetro lleva valor, fuente o supuesto y, opcional, su intervalo de incertidumbre: min <= valor <= max dentro de los límites del parámetro, y tipo IC95, RIC o rango (rango por omisión).",
+        "description": "Guarda los parámetros (EPIDEMIOLOGO y ADMINISTRADOR) y su versión siguiente, con el motivo si se da (D58). Cada parámetro lleva valor, fuente o supuesto y, opcional, su intervalo de incertidumbre: min <= valor <= max dentro de los límites del parámetro, y tipo IC95, RIC o rango (rango por omisión).",
         "parameters": [
           {
             "in": "path",
@@ -519,7 +519,7 @@
                   "versiones": [
                     {
                       "version": 2,
-                      "reason": "Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).",
+                      "reason": "Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D58).",
                       "changed_by": null,
                       "created_at": "2026-11-23T10:00:00+00:00"
                     },
@@ -539,7 +539,7 @@
                     "name": "versiones_parametros"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<versiones_parametros><disease_id tipo=\"numero\">1</disease_id><total tipo=\"numero\">2</total><versiones><item><version tipo=\"numero\">2</version><reason>Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).</reason><changed_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at></item><item><version tipo=\"numero\">1</version><reason>Parámetros vigentes al crear el historial de versiones (042).</reason><changed_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at></item></versiones></versiones_parametros>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<versiones_parametros><disease_id tipo=\"numero\">1</disease_id><total tipo=\"numero\">2</total><versiones><item><version tipo=\"numero\">2</version><reason>Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D58).</reason><changed_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at></item><item><version tipo=\"numero\">1</version><reason>Parámetros vigentes al crear el historial de versiones (042).</reason><changed_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at></item></versiones></versiones_parametros>\n"
               }
             }
           },
@@ -559,7 +559,7 @@
             "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         },
-        "description": "El historial de los parámetros de la enfermedad, la versión más reciente primero (D56). La 1 son los de antes del historial; cada cambio agrega la siguiente."
+        "description": "El historial de los parámetros de la enfermedad, la versión más reciente primero (D58). La 1 son los de antes del historial; cada cambio agrega la siguiente."
       }
     },
     "/api/v1/diseases/{disease_id}/parameters/versions/{version}": {
@@ -630,7 +630,7 @@
                       }
                     }
                   },
-                  "reason": "Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).",
+                  "reason": "Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D58).",
                   "changed_by": null,
                   "created_at": "2026-11-23T10:00:00+00:00",
                   "disease_id": 1
@@ -643,7 +643,7 @@
                     "name": "version_parametros"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<version_parametros><version tipo=\"numero\">2</version><params><r0><valor tipo=\"numero\">2.87</valor><fuente>Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">3.44</max><min tipo=\"numero\">2.39</min><tipo>IC95</tipo></intervalo></r0><letalidad><valor tipo=\"numero\">0.005</valor><fuente>Salje et al. 2020, Science 369(6500):208-211. IFR 0.5% (IC 0.3-0.9), Francia, linaje ancestral. doi:10.1126/science.abc3517</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">0.009</max><min tipo=\"numero\">0.003</min><tipo>IC95</tipo></intervalo></letalidad></params><reason>Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).</reason><changed_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at><disease_id tipo=\"numero\">1</disease_id></version_parametros>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<version_parametros><version tipo=\"numero\">2</version><params><r0><valor tipo=\"numero\">2.87</valor><fuente>Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">3.44</max><min tipo=\"numero\">2.39</min><tipo>IC95</tipo></intervalo></r0><letalidad><valor tipo=\"numero\">0.005</valor><fuente>Salje et al. 2020, Science 369(6500):208-211. IFR 0.5% (IC 0.3-0.9), Francia, linaje ancestral. doi:10.1126/science.abc3517</fuente><supuesto tipo=\"booleano\">false</supuesto><intervalo><max tipo=\"numero\">0.009</max><min tipo=\"numero\">0.003</min><tipo>IC95</tipo></intervalo></letalidad></params><reason>Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D58).</reason><changed_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at><disease_id tipo=\"numero\">1</disease_id></version_parametros>\n"
               }
             }
           },

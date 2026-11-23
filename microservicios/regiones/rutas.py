@@ -1,5 +1,5 @@
 """Servicio regiones: el estado y sus municipios, la jerarquía territorial, las jurisdicciones
-sanitarias y la búsqueda territorial (D56). El catálogo de municipios sigue con las reglas de
+sanitarias y la búsqueda territorial (D58). El catálogo de municipios sigue con las reglas de
 backend_web.queries (E8 pendiente); lo nuevo vive en datos.py. Todo es público.
 """
 from flask import request

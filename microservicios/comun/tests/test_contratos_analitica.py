@@ -19,7 +19,7 @@ SERVICIOS = [
     ("sesiones", "sesiones", 5202, None),
     ("usuarios", "usuarios", 5203, False),
     ("roles", "roles", 5204, False),
-    # Pública salvo guardar un supuesto de efectividad, que es de EPIDEMIOLOGO y ADMINISTRADOR (D56).
+    # Pública salvo guardar un supuesto de efectividad, que es de EPIDEMIOLOGO y ADMINISTRADOR (D58).
     ("tipos-intervencion", "tipos_intervencion", 5215, None),
     # Pública salvo la exportación, que pide sesión para auditar quién exporta (D36).
     ("indicadores", "indicadores", 5251, None),

@@ -60,4 +60,4 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D53 | Importación de series observadas: el servicio `importacion` y la serie de D50 en la 061 | Aceptada | D43, D50, D52 | [D53-importacion-de-series-observadas.md](D53-importacion-de-series-observadas.md) |
 | D54 | Proyectos de investigación y archivado de escenarios | Aceptada | D5, D42, D43, D52 | [D54-proyectos-y-archivado.md](D54-proyectos-y-archivado.md) |
 | D55 | Devolver una versión para cambios y firmar la versión aprobada | Aceptada | D5, D37, D54 | [D55-devolver-y-firmar-versiones.md](D55-devolver-y-firmar-versiones.md) |
-| D56 | Catálogos con fuente y versiones: definiciones de caso, incertidumbre, jurisdicciones, población y efectividad | Aceptada | D5, D37, D50, D52 | [D56-catalogos-con-fuente-y-versiones.md](D56-catalogos-con-fuente-y-versiones.md) |
+| D58 | Catálogos con fuente y versiones: definiciones de caso, incertidumbre, jurisdicciones, población y efectividad | Aceptada | D5, D37, D50, D52 | [D58-catalogos-con-fuente-y-versiones.md](D58-catalogos-con-fuente-y-versiones.md) |

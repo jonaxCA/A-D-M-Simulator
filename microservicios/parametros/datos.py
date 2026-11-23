@@ -1,5 +1,5 @@
 # Los parámetros de una enfermedad (diseases.default_params) y su historial de versiones
-# (disease_parameter_versions, 042, D56). Cada cambio es una versión completa, guardada en la misma
+# (disease_parameter_versions, 042, D58). Cada cambio es una versión completa, guardada en la misma
 # transacción que el cambio y su bitácora; nada se edita ni se borra (D52).
 import psycopg2.extras
 

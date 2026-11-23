@@ -4,7 +4,7 @@ SET client_encoding = 'UTF8';
 -- Generado por datos/scripts/build_censos_y_jurisdicciones.py: no editar a mano.
 --
 -- Dominio: catálogos. Jurisdicciones sanitarias, periodos de referencia y
--- versiones de la población (D56, D7 del checklist).
+-- versiones de la población (D58, D7 del checklist).
 --
 -- - health_areas y health_area_municipalities: las 8 jurisdicciones sanitarias de
 --   Nuevo León y sus municipios (Reglamento Interior de Servicios de Salud de NL,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS health_areas (
 );
 
 COMMENT ON TABLE health_areas IS
-    'Jurisdicciones sanitarias (áreas sanitarias) de cada estado, con su fuente (D56). Solo lectura: las carga esta migración.';
+    'Jurisdicciones sanitarias (áreas sanitarias) de cada estado, con su fuente (D58). Solo lectura: las carga esta migración.';
 COMMENT ON COLUMN health_areas.id IS 'Identificador.';
 COMMENT ON COLUMN health_areas.state_code IS 'Clave INEGI del estado (19, Nuevo León).';
 COMMENT ON COLUMN health_areas.number IS 'Número de la jurisdicción dentro del estado.';
@@ -61,7 +61,7 @@ CREATE INDEX IF NOT EXISTS ix_health_area_municipalities_region
     ON health_area_municipalities (region_code);
 
 COMMENT ON TABLE health_area_municipalities IS
-    'Municipios de cada jurisdicción sanitaria (D56). Un municipio repartido entre varias, como Monterrey, aparece en cada una con partial = true.';
+    'Municipios de cada jurisdicción sanitaria (D58). Un municipio repartido entre varias, como Monterrey, aparece en cada una con partial = true.';
 COMMENT ON COLUMN health_area_municipalities.health_area_id IS 'Jurisdicción. Referencia a health_areas.id. [llave foranea]';
 COMMENT ON COLUMN health_area_municipalities.region_code IS 'Clave INEGI del municipio (regions.code). Sin llave foránea: ver el encabezado de la 043.';
 COMMENT ON COLUMN health_area_municipalities.partial IS 'true si solo una parte del municipio pertenece a la jurisdicción.';
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS census_population (
 );
 
 COMMENT ON TABLE census_population IS
-    'Periodos de referencia de la población: el total de cada región en los censos y conteos de INEGI (D56). Solo lectura: lo carga esta migración.';
+    'Periodos de referencia de la población: el total de cada región en los censos y conteos de INEGI (D58). Solo lectura: lo carga esta migración.';
 COMMENT ON COLUMN census_population.region_code IS 'Clave INEGI del estado o del municipio (regions.code). Sin llave foránea: ver el encabezado de la 043.';
 COMMENT ON COLUMN census_population.year IS 'Año del censo o conteo.';
 COMMENT ON COLUMN census_population.population IS 'Población total.';
@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS population_versions (
 );
 
 COMMENT ON TABLE population_versions IS
-    'Versiones de la población de cada región (D56). La 1 es la que había antes del primer ajuste (el Censo 2020); cada ajuste agrega la siguiente con el resultado. Las escribe poblacion; no se editan ni se borran (D52).';
+    'Versiones de la población de cada región (D58). La 1 es la que había antes del primer ajuste (el Censo 2020); cada ajuste agrega la siguiente con el resultado. Las escribe poblacion; no se editan ni se borran (D52).';
 COMMENT ON COLUMN population_versions.id IS 'Identificador.';
 COMMENT ON COLUMN population_versions.region_id IS 'Región. Referencia a regions.id. [llave foranea]';
 COMMENT ON COLUMN population_versions.version IS 'Número de versión dentro de la región, desde 1.';
@@ -570,7 +570,7 @@ GRANT SELECT, INSERT ON population_versions TO svc_poblacion;
 GRANT USAGE ON SEQUENCE population_versions_id_seq TO svc_poblacion;
 
 INSERT INTO schema_migrations (version, description)
-VALUES ('043', 'Jurisdicciones sanitarias, censos y conteos 1990-2020 y versiones de la población (D56)')
+VALUES ('043', 'Jurisdicciones sanitarias, censos y conteos 1990-2020 y versiones de la población (D58)')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;

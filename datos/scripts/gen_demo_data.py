@@ -71,7 +71,7 @@ def datos_por_enfermedad():
     inicio = texto.index("-- <datos-por-enfermedad>")
     fin = texto.index("-- </datos-por-enfermedad>") + len("-- </datos-por-enfermedad>")
     return ("-- ---------------------------------------------------------------------------\n"
-            "-- Datos por enfermedad de la migracion 042 (D56), repetidos para las tres de arriba.\n"
+            "-- Datos por enfermedad de la migracion 042 (D58), repetidos para las tres de arriba.\n"
             "-- Los lee gen_demo_data.py de la migracion: no editar aqui.\n"
             "-- ---------------------------------------------------------------------------\n"
             + texto[inicio:fin] + "\n")

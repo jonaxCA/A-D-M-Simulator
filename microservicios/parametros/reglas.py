@@ -7,7 +7,7 @@ from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.validaciones import diccionario
 from procesamiento.entrada_motor import PARAMETROS_SIMULACION
 
-# Cómo se obtuvo el intervalo de incertidumbre (D56).
+# Cómo se obtuvo el intervalo de incertidumbre (D58).
 TIPOS_INTERVALO = ("IC95", "RIC", "rango")
 
 

@@ -5707,7 +5707,7 @@ SET client_encoding = 'UTF8';
 -- 042_catalogos_con_fuente.sql
 -- Dominio: catálogos. Definiciones de caso versionadas, clasificación de las
 -- enfermedades, versiones e intervalos de los parámetros y supuestos de
--- efectividad de cada tipo de intervención (D56, D7 del checklist).
+-- efectividad de cada tipo de intervención (D58, D7 del checklist).
 --
 -- - diseases: vía de transmisión y códigos CIE-10, con su fuente.
 -- - case_definitions: la definición operacional de caso de cada enfermedad, con
@@ -5791,7 +5791,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_case_definitions_vigente
     ON case_definitions (disease_id) WHERE status = 'vigente';
 
 COMMENT ON TABLE case_definitions IS
-    'Definiciones operacionales de caso de cada enfermedad, versionadas (D56). Las escribe enfermedades: un borrador se edita; al publicarlo pasa a vigente y la vigente anterior a retirada. Lo publicado no cambia; solo se va en cascada si se borra la enfermedad, que el sistema da de baja lógica.';
+    'Definiciones operacionales de caso de cada enfermedad, versionadas (D58). Las escribe enfermedades: un borrador se edita; al publicarlo pasa a vigente y la vigente anterior a retirada. Lo publicado no cambia; solo se va en cascada si se borra la enfermedad, que el sistema da de baja lógica.';
 COMMENT ON COLUMN case_definitions.id IS 'Identificador de la versión.';
 COMMENT ON COLUMN case_definitions.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
 COMMENT ON COLUMN case_definitions.version IS 'Número de versión dentro de la enfermedad, desde 1.';
@@ -5827,7 +5827,7 @@ CREATE TABLE IF NOT EXISTS disease_parameter_versions (
 );
 
 COMMENT ON TABLE disease_parameter_versions IS
-    'Cada versión de los parámetros de una enfermedad (diseases.default_params), completa (D56). La escribe parametros en la misma transacción que el cambio; no se edita ni se borra (D52), salvo en cascada si se borra la enfermedad, que el sistema da de baja lógica.';
+    'Cada versión de los parámetros de una enfermedad (diseases.default_params), completa (D58). La escribe parametros en la misma transacción que el cambio; no se edita ni se borra (D52), salvo en cascada si se borra la enfermedad, que el sistema da de baja lógica.';
 COMMENT ON COLUMN disease_parameter_versions.id IS 'Identificador.';
 COMMENT ON COLUMN disease_parameter_versions.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
 COMMENT ON COLUMN disease_parameter_versions.version IS 'Número de versión dentro de la enfermedad, desde 1.';
@@ -5873,7 +5873,7 @@ CREATE TABLE IF NOT EXISTS intervention_effectiveness (
 );
 
 COMMENT ON TABLE intervention_effectiveness IS
-    'Supuestos de efectividad de cada tipo de intervención (D56): el valor de referencia y el rango de su parámetro de efecto, general (disease_id NULL) o para una enfermedad, con su fuente o la marca de supuesto. Lo escribe tipos-intervencion. No cambia lo que se simula: cada intervención lleva su propio valor.';
+    'Supuestos de efectividad de cada tipo de intervención (D58): el valor de referencia y el rango de su parámetro de efecto, general (disease_id NULL) o para una enfermedad, con su fuente o la marca de supuesto. Lo escribe tipos-intervencion. No cambia lo que se simula: cada intervención lleva su propio valor.';
 COMMENT ON COLUMN intervention_effectiveness.id IS 'Identificador.';
 COMMENT ON COLUMN intervention_effectiveness.intervention_type_id IS 'Tipo de intervención. Referencia a intervention_types.id. [llave foranea]';
 COMMENT ON COLUMN intervention_effectiveness.parameter IS 'Parámetro de efecto del tipo, como en su param_schema: eficacia, reduccion o deteccion.';
@@ -5999,7 +5999,7 @@ UPDATE diseases SET default_params = jsonb_set(default_params, '{infeccioso_dias
 -- Versión 2 donde los intervalos cambiaron algo.
 INSERT INTO disease_parameter_versions (disease_id, version, params, reason)
 SELECT d.id, 2, d.default_params,
-       'Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D56).'
+       'Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D58).'
 FROM diseases d
 JOIN disease_parameter_versions v ON v.disease_id = d.id AND v.version = 1
 WHERE d.default_params IS DISTINCT FROM v.params
@@ -6048,7 +6048,7 @@ GRANT SELECT (id, code, name) ON diseases TO svc_tipos_intervencion;
 GRANT INSERT ON audit_log TO svc_tipos_intervencion;
 
 INSERT INTO schema_migrations (version, description)
-VALUES ('042', 'Definiciones de caso, clasificación, versiones e intervalos de parámetros y supuestos de efectividad (D56)')
+VALUES ('042', 'Definiciones de caso, clasificación, versiones e intervalos de parámetros y supuestos de efectividad (D58)')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;
@@ -6059,7 +6059,7 @@ SET client_encoding = 'UTF8';
 -- Generado por datos/scripts/build_censos_y_jurisdicciones.py: no editar a mano.
 --
 -- Dominio: catálogos. Jurisdicciones sanitarias, periodos de referencia y
--- versiones de la población (D56, D7 del checklist).
+-- versiones de la población (D58, D7 del checklist).
 --
 -- - health_areas y health_area_municipalities: las 8 jurisdicciones sanitarias de
 --   Nuevo León y sus municipios (Reglamento Interior de Servicios de Salud de NL,
@@ -6092,7 +6092,7 @@ CREATE TABLE IF NOT EXISTS health_areas (
 );
 
 COMMENT ON TABLE health_areas IS
-    'Jurisdicciones sanitarias (áreas sanitarias) de cada estado, con su fuente (D56). Solo lectura: las carga esta migración.';
+    'Jurisdicciones sanitarias (áreas sanitarias) de cada estado, con su fuente (D58). Solo lectura: las carga esta migración.';
 COMMENT ON COLUMN health_areas.id IS 'Identificador.';
 COMMENT ON COLUMN health_areas.state_code IS 'Clave INEGI del estado (19, Nuevo León).';
 COMMENT ON COLUMN health_areas.number IS 'Número de la jurisdicción dentro del estado.';
@@ -6116,7 +6116,7 @@ CREATE INDEX IF NOT EXISTS ix_health_area_municipalities_region
     ON health_area_municipalities (region_code);
 
 COMMENT ON TABLE health_area_municipalities IS
-    'Municipios de cada jurisdicción sanitaria (D56). Un municipio repartido entre varias, como Monterrey, aparece en cada una con partial = true.';
+    'Municipios de cada jurisdicción sanitaria (D58). Un municipio repartido entre varias, como Monterrey, aparece en cada una con partial = true.';
 COMMENT ON COLUMN health_area_municipalities.health_area_id IS 'Jurisdicción. Referencia a health_areas.id. [llave foranea]';
 COMMENT ON COLUMN health_area_municipalities.region_code IS 'Clave INEGI del municipio (regions.code). Sin llave foránea: ver el encabezado de la 043.';
 COMMENT ON COLUMN health_area_municipalities.partial IS 'true si solo una parte del municipio pertenece a la jurisdicción.';
@@ -6134,7 +6134,7 @@ CREATE TABLE IF NOT EXISTS census_population (
 );
 
 COMMENT ON TABLE census_population IS
-    'Periodos de referencia de la población: el total de cada región en los censos y conteos de INEGI (D56). Solo lectura: lo carga esta migración.';
+    'Periodos de referencia de la población: el total de cada región en los censos y conteos de INEGI (D58). Solo lectura: lo carga esta migración.';
 COMMENT ON COLUMN census_population.region_code IS 'Clave INEGI del estado o del municipio (regions.code). Sin llave foránea: ver el encabezado de la 043.';
 COMMENT ON COLUMN census_population.year IS 'Año del censo o conteo.';
 COMMENT ON COLUMN census_population.population IS 'Población total.';
@@ -6165,7 +6165,7 @@ CREATE TABLE IF NOT EXISTS population_versions (
 );
 
 COMMENT ON TABLE population_versions IS
-    'Versiones de la población de cada región (D56). La 1 es la que había antes del primer ajuste (el Censo 2020); cada ajuste agrega la siguiente con el resultado. Las escribe poblacion; no se editan ni se borran (D52).';
+    'Versiones de la población de cada región (D58). La 1 es la que había antes del primer ajuste (el Censo 2020); cada ajuste agrega la siguiente con el resultado. Las escribe poblacion; no se editan ni se borran (D52).';
 COMMENT ON COLUMN population_versions.id IS 'Identificador.';
 COMMENT ON COLUMN population_versions.region_id IS 'Región. Referencia a regions.id. [llave foranea]';
 COMMENT ON COLUMN population_versions.version IS 'Número de versión dentro de la región, desde 1.';
@@ -6625,7 +6625,7 @@ GRANT SELECT, INSERT ON population_versions TO svc_poblacion;
 GRANT USAGE ON SEQUENCE population_versions_id_seq TO svc_poblacion;
 
 INSERT INTO schema_migrations (version, description)
-VALUES ('043', 'Jurisdicciones sanitarias, censos y conteos 1990-2020 y versiones de la población (D56)')
+VALUES ('043', 'Jurisdicciones sanitarias, censos y conteos 1990-2020 y versiones de la población (D58)')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;

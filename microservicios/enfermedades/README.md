@@ -3,13 +3,13 @@
 Puerto externo previsto: 5211; puerto interno en Docker: 8000.
 
 La lista y el alta reutilizan las consultas y reglas de `backend_web` (E8 pendiente); la ficha,
-la clasificación y las definiciones de caso viven en `datos.py` (D56). Sus rutas quedan bajo
+la clasificación y las definiciones de caso viven en `datos.py` (D58). Sus rutas quedan bajo
 `/api/v1` y tienen contrato en `docs/contratos/enfermedades/openapi.json` y `enfermedad.xsd`.
 
 **Clasificación.** La ficha (`GET /diseases/{id}`) trae `transmission` (respiratoria o vectorial),
 `icd10` y `classification_source`. `PUT /diseases/{id}` las cambia juntas y con su fuente.
 
-**Definiciones de caso (D56).** Cada enfermedad tiene versiones de su definición operacional de caso:
+**Definiciones de caso (D58).** Cada enfermedad tiene versiones de su definición operacional de caso:
 una lista de `criterios` (`clasificacion` y `texto`) con su `fuente`.
 
 | Ruta | Qué hace | Acceso |

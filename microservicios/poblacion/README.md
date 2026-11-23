@@ -7,7 +7,7 @@ Sus reglas viven en `datos.py` (E8: ya no importa `backend_web` y su imagen part
 cada municipio, con el control optimista, el recálculo del estado y la bitácora de antes. Sus rutas
 quedan bajo `/api/v1` y tienen contrato en `docs/contratos/poblacion/openapi.json`.
 
-**Versiones y periodos (D56).** Cada corrección guarda la versión siguiente de la población del
+**Versiones y periodos (D58).** Cada corrección guarda la versión siguiente de la población del
 municipio y, si cambió, la del estado (`population_versions`), en la misma transacción; la versión 1,
 con las cifras de antes, se guarda en el primer ajuste. La respuesta trae `version`.
 

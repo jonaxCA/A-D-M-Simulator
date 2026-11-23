@@ -1,4 +1,4 @@
-# D56 - Catálogos con fuente y versiones: definiciones de caso, incertidumbre, jurisdicciones, población y efectividad
+# D58 - Catálogos con fuente y versiones: definiciones de caso, incertidumbre, jurisdicciones, población y efectividad
 
 Fecha: 2026-11-23 · Estado: Aceptada · Atiende RF-B13 a RF-B17 · Amplía D5 y D52 · Aplica D37 y la regla 8 de `AGENTS.md`
 

@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - enfermedades",
     "version": "0.1.0",
-    "description": "Servicio de enfermedades del sistema de respuesta a epidemias: el catálogo, su clasificación y las definiciones de caso versionadas (D56). Los ejemplos están en docs/contratos/enfermedades/ejemplos (listas recortadas)."
+    "description": "Servicio de enfermedades del sistema de respuesta a epidemias: el catálogo, su clasificación y las definiciones de caso versionadas (D58). Los ejemplos están en docs/contratos/enfermedades/ejemplos (listas recortadas)."
   },
   "servers": [
     {
@@ -427,7 +427,7 @@
             "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         },
-        "description": "La ficha de la enfermedad con su clasificación: vía de transmisión (respiratoria o vectorial), códigos CIE-10 y su fuente (D56)."
+        "description": "La ficha de la enfermedad con su clasificación: vía de transmisión (respiratoria o vectorial), códigos CIE-10 y su fuente (D58)."
       },
       "put": {
         "summary": "Editar enfermedad",
@@ -1071,7 +1071,7 @@
             "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         },
-        "description": "Todas las versiones de la definición operacional de caso, la más reciente primero: borrador, vigente o retirada (D56). Públicas, como el catálogo."
+        "description": "Todas las versiones de la definición operacional de caso, la más reciente primero: borrador, vigente o retirada (D58). Públicas, como el catálogo."
       },
       "post": {
         "summary": "Crear un borrador de definición de caso",

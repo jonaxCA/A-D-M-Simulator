@@ -1,5 +1,5 @@
 """Servicio poblacion: la población de cada municipio de Nuevo León y sus bandas de edad, su
-corrección manual, sus versiones y sus periodos de referencia (D56). Sus reglas viven en datos.py
+corrección manual, sus versiones y sus periodos de referencia (D58). Sus reglas viven en datos.py
 (E8: ya no importa backend_web).
 """
 from flask import g

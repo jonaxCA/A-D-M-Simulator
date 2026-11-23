@@ -1,5 +1,5 @@
 # El catálogo de tipos de intervención y sus supuestos de efectividad (intervention_effectiveness,
-# 042, D56). La lectura del catálogo vivía en backend_web.queries.get_tipos_intervencion (E8); el
+# 042, D58). La lectura del catálogo vivía en backend_web.queries.get_tipos_intervencion (E8); el
 # costo lo sigue escribiendo intervenciones.
 import psycopg2.extras
 

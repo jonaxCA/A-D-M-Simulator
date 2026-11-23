@@ -1,4 +1,4 @@
-# Jerarquía territorial, jurisdicciones sanitarias y búsqueda (043, D56). Las jurisdicciones salen de
+# Jerarquía territorial, jurisdicciones sanitarias y búsqueda (043, D58). Las jurisdicciones salen de
 # health_areas y health_area_municipalities, que ligan cada municipio por su clave INEGI; la
 # geometría y los mapas siguen en zonas.
 import unicodedata

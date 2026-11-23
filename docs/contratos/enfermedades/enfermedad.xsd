@@ -4,7 +4,7 @@
      la edición id y actualizada, y activar o desactivar id e is_active.
      GET /api/v1/diseases/stats responde la raíz <estadisticas_enfermedades>.
      La ficha trae su clasificación (transmission, icd10 y su fuente). Las definiciones de
-     caso (D56): GET .../case-definitions responde <definiciones_caso>, y la vigente, una
+     caso (D58): GET .../case-definitions responde <definiciones_caso>, y la vigente, una
      versión, el alta, la edición y la publicación responden <definicion_caso>. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
 

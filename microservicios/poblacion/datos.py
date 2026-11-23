@@ -1,5 +1,5 @@
 # La población de cada municipio de Nuevo León, su corrección manual, sus versiones y sus periodos de
-# referencia (D56). Las reglas vivían en backend_web.queries (E8); aquí siguen iguales y cada ajuste
+# referencia (D58). Las reglas vivían en backend_web.queries (E8); aquí siguen iguales y cada ajuste
 # deja además su versión (population_versions, 043) en la misma transacción. La versión 1 se
 # guarda al primer ajuste, con las cifras de antes.
 import psycopg2

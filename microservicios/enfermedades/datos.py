@@ -1,5 +1,5 @@
 # La ficha de una enfermedad con su clasificación y sus definiciones de caso versionadas
-# (case_definitions, 042, D56). Un borrador se edita; al publicarlo pasa a vigente y la vigente
+# (case_definitions, 042, D58). Un borrador se edita; al publicarlo pasa a vigente y la vigente
 # anterior a retirada, en la misma transacción y con su bitácora. Lo publicado no cambia.
 import psycopg2
 import psycopg2.extras

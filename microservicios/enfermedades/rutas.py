@@ -1,4 +1,4 @@
-"""Servicio enfermedades: el catálogo, su clasificación y las definiciones de caso versionadas (D56).
+"""Servicio enfermedades: el catálogo, su clasificación y las definiciones de caso versionadas (D58).
 
 La lista y el alta siguen con las reglas de backend_web.queries (E8 pendiente); la ficha, la
 clasificación y las definiciones de caso viven en datos.py.

@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - poblacion",
     "version": "0.1.0",
-    "description": "Servicio de poblacion del sistema de respuesta a epidemias: la población de cada municipio y sus bandas de edad, su corrección, sus versiones y sus periodos de referencia (D56). Sus reglas ya no viven en backend_web. Los ejemplos están en docs/contratos/poblacion/ejemplos."
+    "description": "Servicio de poblacion del sistema de respuesta a epidemias: la población de cada municipio y sus bandas de edad, su corrección, sus versiones y sus periodos de referencia (D58). Sus reglas ya no viven en backend_web. Los ejemplos están en docs/contratos/poblacion/ejemplos."
   },
   "servers": [
     {
@@ -98,7 +98,7 @@
       "put": {
         "summary": "Corregir población municipal",
         "operationId": "corregir_poblaci_n_municipal",
-        "description": "Solo ADMINISTRADOR. expected_population es el valor que se leyó antes de editar; si otra persona lo cambió, responde 409Cada corrección guarda la versión siguiente de la población de la región y, si cambió, la del estado (D56); la respuesta trae version.",
+        "description": "Solo ADMINISTRADOR. expected_population es el valor que se leyó antes de editar; si otra persona lo cambió, responde 409Cada corrección guarda la versión siguiente de la población de la región y, si cambió, la del estado (D58); la respuesta trae version.",
         "parameters": [
           {
             "in": "path",
@@ -330,7 +330,7 @@
       "put": {
         "summary": "Corregir grupos de edad",
         "operationId": "corregir_grupos_de_edad",
-        "description": "Solo ADMINISTRADOR. groups trae las cinco bandas; su suma debe conservar la población con edad declarada. expected_groups trae las cinco bandas y edad_no_especificada tal como se leyeron; si otra persona las cambió, responde 409Cada corrección guarda la versión siguiente de la población de la región y, si cambió, la del estado (D56); la respuesta trae version.",
+        "description": "Solo ADMINISTRADOR. groups trae las cinco bandas; su suma debe conservar la población con edad declarada. expected_groups trae las cinco bandas y edad_no_especificada tal como se leyeron; si otra persona las cambió, responde 409Cada corrección guarda la versión siguiente de la población de la región y, si cambió, la del estado (D58); la respuesta trae version.",
         "parameters": [
           {
             "in": "path",
@@ -594,7 +594,7 @@
             "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         },
-        "description": "Las versiones de la población de la región (estado o municipio), la más reciente primero (D56): total, 60 y más, bandas de edad, periodo de referencia, fuente y motivo. Sin ajustes, la vigente es la versión 1 (Censo 2020)."
+        "description": "Las versiones de la población de la región (estado o municipio), la más reciente primero (D58): total, 60 y más, bandas de edad, periodo de referencia, fuente y motivo. Sin ajustes, la vigente es la versión 1 (Censo 2020)."
       }
     },
     "/api/v1/regions/{region_id}/population/periods": {

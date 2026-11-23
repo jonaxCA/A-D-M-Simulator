@@ -78,7 +78,7 @@ copia, abajo.
 `backend_web` y sus imágenes parten de `epidemia/base-vigilancia` (`test_datos_sin_backend_web.py`).
 `parametros` tampoco lo importa, pero usa los límites del motor y sigue en `epidemia/base`.
 `escenarios`, `enfermedades` y `regiones` todavía lo importan para lo que ya tenían (alta y
-versiones, lista y alta, catálogo de municipios), pero lo nuevo de D54 y D56 vive en su carpeta.
+versiones, lista y alta, catálogo de municipios), pero lo nuevo de D54 y D58 vive en su carpeta.
 
 | Regla de negocio | Servicio dueño | Dónde vive | Bloque | Estado |
 |---|---|---|---|---|
@@ -87,11 +87,11 @@ versiones, lista y alta, catálogo de municipios), pero lo nuevo de D54 y D56 vi
 | Enviar a revisión, aprobar con firma, rechazar y devolver una versión; la bandeja (D55) | `aprobacion` | `aprobacion/datos.py` (`envia_a_revision`, `resuelve_revision` y `get_pendientes_revision` siguen en `backend_web`, ya sin uso fuera de sus pruebas, hasta que se retire el monolito) | D | movida (D7) |
 | La huella de la entrada del motor de una versión (la firma, D55) | `validacion` | `validacion/huella.py`, con `procesamiento.contrato.huella` | D | nació ahí (D7) |
 | Proyectos de investigación, archivar un escenario y los responsables de cada versión (D54) | `escenarios` | `escenarios/datos.py` | D | nació ahí (D7) |
-| Rangos de los parámetros epidemiológicos (`parametros_epidemiologicos`), su intervalo y sus versiones (D56) | `parametros` | `parametros/reglas.py` y `parametros/datos.py` (ya no en `epidemia_comun/validaciones.py`); los límites, de `procesamiento.entrada_motor` | D | movida (D7) |
-| Definiciones de caso versionadas y clasificación de las enfermedades (D56) | `enfermedades` | `enfermedades/datos.py` | D | nació ahí (D7) |
-| Jerarquía, jurisdicciones sanitarias y búsqueda territorial (D56) | `regiones` | `regiones/datos.py`; `zonas` sigue leyendo las jurisdicciones de `datos/geo/` para agrupar casos | D | nació ahí (D7) |
-| Corregir la población y las bandas de un municipio, con sus versiones y periodos (D56) | `poblacion` | `poblacion/datos.py` (`actualiza_poblacion_municipio` y `actualiza_grupos_edad_municipio` siguen en `backend_web`, ya sin uso fuera de sus pruebas) | D | movida (D7) |
-| Catálogo de tipos de intervención y sus supuestos de efectividad (D56) | `tipos-intervencion` | `tipos_intervencion/datos.py` (`get_tipos_intervencion` sigue en `backend_web` para `validacion` e `intervenciones`) | D | movida (D7) |
+| Rangos de los parámetros epidemiológicos (`parametros_epidemiologicos`), su intervalo y sus versiones (D58) | `parametros` | `parametros/reglas.py` y `parametros/datos.py` (ya no en `epidemia_comun/validaciones.py`); los límites, de `procesamiento.entrada_motor` | D | movida (D7) |
+| Definiciones de caso versionadas y clasificación de las enfermedades (D58) | `enfermedades` | `enfermedades/datos.py` | D | nació ahí (D7) |
+| Jerarquía, jurisdicciones sanitarias y búsqueda territorial (D58) | `regiones` | `regiones/datos.py`; `zonas` sigue leyendo las jurisdicciones de `datos/geo/` para agrupar casos | D | nació ahí (D7) |
+| Corregir la población y las bandas de un municipio, con sus versiones y periodos (D58) | `poblacion` | `poblacion/datos.py` (`actualiza_poblacion_municipio` y `actualiza_grupos_edad_municipio` siguen en `backend_web`, ya sin uso fuera de sus pruebas) | D | movida (D7) |
+| Catálogo de tipos de intervención y sus supuestos de efectividad (D58) | `tipos-intervencion` | `tipos_intervencion/datos.py` (`get_tipos_intervencion` sigue en `backend_web` para `validacion` e `intervenciones`) | D | movida (D7) |
 
 ## Contratos de dominio
 

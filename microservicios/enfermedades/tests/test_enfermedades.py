@@ -381,7 +381,7 @@ def test_estadisticas_no_chocan_con_el_detalle(cliente, conteos):
 
 
 
-# ---- clasificación y definiciones de caso (D56) ------------------------------------------------
+# ---- clasificación y definiciones de caso (D58) ------------------------------------------------
 
 DEFINICION = {"criterios": [{"clasificacion": "Caso probable", "texto": "Fiebre y dos signos."},
                             {"clasificacion": "Caso confirmado", "texto": "Con RT-PCR positiva."}],

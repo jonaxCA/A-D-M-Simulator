@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - tipos-intervencion",
     "version": "0.1.0",
-    "description": "Catálogo de tipos de intervención con el esquema de sus parámetros y sus supuestos de efectividad, con fuente o marca de supuesto (D56). Leer es público; los supuestos los cambian EPIDEMIOLOGO y ADMINISTRADOR. Sus reglas ya no viven en backend_web."
+    "description": "Catálogo de tipos de intervención con el esquema de sus parámetros y sus supuestos de efectividad, con fuente o marca de supuesto (D58). Leer es público; los supuestos los cambian EPIDEMIOLOGO y ADMINISTRADOR. Sus reglas ya no viven en backend_web."
   },
   "servers": [
     {
@@ -334,7 +334,7 @@
             "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         },
-        "description": "Un tipo activo, con su param_schema, su costo y sus supuestos de efectividad (D56): valor de referencia, rango, fuente y marca de supuesto, general o por enfermedad."
+        "description": "Un tipo activo, con su param_schema, su costo y sus supuestos de efectividad (D58): valor de referencia, rango, fuente y marca de supuesto, general o por enfermedad."
       }
     },
     "/api/v1/intervention-types/{code}/effectiveness": {

@@ -101,7 +101,7 @@ def test_formato_desconocido_es_400(cliente):
 
 
 
-# ---- supuestos de efectividad (D56) -----------------------------------------------------------
+# ---- supuestos de efectividad (D58) -----------------------------------------------------------
 
 SUPUESTO = {"parametro": "eficacia", "valor": 0.85, "min": 0.66, "max": 0.93,
             "fuente": "Chu et al. 2020, Lancet", "supuesto": True}

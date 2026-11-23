@@ -192,7 +192,7 @@ def test_correccion_de_grupos_invalida_es_422(cliente, admin, llamadas, cuerpo):
 
 
 
-# ---- versiones y periodos de referencia (D56) --------------------------------------------------
+# ---- versiones y periodos de referencia (D58) --------------------------------------------------
 
 @pytest.fixture
 def historial(monkeypatch):

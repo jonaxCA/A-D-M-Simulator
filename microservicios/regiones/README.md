@@ -8,7 +8,7 @@
   municipios y la fuente de su 60+ (derivado del censo o la última corrección manual). 404 si no
   está cargado.
 - `GET /api/v1/regions/{id}` detalle de un municipio o 404.
-- `GET /api/v1/regions/{id}/children` las regiones hijas (los municipios del estado) (D56).
+- `GET /api/v1/regions/{id}/children` las regiones hijas (los municipios del estado) (D58).
 - `GET /api/v1/regions/{id}/health-areas` las jurisdicciones sanitarias de un municipio (Monterrey
   está en tres, en parte).
 - `GET /api/v1/health-areas` y `/health-areas/{numero}` las 8 jurisdicciones de NL con sus municipios

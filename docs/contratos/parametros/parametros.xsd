@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Parámetros epidemiológicos de una enfermedad (raíz <parametros>), los de
      GET y PUT /api/v1/diseases/{id}/parameters. El PUT agrega <version>, la versión que
-     quedó guardada (D56). GET .../parameters/versions responde <versiones_parametros> y
+     quedó guardada (D58). GET .../parameters/versions responde <versiones_parametros> y
      GET .../parameters/versions/{n}, <version_parametros> con los parámetros en <params>.
 
      Los seis parámetros que usa el motor y letalidad_por_edad se validan:

@@ -1,7 +1,7 @@
 # EPIDEMIA - Servicio tipos-intervencion
 
 Catálogo de los tipos de intervención con el esquema de sus parámetros
-(`param_schema`, JSON Schema) y sus supuestos de efectividad (D56). Las apps arman con él el
+(`param_schema`, JSON Schema) y sus supuestos de efectividad (D58). Las apps arman con él el
 formulario de cada intervención. Escribe solo `intervention_effectiveness`; el costo es de
 `intervenciones`. Sus reglas viven en `datos.py` (E8: ya no importa `backend_web` y su imagen parte de
 `epidemia/base-vigilancia`).

@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - regiones",
     "version": "0.1.0",
-    "description": "Servicio de regiones del sistema de respuesta a epidemias: el estado y sus municipios, la jerarquía, las jurisdicciones sanitarias y la búsqueda territorial (D56). Público, de solo lectura y no usa Redis. Los ejemplos están en docs/contratos/regiones/ejemplos (listas recortadas)."
+    "description": "Servicio de regiones del sistema de respuesta a epidemias: el estado y sus municipios, la jerarquía, las jurisdicciones sanitarias y la búsqueda territorial (D58). Público, de solo lectura y no usa Redis. Los ejemplos están en docs/contratos/regiones/ejemplos (listas recortadas)."
   },
   "servers": [
     {
@@ -644,7 +644,7 @@
             }
           }
         },
-        "description": "Las jurisdicciones sanitarias de Nuevo León con sus municipios y su fuente (Reglamento Interior de Servicios de Salud de NL, art. 27; 043, D56). El ejemplo, recortado."
+        "description": "Las jurisdicciones sanitarias de Nuevo León con sus municipios y su fuente (Reglamento Interior de Servicios de Salud de NL, art. 27; 043, D58). El ejemplo, recortado."
       }
     },
     "/api/v1/health-areas/{numero}": {

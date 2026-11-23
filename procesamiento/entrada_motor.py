@@ -98,7 +98,7 @@ def estado_parametros(default_params):
                            else f"{valor * 100:g}" if spec.get("porcentaje") else f"{valor:g}"),
             "fuente": fuente or "",
             "supuesto": supuesto,
-            # Incertidumbre (D56): {min, max, tipo} si la fuente la da. El motor no la usa.
+            # Incertidumbre (D58): {min, max, tipo} si la fuente la da. El motor no la usa.
             "intervalo": bruto.get("intervalo") if isinstance(bruto, dict) else None,
             "estado": estado,
         })

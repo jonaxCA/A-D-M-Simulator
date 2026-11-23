@@ -1,5 +1,5 @@
 """Servicio parametros: los parámetros epidemiológicos de cada enfermedad, con su fuente, su
-intervalo de incertidumbre y su historial de versiones (D56). Sus reglas viven aquí (reglas.py y
+intervalo de incertidumbre y su historial de versiones (D58). Sus reglas viven aquí (reglas.py y
 datos.py); los límites y el estado de cada parámetro son los del motor (procesamiento.entrada_motor).
 """
 from flask import g
