@@ -41,6 +41,9 @@ class RutasHumoTests(AppTestCase):
             "scenario_id": escenario["id"] if escenario else 1,
             "run_id": corrida["id"] if corrida else 1,
             "name": "demo",
+            # Un reporte o una foto que no existe: la ruta responde que no está, nunca 500.
+            "reporte_id": 1,
+            "evidencia_id": 1,
         }
 
     def test_ningun_get_responde_500(self):

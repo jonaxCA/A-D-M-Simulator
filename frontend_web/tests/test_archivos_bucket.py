@@ -128,6 +128,22 @@ class FotoDeUnCaso(ConEvidencias):
         self.assertIn("evidencias".encode(), resp.data)
 
 
+class ValidarUnCaso(ConEvidencias):
+    # D47: validar, descartar o marcar duplicado es del EPIDEMIOLOGO, con la versión que leyó.
+    @patch("backend_web.servicios.cambia_estado_caso")
+    def test_el_epidemiologo_valida_con_la_version_que_leyo(self, cambia):
+        resp = self._cliente("EPIDEMIOLOGO").post(
+            "/vigilancia/casos/418", data={"version": "3", "estado": "validado", "motivo": "Confirmado"})
+        self.assertEqual(resp.status_code, 302)
+        cambia.assert_called_once_with(self._token("EPIDEMIOLOGO"), 418, 3, "validado", "Confirmado", None)
+
+    @patch("backend_web.servicios.cambia_estado_caso")
+    def test_el_analista_no_valida(self, cambia):
+        resp = self._cliente("ANALISTA").post("/vigilancia/casos/418", data={"version": "3", "estado": "validado"})
+        self.assertEqual(resp.status_code, 403)
+        cambia.assert_not_called()
+
+
 class AbrirReporte(ConEvidencias):
     def test_un_rol_con_reports_read_lo_abre_con_su_url_firmada(self):
         resp = self._cliente("EPIDEMIOLOGO").get("/comparacion/reportes/3")
