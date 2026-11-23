@@ -71,7 +71,7 @@
   </div>
   <table class="situacion-table">
     <thead>
-      <tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th>Acciones</th></tr>
+      <tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Institución</th><th>Región</th><th>Estado</th><th>Último acceso</th><th>Acciones</th></tr>
     </thead>
     <tbody>
       {% for u in usuarios %}
@@ -79,12 +79,15 @@
         <td class="fuerte">{{ u.nombre }}</td>
         <td>{{ u.correo }}</td>
         <td>{{ u.roles or 'Sin rol asignado' }}</td>
+        <td>{{ u.institucion or '—' }}</td>
+        <td>{{ u.region or 'Nacional' }}</td>
         <td><span class="badge badge-{{ u.estado }}">{{ u.estado|estado_usuario }}</span></td>
         <td>{{ u.ultimo_acceso|fecha_hora or 'Nunca' }}</td>
         <td class="col-acciones">
           <a class="btn btn-mini" href="{{ url_for('main.usuario_editar', user_id=u.id) }}">Editar</a>
 
           <form method="post" action="{{ url_for('main.usuario_estado', user_id=u.id) }}" class="inline-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             <input type="hidden" name="activar" value="{{ '0' if u.estado != 'inactivo' else '1' }}">
             <button type="submit" class="btn btn-mini"
                     {{ 'disabled title=No-puedes-desactivarte-a-ti-mismo' if u.id == current_user.sub and u.estado != 'inactivo' else '' }}>
@@ -94,13 +97,14 @@
 
           <form method="post" action="{{ url_for('main.usuario_eliminar', user_id=u.id) }}" class="inline-form"
                 onsubmit="return confirm('¿Eliminar definitivamente a {{ u.nombre }}? Esta acción no se puede deshacer.');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             <button type="submit" class="btn btn-mini btn-peligro"
                     {{ 'disabled' if u.id == current_user.sub else '' }}>Eliminar</button>
           </form>
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="6"><div class="vacio">No hay usuarios que coincidan con el filtro.</div></td></tr>
+      <tr><td colspan="8"><div class="vacio">No hay usuarios que coincidan con el filtro.</div></td></tr>
       {% endfor %}
     </tbody>
   </table>

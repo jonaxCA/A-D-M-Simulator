@@ -24,6 +24,7 @@
 
 <div class="card form-card">
   <form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     <div class="field">
       <label for="code">Código {% if not edicion %}<span class="req">*</span>{% endif %}</label>
       <input type="text" id="code" name="code" maxlength="30"

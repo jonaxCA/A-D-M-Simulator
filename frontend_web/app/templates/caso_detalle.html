@@ -1,0 +1,75 @@
+{% extends "base_app.html" %}
+{% block title %}Caso #{{ caso.id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Caso #{{ caso.id }} <span class="badge">{{ estados.get(caso.status, caso.status) }}</span></h1>
+    <p class="subtitle">{{ caso.enfermedad }} · {{ caso.municipio }} · reportado el {{ caso.report_date }} · versión {{ caso.version }}</p>
+  </div>
+  <div class="page-actions"><a class="btn" href="{{ url_for('main.vigilancia') }}">← Vigilancia</a></div>
+</div>
+
+{% include "_mensajes.html" %}
+
+<div class="card">
+  <ul class="detalle-lista">
+    <li><span>Edad</span><span>{{ caso.age if caso.age is not none else '—' }}</span></li>
+    <li><span>Sexo</span><span>{{ caso.sex or '—' }}</span></li>
+    <li><span>Inicio de síntomas</span><span>{{ caso.onset_date or '—' }}</span></li>
+    <li><span>Resultado de prueba</span><span>{{ caso.test_result or '—' }}</span></li>
+    <li><span>Gravedad</span><span>{{ caso.severity or '—' }}</span></li>
+    <li><span>Ubicación</span><span>{% if caso.latitude is not none %}{{ caso.latitude }}, {{ caso.longitude }}{% else %}—{% endif %}</span></li>
+    {% if caso.status_reason %}<li><span>Motivo del estado</span><span>{{ caso.status_reason }}</span></li>{% endif %}
+    {% if caso.duplicate_of %}<li><span>Duplicado de</span><span><a href="{{ url_for('main.caso_detalle', case_id=caso.duplicate_of) }}">#{{ caso.duplicate_of }}</a></span></li>{% endif %}
+  </ul>
+</div>
+
+{% if puede('cases.approve') %}
+<div class="card form-card">
+  <div class="detalle-titulo">Seguimiento</div>
+  <form method="post" action="{{ url_for('main.caso_detalle', case_id=caso.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <input type="hidden" name="version" value="{{ caso.version }}">
+    <div class="field">
+      <label for="estado">Nuevo estado</label>
+      <select id="estado" name="estado" required>
+        {% for clave, texto in estados.items() if clave != caso.status %}<option value="{{ clave }}">{{ texto }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="duplicado_de">Duplicado de (solo si lo marcas duplicado)</label>
+      <input type="number" id="duplicado_de" name="duplicado_de" min="1">
+    </div>
+    <div class="field">
+      <label for="motivo">Motivo</label>
+      <textarea id="motivo" name="motivo" maxlength="500"></textarea>
+      <p class="field-hint">Obligatorio para descartar o marcar duplicado. Quien lo capturó recibe el aviso.</p>
+    </div>
+    <div class="page-actions"><button type="submit" class="btn btn-primary">Guardar estado</button></div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card table-card">
+  <div class="detalle-titulo">Historial ({{ historial|length }})</div>
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead><tr><th>Versión</th><th>Cambio</th><th>Fecha</th><th>Estado</th><th>Campos</th><th>Motivo</th></tr></thead>
+      <tbody>
+        {% for h in historial %}
+        <tr>
+          <td>v{{ h.version }}</td>
+          <td>{{ 'Corrección' if h.action == 'correccion' else 'Estado' }}</td>
+          <td>{{ h.changed_at | fecha_hora }}</td>
+          <td>{{ estados.get(h.status_before, h.status_before) }} → {{ estados.get(h.status_after, h.status_after) }}</td>
+          <td>{% for campo, v in (h.changes or {}).items() %}<div class="detalle-texto">{{ campo }}: {{ v.antes if v is mapping else '' }} → {{ v.despues if v is mapping else v }}</div>{% endfor %}</td>
+          <td>{{ h.reason or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="tabla-vacia">Sin cambios desde que se capturó.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

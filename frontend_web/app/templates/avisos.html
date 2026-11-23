@@ -1,0 +1,59 @@
+{% extends "base_app.html" %}
+{% block title %}Avisos{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Avisos</h1>
+    <p class="subtitle">
+      Versiones por revisar, casos nuevos, dictámenes de tus versiones y alertas del sistema
+      (servicio notificaciones). {{ no_leidas }} sin leer.
+    </p>
+  </div>
+  <div class="page-actions">
+    {% if solo_no_leidas %}
+    <a class="btn" href="{{ url_for('main.avisos') }}">Ver todos</a>
+    {% else %}
+    <a class="btn" href="{{ url_for('main.avisos', no_leidas=1) }}">Solo sin leer</a>
+    {% endif %}
+  </div>
+</div>
+
+{% include "_mensajes.html" %}
+
+{% if sin_servicio %}
+<div class="alert alert-warn">Este dato no está disponible por ahora (servicio «notificaciones»). Intenta de nuevo en unos minutos.</div>
+{% endif %}
+
+<div class="card table-card">
+  <ul class="lista-avisos">
+    {% for a in avisos %}
+    <li class="aviso {{ 'aviso-leido' if a.read_at else 'aviso-nuevo' }}">
+      <div class="aviso-cabeza">
+        <span class="badge">{{ tipos_aviso.get(a.type, 'Aviso') }}</span>
+        <strong>{{ a.title }}</strong>
+        <span class="field-hint">{{ a.created_at | fecha_hora }}</span>
+      </div>
+      {% if a.body %}<p class="aviso-cuerpo">{{ a.body }}</p>{% endif %}
+      <div class="aviso-acciones">
+        {% set p = a.payload or {} %}
+        {% if p.scenario_id and ve_escenarios %}
+        <a href="{{ url_for('main.escenario_detalle', scenario_id=p.scenario_id) }}">Abrir el escenario</a>
+        {% elif p.run_id and ve_simulaciones %}
+        <a href="{{ url_for('main.simulacion_detalle', run_id=p.run_id) }}">Abrir la corrida</a>
+        {% elif a.type in ('NEW_CASES', 'CASE_REJECTED', 'DATA_INCOMPLETE') and puede('cases.read') %}
+        <a href="{{ url_for('main.vigilancia') }}">Ver los casos</a>
+        {% endif %}
+        {% if not a.read_at %}
+        <form method="post" action="{{ url_for('main.aviso_leido', aviso_id=a.id) }}" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button type="submit" class="btn btn-mini">Marcar como leído</button>
+        </form>
+        {% endif %}
+      </div>
+    </li>
+    {% else %}
+    <li class="tabla-vacia">No tienes avisos{{ ' sin leer' if solo_no_leidas }}.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

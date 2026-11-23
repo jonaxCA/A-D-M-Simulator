@@ -20,6 +20,7 @@
 
 <div class="card form-card">
   <form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     {% for campo in campos %}
     <input type="hidden" name="{{ campo.esperado }}"
            value="{{ desglose.grupos[campo.grupo] }}">

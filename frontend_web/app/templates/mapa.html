@@ -44,6 +44,7 @@
       </div>
     </div>
     <div id="mapa-chart" style="height:460px;"></div>
+    <p class="ficha-grafica">Fuente: casos de campo (servicio zonas) y población del Censo 2020 · Periodo: el elegido arriba · Unidades: casos por 100 mil habitantes · Límites municipales de INEGI · Datos observados, sin modelo.</p>
 
     <div class="mapa-timeline" id="mapa-timeline">
       <button type="button" class="btn btn-play" id="btn-play">▶ Reproducir</button>
@@ -203,6 +204,12 @@
     zonaSeleccionada = code;
     const base = porCode[code];
     if (!base) return;
+    // RNF-D06: el nombre viene del servidor y va a innerHTML.
+    const escapaHtml = function (s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+      });
+    };
     const v = valoresCuadro(code);
     const clase = claseDe(v.incidencia);
     const variacionTxt = v.variacion == null
@@ -214,7 +221,7 @@
       `día ${cuadro + 1} de ${datos.serie.dias_periodo} del período</div>`;
 
     document.getElementById('zona-panel').innerHTML = `
-      <div class="zona-nombre">${v.nombre}</div>
+      <div class="zona-nombre">${escapaHtml(v.nombre)}</div>
       <span class="badge" style="background:${clase.color}22;color:${clase.color};border:1px solid ${clase.color}55;">${clase.name}</span>
       ${nota}
       <div class="zona-stats">
