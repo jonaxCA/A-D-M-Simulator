@@ -202,6 +202,16 @@ def enfermedades(busqueda=None, estado=None, pagina=1, por_pagina=10):
     return datos
 
 
+def exporta_enfermedades(token, busqueda=None, estado=None, pagina=1, por_pagina=100):
+    """La lista para descargar; enfermedades anota el EXPORT con quien lo pidió."""
+    datos = llamar("enfermedades", "GET", "/api/v1/diseases/export", token=token,
+                   params={"q": busqueda or None, "status": estado or None, "page": pagina,
+                           "size": por_pagina})
+    for e in datos["enfermedades"]:
+        e["alta"] = fecha(e.get("alta"))
+    return datos
+
+
 def enfermedades_stats():
     datos = llamar("enfermedades", "GET", "/api/v1/diseases/stats")
     datos["activas_pct"] = round(datos["activas"] / datos["registradas"] * 100) if datos["registradas"] else 0

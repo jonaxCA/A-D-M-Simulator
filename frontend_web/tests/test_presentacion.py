@@ -164,11 +164,13 @@ class EnfermedadesMuestraCadaFilaTests(ConUsuarioSimulado):
         return {"enfermedades": [alfa, beta], "total": 2, "pagina": 1, "por_pagina": 10,
                 "paginas": 1, "desde": 1, "hasta": 2}
 
+    @patch("backend_web.servicios.exporta_enfermedades")
     @patch("backend_web.servicios.enfermedades")
     @patch("backend_web.servicios.enfermedades_stats")
-    def test_pantalla_y_csv(self, mock_stats, mock_listado):
+    def test_pantalla_y_csv(self, mock_stats, mock_listado, mock_export):
         mock_stats.return_value = self.STATS
         mock_listado.return_value = self._listado()
+        mock_export.return_value = self._listado()
         with self.app.test_client() as client:
             client.set_cookie(COOKIE_NAME, self._token())
             html = client.get("/enfermedades").get_data(as_text=True)
