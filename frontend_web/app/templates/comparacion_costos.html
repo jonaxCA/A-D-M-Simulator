@@ -6,20 +6,14 @@
   <div>
     <h1>Costos de intervenciones</h1>
     <p class="subtitle">
-      Captura el costo unitario usado en la comparación económica.
-      Cada valor debe tener una fuente o quedar marcado explícitamente como supuesto.
+      El costo en pesos y, para la vacunación, las personas-día que cuenta cada dosis en la
+      frontera de Pareto (D3). Cada valor lleva su fuente o queda marcado como supuesto.
     </p>
   </div>
   <a class="btn" href="{{ url_for('main.comparacion') }}">← Volver a Comparación</a>
 </div>
 
-{% with mensajes = get_flashed_messages(with_categories=true) %}
-  {% for categoria, mensaje in mensajes %}
-  <div class="alert alert-{{ categoria if categoria in ('error', 'warn') else 'ok' }}">
-    {{ mensaje }}
-  </div>
-  {% endfor %}
-{% endwith %}
+{% include "_mensajes.html" %}
 
 {% for error in errores %}
 <div class="alert alert-error">{{ error }}</div>
@@ -28,9 +22,9 @@
 <div class="card">
   <div class="card-header">
     <div>
-      <h3>Importes por tipo de intervención</h3>
+      <h3>Costo en pesos por tipo de intervención</h3>
       <p class="subtitle">
-        La unidad ya está definida por el modelo; aquí solo se captura el importe y su procedencia.
+        Se muestra aparte en la comparación y no entra en la frontera. La unidad la define el modelo.
       </p>
     </div>
   </div>
@@ -41,7 +35,7 @@
         <tr>
           <th>Intervención</th>
           <th>Unidad</th>
-          <th>Costo actual</th>
+          <th>Costo actual (pesos)</th>
           <th>Fuente</th>
           <th>Supuesto</th>
           <th>Editar</th>
@@ -54,10 +48,10 @@
             <strong>{{ tipo.name }}</strong>
             <div class="field-hint">{{ tipo.code }}</div>
           </td>
-          <td>{{ tipo.cost_unit or 'Sin unidad' }}</td>
+          <td>{{ (tipo.cost_unit or 'Sin unidad') | replace('_', ' ') }}</td>
           <td>
             {% if tipo.unit_cost is not none %}
-              {{ tipo.unit_cost }}
+              {{ "$ {:,.2f}".format(tipo.unit_cost|float) }}
             {% else %}
               <span class="field-hint">Sin capturar</span>
             {% endif %}
@@ -65,48 +59,93 @@
           <td>{{ tipo.cost_source or '—' }}</td>
           <td>{{ 'Sí' if tipo.cost_is_assumption else 'No' }}</td>
           <td>
-            <form method="post" action="{{ url_for('main.comparacion_costos') }}">
+            <form method="post" action="{{ url_for('main.comparacion_costos') }}" class="form-costo">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <input type="hidden" name="campo" value="costo">
               <input type="hidden" name="intervention_type_id" value="{{ tipo.id }}">
-
-              <input
-                type="number"
-                name="unit_cost"
-                step="0.01"
-                min="0"
-                value="{{ tipo.unit_cost if tipo.unit_cost is not none else '' }}"
-                placeholder="0.00"
-                required
-              >
-
-              <input
-                type="text"
-                name="cost_source"
-                value="{{ tipo.cost_source or '' }}"
-                placeholder="Fuente o referencia"
-              >
-
+              <input type="number" name="unit_cost" step="0.01" min="0" required
+                     aria-label="Costo en pesos de {{ tipo.name }}"
+                     value="{{ tipo.unit_cost if tipo.unit_cost is not none else '' }}" placeholder="0.00">
+              <input type="text" name="cost_source" value="{{ tipo.cost_source or '' }}"
+                     aria-label="Fuente del costo" placeholder="Fuente o referencia">
               <label>
-                <input
-                  type="checkbox"
-                  name="cost_is_assumption"
-                  value="1"
-                  {% if tipo.cost_is_assumption %}checked{% endif %}
-                >
+                <input type="checkbox" name="cost_is_assumption" value="1"
+                       {% if tipo.cost_is_assumption %}checked{% endif %}>
                 Es supuesto
               </label>
-
-              <button type="submit" class="btn btn-primary btn-mini">
-                Guardar
-              </button>
+              <button type="submit" class="btn btn-primary btn-mini">Guardar</button>
             </form>
           </td>
         </tr>
         {% else %}
+        <tr><td colspan="6" class="tabla-vacia">No hay tipos de intervención activos.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3>Personas-día por dosis</h3>
+      <p class="subtitle">
+        Las capas de contacto y el testeo cuentan sus personas-día por definición
+        (habitante-día). La vacunación necesita este factor: sin él, la comparación de
+        escenarios con vacunación se niega.
+      </p>
+    </div>
+  </div>
+
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead>
         <tr>
-          <td colspan="6" class="tabla-vacia">
-            No hay tipos de intervención activos.
+          <th>Intervención</th>
+          <th>Personas-día por dosis</th>
+          <th>Fuente</th>
+          <th>Supuesto</th>
+          <th>Editar</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tipo in tipos if tipo.cost_unit == 'por_dosis' %}
+        <tr>
+          <td>
+            <strong>{{ tipo.name }}</strong>
+            <div class="field-hint">{{ tipo.code }}</div>
+          </td>
+          <td>
+            {% if tipo.person_days_per_unit is not none %}
+              {{ tipo.person_days_per_unit }}
+            {% else %}
+              <span class="badge badge-alerta">Sin capturar: no se compara</span>
+            {% endif %}
+          </td>
+          <td>{{ tipo.person_days_source or '—' }}</td>
+          <td>{{ 'Sí' if tipo.person_days_is_assumption else 'No' }}</td>
+          <td>
+            <form method="post" action="{{ url_for('main.comparacion_costos') }}" class="form-costo">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <input type="hidden" name="campo" value="personas_dia">
+              <input type="hidden" name="intervention_type_id" value="{{ tipo.id }}">
+              <input type="number" name="person_days_per_unit" step="0.0001" min="0" required
+                     aria-label="Personas-día por dosis de {{ tipo.name }}"
+                     value="{{ tipo.person_days_per_unit if tipo.person_days_per_unit is not none else '' }}"
+                     placeholder="0.0000">
+              <input type="text" name="person_days_source" value="{{ tipo.person_days_source or '' }}"
+                     aria-label="Fuente del factor" placeholder="Fuente o referencia">
+              <label>
+                <input type="checkbox" name="person_days_is_assumption" value="1"
+                       {% if tipo.person_days_is_assumption %}checked{% endif %}>
+                Es supuesto
+              </label>
+              <button type="submit" class="btn btn-primary btn-mini">Guardar</button>
+            </form>
           </td>
         </tr>
+        {% else %}
+        <tr><td colspan="5" class="tabla-vacia">No hay tipos de intervención por dosis.</td></tr>
         {% endfor %}
       </tbody>
     </table>

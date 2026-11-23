@@ -321,16 +321,10 @@ def get_enfermedades(busqueda=None, estado=None, pagina=1, por_pagina=10):
 # siembra sin especificar is_active (o sea TRUE) y a proposito sin un solo
 # caso, porque es el "escenario de preparacion".
 
-RE_CODIGO_ENFERMEDAD = re.compile(r"^[A-Z][A-Z0-9_]{2,29}$")
-
-
-def normaliza_codigo(valor):
-    """'Dengue grave (2026)' -> 'DENGUE_GRAVE_2026'. Perdona el formato que
-    escriba la gente pero deja el codigo con la convencion del catalogo."""
-    limpio = unicodedata.normalize("NFKD", (valor or "").strip())
-    limpio = limpio.encode("ascii", "ignore").decode("ascii")
-    limpio = re.sub(r"[^A-Za-z0-9]+", "_", limpio).strip("_").upper()
-    return limpio[:30]
+# Normalizar y validar el codigo, y leer los parametros del formulario, viven en catalogo.py
+# (sin base) para que la web los use sin importar este modulo (D36).
+from .catalogo import (RE_CODIGO_ENFERMEDAD, normaliza_codigo,  # noqa: E402,F401
+                       parametros_desde_form, valida_enfermedad)
 
 
 def _actividad(casos_total, casos_30d):
@@ -342,22 +336,6 @@ def _actividad(casos_total, casos_30d):
     if casos_total:
         return "historico"
     return "sin_casos"
-
-
-def valida_enfermedad(code, name):
-    """Valida contra lo que el esquema realmente exige (004_catalogos.sql):
-    code VARCHAR(30) unico, name VARCHAR(120). Devuelve lista de errores."""
-    errores = []
-    if not code:
-        errores.append("El código es obligatorio.")
-    elif not RE_CODIGO_ENFERMEDAD.match(code):
-        errores.append("El código debe empezar con letra y llevar entre 3 y 30 "
-                       "caracteres (solo A-Z, 0-9 y guion bajo).")
-    if not name:
-        errores.append("El nombre es obligatorio.")
-    elif len(name) > 120:
-        errores.append("El nombre no puede pasar de 120 caracteres.")
-    return errores
 
 
 def crear_enfermedad(code, name, description=None, params=None):
@@ -405,51 +383,6 @@ def get_enfermedad(disease_id):
         (disease_id,),
         one=True,
     )
-
-
-def parametros_desde_form(form, actuales=None):
-    """Arma el JSONB de parametros con lo que venga del formulario.
-
-    Devuelve (params, errores). Conserva las claves que este formulario no
-    edita (las informativas): guardar R0 no debe borrar la tabla de letalidad
-    por edad que ya traia la enfermedad.
-
-    La regla dura: un valor sin fuente y sin marca de supuesto NO se guarda.
-    """
-    params = dict(actuales or {})
-    errores = []
-
-    for spec in PARAMETROS_SIMULACION:
-        clave = spec["clave"]
-        crudo = (form.get(f"p_{clave}_valor") or "").strip()
-        fuente = (form.get(f"p_{clave}_fuente") or "").strip()
-        supuesto = form.get(f"p_{clave}_supuesto") == "on"
-
-        if not crudo:
-            params.pop(clave, None)      # vaciar el campo retira el parametro
-            continue
-
-        try:
-            valor = float(crudo.replace(",", "."))
-        except ValueError:
-            errores.append(f"{spec['etiqueta']}: «{crudo}» no es un número.")
-            continue
-        if not math.isfinite(valor) or not (spec["min"] <= valor <= spec["max"]):
-            errores.append(f"{spec['etiqueta']}: debe estar entre {spec['min']:g} "
-                           f"y {spec['max']:g} {spec['unidad']}.")
-            continue
-        if not fuente and not supuesto:
-            errores.append(f"{spec['etiqueta']}: falta la fuente. Escríbela o marca "
-                           "la casilla de supuesto.")
-            continue
-
-        params[clave] = {
-            "valor": round(valor / 100, 10) if spec.get("porcentaje") else valor,
-            "fuente": fuente or None,
-            "supuesto": supuesto,
-        }
-
-    return params, errores
 
 
 def actualiza_enfermedad(disease_id, name, description, params):

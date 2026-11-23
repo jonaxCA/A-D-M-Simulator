@@ -19,6 +19,7 @@
       {% endif %}
 
       <form method="post" action="{{ url_for('main.login', next=request.args.get('next')) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <div class="field">
           <label for="usuario">Usuario o Correo Electrónico</label>
           <input type="text" id="usuario" name="usuario" placeholder="ej. d.hernandez@salud.gov"

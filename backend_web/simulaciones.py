@@ -27,68 +27,15 @@ Nada de lo de aqui importa Flask.
 # vigila. (Las pruebas del motor usan `from motor import ...` porque corren
 # desde dentro de procesamiento/, en otro proceso.)
 from procesamiento.analitica import ComparacionInvalida, comparar as comparar_pareto
-from procesamiento.analitica import factor_de_escala, representados
-from procesamiento.motor import AVISO_SIMULACION, ENGINE_VERSION, ErrorMotor, simular  # noqa: F401
-from procesamiento.motor.modelo import SIMPLIFICACIONES                      # noqa: F401
+from procesamiento.motor import ErrorMotor, simular  # noqa: F401
 from procesamiento.motor.parametros import EscenarioInvalido                  # noqa: F401
-from procesamiento.motores import de_version as motor_de_version
 
+# Lo que muestra la web vive en formato.py, sin la base (D36); aqui se reexporta para los
+# servicios que aun lo importan de este modulo.
+from .formato import (AVISO_SIMULACION, CLASE_BADGE_ESTADO, ENGINE_VERSION,  # noqa: F401
+                      SIMPLIFICACIONES, clase_badge_estado, escala, estado_visible,
+                      id_escenario, id_simulacion, motor_de_resultado)
 from . import queries
-
-
-# ---------------------------------------------------------------------------
-# Identificadores visibles
-# ---------------------------------------------------------------------------
-def id_simulacion(run_id):
-    """SIM-00042. Cinco digitos con cero a la izquierda; si algun dia hay mas
-    de 99,999 corridas, format() simplemente deja de rellenar -- no trunca."""
-    return f"SIM-{int(run_id):05d}"
-
-
-def id_escenario(scenario_id):
-    """ESC-003. Identifica al ESCENARIO (scenarios.id), no a la version."""
-    return f"ESC-{int(scenario_id):03d}"
-
-
-# ---------------------------------------------------------------------------
-# Estados de la base (007/014)
-# ---------------------------------------------------------------------------
-# Para el badge de la pantalla: reusa las clases CSS que ya existen
-# (dashboard/enfermedades), en vez de inventar una paleta nueva.
-CLASE_BADGE_ESTADO = {
-    "encolado": "badge-pendiente",
-    "ejecutando": "badge-pendiente",
-    "completado": "badge-correcto",
-    "fallido": "badge-fallido",
-    "cancelado": "badge-inactivo",
-}
-
-
-def motor_de_resultado(engine_version):
-    """(version actual, simplificaciones) del motor que produjo un resultado, para mostrarlas
-    junto a el. Si la version no se reconoce: (engine_version, [])."""
-    motor = motor_de_version(engine_version)
-    if motor is None:
-        return engine_version, []
-    return motor.version, list(motor.simplificaciones)
-
-
-def escala(habitantes, agentes, resumen=None):
-    """El factor de escala de D6 (habitantes de la region / agentes simulados) y, si llega un
-    resumen, sus conteos llevados a habitantes. Lo calcula procesamiento/analitica, fuera del
-    motor: el motor solo ve agentes."""
-    datos = factor_de_escala(habitantes, agentes)
-    datos["representados"] = representados(resumen, datos) if resumen else {}
-    return datos
-
-
-def estado_visible(status_db):
-    """El estado de la base en mayusculas, como la columna de versiones."""
-    return (status_db or "").upper()
-
-
-def clase_badge_estado(status_db):
-    return CLASE_BADGE_ESTADO.get(status_db, "badge-inactivo")
 
 
 # ---------------------------------------------------------------------------

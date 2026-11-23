@@ -17,6 +17,9 @@
 {% include "_mensajes.html" %}
 
 <div class="alert alert-warn">{{ aviso_simulacion }}</div>
+{% if categoria %}
+<div class="alert alert-warn"><strong>Corrida {{ categoria.categoria }}.</strong> {{ categoria.texto }}</div>
+{% endif %}
 
 <div class="card sim-card">
   <div class="card-header"><div><h3>Datos de la corrida</h3></div></div>
@@ -107,6 +110,7 @@
   </div>
   {% if resultado.serie %}
   <div class="chart-wrap"><div id="curvas-chart" style="height:360px;"></div></div>
+  <p class="ficha-grafica" style="padding:0 18px 12px">Fuente: corrida simulada {{ run.id | id_sim }} (servicio resultados) · Periodo: días 0 a {{ run.horizon_days }} del horizonte · Modelo: {{ resultado.engine_version or run.engine_version or '—' }} · Versión del escenario: v{{ run.version_number }} · Unidades: agentes simulados por día.</p>
   {% else %}
   <div class="alert alert-warn">Las curvas no están disponibles en este momento: el servicio de
     resultados no respondió. Los indicadores de arriba sí son los de esta corrida.</div>
@@ -186,7 +190,7 @@
     title: { text: null },
     credits: { enabled: false },
     xAxis: { title: { text: 'Día' }, categories: dias, tickInterval: Math.ceil(dias.length / 20) },
-    yAxis: { title: { text: 'Personas' }, gridLineDashStyle: 'Dash' },
+    yAxis: { title: { text: 'Agentes simulados' }, gridLineDashStyle: 'Dash' },
     tooltip: { shared: true },
     series: [
       { name: 'S — Susceptibles', data: serieDe('S'), color: '#8aa0b8' },
@@ -208,7 +212,11 @@
       var badge = document.getElementById('estado-badge');
       if (badge) { badge.textContent = datos.estado_visible; }
       var msg = document.getElementById('mensaje-progreso');
-      if (msg) { msg.innerHTML = 'La corrida está <strong>' + datos.estado_visible + '</strong>. Esta página se actualiza sola.'; }
+      if (msg) {
+        var fuerte = document.createElement('strong');
+        fuerte.textContent = datos.estado_visible;
+        msg.replaceChildren('La corrida está ', fuerte, '. Esta página se actualiza sola.');
+      }
       if (datos.terminal) {
         clearInterval(intervalo);
         window.location.reload();

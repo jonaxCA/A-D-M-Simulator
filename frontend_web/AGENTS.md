@@ -2,7 +2,9 @@
 
 > **Estado: Vigente** · 2026-10-06 · Complementa el `AGENTS.md` de la raíz.
 
-- Para una ruta con formulario, sigue `reporte_nuevo` en `app/routes.py`.
+- Para una ruta con formulario, sigue `enfermedad_nueva` en `app/routes.py`. Cada ruta lleva
+  `requiere_permiso("<codigo>")` con el permiso de la matriz; solo el tablero y el mapa usan
+  `login_required` (D1).
 - Lo que solo existe por cómo funciona la página (campos ocultos de concurrencia, casillas
   marcadas) se lee con `app/formularios.py`. Convertir texto a número o fecha
   es de `backend_web/conversion.py`, porque una API también lo necesitaría.

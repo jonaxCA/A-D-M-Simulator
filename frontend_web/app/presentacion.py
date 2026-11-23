@@ -4,15 +4,28 @@ La capa de datos regresa datos crudos (numeros, fechas, claves) y la frase en
 espanol que ve la persona se arma aqui. Asi una API que use backend_web recibe
 datos y decide como mostrarlos.
 """
-from backend_web.simulaciones import id_simulacion
+from datetime import date, datetime
+
+from backend_web.formato import id_simulacion
 
 _MESES = ("Ene", "Feb", "Mar", "Abr", "May", "Jun",
           "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
 
 
+def _a_fecha(valor):
+    # Los servicios mandan ISO 8601 (D36); la base mandaba datetime.
+    if isinstance(valor, str):
+        try:
+            return datetime.fromisoformat(valor.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    return valor if isinstance(valor, (date, datetime)) else None
+
+
 def fecha_corta(valor):
     """'12 Oct 2026'. Se arma a mano en vez de con strftime porque %b depende
     del locale del sistema y aqui la vista siempre va en espanol."""
+    valor = _a_fecha(valor)
     if valor is None:
         return None
     return f"{valor.day:02d} {_MESES[valor.month - 1]} {valor.year}"
@@ -20,6 +33,7 @@ def fecha_corta(valor):
 
 def fecha_hora(valor, segundos=False):
     """'2026-10-06 14:05', o con segundos para la bitacora."""
+    valor = _a_fecha(valor)
     if valor is None:
         return None
     return valor.strftime("%Y-%m-%d %H:%M:%S" if segundos else "%Y-%m-%d %H:%M")

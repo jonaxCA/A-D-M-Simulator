@@ -52,6 +52,7 @@
     <div class="chart-wrap">
       <div id="curva-chart" style="height:280px;"></div>
     </div>
+    <p class="ficha-grafica">Fuente: casos de campo reportados (servicio indicadores) · Periodo: últimos 30 días por fecha de reporte · Unidades: casos por día · Datos observados, sin modelo.</p>
   </div>
 
   <div class="card">
@@ -91,7 +92,7 @@
       tickInterval: 4,
       labels: { style: { fontSize: '11px' } }
     },
-    yAxis: { title: { text: null }, gridLineDashStyle: 'Dash' },
+    yAxis: { title: { text: 'Casos por día' }, gridLineDashStyle: 'Dash' },
     legend: { enabled: false },
     tooltip: { valueSuffix: ' casos' },
     series: [{
