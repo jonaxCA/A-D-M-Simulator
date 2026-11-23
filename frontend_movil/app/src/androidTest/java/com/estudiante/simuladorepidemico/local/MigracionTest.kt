@@ -4,6 +4,7 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.estudiante.simuladorepidemico.sesion.Cifrador
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
@@ -13,8 +14,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 // Un teléfono con la app anterior tiene casos sin enviar en epidemia.db versión 1. Al actualizar,
-// Room migra a la 2 sin perderlos. La versión 1 se arma con el esquema que Room exportó
+// Room migra a la 2 y a la 3 sin perderlos; sus datos de salud, en claro, se siguen leyendo. La versión 1 se arma con el esquema que Room exportó
 // (app/schemas, que el build pone en los assets de estas pruebas).
+// Un caso de la versión 1 no tiene nada cifrado: el cifrador no se usa.
+private object CifradorFalso : Cifrador {
+    override fun cifrar(texto: String) = error("no se usa")
+    override fun descifrar(cifrado: String) = error("no se usa")
+}
+
 @RunWith(AndroidJUnit4::class)
 class MigracionTest {
     private val instrumentacion = InstrumentationRegistry.getInstrumentation()
@@ -31,7 +38,7 @@ class MigracionTest {
         .getJSONObject("database")
 
     @Test
-    fun de_la_1_a_la_2_los_casos_se_quedan_y_aparece_fotos() = runBlocking {
+    fun de_la_1_a_la_3_los_casos_se_quedan_y_aparecen_fotos_y_formularios() = runBlocking {
         val v1 = esquema(1)
         SQLiteDatabase.openOrCreateDatabase(contexto.getDatabasePath(nombre).apply { parentFile!!.mkdirs() }, null).use { base ->
             val entidades = v1.getJSONArray("entities")
@@ -58,10 +65,11 @@ class MigracionTest {
         try {
             val dao = nueva.casos()
             val caso = dao.deLaCuenta(12).first().single()
-            assertEquals("sin-enviar" to 34, caso.localUuid to caso.edad)
+            assertEquals("sin-enviar" to 34, caso.localUuid to caso.salud(CifradorFalso).edad)
             dao.insertarFotos(listOf(FotoLocal("f1", "sin-enviar", tomadaEn = 0)))
             assertEquals(listOf("f1"), dao.fotosDelCaso("sin-enviar"))
-            assertEquals(2, nueva.openHelper.readableDatabase.version)
+            assertEquals(emptyList<FormularioLocal>(), nueva.catalogo().formularios().first())
+            assertEquals(3, nueva.openHelper.readableDatabase.version)
         } finally {
             nueva.close()
         }

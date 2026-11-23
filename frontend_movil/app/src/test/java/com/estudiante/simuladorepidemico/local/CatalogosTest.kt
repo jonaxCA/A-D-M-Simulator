@@ -37,6 +37,16 @@ class CatalogosTest {
     }
 
     @Test
+    fun baja_tambien_los_formularios_vigentes_para_capturar_sin_red() = runBlocking<Unit> {
+        servidor.formularios = """{"total":1,"formularios":[{"id":4,"disease_id":2,"version":1,"title":"Dengue","fields":[{"clave":"fiebre_dias","etiqueta":"Días con fiebre","tipo":"entero"}]}]}"""
+
+        contenedor.catalogos.actualizar()
+
+        val guardado = catalogo.formularios().first().single()
+        assertEquals(2L to 4L, guardado.enfermedad to guardado.id)
+    }
+
+    @Test
     fun sin_red_se_queda_lo_que_habia() {
         catalogo.listaEnfermedades.value = listOf(Enfermedad(1, "Dengue"))
         servidor.apagar()
