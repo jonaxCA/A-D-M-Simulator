@@ -192,8 +192,8 @@ def registrar(app):
                  "region_id": e["region_id"], "region": e["region"], "autor": e["autor"],
                  "region_poblacion": e.get("region_poblacion"),
                  "editable": detalle["editable"],
-                 "parametros_congelados": detalle["parametros_congelados"],
-                 "parametros_sin_congelar": detalle["parametros_sin_congelar"],
+                 "parametros_congelados": bool(detalle.get("parametros_congelados")),
+                 "parametros_sin_congelar": bool(detalle.get("parametros_sin_congelar")),
                  "version": _version(v) if v else None,
                  "intervenciones": [_intervencion(i) for i in detalle["intervenciones"]]}
         return responder(datos, "escenario")

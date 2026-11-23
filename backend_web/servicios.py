@@ -202,6 +202,16 @@ def enfermedades(busqueda=None, estado=None, pagina=1, por_pagina=10):
     return datos
 
 
+def exporta_enfermedades(token, busqueda=None, estado=None, pagina=1, por_pagina=100):
+    """La lista para descargar; enfermedades anota el EXPORT con quien lo pidió."""
+    datos = llamar("enfermedades", "GET", "/api/v1/diseases/export", token=token,
+                   params={"q": busqueda or None, "status": estado or None, "page": pagina,
+                           "size": por_pagina})
+    for e in datos["enfermedades"]:
+        e["alta"] = fecha(e.get("alta"))
+    return datos
+
+
 def enfermedades_stats():
     datos = llamar("enfermedades", "GET", "/api/v1/diseases/stats")
     datos["activas_pct"] = round(datos["activas"] / datos["registradas"] * 100) if datos["registradas"] else 0
@@ -319,6 +329,11 @@ def versiones(token, scenario_id):
 
 def todas_las_versiones(token):
     return llamar("escenarios", "GET", "/api/v1/scenarios/versions", token=token)["versiones"]
+
+
+def intervenciones_version(token, version_id):
+    return llamar("intervenciones", "GET", "/api/v1/versions/%d/interventions" % version_id,
+                  token=token)["intervenciones"]
 
 
 def revisa_version(token, version_id):
@@ -509,8 +524,9 @@ def bitacora_filtros(token):
 
 def avisos(token, solo_no_leidas=False, limite=50):
     datos = llamar("notificaciones", "GET", "/api/v1/notifications", token=token,
-                   params={"unread": "true" if solo_no_leidas else None, "limit": limite})
-    return con_fechas(datos["notificaciones"], "created_at", "read_at"), datos["no_leidas"]
+                   params={"unread": "true" if solo_no_leidas else None, "limit": limite}) or {}
+    return (con_fechas(list(datos.get("notificaciones") or []), "created_at", "read_at"),
+            datos.get("no_leidas") or 0)
 
 
 def marca_aviso_leido(token, aviso_id):

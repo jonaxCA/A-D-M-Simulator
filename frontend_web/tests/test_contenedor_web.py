@@ -17,6 +17,8 @@ class ContenedorWebTests(unittest.TestCase):
     def setUp(self):
         self.app = create_app()
         self.app.config["TESTING"] = True
+        # El CSRF tiene sus propias pruebas; aquí se prueba el contenedor.
+        self.app.config["CSRF_ACTIVO"] = False
         self.client = self.app.test_client()
 
     def test_health_responde_sin_tocar_la_base_ni_los_servicios(self):
@@ -64,13 +66,19 @@ class ContenedorWebTests(unittest.TestCase):
         self.assertEqual(r.status_code, 302)
         return r.headers.getlist("Set-Cookie")
 
+    # El access, el refresh y el dispositivo del navegador (D41).
+    PROPIAS = ("access_token=", "refresh_token=", "dispositivo_web=")
+
+    def _propias(self, cookies):
+        return [c for c in cookies if c.startswith(self.PROPIAS)]
+
     def test_por_https_las_cookies_de_la_sesion_solo_viajan_cifradas(self):
-        cookies = self._cookies_del_login("https://localhost")
-        self.assertEqual(len(cookies), 2)
-        self.assertTrue(all("Secure" in c for c in cookies), cookies)
+        cookies = self._propias(self._cookies_del_login("https://localhost"))
+        self.assertEqual(len(cookies), 3)
+        self.assertTrue(all("Secure" in c and "HttpOnly" in c for c in cookies), cookies)
 
     def test_por_http_en_local_las_cookies_siguen_funcionando(self):
-        cookies = self._cookies_del_login("http://localhost")
+        cookies = self._propias(self._cookies_del_login("http://localhost"))
         self.assertTrue(cookies and not any("Secure" in c for c in cookies), cookies)
 
     def test_detras_de_nginx_la_cookie_de_flask_es_segura(self):

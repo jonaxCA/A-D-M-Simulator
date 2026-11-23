@@ -37,6 +37,7 @@
         {% endif %}
         {% if ve_escenarios %}
         <li><a href="{{ url_for('main.escenarios') }}" class="{{ 'active' if active_nav == 'escenarios' else '' }}"><span class="nav-icon">⌥</span> Escenarios</a></li>
+        <li><a href="{{ url_for('main.seguimiento_intervenciones') }}" class="{{ 'active' if active_nav == 'intervenciones' else '' }}"><span class="nav-icon">◷</span> Intervenciones</a></li>
         {% endif %}
         {% if ve_bandeja %}
         <li><a href="{{ url_for('main.revisiones') }}" class="{{ 'active' if active_nav == 'revisiones' else '' }}"><span class="nav-icon">✓</span> Revisiones</a></li>

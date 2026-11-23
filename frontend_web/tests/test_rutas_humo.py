@@ -18,7 +18,7 @@ Ejecutar:
 import unittest
 
 from frontend_web.tests.base import AppTestCase
-from backend_web.db import get_conn, query
+from backend_web.db import query
 
 
 # Rutas que cambian estado y no se pueden pedir a ciegas: tienen su propia
@@ -31,7 +31,9 @@ class RutasHumoTests(AppTestCase):
         """Un id real para cada parametro de ruta que exista en el mapa."""
         escenario = query("SELECT id FROM scenarios ORDER BY id LIMIT 1", one=True)
         corrida = query("SELECT id FROM simulation_runs ORDER BY id LIMIT 1", one=True)
+        caso = query("SELECT id FROM cases ORDER BY id LIMIT 1", one=True)
         return {
+            "case_id": caso["id"] if caso else 1,
             "disease_id": query("SELECT id FROM diseases LIMIT 1", one=True)["id"],
             "region_id": query("SELECT id FROM regions WHERE level = 'municipio' LIMIT 1",
                                one=True)["id"],
@@ -65,27 +67,16 @@ class RutasHumoTests(AppTestCase):
                            f"se revisaron muy pocas rutas: {revisadas}")
         self.assertEqual(saltadas, [], f"rutas sin id de prueba: {saltadas}")
 
-    def test_la_captura_de_casos_sigue_viva(self):
-        """El POST que rompio el shadowing de `_entero`. Se limpia el caso que
-        crea, para no ensuciar los datos de demostracion."""
-        valores = self._sustituciones()
-        datos = {"disease_id": str(valores["disease_id"]),
-                 "region_id": str(valores["region_id"]), "age": "30", "sex": "F",
-                 "report_date": "2026-09-02", "onset_date": "2026-08-31",
-                 "test_result": "positivo", "severity": "leve"}
-        try:
-            with self.app.test_client() as client:
-                self._login(client, "admin", "Admin2026!")
-                resp = client.post("/reportes/nuevo", data=datos, follow_redirects=False)
-                self.assertIn(resp.status_code, (200, 302, 400),
-                              f"respondio {resp.status_code}")
-        finally:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("""DELETE FROM cases WHERE report_date = %s
-                                   AND onset_date = %s AND age = 30 AND sex = 'F'""",
-                                (datos["report_date"], datos["onset_date"]))
-                conn.commit()
+    def test_la_captura_de_casos_ya_no_esta_en_la_web(self):
+        """D1: solo el CAPTURISTA captura, desde la app movil. Ni el ADMINISTRADOR crea
+        casos en la web."""
+        antes = query("SELECT count(*) AS n FROM cases", one=True)["n"]
+        with self.app.test_client() as client:
+            self._login(client, "admin", "Admin2026!")
+            for metodo in ("GET", "POST"):
+                resp = client.open("/reportes/nuevo", method=metodo, data={"age": "30"})
+                self.assertEqual(resp.status_code, 404, metodo)
+        self.assertEqual(query("SELECT count(*) AS n FROM cases", one=True)["n"], antes)
 
 
 if __name__ == "__main__":

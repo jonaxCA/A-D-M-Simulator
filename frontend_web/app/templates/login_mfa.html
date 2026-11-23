@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Verificación en dos pasos · EPIDEMIA</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600,700&display=swap" rel="stylesheet" />
+  <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet" />
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <div class="logo-badge">⚕</div>
+      <h1>Verificación en dos pasos</h1>
+      <p class="login-subtitle">Tu perfil pide un segundo factor (D40).</p>
+
+      {% if error %}
+      <div class="login-error">{{ error }}</div>
+      {% endif %}
+
+      {% if paso == 'respaldos' %}
+      <p>Ya entraste. Guarda estos <strong>códigos de respaldo</strong> en un lugar seguro: cada uno
+        sirve una vez si pierdes el teléfono. No se vuelven a mostrar.</p>
+      <ul class="codigos-respaldo">
+        {% for c in codigos %}<li><code>{{ c }}</code></li>{% endfor %}
+      </ul>
+      <a class="btn-login" href="{{ siguiente }}">Ya los guardé, continuar →</a>
+
+      {% elif paso == 'verificar' %}
+      <form method="post" action="{{ url_for('main.login_mfa') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="accion" value="verificar">
+        <div class="field">
+          <label for="codigo">Código de tu app autenticadora</label>
+          <input type="text" id="codigo" name="codigo" inputmode="numeric" autocomplete="one-time-code"
+                 maxlength="32" autofocus required placeholder="123456">
+          <p class="field-hint">Los 6 dígitos que muestra la app, o uno de tus códigos de respaldo.</p>
+        </div>
+        <button type="submit" class="btn-login">Verificar →</button>
+      </form>
+
+      {% elif paso == 'confirmar' %}
+      <p>Agrega esta cuenta a tu app autenticadora (Google Authenticator, Microsoft Authenticator u
+        otra TOTP) con la clave de abajo. Después escribe el código de 6 dígitos que te muestre.</p>
+      <div class="field">
+        <label>Clave secreta</label>
+        <code class="secreto-mfa">{{ secreto }}</code>
+        <p class="field-hint">Algoritmo {{ algoritmo }}, {{ digitos }} dígitos, cada {{ periodo }} segundos.</p>
+      </div>
+      <div class="field">
+        <label>Enlace para la app</label>
+        <code class="secreto-mfa">{{ uri }}</code>
+      </div>
+      <form method="post" action="{{ url_for('main.login_mfa') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="accion" value="confirmar">
+        <div class="field">
+          <label for="codigo">Código de 6 dígitos</label>
+          <input type="text" id="codigo" name="codigo" inputmode="numeric" autocomplete="one-time-code"
+                 maxlength="6" pattern="[0-9]{6}" autofocus required>
+        </div>
+        <button type="submit" class="btn-login">Confirmar y entrar →</button>
+      </form>
+
+      {% else %}
+      <p>Tu cuenta todavía no tiene el segundo factor. Para darlo de alta necesitas el
+        <strong>código de alta</strong> que te da un administrador.</p>
+      <form method="post" action="{{ url_for('main.login_mfa') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="accion" value="enrolar">
+        <div class="field">
+          <label for="codigo_alta">Código de alta</label>
+          <input type="text" id="codigo_alta" name="codigo_alta" autocomplete="off" maxlength="64" autofocus>
+          <p class="field-hint">Si el sistema está en enrolamiento libre, puedes dejarlo vacío.</p>
+        </div>
+        <button type="submit" class="btn-login">Dar de alta el segundo factor →</button>
+      </form>
+      {% endif %}
+
+      <div class="login-notice">
+        <a href="{{ url_for('main.login') }}">← Volver a iniciar sesión</a> · El paso vence en 5 minutos.
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -496,7 +496,8 @@ def test_las_respuestas_xml_validan_contra_el_xsd(cliente, token, base, monkeypa
                 "finished_at": datetime(2026, 10, 20, 15, 2, tzinfo=timezone.utc),
                 "error_message": "Error forzado de prueba.", "scenario_version_id": 11,
                 "scenario_id": 3, "version_number": 2, "scenario_name": "Ola Influenza ZMM",
-                "requested_by_username": "alex.cavazos"}
+                "requested_by_username": "alex.cavazos", "disease_name": "Influenza",
+                "region_name": "Monterrey"}
     sin_lote = dict(reciente, id=41, status="encolado", engine=None, started_at=None,
                     finished_at=None, error_message=None)
     monkeypatch.setattr(datos, "get_runs_recientes", lambda limit=20: [reciente, sin_lote])
