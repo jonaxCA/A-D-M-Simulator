@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.estudiante.simuladorepidemico.ui.tema.TemaEpidemia
 
 @Composable
-fun PantallaLogin(modelo: LoginViewModel, alQuedarDentro: () -> Unit) {
+fun PantallaLogin(modelo: LoginViewModel, alQuedarDentro: () -> Unit, sesionTerminada: Boolean = false) {
     val dentro = modelo.estado.dentro
     LaunchedEffect(dentro) {
         if (dentro) alQuedarDentro()
@@ -46,6 +46,7 @@ fun PantallaLogin(modelo: LoginViewModel, alQuedarDentro: () -> Unit) {
         alCambiarRespuesta = modelo::cambiarRespuesta,
         alPedirOtroCaptcha = { modelo.otroCaptcha() },
         alEntrar = modelo::entrar,
+        sesionTerminada = sesionTerminada,
     )
 }
 
@@ -57,6 +58,7 @@ fun FormularioLogin(
     alCambiarRespuesta: (String) -> Unit,
     alPedirOtroCaptcha: () -> Unit,
     alEntrar: () -> Unit,
+    sesionTerminada: Boolean = false,
 ) {
     Scaffold { relleno ->
         Column(
@@ -74,6 +76,15 @@ fun FormularioLogin(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // RF-I22: al perder la sesión (venció, la cerraron en otro lado o revocaron el teléfono)
+            // la app lo dice en lugar de solo regresar aquí.
+            if (sesionTerminada) {
+                Text(
+                    "Se cerró tu sesión. Vuelve a entrar: los casos sin enviar siguen en este teléfono.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+            }
             OutlinedTextField(
                 value = estado.usuario,
                 onValueChange = alCambiarUsuario,

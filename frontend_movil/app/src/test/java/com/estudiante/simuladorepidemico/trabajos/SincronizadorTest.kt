@@ -4,7 +4,10 @@ import com.estudiante.simuladorepidemico.CasosDaoFalso
 import com.estudiante.simuladorepidemico.ServidorFalso
 import com.estudiante.simuladorepidemico.casoDePrueba
 import com.estudiante.simuladorepidemico.contenedorDePrueba
+import com.estudiante.simuladorepidemico.local.DatosDeSalud
 import com.estudiante.simuladorepidemico.local.EstadoCaso
+import com.estudiante.simuladorepidemico.local.cifrados
+import com.estudiante.simuladorepidemico.red.json
 import com.estudiante.simuladorepidemico.local.EstadoFoto
 import com.estudiante.simuladorepidemico.local.FotoLocal
 import kotlinx.coroutines.flow.first
@@ -74,6 +77,23 @@ class SincronizadorTest {
         assertEquals(42L, casos.caso(uuid(2)).caseId)
         assertNull(casos.caso(uuid(1)).edad)
         assertEquals(EstadoCaso.PENDIENTE, casos.caso(uuid(3)).estado)
+    }
+
+    @Test
+    fun el_formulario_y_sus_respuestas_van_en_el_lote_y_se_borran_al_enviarse() {
+        entrar()
+        runBlocking {
+            val respuestas = json.parseToJsonElement("""{"fiebre_dias":3}""").jsonObject
+            casos.insertar(casoDePrueba(uuid(1)).copy(formulario = 4, datos = DatosDeSalud(edad = 7, respuestas = respuestas).cifrados(contenedor.cifrador)))
+        }
+
+        assertEquals(Envio.LISTO, enviar())
+
+        val caso = servidor.lotesEnviados().single()["cases"]!!.jsonArray.single().jsonObject
+        assertEquals(4L, caso["form_id"]!!.jsonPrimitive.long)
+        assertEquals(3, caso["form_answers"]!!.jsonObject["fiebre_dias"]!!.jsonPrimitive.int)
+        assertEquals(7, caso["age"]!!.jsonPrimitive.int)
+        assertNull(casos.caso(uuid(1)).datos)
     }
 
     @Test
