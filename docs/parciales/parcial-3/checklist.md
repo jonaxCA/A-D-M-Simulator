@@ -374,42 +374,42 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 
 ### C1. Permisos (D1)
 
-- [ ] Migración 034: crea `scenarios.approve`, lo da a EPIDEMIOLOGO y ADMINISTRADOR, quita `audit.read` al EPIDEMIOLOGO (RF-L05) y quita `cases.create` al ADMINISTRADOR. También crea `reports.upload` para ANALISTA y ADMINISTRADOR (D35).
-- [ ] Quitar la captura de casos de la web: `/reportes/nuevo`, sus enlaces y su plantilla.
-- [ ] Guardar los permisos en la sesión y crear `requiere_permiso(codigo)`, que responde 403 y registra `PERMISSION_DENIED` (RF-A05).
-- [ ] Cambiar el candado de cada ruta según la [matriz de permisos](../../requerimentos/matriz-permisos.md).
-- [ ] El CAPTURISTA entra solo al tablero y al mapa; lo demás le responde 403 (RF-G11).
-- [ ] Cuenta de prueba de CAPTURISTA en `datos/postgres/semillas/demo_datos_nl.sql`.
-- [ ] Probar cada pantalla con un rol que entra y con uno que no (pruebas de roles).
+- [x] Migración 034: crea `scenarios.approve`, lo da a EPIDEMIOLOGO y ADMINISTRADOR, quita `audit.read` al EPIDEMIOLOGO (RF-L05) y quita `cases.create` al ADMINISTRADOR. También crea `reports.upload` para ANALISTA y ADMINISTRADOR (D35). `034_permisos_d1_y_reportes.sql` (2026-11-22); amplía el CHECK de `permissions.action` con `upload`. `aprobacion` deja revisar también al ADMINISTRADOR.
+- [x] Quitar la captura de casos de la web: `/reportes/nuevo`, sus enlaces y su plantilla.
+- [x] Guardar los permisos en la sesión y crear `requiere_permiso(codigo)`, que responde 403 y registra `PERMISSION_DENIED` (RF-A05). `frontend_web/app/permisos.py`; los permisos salen de `roles` `GET /api/v1/permissions/me` y el 403 se anota con `POST /api/v1/audit/denied`.
+- [x] Cambiar el candado de cada ruta según la [matriz de permisos](../../requerimentos/matriz-permisos.md).
+- [x] El CAPTURISTA entra solo al tablero y al mapa; lo demás le responde 403 (RF-G11).
+- [x] Cuenta de prueba de CAPTURISTA en `datos/postgres/semillas/demo_datos_nl.sql`. Ya existía: `karla.trevino`.
+- [ ] Probar cada pantalla con un rol que entra y con uno que no (pruebas de roles). Pendiente: las pruebas de la web deben simular los servicios (D36).
 
 ### C2. Sesión y seguridad
 
 - [x] La web registra y revisa su sesión en Redis; cerrar sesión deja el token sin valor (I3, RF-A12). Verificado el 2026-11-16: `demo_fallos.py web` y `redis` (`docs/pruebas/fallos/2026-11-16`).
-- [ ] Protección contra CSRF en los formularios (RNF-D07).
-- [ ] Encabezados de seguridad en las respuestas (RNF-D21).
-- [ ] Verificar que ninguna consulta arma SQL con texto del usuario (RNF-D05) y que las plantillas escapan lo que muestran (RNF-D06).
+- [x] Protección contra CSRF en los formularios (RNF-D07). `frontend_web/app/seguridad.py`: token por sesión en cada formulario POST.
+- [x] Encabezados de seguridad en las respuestas (RNF-D21). CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` y HSTS detrás de HTTPS.
+- [x] Verificar que ninguna consulta arma SQL con texto del usuario (RNF-D05) y que las plantillas escapan lo que muestran (RNF-D06). La web ya no tiene SQL (C6). Las plantillas no usan `|safe`; el JavaScript que arma HTML con datos del servidor los escapa (mapa, comparación y estado de la corrida).
 
 ### C3. Resultados y archivos
 
 - [x] La corrida muestra su resumen desde `simulation_runs` y pide las curvas a `resultados`. Si `resultados` no responde, se ve el resumen sin curvas (D28, D20, RF-F21). Espera a D y a E.
 - [x] La web deja de leer `simulation_results`. Hecho en D1 (2026-11-18), también en `/comparacion`.
-- [ ] La web muestra la foto de un caso con una URL firmada que vence en minutos (D30, RF-C20). Espera a D.
-- [ ] La web abre el reporte de una comparación con su URL firmada (RF-F17). Espera a D.
-- [ ] La web recibe el reporte de una comparación (ANALISTA y ADMINISTRADOR, `reports.upload`), lo valida por su contenido, su tamaño y su huella, y lo manda al bucket con la misma tabla y la misma interfaz que el escritorio (D35, RF-G16). Espera a D.
-- [ ] `/comparacion` dice personas-día en el eje y la tabla de la frontera, y muestra `costo_pesos` aparte (D3). Desde el 2026-11-17 `costo` ya viene en personas-día: hasta este cambio, la gráfica lo rotula «Costo total de intervención».
-- [ ] `/comparacion/costos` permite fijar las personas-día por dosis de la vacunación, con fuente o marca de supuesto (D3, migración 040). Sin ese factor, la comparación de escenarios con vacunación se niega.
+- [ ] La web muestra la foto de un caso con una URL firmada que vence en minutos (D30, RF-C20). **Bloqueado (D2):** `evidencias` sigue en disco y no firma URL.
+- [ ] La web abre el reporte de una comparación con su URL firmada (RF-F17). **Bloqueado (D2):** falta la 039 y la ruta de reportes.
+- [ ] La web recibe el reporte de una comparación (ANALISTA y ADMINISTRADOR, `reports.upload`), lo valida por su contenido, su tamaño y su huella, y lo manda al bucket con la misma tabla y la misma interfaz que el escritorio (D35, RF-G16). **Bloqueado (D2).** El permiso ya existe (034) y `/reportes` deja el lugar.
+- [x] `/comparacion` dice personas-día en el eje y la tabla de la frontera, y muestra `costo_pesos` aparte (D3). Con la trazabilidad de cada costo.
+- [x] `/comparacion/costos` permite fijar las personas-día por dosis de la vacunación, con fuente o marca de supuesto (D3, migración 040). Sin ese factor, la comparación de escenarios con vacunación se niega. Ruta nueva en `intervenciones`: `PUT /api/v1/intervention-types/{id}/person-days`.
 
 ### C4. Avisos de P2
 
-- [ ] Al aprobar o rechazar en la web se avisa al autor, en los dos casos (I1, RF-D16).
-- [ ] El EPIDEMIOLOGO ve en la web los avisos de versiones por revisar y de casos nuevos (RF-D15, RF-C19).
+- [x] Al aprobar o rechazar en la web se avisa al autor, en los dos casos (I1, RF-D16). Lo hace `aprobacion` (`SCENARIO_APPROVED` y `SCENARIO_REJECTED`).
+- [x] El EPIDEMIOLOGO ve en la web los avisos de versiones por revisar y de casos nuevos (RF-D15, RF-C19). `/avisos` y la campana con los no leídos.
 
 ### C5. Verificar y entregar
 
-- [ ] El tablero y el mapa se leen en un teléfono (RNF-E03).
-- [ ] Los errores se explican sin mostrar la traza (RNF-E06).
-- [ ] Las pantallas de resultados conservan el aviso de que no es una predicción (`AVISO_SIMULACION`).
-- [ ] Manual de usuario de la web en `docs/manuales/` (RNF-E08).
+- [x] El tablero y el mapa se leen en un teléfono (RNF-E03). Vista de menos de 760 px en `styles.css`. Falta revisarlo en un teléfono real.
+- [x] Los errores se explican sin mostrar la traza (RNF-E06). Manejadores de 400, 403, 404, 405, 500, servicio caído y rechazo de un servicio.
+- [x] Las pantallas de resultados conservan el aviso de que no es una predicción (`AVISO_SIMULACION`). Además muestran la categoría de la corrida que regresa `resultados`.
+- [x] Manual de usuario de la web en `docs/manuales/` (RNF-E08). `manual_usuario_web.md`.
 
 ### C6. La web consume los servicios
 
@@ -417,23 +417,23 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 
 - [x] Inventario: cada pantalla de la web y cada consulta de `backend_web` que usa, con el servicio que debe atenderla. Lo que no tenga servicio se le pide a su dueño (E9). En [`inventario_web_servicios.md`](../../arquitectura/inventario_web_servicios.md): 20 de 32 pantallas ya tienen su servicio; faltan 11 rutas (4 de D, 4 de E y 3 de F).
 - [x] Iniciar y cerrar sesión con `auth` y `sesiones`, sin leer Redis. `frontend_web/app/sesion_servicios.py` y el cliente `backend_web/servicios.py`: login con el captcha de `auth`, sesión revisada por `sesiones` en cada petición (renueva el access con el refresh), logout en `sesiones`. Sin `sesiones` la web no deja pasar (D36). Se retiró `sesion_redis.py`.
-- [ ] Pasar cada módulo a su servicio, en el orden que fije la decisión.
-- [ ] Cuando un servicio no responde, la pantalla lo explica y lo demás sigue.
-- [ ] Al terminar, la web no tiene credenciales de PostgreSQL, MongoDB ni Redis, y no importa `epidemia_comun`.
+- [x] Pasar cada módulo a su servicio, en el orden que fije la decisión. 2026-11-22: `frontend_web/app/routes.py` llama a `backend_web/servicios.py` y no a `queries.py`. Lo que la web usa sin base quedó en `backend_web/formato.py` y `catalogo.py`. Cambios compatibles en los servicios: `escenarios` (autor de la versión, parámetros congelados, población de la región), `corridas` (enfermedad y región en la lista) y `usuarios` (institución y región en la lista).
+- [x] Cuando un servicio no responde, la pantalla lo explica y lo demás sigue. `seccion()` en `routes.py` y el aviso de `base_app.html`.
+- [x] Al terminar, la web no tiene credenciales de PostgreSQL, MongoDB ni Redis, y no importa `epidemia_comun`. El contenedor arranca con `frontend_web/servir.py` y el compose ya no le pasa `DATABASE_URL`. Las pruebas viejas de `frontend_web/tests` todavía usan la base: hay que pasarlas a servicios simulados.
 
 ### C7. Módulos que pide la retroalimentación
 
 [Retro: «Aplicación web»]. Algunos ya existen (el tablero, el mapa y las regiones): la primera casilla es revisarlos.
 
-- [ ] Revisar la web contra esta lista y marcar lo que ya cumple.
-- [ ] Administración regional.
-- [ ] Vigilancia: casos por región y periodo, con su seguimiento.
-- [ ] Campañas. Decididas en D49.
-- [ ] Mapas epidemiológicos e indicadores.
-- [ ] Reportes.
+- [x] Revisar la web contra esta lista y marcar lo que ya cumple.
+- [x] Administración regional. Regiones, con la corrección de la población y de las bandas de edad.
+- [x] Vigilancia: casos por región y periodo, con su seguimiento. `/vigilancia` y `/vigilancia/casos/<id>`, con el historial y el cambio de estado (D47).
+- [x] Campañas. Decididas en D49. `/campanas` con el servicio `vacunas`: consulta, alta y cancelación.
+- [x] Mapas epidemiológicos e indicadores.
+- [x] Reportes. `/reportes` reúne las descargas. Falta el reporte de la comparación (D2).
 - [ ] Seguimiento de intervenciones. Lo definen C y E y lo registran en `decisiones/` (el bloque 0 lo delegó el 2026-11-22).
-- [ ] Institución y región de cada cuenta en la administración de usuarios. Espera a E.
-- [ ] Ninguna gráfica sin fuente, periodo, modelo, versión y unidades.
+- [x] Institución y región de cada cuenta en la administración de usuarios.
+- [x] Ninguna gráfica sin fuente, periodo, modelo, versión y unidades. Ficha bajo cada gráfica.
 
 ---
 
