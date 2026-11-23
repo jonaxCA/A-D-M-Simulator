@@ -83,9 +83,9 @@ problema: ya falta la 018.
 | 058 | F | El marcador de Marín dentro de su municipio (2026-11-22) |
 | 059 | F | Formularios por enfermedad con versiones y las respuestas de cada caso (D48, 2026-11-22) |
 | 060 | F | Campañas, preferencias de avisos y los avisos de campaña y de datos incompletos (D49, 2026-11-22) |
-| 061 | 0 | Serie observada: `observed_datasets` y `observed_points`, con los datos de la serie (D50) |
-| 062 | 0 | `calibrations`, el permiso `calibrations.run` y el rol `svc_calibracion` (D50) |
-| 063 | 0 | Nuevo `COMMENT ON TABLE cases`: sintéticos y sin uso para calibrar (D50) |
+| 061 | D | Serie observada: `observed_datasets` y `observed_points`, con los datos de la serie (D50) |
+| 062 | E | `calibrations`, el permiso `calibrations.run` y el rol `svc_calibracion` (D50) |
+| 063 | D | Nuevo `COMMENT ON TABLE cases`: sintéticos y sin uso para calibrar (D50) |
 | 064 en adelante | — | Se piden al líder |
 
 1. **Cada migración corre en cualquier orden.** El dump las tiene en el orden en

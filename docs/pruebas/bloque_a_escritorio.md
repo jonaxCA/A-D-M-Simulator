@@ -64,10 +64,10 @@ Las pantallas y sus controles están en el [manual de usuario](../manuales/manua
 
 | Punto | Decisión o entrega que falta |
 | --- | --- |
-| A1 y configuraciones por versión | El líder confirma los cambios de interfaz y el alcance de los parámetros que se guardarán por versión. D define el contrato. |
+| A1 y configuraciones por versión | A define los cambios de interfaz y, con D, el alcance de los parámetros que se guardan por versión (el bloque 0 lo delegó el 2026-11-22). D define el contrato. |
 | A2, almacenamiento y nube | E publica los motores habilitados. D y F entregan la ruta de reportes, el bucket y las URLs firmadas. F habilita HTTPS. |
-| Gestión de datos y proyectos | El líder acuerda el modelo del proyecto, el identificador y las reglas de calidad de los conjuntos. D expone la carga, consulta y versionado. |
-| Calibración, sensibilidad y recuperación | El líder acuerda método y criterios de aceptación. E expone las rutas y participa en la demostración de recuperación del trabajador. |
+| Gestión de datos y proyectos | A y D acuerdan el modelo del proyecto, el identificador y las reglas de calidad de los conjuntos (el bloque 0 lo delegó el 2026-11-22). D expone la carga, consulta y versionado. |
+| Calibración, sensibilidad y recuperación | El método y los criterios de aceptación de la calibración están en D50, y la sensibilidad en D46. E expone las rutas y participa en la demostración de recuperación del trabajador. |
 | Repetición histórica, auditoría y mapas | D y E exponen datos y configuración históricos, y la auditoría por operación. D y F confirman la fuente de geometrías para límites municipales. |
 
 El [checklist](../parciales/parcial-3/checklist.md#a-app-de-escritorio--frontend_desktop)

@@ -174,10 +174,10 @@ Datos A, método A, pérdida B, separación A, servicio B, supuestos A, modelos 
   - La ficha (§1, §11, §16, §17 y una sección nueva de calibración con su tolerancia) y `brechas_v3.md` (A6).
   - `arquitectura_v3.md` (l. 39, 197 y 376), el README de migraciones (061 a 063) y el checklist (l. 213, 218, 225, 229, 316 y 499).
 - **Trabajo nuevo:**
-  - Bloque 0: el algoritmo en `procesamiento/calibracion/` con su prueba sintética, el script de la serie y las migraciones.
-  - Bloque E (E7): el servicio, su contrato en `docs/contratos/calibracion/` (OpenAPI, XSD y ejemplos) y su contenedor en `infra/docker-compose.yml`.
+  - Bloque E (E7): el algoritmo en `procesamiento/calibracion/` con su prueba sintética, la migración 062, el servicio, su contrato en `docs/contratos/calibracion/` (OpenAPI, XSD y ejemplos) y su contenedor en `infra/docker-compose.yml`.
   - Bloque A (A4): el módulo de calibración del escritorio.
-  - Bloque D (D6): el importador de series.
+  - Bloque D (D6): bajar la serie y su script, las migraciones 061 y 063, y el importador de series.
+  - Al aceptarse, esto era del bloque 0; el 2026-11-22 pasó a E y D.
 - **Riesgos:**
   - r0 y φ se confunden entre sí. El intervalo de las aceptadas lo muestra, y por eso la banda usa las combinaciones aceptadas, no los márgenes.
   - El paquete de la Jornada es una simplificación. Si la cobertura de validación no llega a la tolerancia, el modelo queda `prediccion`, no `validada`, y así se presenta.
