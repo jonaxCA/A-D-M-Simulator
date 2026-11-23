@@ -149,6 +149,26 @@ services:
       retries: 20
     restart: unless-stopped
 
+  # Emulador de Cloud Storage para trabajar en local (D30). Crea el bucket epidemia-archivos con
+  # la carpeta de infra/bucket/ y guarda los objetos en su volumen. Se publica solo en esta
+  # máquina: las URLs firmadas apuntan a localhost:4443 para que el navegador las abra. En GCP
+  # no se levanta: docker-compose.gcs.yml pone el bucket real.
+  bucket:
+    image: fsouza/fake-gcs-server:1.56.1
+    command: ["-scheme", "http", "-port", "4443", "-backend", "filesystem",
+              "-filesystem-root", "/storage", "-public-host", "${BUCKET_HOST_PUBLICO:-localhost:4443}"]
+    ports:
+      - "127.0.0.1:4443:4443"
+    volumes:
+      - bucket-datos:/storage
+      - ./bucket:/data:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:4443/storage/v1/b/epidemia-archivos"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
   base:
     image: epidemia/base
     build:
@@ -418,11 +438,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-  # Los archivos de las evidencias viven en su volumen; la base solo guarda su ruta y su huella.
+  # Los archivos de las evidencias y los reportes van al bucket (D30); la base solo guarda su
+  # ruta, su tipo, su tamaño y su huella. En local, el emulador; en GCP, docker-compose.gcs.yml.
   evidencias:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/evidencias/Dockerfile
     profiles: [vigilancia]
     ports:
@@ -432,13 +453,17 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_EVIDENCIAS:-postgresql://svc_evidencias:${DB_PASSWORD_EVIDENCIAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
-      EVIDENCIAS_DIR: /var/lib/epidemia/evidencias
-    volumes:
-      - evidencias-datos:/var/lib/epidemia/evidencias
+      DEPENDENCIAS: bucket
+      ARCHIVOS: gcs
+      BUCKET_NOMBRE: ${BUCKET_NOMBRE:-epidemia-archivos}
+      STORAGE_EMULATOR_HOST: http://bucket:4443
+      BUCKET_URL_PUBLICA: ${BUCKET_URL_PUBLICA:-http://localhost:4443}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      bucket:
         condition: service_healthy
   vacunas:
     <<: *servicio-base
@@ -852,4 +877,4 @@ volumes:
   redis-datos:
   postgres-datos:
   mongo-datos:
-  evidencias-datos:
+  bucket-datos:

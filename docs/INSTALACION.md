@@ -520,8 +520,8 @@ DATABASE_URL=postgresql://epidemia_app:<EPIDEMIA_APP_PASSWORD de infra/.env>@127
 Cada servicio se conecta con su rol. Para apuntar uno a otra base, define su
 `DATABASE_URL_<SERVICIO>` completo (ver `infra/.env.example`). Una migración nueva entra en un
 volumen ya cargado corriéndola con `psql` contra el puerto 5433; `down -v` borra la base (y
-los archivos de `evidencias`, que viven en su propio volumen) y la vuelve a cargar desde cero
-en el siguiente `up`. Si la migración crea el rol de un servicio nuevo (la 031 de
+los archivos del emulador del bucket, en el volumen `bucket-datos`) y la vuelve a cargar desde
+cero en el siguiente `up`. Si la migración crea el rol de un servicio nuevo (la 031 de
 `dispositivos`, la 032 de `evidencias` o la 033 de `vacunas`), corre antes `python infra/genera_env.py`, que agrega
 su `DB_PASSWORD_<SERVICIO>` a `infra/.env`, y ponle esa contraseña con
 `ALTER ROLE svc_<servicio> PASSWORD '...'`: `10-inicializa.sh` solo las pone la primera vez.
@@ -548,7 +548,26 @@ docker compose -f infra/docker-compose.yml --profile identidad --profile catalog
 
 Comprueba que `curl "http://localhost:5243/health?format=json"` diga `"mongodb": true`. Si
 prefieres empezar de cero, `down -v` borra todos los volúmenes (también las corridas y los
-archivos de `evidencias`) y el siguiente `up` carga la base con todas las migraciones.
+archivos del bucket) y el siguiente `up` carga la base con todas las migraciones.
+
+**El bucket (D30; D2, 2026-11-22).** El compose trae un emulador de Cloud Storage
+(`fake-gcs-server`, servicio `bucket`) en `127.0.0.1:4443`, con el bucket `epidemia-archivos`.
+`evidencias` guarda ahí las fotos de los casos y los reportes de las comparaciones, y las URLs
+firmadas que regresa apuntan a `http://localhost:4443`, así que se abren en el navegador de tu
+máquina. Para ver lo que hay: `curl "http://localhost:4443/storage/v1/b/epidemia-archivos/o"`.
+Si ya tenías el compose antes de D2, tu base no tiene la 039 y las fotos viejas siguen en el
+volumen `epidemia_evidencias-datos`, que ya nadie lee. En este orden:
+
+```bash
+docker compose -f infra/docker-compose.yml up -d postgres --wait
+docker compose -f infra/docker-compose.yml exec postgres psql -v ON_ERROR_STOP=1 -U postgres -d simulador_epidemico -f /datos/migraciones/039_reportes_de_comparacion.sql
+docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait
+```
+
+El `up` reconstruye las imágenes base, que ahora traen `google-cloud-storage`. Comprueba que
+`curl "http://localhost:5224/health?format=json"` diga `"bucket": true`. Las fotos viejas no se
+mudan solas: sus filas apuntan a `evidence/...` y `/content` responde 404 hasta que alguien las
+suba con esa misma ruta; en la demostración se pueden dar por perdidas.
 
 Con todo arriba (los 26 servicios, PostgreSQL y Redis) son unos 1,100 MiB: de 32 a 51 MiB por
 servicio, 83 MiB PostgreSQL y 6 MiB Redis (medido el 21 de octubre).

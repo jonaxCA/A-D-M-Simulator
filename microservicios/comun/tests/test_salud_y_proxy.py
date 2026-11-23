@@ -2,9 +2,8 @@ import json
 from pathlib import Path
 
 import pytest
-import requests
 
-from epidemia_comun import limites, llaves, salud
+from epidemia_comun import archivos, limites, llaves, salud
 from epidemia_comun.fabrica import crear_app
 
 CONTRATO = Path(__file__).resolve().parents[3] / "docs/contratos/zonas/openapi.json"
@@ -56,14 +55,25 @@ def test_mongodb_arriba_y_caido_con_ping(nueva_app, apagar_mongo):
     assert estado == 503 and datos["mongodb"] is False
 
 
-def test_bucket_con_emulador_simulado(nueva_app, monkeypatch):
-    respuestas = {"codigo": 404}
-    monkeypatch.setattr(requests, "get", lambda url, timeout: type("R", (), {"status_code": respuestas["codigo"]}))
-    app = nueva_app(DEPENDENCIAS="bucket", BUCKET_URL="http://emulador:4443")
+def test_bucket_arriba_y_caido_con_el_cliente_de_archivos(nueva_app, monkeypatch):
+    vivo = {"valor": True}
+    monkeypatch.setattr(archivos, "ping", lambda: vivo["valor"])
+    app = nueva_app(DEPENDENCIAS="bucket", ARCHIVOS="gcs", BUCKET_NOMBRE="epidemia-archivos")
     assert salud_de(app)[1]["bucket"] is True
-    respuestas["codigo"] = 502
+    vivo["valor"] = False
     estado, datos = salud_de(app)
     assert estado == 503 and datos["bucket"] is False and datos["mongodb"] == "no_usa"
+
+
+def test_bucket_sin_nombre_es_no_configurado(nueva_app, monkeypatch):
+    monkeypatch.delenv("BUCKET_NOMBRE", raising=False)
+    estado, datos = salud_de(nueva_app(DEPENDENCIAS="bucket", ARCHIVOS="gcs"))
+    assert estado == 503 and datos["bucket"] == "no_configurado"
+
+
+def test_bucket_en_disco(nueva_app, tmp_path):
+    app = nueva_app(DEPENDENCIAS="bucket", ARCHIVOS="disco", ARCHIVOS_DIR=str(tmp_path))
+    assert salud_de(app)[1]["bucket"] is True
 
 
 def test_dependencias_del_entorno_ignoran_nombres_desconocidos(monkeypatch):

@@ -44,11 +44,11 @@ FIJOS_NGINX = {"NGINX_TIEMPO_MAXIMO": "8s"}
 ARCHIVOS = ["-f", str(AQUI / "docker-compose.yml"), "-f", str(AQUI / "docker-compose.pruebas.yml")]
 ARCHIVO_NGINX = ["-f", str(AQUI / "docker-compose.nginx.yml")]
 CONTENEDORES = RAIZ / "microservicios" / "pruebas_integracion" / "contenedores"
-# Los del catálogo, la consola, la web y los locales de PostgreSQL, Redis y MongoDB de este
-# compose.
+# Los del catálogo, la consola, la web, el emulador del bucket y los locales de PostgreSQL, Redis
+# y MongoDB de este compose.
 PUERTOS = [5000, 5201, 5202, 5203, 5204, 5211, 5212, 5213, 5214, 5215, 5221, 5222, 5223, 5224, 5225,
            5231, 5232, 5233, 5234, 5235, 5241, 5242, 5243, 5244, 5245, 5251, 5252, 5253, 5260,
-           5261, 5262, 6382, 5435, 27019]
+           5261, 5262, 4443, 6382, 5435, 27019]
 PUERTOS_NGINX = [80, 443]
 # --gpu-remoto: el simulador de abm-gpu en su propio proyecto, y el túnel simulado. Cada puerto
 # del túnel (los de infra/tunel_gpu.py) lleva al local de la base del compose de pruebas.

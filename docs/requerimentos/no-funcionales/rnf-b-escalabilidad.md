@@ -8,7 +8,7 @@ Qué tan lejos llega el sistema con un solo `docker-compose` en una máquina, qu
 
 | ID | Requerimiento | Criterio de aceptación | Componente | Estado |
 |---|---|---|---|---|
-| RNF-B01 | Los servicios no guardan estado en su contenedor | Lo que un servicio necesita recordar va a PostgreSQL, Redis, MongoDB o el bucket | Microservicios | En parte: `evidencias` guarda los archivos en un volumen propio hasta que exista el bucket (D-3) |
+| RNF-B01 | Los servicios no guardan estado en su contenedor | Lo que un servicio necesita recordar va a PostgreSQL, Redis, MongoDB o el bucket | Microservicios | Hecho: desde D2 `evidencias` guarda los archivos en el bucket y ya no tiene volumen |
 | RNF-B02 | Las corridas se reparten por motor | Cada simulador consume solo la cola de su motor, y un simulador cuyo motor no corre en esa máquina no arranca | Microservicios | Hecho |
 | RNF-B04 | Los límites del sistema están escritos | 100 réplicas por versión (D8), 100 casos por lote de sincronización, 50 corridas por llamada a `comparacion` y `pareto`, y 5 millones de habitantes por escenario en el XSD. El tamaño máximo de un archivo está por definir | Microservicios | En parte: falta el tamaño máximo de archivo (D30) |
 | RNF-B05 | Cuando algo falla, lo que no depende de eso sigue | La web sigue aunque los servicios estén caídos (D20). Sin Redis, las rutas públicas y la analítica siguen contra PostgreSQL | Web, Microservicios | Hecho |
