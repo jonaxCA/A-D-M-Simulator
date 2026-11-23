@@ -321,6 +321,11 @@ def todas_las_versiones(token):
     return llamar("escenarios", "GET", "/api/v1/scenarios/versions", token=token)["versiones"]
 
 
+def intervenciones_version(token, version_id):
+    return llamar("intervenciones", "GET", "/api/v1/versions/%d/interventions" % version_id,
+                  token=token)["intervenciones"]
+
+
 def revisa_version(token, version_id):
     """(errores, avisos) del motor para la versión (servicio validacion)."""
     datos = llamar("validacion", "GET", "/api/v1/versions/%d/validation" % version_id, token=token)
