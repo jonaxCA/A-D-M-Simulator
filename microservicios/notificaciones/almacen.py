@@ -11,26 +11,28 @@ import psycopg2.extras
 from epidemia_comun.auditoria import log_audit
 from epidemia_comun.bd import a_jsonb, get_conn, query
 
-# Los del CHECK ck_notifications_type (003, 029, 037, 057 y 060).
+# Los del CHECK ck_notifications_type (003, 029, 037, 057, 060 y 064).
 TIPOS = ("RUN_FINISHED", "RUN_FAILED", "THRESHOLD_EXCEEDED", "ASSIGNMENT",
          "SCENARIO_PUBLISHED", "SCENARIO_APPROVED", "SCENARIO_SUBMITTED",
-         "SCENARIO_REJECTED", "NEW_CASES", "SYSTEM", "CASE_REJECTED", "CAMPAIGN",
-         "DATA_INCOMPLETE")
+         "SCENARIO_REJECTED", "SCENARIO_RETURNED", "NEW_CASES", "SYSTEM", "CASE_REJECTED",
+         "CAMPAIGN", "DATA_INCOMPLETE")
 # Los avisos que de verdad le llegan a cada perfil (D49): son los que puede apagar. SYSTEM, las
 # alertas técnicas del ADMINISTRADOR, no se apaga.
 TIPOS_POR_ROL = {
     "CAPTURISTA": ("CASE_REJECTED", "DATA_INCOMPLETE", "CAMPAIGN"),
     "EPIDEMIOLOGO": ("NEW_CASES", "SCENARIO_SUBMITTED"),
-    "ANALISTA": ("RUN_FINISHED", "RUN_FAILED", "SCENARIO_APPROVED", "SCENARIO_REJECTED"),
+    "ANALISTA": ("RUN_FINISHED", "RUN_FAILED", "SCENARIO_APPROVED", "SCENARIO_REJECTED",
+                 "SCENARIO_RETURNED"),
     "ADMINISTRADOR": ("SYSTEM", "RUN_FINISHED", "RUN_FAILED", "SCENARIO_APPROVED",
-                      "SCENARIO_REJECTED"),
+                      "SCENARIO_REJECTED", "SCENARIO_RETURNED"),
 }
 FIJOS = ("SYSTEM",)
 NOMBRES = {"RUN_FINISHED": "Corrida terminada", "RUN_FAILED": "Corrida con error",
            "SCENARIO_APPROVED": "Versión aprobada", "SCENARIO_SUBMITTED": "Versión por revisar",
            "SCENARIO_REJECTED": "Versión rechazada", "NEW_CASES": "Casos nuevos",
            "SYSTEM": "Alertas técnicas", "CASE_REJECTED": "Caso descartado",
-           "CAMPAIGN": "Campañas", "DATA_INCOMPLETE": "Datos incompletos"}
+           "CAMPAIGN": "Campañas", "DATA_INCOMPLETE": "Datos incompletos",
+           "SCENARIO_RETURNED": "Versión devuelta para cambios"}
 TITULO_MAX = 160
 _COLUMNAS = "id, user_id, type, title, body, payload, read_at, created_at"
 

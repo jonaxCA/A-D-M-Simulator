@@ -17,7 +17,7 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
    - Los servicios de simulación (`corridas`, `simulador`, `resultados`, `comparacion` y `pareto`)
      parten de `epidemia/base-simulacion` (`docker/base-simulacion.Dockerfile`): lo mismo, sin
      `backend_web` (E8). Los de identidad, de `epidemia/base-identidad`, y los de F (vigilancia,
-     analítica y plataforma), de `epidemia/base-vigilancia`, igual que `evidencias` (D, sin
+     analítica y plataforma), de `epidemia/base-vigilancia`, igual que `evidencias`, `importacion` y `aprobacion` (D, sin
      `backend_web` desde D2). Los demás de D siguen en `epidemia/base` mientras no se les quite
      `backend_web`.
    - El `Dockerfile` de un servicio solo copia su carpeta y su contrato. Úsalo igual que los

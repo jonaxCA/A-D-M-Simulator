@@ -188,6 +188,11 @@
                   "aprobado",
                   "rechazado"
                 ]
+              },
+              "huella": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "SHA-256 de la entrada canónica del motor (procesamiento.contrato.huella), D55."
               }
             }
           }
@@ -547,7 +552,7 @@
         "tags": [
           "validacion"
         ],
-        "description": "Contrasta la versión (con sus intervenciones y los parámetros de enfermedad que le valen: congelados si ya salió de borrador) con el motor. Solo lectura. Una versión inválida responde 200 con valido=false. Roles: ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR.",
+        "description": "Contrasta la versión (con sus intervenciones y los parámetros de enfermedad que le valen: congelados si ya salió de borrador) con el motor. Solo lectura. Una versión inválida responde 200 con valido=false. Roles: ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR. Trae además `huella`: la SHA-256 de la entrada canónica del motor para esa versión, la misma que guardará cada corrida en simulation_runs.scenario_checksum. Con ella aprobacion firma la versión que aprueba (D55).",
         "security": [
           {
             "bearerAuth": []
@@ -602,7 +607,8 @@
                   "status": "borrador",
                   "valido": true,
                   "errores": [],
-                  "avisos": []
+                  "avisos": [],
+                  "huella": "9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab"
                 }
               },
               "application/xml": {
@@ -612,7 +618,7 @@
                     "name": "validacion"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<validacion><version_id tipo=\"numero\">11</version_id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><status>borrador</status><valido tipo=\"booleano\">true</valido><errores /><avisos /></validacion>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<validacion><version_id tipo=\"numero\">11</version_id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><status>borrador</status><valido tipo=\"booleano\">true</valido><errores /><avisos /><huella>9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab</huella></validacion>\n"
               }
             }
           },

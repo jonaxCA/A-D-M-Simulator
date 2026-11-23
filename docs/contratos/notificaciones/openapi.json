@@ -181,6 +181,7 @@
                       "SCENARIO_APPROVED",
                       "SCENARIO_SUBMITTED",
                       "SCENARIO_REJECTED",
+                      "SCENARIO_RETURNED",
                       "NEW_CASES",
                       "SYSTEM",
                       "CASE_REJECTED",
@@ -260,6 +261,7 @@
                       "SCENARIO_APPROVED",
                       "SCENARIO_SUBMITTED",
                       "SCENARIO_REJECTED",
+                      "SCENARIO_RETURNED",
                       "NEW_CASES",
                       "SYSTEM",
                       "CASE_REJECTED",
@@ -471,7 +473,7 @@
       "get": {
         "summary": "Mis preferencias de avisos",
         "operationId": "preferencias_avisos",
-        "description": "Los tipos de aviso que le llegan a quien consulta, según su perfil (D49), con enabled (sin cambio, true) y fijo (SYSTEM no se apaga). CAPTURISTA: CASE_REJECTED, CAMPAIGN y DATA_INCOMPLETE; EPIDEMIOLOGO: SCENARIO_SUBMITTED y NEW_CASES; ANALISTA: RUN_FINISHED, RUN_FAILED, SCENARIO_APPROVED y SCENARIO_REJECTED; ADMINISTRADOR: los de ANALISTA y SYSTEM.",
+        "description": "Los tipos de aviso que le llegan a quien consulta, según su perfil (D49), con enabled (sin cambio, true) y fijo (SYSTEM no se apaga). CAPTURISTA: CASE_REJECTED, CAMPAIGN y DATA_INCOMPLETE; EPIDEMIOLOGO: SCENARIO_SUBMITTED y NEW_CASES; ANALISTA: RUN_FINISHED, RUN_FAILED, SCENARIO_APPROVED, SCENARIO_REJECTED y SCENARIO_RETURNED (D55); ADMINISTRADOR: los de ANALISTA y SYSTEM.",
         "security": [
           {
             "bearerAuth": []

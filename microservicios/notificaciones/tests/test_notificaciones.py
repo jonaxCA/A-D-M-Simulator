@@ -209,8 +209,10 @@ def preferencias(monkeypatch, bandeja):
 def test_cada_perfil_ve_los_avisos_que_le_tocan(cliente, token, preferencias):
     for roles, tipos in ((("CAPTURISTA",), ["CASE_REJECTED", "CAMPAIGN", "DATA_INCOMPLETE"]),
                          (("EPIDEMIOLOGO",), ["SCENARIO_SUBMITTED", "NEW_CASES"]),
+                         (("ANALISTA",), ["RUN_FINISHED", "RUN_FAILED", "SCENARIO_APPROVED",
+                                          "SCENARIO_REJECTED", "SCENARIO_RETURNED"]),
                          (("ADMINISTRADOR",), ["RUN_FINISHED", "RUN_FAILED", "SCENARIO_APPROVED",
-                                               "SCENARIO_REJECTED", "SYSTEM"])):
+                                               "SCENARIO_REJECTED", "SCENARIO_RETURNED", "SYSTEM"])):
         datos = cliente.get("/api/v1/notifications/preferences?format=json", headers=token(roles)).get_json()
         assert [p["type"] for p in datos["preferencias"]] == tipos, roles
         assert all(p["enabled"] for p in datos["preferencias"])

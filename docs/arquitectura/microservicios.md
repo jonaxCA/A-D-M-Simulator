@@ -28,13 +28,13 @@ D30), y entran por nginx con HTTPS (D25, D26). Cuánto vive cada dato: el invent
   bitácora es de `roles` (D37).
 - **Un contenedor por servicio.** Todos parten de una imagen base (`infra/docker/`), escuchan en
   el puerto 8000 dentro de su contenedor y publican un puerto propio hacia fuera, según la tabla.
-- **Cada regla con su servicio (E8, D37).** Los servicios de E y F, `evidencias` (D2) e
-  `importacion` (D6) no importan `backend_web`: sus imágenes parten de `base-identidad`,
-  `base-simulacion` y `base-vigilancia`, y sus reglas viven en su carpeta
+- **Cada regla con su servicio (E8, D37).** Los servicios de E y F, `evidencias` (D2),
+  `importacion` (D6) y `aprobacion` (D7) no importan `backend_web`: sus imágenes parten de
+  `base-identidad`, `base-simulacion` y `base-vigilancia`, y sus reglas viven en su carpeta
   ([`duenos_de_reglas.md`](duenos_de_reglas.md)).
-  Los de catálogos y escenarios (`enfermedades`, `parametros`, `regiones`, `poblacion`,
-  `tipos-intervencion`, `escenarios`, `intervenciones`, `aprobacion`, `validacion` y
-  `escenarios-xml`) todavía lo importan desde `epidemia/base` (D7 del checklist).
+  Los demás de catálogos y escenarios (`enfermedades`, `parametros`, `regiones`, `poblacion`,
+  `tipos-intervencion`, `escenarios`, `intervenciones`, `validacion` y `escenarios-xml`)
+  todavía lo importan desde `epidemia/base` (D7 del checklist).
   `procesamiento/` (el motor) solo va en las imágenes que lo usan: `base-simulacion` y
   `epidemia/base`.
 
@@ -129,10 +129,10 @@ solo en local).
 
 | #  | Servicio         | Hace una cosa                                                       | Rutas principales                                                                                                                               | Escribe                                                      | Lee                                                        | Llama a                                                                         | Puerto |
 |----|------------------|---------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|------------------------------------------------------------|---------------------------------------------------------------------------------|--------|
-| 12 | `escenarios`     | Alta, versiones nuevas, historial y duplicado                       | `GET/POST /api/v1/scenarios`, `GET /api/v1/scenarios/versions`, `GET /api/v1/scenarios/{id}`, `GET/POST /api/v1/scenarios/{id}/versions`, `POST /api/v1/scenarios/{id}/duplicate` | `scenarios`, `scenario_versions`, `scenario_interventions` (solo al duplicar o versionar: copia las de la versión origen) | `diseases`, `regions`, `region_age_groups`, `intervention_types`, `users` (`id`, `full_name`) | `validacion` (JSON, antes de guardar) | 5231   |
+| 12 | `escenarios`     | Alta, versiones nuevas, historial con responsables, duplicado, proyectos de investigación y archivado (D54) | `GET/POST /api/v1/scenarios`, `GET /api/v1/scenarios/versions`, `GET /api/v1/scenarios/{id}`, `GET/POST /api/v1/scenarios/{id}/versions`, `POST /api/v1/scenarios/{id}/duplicate`, `PUT /api/v1/scenarios/{id}/project`, `POST /api/v1/scenarios/{id}/archive` y `/restore`, `GET/POST /api/v1/projects`, `GET/PATCH /api/v1/projects/{id}`, `POST /api/v1/projects/{id}/archive` y `/restore` | `scenarios` (alta; `status`, `is_public` y `project_id` al archivar o mover de proyecto), `scenario_versions`, `scenario_interventions` (solo al duplicar o versionar: copia las de la versión origen), `research_projects` | `diseases`, `regions`, `region_age_groups`, `intervention_types`, `users` (`id`, `full_name`) | `validacion` (JSON, antes de guardar); `roles` (`GET /api/v1/scopes/me`, alcance de D43) | 5231   |
 | 13 | `intervenciones` | Intervenciones de una versión en borrador                           | `GET/POST /api/v1/versions/{id}/interventions`, `DELETE .../{iid}`, `POST .../{iid}/move`, `PUT .../{iid}/cost`, `PUT .../{iid}/person-days`, `PUT /api/v1/intervention-types/{id}/cost`, `PUT /api/v1/intervention-types/{id}/person-days` | `scenario_interventions`; `intervention_types` (solo `unit_cost`, `cost_source`, `cost_is_assumption`, desde `PUT .../cost`, y `person_days_per_unit`, `person_days_source`, `person_days_is_assumption`, desde `PUT .../person-days`, D3) | `scenarios`, `scenario_versions`, `intervention_types` | — | 5232   |
-| 14 | `aprobacion`     | Envío a revisión, aprobación y rechazo                              | `POST /api/v1/scenarios/{id}/submit`, `POST /api/v1/scenarios/{id}/review`, `GET /api/v1/reviews/pending`                                       | `scenario_versions` (solo `status`, `submitted_at`, `disease_params`, `reviewed_by`, `reviewed_at`, `review_comment`) | `scenarios`, `scenario_interventions`, `diseases`, `intervention_types`, `regions`, `users` (`id`, `full_name`) | `validacion` (`GET /api/v1/versions/{id}/validation`); `notificaciones` al enviar a revisión (a los EPIDEMIOLOGO), al aprobar y al rechazar (al autor), best-effort: si no responde solo se anota en el log | 5233   |
-| 15 | `validacion`     | Revisa un escenario contra el motor; no guarda nada                 | `POST /api/v1/validate`, `GET /api/v1/versions/{id}/validation`                                                                                 | —                                                            | `scenarios`, `scenario_versions`, `scenario_interventions`, `intervention_types`, `diseases`, `regions`, `region_age_groups`, `users` (`id`, `full_name`) | —                                                                               | 5234   |
+| 14 | `aprobacion`     | Envío a revisión, aprobación con firma, rechazo y devolución para cambios (D55) | `POST /api/v1/scenarios/{id}/submit`, `POST /api/v1/scenarios/{id}/review`, `GET /api/v1/reviews/pending`, `GET /api/v1/versions/{id}/signature` | `scenario_versions` (solo `status`, `submitted_at`, `disease_params`, `reviewed_by`, `reviewed_at`, `review_comment`, `approval_sha256`) | `scenarios`, `scenario_interventions`, `diseases`, `intervention_types`, `regions`, `users` (`id`, `full_name`), `simulation_runs` (`scenario_version_id`, `scenario_checksum`, `status`) | `validacion` (`GET /api/v1/versions/{id}/validation`, al enviar, al aprobar por la huella y al verificar la firma); `notificaciones` al enviar a revisión (a los EPIDEMIOLOGO), al aprobar, al rechazar y al devolver (al autor), best-effort: si no responde solo se anota en el log | 5233   |
+| 15 | `validacion`     | Revisa un escenario contra el motor y da la huella de una versión (D55); no guarda nada | `POST /api/v1/validate`, `GET /api/v1/versions/{id}/validation`                                                                                 | —                                                            | `scenarios`, `scenario_versions`, `scenario_interventions`, `intervention_types`, `diseases`, `regions`, `region_age_groups`, `users` (`id`, `full_name`) | —                                                                               | 5234   |
 | 16 | `escenarios-xml` | Exporta e importa escenarios completos en XML, validados contra XSD | `GET /api/v1/scenarios/{id}/export`, `POST /api/v1/scenarios/import`, `GET /api/v1/schemas/scenario.xsd`                                        | —                                                            | `scenarios`, `scenario_versions`, `scenario_interventions`, `diseases`, `regions`, `intervention_types` | `validacion` (JSON); `escenarios` (le manda el escenario **en XML**); `intervenciones` (JSON) | 5235   |
 
 - `intervenciones` guarda el costo en `intervention_types`, como el monolito: cambiarlo desde
@@ -144,6 +144,14 @@ solo en local).
   el export solo existe en XML. Las intervenciones no guardan región destino.
 - `aprobacion` → `notificaciones`: con token de servicio (`token_servicio()`), porque la ruta
   que crea avisos es interna. Es best-effort: si falla, el cambio de estado se mantiene.
+- `aprobacion` → `validacion` al aprobar: la huella de la entrada del motor es la firma de la
+  versión (`approval_sha256`, D55), la misma que guarda cada corrida en `scenario_checksum`. Sin
+  `validacion` no se aprueba (503). `validacion` la calcula con una copia de la consulta de
+  `simulador` (`version_para_motor`); una prueba revisa que sigan iguales.
+- `escenarios`: un escenario archivado (D54) es de solo lectura. `escenarios` no le crea
+  versiones, `intervenciones` no cambia las suyas, `aprobacion` no lo envía y la base rechaza sus
+  corridas (`fn_version_aprobada`, 064). Un proyecto de investigación agrupa escenarios de su
+  misma enfermedad y región (`fn_escenario_en_proyecto`).
 - `sincronizacion` → `notificaciones`: un aviso `NEW_CASES` por lote, a los EPIDEMIOLOGO, solo
   cuando el lote se procesa por primera vez y crea al menos un caso. También con token de
   servicio y best-effort. `POST /api/v1/notifications` acepta `role` (`EPIDEMIOLOGO` o

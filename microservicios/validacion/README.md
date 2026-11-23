@@ -16,7 +16,7 @@ escribe en la bitácora. Lee `diseases`, `regions`, `region_age_groups`, `interv
 | Ruta | Qué hace |
 |---|---|
 | `POST /api/v1/validate` | Valida el escenario del cuerpo (JSON o XML). |
-| `GET /api/v1/versions/{id}/validation` | Valida la versión guardada `{id}` (`revisa_version`). |
+| `GET /api/v1/versions/{id}/validation` | Valida la versión guardada `{id}` (`revisa_version`) y da su `huella` (D55). |
 | `GET /health`, `/docs`, `/openapi.json` | Comunes a todos los servicios. |
 
 Roles de las dos rutas: `ANALISTA`, `EPIDEMIOLOGO`, `ADMINISTRADOR`. Se llama con el token de
@@ -26,7 +26,10 @@ de servicio.
 ### Respuesta y códigos
 
 `{valido, errores[], avisos[]}` (la ruta de versión añade `version_id`, `scenario_id`,
-`version_number`, `status`). **Un escenario inválido responde 200 con `valido=false`**: la
+`version_number`, `status` y `huella`: la SHA-256 de la entrada canónica del motor, la misma que
+guardará cada corrida en `scenario_checksum`; `aprobacion` firma con ella la versión que aprueba).
+`huella.py` lee las filas con una copia de `simulador/datos.version_para_motor`, y una prueba revisa
+que sigan iguales. **Un escenario inválido responde 200 con `valido=false`**: la
 petición se atendió bien y el dictamen es el contenido. Los códigos de error significan otra
 cosa: 400 JSON/XML ilegible o `?format` desconocido, 401/403 token o rol, 404 versión
 inexistente, 413 cuerpo mayor de 1 MiB, 415 `Content-Type` no soportado, 422 cuerpo mal formado

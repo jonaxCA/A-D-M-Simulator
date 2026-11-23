@@ -58,7 +58,7 @@ La columna **Prueba** dice dónde están las pruebas que tocan ese paso, no que 
 |---|---|---|
 | CAPTURISTA | Pasos 1.1 a 1.8 | RF-A01, RF-A09, RF-C01 a RF-C14, RF-C21, RF-I01 a RF-I22 |
 | EPIDEMIOLOGO | Pasos 1.9, 2.8 y 3.7 | RF-B01, RF-B09, RF-B11, RF-C19, RF-C20, RF-D16, RF-D18, RF-F21, RF-G01 a RF-G15 |
-| ANALISTA | Pasos 2.1 a 2.7, 2.9 y 3.1 a 3.7 | RF-D01 a RF-D18, RF-E01 a RF-E21, RF-F01 a RF-F23, RF-H01 a RF-H24 |
+| ANALISTA | Pasos 2.1 a 2.7, 2.9 y 3.1 a 3.7 | RF-D01 a RF-D20, RF-E01 a RF-E21, RF-F01 a RF-F23, RF-H01 a RF-H24 |
 | ADMINISTRADOR | Soporte; también entra al escritorio | RF-A04 a RF-A06, RF-B02, RF-L01 a RF-L05, RF-K01 a RF-K12 |
 | Visitante sin sesión | Soporte | RF-J01, RF-J03 |
 
