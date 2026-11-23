@@ -12,3 +12,5 @@ class Config:
     # JWT: los emite auth. Mientras no haya SECRET_KEY propio se usa JWT_SECRET_KEY, y
     # create_app() se niega a arrancar si no hay ninguno.
     SECRET_KEY = os.environ.get("SECRET_KEY") or os.environ.get("JWT_SECRET_KEY")
+    # El PDF de un reporte pesa hasta 20 MB (D35); el resto, el formulario. Igual que nginx.
+    MAX_CONTENT_LENGTH = 21 * 1024 * 1024

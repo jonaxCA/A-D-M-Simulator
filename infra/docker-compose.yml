@@ -900,6 +900,8 @@ services:
       # Las mismas que auth: con el MFA prendido, la web manda el dispositivo del navegador (D40, D41).
       MFA_PERFILES: ${MFA_PERFILES:-}
       DISPOSITIVO_OBLIGATORIO: ${DISPOSITIVO_OBLIGATORIO:-0}
+      # El origen de las URLs firmadas de las fotos: entra al img-src del CSP de la web.
+      BUCKET_URL_PUBLICA: ${BUCKET_URL_PUBLICA:-http://localhost:4443}
 
 volumes:
   # Lo que FLAME GPU compila para cada tamaño de población (simulador-gpu).

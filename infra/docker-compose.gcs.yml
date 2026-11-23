@@ -16,6 +16,10 @@ services:
   bucket:
     profiles: [emulador-bucket]
 
+  web:
+    environment:
+      BUCKET_URL_PUBLICA: ""
+
   evidencias:
     environment:
       STORAGE_EMULATOR_HOST: ""
