@@ -99,6 +99,12 @@ corridas de inmediato.
 - Verifica la calidad de un CSV, JSON o XML sin guardarlo (`/datasets/validate`) e importa la
   versión siguiente de su clave (`POST /datasets`).
 
+**Proyectos** (D54, RF-D12, RF-D19)
+- Lista, crea, cambia (solo lo que cambió), archiva y restaura proyectos de `escenarios`
+  (`/projects`). La enfermedad y la región se bloquean cuando el proyecto tiene escenarios.
+- Mete y saca escenarios de la misma enfermedad y región (`PUT /scenarios/{id}/project`), y los
+  archiva o restaura (`/scenarios/{id}/archive` y `/restore`).
+
 **Además**
 - La barra de estado muestra la salud de los servicios, la cola y los avisos de
   `notificaciones`.

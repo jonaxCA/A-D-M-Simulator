@@ -118,9 +118,9 @@ sesión también se cierra.
 
 ![Vista de Escenarios](img/escritorio/escenarios.png)
 
-- **Barra lateral (izquierda).** Tiene las cuatro pantallas: **Escenarios** (Ctrl+1),
-  **Simulaciones** (Ctrl+2), **Comparación** (Ctrl+3) y **Datos** (Ctrl+4). Abajo están tu
-  nombre, tu rol y **Cerrar sesión**.
+- **Barra lateral (izquierda).** Tiene las cinco pantallas: **Escenarios** (Ctrl+1),
+  **Simulaciones** (Ctrl+2), **Comparación** (Ctrl+3), **Datos** (Ctrl+4) y **Proyectos**
+  (Ctrl+5). Abajo están tu nombre, tu rol y **Cerrar sesión**.
 - **Encabezado.** Muestra el título de lo que estás viendo y, a la derecha, las acciones
   disponibles. Una acción en gris no está permitida en ese momento; por ejemplo, no se puede
   lanzar corridas de un borrador.
@@ -129,7 +129,7 @@ sesión también se cierra.
   - **● Conectado · N ok.** Es la salud de los servicios, revisada cada 30 s. El punto se pone
     ámbar si alguno está degradado o caído, y rojo si no hay conexión.
   - **Cola.** Cuántas corridas se están ejecutando y cuántas esperan.
-  - **Avisos (N).** Notificaciones sin leer (sección 9).
+  - **Avisos (N).** Notificaciones sin leer (sección 10).
 
 ## 5. Escenarios
 
@@ -238,7 +238,7 @@ Con la versión en borrador, sin errores y siendo tú el autor o administrador, 
 
 - La versión pasa a **En revisión** y queda congelada.
 - Un epidemiólogo la aprueba o rechaza en el sistema web.
-- Si la aprueba, te llega un aviso (sección 9). Si la rechaza, la versión aparece como
+- Si la aprueba, te llega un aviso (sección 10). Si la rechaza, la versión aparece como
   **Rechazado** y el comentario del revisor se muestra arriba de la validación.
 
 ### 5.6 Versiones
@@ -472,7 +472,38 @@ corte, el inicio de su huella y sus puntos.
 Importan el analista y el administrador. Si el servidor rechaza la serie, el motivo aparece
 debajo de los botones.
 
-## 9. Avisos
+## 9. Proyectos de investigación
+
+Un **proyecto** reúne los escenarios de una investigación: una enfermedad y una región, con su
+objetivo, su periodo de estudio y los motores que piensas usar (D54). La pantalla **Proyectos**
+(Ctrl+5) lista los de tus regiones; arriba eliges ver los activos, los archivados o todos.
+
+**Crear un proyecto.** Pulsa **Nuevo proyecto**, llena nombre (3 caracteres o más), objetivo,
+enfermedad, región, periodo y al menos un motor, y pulsa **Crear proyecto**.
+
+**Cambiarlo.** Elige el proyecto, cambia lo que necesites y pulsa **Guardar cambios**; solo se
+manda lo que cambiaste. La enfermedad y la región ya no cambian cuando el proyecto tiene
+escenarios. Cambian un proyecto su autor y un administrador; para los demás el formulario queda
+en gris.
+
+**Sus escenarios.** La tabla de abajo muestra cada escenario del proyecto, también los
+archivados, con su versión vigente y su estado.
+- **Agregar al proyecto:** la lista solo ofrece escenarios de la misma enfermedad y región. Uno
+  que ya está en otro proyecto se cambia a este.
+- **Sacar del proyecto:** el escenario sigue igual, solo deja de estar agrupado.
+- **Abrir:** lo abre en Escenarios.
+- **Archivar escenario** (RF-D12): queda de solo lectura, sin versiones, intervenciones, envíos
+  a revisión ni corridas nuevas, y deja de salir en la lista de Escenarios. Sus corridas y
+  resultados se siguen consultando y se puede duplicar. No se archiva mientras su versión está
+  en revisión. **Restaurar escenario** lo regresa a borrador.
+
+**Archivar el proyecto.** Deja de recibir escenarios y cambios; los que tiene no cambian. No se
+borra nunca. **Restaurar proyecto** lo vuelve a activo.
+
+Si el servidor rechaza algo (otra enfermedad o región, un proyecto archivado, una versión en
+revisión), el motivo aparece debajo del formulario.
+
+## 10. Avisos
 
 El botón **Avisos (N)** de la barra de estado abre las notificaciones; N es cuántas no has
 leído. Llegan cuando:
@@ -485,7 +516,7 @@ Selecciona un aviso y pulsa **Marcar como leído**.
 
 ![Avisos](img/escritorio/avisos.png)
 
-## 10. Registro de actividad
+## 11. Registro de actividad
 
 La app guarda en tu computadora un registro de lo que haces y de cada petición al servidor, con
 su número de seguimiento (`cid`). Sirve para explicar un error a soporte. No guarda contraseñas
@@ -506,7 +537,7 @@ o aprobó el escenario. **Historial de auditoría** muestra las operaciones del 
 cada versión que selecciones o de las intervenciones de la versión abierta. Selecciona un evento
 para ver los campos antes y después. El servidor aplica el rol y alcance regional de tu cuenta.
 
-## 11. Problemas frecuentes
+## 12. Problemas frecuentes
 
 | Ves esto                                                     | Causa probable                                         | Qué hacer                                                  |
 |--------------------------------------------------------------|--------------------------------------------------------|------------------------------------------------------------|
@@ -522,7 +553,7 @@ para ver los campos antes y después. El servidor aplica el rol y alcance region
 | «Falta el costo unitario de …» al comparar                   | Igual que el anterior                                  | Ver 7.4                                                    |
 | «… requiere poblacion por grupo de edad»                     | Vacunación por edad sin reparto por edad               | Crea una versión con **Repartir por edad**, o usa otra prioridad |
 
-## 12. Atajos de teclado
+## 13. Atajos de teclado
 
 | Atajo     | Acción                                               |
 |-----------|------------------------------------------------------|
@@ -530,9 +561,10 @@ para ver los campos antes y después. El servidor aplica el rol y alcance region
 | Ctrl+2    | Simulaciones                                         |
 | Ctrl+3    | Comparación                                          |
 | Ctrl+4    | Datos observados                                     |
+| Ctrl+5    | Proyectos de investigación                           |
 | Enter     | Buscar (en el buscador) o Entrar (en el inicio de sesión) |
 
-## 13. Glosario
+## 14. Glosario
 
 - **Escenario.** Situación que se simula: enfermedad, municipio, población e intervenciones.
 - **Versión.** Fotografía de un escenario. Una vez enviada a revisión ya no cambia.

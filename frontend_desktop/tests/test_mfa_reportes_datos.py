@@ -9,7 +9,7 @@ from frontend_desktop.tests.test_api import Respuesta, problema
 
 # El ejemplo del contrato de estado-servicios no lista evidencias ni importacion; el sondeo sí los anuncia.
 DIRECTORIO = xmlio.escribir({"servicios": [{"nombre": n, "url": "http://%s" % n} for n in (
-    "auth", "sesiones", "usuarios", "evidencias", "importacion")]}, "directorio")
+    "auth", "sesiones", "usuarios", "escenarios", "evidencias", "importacion")]}, "directorio")
 
 
 def ejemplo(servicio, nombre):

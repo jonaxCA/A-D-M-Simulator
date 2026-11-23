@@ -130,9 +130,46 @@ def tipos_intervencion(c):
     return c.pedir("tipos-intervencion", "GET", "/api/v1/intervention-types", publico=True).get("tipos") or []
 
 
-def escenarios(c, texto=""):
-    params = {"q": texto} if texto else None
-    return c.pedir("escenarios", "GET", "/api/v1/scenarios", params=params).get("escenarios") or []
+def escenarios(c, texto="", proyecto_id=None, archivados=False):
+    params = {k: v for k, v in (("q", texto), ("project_id", proyecto_id),
+                                ("archived", "true" if archivados else None)) if v}
+    return c.pedir("escenarios", "GET", "/api/v1/scenarios", params=params or None).get("escenarios") or []
+
+
+# Proyectos de investigación y archivado (D54, RF-D12, RF-D19). escenarios aplica dueño, alcance y reglas.
+MOTORES_PROYECTO = ("seir-ref", "abm-ref", "abm-gpu")
+
+
+def proyectos(c, estado=None, texto=""):
+    params = {k: v for k, v in (("status", estado), ("q", texto)) if v}
+    return c.pedir("escenarios", "GET", "/api/v1/projects", params=params or None).get("proyectos") or []
+
+
+def proyecto(c, proyecto_id):
+    return c.pedir("escenarios", "GET", "/api/v1/projects/%s" % proyecto_id)
+
+
+def crear_proyecto(c, datos):
+    return c.pedir("escenarios", "POST", "/api/v1/projects", datos, "proyecto")
+
+
+def cambiar_proyecto(c, proyecto_id, cambios):
+    return c.pedir("escenarios", "PATCH", "/api/v1/projects/%s" % proyecto_id, cambios, "proyecto")
+
+
+def archivar_proyecto(c, proyecto_id, archivar=True):
+    return c.pedir("escenarios", "POST", "/api/v1/projects/%s/%s" % (proyecto_id, "archive" if archivar else "restore"))
+
+
+def mover_a_proyecto(c, escenario_id, proyecto_id):
+    """proyecto_id None saca el escenario de su proyecto."""
+    return c.pedir("escenarios", "PUT", "/api/v1/scenarios/%s/project" % escenario_id,
+                   {"project_id": proyecto_id}, "escenario")
+
+
+def archivar_escenario(c, escenario_id, archivar=True):
+    return c.pedir("escenarios", "POST",
+                   "/api/v1/scenarios/%s/%s" % (escenario_id, "archive" if archivar else "restore"))
 
 
 def escenario(c, escenario_id, version=None):
