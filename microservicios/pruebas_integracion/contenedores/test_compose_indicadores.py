@@ -40,3 +40,15 @@ def test_cada_indicador_con_su_cuenta_coincide_con_el_tablero(api, sesion, catal
     assert ind["letalidad"]["valor"] == round(fallecidos / casos * 100, 1)
     assert ind["casos_graves"]["valor"] == round(graves / casos * 100, 1)
     assert ind["zonas_en_riesgo"]["denominador"]["valor"] == 51
+
+
+def test_la_imagen_trae_las_camas_censables_y_la_capacidad_su_fuente(api):
+    """D57: la imagen de indicadores copia datos/capacidad/camas_censables_nl.csv (lo deja pasar
+    .dockerignore). Sin él, capacidad_utilizada saldría sin denominador."""
+    ind = {i["clave"]: i for i in api("indicadores", "GET", "/api/v1/dashboard/indicators").json()["indicadores"]}
+    capacidad = ind["capacidad_utilizada"]
+    assert capacidad["denominador"]["valor"] == 4339
+    assert capacidad["fuente"]["corte"] == "2025-12-31" and len(capacidad["fuente"]["sha256"]) == 64
+    assert capacidad["numerador"]["valor"] == ind["hospitalizaciones"]["valor"]
+    assert capacidad["valor"] == round(capacidad["numerador"]["valor"] / 4339 * 100, 1)
+    assert ind["prevalencia"]["periodo"]["dias"] == 14

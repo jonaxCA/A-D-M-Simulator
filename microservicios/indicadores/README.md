@@ -30,6 +30,9 @@ cuentas de los campos de siempre, que la web sigue leyendo igual:
 | `tasa_mortalidad` | Por 100 000 habitantes (2 decimales) | Casos con gravedad `fallecido` | Habitantes de Nuevo León | 100 000 |
 | `letalidad` | % de los casos | Casos con gravedad `fallecido` | Casos reportados | 100 |
 | `casos_graves` | % de los casos | Casos con gravedad `grave` | Casos reportados | 100 |
+| `prevalencia` | Por 100 000 habitantes | Casos de los últimos 14 días | Habitantes de Nuevo León | 100 000 |
+| `hospitalizaciones` | Casos (estimadas) | Casos con gravedad `grave` de los últimos 14 días | — | — |
+| `capacidad_utilizada` | % de las camas censables | Hospitalizaciones estimadas | Camas censables del sector público de Nuevo León (DGIS) | 100 |
 | `zonas_en_riesgo` | Municipios | Municipios con más de 10 casos por 100 000 en la semana | Municipios de Nuevo León (referencia) | — |
 | `simulaciones_activas` | Corridas | Encoladas o ejecutándose ahora | — | — |
 
@@ -39,8 +42,27 @@ cuentas de los campos de siempre, que la web sigue leyendo igual:
   coinciden. Las proporciones (`letalidad`, `casos_graves`) solo traen la semana actual.
 - Con `factor`, valor = numerador / denominador × factor; sin él, valor = numerador. Lo que
   dividiría entre cero es `null`.
-- No hay prevalencia (los casos no tienen fecha de recuperación), ni hospitalizaciones (no hay
-  ese dato: `casos_graves` es lo más cercano), ni capacidad utilizada (no hay fuente, RF-G07).
+- Prevalencia, hospitalizaciones y capacidad utilizada (D57) usan los 14 días que la consulta ya
+  trae, con dos supuestos que van en cada numerador: un caso sigue activo 14 días desde su reporte
+  y uno con gravedad `grave` está hospitalizado y ocupa una cama censable ese tiempo. La
+  plataforma no registra hospitalizaciones ni altas: son estimaciones.
+- Cada indicador trae `fuente`: `null` si sale de los casos. En `capacidad_utilizada` es la de las
+  camas: `documento`, `url`, `licencia`, `corte`, `alcance` y `sha256`.
+
+### Las camas censables (D57)
+
+`capacidad.py` lee `datos/capacidad/camas_censables_nl.csv`, que la imagen copia (y que
+`.dockerignore` deja pasar): las camas del área de hospitalización (censables) de los
+establecimientos del sector público de Nuevo León por municipio, del cierre 2025 de Recursos en
+Salud Sectorial de la DGIS (4 339 camas). El encabezado trae la fuente, la URL, la licencia, el
+corte, el alcance y la huella del zip. Para el cierre siguiente:
+
+```bash
+python datos/scripts/build_camas_censables.py agrega Recursos_Salud_Sectorial_<año>.zip
+```
+
+y reconstruir `indicadores` (sin migración). Si la imagen no trae el archivo, la capacidad sale
+sin valor.
 
 ## Caché
 

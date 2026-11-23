@@ -19,6 +19,7 @@ Es la visualización de P1 (paso 1.9) y de P3 (paso 3.7) de [`procesos_v3.md`](.
 | RF-G04 | El monitoreo epidemiológico (`/monitoreo`) se filtra por periodo | La serie cambia según los días elegidos | Soporte | Web | Media | Hecho |
 | RF-G05 | El monitoreo epidemiológico se filtra por enfermedad y por región | La serie y los totales cambian según el filtro | Soporte | Web | Media | Hecho |
 | RF-G06 | El monitoreo epidemiológico desglosa los casos por edad y por sexo | Se ve una serie por grupo de edad y otra por sexo | Soporte | Web | Media | Hecho |
+| RF-G07 | El tablero muestra la ocupación hospitalaria con su fuente | `indicadores` da `capacidad_utilizada`: hospitalizaciones estimadas entre las camas censables del sector público de Nuevo León (DGIS, cierre 2025), con su `fuente` y sus supuestos en el numerador (D57) | 1.9 | Microservicios | Media | En parte: falta pintarlo en la web |
 | RF-G09 | El estado de una corrida se actualiza sin recargar la página | La pantalla de la corrida pregunta su estado y cambia cuando la corrida termina | 3.7 | Web | Media | Hecho |
 | RF-G11 | Cada rol ve lo que le toca. El CAPTURISTA entra solo al tablero y al mapa (D1) | Cualquier otra pantalla responde 403 al CAPTURISTA. La bitácora es solo del ADMINISTRADOR | 1.9 | Web, Seguridad | Alta | En parte: falta revisar los candados contra D1 |
 | RF-G12 | El tablero y el monitoreo epidemiológico exportan a CSV | Salen el resumen del tablero y la serie del monitoreo | Soporte | Web | Media | Hecho |
@@ -29,7 +30,6 @@ Es la visualización de P1 (paso 1.9) y de P3 (paso 3.7) de [`procesos_v3.md`](.
 
 | ID | Qué pedía | Por qué sale |
 |---|---|---|
-| RF-G07 | Ocupación hospitalaria | No hay fuente para ese dato |
 | RF-G08 | Alertas cuando un indicador pasa de un umbral | No hay umbrales definidos ni decisión que los pida |
 | RF-G10 | Tablero legible en el teléfono | Pasa a RNF-E03 |
 | RF-G13 | Tablero configurable por usuario | Ningún proceso lo pide |
