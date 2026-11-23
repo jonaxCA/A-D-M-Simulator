@@ -22,7 +22,8 @@ tests/            pytest; test_humo.py usa los ejemplos de docs/contratos
 
 ## Reglas
 
-1. **Solo XML y solo microservicios.** No importes `backend_web`, `procesamiento` ni
+1. **XML y solo microservicios.** La capa cartográfica es la excepción de formato:
+   `zonas/geometry` entrega GeoJSON. No importes `backend_web`, `procesamiento` ni
    `epidemia_comun`. Si un dato no lo da un servicio, se pide al servicio; no se calcula aquí.
 2. **Todas las peticiones pasan por `Cliente.pedir()` o `Cliente.enviar()`.** Ahí van el token,
    el `X-Correlation-ID`, la validación XSD y la bitácora.

@@ -1,8 +1,8 @@
 # Evidencia y defensa del bloque A
 
-Rama `fix/desktop-estabilidad-reportes-mau` del PR #173. La aplicación de escritorio usa
-PySide6 y consulta los microservicios por XML. El recorrido local usa los ejemplos XML de
-`docs/contratos` y las capturas comparativas usan datos ilustrativos.
+La primera entrega se hizo en el PR #173. La aplicación usa PySide6 y consulta los
+microservicios por XML, con GeoJSON para la capa de límites del mapa. Las pruebas locales
+usan ejemplos de `docs/contratos` y las capturas comparativas usan datos ilustrativos.
 
 ## Reproducir la verificación
 
@@ -11,7 +11,7 @@ PySide6 y consulta los microservicios por XML. El recorrido local usa los ejempl
 
 | Evidencia | Resultado observado | Dónde verificar |
 | --- | --- | --- |
-| Suite de escritorio completa | 246 pruebas aprobadas | `frontend_desktop/tests` |
+| Suite de escritorio del PR #173 | 246 pruebas aprobadas | `frontend_desktop/tests` |
 | Suite del motor | 123 pruebas aprobadas, 10 omitidas y 119 subpruebas aprobadas | `procesamiento/tests` |
 | Diferencias y exportaciones | Referencia seleccionable, tasas en puntos porcentuales, relativa sin valor frente a cero. Alineación por día y exclusión de semillas incompletas | `test_bloque_a.py` |
 | Trazabilidad y PDF | Se consultan versiones del motor por réplica. Se omiten gráficas con metadatos incompletos. Qt abre los PDF y encuentra las diferencias, el modelo, la serie y la metodología | `test_bloque_a.py`, `test_ficha_corrida.py` y `test_regresion_reportes_encolado.py` |
@@ -67,8 +67,23 @@ Las pantallas y sus controles están en el [manual de usuario](../manuales/manua
 | A1 y configuraciones por versión | A define los cambios de interfaz y, con D, el alcance de los parámetros que se guardan por versión (el bloque 0 lo delegó el 2026-11-22). D define el contrato. |
 | A2, almacenamiento y nube | E publica los motores habilitados. D y F entregan la ruta de reportes, el bucket y las URLs firmadas. F habilita HTTPS. |
 | Gestión de datos y proyectos | A y D acuerdan el modelo del proyecto, el identificador y las reglas de calidad de los conjuntos (el bloque 0 lo delegó el 2026-11-22). D expone la carga, consulta y versionado. |
-| Calibración, sensibilidad y recuperación | El método y los criterios de aceptación de la calibración están en D50, y la sensibilidad en D46. E expone las rutas y participa en la demostración de recuperación del trabajador. |
-| Repetición histórica, auditoría y mapas | D y E exponen datos y configuración históricos, y la auditoría por operación. D y F confirman la fuente de geometrías para límites municipales. |
+| Calibración, sensibilidad y recuperación | El escritorio consume D46. El método de calibración y los criterios de validación con datos observados están en D50; E expone sus rutas en el servicio `calibracion`. E participa en la demostración de recuperación del trabajador. |
+| Repetición histórica | D y E exponen el identificador y la versión del conjunto, los parámetros históricos y el contrato de reejecución. |
 
 El [checklist](../parciales/parcial-3/checklist.md#a-app-de-escritorio--frontend_desktop)
 distingue lo terminado en la rama, lo parcial y lo bloqueado.
+
+## Integración sobre feat/tercer-parcial · 22 de noviembre
+
+| Verificación | Resultado |
+| --- | --- |
+| Escritorio y TLS | PySide6 mostró el captcha XML de `https://epidemos.app/estado-servicios` con verificación del certificado activa. El directorio anunció 29 servicios con HTTPS en el dominio y la salud reportó 29 sanos, 0 degradados y 0 caídos. |
+| Rutas protegidas en nube | Las rutas de geometría y de historial respondieron 401 `TOKEN_AUSENTE` sin sesión. Queda por probar el recorrido con cuenta de demostración y permisos de región. |
+| Plano, historial y validación | Regresión en `test_mapa_auditoria.py`: 51 polígonos de INEGI, interior de anillos, selección y serie, ETag y renovación del token, historial paginado con 403, estado de calibración y sensibilidad para versión aprobada. |
+| Suite local de escritorio | 315 pruebas aprobadas en la rama de integración. Se ejecutó completa porque cambiaron el cliente HTTP y el lector XML compartidos. |
+
+Para el ensayo, abre el escritorio con `EPIDEMIA_DIRECTORIO=https://epidemos.app/estado-servicios`.
+Con una cuenta de demostración, elige un escenario de Nuevo León con eventos, abre **Indicadores
+municipales** y **Historial de auditoría**. Comprueba con un analista que el historial de una
+región permitida abre y que una región fuera de alcance se rechaza. Repite con administrador
+para verificar el acceso autorizado. Los cambios de la aplicación no requieren migraciones.

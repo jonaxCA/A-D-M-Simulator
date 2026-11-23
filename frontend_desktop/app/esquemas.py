@@ -16,6 +16,8 @@ POR_RESPUESTA = {
     ("aprobacion", "envio"): "aprobacion/aprobacion.xsd",
     ("comparacion", "comparacion"): "comparacion/comparacion.xsd",
     ("pareto", "pareto"): "pareto/pareto.xsd",
+    ("pareto", "sensibilidad"): "pareto/pareto.xsd",
+    ("pareto", "calibracion"): "pareto/pareto.xsd",
     ("resultados", "resultado"): "resultados/resultado.xsd",
     ("escenarios-xml", "escenario"): "escenarios-xml/escenario.xsd",
     ("enfermedades", "enfermedad"): "enfermedades/enfermedad.xsd",
