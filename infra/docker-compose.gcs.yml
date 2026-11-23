@@ -6,9 +6,10 @@
 #     -f infra/docker-compose.gcs.yml <los perfiles de docs/INSTALACION.md, con web y sin gpu> up -d --wait
 #
 # El bucket lo crea infra/crea_bucket.sh, que dice qué poner en BUCKET_NOMBRE de infra/.env.
-# evidencias toma las credenciales de la cuenta de servicio de la máquina (servidor de metadatos) y
-# firma las URLs con signBlob de esa misma cuenta: no hay llaves en el .env ni en la imagen. La
-# máquina necesita el alcance cloud-platform (docs/DESPLIEGUE_GCP.md, §2). En una PC no se suma.
+# evidencias toma las credenciales de la cuenta de servicio de la máquina, epidemia-vm (servidor de
+# metadatos), y firma las URLs con signBlob de esa misma cuenta: no hay llaves en el .env ni en la
+# imagen. La máquina usa epidemia-vm con el alcance cloud-platform, nunca la cuenta de Compute por
+# omisión (docs/DESPLIEGUE_GCP.md, §2). En una PC no se suma.
 
 services:
   # El emulador no se levanta en la nube; queda en un perfil que nadie activa.
