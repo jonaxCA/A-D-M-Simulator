@@ -333,7 +333,7 @@ La app solo habla JSON.
 
 - [x] Indicador de conexión fijo, visible en todas las pantallas (C3, RF-I20, RNF-E11). `ui/navegacion/IndicadorConexion.kt`.
 - [x] Menú por rol: un rol distinto del CAPTURISTA no ve la captura (C8, RF-I19). Los roles del login quedan con la sesión (`InicioViewModelTest`).
-- [ ] Las fotos se suben y se bajan con la `evidencias` del bucket (D30, RF-C03). La app ya sube y baja por `evidencias`. D2 listo (2026-11-22): las rutas no cambian, el archivo va al bucket; `GET /api/v1/attachments/{id}/url` da la URL firmada, `X-Content-SHA256` revisa la huella y con el bucket caído la subida es 503 (reintentar, RNF-C19).
+- [x] Las fotos se suben y se bajan con la `evidencias` del bucket (D30, RF-C03). Subir: igual que antes (con el bucket caído, 503 y la app reintenta sin perder la foto). Bajar (2026-11-23): el seguimiento de un caso lista sus fotos (`GET /cases/{id}/attachments`) y "Ver" pide la URL firmada (`GET /attachments/{id}/url`) y baja directo del bucket sin el token de la sesión; lo que llega se compara con su SHA-256 antes de mostrarlo (`SeguimientoViewModelTest`). En la VM, el bucket privado `integracion-515321-archivos` desde el 2026-11-23.
 - [x] Probar que el aviso por lote no se repite cuando la app reintenta el mismo lote (D32, RF-C19). La app reenvía el mismo `batch_id` (`SincronizadorTest.sin_respuesta_reintenta_el_mismo_lote`) y `sincronizacion` no vuelve a avisar (`test_reintentar_el_lote_no_vuelve_a_avisar`).
 - [x] Mostrar los tipos de aviso de la migración 037 (`NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED`) en `Formato.kt` (D32).
 

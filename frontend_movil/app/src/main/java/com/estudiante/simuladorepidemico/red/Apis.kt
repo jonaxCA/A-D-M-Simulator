@@ -15,7 +15,12 @@ import com.estudiante.simuladorepidemico.red.api.ZonasApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import okio.Buffer
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
+
+const val MAXIMO_A_BAJAR = 20L * 1_048_576
 
 class Apis(
     private val directorio: Directorio,
@@ -36,6 +41,21 @@ class Apis(
     suspend fun zonas(): ZonasApi = crear("zonas", conToken)
     suspend fun enfermedades(): EnfermedadesApi = crear("enfermedades", sinToken)
     suspend fun regiones(): RegionesApi = crear("regiones", sinToken)
+
+    // Un archivo de una URL firmada de evidencias (D30). Va directo al bucket con el cliente sin
+    // token: el de la sesión no debe salir hacia Google. Más de `maximo` bytes (20 MB, el tope de
+    // evidencias) no se baja.
+    suspend fun bajarFirmada(url: String, maximo: Long = MAXIMO_A_BAJAR): ByteArray = withContext(Dispatchers.IO) {
+        sinToken.newCall(Request.Builder().url(url).build()).execute().use { respuesta ->
+            if (!respuesta.isSuccessful) throw IOException("El bucket respondió ${respuesta.code}.")
+            val fuente = respuesta.body.source()
+            val leido = Buffer()
+            while (fuente.read(leido, 8_192) != -1L) {
+                if (leido.size > maximo) throw IOException("El archivo pasa de ${maximo / 1_048_576} MB.")
+            }
+            leido.readByteArray()
+        }
+    }
 
     private suspend inline fun <reified T : Any> crear(servicio: String, cliente: OkHttpClient): T {
         creadas[servicio]?.let { return it as T }
