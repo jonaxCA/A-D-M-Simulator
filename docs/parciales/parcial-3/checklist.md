@@ -333,39 +333,39 @@ La app solo habla JSON.
 
 - [x] Indicador de conexión fijo, visible en todas las pantallas (C3, RF-I20, RNF-E11). `ui/navegacion/IndicadorConexion.kt`.
 - [x] Menú por rol: un rol distinto del CAPTURISTA no ve la captura (C8, RF-I19). Los roles del login quedan con la sesión (`InicioViewModelTest`).
-- [ ] Las fotos se suben y se bajan con la `evidencias` del bucket (D30, RF-C03). D2 listo (2026-11-22): las rutas no cambian, el archivo va al bucket; `GET /api/v1/attachments/{id}/url` da la URL firmada, `X-Content-SHA256` revisa la huella y con el bucket caído la subida es 503 (reintentar, RNF-C19).
-- [ ] Probar que el aviso por lote no se repite cuando la app reintenta el mismo lote (D32, RF-C19). Espera a E.
+- [ ] Las fotos se suben y se bajan con la `evidencias` del bucket (D30, RF-C03). La app ya sube y baja por `evidencias`. D2 listo (2026-11-22): las rutas no cambian, el archivo va al bucket; `GET /api/v1/attachments/{id}/url` da la URL firmada, `X-Content-SHA256` revisa la huella y con el bucket caído la subida es 503 (reintentar, RNF-C19).
+- [x] Probar que el aviso por lote no se repite cuando la app reintenta el mismo lote (D32, RF-C19). La app reenvía el mismo `batch_id` (`SincronizadorTest.sin_respuesta_reintenta_el_mismo_lote`) y `sincronizacion` no vuelve a avisar (`test_reintentar_el_lote_no_vuelve_a_avisar`).
 - [x] Mostrar los tipos de aviso de la migración 037 (`NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED`) en `Formato.kt` (D32).
 
 ### B2. Verificar
 
-- [ ] Sin red, con un rechazo del servidor y con la sesión vencida, la app explica qué pasó sin cerrarse (RF-I22, RNF-E06).
+- [x] Sin red, con un rechazo del servidor y con la sesión vencida, la app explica qué pasó sin cerrarse (RF-I22, RNF-E06). Sin red y los rechazos ya se explicaban en cada pantalla; desde el 2026-11-22, al perder la sesión el login dice que se cerró y que los casos sin enviar siguen en el teléfono.
 - [x] Los casos sin enviar se quedan al cerrar sesión y se mandan cuando esa cuenta vuelve a entrar (D19, RF-I21). `SincronizadorTest`.
-- [ ] La app pasa la lista de la rúbrica para Android: perfil, consulta, registro, actualización (dosis y avisos, D32) y borrado local de credenciales.
-- [ ] La app funciona contra el dominio real con su certificado, de preferencia también en un Android 7.0 (D26). Espera a F.
-- [ ] Las pruebas de `frontend_movil` pasan.
+- [x] La app pasa la lista de la rúbrica para Android: perfil, consulta, registro, actualización (dosis y avisos, D32) y borrado local de credenciales. Perfil (Mi perfil), consulta (Mis casos, seguimiento, consulta por zona y lotes), registro (captura), actualización (dosis, avisos leídos y corrección de casos, D47) y borrado de credenciales al cerrar sesión (`SesionTest`). Revisado el 2026-11-22.
+- [ ] La app funciona contra el dominio real con su certificado, de preferencia también en un Android 7.0 (D26). Ya no espera a F: `https://epidemos.app` responde con las rutas que usa la app y el APK de la nube está (B3). Falta abrirlo en un teléfono o emulador, y en un Android 7.0.
+- [x] Las pruebas de `frontend_movil` pasan. 116 pruebas unitarias con `./gradlew testDebugUnitTest` (2026-11-22), con el JDK de Android Studio: con el de Adoptium fallan las de DataStore en Windows (`frontend_movil/README.md`). Las instrumentadas compilan; correrlas pide emulador.
 
 ### B3. Entregables
 
-- [x] Manual de usuario de la app móvil en `docs/manuales/` (RNF-E08). `manual_usuario_movil.md`, sin capturas todavía.
-- [ ] APK de la demostración, apuntando al dominio de la nube.
+- [x] Manual de usuario de la app móvil en `docs/manuales/` (RNF-E08). `manual_usuario_movil.md`, al día con B4 (2026-11-22), sin capturas todavía.
+- [x] APK de la demostración, apuntando al dominio de la nube. `./gradlew assembleDebug -Pepidemia.directorio=https://epidemos.app/estado-servicios/` (`frontend_movil/README.md`, sección 2); el APK no se sube al repositorio.
 
 ### B4. Módulos que pide la retroalimentación
 
 [Retro: «Aplicación móvil Android»]. Para capturistas, personal de vigilancia, supervisores regionales y responsables de campañas.
 
-- [ ] Revisar la app contra esta lista y marcar lo que ya cumple.
-- [ ] Panel del capturista: casos pendientes, formularios, registros incompletos, sincronizaciones pendientes y avisos. Los registros incompletos ya los da el servidor (`GET /cases/incomplete`, D49, 2026-11-22).
-- [ ] Seguimiento: actualizar el estado de un caso, con observaciones e historial (RF-I12, reabierto). El servidor ya está (D47, 2026-11-22): `PATCH /cases/{id}` para corregir los casos pendientes propios, con `If-Match`, y `GET /cases/{id}/history`; cambiar el estado es del EPIDEMIOLOGO.
-- [ ] Formularios por enfermedad, con versiones, validaciones y campos obligatorios. El servidor ya está (D48, 2026-11-22): la app baja `GET /forms/current`, arma la captura con esos campos y manda `form_id` y `form_answers` en cada caso (también en el lote); `casos` las valida.
-- [ ] GPS, con selección manual cuando la captura automática no conviene.
-- [ ] Cola local cifrada: hoy Room guarda los casos sin cifrar y solo los tokens van cifrados.
-- [ ] Un caso no se muestra como recibido, validado o publicado hasta que el servidor lo confirma.
-- [ ] La sincronización no sobrescribe en silencio lo que cambió otro profesional: el conflicto se muestra. El servidor ya está (D47, 2026-11-22): el lote manda `updates` con la versión del teléfono y cada corrección regresa `actualizado`, `conflicto` (con el caso actual) o `rechazado`; falta mostrarlo en la app.
-- [ ] Consulta epidemiológica agregada por zona, periodo y enfermedad, según los permisos.
-- [ ] Alertas: tareas nuevas, registros rechazados, campañas y eventos de vigilancia, desde `notificaciones`. Registros rechazados ya llegan (D47, 2026-11-22): `CASE_REJECTED` cuando un EPIDEMIOLOGO descarta o marca duplicado un caso; falta su nombre en `TIPOS_DE_AVISO` de la app («Caso descartado»), que hoy lo muestra como «Aviso». Campañas (`CAMPAIGN`) y datos incompletos (`DATA_INCOMPLETE`) también llegan desde el 2026-11-22 (D49), y cada quien puede apagarlos (`/notifications/preferences`); faltan sus nombres en la app.
-- [ ] Control de calidad: avisa de campos incompletos, fechas incoherentes y posibles duplicados.
-- [ ] Perfil con institución, región asignada y estado de conexión. Espera a E (E7).
+- [x] Revisar la app contra esta lista y marcar lo que ya cumple. Revisado el 2026-11-22; lo que hizo falta está en `frontend_movil/README.md`, sección 10.
+- [x] Panel del capturista: casos pendientes, formularios, registros incompletos, sincronizaciones pendientes y avisos. El inicio muestra los casos por enviar, los que tienen datos faltantes (`GET /cases/incomplete`), los avisos sin leer y los formularios en el teléfono.
+- [x] Seguimiento: actualizar el estado de un caso, con observaciones e historial (RF-I12, reabierto). Pantalla de seguimiento: estado en el servidor, motivo e historial (`GET /cases/{id}/history`); quien lo capturó lo corrige mientras está pendiente con `PATCH /cases/{id}` e `If-Match`, con su motivo. Cambiar el estado es del EPIDEMIOLOGO (D47).
+- [x] Formularios por enfermedad, con versiones, validaciones y campos obligatorios. La app baja `GET /forms/current` con los catálogos, arma la captura con esos campos, los valida como `casos` y manda `form_id` y `form_answers` en el lote (D48). Base local en la versión 3.
+- [x] GPS, con selección manual cuando la captura automática no conviene. «Escribir las coordenadas» en la captura.
+- [x] Cola local cifrada: hoy Room guarda los casos sin cifrar y solo los tokens van cifrados. Los datos de salud de cada caso (edad, sexo, inicio de síntomas, resultado, gravedad, ubicación y respuestas) van en una columna cifrada con la llave del Keystore, sin librería nueva; la enfermedad, el municipio y la fecha quedan en claro para listar. Decidido en la sesión del 2026-11-22, falta registrarlo en `decisiones.md`.
+- [x] Un caso no se muestra como recibido, validado o publicado hasta que el servidor lo confirma. «Recibido» solo con el `case_id` que regresa el lote; validado, descartado o duplicado solo los dice el seguimiento, desde el servidor.
+- [x] La sincronización no sobrescribe en silencio lo que cambió otro profesional: el conflicto se muestra. Las correcciones van con `If-Match`; un 412 se muestra con el caso como quedó, sin pisarlo (`SeguimientoViewModelTest`). Corregir pide conexión: la app no usa los `updates` del lote.
+- [x] Consulta epidemiológica agregada por zona, periodo y enfermedad, según los permisos. «Consulta por zona» (`GET /zones`): casos, incidencia y nivel por municipio, para 7, 30 o 90 días; el alcance lo aplica el servidor.
+- [x] Alertas: tareas nuevas, registros rechazados, campañas y eventos de vigilancia, desde `notificaciones`. `CASE_REJECTED` («Caso descartado»), `CAMPAIGN` («Campaña») y `DATA_INCOMPLETE` («Datos incompletos») en `Formato.kt`.
+- [x] Control de calidad: avisa de campos incompletos, fechas incoherentes y posibles duplicados. La captura dice qué falta sin impedir guardar, rechaza fechas incoherentes y pide confirmar un posible duplicado del teléfono.
+- [x] Perfil con institución, región asignada y estado de conexión. E7 ya los daba; Mi perfil los muestra.
 - [ ] Menú para cada perfil de campo. Los perfiles ya están decididos (D42).
 
 ## C. Sistema web · `frontend_web/` y `backend_web/`

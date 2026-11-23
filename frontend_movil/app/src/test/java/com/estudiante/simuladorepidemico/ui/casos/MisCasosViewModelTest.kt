@@ -56,7 +56,7 @@ class MisCasosViewModelTest {
 
     @Test
     fun solo_los_de_la_cuenta_con_sus_nombres_y_el_mas_nuevo_arriba() {
-        val modelo = MisCasosViewModel(contenedor.sesion, casos, catalogo, contenedor.fotos, contenedor.programarEnvio)
+        val modelo = MisCasosViewModel(contenedor.sesion, contenedor.apis, casos, catalogo, contenedor.fotos, contenedor.programarEnvio)
 
         val filas = modelo.esperaFilas { it.isNotEmpty() }
 
@@ -68,7 +68,7 @@ class MisCasosViewModelTest {
 
     @Test
     fun descartar_quita_solo_un_rechazado_y_enviar_ahora_pide_el_envio() = runBlocking<Unit> {
-        val modelo = MisCasosViewModel(contenedor.sesion, casos, catalogo, contenedor.fotos, contenedor.programarEnvio)
+        val modelo = MisCasosViewModel(contenedor.sesion, contenedor.apis, casos, catalogo, contenedor.fotos, contenedor.programarEnvio)
 
         modelo.descartar(casos.caso("b"))
         modelo.descartar(casos.caso("a"))
@@ -83,7 +83,7 @@ class MisCasosViewModelTest {
         casos.insertarFotos(listOf(FotoLocal("f1", "b", 0), FotoLocal("f2", "b", 1)))
         casos.marcarFotoRechazada("f2", "Mal.")
         contenedor.fotos.archivo("f1").apply { parentFile!!.mkdirs() }.writeText("foto")
-        val modelo = MisCasosViewModel(contenedor.sesion, casos, catalogo, contenedor.fotos, contenedor.programarEnvio)
+        val modelo = MisCasosViewModel(contenedor.sesion, contenedor.apis, casos, catalogo, contenedor.fotos, contenedor.programarEnvio)
 
         val filas = modelo.esperaFilas { lista -> lista.any { it.fotos != null } }
         assertEquals("1 foto por subir · 1 foto rechazada", textoDeFotos(filas.single { it.caso.localUuid == "b" }.fotos!!))
@@ -93,6 +93,16 @@ class MisCasosViewModelTest {
 
         assertEquals(emptyList<FotoLocal>(), casos.fotos.value)
         assertEquals(false, contenedor.fotos.archivo("f1").exists())
+    }
+
+    @Test
+    fun trae_del_servidor_los_casos_con_datos_faltantes() = runBlocking<Unit> {
+        val modelo = MisCasosViewModel(contenedor.sesion, contenedor.apis, casos, catalogo, contenedor.fotos, contenedor.programarEnvio)
+
+        modelo.cargarIncompletos()
+
+        val caso = withTimeout(5_000) { modelo.incompletos.first { it != null } }!!.single()
+        assertEquals(41L to listOf("edad", "ubicación"), caso.id to caso.faltantes)
     }
 
     @Test
