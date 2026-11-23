@@ -189,7 +189,7 @@ Una casilla se marca cuando:
 
 Ninguna se implementa sin respuesta. Cada respuesta se anota en `decisiones/`. El detalle de las respuestas está en [`preguntas0.md`](preguntas0.md).
 
-- [ ] Definir qué cambia en la interfaz del escritorio para que sea más intuitiva y usable. **Frena a A.** Delegada al bloque A (A1).
+- [x] ~~Definir qué cambia en la interfaz del escritorio para que sea más intuitiva y usable. **Frena a A.** Delegada al bloque A (A1).~~ No lo hará el bloque 0 (2026-11-22).
 - [x] ¿El ADMINISTRADOR también captura casos? (D1). **Frena a C** y a la migración 034. No (D1).
 - [x] ¿Qué hace la web si Redis no responde? (I3, RF-A12). **Frena a C.** Conserva las sesiones abiertas y no deja entrar (D33, validada el 2026-11-17).
 - [x] ¿Cómo se identifica la web ante `resultados` para pedir las curvas? (D20). **Frena a C y a E.** Con el JWT de la sesión (D34, validada el 2026-11-17).
@@ -214,52 +214,52 @@ Cada una reemplaza o amplía una decisión vigente (ver [«Lo que la retroalimen
 - [x] Corridas interrumpidas: reencolarlas en lugar de cerrarlas como fallidas, y qué pasa con su serie en MongoDB (RNF-C03). **Frena a E y a D.** Se reencolan hasta 3 intentos con la misma semilla; solo cuentan las series de corridas completadas; migración 045 (D38).
 - [x] MFA: qué perfiles son críticos y con qué segundo factor. **Frena a E.** TOTP para ADMINISTRADOR, EPIDEMIOLOGO y AUTORIDAD_SANITARIA (D40). Arranca apagado: se prende cuando la web, el escritorio y la móvil tengan el segundo paso.
 - [x] Qué son «campañas» y «seguimiento de intervenciones» en la web, y qué datos llevan. **Frena a C y a E.** Campañas, avisos de datos incompletos y preferencias de avisos: D49.
-- [ ] Qué agrupa un proyecto de investigación del escritorio y dónde vive. **Frena a A y a E.**
-- [ ] Reservar los números de migración para lo nuevo: instituciones y perfiles, casos, corridas, proyectos y calibración.
+- [x] ~~Qué agrupa un proyecto de investigación del escritorio y dónde vive. **Frena a A y a E.**~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Reservar los números de migración para lo nuevo: instituciones y perfiles, casos, corridas, proyectos y calibración.~~ No lo hará el bloque 0 (2026-11-22).
 
 ### Validación científica
 
 [Retro: «Hace falta validación científica»]. Lo que no se valide se presenta como exploratorio.
 
 - [x] Ficha de cada modelo (`seir-ref`, `abm-ref` y `abm-gpu`): formulación matemática, población representada, variables, supuestos, fuentes de parámetros, límites de aplicación, versión del algoritmo, escenarios de prueba y resultados de validación. Se amplía [`ficha_simulador.md`](../../arquitectura/ficha_simulador.md). §16 (una columna por modelo) y §17 (categoría de D39); §13 a §15 con la validación.
-- [ ] Investigar una fuente de datos observados para validar y calibrar: qué serie, de qué periodo y con qué licencia. Con D (D6).
+- [x] ~~Investigar una fuente de datos observados para validar y calibrar: qué serie, de qué periodo y con qué licencia. Con D (D6).~~ No lo hará el bloque 0 (2026-11-22).
 - [x] Validación contra resultados esperados: soluciones conocidas (por ejemplo, el tamaño final de un brote SEIR), casos límite y `abm-ref` contra `seir-ref` (ya medido en la ficha). §13 de la ficha, `python -m procesamiento.mediciones esperados` y `test_validacion_cientifica.py`. Encontró que el R0 efectivo es ~10 % mayor que el nominal (§11): corregirlo queda como decisión del equipo.
-- [ ] Validación contra los datos observados.
+- [x] ~~Validación contra los datos observados.~~ No lo hará el bloque 0 (2026-11-22).
 - [x] Análisis de sensibilidad: variar cada parámetro y comprobar que el modelo responde como se espera (RF-F12, reabierto). El escritorio lo muestra (A4). §14 de la ficha (un factor a la vez, ±20 %) y `python -m procesamiento.mediciones sensibilidad`; las direcciones las revisa `test_validacion_cientifica.py`. Mostrarlo en el escritorio sigue en A4.
-- [ ] Calibración: el algoritmo en `procesamiento/`, con su función de pérdida, sus métricas de ajuste y sus versiones. El escritorio la muestra (A4) y un servicio la expone (E7).
+- [x] ~~Calibración: el algoritmo en `procesamiento/`, con su función de pérdida, sus métricas de ajuste y sus versiones. El escritorio la muestra (A4) y un servicio la expone (E7).~~ No lo hará el bloque 0 (2026-11-22).
 - [x] Reproducibilidad: la corrida determinista repetida, y la estocástica con la misma semilla y versión, dan lo mismo. Las pruebas existen (`test_contrato_motor.py`); falta la evidencia para la entrega. Evidencia en `docs/pruebas/validacion/2026-11-19` y §15 de la ficha; `seir-ref` y `abm-ref` (sin GPU aquí, `abm-gpu` queda pendiente de evidencia).
-- [ ] Incertidumbre: cada intervalo se muestra con su interpretación.
-- [ ] Las pantallas distinguen simulación exploratoria, predicción y resultado validado. Hoy `AVISO_SIMULACION` solo dice que no es una predicción.
+- [x] ~~Incertidumbre: cada intervalo se muestra con su interpretación.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Las pantallas distinguen simulación exploratoria, predicción y resultado validado. Hoy `AVISO_SIMULACION` solo dice que no es una predicción.~~ No lo hará el bloque 0 (2026-11-22).
 
 ### Documentos
 
-- [ ] Validar en equipo los requerimientos y pasarlos de Borrador a Aceptado.
-- [ ] Validar la arquitectura v3 contra la rúbrica (brechas §9.5) y marcar la v2 como Obsoleta.
-- [ ] Corregir en `procesos_v3.md` las referencias de sección que quedaron desfasadas con `brechas_v3.md`.
-- [ ] Limpiar `decisiones/todo.md`: quitar lo hecho y las decisiones que ya no están pendientes.
-- [ ] Llenar los nombres de la tabla de reparto de este documento.
-- [ ] Llevar a los requerimientos lo que la retroalimentación reabre: sacarlo de «Fuera de alcance» y darle estado.
-- [ ] Actualizar el `AGENTS.md` de la raíz y `microservicios/AGENTS.md` con las decisiones nuevas. Hoy dicen que la web no llama a los servicios, que los servicios reutilizan `backend_web` y que la calibración está fuera.
+- [x] ~~Validar en equipo los requerimientos y pasarlos de Borrador a Aceptado.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Validar la arquitectura v3 contra la rúbrica (brechas §9.5) y marcar la v2 como Obsoleta.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Corregir en `procesos_v3.md` las referencias de sección que quedaron desfasadas con `brechas_v3.md`.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Limpiar `decisiones/todo.md`: quitar lo hecho y las decisiones que ya no están pendientes.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Llenar los nombres de la tabla de reparto de este documento.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Llevar a los requerimientos lo que la retroalimentación reabre: sacarlo de «Fuera de alcance» y darle estado.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Actualizar el `AGENTS.md` de la raíz y `microservicios/AGENTS.md` con las decisiones nuevas. Hoy dicen que la web no llama a los servicios, que los servicios reutilizan `backend_web` y que la calibración está fuera.~~ No lo hará el bloque 0 (2026-11-22).
 
 ### Integración
 
-- [ ] Crear un issue por casilla, con su bloque y su responsable.
+- [x] ~~Crear un issue por casilla, con su bloque y su responsable.~~ No lo hará el bloque 0 (2026-11-22).
 - [x] Reservar los números de migración de cada bloque: tabla y reglas en [«Números reservados»](../../../datos/postgres/migraciones/README.md#números-reservados-tercer-parcial) (2026-11-17).
-- [ ] Confirmar el número de cada migración antes de que alguien la cree, y agregar a esa tabla los que se pidan fuera de ella.
-- [ ] Integrar las ramas de los dos salones al menos una vez por semana.
-- [ ] Ensayar P1, P2 y P3 de punta a punta en la nube, con cada rol.
-- [ ] Guion de la demostración integrada: los 12 pasos de [«Criterios de aceptación»](#criterios-de-aceptación), primero en local y después en la nube.
+- [x] ~~Confirmar el número de cada migración antes de que alguien la cree, y agregar a esa tabla los que se pidan fuera de ella.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Integrar las ramas de los dos salones al menos una vez por semana.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Ensayar P1, P2 y P3 de punta a punta en la nube, con cada rol.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Guion de la demostración integrada: los 12 pasos de [«Criterios de aceptación»](#criterios-de-aceptación), primero en local y después en la nube.~~ No lo hará el bloque 0 (2026-11-22).
 
 ### Entrega final
 
-- [ ] Expediente técnico con los apartados que lista la rúbrica. Se arma enlazando lo que ya hay en `docs/`.
-- [ ] Wiki: miembros y roles, por dónde empiezo y glosario (`docs/todo.md`).
-- [ ] Un README en cada carpeta de `docs/`.
-- [ ] Video de demostración y presentación final.
-- [ ] Matriz individual de autoría y participación: servicios, pruebas, integración, documentación, incidencias y correcciones de cada estudiante [Retro: participación].
-- [ ] Qué entregó cada salón, por separado [Retro: participación].
+- [x] ~~Expediente técnico con los apartados que lista la rúbrica. Se arma enlazando lo que ya hay en `docs/`.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Wiki: miembros y roles, por dónde empiezo y glosario (`docs/todo.md`).~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Un README en cada carpeta de `docs/`.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Video de demostración y presentación final.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Matriz individual de autoría y participación: servicios, pruebas, integración, documentación, incidencias y correcciones de cada estudiante [Retro: participación].~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Qué entregó cada salón, por separado [Retro: participación].~~ No lo hará el bloque 0 (2026-11-22).
 - [x] Toda la suite en una sola ejecución, sobre una base creada desde cero, con un solo resultado consolidado. Nada de juntar pruebas de distintas versiones [Retro: pruebas]. `docs/pruebas/suite/2026-11-19`: 2281 pasan, 2 fallan (ya existían: la semilla no trae un epidemiólogo inactivo y una de `frontend_desktop`), 182 se saltan. Repetirla cuando se integren los PR.
-- [ ] Cada integrante ensaya ejecutar, explicar y modificar lo que le tocó, para la defensa técnica [Retro: participación].
+- [x] ~~Cada integrante ensaya ejecutar, explicar y modificar lo que le tocó, para la defensa técnica [Retro: participación].~~ No lo hará el bloque 0 (2026-11-22).
 
 ---
 
