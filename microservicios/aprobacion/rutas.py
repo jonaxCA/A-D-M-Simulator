@@ -19,7 +19,8 @@ from epidemia_comun.validaciones import diccionario, entero_positivo
 log = logging.getLogger("aprobacion")
 
 ROLES_ENVIAN = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
-ROLES_REVISAN = ("EPIDEMIOLOGO",)
+# scenarios.approve (D1, 034): ninguno revisa la versión que creó.
+ROLES_REVISAN = ("EPIDEMIOLOGO", "ADMINISTRADOR")
 ROLES_BANDEJA = ("EPIDEMIOLOGO", "ADMINISTRADOR")
 DECISIONES = ("aprobar", "rechazar")
 

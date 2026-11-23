@@ -1208,6 +1208,212 @@
           }
         }
       }
+    },
+    "/api/v1/permissions/me": {
+      "get": {
+        "summary": "Permisos propios",
+        "operationId": "permisos_propios",
+        "description": "Los códigos de role_permissions de los roles de quien pregunta. Cualquier rol con sesión.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "422": {
+            "description": "user_id o limit no son enteros positivos, o limit pasa de 500 (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "user_id": 2,
+                  "roles": [
+                    "EPIDEMIOLOGO"
+                  ],
+                  "permisos": [
+                    "catalogs.create",
+                    "catalogs.read",
+                    "catalogs.update",
+                    "cases.approve",
+                    "cases.read",
+                    "cases.update",
+                    "reports.export",
+                    "reports.read",
+                    "scenarios.approve",
+                    "scenarios.export",
+                    "scenarios.publish",
+                    "scenarios.read",
+                    "settings.read",
+                    "simulations.read"
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "permisos"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<permisos><user_id tipo=\"numero\">2</user_id><roles><item>EPIDEMIOLOGO</item></roles><permisos><item>catalogs.create</item><item>catalogs.read</item><item>catalogs.update</item><item>cases.approve</item><item>cases.read</item><item>cases.update</item><item>reports.export</item><item>reports.read</item><item>scenarios.approve</item><item>scenarios.export</item><item>scenarios.publish</item><item>scenarios.read</item><item>settings.read</item><item>simulations.read</item></permisos></permisos>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No aplica: cualquier rol con sesión"
+          }
+        }
+      }
+    },
+    "/api/v1/audit/denied": {
+      "post": {
+        "summary": "Registrar un acceso negado",
+        "operationId": "registrar_negado",
+        "description": "Un cliente que niega una pantalla sin llamar a otro servicio deja su PERMISSION_DENIED (RF-A05, D36). Cualquier rol con sesión.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "ruta"
+                ],
+                "properties": {
+                  "ruta": {
+                    "type": "string"
+                  },
+                  "permiso": {
+                    "type": "string"
+                  },
+                  "modulo": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "ruta": "/auditoria",
+                "permiso": "audit.read",
+                "modulo": "audit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "422": {
+            "description": "user_id o limit no son enteros positivos, o limit pasa de 500 (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Registrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "registrado": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "negado"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<negado><registrado tipo=\"booleano\">true</registrado></negado>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No aplica: cualquier rol con sesión"
+          }
+        }
+      }
     }
   }
 }

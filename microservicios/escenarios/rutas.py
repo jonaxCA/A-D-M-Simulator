@@ -96,7 +96,7 @@ def _version(v):
             "grupos_edad": _grupos(v["population_by_age"]),
             "population_age_unknown": v["population_age_unknown"],
             "age_unknown_policy": v["age_unknown_policy"],
-            "autor": v["autor"], "revisor": v["revisor"],
+            "autor": v["autor"], "created_by": v.get("created_by"), "revisor": v["revisor"],
             "submitted_at": v["submitted_at"], "reviewed_at": v["reviewed_at"],
             "review_comment": v["review_comment"]}
 
@@ -190,7 +190,10 @@ def registrar(app):
                  "status": e["status"], "owner_id": e["owner_id"], "created_at": e["created_at"],
                  "disease_id": e["disease_id"], "enfermedad": e["enfermedad"],
                  "region_id": e["region_id"], "region": e["region"], "autor": e["autor"],
+                 "region_poblacion": e.get("region_poblacion"),
                  "editable": detalle["editable"],
+                 "parametros_congelados": detalle["parametros_congelados"],
+                 "parametros_sin_congelar": detalle["parametros_sin_congelar"],
                  "version": _version(v) if v else None,
                  "intervenciones": [_intervencion(i) for i in detalle["intervenciones"]]}
         return responder(datos, "escenario")

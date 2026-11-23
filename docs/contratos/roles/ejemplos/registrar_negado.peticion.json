@@ -1,0 +1,5 @@
+{
+  "ruta": "/auditoria",
+  "permiso": "audit.read",
+  "modulo": "audit"
+}

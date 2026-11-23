@@ -57,12 +57,15 @@ def get_usuarios_lista(busqueda=None, rol_id=None, estado=None):
     rows = query(
         f"""
         SELECT u.id, u.full_name, u.email, u.is_active, u.last_login_at,
-               string_agg(DISTINCT r.name, ', ' ORDER BY r.name) AS roles
+               string_agg(DISTINCT r.name, ', ' ORDER BY r.name) AS roles,
+               i.name AS institucion, reg.name AS region
         FROM users u
         LEFT JOIN user_roles ur ON ur.user_id = u.id
         LEFT JOIN roles r ON r.id = ur.role_id
+        LEFT JOIN institutions i ON i.id = u.institution_id
+        LEFT JOIN regions reg ON reg.id = u.region_id
         {where}
-        GROUP BY u.id, u.full_name, u.email, u.is_active, u.last_login_at
+        GROUP BY u.id, u.full_name, u.email, u.is_active, u.last_login_at, i.name, reg.name
         ORDER BY u.full_name
         """,
         tuple(params),
@@ -82,6 +85,8 @@ def get_usuarios_lista(busqueda=None, rol_id=None, estado=None):
             "roles": r["roles"],
             "estado": estado_calc,
             "ultimo_acceso": r["last_login_at"],
+            "institucion": r["institucion"],
+            "region": r["region"],
         })
     return out
 

@@ -160,6 +160,34 @@ def registrar(app):
                          WHERE rp.role_id = %s ORDER BY p.code""", (role_id,))
         return responder({**rol, "permisos": filas}, "rol")
 
+    # Los permisos de quien pregunta, para que un cliente arme su menú y sus candados (RF-A05).
+    @app.get("/api/v1/permissions/me")
+    @requiere_token()
+    def permisos_propios():
+        filas = query("""SELECT DISTINCT p.code
+                         FROM user_roles ur
+                         JOIN role_permissions rp ON rp.role_id = ur.role_id
+                         JOIN permissions p ON p.id = rp.permission_id
+                         WHERE ur.user_id = %s ORDER BY p.code""", (g.contexto.user_id,))
+        return responder({"user_id": g.contexto.user_id, "roles": list(g.usuario.get("roles") or []),
+                          "permisos": [f["code"] for f in filas]}, "permisos")
+
+    # Un cliente que niega una pantalla sin llamar a otro servicio deja aquí su 403 (RF-A05, D36).
+    @app.post("/api/v1/audit/denied")
+    @requiere_token()
+    def negado():
+        datos = diccionario(leer_cuerpo())
+        ruta, permiso = datos.get("ruta"), datos.get("permiso")
+        if not isinstance(ruta, str) or not ruta.startswith("/"):
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "ruta debe ser una ruta que empiece con /.")
+        if permiso is not None and not isinstance(permiso, str):
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "permiso debe ser texto.")
+        modulo = datos.get("modulo")
+        modulo = modulo[:60] if isinstance(modulo, str) and modulo else "web"
+        log_audit(g.contexto, "PERMISSION_DENIED", modulo, entity_id=ruta[:64],
+                  data_after={"cliente": "web", "permiso": (permiso or "")[:60]})
+        return responder({"registrado": True}, "negado", estado=201)
+
     @app.get("/api/v1/audit")
     @requiere_token(roles=ADMIN)
     def bitacora():
