@@ -1,6 +1,6 @@
 # D37 - Dueños de las reglas de negocio y servicios sin `backend_web`
 
-Fecha: 2026-11-19 · Estado: Aceptada (tomada en sesión por el equipo del salón 2; falta validarla con el líder) · Cambia las reglas 2 y 14 y el paso 2 de «Antes de escribir código» de `microservicios/AGENTS.md`
+Fecha: 2026-11-19 · Estado: Aceptada · Cambia las reglas 2 y 14 y el paso 2 de «Antes de escribir código» de `microservicios/AGENTS.md`
 
 ## Contexto
 La retroalimentación pide dueños claros de las reglas de negocio, contratos de dominio separados, despliegues independientes y una biblioteca común solo con funciones técnicas. Hoy 27 de los 29 servicios importan `backend_web` directamente, y los 29 lo arrastran porque `epidemia_comun` también lo importa (`ambito.py`, `fabrica.py`, `seguridad.py` y `validaciones.py`). Un cambio en `queries.py` puede obligar a reconstruir y volver a probar todos los servicios.

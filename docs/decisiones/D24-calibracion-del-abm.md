@@ -1,8 +1,8 @@
 # D24 - Calibración y parámetros de los agentes
 
-Fecha: 2026-11-11 · Estado: Reabierta (2026-11-19; antes Aceptada el 2026-11-11)
+Fecha: 2026-11-11 · Estado: Reemplazada por D50 (2026-11-22; reabierta el 2026-11-19, antes Aceptada el 2026-11-11)
 
-> **Reabierta.** La retroalimentación del profesor pide calibración y validación contra observaciones (ver «Lo que la retroalimentación reabre» en [`checklist.md`](../parciales/parcial-3/checklist.md)). La decisión que la reemplace es del bloque 0: método, función de pérdida, métricas de ajuste, datos y dónde corre. Mientras tanto, lo de abajo sigue describiendo cómo funciona el sistema: toda corrida es `exploratoria` (D39).
+> **Reemplazada por [D50](D50-calibracion-de-los-modelos.md)** (2026-11-22): calibración de `seir-ref` contra una serie pública agregada, en el servicio `calibracion`. Mientras D50 no esté implementada, lo de abajo sigue describiendo cómo funciona el sistema: toda corrida es `exploratoria` (D39).
 
 ## Contexto
 Todo parámetro de enfermedad lleva su fuente o la marca de supuesto (regla 8). La calibración estaba fuera de alcance y no hay fuente ni serie histórica para calibrar (§9.2 de la v2).

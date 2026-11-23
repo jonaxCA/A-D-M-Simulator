@@ -1,6 +1,6 @@
 # D49 - Campañas, avisos de datos incompletos y preferencias de avisos
 
-Fecha: 2026-11-22 · Estado: Aceptada (aprobada por el dueño del bloque F; pendiente de validación del líder) · Atiende la retroalimentación de `notificaciones` (campañas, datos incompletos, alertas configurables por perfil) · Amplía D1, D32 y D47
+Fecha: 2026-11-22 · Estado: Aceptada · Atiende la retroalimentación de `notificaciones` (campañas, datos incompletos, alertas configurables por perfil) · Amplía D1, D32 y D47
 
 ## Contexto
 La retroalimentación pide que `notificaciones` avise de campañas y de datos incompletos, y que las

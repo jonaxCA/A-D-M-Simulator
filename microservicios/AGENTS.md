@@ -182,7 +182,7 @@ Están en `docs/decisiones/decisiones.md`; si algo de aquí choca con ese archiv
   los privados; PostgreSQL guarda solo los metadatos.
 - **Límites de consumo (D31):** contador `ratelimit:<usuario>:<ruta>` en Redis, en
   `epidemia_comun`; más permisivo en `casos` y `sincronizacion`, más estricto en `corridas`.
-- **MFA y dispositivos (D40, D41):** `auth` pide TOTP a ADMINISTRADOR y EPIDEMIOLOGO y es dueño de
+- **MFA y dispositivos (D40, D41):** `auth` pide TOTP a ADMINISTRADOR, EPIDEMIOLOGO y AUTORIDAD_SANITARIA y es dueño de
   `user_mfa` y `mfa_backup_codes`; `sesiones` limita las sesiones por cuenta y es dueño de
   `session_devices`. Migraciones 050 y 051.
 

@@ -1,6 +1,6 @@
 # D40 - MFA para los perfiles críticos
 
-Fecha: 2026-11-20 · Estado: Aceptada (tomada por el orquestador; pendiente de validación del líder) · Cierra el pendiente «MFA» del bloque 0 · Amplía D1
+Fecha: 2026-11-20 · Estado: Aceptada · Amplía D1
 
 ## Contexto
 La retroalimentación pide MFA para los perfiles críticos. Sin SMTP no hay segundo factor por correo; hoy solo hay captcha y bloqueo de 15 min tras cinco fallos.
@@ -12,7 +12,7 @@ La retroalimentación pide MFA para los perfiles críticos. Sin SMTP no hay segu
 ## Decisión
 Opción B.
 
-- **Perfiles críticos:** `ADMINISTRADOR` y `EPIDEMIOLOGO` (los códigos de `roles` en la migración 010). Quien tenga cualquiera de los dos pasa por MFA. Se cambian con `MFA_PERFILES` (lista separada por comas; vacía la apaga). **Arranca apagado**: sin `MFA_PERFILES` (o vacía) no se pide MFA, en el código y en el compose, mientras los clientes no tengan el flujo de dos pasos; se activa con `MFA_PERFILES=ADMINISTRADOR,EPIDEMIOLOGO` cuando lo tengan.
+- **Perfiles críticos:** `ADMINISTRADOR`, `EPIDEMIOLOGO` (códigos de `roles` en la migración 010) y `AUTORIDAD_SANITARIA` (migración 052, D42). Quien tenga cualquiera de los tres pasa por MFA. Los dos primeros escriben o aprueban; la autoridad sanitaria es de solo lectura, pero su cargo la hace blanco de suplantación y ve casos, comparaciones y reportes antes de que se publiquen. `INVESTIGADOR` queda fuera: es de solo lectura y su acceso se parece más a datos que se publican de todos modos. Se cambian con `MFA_PERFILES` (lista separada por comas; vacía la apaga). **Arranca apagado**: sin `MFA_PERFILES` (o vacía) no se pide MFA, en el código y en el compose, mientras los clientes no tengan el flujo de dos pasos; se activa con `MFA_PERFILES=ADMINISTRADOR,EPIDEMIOLOGO,AUTORIDAD_SANITARIA` cuando lo tengan.
 - **Algoritmo:** HMAC-SHA1, pasos de 30 s, 6 dígitos y ±1 ventana (`hmac`, `hashlib`, `base64`). Un código ya usado no sirve otra vez (`last_counter`).
 - **Enrolamiento:** el secreto (20 bytes aleatorios, base32) lo genera `auth` y el usuario lo registra en su app con la URI `otpauth://`. Queda pendiente hasta que confirma con un primer código válido; entonces se muestran, una sola vez, 8 códigos de respaldo.
 - **Códigos de respaldo:** 10 caracteres base32 (50 bits), de un solo uso; en la base solo está PBKDF2-SHA256 con la cuenta como sal (la columna `code_hash` sigue siendo de 64 caracteres; el comentario de la 051 que dice SHA-256 quedó superado).
@@ -24,6 +24,6 @@ Opción B.
 
 ## Consecuencias
 - El secreto TOTP está en `user_mfa.secret` sin cifrar: el servidor tiene que conocerlo para verificar. Solo lo lee y escribe `svc_auth`. Cifrarlo con una llave de Secret Manager queda pendiente.
-- La web, el escritorio y la móvil tienen que implementar los dos pasos para esos perfiles; hasta entonces, un `ADMINISTRADOR` o `EPIDEMIOLOGO` no recibe tokens de esos clientes (con `MFA_PERFILES` sin definir o vacía no pasa).
+- La web, el escritorio y la móvil tienen que implementar los dos pasos para esos perfiles; hasta entonces, un `ADMINISTRADOR`, `EPIDEMIOLOGO` o `AUTORIDAD_SANITARIA` no recibe tokens de esos clientes (con `MFA_PERFILES` sin definir o vacía no pasa).
 - Riesgo residual: con `MFA_ENROLAMIENTO_LIBRE=1` vuelve la toma en el primer enrolamiento; debe estar encendida solo durante el alta del primer administrador. Los códigos de respaldo previos a este cambio dejan de servir (el cambio es previo a cualquier despliegue).
 - Migración 051 (`user_mfa`, `mfa_backup_codes`).

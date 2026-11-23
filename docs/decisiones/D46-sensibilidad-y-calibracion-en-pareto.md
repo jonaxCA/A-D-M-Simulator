@@ -1,6 +1,6 @@
 # D46 - Sensibilidad exploratoria y estado de calibración, en `pareto`
 
-Fecha: 2026-11-20 · Estado: Aceptada (tomada por el orquestador; pendiente de validación del líder) · Reabre RF-F12 y toca RF-E17 · Depende de D24 (reabierta), D37 y D39
+Fecha: 2026-11-20 · Estado: Aceptada · Reabre RF-F12 y toca RF-E17 · Depende de D24 (reabierta), D37 y D39
 
 ## Contexto
 La retroalimentación pide análisis de sensibilidad y calibración, y el checklist (E7) pide las rutas para que el escritorio (A4) las use. D24 quedó reabierta: el método de calibración, su función de pérdida, sus datos y dónde corre son del bloque 0 y todavía no existen. La sensibilidad no necesita datos observados: solo el motor de referencia. El checklist no asigna estas rutas a un servicio en particular dentro del bloque E.

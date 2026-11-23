@@ -1,6 +1,6 @@
 """Corregir un caso y cambiar su estado, con control de versión e historial (D47, F7).
 
-Las reglas (D47, pendiente de validación del líder):
+Las reglas (D47):
 
 - Corregir datos (PATCH /cases/{id}): el EPIDEMIOLOGO, cualquier caso pendiente o validado; el
   CAPTURISTA, solo los que capturó y mientras estén pendientes. Uno descartado o duplicado se

@@ -64,10 +64,10 @@ Las pantallas y sus controles están en el [manual de usuario](../manuales/manua
 
 | Punto | Decisión o entrega que falta |
 | --- | --- |
-| A1 y configuraciones por versión | El líder confirma los cambios de interfaz y el alcance de los parámetros que se guardarán por versión. D define el contrato. |
+| A1 y configuraciones por versión | A define los cambios de interfaz y, con D, el alcance de los parámetros que se guardan por versión (el bloque 0 lo delegó el 2026-11-22). D define el contrato. |
 | A2, almacenamiento y nube | E publica los motores habilitados. D y F entregan la ruta de reportes, el bucket y las URLs firmadas. F habilita HTTPS. |
-| Gestión de datos y proyectos | El líder acuerda el modelo del proyecto, el identificador y las reglas de calidad de los conjuntos. D expone la carga, consulta y versionado. |
-| Calibración, sensibilidad y recuperación | El escritorio consume D46. El líder acuerda el método de calibración y los criterios de validación con datos observados. E participa en la demostración de recuperación del trabajador. |
+| Gestión de datos y proyectos | A y D acuerdan el modelo del proyecto, el identificador y las reglas de calidad de los conjuntos (el bloque 0 lo delegó el 2026-11-22). D expone la carga, consulta y versionado. |
+| Calibración, sensibilidad y recuperación | El escritorio consume D46. El método de calibración y los criterios de validación con datos observados están en D50; E expone sus rutas en el servicio `calibracion`. E participa en la demostración de recuperación del trabajador. |
 | Repetición histórica | D y E exponen el identificador y la versión del conjunto, los parámetros históricos y el contrato de reejecución. |
 
 El [checklist](../parciales/parcial-3/checklist.md#a-app-de-escritorio--frontend_desktop)
