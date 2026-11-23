@@ -17,6 +17,15 @@ def cola_con_prioridad(motor, prioridad):
     return f"queue:simulaciones:{motor}:{prioridad}"
 
 
+# Una sola cola: solo se calibra seir-ref (D50). Como las de corridas, sin TTL.
+def cola_calibraciones():
+    return "queue:calibraciones"
+
+
+def avance_calibracion(calibracion):
+    return f"calibration:{calibracion}:progress"
+
+
 def huella(valor):
     return hashlib.sha256(valor.encode("utf-8")).hexdigest()
 

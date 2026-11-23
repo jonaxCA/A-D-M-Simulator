@@ -1,0 +1,81 @@
+{
+  "calibration_id": 3,
+  "engine": "seir-ref",
+  "engine_version": "seir-ref-0.1",
+  "escenario": {
+    "name": "Calibración n.º 3 (COVID19_NL_2020_SINTOMAS v1)",
+    "disease_id": 1,
+    "region_id": 1,
+    "stratify": true,
+    "age_unknown_policy": "prorratear",
+    "horizon_days": 154,
+    "initial_infected": 23,
+    "notes": "Configuración calibrada contra COVID19_NL_2020_SINTOMAS v1; las intervenciones son las de la Jornada Nacional de Sana Distancia (D50)."
+  },
+  "intervenciones": [
+    {
+      "code": "CIERRE_ESCUELAS",
+      "start_day": 22,
+      "end_day": null,
+      "coverage": 1.0,
+      "compliance": 1.0,
+      "params": {
+        "reduccion": 1.0
+      },
+      "fuente": "Acuerdo SEP 02/03/20, DOF del 16-03-2020, ampliado al 30-05-2020"
+    },
+    {
+      "code": "CIERRE_TRABAJO",
+      "start_day": 29,
+      "end_day": null,
+      "coverage": 1.0,
+      "compliance": 1.0,
+      "params": {
+        "reduccion": 0.37494538973685865
+      },
+      "fuente": "Acuerdo de Salud, DOF del 21-04-2020: actividades no esenciales del 30-03 al 30-05"
+    },
+    {
+      "code": "REDUCCION_AFORO",
+      "start_day": 22,
+      "end_day": null,
+      "coverage": 1.0,
+      "compliance": 1.0,
+      "params": {
+        "reduccion": 0.37494538973685865
+      },
+      "fuente": "Jornada Nacional de Sana Distancia, desde el 23-03-2020"
+    }
+  ],
+  "param_overrides": {
+    "r0": {
+      "valor": 2.592482823371249,
+      "fuente": "Calibración n.º 3 (D50): abc-rechazo calibracion-0.1, seir-ref-0.1, conjunto COVID19_NL_2020_SINTOMAS v1; mediana y p5-p95 de las combinaciones aceptadas",
+      "supuesto": false,
+      "intervalo": {
+        "min": 2.285074056353612,
+        "max": 3.045981687519636,
+        "tipo": "rango"
+      }
+    }
+  },
+  "observacion": {
+    "rho": {
+      "nombre": "rho",
+      "mediana": 0.3009150548048638,
+      "p5": 0.02289577768816817,
+      "p95": 0.6563101886971606,
+      "minimo": 0.01,
+      "maximo": 1.0
+    },
+    "phi": {
+      "nombre": "phi",
+      "mediana": 0.37494538973685865,
+      "p5": 0.11534932339982798,
+      "p95": 0.6286971500994931,
+      "minimo": 0.0,
+      "maximo": 1.0
+    }
+  },
+  "huella_configuracion": "b05b32a0bea0317537b3f5b6adfa35d0f33004a5496027a13cb4a9d88916bbdc"
+}

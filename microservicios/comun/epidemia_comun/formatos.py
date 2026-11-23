@@ -45,7 +45,8 @@ SINGULARES = {"regiones": "region", "enfermedades": "enfermedad",
               "conjuntos": "conjunto", "fallas": "falla", "proyectos": "proyecto",
               "definiciones": "definicion", "efectividad": "supuesto",
               "jurisdicciones_sanitarias": "jurisdiccion", "hijos": "region", "censos": "censo",
-              "coincidencias": "coincidencia"}
+              "coincidencias": "coincidencia", "calibraciones": "calibracion",
+              "semanas": "semana", "estimados": "parametro", "motores_calibrables": "motor"}
 
 
 # Un nombre de etiqueta XML no puede iniciar con numero ni contener "+".

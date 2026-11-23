@@ -66,6 +66,8 @@ services:
   resultados: *cloud-logging
   comparacion: *cloud-logging
   pareto: *cloud-logging
+  calibracion: *cloud-logging
+  calibracion-trabajador: *cloud-logging
   indicadores: *cloud-logging
   series: *cloud-logging
   zonas: *cloud-logging

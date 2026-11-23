@@ -83,6 +83,7 @@ services:
       EPIDEMIA_APP_PASSWORD: ${EPIDEMIA_APP_PASSWORD:-}
       DB_PASSWORD_APROBACION: ${DB_PASSWORD_APROBACION:-}
       DB_PASSWORD_AUTH: ${DB_PASSWORD_AUTH:-}
+      DB_PASSWORD_CALIBRACION: ${DB_PASSWORD_CALIBRACION:-}
       DB_PASSWORD_CASOS: ${DB_PASSWORD_CASOS:-}
       DB_PASSWORD_DISPOSITIVOS: ${DB_PASSWORD_DISPOSITIVOS:-}
       DB_PASSWORD_EVIDENCIAS: ${DB_PASSWORD_EVIDENCIAS:-}
@@ -759,6 +760,35 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+  # Calibración de seir-ref contra una serie observada (D50): la API encola en
+  # queue:calibraciones y calibracion-trabajador la corre.
+  calibracion:
+    <<: *servicio-base
+    build:
+      <<: *construye-simulacion
+      dockerfile: microservicios/calibracion/Dockerfile
+    profiles: [simulacion]
+    ports:
+      - "5246:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      SERVICIO_ROLES_URL: http://roles:8000
+      DATABASE_URL: ${DATABASE_URL_CALIBRACION:-postgresql://svc_calibracion:${DB_PASSWORD_CALIBRACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  # La misma imagen con el trabajador encendido. No publica puerto, como simulador-abm: no es
+  # otro servicio del directorio, y su salud la revisa el healthcheck del compose.
+  calibracion-trabajador:
+    extends:
+      service: calibracion
+    ports: !reset []
+    environment:
+      CALIBRACION_TRABAJADOR: "1"
 
   # --- Analítica (perfil analitica) ---------------------------------------------------------
   indicadores:

@@ -36,7 +36,7 @@ Cada pieza lleva su estado:
 | Reglas de negocio | Los servicios importan `backend_web` | Cada regla vive en su servicio dueño; ningún servicio importa `backend_web`; `epidemia_comun` solo con lo técnico | D37 | **En curso** (E8): los de E ya no lo importan, con copias documentadas en [`duenos_de_reglas.md`](duenos_de_reglas.md) (`get_run` en cuatro servicios, entre otras). Faltan 19 servicios de D y F, y `ambito.py` y `validaciones.py` de `epidemia_comun` |
 | Corridas interrumpidas | Se cierran como fallidas | Se reencolan hasta 3 intentos, sin duplicar la serie | D38 | **Hecho** (E7, migración 045) |
 | Categoría de una corrida | Un solo aviso, `AVISO_SIMULACION` | `exploratoria`, `prediccion` o `validada`, según el estado de validación de cada modelo | D39 | **Hecho** en `procesamiento`, `resultados` y la ficha PDF de cada corrida en el escritorio; faltan la web y la interfaz del escritorio (bloques C y A) |
-| Calibración | Fuera de alcance (D24) | Obligatoria: método, función de pérdida, métricas de ajuste y validación contra datos observados | Reabre D24; la decisión nueva es del bloque 0 | Reabierto. Hechas la verificación contra resultados esperados, la sensibilidad de `seir-ref` y la reproducibilidad (ficha). `pareto` ya expone la sensibilidad y el estado de calibración, solo de lectura (D46); ejecutar una calibración espera al bloque 0 |
+| Calibración | Fuera de alcance (D24) | Obligatoria: método, función de pérdida, métricas de ajuste y validación contra datos observados | D50 (reemplaza D24) | **Hecho** (E7, 2026-11-23): el servicio `calibracion` y su trabajador corren el ABC por rechazo de D50 sobre `seir-ref` contra la serie de la 061, con RMSE, R² y cobertura por ventana (ficha §19). La primera calibración no alcanza la tolerancia de validación (71 % contra 80 %). Falta la pantalla del escritorio (A4) |
 | MFA | Captcha y bloqueo tras cinco fallos | TOTP para ADMINISTRADOR, EPIDEMIOLOGO y AUTORIDAD_SANITARIA, con alta autorizada por un ADMINISTRADOR y códigos de respaldo | D40 | **Hecho** en `auth`, **apagado** (`MFA_PERFILES` vacía): ningún cliente tiene todavía el segundo paso; prenderlo hoy deja fuera de la web, el escritorio y la móvil a esos perfiles |
 | Sesiones y dispositivos | Sin tope | Máximo 3 sesiones por cuenta (la cuarta cierra la más antigua) y dispositivos autorizados por cuenta, aparte de los teléfonos de D27 | D41 | **Hecho** en `sesiones`. El tope aplica ya; los dispositivos solo con el MFA o `DISPOSITIVO_OBLIGATORIO=1`. Por decidir: si se unen con los de D27 |
 | Instituciones y perfiles | Cuatro roles (D1) | Catálogo de instituciones, región de cada cuenta, y los perfiles INVESTIGADOR y AUTORIDAD_SANITARIA (solo lectura, supuesto) | D42 | **Hecho** en `usuarios` (migración 052). Falta que cada servicio admita los perfiles nuevos en sus candados: hoy entran y no ven nada |
@@ -54,7 +54,7 @@ flowchart LR
     end
     NAV & MOV & ESC -->|HTTPS 443| NG[nginx<br/>TLS y entrada única]
     NG -->|/| WEB[Web<br/>monolito Flask]
-    NG -->|/servicio/...| MS[30 microservicios<br/>epidemia_comun]
+    NG -->|/servicio/...| MS[31 microservicios<br/>epidemia_comun]
     WEB -->|HTTP con el JWT de la sesión, D36| MS
     WEB -.->|módulos aún sin migrar, D36| PG
     MS --> PG[(PostgreSQL<br/>fuente de verdad)]
@@ -199,7 +199,7 @@ Todo el algoritmo está en [`ficha_simulador.md`](ficha_simulador.md), que cierr
 - **Réplicas (D8):** 30 por omisión, con las mismas semillas en todas las versiones. El escritorio resume media, mediana y la banda del percentil 5 al 95, avisa cuando dos bandas se enciman, y la frontera de Pareto se calcula sobre las medianas. **Hecho.** Reabierto: la retroalimentación pide los intervalos de incertidumbre en `resultados` (bloque E).
 - **Corridas interrumpidas (D38):** se reencolan con la misma semilla, hasta 3 intentos; la serie se guarda antes de confirmar la corrida y el índice único `{run_id, dia}` impide los días duplicados. **Hecho.**
 - **Categoría de cada corrida (D39):** `exploratoria`, `prediccion` o `validada`, según `procesamiento/estado_validacion.json`. Sin calibración, hoy todas son `exploratoria`; `resultados` regresa la categoría, si el modelo está verificado y el motivo. **Hecho** en `procesamiento`, `resultados` y la ficha PDF del escritorio; faltan la web y la interfaz del escritorio.
-- **Calibración (D24, reabierta):** D24 la dejó fuera, pero la retroalimentación la hace obligatoria. El método, la función de pérdida, las métricas de ajuste y los datos observados los decide el bloque 0. Ya están en la ficha la verificación contra resultados esperados (tamaño final de un SEIR, casos límite, `abm-ref` contra `seir-ref`), el análisis de sensibilidad de `seir-ref` y la evidencia de reproducibilidad.
+- **Calibración (D50, reemplaza D24):** ABC por rechazo sobre `seir-ref` contra los casos de COVID-19 de Nuevo León de 2020 (061), con la pérdida en escala logarítmica, ⅔ de las semanas para calibrar y ⅓ para validar, y RMSE, R² y cobertura por ventana. La corre `calibracion-trabajador` y la expone `calibracion` (5246). **Hecho** el servicio (E7); la primera calibración y su validación están en la ficha (§19) y en `docs/pruebas/calibracion/2026-11-23`. Ya estaban la verificación contra resultados esperados, la sensibilidad y la reproducibilidad (§13 a §15).
 - **Dónde corre:**
   - `simulador` y `simulador-abm` van en la VM principal.
   - `simulador-gpu` corre en una PC con GPU, fuera de GCP, y toma las corridas de su cola por un túnel SSH por IAP (D23, §8): los créditos no alcanzaron para una VM con GPU. Nuevo León completo tarda 7.7 s por corrida en una RTX 4050, contra 80 a 90 s de `abm-ref`.
@@ -378,7 +378,7 @@ Se reportan usuarios concurrentes, peticiones por segundo, tiempo medio, p95, p9
 Ya no están aquí:
 
 - **FLAME GPU:** `abm-gpu` está implementado y probado en contenedor (§7). En la nube lo atiende una PC con GPU por un túnel (D23).
-- **La calibración (D24) y el resumen de réplicas en el servidor (D8):** la retroalimentación los vuelve a pedir (§1 y §7). Ver «Lo que la retroalimentación reabre» en el checklist.
+- **La calibración (D24, reemplazada por D50) y el resumen de réplicas en el servidor (D8):** la retroalimentación los vuelve a pedir (§1 y §7). La calibración ya está (`calibracion`, E7) y el resumen de réplicas lo da `resultados` (`/band`).
 
 ## 11. Cotejo con la rúbrica
 

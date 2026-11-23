@@ -6,7 +6,7 @@ import pytest
 RAIZ = Path(__file__).resolve().parents[2]
 IDENTIDAD = ("auth", "sesiones", "usuarios", "roles")
 # Los servicios de E (identidad y simulación). `procesamiento` solo lo importan los que corren el motor.
-SIMULACION = ("corridas", "resultados", "comparacion", "pareto")
+SIMULACION = ("corridas", "resultados", "comparacion", "pareto", "calibracion")
 SERVICIOS_E = IDENTIDAD + SIMULACION
 PROHIBIDOS = ("backend_web",)
 # validaciones.py ya no importa backend_web: parametros_epidemiologicos se mudó a

@@ -64,7 +64,7 @@ server {
     # Solo las rutas propias de un servicio van a él: /api/..., /health, /docs y /openapi.json.
     # Varias páginas de la web se llaman como un servicio (/usuarios, /regiones/5/editar,
     # /escenarios/3, /enfermedades, /comparacion): esas siguen a la web, más abajo.
-    location ~ ^/(?<servicio>auth|sesiones|usuarios|roles|enfermedades|parametros|regiones|poblacion|tipos-intervencion|casos|sincronizacion|dispositivos|evidencias|vacunas|importacion|escenarios|intervenciones|aprobacion|validacion|escenarios-xml|corridas|simulador|resultados|comparacion|pareto|indicadores|series|zonas|notificaciones|estado-servicios)(?<resto>/(api/.*|health|docs(/.*)?|openapi\.json))$ {
+    location ~ ^/(?<servicio>auth|sesiones|usuarios|roles|enfermedades|parametros|regiones|poblacion|tipos-intervencion|casos|sincronizacion|dispositivos|evidencias|vacunas|importacion|escenarios|intervenciones|aprobacion|validacion|escenarios-xml|corridas|simulador|resultados|comparacion|pareto|calibracion|indicadores|series|zonas|notificaciones|estado-servicios)(?<resto>/(api/.*|health|docs(/.*)?|openapi\.json))$ {
         set $destino $servicio;
         set $prefijo /$servicio;
         rewrite ^/[^/]+(/.*)$ $1 break;

@@ -12,7 +12,8 @@ from .llaves import limite
 PERFILES = {"normal": (120, 60), "permisivo": (600, 60), "estricto": (10, 60), "publico": (10, 60)}
 PERFIL_POR_SERVICIO = {"casos": "permisivo", "sincronizacion": "permisivo"}
 ESCRITURAS = ("POST", "PUT", "PATCH", "DELETE")
-SOLO_ESCRITURAS_ESTRICTAS = ("corridas",)
+# Lanzar corridas o calibraciones ocupa al simulador: el límite estricto (D31, D50).
+SOLO_ESCRITURAS_ESTRICTAS = ("corridas", "calibracion")
 
 
 def perfil_de(servicio, metodo):

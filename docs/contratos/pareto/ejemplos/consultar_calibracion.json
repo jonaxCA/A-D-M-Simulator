@@ -15,5 +15,5 @@
       "evidencia": "docs/arquitectura/ficha_simulador.md §13 a §15; docs/pruebas/validacion/2026-11-19"
     }
   ],
-  "nota": "La calibracion esta reabierta (D24) y su metodo lo decide el bloque 0: hasta entonces toda corrida es exploratoria (D39)."
+  "nota": "La calibracion la corre el servicio calibracion (D50): /api/v1/calibrations. Esta ruta solo informa el estado y se retira cuando el escritorio use /api/v1/calibrations/state (D46)."
 }

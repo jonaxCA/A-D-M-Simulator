@@ -81,6 +81,7 @@ services:
   resultados: *detras-de-nginx
   comparacion: *detras-de-nginx
   pareto: *detras-de-nginx
+  calibracion: *detras-de-nginx
   indicadores: *detras-de-nginx
   series: *detras-de-nginx
   zonas: *detras-de-nginx

@@ -19,8 +19,11 @@ def test_dos_simuladores_y_diez_corridas(api, analista, base, compose, crea_esce
 
     conexion = base()
     with conexion.cursor() as cur:
+        # Solo las corridas: una calibración (D50) también deja RUN con el mismo estado y puede
+        # tener el mismo id.
         cur.execute("""SELECT entity_id, count(*) FROM audit_log
-                       WHERE action = 'RUN' AND entity_id = ANY(%s) AND data_after->>'estado' = 'ejecutando'
+                       WHERE action = 'RUN' AND entity_type = 'simulation_run' AND entity_id = ANY(%s)
+                         AND data_after->>'estado' = 'ejecutando'
                        GROUP BY entity_id""", ([str(i) for i in ids],))
         arranques = dict(cur.fetchall())
         cur.execute("SELECT count(*) FROM simulation_runs WHERE id = ANY(%s) AND resumen IS NOT NULL",

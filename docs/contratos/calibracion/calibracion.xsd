@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Las respuestas del servicio calibracion (puerto 5246, D50): la calibración de seir-ref
+     contra una serie semanal observada, por ABC por rechazo (procesamiento/calibracion/).
+     Raíces: <calibracion> (lanzar, consultar y cancelar), <calibraciones> (la lista),
+     <ajuste> (/fit), <escenario_calibrado> (/scenario), <evaluacion> (/evaluate) y
+     <estado_calibracion> (/state). r0, rho y phi son los tres parámetros que se estiman;
+     rho (la fracción de contagios que se reporta) nunca entra al motor. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:include schemaLocation="../comun/tipos.xsd"/>
+
+  <!-- Los estados de la regla 7. -->
+  <xs:simpleType name="estado">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="encolado"/>
+      <xs:enumeration value="ejecutando"/>
+      <xs:enumeration value="completado"/>
+      <xs:enumeration value="fallido"/>
+      <xs:enumeration value="cancelado"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="parametro">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="r0"/>
+      <xs:enumeration value="rho"/>
+      <xs:enumeration value="phi"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ventana">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="calibracion"/>
+      <xs:enumeration value="validacion"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="categoriaD39">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="exploratoria"/>
+      <xs:enumeration value="prediccion"/>
+      <xs:enumeration value="validada"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Lo pedido: muestras del hipercubo, semillas por muestra, cuantil de aceptación y semilla
+       del muestreo. Con esto y el conjunto la calibración se repite bit a bit. -->
+  <xs:complexType name="Configuracion">
+    <xs:all>
+      <xs:element name="muestras" type="Entero"/>
+      <xs:element name="semillas" type="Entero"/>
+      <xs:element name="cuantil" type="Numero"/>
+      <xs:element name="semilla_muestreo" type="Entero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- Mediana y p5-p95 de las combinaciones aceptadas, y el rango en que se muestreó. -->
+  <xs:complexType name="Estimado">
+    <xs:all>
+      <xs:element name="nombre" type="parametro"/>
+      <xs:element name="mediana" type="Numero"/>
+      <xs:element name="p5" type="Numero"/>
+      <xs:element name="p95" type="Numero"/>
+      <xs:element name="minimo" type="Numero"/>
+      <xs:element name="maximo" type="Numero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Estimados">
+    <xs:sequence>
+      <xs:element name="parametro" type="Estimado" minOccurs="3" maxOccurs="3"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Perdida">
+    <xs:all>
+      <xs:element name="minima" type="Numero"/>
+      <xs:element name="umbral" type="Numero"/>
+      <xs:element name="aceptadas" type="Entero"/>
+      <xs:element name="corridas" type="Entero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- RMSE y R² en conteos, y la fracción de semanas observadas dentro de la banda p5-p95.
+       R² es nulo si las semanas observadas no varían. -->
+  <xs:complexType name="Metrica">
+    <xs:all>
+      <xs:element name="semanas" type="Entero"/>
+      <xs:element name="rmse" type="Numero"/>
+      <xs:element name="r2" type="NumeroONulo"/>
+      <xs:element name="cobertura" type="Numero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Metricas">
+    <xs:all>
+      <xs:element name="calibracion" type="Metrica"/>
+      <xs:element name="validacion" type="Metrica"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Tramo">
+    <xs:all>
+      <xs:element name="desde" type="xs:date"/>
+      <xs:element name="hasta" type="xs:date"/>
+      <xs:element name="semanas" type="Entero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- Las primeras ⅔ de las semanas calibran; el último ⅓ nunca entra a la pérdida y valida. -->
+  <xs:complexType name="Ventanas">
+    <xs:all>
+      <xs:element name="calibracion" type="Tramo"/>
+      <xs:element name="validacion" type="Tramo"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Semana">
+    <xs:all>
+      <xs:element name="inicio" type="xs:date"/>
+      <xs:element name="observado" type="Entero"/>
+      <xs:element name="mediana" type="Numero"/>
+      <xs:element name="p5" type="Numero"/>
+      <xs:element name="p95" type="Numero"/>
+      <xs:element name="ventana" type="ventana"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="Semanas">
+    <xs:sequence>
+      <xs:element name="semana" type="Semana" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="huella">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[0-9a-f]{64}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- POST /api/v1/calibrations (202), GET /api/v1/calibrations/{id} y
+       POST /api/v1/calibrations/{id}/cancel. Al lanzar y al cancelar solo vienen algunos campos;
+       estimados, perdida, metricas, ventanas y huella_configuracion, solo si está completada. -->
+  <xs:element name="calibracion">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="id" type="Entero"/>
+        <xs:element name="dataset_id" type="Entero" minOccurs="0"/>
+        <xs:element name="dataset_code" type="xs:string" minOccurs="0"/>
+        <xs:element name="dataset_version" type="Entero" minOccurs="0"/>
+        <xs:element name="disease_id" type="Entero" minOccurs="0"/>
+        <xs:element name="region_id" type="Entero" minOccurs="0"/>
+        <xs:element name="engine" type="xs:string" minOccurs="0"/>
+        <xs:element name="engine_version" type="xs:string" minOccurs="0"/>
+        <xs:element name="method" type="xs:string" minOccurs="0"/>
+        <xs:element name="method_version" type="xs:string" minOccurs="0"/>
+        <xs:element name="config" type="Configuracion" minOccurs="0"/>
+        <xs:element name="status" type="estado"/>
+        <xs:element name="terminal" type="Booleano" minOccurs="0"/>
+        <xs:element name="attempts" type="Entero" minOccurs="0"/>
+        <xs:element name="progress" type="Entero" minOccurs="0"/>
+        <xs:element name="error" type="TextoONulo" minOccurs="0"/>
+        <xs:element name="requested_by" type="EnteroONulo" minOccurs="0"/>
+        <xs:element name="requested_by_username" type="TextoONulo" minOccurs="0"/>
+        <xs:element name="created_at" type="xs:dateTime" minOccurs="0"/>
+        <xs:element name="started_at" type="FechaHoraONulo" minOccurs="0"/>
+        <xs:element name="finished_at" type="FechaHoraONulo" minOccurs="0"/>
+        <xs:element name="estimados" type="Estimados" minOccurs="0"/>
+        <xs:element name="perdida" type="Perdida" minOccurs="0"/>
+        <xs:element name="metricas" type="Metricas" minOccurs="0"/>
+        <xs:element name="ventanas" type="Ventanas" minOccurs="0"/>
+        <xs:element name="huella_configuracion" type="huella" minOccurs="0"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- GET /api/v1/calibrations: las más recientes primero, dentro del alcance de la cuenta. -->
+  <xs:element name="calibraciones">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="total" type="Entero"/>
+        <xs:element name="calibraciones">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="calibracion" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="id" type="Entero"/>
+                    <xs:element name="dataset_id" type="Entero"/>
+                    <xs:element name="dataset_code" type="xs:string"/>
+                    <xs:element name="dataset_version" type="Entero"/>
+                    <xs:element name="region_id" type="Entero"/>
+                    <xs:element name="engine" type="xs:string"/>
+                    <xs:element name="engine_version" type="xs:string"/>
+                    <xs:element name="status" type="estado"/>
+                    <xs:element name="progress" type="Entero"/>
+                    <xs:element name="requested_by_username" type="TextoONulo"/>
+                    <xs:element name="created_at" type="xs:dateTime"/>
+                    <xs:element name="finished_at" type="FechaHoraONulo"/>
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- GET /api/v1/calibrations/{id}/fit (RF-F13, RF-F14). -->
+  <xs:element name="ajuste">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="calibration_id" type="Entero"/>
+        <xs:element name="dataset_id" type="Entero"/>
+        <xs:element name="dataset_code" type="xs:string"/>
+        <xs:element name="dataset_version" type="Entero"/>
+        <xs:element name="engine_version" type="xs:string"/>
+        <xs:element name="ventanas" type="Ventanas"/>
+        <xs:element name="estimados" type="Estimados"/>
+        <xs:element name="metricas" type="Metricas"/>
+        <xs:element name="semanas" type="Semanas"/>
+        <xs:element name="nota" type="xs:string"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- GET /api/v1/calibrations/{id}/scenario: la configuración calibrada como entrada de una
+       versión de escenario. El escritorio la crea (escenarios), le pone las intervenciones
+       (intervenciones) y el r0 calibrado como ajuste de la versión (parametros, D59); después
+       pasa por revisión y aprobación (D4, D5). -->
+  <xs:element name="escenario_calibrado">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="calibration_id" type="Entero"/>
+        <xs:element name="engine" type="xs:string"/>
+        <xs:element name="engine_version" type="xs:string"/>
+        <xs:element name="escenario">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="name" type="xs:string"/>
+              <xs:element name="disease_id" type="Entero"/>
+              <xs:element name="region_id" type="Entero"/>
+              <xs:element name="stratify" type="Booleano"/>
+              <xs:element name="age_unknown_policy" type="xs:string"/>
+              <xs:element name="horizon_days" type="Entero"/>
+              <xs:element name="initial_infected" type="Entero"/>
+              <xs:element name="notes" type="xs:string"/>
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="intervenciones">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="intervencion" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="code" type="xs:string"/>
+                    <xs:element name="start_day" type="Entero"/>
+                    <xs:element name="end_day" type="EnteroONulo"/>
+                    <xs:element name="coverage" type="Numero"/>
+                    <xs:element name="compliance" type="Numero"/>
+                    <xs:element name="params">
+                      <xs:complexType>
+                        <xs:all>
+                          <xs:element name="reduccion" type="Numero"/>
+                        </xs:all>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="fuente" type="xs:string"/>
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="param_overrides">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="r0">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="valor" type="Numero"/>
+                    <xs:element name="fuente" type="xs:string"/>
+                    <xs:element name="supuesto" type="Booleano"/>
+                    <xs:element name="intervalo">
+                      <xs:complexType>
+                        <xs:all>
+                          <xs:element name="min" type="Numero"/>
+                          <xs:element name="max" type="Numero"/>
+                          <xs:element name="tipo" type="xs:string"/>
+                        </xs:all>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="observacion">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="rho" type="Estimado"/>
+              <xs:element name="phi" type="Estimado"/>
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="huella_configuracion" type="huella"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- GET /api/v1/calibrations/evaluate: un juego de (r0, rho, phi) con las semillas 1 a 5, sin
+       escribir nada. La banda es solo el ruido entre semillas. -->
+  <xs:element name="evaluacion">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="aviso" type="xs:string"/>
+        <xs:element name="dataset_id" type="Entero"/>
+        <xs:element name="dataset_code" type="xs:string"/>
+        <xs:element name="dataset_version" type="Entero"/>
+        <xs:element name="motor" type="xs:string"/>
+        <xs:element name="engine_version" type="xs:string"/>
+        <xs:element name="parametros">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="r0" type="Numero"/>
+              <xs:element name="rho" type="Numero"/>
+              <xs:element name="phi" type="Numero"/>
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="semillas">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="semilla" type="Entero" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="perdida" type="Numero"/>
+        <xs:element name="ventanas" type="Ventanas"/>
+        <xs:element name="semanas" type="Semanas"/>
+        <xs:element name="metricas" type="Metricas"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- GET /api/v1/calibrations/state: el estado de cada versión de motor
+       (procesamiento/estado_validacion.json), lo mismo que /pareto/calibration (D46). -->
+  <xs:complexType name="EnfermedadRegion">
+    <xs:all>
+      <xs:element name="enfermedad" type="Entero"/>
+      <xs:element name="region" type="Entero"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="ListaEnfermedadRegion">
+    <xs:sequence>
+      <xs:element name="enfermedad_region" type="EnfermedadRegion" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="estado_calibracion">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="aviso" type="xs:string"/>
+        <xs:element name="disponible" type="Booleano"/>
+        <xs:element name="motores_calibrables">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="motor" type="xs:string" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="modelos">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="modelo" minOccurs="1" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="engine_version" type="xs:string"/>
+                    <xs:element name="estado">
+                      <xs:simpleType>
+                        <xs:restriction base="xs:string">
+                          <xs:enumeration value="sin_calibrar"/>
+                          <xs:enumeration value="calibrado"/>
+                          <xs:enumeration value="validado"/>
+                        </xs:restriction>
+                      </xs:simpleType>
+                    </xs:element>
+                    <xs:element name="verificado" type="Booleano"/>
+                    <xs:element name="calibrado" type="ListaEnfermedadRegion"/>
+                    <xs:element name="validado" type="ListaEnfermedadRegion"/>
+                    <xs:element name="categoria" type="categoriaD39"/>
+                    <xs:element name="motivo" type="xs:string"/>
+                    <xs:element name="texto" type="xs:string"/>
+                    <xs:element name="evidencia" type="xs:string"/>
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="nota" type="xs:string"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

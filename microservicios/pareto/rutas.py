@@ -7,7 +7,7 @@ from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import entero_positivo
 from procesamiento.analitica import (SensibilidadInvalida, sensibilidad, valores_por_porcentaje,
                                      PARAMETROS)
-from procesamiento.categoria import ESTADO, categoria
+from procesamiento.categoria import ESTADO, estado_modelo
 from procesamiento.motor import AVISO_SIMULACION
 
 from . import datos, dominio
@@ -23,17 +23,6 @@ def numeros(texto, campo):
         return [float(p) for p in texto.split(",")]
     except ValueError:
         raise ErrorAPI(422, "DATOS_INVALIDOS", "%s debe ser una lista de numeros separados por comas." % campo)
-
-
-def estado_modelo(version, enfermedad, region):
-    ficha = ESTADO[version]
-    clase = categoria(version, (), enfermedad, region)
-    estado = ("validado" if ficha["validado"] else "calibrado" if ficha["calibrado"]
-              else "sin_calibrar")
-    return {"engine_version": version, "estado": estado, "verificado": ficha["verificado"],
-            "calibrado": ficha["calibrado"], "validado": ficha["validado"],
-            "categoria": clase["categoria"], "motivo": clase["motivo"], "texto": clase["texto"],
-            "evidencia": ficha["evidencia"]}
 
 
 def registrar(app):
@@ -86,5 +75,5 @@ def registrar(app):
         region = entero_positivo(request.args["region"], "region") if "region" in request.args else None
         modelos = [estado_modelo(v, enfermedad, region) for v in ([version] if version else ESTADO)]
         return responder({"aviso": AVISO_SIMULACION, "disponible": False, "ejecucion": "no_disponible", "modelos": modelos,
-                          "nota": "La calibracion esta reabierta (D24) y su metodo lo decide el bloque 0: "
-                                  "hasta entonces toda corrida es exploratoria (D39)."}, "calibracion")
+                          "nota": "La calibracion la corre el servicio calibracion (D50): /api/v1/calibrations. Esta ruta solo "
+                                  "informa el estado y se retira cuando el escritorio use /api/v1/calibrations/state (D46)."}, "calibracion")

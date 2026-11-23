@@ -28,6 +28,8 @@ El script está en [`pruebas_carga/locustfile.py`](../../pruebas_carga/locustfil
 
 [validacion/2026-11-19](validacion/2026-11-19/LEEME.md): resultados esperados (tamaño final de un SEIR, letalidad, casos límite), sensibilidad y reproducibilidad de los motores, con el comando que repite cada tabla.
 
+[calibracion/2026-11-23](calibracion/2026-11-23/LEEME.md): la primera calibración de `seir-ref` contra la serie de D50 (E7), con su entrada, su resultado y cómo repetirla bit a bit.
+
 [Bloque A de escritorio](bloque_a_escritorio.md) reúne pruebas de regresión, pasos de demostración y límites de la verificación.
 
 ## Volumen de datos

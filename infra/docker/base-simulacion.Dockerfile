@@ -1,5 +1,5 @@
-# Imagen base de los servicios de simulación (corridas, simulador, resultados, comparacion y
-# pareto): Python, procesamiento y epidemia_comun. No lleva backend_web (E8). La construye el
+# Imagen base de los servicios de simulación (corridas, simulador, resultados, comparacion,
+# pareto y calibracion): Python, procesamiento y epidemia_comun. No lleva backend_web (E8). La construye el
 # compose antes que ellos.
 FROM python:3.12-slim
 WORKDIR /app

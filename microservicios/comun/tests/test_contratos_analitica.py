@@ -27,6 +27,7 @@ SERVICIOS = [
     ("zonas", "zonas", 5253, False),
     ("comparacion", "comparacion", 5244, False),
     ("pareto", "pareto", 5245, False),
+    ("calibracion", "calibracion", 5246, False),
     ("corridas", "corridas", 5241, False),
     ("resultados", "resultados", 5243, False),
     ("notificaciones", "notificaciones", 5261, False),

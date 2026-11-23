@@ -62,7 +62,7 @@ python epidemia.py down      # baja los contenedores; conserva la base (para bor
 ## Microservicios (segundo parcial)
 
 - Arquitectura de lo construido: [docs/arquitectura/arquitectura_v2.md](docs/arquitectura/arquitectura_v2.md).
-- Catálogo completo de los 30 servicios: [docs/arquitectura/microservicios.md](docs/arquitectura/microservicios.md).
+- Catálogo completo de los 31 servicios: [docs/arquitectura/microservicios.md](docs/arquitectura/microservicios.md).
 
 ## Pruebas del motor
 

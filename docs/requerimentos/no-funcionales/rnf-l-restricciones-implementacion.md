@@ -27,8 +27,9 @@ Lo que la materia o las decisiones del equipo ya fijaron. La lista de la materia
 | RNF-L20 | El modelo de agentes simula a Nuevo León completo | 5 784 442 habitantes, un agente por habitante, medido en `abm-gpu` | Microservicios | Hecho |
 | RNF-L21 | El alcance geográfico es Nuevo León y sus 51 municipios | — | Bases de datos | Hecho |
 | RNF-L27 | La población sale del Censo 2020 | El factor de escala es habitantes del censo entre agentes simulados (D6) | Bases de datos | Hecho |
+| RNF-L28 | `seir-ref` se calibra contra una ola real (D50, reabierto) | Con la serie pública agregada de la 061 (COVID-19 en Nuevo León, 2020), nunca con registros por persona ni con `cases` (063). El método, la pérdida, las métricas y la tolerancia de validación están en la §19 de la ficha | Microservicios | Hecho (E7): calibrado el 2026-11-23 (`docs/pruebas/calibracion/2026-11-23`); la cobertura de validación (71 %) no alcanza la tolerancia (80 %) |
 | RNF-L29 | Hay tres clientes: web, Android y escritorio | Android y escritorio atienden procesos distintos y el escritorio no copia a la web | Web, Móvil, Escritorio | Hecho |
-| RNF-L30 | Son 30 microservicios, cada uno con una sola tarea (D27, D53) | El catálogo está en [`microservicios.md`](../../arquitectura/microservicios.md) | Microservicios | Hecho |
+| RNF-L30 | Son 31 microservicios, cada uno con una sola tarea (D27, D50, D53) | El catálogo está en [`microservicios.md`](../../arquitectura/microservicios.md) | Microservicios | Hecho |
 | RNF-L31 | La web no lleva SQL en `frontend_web` | Los datos se piden a `backend_web` | Web | Hecho |
 
 ## Fuera de alcance
@@ -43,4 +44,3 @@ Lo que la materia o las decisiones del equipo ya fijaron. La lista de la materia
 | RNF-L24 | Sin convenio institucional | Igual que RNF-L22 |
 | RNF-L25 | Solo datos de prueba | Pasa a RNF-I15 |
 | RNF-L26 | Doble propósito | Igual que RNF-L22 |
-| RNF-L28 | Calibrar contra una ola real | La calibración queda fuera (D24) |

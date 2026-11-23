@@ -1,8 +1,8 @@
 # EPIDEMIA - Servicio estado-servicios
 
-Directorio de los 30 servicios y sondeo de su salud. No hay pasarela (D13): las apps y
+Directorio de los 31 servicios y sondeo de su salud. No hay pasarela (D13): las apps y
 la consola le piden aquí la URL de cada servicio. Cada pocos segundos sondea el
-`/health` de los 30, incluido el suyo, **en XML**. Guarda el último estado en Redis y
+`/health` de los 31, incluido el suyo, **en XML**. Guarda el último estado en Redis y
 cada sondeo en MongoDB (`historial_servicios`, D28), que lo conserva 30 días. No lee ni
 escribe tablas. También cuenta, por motor, las corridas en cola y los simuladores vivos y
 ocupados, y avisa a los ADMINISTRADOR cuando un servicio cae o se recupera (F7).
@@ -56,7 +56,7 @@ no avanzan: es lo que pasa con `abm-gpu` cuando la PC está apagada.
 
 ## Sondeo, Redis y MongoDB
 
-- Un hilo sondea a los 30 a la vez cada `SONDEO_SEGUNDOS` (10 por defecto), con 5 s
+- Un hilo sondea a los 31 a la vez cada `SONDEO_SEGUNDOS` (10 por defecto), con 5 s
   de espera cada uno: en Docker Desktop, el nombre de un contenedor detenido tarda unos
   4 s en no resolverse, así que con Redis caído cada `/health` tarda eso en responder
   503, y con menos espera saldría `caido` en vez de `degradado`.
@@ -71,7 +71,7 @@ no avanzan: es lo que pasa con `abm-gpu` cuando la PC está apagada.
   sondeo sigue y solo se pierde el historial de ese lapso (D19).
 - `/services/health` sondea en ese momento lo que no encuentra en Redis: si venció,
   si Redis está caído o si el hilo no ha corrido. Por eso responde aunque Redis
-  esté caído; en ese caso cada consulta sondea a los 30 y tarda unos 8 s (los 4 s
+  esté caído; en ese caso cada consulta sondea a los 31 y tarda unos 8 s (los 4 s
   de no encontrar a Redis, más el sondeo).
 
 Los 30 están en `SERVICIOS` de `sondeo.py`, con su perfil y su puerto. Una prueba
@@ -89,7 +89,7 @@ ruido:
 - **Se confirma:** el cambio tiene que durar 3 rondas (30 s). Reiniciar un contenedor al
   actualizar no avisa.
 - **Gracia al arrancar:** los primeros 2 min no avisa, mientras se levanta todo.
-- **Un aviso por ronda:** si se degradan los 30 a la vez (Redis caído), llega uno solo.
+- **Un aviso por ronda:** si se degradan los 31 a la vez (Redis caído), llega uno solo.
 - **Espera entre fallas:** de un mismo servicio, una falla nueva se avisa 10 min después de la
   anterior como pronto (si sigue). Que se recuperó se avisa siempre.
 - **No se repite al reiniciar:** lo último avisado de cada servicio se guarda en
