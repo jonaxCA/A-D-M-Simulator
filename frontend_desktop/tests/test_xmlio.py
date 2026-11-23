@@ -36,6 +36,15 @@ def test_tipos_numero_nulo_y_frontera():
     assert datos["filas"][1]["costo_pesos"] == 292500000
 
 
+def test_etiqueta_plural_con_valor_es_escalar_como_en_el_servidor():
+    # resumen.puntos es un número, no la lista <puntos> de una serie (importacion, D53).
+    conjunto = xmlio.leer(ejemplo("importacion/ejemplos/importar_conjunto.xml"))
+    assert conjunto["resumen"]["puntos"] == 4 and conjunto["source_url"] is None
+    serie = xmlio.leer(ejemplo("importacion/ejemplos/puntos_conjunto.xml"))
+    assert [p["valor"] for p in serie["puntos"]] == [7, 38, 40, 18]
+    assert xmlio.leer(b"<a><puntos /></a>")["puntos"] == []
+
+
 def test_esquema_de_parametros():
     tipos = xmlio.leer(ejemplo("tipos-intervencion/ejemplos/listar_tipos_intervencion.xml"))["tipos"]
     vacuna = next(t for t in tipos if t["code"] == "VACUNACION")

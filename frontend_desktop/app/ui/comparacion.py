@@ -1,6 +1,7 @@
 from html import escape
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter
 from PySide6.QtWidgets import (QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel, QMessageBox, QPushButton,
                                QScrollArea, QTabWidget, QVBoxLayout, QWidget)
@@ -39,14 +40,23 @@ class VistaComparacion(QWidget):
         self.seleccion = 0
         self._comparando = False
 
+        self.reporte = None
+        self._subiendo = False
         self.b_csv = QPushButton("Exportar CSV")
         self.b_pdf = QPushButton("Exportar PDF")
+        self.b_subir = QPushButton("Subir reporte")
+        self.b_subir.setToolTip("Guarda el PDF de esta comparación en el almacenamiento del sistema (RF-F17).")
+        self.b_url = QPushButton("Abrir reporte subido")
+        self.b_url.setToolTip("Abre el PDF guardado con un enlace que vence en 15 minutos.")
         self.b_imprimir = QPushButton("Imprimir")
         self.b_imprimir.setObjectName("primario")
         self.b_csv.clicked.connect(self.exportar_csv)
         self.b_pdf.clicked.connect(self.exportar_pdf)
+        self.b_subir.clicked.connect(self.subir_reporte)
+        self.b_url.clicked.connect(self.abrir_reporte)
         self.b_imprimir.clicked.connect(self.imprimir)
-        cabeza, _ = encabezado("Trabajo", "Comparación de escenarios", (self.b_csv, self.b_pdf, self.b_imprimir))
+        cabeza, _ = encabezado("Trabajo", "Comparación de escenarios",
+                               (self.b_csv, self.b_pdf, self.b_subir, self.b_url, self.b_imprimir))
 
         cuerpo = QHBoxLayout()
         cuerpo.setContentsMargins(0, 0, 0, 0)
@@ -259,6 +269,8 @@ class VistaComparacion(QWidget):
         self.b_comparar.setEnabled(len(self.elegidas) >= 2 and not self._comparando)
         for b in (self.b_csv, self.b_pdf, self.b_imprimir):
             b.setEnabled(self.datos is not None and not self._comparando)
+        self.b_subir.setEnabled(self.datos is not None and not self._comparando and not self._subiendo)
+        self.b_url.setEnabled(self.reporte is not None and not self._subiendo)
 
     def comparar(self):
         if self._comparando or len(self.elegidas) < 2:
@@ -280,6 +292,7 @@ class VistaComparacion(QWidget):
     def _mostrar(self, datos):
         self._comparando = False
         self.datos = datos
+        self.reporte = None
         self.seleccion = 0
         self.b_comparar.setText("Comparar")
         self._habilitar()
@@ -445,6 +458,50 @@ class VistaComparacion(QWidget):
                 return
             self.v.accion("exporta el reporte de comparación a %s" % ruta)
             QMessageBox.information(self, "Exportar", "Reporte guardado en %s." % ruta)
+
+    def subir_reporte(self):
+        if self.datos is None or self._subiendo:
+            return
+        imagenes = self._imagenes()
+        try:
+            pdf = exportar.pdf_en_memoria(self._html(imagenes), imagenes)
+        except OSError as exc:
+            self.v.mostrar_error(exc)
+            return
+        titulo = "Comparación: " + ", ".join(e["nombre"] for e in self.datos["escenarios"])
+        self._subiendo = True
+        self._habilitar()
+        self.b_subir.setText("Subiendo…")
+        en_hilo(servicios.subir_reporte, self.c, exportar.corridas_del_reporte(self.datos), titulo, pdf,
+                listo=self._subido, fallo=self._fallo_subida)
+
+    def _subido(self, reporte):
+        self._subiendo = False
+        self.reporte = reporte
+        self.b_subir.setText("Subir reporte")
+        self._habilitar()
+        self.v.accion("subió el reporte de comparación %s" % reporte.get("id"))
+        QMessageBox.information(self, "Reporte", "Reporte %s guardado (%s KB, huella %s…). Ábrelo con «Abrir "
+                                "reporte subido»." % (reporte.get("id"), num((reporte.get("size_bytes") or 0) / 1024),
+                                                      (reporte.get("sha256") or "")[:12]))
+
+    def _fallo_subida(self, exc):
+        self._subiendo = False
+        self.b_subir.setText("Subir reporte")
+        self._habilitar()
+        self.v.mostrar_error(exc)
+
+    def abrir_reporte(self):
+        if self.reporte:
+            en_hilo(servicios.url_reporte, self.c, self.reporte["id"], listo=self._abrir_url, fallo=self.v.mostrar_error)
+
+    def _abrir_url(self, datos):
+        url = datos.get("url") or ""
+        if not url.startswith(("https://", "http://")):
+            self.v.mostrar_error(OSError("El servidor no devolvió un enlace válido para el reporte."))
+            return
+        QDesktopServices.openUrl(QUrl(url))
+        self.v.accion("abrió el reporte %s" % self.reporte.get("id"))
 
     def imprimir(self):
         impresora = QPrinter(QPrinter.HighResolution)
