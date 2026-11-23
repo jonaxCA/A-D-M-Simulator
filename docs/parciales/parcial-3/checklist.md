@@ -493,7 +493,7 @@ Decidido con el líder (2026-11-22): `evidencias` pasa a ser el servicio de los 
 - [x] Cada documento de `series_corridas` trae `scenario_id`, además de `run_id`, `scenario_version_id` y la versión del motor. Hecho en `feat/bloque-D` (2026-11-18, `2ceadf8`); vale al integrarse el PR del bloque D.
 - [x] La serie se guarda antes de confirmar la corrida: si el proceso muere entre los dos pasos, la corrida no queda completada sin curvas. Hecho en `feat/bloque-D` (2026-11-18, `2ceadf8`); vale al integrarse el PR del bloque D.
 - [x] La serie de una corrida que el arranque cierra como fallida no se queda en MongoDB, o `banda()` la ignora. Va con la decisión de corridas interrumpidas (0). Las dos: el arranque borra la serie de las que cierra, y `banda(..., run_ids=)` cuenta solo las corridas que le pasen como completadas (D38).
-- [ ] Con MongoDB caído y el simulador muerto después de confirmar, la serie se regenera con la misma semilla, comprobando la huella del escenario y el resumen. Va con la misma decisión.
+- [x] Con MongoDB caído y el simulador muerto después de confirmar, la serie se regenera con la misma semilla, comprobando la huella del escenario y el resumen. Va con la misma decisión. Hecho el 2026-11-23 en `feat/bloque-D5-serie` (D38): al arrancar, `trabajador.conciliar` busca las `completado` de su motor sin serie y la regenera; solo la guarda si `engine_version`, `scenario_checksum` y el resumen coinciden, y reintenta cada 30 s mientras MongoDB no responda. Vale al integrarse el PR del bloque D.
 
 ### D6. Gestión de datos
 

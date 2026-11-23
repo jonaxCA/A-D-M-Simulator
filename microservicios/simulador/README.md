@@ -87,6 +87,15 @@ Si MongoDB no responde, la corrida se confirma igual, con su resumen en PostgreS
 reemplaza por `{run_id, dia}`, así que un reintento no duplica días. Mientras tanto,
 `resultados` responde 404 a sus curvas.
 
+**Serie perdida después de confirmar (D38).** Si el proceso muere con la serie aún en
+`series_pendientes`, la corrida queda `completado` sin curvas. Al arrancar, el ciclo busca las
+`completado` de su motor que no tienen serie en `series_corridas` (`trabajador.conciliar`) y la
+regenera con la misma semilla. Solo la guarda si `engine_version`, `scenario_checksum` y el
+resumen regenerados son iguales a los guardados en `simulation_runs`; si alguno difiere, lo
+registra y no escribe nada. Con MongoDB caído lo reintenta cada 30 s, y es un solo barrido por
+arranque. Lo prueban `test_conciliar_*` y
+`test_f5_la_serie_pendiente_se_pierde_con_el_proceso_y_el_arranque_la_regenera`.
+
 ### Límites conocidos
 
 - **Reinicio con varias réplicas.** Si se reinicia un `simulador` mientras otro del mismo
@@ -95,11 +104,9 @@ reemplaza por `{run_id, dia}`, así que un reintento no duplica días. Mientras 
   resultado; la corrida se repite con la misma semilla y da lo mismo.
 - **PostgreSQL caído al tomar una corrida.** La corrida sale de la cola y se queda
   `encolado` en la base. Se cancela desde `corridas` y se vuelve a lanzar.
-- **MongoDB caído y reinicio después de confirmar.** Las series pendientes viven en la memoria
-  del proceso. Si se reinicia antes de que vuelva MongoDB, se pierden: la corrida queda
-  `completado` con su resumen, pero sin serie (`resultados` responde 404 a sus curvas). No hay
-  una reconciliación automática. La misma versión con la misma semilla da la misma serie, así
-  que se puede regenerar volviendo a lanzarla.
+- **Serie regenerada que no coincide.** Si cambió la versión del motor, la huella del escenario
+  o el resumen, la serie no se regenera y la corrida queda `completado` sin curvas: se avisa en
+  el registro y hay que volver a lanzar la corrida.
 - **Serie de una corrida que no se completó.** Si el `UPDATE` que confirma truena, la corrida
   queda `fallido` y su serie no se borra, porque con la conexión caída no se sabe si el `UPDATE`
   alcanzó a aplicarse. `resultados` no la sirve, y `series_corridas.banda()` la ignora si quien
