@@ -8,7 +8,8 @@ from functools import wraps
 
 from flask import abort, g, redirect, request, session, url_for
 
-from backend_web.servicios import ErrorServicio, ServicioNoDisponible, llamar
+from backend_web import servicios
+from backend_web.servicios import ErrorServicio, ServicioNoDisponible
 
 from . import sesion_servicios
 from .sesion_servicios import COOKIE_ACCESS, COOKIE_REFRESH
@@ -45,7 +46,7 @@ def permisos_de_la_sesion(token, user_id):
     if guardados and guardados.get("user_id") == user_id:
         return set(guardados.get("codigos") or [])
     try:
-        datos = llamar("roles", "GET", "/api/v1/permissions/me", token=token) or {}
+        datos = servicios.llamar("roles", "GET", "/api/v1/permissions/me", token=token) or {}
     except ErrorServicio:
         # Si roles rechaza la consulta, la cuenta se queda sin permisos: falla cerrada.
         return set()
@@ -79,7 +80,7 @@ def solo_tablero(user):
 def _audita_negado(codigo, modulo):
     # El 403 queda en la bitacora de roles; negar no depende de poder anotarlo.
     try:
-        llamar("roles", "POST", "/api/v1/audit/denied", token=g.get("access"),
+        servicios.llamar("roles", "POST", "/api/v1/audit/denied", token=g.get("access"),
                cuerpo={"ruta": request.path[:64], "permiso": codigo or "", "modulo": modulo})
     except (ErrorServicio, ServicioNoDisponible):
         pass

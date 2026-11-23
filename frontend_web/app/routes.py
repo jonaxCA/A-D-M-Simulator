@@ -714,7 +714,8 @@ def monitoreo():
     zonas = seccion("zonas", servicios.monitoreo_zonas, *ambito, f["busqueda"] or None,
                     f["indicador"], pagina, defecto=ZONAS_VACIAS)
     # La tarjeta geográfica compara todas las zonas del ámbito, en el orden fijo del servicio.
-    todas = seccion("zonas", servicios.monitoreo_zonas, *ambito, por_pagina=100, defecto=ZONAS_VACIAS)
+    todas = seccion("zonas", servicios.monitoreo_zonas, *ambito, orden="casos", por_pagina=100,
+                    defecto=ZONAS_VACIAS)
 
     return render_template(
         "monitoreo.html", serie=serie, edades=edades, sexos=sexos, totales=totales, zonas=zonas,
@@ -755,6 +756,17 @@ def simulaciones_lista():
         active_nav="simulaciones")
 
 
+def _habitantes(region_id):
+    """La población de la región de una corrida: un municipio o el estado (regiones)."""
+    if not region_id:
+        return None
+    municipio = servicios.municipio(region_id)
+    if municipio:
+        return municipio.get("population")
+    estado = servicios.estado_nl()
+    return estado.get("poblacion") if estado and estado.get("id") == region_id else None
+
+
 @bp.route("/simulaciones/corridas/<int:run_id>")
 @requiere_permiso("simulations.read", "simulations")
 def simulacion_detalle(run_id):
@@ -778,8 +790,11 @@ def simulacion_detalle(run_id):
                                         else (formato.ENGINE_VERSION, formato.SIMPLIFICACIONES))
     if resultado and resultado.get("simplificaciones"):
         simplificaciones = resultado["simplificaciones"]
-    # resultados trae la escala de D6; sin ella, la pantalla no muestra equivalentes.
-    escala = (resultado or {}).get("escala") or {"factor": None, "avisos": [], "representados": {}}
+    # resultados trae la escala de D6; si solo dio los indicadores (sin MongoDB), se calcula con la
+    # población de la región, que da regiones.
+    escala = (resultado or {}).get("escala") or formato.escala(
+        seccion("regiones", _habitantes, run.get("region_id")), run["population_size"],
+        (resultado or {}).get("resumen"))
     if resultado and not resultado.get("engine_version"):
         resultado["engine_version"] = run.get("engine_version")
     return render_template(

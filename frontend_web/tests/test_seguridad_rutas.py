@@ -228,23 +228,27 @@ class AltaEnfermedadTests(AppTestCase):
         return query("SELECT default_params FROM diseases WHERE code = %s",
                      (codigo,), one=True)["default_params"]
 
-    def test_analista_da_de_alta_pero_sin_parametros(self):
-        params = self._alta("alex.cavazos", CODIGO_ANALISTA)
-        self.assertNotIn("r0", params or {})
+    def test_el_analista_no_da_de_alta(self):
+        # D1: catalogs.create es de EPIDEMIOLOGO y ADMINISTRADOR.
+        with self.app.test_client() as client:
+            client.set_cookie(COOKIE_NAME, token_de("alex.cavazos"))
+            resp = client.post("/enfermedades/nueva", data={
+                "code": CODIGO_ANALISTA, "name": f"Prueba {CODIGO_ANALISTA}"})
+        self.assertEqual(resp.status_code, 403)
+        self.assertIsNone(query("SELECT id FROM diseases WHERE code = %s", (CODIGO_ANALISTA,),
+                                one=True))
 
     def test_epidemiologo_si_fija_parametros_en_el_alta(self):
         params = self._alta("diana.flores", CODIGO_EPIDEMIOLOGO)
         self.assertEqual(params["r0"]["valor"], 2.5)
         self.assertEqual(params["r0"]["fuente"], "Fuente de prueba")
 
-    def test_el_formulario_solo_muestra_parametros_a_quien_los_fija(self):
+    def test_el_formulario_es_de_quien_da_de_alta_y_trae_los_parametros(self):
         with self.app.test_client() as client:
             client.set_cookie(COOKIE_NAME, token_de("alex.cavazos"))
-            analista = client.get("/enfermedades/nueva").data.decode("utf-8")
+            self.assertEqual(client.get("/enfermedades/nueva").status_code, 403)
             client.set_cookie(COOKIE_NAME, token_de("diana.flores"))
             epidemiologo = client.get("/enfermedades/nueva").data.decode("utf-8")
-        self.assertNotIn('name="p_r0_valor"', analista)
-        self.assertIn("epidemiólogo", analista)
         self.assertIn('name="p_r0_valor"', epidemiologo)
 
 

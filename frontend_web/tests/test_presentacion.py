@@ -164,10 +164,9 @@ class EnfermedadesMuestraCadaFilaTests(ConUsuarioSimulado):
         return {"enfermedades": [alfa, beta], "total": 2, "pagina": 1, "por_pagina": 10,
                 "paginas": 1, "desde": 1, "hasta": 2}
 
-    @patch("frontend_web.app.routes.log_audit")
-    @patch("frontend_web.app.routes.queries.get_enfermedades")
-    @patch("frontend_web.app.routes.queries.get_enfermedades_stats")
-    def test_pantalla_y_csv(self, mock_stats, mock_listado, _mock_bitacora):
+    @patch("backend_web.servicios.enfermedades")
+    @patch("backend_web.servicios.enfermedades_stats")
+    def test_pantalla_y_csv(self, mock_stats, mock_listado):
         mock_stats.return_value = self.STATS
         mock_listado.return_value = self._listado()
         with self.app.test_client() as client:
@@ -203,9 +202,9 @@ class SemaforoDeTendenciaEnPantallaTests(ConUsuarioSimulado):
                  {"enfermedad": "Beta", "estado": "alerta", "incidencia": 30},
                  {"enfermedad": "Gama", "estado": "estable", "incidencia": 2}]
 
-    @patch("frontend_web.app.routes.queries.get_curva_epidemica", return_value=[])
-    @patch("frontend_web.app.routes.queries.get_resumen_situacion")
-    @patch("frontend_web.app.routes.queries.get_resumen_indicadores")
+    @patch("backend_web.servicios.curva_tablero", return_value=[])
+    @patch("backend_web.servicios.resumen_situacion")
+    @patch("backend_web.servicios.indicadores_tablero")
     def test_el_panorama_publico(self, mock_indicadores, mock_situacion, _curva):
         mock_indicadores.return_value = {"casos_activos": 0, "casos_pct": 0, "tasa_incidencia": 0,
                                          "tasa_pct": 0, "zonas_en_riesgo": 0,
@@ -216,9 +215,8 @@ class SemaforoDeTendenciaEnPantallaTests(ConUsuarioSimulado):
         for clave, texto in (("critico", "Critico"), ("alerta", "Alerta"), ("estable", "Estable")):
             self.assertIn(f'<span class="badge badge-{clave}">{texto}</span>', html)
 
-    @patch("frontend_web.app.routes.log_audit")
-    @patch("frontend_web.app.routes.queries.get_monitoreo_zonas")
-    def test_el_csv_de_monitoreo(self, mock_zonas, _bitacora):
+    @patch("backend_web.servicios.exporta_zonas")
+    def test_el_csv_de_monitoreo(self, mock_zonas):
         mock_zonas.return_value = {"zonas": [
             {"zona": z, "casos": 1, "incidencia": 1.0, "variacion": 0.0, "graves": 0, "estado": e}
             for z, e in (("Alfa", "critico"), ("Beta", "alerta"), ("Gama", "estable"))]}
@@ -227,16 +225,15 @@ class SemaforoDeTendenciaEnPantallaTests(ConUsuarioSimulado):
             filas = client.get("/export/monitoreo.csv").get_data(as_text=True).splitlines()
         self.assertEqual([f.rsplit(",", 1)[1] for f in filas[1:]], ["Critico", "Alerta", "Estable"])
 
-    @patch("frontend_web.app.routes.log_audit")
-    @patch("frontend_web.app.routes.queries.get_resumen_situacion")
-    def test_el_csv_del_resumen(self, mock_situacion, _bitacora):
+    @patch("backend_web.servicios.exporta_situacion")
+    def test_el_csv_del_resumen(self, mock_situacion):
         mock_situacion.return_value = self.SITUACION
         with self.app.test_client() as client:
             client.set_cookie(COOKIE_NAME, self._token())
             filas = client.get("/export/resumen.csv").get_data(as_text=True).splitlines()
         self.assertEqual(filas[1:], ["Alfa,Critico,1200", "Beta,Alerta,30", "Gama,Estable,2"])
 
-    @patch("frontend_web.app.routes.queries.get_escenarios")
+    @patch("backend_web.servicios.escenarios")
     def test_el_estado_de_cada_version_en_escenarios(self, mock_escenarios):
         estados = ["borrador", "en_revision", "aprobado", "rechazado", None]
         mock_escenarios.return_value = [
@@ -271,8 +268,8 @@ class RegionesMuestraCadaFuenteTests(ConUsuarioSimulado):
         return {"id": mid, "code": f"19{mid:03d}", "nombre": nombre, "poblacion": 1000,
                 "poblacion_60": 100, "fuente_poblacion": fuente, "fuente_poblacion_60": fuente_60}
 
-    @patch("frontend_web.app.routes.queries.get_estado_nl")
-    @patch("frontend_web.app.routes.queries.get_regiones_catalogo")
+    @patch("backend_web.servicios.estado_nl")
+    @patch("backend_web.servicios.regiones_catalogo")
     def test_cada_fila_muestra_su_fuente(self, mock_catalogo, mock_estado):
         censal = {"tipo": "censal", "fuente": "INEGI, Censo 2020"}
         derivado = {"tipo": "derivado", "fuente": "Grupos 60-79 y 80+ del Censo 2020"}
@@ -385,7 +382,8 @@ class MonitoreoTarjetaGeograficaTests(ConUsuarioSimulado):
                  ("Pesquería", 3, 1.0), ("Salinas Victoria", 3, 2.0), ("San Nicolás", 2, 3.0),
                  ("San Pedro", 2, 4.0), ("Santa Catarina", 1, 80.0), ("Zuazua", 1, 80.0)], 1)]
 
-    def _zonas(self, busqueda=None, orden="casos", pagina=1, por_pagina=10, **_ambito):
+    def _zonas(self, _token, _disease_id, _region_id, _dias, busqueda=None, orden="incidencia",
+               pagina=1, por_pagina=10):
         zonas = [z for z in self.TODAS if not busqueda or busqueda.lower() in z["zona"].lower()]
         if orden != "casos":
             zonas = zonas[::-1]
@@ -395,7 +393,7 @@ class MonitoreoTarjetaGeograficaTests(ConUsuarioSimulado):
                 "desde": (pagina - 1) * por_pagina + 1, "hasta": min(pagina * por_pagina, len(zonas))}
 
     def test_el_mismo_texto_en_cualquier_pagina_busqueda_u_orden(self):
-        with patch("frontend_web.app.routes.queries.get_monitoreo_zonas", side_effect=self._zonas):
+        with patch("backend_web.servicios.monitoreo_zonas", side_effect=self._zonas):
             with self.app.test_client() as client:
                 client.set_cookie(COOKIE_NAME, self._token())
                 for consulta in ("", "pagina=2", "q=Apo", "indicador=casos",
@@ -436,9 +434,9 @@ class UsuariosMuestraCadaEstadoTests(ConUsuarioSimulado):
         return {"id": uid, "nombre": nombre, "correo": f"{uid}@x.mx", "roles": roles,
                 "estado": estado, "ultimo_acceso": acceso}
 
-    @patch("frontend_web.app.routes.queries.get_roles_catalogo", return_value=[])
-    @patch("frontend_web.app.routes.queries.get_usuarios_resumen")
-    @patch("frontend_web.app.routes.queries.get_usuarios_lista")
+    @patch("backend_web.servicios.roles", return_value=[])
+    @patch("backend_web.servicios.usuarios_resumen")
+    @patch("backend_web.servicios.usuarios")
     def test_cada_fila(self, mock_lista, mock_resumen, _roles):
         mock_resumen.return_value = {"total": 3, "activos": 1, "pendientes": 1, "inactivos": 1}
         mock_lista.return_value = [
@@ -515,13 +513,10 @@ class BitacoraMuestraCadaEventoTests(ConUsuarioSimulado):
                 "modulo": modulo, "accion": accion, "entidad_id": str(eid), "datos": datos,
                 "ip": ip}
 
-    @patch("frontend_web.app.routes.queries.get_acciones_auditoria")
-    @patch("frontend_web.app.routes.queries.get_modulos_auditoria", return_value=[])
-    @patch("frontend_web.app.routes.queries.get_usuarios_para_filtro", return_value=[])
-    @patch("frontend_web.app.routes.queries.get_auditoria_resumen")
-    @patch("frontend_web.app.routes.queries.get_auditoria_lista")
-    def test_cada_fila_y_el_filtro(self, mock_lista, mock_resumen, _usuarios, _modulos,
-                                   mock_acciones):
+    @patch("backend_web.servicios.bitacora_filtros")
+    @patch("backend_web.servicios.bitacora_resumen")
+    @patch("backend_web.servicios.bitacora")
+    def test_cada_fila_y_el_filtro(self, mock_lista, mock_resumen, mock_filtros):
         mock_resumen.return_value = {"eventos_totales": 2, "criticas": 0, "fallidos": 1,
                                      "activos_24h": 0}
         mock_lista.return_value = [
@@ -529,7 +524,8 @@ class BitacoraMuestraCadaEventoTests(ConUsuarioSimulado):
                          "Ana", "10.9.8.7"),
             self._evento(9, "LOGIN_FAILED", "users", None, None, None),
         ]
-        mock_acciones.return_value = ["LOGIN_FAILED", "RUN::fallido", "RUN::encolado"]
+        mock_filtros.return_value = {"modulos": [], "usuarios": [],
+                                     "acciones": ["LOGIN_FAILED", "RUN::fallido", "RUN::encolado"]}
         with self.app.test_client() as client:
             client.set_cookie(COOKIE_NAME, self._token("ADMINISTRADOR"))
             html = client.get("/auditoria").get_data(as_text=True)

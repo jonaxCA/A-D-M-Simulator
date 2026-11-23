@@ -64,8 +64,9 @@ class AprobacionPorServicio(ConUsuarioSimulado):
 
     def test_un_analista_no_llega_a_llamar_al_servicio(self):
         self.token = self._token("ANALISTA")
-        with patch("frontend_web.app.permisos.log_audit", create=True), \
-                patch("backend_web.audit.log_audit"):
-            resp = self._aprobar()
-        self.assertEqual(resp.status_code, 302)
-        self.assertEqual(self.peticiones, [])
+        resp = self._aprobar()
+        # C1: sin scenarios.approve, 403 y el PERMISSION_DENIED a roles; aprobacion ni se entera.
+        self.assertEqual(resp.status_code, 403)
+        rutas = [p.full_url.split("?")[0].rsplit("/api/v1", 1)[1] for p in self.peticiones]
+        self.assertIn("/audit/denied", rutas)
+        self.assertNotIn("/scenarios/3/review", rutas)
