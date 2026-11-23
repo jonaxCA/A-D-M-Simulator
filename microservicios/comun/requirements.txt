@@ -9,3 +9,4 @@ google-cloud-storage>=2.18,<4
 psycopg2-binary==2.9.12
 bcrypt==5.0.0
 python-dotenv==1.0.1
+waitress==3.0.2
