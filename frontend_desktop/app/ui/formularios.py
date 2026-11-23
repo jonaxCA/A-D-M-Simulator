@@ -3,14 +3,23 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, 
                                QFormLayout, QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit, QSpinBox,
                                QVBoxLayout, QWidget)
 
-from .comun import celda, tabla
+from .comun import celda, fecha, tabla
 
 POLITICAS = (("excluir", "Excluir a quienes no tienen edad"), ("prorratear", "Repartir según la estructura"))
 POBLACION_MAX = 20_000_000
-def mostrar_parametros(padre, enfermedad, datos):
+
+
+def texto_intervalo(intervalo):
+    # El intervalo con que el parámetro se publica (D58); el motor solo usa el valor.
+    if not isinstance(intervalo, dict) or intervalo.get("min") is None or intervalo.get("max") is None:
+        return None
+    return "%s a %s (%s)" % (intervalo["min"], intervalo["max"], intervalo.get("tipo") or "intervalo")
+
+
+def mostrar_parametros(padre, enfermedad, datos, versiones=None):
     dialogo = QDialog(padre)
     dialogo.setWindowTitle("Parámetros de %s" % enfermedad)
-    dialogo.resize(900, 420)
+    dialogo.resize(1000, 520)
     capa = QVBoxLayout(dialogo)
     if datos.get("simulable") is True:
         estado = "El catálogo indica que la enfermedad es simulable."
@@ -18,13 +27,15 @@ def mostrar_parametros(padre, enfermedad, datos):
         estado = "El catálogo indica que la enfermedad todavía no es simulable."
     else:
         estado = "El catálogo no informó si la enfermedad es simulable."
-    nota = QLabel(estado + " Estos valores son del catálogo vigente. Los valores históricos están en la ficha de corrida.")
+    vigente = " (versión %s)" % versiones[0]["version"] if versiones else ""
+    nota = QLabel(estado + " Estos valores son del catálogo vigente%s. Cada versión de un escenario congela los suyos al enviarse; "
+                  "los valores de una corrida están en su ficha." % vigente)
     nota.setTextFormat(Qt.PlainText)
     nota.setWordWrap(True)
     capa.addWidget(nota)
     detalle = (datos.get("detalle") or []) + (datos.get("informativos") or [])
     if detalle:
-        listado = tabla(["Parámetro", "Unidad", "Valor", "Rango", "Fuente", "Estado"], estirar=(0, 4))
+        listado = tabla(["Parámetro", "Unidad", "Valor", "Incertidumbre", "Rango del motor", "Fuente", "Estado"], estirar=(0, 5))
         listado.setRowCount(len(detalle))
         estados = {"supuesto": "Supuesto", "con_fuente": "Con fuente", "sin_fuente": "Sin fuente",
                    "falta": "Falta", "por_grupo": "Por grupo de edad"}
@@ -34,14 +45,23 @@ def mostrar_parametros(padre, enfermedad, datos):
             valor = p.get("valor_form") or p.get("valor")
             if isinstance(valor, dict):
                 valor = "; ".join("%s: %s" % item for item in valor.items())
-            valores = (p.get("etiqueta") or p.get("clave"), p.get("unidad"), valor, rango,
-                       p.get("fuente") or None, estado)
+            valores = (p.get("etiqueta") or p.get("clave"), p.get("unidad"), valor, texto_intervalo(p.get("intervalo")),
+                       rango, p.get("fuente") or None, estado)
             for col, dato in enumerate(valores):
                 listado.setItem(fila, col, celda(dato))
             listado.item(fila, 0).setToolTip(p.get("ayuda") or "")
         capa.addWidget(listado)
     else:
         capa.addWidget(QLabel("El catálogo no devolvió parámetros para esta enfermedad."))
+    if versiones:
+        capa.addWidget(QLabel("Versiones de los parámetros de la enfermedad (cada cambio guarda la versión completa):"))
+        historial = tabla(["Versión", "Fecha", "Motivo"], estirar=(2,))
+        historial.setMaximumHeight(130)
+        historial.setRowCount(len(versiones))
+        for fila, ver in enumerate(versiones):
+            for col, dato in enumerate((ver.get("version"), fecha(ver.get("created_at")), ver.get("reason"))):
+                historial.setItem(fila, col, celda(dato))
+        capa.addWidget(historial)
     botones = QDialogButtonBox(QDialogButtonBox.Close)
     botones.button(QDialogButtonBox.Close).setText("Cerrar")
     botones.rejected.connect(dialogo.reject)

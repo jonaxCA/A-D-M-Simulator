@@ -15,6 +15,7 @@ Puerto externo: 5241; puerto interno en Docker: 8000. Contrato en
 | POST | `/api/v1/runs` | ANALISTA, ADMINISTRADOR | Cuerpo `{scenario_version_id, seed?, engine?, priority?, replicas?, forzar_error?}`. Responde **202** con `id`, `batch_id`, `seed`, `engine`, `priority` y `status: encolado` |
 | GET | `/api/v1/runs?limit=20` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Las corridas más recientes, con su `engine` y su `scenario_version_id` (`limit` de 1 a 100). Filtros opcionales: `scenario_id`, `scenario_version_id`, `status`, `engine`, `from` y `to` |
 | GET | `/api/v1/runs/{run_id}` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Estado, `progress`, `engine`, `terminal`, `priority`, `queue_position` y la estimación (`estimated_seconds`, `estimate_samples`, `estimate_reason`) |
+| GET | `/api/v1/runs/engines` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA | Los motores que el despliegue acepta en `POST /runs` (`MOTORES_HABILITADOS`; `seir-ref` siempre). Los clientes ofrecen solo estos (RF-E15) |
 | GET | `/api/v1/runs/{run_id}/equivalent` | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR | Otra corrida completada con la misma versión, semilla y huella, con su `resumen` (`null` si no hay): la demostración de reproducibilidad |
 | POST | `/api/v1/runs/{run_id}/cancel` | ANALISTA, ADMINISTRADOR | Cancela una corrida que sigue `encolado` |
 | POST | `/api/v1/runs/{run_id}/retry` | ANALISTA, ADMINISTRADOR | Reintenta una corrida `fallido`: la regresa a `encolado` con la misma semilla y prioridad. Responde **202** |

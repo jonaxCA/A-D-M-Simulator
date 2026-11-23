@@ -103,3 +103,13 @@ Con una cuenta de demostración, elige un escenario de Nuevo León con eventos, 
 municipales** y **Historial de auditoría**. Comprueba con un analista que el historial de una
 región permitida abre y que una región fuera de alcance se rechaza. Repite con administrador
 para verificar el acceso autorizado. Los cambios de la aplicación no requieren migraciones.
+
+## Motores anunciados, parámetros con versiones y firma de la versión · 23 de noviembre
+
+| Verificación | Resultado |
+| --- | --- |
+| `abm-gpu` solo si el despliegue lo acepta (RF-H20, RF-E15) | `corridas` anuncia sus motores en `GET /api/v1/runs/engines` (`MOTORES_HABILITADOS`; `seir-ref` siempre). `test_motores.py`: el ejemplo del contrato ofrece lo que anuncia, `abm-gpu` aparece solo si viene en la respuesta, y con una respuesta que no cumple el XSD o sin la ruta quedan `seir-ref` y `abm-ref`. El filtro de la cola y el de Comparación siguen mostrando los tres, para buscar corridas viejas. |
+| Parámetros con incertidumbre y versiones (D58) | `test_parametros_y_firma.py`: el diálogo agrega la columna **Incertidumbre** (`2.39 a 3.44 (IC95)`) y la tabla de versiones con su motivo; las versiones se leen con el ejemplo del contrato. |
+| Firma de la versión aprobada (D55) | La pantalla Escenarios pide `GET /api/v1/versions/{id}/signature` al abrir una versión aprobada y muestra la huella, quién aprobó, si sigue íntegra y las corridas que simularon lo firmado, las distintas y las que no tienen huella. Sin firma (aprobada antes de la 064) lo dice; si `aprobacion` no responde, la pantalla queda como estaba. |
+| Corrección de dos pruebas | `test_parametros_usan_definicion_y_unidad_del_contrato` y `test_catalogo_lee_parametros_publicos_y_xsd` esperaban el ejemplo anterior de `parametros`, que D58 regeneró con los datos reales. |
+| Suite local de escritorio | 419 pruebas aprobadas con PySide6 (`QT_QPA_PLATFORM=offscreen python -m pytest frontend_desktop`); sin PySide6, 370 y 22 se saltan. |

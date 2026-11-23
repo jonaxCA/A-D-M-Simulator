@@ -124,6 +124,23 @@
     </xs:all>
   </xs:complexType>
 
+  <!-- GET /api/v1/runs/engines: los motores que el despliegue acepta (MOTORES_HABILITADOS). -->
+  <xs:element name="motores">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="total" type="Entero"/>
+        <xs:element name="referencia" type="motor"/>
+        <xs:element name="motores">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="motor" type="motor" minOccurs="1" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
   <xs:element name="listado">
     <xs:complexType>
       <xs:all>

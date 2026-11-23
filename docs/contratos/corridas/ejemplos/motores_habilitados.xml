@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<motores><total tipo="numero">2</total><referencia>seir-ref</referencia><motores><motor>seir-ref</motor><motor>abm-ref</motor></motores></motores>

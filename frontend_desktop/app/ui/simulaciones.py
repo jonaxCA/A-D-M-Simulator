@@ -165,7 +165,7 @@ class VistaSimulaciones(QWidget):
         self.filtro.textChanged.connect(lambda _: self.pintar())
         self.motor = QComboBox()
         self.motor.addItem("Motor: todos", "")
-        for m in config.MOTORES:
+        for m in config.MOTORES_TODOS:
             self.motor.addItem(m, m)
         self.motor.currentIndexChanged.connect(lambda _: self.refrescar())
         barra.addWidget(self.pestanas, 1)
@@ -213,8 +213,7 @@ class VistaSimulaciones(QWidget):
         self.replicas.setValue(config.REPLICAS_DEFECTO)
         self.replicas.valueChanged.connect(lambda _: self._estimar())
         self.motor_lote = QComboBox()
-        for m in config.MOTORES:
-            self.motor_lote.addItem(m)
+        self._motores(list(config.MOTORES))
         self.forzar = QCheckBox("Forzar error (prueba)")
         self.estimacion = QLabel()
         self.estimacion.setObjectName("nota")
@@ -296,6 +295,7 @@ class VistaSimulaciones(QWidget):
         self.forzar.setVisible(self.v.es_admin())
         self.forzar.setChecked(False)
         self.refrescar()
+        self.cargar_motores()
         if not self.fichas:
             self.cargar_aprobadas()
         self.reloj.start(config.SEGUNDOS_COLA * 1000)
@@ -483,6 +483,17 @@ class VistaSimulaciones(QWidget):
 
     def cargar_aprobadas(self):
         en_hilo(_aprobadas, self.c, listo=self._aprobadas)
+
+    def cargar_motores(self):
+        en_hilo(servicios.motores_habilitados, self.c, listo=self._motores)
+
+    def _motores(self, motores):
+        # Solo los que corridas acepta: abm-gpu aparece donde hay un simulador de GPU (RF-H20).
+        elegido = self.motor_lote.currentText()
+        self.motor_lote.clear()
+        self.motor_lote.addItems(motores)
+        if elegido in motores:
+            self.motor_lote.setCurrentText(elegido)
 
     def _aprobadas(self, versiones):
         marcadas = {vid for vid, b in self.fichas.items() if b.isChecked()}

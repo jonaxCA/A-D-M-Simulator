@@ -144,8 +144,10 @@ def test_parametros_usan_definicion_y_unidad_del_contrato(qt, monkeypatch):
         listado = dialogo.findChild(QTableWidget)
         capturados.append(listado.item(0, 0).toolTip())
         assert listado.item(0, 1).text() == "contagios por caso"
-        assert listado.item(1, 5).text() == "Falta"
-        assert any("todavía no es simulable" in lbl.text() for lbl in dialogo.findChildren(QLabel))
+        assert listado.horizontalHeaderItem(3).text() == "Incertidumbre"
+        assert listado.item(0, 3).text() == "2.39 a 3.44 (IC95)"
+        assert listado.item(1, 6).text() == "Con fuente"
+        assert any("es simulable" in lbl.text() for lbl in dialogo.findChildren(QLabel))
 
     monkeypatch.setattr(QDialog, "exec", inspeccionar)
     mostrar_parametros(None, "Influenza", datos)

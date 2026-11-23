@@ -93,6 +93,16 @@ def estado_parametros(c, enfermedad_id):
     return c.pedir("parametros", "GET", "/api/v1/diseases/%s/parameters/status" % enfermedad_id, publico=True)
 
 
+def versiones_parametros(c, enfermedad_id):
+    # El historial de versiones de los parámetros de la enfermedad (D58): cada cambio guarda la versión completa con su motivo.
+    datos = c.pedir("parametros", "GET", "/api/v1/diseases/%s/parameters/versions" % enfermedad_id, publico=True)
+    return datos.get("versiones") or []
+
+
+def firma_version(c, version_id):
+    return c.pedir("aprobacion", "GET", "/api/v1/versions/%s/signature" % version_id)
+
+
 def zonas_mapa(c, enfermedad_id, dias):
     return c.pedir("zonas", "GET", "/api/v1/zones/map", params={"disease_id": enfermedad_id, "days": dias})
 
@@ -236,6 +246,16 @@ def lanzar_corrida(c, version_id, semilla, motor, forzar_error=False):
     if forzar_error:
         datos["forzar_error"] = True
     return c.pedir("corridas", "POST", "/api/v1/runs", datos, "solicitud")
+
+
+def motores_habilitados(c):
+    # Los motores que el despliegue acepta (RF-E15). Con un corridas que no responde la ruta, solo los de siempre:
+    # abm-gpu no se ofrece sin que el servicio lo anuncie.
+    try:
+        motores = c.pedir("corridas", "GET", "/api/v1/runs/engines").get("motores") or []
+    except api.ErrorServicio:
+        return list(config.MOTORES)
+    return [m for m in motores if m in config.MOTORES_TODOS] or list(config.MOTORES)
 
 
 def corridas(c, **filtros):
