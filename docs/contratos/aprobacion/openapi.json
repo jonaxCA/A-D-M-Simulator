@@ -444,7 +444,7 @@
         "tags": [
           "aprobacion"
         ],
-        "description": "Solo EPIDEMIOLOGO. Rechazar exige comentario (422). Quien creó la versión no puede revisarla (409). El UPDATE es condicional (WHERE status='en_revision'): si alguien resolvió antes, 409. Auditado (UPDATE) en la misma transacción. Al aprobar se avisa a notificaciones; si ese aviso falla, la aprobación se mantiene y solo se registra una advertencia en el log.",
+        "description": "EPIDEMIOLOGO y ADMINISTRADOR (scenarios.approve, D1). Rechazar exige comentario (422). Quien creó la versión no puede revisarla (409). El UPDATE es condicional (WHERE status='en_revision'): si alguien resolvió antes, 409. Auditado (UPDATE) en la misma transacción. Al aprobar y al rechazar se avisa al autor por notificaciones; si ese aviso falla, el dictamen se mantiene y solo se registra una advertencia en el log.",
         "security": [
           {
             "bearerAuth": []

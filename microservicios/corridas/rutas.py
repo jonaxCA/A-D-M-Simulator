@@ -39,7 +39,7 @@ CAMPOS_CORRIDA = (
 CAMPOS_LISTADO = (
     'id', 'status', 'seed', 'engine', 'queued_at', 'started_at', 'finished_at',
     'error_message', 'scenario_version_id', 'scenario_id', 'version_number',
-    'scenario_name', 'requested_by_username',
+    'scenario_name', 'requested_by_username', 'disease_name', 'region_name',
 )
 
 # Los mismos roles que la pantalla Simulaciones del monolito.
