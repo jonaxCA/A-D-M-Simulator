@@ -1,7 +1,7 @@
 # EPIDEMIA — Catálogo de microservicios
 
-Son **30 microservicios** pequeños, cada uno con una sola tarea, más una **consola** web para
-probarlos. Van del 1 al 31: el 30 es `calibracion` (D50), que el bloque E todavía no escribe. Los usan las apps de escritorio (XML) y móvil (JSON) y el sistema web, que desde D36
+Son **31 microservicios** pequeños, cada uno con una sola tarea, más una **consola** web para
+probarlos. Van del 1 al 31: el 30 es `calibracion` (D50) y el 31, `importacion` (D53). Los usan las apps de escritorio (XML) y móvil (JSON) y el sistema web, que desde D36
 los consume por HTTP, módulo por módulo, sin credenciales de PostgreSQL, MongoDB ni Redis.
 
 Parten de los siete servicios de `arquitectura_v1.md`, divididos en tareas específicas. Guardan
@@ -47,7 +47,7 @@ D30), y entran por nginx con HTTPS (D25, D26). Cuánto vive cada dato: el invent
 | Catálogos  | 5211–5215 |
 | Vigilancia | 5221–5226 |
 | Escenarios | 5231–5235 |
-| Simulación | 5241–5245 |
+| Simulación | 5241–5246 |
 | Analítica  | 5251–5253 |
 | Plataforma | 5260–5262 |
 
@@ -170,6 +170,7 @@ solo en local).
 | 19 | `resultados`  | Curvas e indicadores de una corrida                             | `GET /api/v1/runs/{id}/results`, `.../curves`, `.../indicators`, `.../band`                                                           | —                                                                                                 | `simulation_runs`, `scenario_versions`, `scenarios`, `diseases`, `regions`, `users` (`id`, `username`, `full_name`); MongoDB `series_corridas` | `roles` (`GET /api/v1/scopes/me`, alcance por región, D43); Redis (caché, 300 s); MongoDB (la serie: sin él, `/results` y `/curves` dan 503 y `/indicators` sigue) | 5243   |
 | 20 | `comparacion` | Compara corridas lado a lado                                    | `GET /api/v1/comparisons?runs=a,b,c[&base=a][&sin_intervencion=a]`                                                                                     | —                                                                                                 | —                                                                                                                                                                   | `resultados` (`GET /runs/{id}/results` y `.../band`) y `pareto` (`GET /pareto`, solo para los costos; sin él, no hay costos), con el token de la persona | 5244   |
 | 21 | `pareto`      | Costo contra impacto y frontera de Pareto, con la explicación de cada dominancia; sensibilidad exploratoria y estado de calibración (D46) | `GET /api/v1/pareto?runs=a,b,c`; `GET /api/v1/pareto/sensitivity`; `GET /api/v1/pareto/calibration`                                                                                             | —                                                                                                 | `simulation_runs` (el resumen, 038), `scenario_versions`, `scenarios`, `scenario_interventions`, `intervention_types` (costos), `diseases`, `regions`, `users`  | `roles` (`GET /api/v1/scopes/me`, alcance por región, D43)                                                                                       | 5245   |
+| 30 | `calibracion` | Calibra `seir-ref` contra una serie semanal observada: ABC por rechazo, con su ajuste, sus métricas y la configuración calibrada (D50); su trabajador, `calibracion-trabajador`, la corre | `POST /api/v1/calibrations` (202), `GET /api/v1/calibrations`, `GET /api/v1/calibrations/{id}`, `POST .../{id}/cancel`, `GET .../{id}/fit`, `GET .../{id}/scenario`, `GET /api/v1/calibrations/evaluate`, `GET /api/v1/calibrations/state` | `calibrations` (062: alta y cancelación; el trabajador, estado, intentos, avance y resultado) | `observed_datasets`, `observed_points` (061), `diseases` (`default_params`), `regions`, `region_age_groups`, `users` (`id`, `username`, `full_name`) | `roles` (`GET /api/v1/scopes/me`, alcance por región, D43); Redis: encola en `queue:calibraciones` y publica el avance | 5246   |
 
 - Excepción a "un dueño por tabla": `simulation_runs.status` lo cambian `corridas` (para
   cancelar una encolada) y `simulador` (para ejecutarla). Las dos usan la transición
@@ -191,6 +192,14 @@ solo en local).
 - `pareto` lee el resumen de cada corrida directo de `simulation_runs` (038), con su propio
   `datos.py`, y no llama a `resultados`: no necesita la serie de MongoDB. También arma el
   escenario de cada versión y lee los costos.
+- `calibracion` registra la calibración `encolado` y la mete en `queue:calibraciones`;
+  `calibracion-trabajador` (la misma imagen con `CALIBRACION_TRABAJADOR=1`, sin puerto publicado)
+  la corre con `procesamiento.calibracion` y guarda el resultado de una vez al terminar. Al
+  arrancar reencola las que quedaron en `ejecutando` hasta 3 intentos, con la misma
+  configuración; sin intentos o con otra versión del motor se cierran como fallidas (D38). Solo
+  calibra `seir-ref`: 5 000 muestras con 3 semillas son unas 15 000 corridas, unos 4 minutos.
+  `GET /api/v1/calibrations/state` da lo mismo que `/pareto/calibration`, que se retira cuando el
+  escritorio lo use (D46, D50).
 
 ## Analítica
 
@@ -205,8 +214,8 @@ solo en local).
 | #  | Servicio           | Hace una cosa                                  | Rutas principales                                                                                                              | Escribe         | Lee | Llama a                                  | Puerto |
 |----|--------------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|-----------------|-----|------------------------------------------|--------|
 | 25 | `notificaciones`   | Avisos para las apps                           | `GET /api/v1/notifications`, `POST /api/v1/notifications/{id}/read`, `POST /api/v1/notifications` (solo con token de servicio), `GET` y `PUT /api/v1/notifications/preferences` (D49) | `notifications`, `notification_preferences` | `users` (`id`, `is_active`), `user_roles`, `roles` | —                                        | 5261   |
-| 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/capacity`, `GET /api/v1/services/{nombre}/history`                                 | MongoDB `historial_servicios` (un sondeo por documento, 30 días, D28) | MongoDB `historial_servicios` | El `/health` de los 26, incluido el suyo, **en XML**; `notificaciones` para las alertas técnicas (F7) | 5262   |
-| —  | `consola`          | Página tipo Swagger/Postman para probar los 30 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
+| 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/capacity`, `GET /api/v1/services/{nombre}/history`                                 | MongoDB `historial_servicios` (un sondeo por documento, 30 días, D28) | MongoDB `historial_servicios` | El `/health` de los 31, incluido el suyo, **en XML**; `notificaciones` para las alertas técnicas (F7) | 5262   |
+| —  | `consola`          | Página tipo Swagger/Postman para probar los 31 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
 
 - La `consola` es una página: el navegador llama a cada servicio con la URL que da el
   directorio, y cada servicio abre CORS solo para `CONSOLE_ORIGIN` (en el compose,
@@ -241,8 +250,9 @@ web (JSON, D36) ─────┤                 │
    sincronizacion ──JSON (el lote y las correcciones)──► casos
    evidencias ──► bucket de Cloud Storage   (fotos y reportes, URLs firmadas)
    importacion ──► roles   (el alcance; la serie va a la base)
+   calibracion ──cola Redis──► calibracion-trabajador   (la serie y el resultado, en la base)
 
-   estado-servicios ──XML──► /health de los 30
+   estado-servicios ──XML──► /health de los 31
           └──► MongoDB (historial_servicios)
 ```
 
@@ -270,9 +280,11 @@ guarda su huella (SHA-256).
 | `mfa:alta:<id>`              | Huella del código de alta que un ADMINISTRADOR emitió para que esa cuenta enrole su MFA (D40) | 15 min; se borra al usarlo, así que sirve una sola vez | `auth` | — |
 | `queue:simulaciones:<motor>` | Corridas por ejecutar con ese motor y prioridad normal: `{"id", "forzar_error"}` en JSON | **Sin TTL**: la vacía el `simulador`, y lo que manda es PostgreSQL | `corridas`                                     | `cola`     |
 | `queue:simulaciones:<motor>:<prioridad>` | Las de prioridad `alta` o `baja` de ese motor (D44); el simulador las toma en el orden alta, normal y baja | **Sin TTL**: la vacía el `simulador`, y lo que manda es PostgreSQL | `corridas` | `cola` |
+| `queue:calibraciones`        | Calibraciones por correr: `{"id"}` en JSON (D50)                                   | **Sin TTL**: la vacía `calibracion-trabajador`, y lo que manda es PostgreSQL | `calibracion`                                  | `cola`     |
 | `lock:corrida:<version>`     | Marca de la petición que lo tomó                                                  | Unos segundos                                                      | `corridas`                                     | `candados` |
 | `worker:<motor>:<simulador>` | Latido de un simulador: su motor, su nombre (el del contenedor), la corrida que ejecuta y cuántas lleva, en JSON; `estado-servicios` cuenta los vivos y los ocupados por motor | 30 s; el simulador lo renueva cada 10 s mientras su trabajador corre | `simulador` | — |
 | `job:<id>:progress`          | Avance de una corrida (10, 30, 90 y 100)                                          | 24 h (86400 s), desde el último avance                             | `simulador`                                    | —          |
+| `calibration:<id>:progress`  | Avance de una calibración, de 0 a 100, cada 200 corridas                          | 24 h (86400 s), desde el último avance                             | `calibracion` (su trabajador)                  | —          |
 | `cache:<servicio>:<clave>`   | La respuesta, en JSON                                                             | Corto; lo fija cada servicio (`resultados`: 300 s)                 | `resultados`, `indicadores`, `series`, `zonas` | `cache`    |
 | `sync:lote:<id>`             | Resultado de un lote ya recibido                                                  | 7 días (`SYNC_LOTE_TTL_SECONDS`, por defecto 604800)               | `sincronizacion`                               | —          |
 | `sync:lote:<id>:candado`     | Marca de la petición que está procesando ese lote                                 | 300 s                                                              | `sincronizacion`                               | `candados` |

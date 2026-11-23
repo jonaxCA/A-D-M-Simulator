@@ -5,7 +5,7 @@
 
 ## Qué hay aquí
 
-Son 30 microservicios Flask pequeños, cada uno con una sola tarea, más una consola web para
+Son 31 microservicios Flask pequeños, cada uno con una sola tarea, más una consola web para
 probarlos. Los usan las apps de escritorio (XML, `frontend_desktop/`) y móvil (JSON,
 `frontend_movil/`) y, módulo por módulo, el sistema web (JSON, D36).
 
@@ -21,7 +21,7 @@ probarlos. Los usan las apps de escritorio (XML, `frontend_desktop/`) y móvil (
 microservicios/
   comun/        paquete epidemia_comun: lo que todos los servicios repiten
   <servicio>/   uno por servicio del catálogo: app.py, rutas.py, Dockerfile, README.md, tests/
-  consola/      página tipo Swagger/Postman para probar los 30
+  consola/      página tipo Swagger/Postman para probar los 31
 infra/          imagen base de Docker y docker-compose.yml
 docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
 ```
@@ -144,7 +144,7 @@ Ya existen:
 - Reconstruir un servicio sin tocar los demás:
   `docker compose -f infra/docker-compose.yml up -d --build --no-deps <servicio>` (nombrarlo activa su perfil)
 - Salud: `curl "http://localhost:<puerto>/health?format=json"`
-- Salud de los 30 y directorio: `curl "http://localhost:5262/api/v1/services/health?format=json"`
+- Salud de los 31 y directorio: `curl "http://localhost:5262/api/v1/services/health?format=json"`
   y `/api/v1/services` (`estado-servicios`)
 - Swagger: `http://localhost:<puerto>/docs`
 - Consola de pruebas: `http://localhost:5260`. Ábrela con `localhost`: los servicios solo abren
@@ -181,10 +181,13 @@ Están en `docs/decisiones/decisiones.md`; si algo de aquí choca con ese archiv
 - **Cloud Storage (D30):** `evidencias` guarda los archivos en un bucket, con URLs firmadas para
   los privados; PostgreSQL guarda solo los metadatos.
 - **Límites de consumo (D31):** contador `ratelimit:<usuario>:<ruta>` en Redis, en
-  `epidemia_comun`; más permisivo en `casos` y `sincronizacion`, más estricto en `corridas`.
+  `epidemia_comun`; más permisivo en `casos` y `sincronizacion`, más estricto en `corridas` y `calibracion`.
 - **MFA y dispositivos (D40, D41):** `auth` pide TOTP a ADMINISTRADOR, EPIDEMIOLOGO y AUTORIDAD_SANITARIA y es dueño de
   `user_mfa` y `mfa_backup_codes`; `sesiones` limita las sesiones por cuenta y es dueño de
   `session_devices`. Migraciones 050 y 051.
+- **Calibración (D50):** `calibracion` registra y expone las calibraciones de `seir-ref` contra
+  una serie observada y `calibracion-trabajador` (la misma imagen, `CALIBRACION_TRABAJADOR=1`) las
+  corre con `procesamiento/calibracion/`. Es dueño de `calibrations` (migración 062).
 
 Si te piden algo que ninguna de estas cubre ni está en `docs/decisiones/decisiones.md`, pregunta antes
 de implementarlo.

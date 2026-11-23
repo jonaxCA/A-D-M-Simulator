@@ -40,3 +40,15 @@ def categoria(engine_version, trazabilidad=(), enfermedad=None, region=None):
         motivo, nombre = "Calibrado, todavía sin validar con datos independientes.", "prediccion"
     return {"categoria": nombre, "modelo_verificado": verificado, "motivo": motivo,
             "texto": TEXTOS[nombre]}
+
+
+def estado_modelo(version, enfermedad=None, region=None):
+    # Lo que dan pareto (/pareto/calibration, D46) y calibracion (/calibrations/state, D50).
+    ficha = ESTADO[version]
+    clase = categoria(version, (), enfermedad, region)
+    estado = ("validado" if ficha["validado"] else "calibrado" if ficha["calibrado"]
+              else "sin_calibrar")
+    return {"engine_version": version, "estado": estado, "verificado": ficha["verificado"],
+            "calibrado": ficha["calibrado"], "validado": ficha["validado"],
+            "categoria": clase["categoria"], "motivo": clase["motivo"], "texto": clase["texto"],
+            "evidencia": ficha["evidencia"]}

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
-SIMULACION = ("corridas", "simulador", "resultados", "comparacion", "pareto")
+SIMULACION = ("corridas", "simulador", "resultados", "comparacion", "pareto", "calibracion")
 
 
 def _importaciones(ruta):

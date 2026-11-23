@@ -17,7 +17,7 @@ archivos, así que un contrato que no coincide con el servicio es un error del s
 - Un `.xsd` cuando el recurso viaja en XML como documento propio: escenario, resultado de
   una corrida, enfermedad con sus parámetros, caso, lote de sincronización, serie observada
   (`importacion`), el error (`problem+xml`) y, para la app de escritorio, las respuestas de
-  corridas, intervenciones, aprobación, comparación y Pareto. Los tipos compartidos están en `comun/tipos.xsd` y la
+  corridas, intervenciones, aprobación, comparación, Pareto y calibración. Los tipos compartidos están en `comun/tipos.xsd` y la
   serie diaria de una corrida, en `comun/serie.xsd`.
 
 ## Rutas que no llevan contrato propio

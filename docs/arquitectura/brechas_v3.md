@@ -15,7 +15,7 @@ Todas las decisiones de `decisiones/` (D1 a D35) están aceptadas. Lo que queda 
 
 Primero se termina el documento de arquitectura. El código se toca después, con el plan de implementación (§10).
 
-**Ya resueltas:** I2 y S3; S1 (con pruebas de revocación); A1 (`abm-ref` en `procesamiento/abm/`, corre en `simulador-abm`; FLAME GPU solo si sobra tiempo) y A2 ([`ficha_simulador.md`](ficha_simulador.md)). C9: aplicar dosis y marcar avisos como leídos basta como «actualización de información» de la móvil (D32). A6, la calibración, queda fuera de alcance por D24.
+**Ya resueltas:** I2 y S3; S1 (con pruebas de revocación); A1 (`abm-ref` en `procesamiento/abm/`, corre en `simulador-abm`; FLAME GPU solo si sobra tiempo) y A2 ([`ficha_simulador.md`](ficha_simulador.md)). C9: aplicar dosis y marcar avisos como leídos basta como «actualización de información» de la móvil (D32). A6, la calibración: D24 la dejó fuera y D50 la reabrió; la cierra el servicio `calibracion` (E7, 2026-11-23).
 
 ## 1. Fallas de estructura
 

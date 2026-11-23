@@ -1,0 +1,87 @@
+{
+  "id": 3,
+  "dataset_id": 1,
+  "dataset_code": "COVID19_NL_2020_SINTOMAS",
+  "dataset_version": 1,
+  "disease_id": 1,
+  "region_id": 1,
+  "engine": "seir-ref",
+  "engine_version": "seir-ref-0.1",
+  "method": "abc-rechazo",
+  "method_version": "calibracion-0.1",
+  "config": {
+    "muestras": 5000,
+    "semillas": 3,
+    "cuantil": 0.01,
+    "semilla_muestreo": 1
+  },
+  "status": "completado",
+  "terminal": true,
+  "attempts": 1,
+  "progress": 100,
+  "error": null,
+  "requested_by": 4,
+  "requested_by_username": "ana",
+  "created_at": "2026-11-23T18:00:00+00:00",
+  "started_at": "2026-11-23T18:00:04+00:00",
+  "finished_at": "2026-11-23T18:03:32+00:00",
+  "estimados": [
+    {
+      "nombre": "r0",
+      "mediana": 2.592482823371249,
+      "p5": 2.285074056353612,
+      "p95": 3.045981687519636,
+      "minimo": 1.0,
+      "maximo": 5.0
+    },
+    {
+      "nombre": "rho",
+      "mediana": 0.3009150548048638,
+      "p5": 0.02289577768816817,
+      "p95": 0.6563101886971606,
+      "minimo": 0.01,
+      "maximo": 1.0
+    },
+    {
+      "nombre": "phi",
+      "mediana": 0.37494538973685865,
+      "p5": 0.11534932339982798,
+      "p95": 0.6286971500994931,
+      "minimo": 0.0,
+      "maximo": 1.0
+    }
+  ],
+  "perdida": {
+    "minima": 2.2511524317564526,
+    "umbral": 3.3191840452137824,
+    "aceptadas": 50,
+    "corridas": 15000
+  },
+  "metricas": {
+    "calibracion": {
+      "semanas": 15,
+      "rmse": 136.4546064634776,
+      "r2": 0.8863226328921892,
+      "cobertura": 0.6
+    },
+    "validacion": {
+      "semanas": 7,
+      "rmse": 3041.0122739698027,
+      "r2": -25.917849232924773,
+      "cobertura": 0.7142857142857143
+    }
+  },
+  "ventanas": {
+    "calibracion": {
+      "desde": "2020-03-01",
+      "hasta": "2020-06-07",
+      "semanas": 15
+    },
+    "validacion": {
+      "desde": "2020-06-14",
+      "hasta": "2020-07-26",
+      "semanas": 7
+    }
+  },
+  "huella_configuracion": "b05b32a0bea0317537b3f5b6adfa35d0f33004a5496027a13cb4a9d88916bbdc"
+}

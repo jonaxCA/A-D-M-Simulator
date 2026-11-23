@@ -1,7 +1,7 @@
 # EPIDEMIA - Consola de pruebas
 
-La página para comprobar que los 30 servicios funcionan, tipo Swagger y Postman. Hace las
-veces de las apps de escritorio y móvil mientras no existen. No es uno de los 30: no tiene
+La página para comprobar que los 31 servicios funcionan, tipo Swagger y Postman. Hace las
+veces de las apps de escritorio y móvil mientras no existen. No es uno de los 31: no tiene
 base, Redis ni contrato, y `estado-servicios` no la sondea.
 
 Puerto externo: 5260; puerto interno en Docker: 8000. Ábrela en `http://localhost:5260`,
@@ -47,7 +47,7 @@ descarga de internet la primera vez que se abre su pestaña.
 |------------------|-------------------------|--------|
 | `URL_DIRECTORIO` | `http://localhost:5262` | `estado-servicios` visto desde el navegador; se puede cambiar en la página |
 
-En cada servicio, `CONSOLE_ORIGIN` es el origen de la consola. El compose lo pone en los 30.
+En cada servicio, `CONSOLE_ORIGIN` es el origen de la consola. El compose lo pone en los 31.
 
 ## Probarlo
 

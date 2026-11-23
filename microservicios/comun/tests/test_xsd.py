@@ -58,7 +58,7 @@ def test_ejemplos_de_los_contratos(archivo):
 POR_CARPETA = {carpeta: xmlschema.XMLSchema(str(CONTRATOS / carpeta / (xsd + ".xsd")))
                for carpeta, xsd in [("corridas", "corrida"), ("intervenciones", "intervencion"),
                                     ("aprobacion", "aprobacion"), ("comparacion", "comparacion"),
-                                    ("pareto", "pareto")]}
+                                    ("pareto", "pareto"), ("calibracion", "calibracion")]}
 RESPUESTAS = [a for carpeta in POR_CARPETA for a in sorted((CONTRATOS / carpeta / "ejemplos").glob("*.xml"))
               if "peticion" not in a.name]
 

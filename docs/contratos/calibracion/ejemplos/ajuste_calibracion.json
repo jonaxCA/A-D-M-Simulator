@@ -1,0 +1,238 @@
+{
+  "calibration_id": 3,
+  "dataset_id": 1,
+  "dataset_code": "COVID19_NL_2020_SINTOMAS",
+  "dataset_version": 1,
+  "engine_version": "seir-ref-0.1",
+  "ventanas": {
+    "calibracion": {
+      "desde": "2020-03-01",
+      "hasta": "2020-06-07",
+      "semanas": 15
+    },
+    "validacion": {
+      "desde": "2020-06-14",
+      "hasta": "2020-07-26",
+      "semanas": 7
+    }
+  },
+  "estimados": [
+    {
+      "nombre": "r0",
+      "mediana": 2.592482823371249,
+      "p5": 2.285074056353612,
+      "p95": 3.045981687519636,
+      "minimo": 1.0,
+      "maximo": 5.0
+    },
+    {
+      "nombre": "rho",
+      "mediana": 0.3009150548048638,
+      "p5": 0.02289577768816817,
+      "p95": 0.6563101886971606,
+      "minimo": 0.01,
+      "maximo": 1.0
+    },
+    {
+      "nombre": "phi",
+      "mediana": 0.37494538973685865,
+      "p5": 0.11534932339982798,
+      "p95": 0.6286971500994931,
+      "minimo": 0.0,
+      "maximo": 1.0
+    }
+  ],
+  "metricas": {
+    "calibracion": {
+      "semanas": 15,
+      "rmse": 136.4546064634776,
+      "r2": 0.8863226328921892,
+      "cobertura": 0.6
+    },
+    "validacion": {
+      "semanas": 7,
+      "rmse": 3041.0122739698027,
+      "r2": -25.917849232924773,
+      "cobertura": 0.7142857142857143
+    }
+  },
+  "semanas": [
+    {
+      "inicio": "2020-03-01",
+      "observado": 7,
+      "mediana": 8.979480195016937,
+      "p5": 8.080774878584586,
+      "p95": 9.887959954622573,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-03-08",
+      "observado": 38,
+      "mediana": 13.678593910984574,
+      "p5": 10.190753131026474,
+      "p95": 18.772265907736934,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-03-15",
+      "observado": 40,
+      "mediana": 22.120121653614063,
+      "p5": 15.58890157805886,
+      "p95": 29.549287292782704,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-03-22",
+      "observado": 18,
+      "mediana": 35.98742794051469,
+      "p5": 23.245415438901833,
+      "p95": 53.80513560268091,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-03-29",
+      "observado": 39,
+      "mediana": 46.503157604745695,
+      "p5": 31.925682305989472,
+      "p95": 66.70750266834672,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-04-05",
+      "observado": 95,
+      "mediana": 62.600625992752725,
+      "p5": 46.270204069529655,
+      "p95": 86.23846976698049,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-04-12",
+      "observado": 61,
+      "mediana": 86.6182525564335,
+      "p5": 63.63734511778956,
+      "p95": 122.40426930882464,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-04-19",
+      "observado": 94,
+      "mediana": 119.29195438314176,
+      "p5": 90.44773139219173,
+      "p95": 158.53938960932996,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-04-26",
+      "observado": 167,
+      "mediana": 163.43577045351083,
+      "p5": 124.38584330711936,
+      "p95": 221.2873739188532,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-05-03",
+      "observado": 254,
+      "mediana": 225.08617521392745,
+      "p5": 170.71606808176847,
+      "p95": 308.1869631334819,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-05-10",
+      "observado": 319,
+      "mediana": 308.2227691619846,
+      "p5": 237.60735290221885,
+      "p95": 425.9935723856189,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-05-17",
+      "observado": 359,
+      "mediana": 418.8233267135194,
+      "p5": 316.4435442854945,
+      "p95": 583.7234273849111,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-05-24",
+      "observado": 472,
+      "mediana": 564.8464211165718,
+      "p5": 428.77630239291045,
+      "p95": 817.1106296202207,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-05-31",
+      "observado": 853,
+      "mediana": 770.0459957111866,
+      "p5": 567.4450370875827,
+      "p95": 1166.8465869414492,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-06-07",
+      "observado": 1560,
+      "mediana": 1054.4194464430495,
+      "p5": 756.9772503606388,
+      "p95": 1634.8921179472866,
+      "ventana": "calibracion"
+    },
+    {
+      "inicio": "2020-06-14",
+      "observado": 1661,
+      "mediana": 1417.4979359667263,
+      "p5": 1036.6072131323128,
+      "p95": 2312.0347063282634,
+      "ventana": "validacion"
+    },
+    {
+      "inicio": "2020-06-21",
+      "observado": 2072,
+      "mediana": 1968.5816163208292,
+      "p5": 1358.1213907801798,
+      "p95": 3228.973430187753,
+      "ventana": "validacion"
+    },
+    {
+      "inicio": "2020-06-28",
+      "observado": 2876,
+      "mediana": 2672.011420774553,
+      "p5": 1803.8694286201326,
+      "p95": 4551.472606601871,
+      "ventana": "validacion"
+    },
+    {
+      "inicio": "2020-07-05",
+      "observado": 3295,
+      "mediana": 3649.863969088471,
+      "p5": 2305.1147284774543,
+      "p95": 6363.570088524014,
+      "ventana": "validacion"
+    },
+    {
+      "inicio": "2020-07-12",
+      "observado": 3234,
+      "mediana": 4870.236812357818,
+      "p5": 2900.566207534478,
+      "p95": 8925.50980051112,
+      "ventana": "validacion"
+    },
+    {
+      "inicio": "2020-07-19",
+      "observado": 2684,
+      "mediana": 6668.833716804384,
+      "p5": 3683.67358932893,
+      "p95": 12455.080346045985,
+      "ventana": "validacion"
+    },
+    {
+      "inicio": "2020-07-26",
+      "observado": 2061,
+      "mediana": 8838.9488418006,
+      "p5": 4483.376453591008,
+      "p95": 17423.138674451988,
+      "ventana": "validacion"
+    }
+  ],
+  "nota": "La banda p5-p95 junta la incertidumbre de los parámetros (las combinaciones aceptadas) y el ruido entre semillas. La banda de una corrida (/band) solo tiene el ruido entre semillas."
+}

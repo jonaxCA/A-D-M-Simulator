@@ -6,7 +6,7 @@ Función de soporte: la salud de los servicios y el directorio que usan las apps
 
 ## Dependencias
 
-- Los 30 servicios y su ruta `/health`.
+- Los 31 servicios y su ruta `/health`.
 - Redis (el estado y, hoy, el historial) y MongoDB (`historial_servicios`, D28).
 - Servicio: `estado-servicios`. La consola de pruebas muestra el panel.
 

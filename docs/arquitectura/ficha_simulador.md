@@ -389,21 +389,21 @@ Tasa de ataque media de 5 semillas, con 1 000 000 de agentes, 365 días, sin int
 | **Límites de aplicación** | De 1 000 a 20 000 000 agentes y de 1 a 1 095 días (§6). Comparar escenarios entre sí; no anticipar cifras reales: sin calibración, el R0 es nominal y el efectivo es ~10 % mayor (§11) | Los de `seir-ref`; con más de un millón de agentes es lento (§12) | Necesita una GPU de NVIDIA con CUDA 13 (§6 y §12) |
 | **Versión del algoritmo** | `seir-ref-0.1` | `abm-ref-0.1` | La de `procesamiento/abm_gpu/` (`engine_version` de su salida) |
 | **Escenarios de prueba** | `test_motor.py`, `test_caracterizacion_motor.py`, `test_contrato_motor.py`, `test_validacion_cientifica.py` (§9) | `test_abm.py`, `test_contrato_motor.py` | `test_abm_gpu.py` (solo con GPU) |
-| **Resultados de validación** | Tamaño final, letalidad, hospitalización y casos límite (§13); sensibilidad (§14); reproducibilidad (§15). **Verificado, no validado** con datos observados | Con un solo grupo por capa da la tasa de ataque de `seir-ref` (§10); reproducible (§15). Verificado, no validado | Igual que `abm-ref` dentro del ruido entre semillas (§10). Verificado en la GPU de desarrollo, no validado |
+| **Resultados de validación** | Tamaño final, letalidad, hospitalización y casos límite (§13); sensibilidad (§14); reproducibilidad (§15). Calibrado contra la serie de D50 (§19), con cobertura de validación de 71 %, debajo del 80 % de la tolerancia: **verificado, no validado** con datos observados | Con un solo grupo por capa da la tasa de ataque de `seir-ref` (§10); reproducible (§15). Verificado, no validado | Igual que `abm-ref` dentro del ruido entre semillas (§10). Verificado en la GPU de desarrollo, no validado |
 | **Categoría de sus corridas (D39)** | Exploratoria | Exploratoria | Exploratoria |
 
 ## 17. Exploratoria, predicción y resultado validado (D39)
 
-Ningún modelo está calibrado ni validado contra datos observados, así que **todas las corridas son exploratorias**: sirven para comparar escenarios entre sí, no para anticipar cifras reales.
-- Para que una corrida sea una *predicción*, el modelo tiene que calibrarse contra una serie observada de esa enfermedad y región (D24, reabierto).
+Ningún modelo está declarado calibrado ni validado contra datos observados en `estado_validacion.json`, así que **todas las corridas son exploratorias**: sirven para comparar escenarios entre sí, no para anticipar cifras reales. La primera calibración de `seir-ref` está en la §19; declararlo calibrado es un PR revisado (D50).
+- Para que una corrida sea una *predicción*, el modelo tiene que calibrarse contra una serie observada de esa enfermedad y región (D50, §19).
 - Para que sea un *resultado validado*, el modelo tiene que reproducir además datos que no se usaron para calibrar, dentro de la tolerancia que declare esta ficha.
 - Las §13 a §15 hacen del modelo un modelo *verificado*, que se muestra junto a la categoría pero no la sube.
 
 ## 18. Serie observada (D50, D6)
 
-Es la serie con la que se va a calibrar y validar `seir-ref` (D50). Todavía no se calibra: falta el
-servicio `calibracion` (E7). Entra con la migración 061, como el conjunto
-`COVID19_NL_2020_SINTOMAS` versión 1, y la sirve `importacion` (D53).
+Es la serie con la que se calibra y valida `seir-ref` (D50, §19), con el servicio `calibracion`
+(E7). Entra con la migración 061, como el conjunto `COVID19_NL_2020_SINTOMAS` versión 1, y la sirve
+`importacion` (D53).
 
 - **Qué es:** los casos confirmados de COVID-19 de residentes de Nuevo León, por semana
   epidemiológica de inicio de síntomas (de domingo a sábado). Son conteos, sin registros por persona
@@ -431,3 +431,62 @@ servicio `calibracion` (E7). Entra con la migración 061, como el conjunto
   `python -I datos/scripts/build_serie_observada.py agrega <zip>`. Escribe
   [`covid19_nl_2020_semanal.csv`](../../datos/observados/covid19_nl_2020_semanal.csv) con todas las
   semanas de 2020. `python datos/scripts/build_serie_observada.py` regenera la 061 desde ese CSV.
+
+## 19. Calibración (D50, E7)
+
+`seir-ref` se calibra contra una serie semanal observada con el servicio `calibracion`; la lógica es
+`procesamiento/calibracion/`, sin base ni Flask. Solo `seir-ref`: con 15 000 corridas, `abm-ref`
+tardaría unas 57 h con un millón de agentes (§12). Evidencia:
+[`docs/pruebas/calibracion/2026-11-23`](../pruebas/calibracion/2026-11-23/LEEME.md).
+
+- **Qué se estima:** `r0` (1 a 5), ρ, la fracción de contagios que se reporta (0.01 a 1), y φ, la
+  reducción de contactos de la Jornada Nacional de Sana Distancia (0 a 1). Los tres rangos son
+  supuestos del análisis (regla 8).
+- **Qué queda fijo:** los parámetros de la enfermedad del catálogo, con sus supuestos; la población
+  de la región por edad (la gente sin edad se prorratea, supuesto del método); las capas de contacto
+  del motor; `CIERRE_ESCUELAS` desde el 23-03-2020 con reducción 1, y `CIERRE_TRABAJO` (30-03) y
+  `REDUCCION_AFORO` (23-03) con reducción φ, las tres sin fin; e
+  `infectados_iniciales = max(1, round(c₀/ρ))`, con c₀ los casos de la primera semana.
+- **Modelo de observación:** el caso simulado de la semana *w* es ρ por los contagios (S → E) de esa
+  semana desplazados 5 días, la mediana de incubación de Lauer et al. 2020. Los infectados
+  iniciales ya son infecciosos el día 0, así que cuentan como inicio de síntomas ese día. ρ y el
+  desfase viven en `procesamiento/calibracion/`, nunca en el motor.
+- **Método:** ABC por rechazo (Toni et al. 2009) sobre un hipercubo latino (McKay et al. 1979): 5 000
+  combinaciones, cada una con las semillas 1 a 3. La distancia es la pérdida media
+  L = Σ_w (log(1 + o_w) − log(1 + s_w))² en la ventana de calibración, y se aceptan las 50 de menor
+  distancia (1 %). Cada parámetro se reporta con la mediana y el p5–p95 de las aceptadas, y la banda
+  semanal sale de sus 150 trayectorias.
+- **Ventanas:** las primeras ⅔ de las semanas (`round(2W/3)`) calibran y el resto valida, sin entrar
+  nunca a la pérdida. Con la serie de D50, 15 y 7 semanas.
+- **Métricas:** RMSE y R² en conteos, con la mediana de la banda, y la cobertura: la fracción de
+  semanas observadas dentro del p5–p95. Se calculan por separado en cada ventana.
+- **Tolerancia para `validada`** (D50, fijada antes de correr la validación): cobertura de al menos
+  **80 %** en las semanas de validación. La banda es un intervalo del 90 %; el margen es supuesto del
+  equipo.
+- **Reproducibilidad:** cada calibración guarda método y versión (`abc-rechazo`, `calibracion-0.1`),
+  `engine_version`, el conjunto con su versión, los rangos, la semilla del muestreo, las semillas, el
+  cuantil y las ventanas. Con eso sale idéntica bit a bit con la misma versión de NumPy. Solo vale
+  para su `engine_version`: si se corrige el R0 efectivo (§11), se calibra otra vez.
+- **Prueba sintética:** `procesamiento/tests/test_calibracion.py` genera una serie con parámetros
+  conocidos y ruido de Poisson y revisa que el algoritmo los recupere dentro de su p5–p95. Una serie
+  así no es observada, así que no sube ninguna categoría.
+
+**Resultado con la serie de D50** (2026-11-23):
+
+| Parámetro | Mediana | p5–p95 |
+|---|---|---|
+| r0 | 2.59 | 2.29–3.05 |
+| ρ | 0.30 | 0.02–0.66 |
+| φ | 0.37 | 0.12–0.63 |
+
+| Ventana | Semanas | RMSE | R² | Cobertura |
+|---|---|---|---|---|
+| Calibración | 15 | 136 | 0.89 | 60 % |
+| Validación | 7 | 3 041 | −25.9 | 71 % |
+
+- El r0 calibrado cae dentro del IC de Billah et al. 2020 (2.39–3.44). r0 y φ se confunden
+  (correlación de 0.96 entre las aceptadas), y ρ casi no se identifica.
+- **No pasa la tolerancia:** el modelo sigue creciendo después del pico observado de julio, porque φ
+  es constante y la Jornada no termina. `seir-ref` puede declararse *calibrado* para COVID-19 en
+  Nuevo León (corridas `prediccion` con esa configuración), pero no *validado*. Declararlo es un PR
+  revisado sobre `estado_validacion.json` (D39, D50); por ahora sigue sin calibrar.

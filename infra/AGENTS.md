@@ -14,7 +14,8 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
    - El compose la construye primero: es el servicio `base`, con cero réplicas, y cada
      servicio la pide con `additional_contexts` (`epidemia/base: service:base`). Así nunca
      se busca en Docker Hub. No la publiques ahí.
-   - Los servicios de simulación (`corridas`, `simulador`, `resultados`, `comparacion` y `pareto`)
+   - Los servicios de simulación (`corridas`, `simulador`, `resultados`, `comparacion`, `pareto` y
+     `calibracion`, con su trabajador)
      parten de `epidemia/base-simulacion` (`docker/base-simulacion.Dockerfile`): lo mismo, sin
      `backend_web` (E8). Los de identidad, de `epidemia/base-identidad`, y los de F (vigilancia,
      analítica y plataforma), de `epidemia/base-vigilancia`, igual que `evidencias`, `importacion`, `aprobacion`, `poblacion` y `tipos-intervencion` (D, sin

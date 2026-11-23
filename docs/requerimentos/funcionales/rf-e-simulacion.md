@@ -31,6 +31,7 @@ Es la primera mitad del proceso **P3** de [`procesos_v3.md`](../../arquitectura/
 | RF-E15 | El lote elige su motor: `seir-ref`, `abm-ref` o `abm-gpu` (D2, D22, D23). Cada motor tiene su simulador y su cola | `corridas` solo acepta un motor que esté habilitado en ese despliegue. Sin GPU, `abm-ref` es el respaldo | 3.1, 3.2 | Microservicios, Escritorio | Alta | En parte: `corridas` ya lo acepta solo si `MOTORES_HABILITADOS` lo nombra; el escritorio todavía no ofrece `abm-gpu` (RF-H20) |
 | RF-E19 | Al arrancar, el simulador recupera las corridas que quedaron a medias (D19) | Las `ejecutando` se cierran como `fallido` y las `encolado` de su motor vuelven a la cola | 3.2 | Microservicios | Alta | Hecho |
 | RF-E20 | El simulador guarda el resumen de la corrida en `simulation_runs` y la serie diaria en MongoDB, en `series_corridas` (D28) | Hay un documento por día de cada corrida, que se recupera por `run_id`. `simulation_results` deja de usarse | 3.2 | Microservicios, Bases de datos | Alta | Hecho (D-1): el resumen va a `simulation_runs` (038) y la serie a `series_corridas`; `simulation_results` se retiró (041) |
+| RF-E17 | Barrido de calibración: se lanza una calibración de `seir-ref` contra una serie observada y se sigue su avance (D50, reabierto) | `POST /api/v1/calibrations` de `calibracion` responde 202 y la encola; `calibracion-trabajador` corre el ABC por rechazo y guarda el resultado al terminar. Lanzan EPIDEMIOLOGO, ANALISTA y ADMINISTRADOR (`calibrations.run`, 062), con `RUN` en la auditoría; se cancela con `CANCEL`. Una interrumpida se reencola hasta 3 intentos (D38) | 3.1, 3.2 | Microservicios | Media | Hecho (servicio, E7): falta que el escritorio la lance (A4) |
 | RF-E21 | Dos peticiones a la vez no lanzan dos veces la misma versión | `corridas` toma un candado por versión en Redis mientras registra el lote | 3.1 | Microservicios | Media | Hecho |
 
 Las corridas pasan por los estados de la base: `encolado`, `ejecutando`, `completado`, `fallido` y `cancelado` (RN-21).
@@ -41,5 +42,4 @@ Las corridas pasan por los estados de la base: `encolado`, `ejecutando`, `comple
 |---|---|---|
 | RF-E13 | Límite de corridas a la vez | Cada simulador toma una corrida de su cola; el tope por lote ya está en RF-E03 |
 | RF-E16 | Rechazar corridas que no caben en memoria | El límite de población ya lo ponen el XSD y la validación (RF-D03) |
-| RF-E17 | Barrido de calibración | D24 está reabierta: `pareto` solo informa el estado de calibración; la ejecución espera el método del bloque 0 (D46) |
 | RF-E18 | Guardar resultados parciales | Una corrida interrumpida se cierra como fallida y se vuelve a lanzar |
