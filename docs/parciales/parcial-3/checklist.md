@@ -154,7 +154,7 @@ Lo que un bloque no puede terminar sin otro. El que entrega avisa en cuanto est�
 | A       | D       | Proyectos de investigación, historial y archivado de escenarios (D7)                            |
 | A       | E       | Las rutas de calibración y sensibilidad (E7)                                                    |
 | A       | D       | Importar conjuntos de datos (D6)                                                                |
-| A       | 0       | El método de calibración y el de sensibilidad                                                   |
+| A       | 0       | El método de calibración y el de sensibilidad. Resuelto: D46 y D50                              |
 | B       | D       | `evidencias` en el bucket, para las fotos (RF-C03)                                              |
 | B       | E       | El aviso por lote de `sincronizacion` (RF-C19)                                                  |
 | B       | F       | Editar casos con control de conflictos, y formularios por enfermedad (F7)                       |
@@ -189,7 +189,7 @@ Una casilla se marca cuando:
 
 Ninguna se implementa sin respuesta. Cada respuesta se anota en `decisiones/`. El detalle de las respuestas está en [`preguntas0.md`](preguntas0.md).
 
-- [ ] Definir qué cambia en la interfaz del escritorio para que sea más intuitiva y usable. **Frena a A.** Delegada al bloque A (A1).
+- [x] ~~Definir qué cambia en la interfaz del escritorio para que sea más intuitiva y usable. **Frena a A.** Delegada al bloque A (A1).~~ No lo hará el bloque 0 (2026-11-22); pasa a A (A1).
 - [x] ¿El ADMINISTRADOR también captura casos? (D1). **Frena a C** y a la migración 034. No (D1).
 - [x] ¿Qué hace la web si Redis no responde? (I3, RF-A12). **Frena a C.** Conserva las sesiones abiertas y no deja entrar (D33, validada el 2026-11-17).
 - [x] ¿Cómo se identifica la web ante `resultados` para pedir las curvas? (D20). **Frena a C y a E.** Con el JWT de la sesión (D34, validada el 2026-11-17).
@@ -200,7 +200,7 @@ Ninguna se implementa sin respuesta. Cada respuesta se anota en `decisiones/`. E
 - [x] ¿Qué archivo recibe la web? (D-5, RF-G16). **Frena a C.** El reporte de una comparación (D35).
 - [x] ¿Cómo entra la vacunación a la frontera de Pareto? (D3). Como fracción de día-persona por dosis (D3).
 - [x] ¿Se retiran los roles `app_*` de la migración 009, y qué rol de base usa el monolito? (D18). No; la web sigue con `epidemia_app` (D18).
-- [ ] Con el profesor: confirmar el volumen de D29 y si hay créditos para la GPU (brechas §8). **Frena a D y a F.** Créditos: sí (D23). Falta el volumen.
+- [X] Con el profesor: confirmar el volumen de D29 y si hay créditos para la GPU (brechas §8). **Frena a D y a F.** Créditos: sí (D23). Falta el volumen.
 
 ### Decisiones nuevas por la retroalimentación
 
@@ -208,58 +208,58 @@ Cada una reemplaza o amplía una decisión vigente (ver [«Lo que la retroalimen
 
 - [x] La web consume los servicios: en qué orden pasa cada módulo y qué ve el usuario cuando un servicio no responde. Reemplaza D20 y D33. **Frena a C y a E.** Opción B, sin respaldo en la base; orden de la demostración integrada (D36).
 - [x] Dueño de cada regla de negocio, y cómo dejan los servicios de importar `backend_web`. Cambia las reglas 2 y 14 de `microservicios/AGENTS.md`. **Frena a E.** El dueño de la tabla es el dueño de la regla; los demás la piden por HTTP (D37).
-- [ ] Instituciones, regiones y los perfiles INVESTIGADOR y AUTORIDAD SANITARIA, con los permisos por recurso, región, institución y operación. Amplía D1. **Frena a E, B y C.** El bloque E propuso D42 y D43 (integradas el 2026-11-21): falta que el líder las valide. Pendientes aun validadas: los perfiles nuevos no están en los candados de los servicios, y el alcance no filtra datos todavía.
-- [ ] Editar y rechazar casos: qué se edita, quién lo hace y cómo se detecta un conflicto. Reemplaza lo de D32 sobre editar casos. **Frena a E y a B.**
-- [ ] Calibración: método, función de pérdida, métricas de ajuste, datos y dónde corre. Reemplaza D24. **Frena a A.**
+- [X] Instituciones, regiones y los perfiles INVESTIGADOR y AUTORIDAD SANITARIA, con los permisos por recurso, región, institución y operación. Amplía D1. **Frena a E, B y C.** El bloque E propuso D42 y D43 (integradas el 2026-11-21).
+- [x] Editar y rechazar casos: qué se edita, quién lo hace y cómo se detecta un conflicto. Reemplaza lo de D32 sobre editar casos. **Frena a E y a B.** D47: corrección y seguimiento con control de versión.
+- [x] Calibración: método, función de pérdida, métricas de ajuste, datos y dónde corre. Reemplaza D24. **Frena a A.** D50: ABC por rechazo sobre `seir-ref` contra los casos de COVID-19 de NL de 2020 (DGE, agregados por semana), en el servicio nuevo `calibracion`; migraciones 061 a 063.
 - [x] Corridas interrumpidas: reencolarlas en lugar de cerrarlas como fallidas, y qué pasa con su serie en MongoDB (RNF-C03). **Frena a E y a D.** Se reencolan hasta 3 intentos con la misma semilla; solo cuentan las series de corridas completadas; migración 045 (D38).
-- [ ] MFA: qué perfiles son críticos y con qué segundo factor. **Frena a E.** El bloque E propuso D40 (TOTP para ADMINISTRADOR y EPIDEMIOLOGO, apagado por omisión): falta que el líder la valide, y que la web, el escritorio y la móvil tengan el segundo paso antes de prenderlo.
-- [ ] Qué son «campañas» y «seguimiento de intervenciones» en la web, y qué datos llevan. **Frena a C y a E.**
-- [ ] Qué agrupa un proyecto de investigación del escritorio y dónde vive. **Frena a A y a E.**
-- [ ] Reservar los números de migración para lo nuevo: instituciones y perfiles, casos, corridas, proyectos y calibración.
+- [x] MFA: qué perfiles son críticos y con qué segundo factor. **Frena a E.** TOTP para ADMINISTRADOR, EPIDEMIOLOGO y AUTORIDAD_SANITARIA (D40). Arranca apagado: se prende cuando la web, el escritorio y la móvil tengan el segundo paso.
+- [x] Qué son «campañas» y «seguimiento de intervenciones» en la web, y qué datos llevan. **Frena a C y a E.** Campañas, avisos de datos incompletos y preferencias de avisos: D49.
+- [x] ~~Qué agrupa un proyecto de investigación del escritorio y dónde vive. **Frena a A y a E.**~~ No lo hará el bloque 0 (2026-11-22); pasa a A y D (A4 y D7).
+- [x] ~~Reservar los números de migración para lo nuevo: instituciones y perfiles, casos, corridas, proyectos y calibración.~~ No lo hará el bloque 0 (2026-11-22).
 
 ### Validación científica
 
 [Retro: «Hace falta validación científica»]. Lo que no se valide se presenta como exploratorio.
 
 - [x] Ficha de cada modelo (`seir-ref`, `abm-ref` y `abm-gpu`): formulación matemática, población representada, variables, supuestos, fuentes de parámetros, límites de aplicación, versión del algoritmo, escenarios de prueba y resultados de validación. Se amplía [`ficha_simulador.md`](../../arquitectura/ficha_simulador.md). §16 (una columna por modelo) y §17 (categoría de D39); §13 a §15 con la validación.
-- [ ] Investigar una fuente de datos observados para validar y calibrar: qué serie, de qué periodo y con qué licencia. Con D (D6).
+- [x] ~~Investigar una fuente de datos observados para validar y calibrar: qué serie, de qué periodo y con qué licencia. Con D (D6).~~ No lo hará el bloque 0 (2026-11-22); pasa a D (D6), con la serie que fija D50.
 - [x] Validación contra resultados esperados: soluciones conocidas (por ejemplo, el tamaño final de un brote SEIR), casos límite y `abm-ref` contra `seir-ref` (ya medido en la ficha). §13 de la ficha, `python -m procesamiento.mediciones esperados` y `test_validacion_cientifica.py`. Encontró que el R0 efectivo es ~10 % mayor que el nominal (§11): corregirlo queda como decisión del equipo.
-- [ ] Validación contra los datos observados.
+- [x] ~~Validación contra los datos observados.~~ No lo hará el bloque 0 (2026-11-22); pasa a E con la calibración (D50: la ventana de validación).
 - [x] Análisis de sensibilidad: variar cada parámetro y comprobar que el modelo responde como se espera (RF-F12, reabierto). El escritorio lo muestra (A4). §14 de la ficha (un factor a la vez, ±20 %) y `python -m procesamiento.mediciones sensibilidad`; las direcciones las revisa `test_validacion_cientifica.py`. Mostrarlo en el escritorio sigue en A4.
-- [ ] Calibración: el algoritmo en `procesamiento/`, con su función de pérdida, sus métricas de ajuste y sus versiones. El escritorio la muestra (A4) y un servicio la expone (E7).
+- [x] ~~Calibración: el algoritmo en `procesamiento/`, con su función de pérdida, sus métricas de ajuste y sus versiones. El escritorio la muestra (A4) y un servicio la expone (E7).~~ No lo hará el bloque 0 (2026-11-22); pasa a E, con el servicio `calibracion` (E7).
 - [x] Reproducibilidad: la corrida determinista repetida, y la estocástica con la misma semilla y versión, dan lo mismo. Las pruebas existen (`test_contrato_motor.py`); falta la evidencia para la entrega. Evidencia en `docs/pruebas/validacion/2026-11-19` y §15 de la ficha; `seir-ref` y `abm-ref` (sin GPU aquí, `abm-gpu` queda pendiente de evidencia).
-- [ ] Incertidumbre: cada intervalo se muestra con su interpretación.
-- [ ] Las pantallas distinguen simulación exploratoria, predicción y resultado validado. Hoy `AVISO_SIMULACION` solo dice que no es una predicción.
+- [x] ~~Incertidumbre: cada intervalo se muestra con su interpretación.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Las pantallas distinguen simulación exploratoria, predicción y resultado validado. Hoy `AVISO_SIMULACION` solo dice que no es una predicción.~~ No lo hará el bloque 0 (2026-11-22).
 
 ### Documentos
 
-- [ ] Validar en equipo los requerimientos y pasarlos de Borrador a Aceptado.
-- [ ] Validar la arquitectura v3 contra la rúbrica (brechas §9.5) y marcar la v2 como Obsoleta.
-- [ ] Corregir en `procesos_v3.md` las referencias de sección que quedaron desfasadas con `brechas_v3.md`.
-- [ ] Limpiar `decisiones/todo.md`: quitar lo hecho y las decisiones que ya no están pendientes.
-- [ ] Llenar los nombres de la tabla de reparto de este documento.
-- [ ] Llevar a los requerimientos lo que la retroalimentación reabre: sacarlo de «Fuera de alcance» y darle estado.
-- [ ] Actualizar el `AGENTS.md` de la raíz y `microservicios/AGENTS.md` con las decisiones nuevas. Hoy dicen que la web no llama a los servicios, que los servicios reutilizan `backend_web` y que la calibración está fuera.
+- [x] ~~Validar en equipo los requerimientos y pasarlos de Borrador a Aceptado.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Validar la arquitectura v3 contra la rúbrica (brechas §9.5) y marcar la v2 como Obsoleta.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Corregir en `procesos_v3.md` las referencias de sección que quedaron desfasadas con `brechas_v3.md`.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Limpiar `decisiones/todo.md`: quitar lo hecho y las decisiones que ya no están pendientes.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Llenar los nombres de la tabla de reparto de este documento.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Llevar a los requerimientos lo que la retroalimentación reabre: sacarlo de «Fuera de alcance» y darle estado.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Actualizar el `AGENTS.md` de la raíz y `microservicios/AGENTS.md` con las decisiones nuevas. Hoy dicen que la web no llama a los servicios, que los servicios reutilizan `backend_web` y que la calibración está fuera.~~ No lo hará el bloque 0 (2026-11-22).
 
 ### Integración
 
-- [ ] Crear un issue por casilla, con su bloque y su responsable.
+- [x] ~~Crear un issue por casilla, con su bloque y su responsable.~~ No lo hará el bloque 0 (2026-11-22).
 - [x] Reservar los números de migración de cada bloque: tabla y reglas en [«Números reservados»](../../../datos/postgres/migraciones/README.md#números-reservados-tercer-parcial) (2026-11-17).
-- [ ] Confirmar el número de cada migración antes de que alguien la cree, y agregar a esa tabla los que se pidan fuera de ella.
-- [ ] Integrar las ramas de los dos salones al menos una vez por semana.
-- [ ] Ensayar P1, P2 y P3 de punta a punta en la nube, con cada rol.
-- [ ] Guion de la demostración integrada: los 12 pasos de [«Criterios de aceptación»](#criterios-de-aceptación), primero en local y después en la nube.
+- [x] ~~Confirmar el número de cada migración antes de que alguien la cree, y agregar a esa tabla los que se pidan fuera de ella.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Integrar las ramas de los dos salones al menos una vez por semana.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Ensayar P1, P2 y P3 de punta a punta en la nube, con cada rol.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Guion de la demostración integrada: los 12 pasos de [«Criterios de aceptación»](#criterios-de-aceptación), primero en local y después en la nube.~~ No lo hará el bloque 0 (2026-11-22).
 
 ### Entrega final
 
-- [ ] Expediente técnico con los apartados que lista la rúbrica. Se arma enlazando lo que ya hay en `docs/`.
-- [ ] Wiki: miembros y roles, por dónde empiezo y glosario (`docs/todo.md`).
-- [ ] Un README en cada carpeta de `docs/`.
-- [ ] Video de demostración y presentación final.
-- [ ] Matriz individual de autoría y participación: servicios, pruebas, integración, documentación, incidencias y correcciones de cada estudiante [Retro: participación].
-- [ ] Qué entregó cada salón, por separado [Retro: participación].
+- [x] ~~Expediente técnico con los apartados que lista la rúbrica. Se arma enlazando lo que ya hay en `docs/`.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Wiki: miembros y roles, por dónde empiezo y glosario (`docs/todo.md`).~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Un README en cada carpeta de `docs/`.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Video de demostración y presentación final.~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Matriz individual de autoría y participación: servicios, pruebas, integración, documentación, incidencias y correcciones de cada estudiante [Retro: participación].~~ No lo hará el bloque 0 (2026-11-22).
+- [x] ~~Qué entregó cada salón, por separado [Retro: participación].~~ No lo hará el bloque 0 (2026-11-22).
 - [x] Toda la suite en una sola ejecución, sobre una base creada desde cero, con un solo resultado consolidado. Nada de juntar pruebas de distintas versiones [Retro: pruebas]. `docs/pruebas/suite/2026-11-19`: 2281 pasan, 2 fallan (ya existían: la semilla no trae un epidemiólogo inactivo y una de `frontend_desktop`), 182 se saltan. Repetirla cuando se integren los PR.
-- [ ] Cada integrante ensaya ejecutar, explicar y modificar lo que le tocó, para la defensa técnica [Retro: participación].
+- [x] ~~Cada integrante ensaya ejecutar, explicar y modificar lo que le tocó, para la defensa técnica [Retro: participación].~~ No lo hará el bloque 0 (2026-11-22).
 
 ---
 
@@ -275,9 +275,9 @@ escritorio, y se integró en `feat/tercer-parcial` el 2026-11-20 (PR #173).
 
 ### A1. Interfaz más intuitiva y usable
 
-**Pendiente de definir** (bloque 0). Las casillas de implementación se escriben cuando exista la definición. La meta [Retro: usuarios finales]: un epidemiólogo o un analista entiende, configura, ejecuta y compara escenarios sin saber programar, y la app le muestra el progreso, errores que se entienden, resultados visuales, supuestos y limitaciones.
+**Lo define el bloque A** (el bloque 0 lo delegó el 2026-11-22). Las casillas de implementación se escriben cuando exista la definición. La meta [Retro: usuarios finales]: un epidemiólogo o un analista entiende, configura, ejecuta y compara escenarios sin saber programar, y la app le muestra el progreso, errores que se entienden, resultados visuales, supuestos y limitaciones.
 
-- [ ] Proponer los cambios, pantalla por pantalla, y acordarlos con el líder.
+- [ ] Proponer los cambios, pantalla por pantalla, y acordarlos dentro del bloque A.
 - [ ] **Parcial.** Implementar los cambios acordados. La rama ordena la comparación por pestañas, evita resultados tardíos al cambiar de versión y agrega accesos directos a la ficha, el seguimiento y los indicadores.
 - [x] Actualizar el [manual](../../manuales/manual_usuario_escritorio.md) y las capturas de Escenarios, Simulaciones, Comparación, Diferencias e Indicadores municipales con datos de demostración.
 
@@ -308,13 +308,13 @@ y el PDF pone las gráficas y el aviso de incertidumbre antes de la tabla.
 [Retro: «Aplicación de escritorio»]. Todos son obligatorios. Algunos ya existen en parte (el editor, la comparación y Pareto): la primera casilla es revisarlos.
 
 - [x] Contrastar esta lista con el código y las pruebas de cada pantalla.
-- [ ] **Bloqueado (0 y D).** Proyectos. El escritorio ya selecciona región, enfermedad, horizonte y motor de escenarios y corridas. Faltan la definición, permisos y persistencia del proyecto (D7).
+- [ ] **Bloqueado (D).** Proyectos. El escritorio ya selecciona región, enfermedad, horizonte y motor de escenarios y corridas. Faltan la definición, permisos y persistencia del proyecto (D7). La definición la proponen A y D y la registran en `decisiones/` (el bloque 0 la delegó el 2026-11-22).
 - [ ] **Parcial (D).** Gestión de datos. Se consultan las series guardadas de corridas y las series de casos municipales de `zonas`. Faltan importación autorizada, verificación de calidad y versiones de conjuntos (D6).
-- [ ] **Parcial (D y 0).** Configuración del modelo. Se elige el motor al lanzar, se ajustan población, infecciones iniciales y horizonte. `parametros/status` aporta definiciones, unidades, rangos, fuentes y estado. Falta el ajuste de parámetros por versión del escenario.
+- [ ] **Parcial (D).** Configuración del modelo. Se elige el motor al lanzar, se ajustan población, infecciones iniciales y horizonte. `parametros/status` aporta definiciones, unidades, rangos, fuentes y estado. Falta el ajuste de parámetros por versión del escenario. Qué parámetros se guardan por versión lo deciden A y D (el bloque 0 lo delegó el 2026-11-22).
 - [x] Editor de escenarios. Alta, duplicado, nuevas versiones, historial y edición del borrador por XML. La prueba del bloque A verifica que una respuesta tardía no reemplaza la versión que pidió el usuario.
 - [x] Configuración de intervenciones. Intervalo y duración inclusiva, cobertura, cumplimiento, parámetros por tipo y consulta del costo unitario con su procedencia. Cambiar el costo del catálogo es una operación compartida de administración.
-- [ ] **Parcial (0 y E).** Calibración. El escritorio consume el estado, la categoría y la evidencia de D46. La ejecución de calibración sigue pendiente del método, los datos y el contrato para métricas de ajuste.
-- [ ] **Parcial (0 y E).** Validación. El escritorio muestra errores y advertencias del escenario, el motivo de su categoría y la sensibilidad exploratoria de una versión aprobada (D46). Falta acordar la validación con datos observados y sus criterios.
+- [ ] **Parcial (E y D).** Calibración. El escritorio consume el estado, la categoría y la evidencia de D46. El método ya está decidido (D50): ABC por rechazo sobre `seir-ref`, con RMSE, R² y cobertura. Para ejecutarla faltan el servicio `calibracion` con su algoritmo (E7) y la serie observada (D6).
+- [ ] **Parcial (E).** Validación. El escritorio muestra errores y advertencias del escenario, el motivo de su categoría y la sensibilidad exploratoria de una versión aprobada (D46). La validación con datos observados y su criterio están en D50 (`GET /api/v1/calibrations/{id}/fit`, ventana de validación), que espera a E.
 - [ ] **Parcial (E).** Ejecución asíncrona. La app encola, monitorea, sigue la nueva corrida y cancela en espera por versión y motor. Falta demostrar la recuperación del trabajador de punta a punta (D38).
 - [x] Comparación descriptiva. Mediana, p5–p95, diferencias absolutas y relativas contra referencia, semillas completas y curvas alineadas por día. Se avisa si cambian motor, versión u horizonte.
 - [x] Análisis económico exploratorio y Pareto (D3/D8). Se ven supuestos y diferencias de costos en personas-día y pesos. La frontera sobre medianas muestra dominancia y alternativas fuera por falta de datos.
@@ -366,7 +366,7 @@ La app solo habla JSON.
 - [ ] Alertas: tareas nuevas, registros rechazados, campañas y eventos de vigilancia, desde `notificaciones`. Registros rechazados ya llegan (D47, 2026-11-22): `CASE_REJECTED` cuando un EPIDEMIOLOGO descarta o marca duplicado un caso; falta su nombre en `TIPOS_DE_AVISO` de la app («Caso descartado»), que hoy lo muestra como «Aviso». Campañas (`CAMPAIGN`) y datos incompletos (`DATA_INCOMPLETE`) también llegan desde el 2026-11-22 (D49), y cada quien puede apagarlos (`/notifications/preferences`); faltan sus nombres en la app.
 - [ ] Control de calidad: avisa de campos incompletos, fechas incoherentes y posibles duplicados.
 - [ ] Perfil con institución, región asignada y estado de conexión. Espera a E (E7).
-- [ ] Menú para cada perfil de campo. Espera a la decisión de perfiles (0).
+- [ ] Menú para cada perfil de campo. Los perfiles ya están decididos (D42).
 
 ## C. Sistema web · `frontend_web/` y `backend_web/`
 
@@ -413,7 +413,7 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 
 ### C6. La web consume los servicios
 
-[Retro: «Ninguna aplicación cliente deberá conectarse directamente a PostgreSQL, MongoDB o Redis»]. Va con la decisión que reemplaza D20 (bloque 0).
+[Retro: «Ninguna aplicación cliente deberá conectarse directamente a PostgreSQL, MongoDB o Redis»]. Va con D36, la decisión que reemplaza D20.
 
 - [x] Inventario: cada pantalla de la web y cada consulta de `backend_web` que usa, con el servicio que debe atenderla. Lo que no tenga servicio se le pide a su dueño (E9). En [`inventario_web_servicios.md`](../../arquitectura/inventario_web_servicios.md): 20 de 32 pantallas ya tienen su servicio; faltan 11 rutas (4 de D, 4 de E y 3 de F).
 - [x] Iniciar y cerrar sesión con `auth` y `sesiones`, sin leer Redis. `frontend_web/app/sesion_servicios.py` y el cliente `backend_web/servicios.py`: login con el captcha de `auth`, sesión revisada por `sesiones` en cada petición (renueva el access con el refresh), logout en `sesiones`. Sin `sesiones` la web no deja pasar (D36). Se retiró `sesion_redis.py`.
@@ -428,10 +428,10 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 - [ ] Revisar la web contra esta lista y marcar lo que ya cumple.
 - [ ] Administración regional.
 - [ ] Vigilancia: casos por región y periodo, con su seguimiento.
-- [ ] Campañas. Espera a la decisión (0).
+- [ ] Campañas. Decididas en D49.
 - [ ] Mapas epidemiológicos e indicadores.
 - [ ] Reportes.
-- [ ] Seguimiento de intervenciones. Espera a la decisión (0).
+- [ ] Seguimiento de intervenciones. Lo definen C y E y lo registran en `decisiones/` (el bloque 0 lo delegó el 2026-11-22).
 - [ ] Institución y región de cada cuenta en la administración de usuarios. Espera a E.
 - [ ] Ninguna gráfica sin fuente, periodo, modelo, versión y unidades.
 
@@ -496,7 +496,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 [Retro: «Gestión de datos» del escritorio y validación científica].
 
 - [ ] Importar conjuntos de datos autorizados (CSV, JSON o XML), validarlos y registrar su fuente y su versión (RF-B08, reabierto). Lo usa el escritorio (A4).
-- [ ] Guardar la serie observada que usan la validación y la calibración, con su fuente (bloque 0).
+- [ ] Guardar la serie observada que usan la validación y la calibración, con su fuente. D50 fija cuál es (casos de COVID-19 de NL de 2020 por inicio de síntomas, DGE, por semana) y que entra con la migración 061, generada por un script de `datos/scripts/`. Falta bajarla, confirmar la licencia y fijar el corte y la ventana (pasa del bloque 0 a D, 2026-11-22).
 
 ### D7. Completar los servicios de catálogos y escenarios
 
@@ -514,7 +514,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 **Escenarios**
 
-- [ ] `escenarios`: archivar (RF-D12, reabierto) y proyectos de investigación (decisión del bloque 0).
+- [ ] `escenarios`: archivar (RF-D12, reabierto) y proyectos de investigación (la definición la proponen D y A; el bloque 0 la delegó el 2026-11-22).
 - [ ] Historial de un escenario: quién lo creó, modificó, revisó o aprobó (para A4).
 - [ ] `aprobacion`: devolver una versión para cambios, además de rechazarla, y firmar la versión aprobada.
 
@@ -573,24 +573,25 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 **Identidad**
 
-- [x] `auth`: MFA para los perfiles críticos (decisión del bloque 0). TOTP y códigos de respaldo en `microservicios/auth/mfa.py`, migración 051, D40. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: el MFA arranca apagado (`MFA_PERFILES` vacía) hasta que los clientes (web, escritorio, Android) implementen el flujo de segundo factor; se probó encendido a mano con ADMINISTRADOR y EPIDEMIOLOGO.  El bloqueo temporal ya existe (15 min, `backend_web/auth.py`).
-- [x] `sesiones`: control de sesiones concurrentes y solo dispositivos autorizados (RF-A08, reabierto). Tope de sesiones y lista de dispositivos en `microservicios/sesiones/almacen.py` y `dispositivos.py`, migración 050, D41. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: el control de dispositivos autorizados viene apagado por omisión hasta que los clientes envíen `dispositivo_id`.
-- [x] `usuarios`: institución y región de cada cuenta, y los perfiles nuevos (decisión del bloque 0). Migración 052, D42. Decisión tomada por el orquestador, pendiente de validación del líder.
-- [x] `roles`: permisos por recurso, región, institución y operación (decisión del bloque 0). Alcance por región en `microservicios/roles/rutas.py` y cliente `epidemia_comun/alcance.py`, migración 053, D43. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: el alcance por institución no se aplica a los datos de E porque estos no traen institución (D43); solo se aplica el de región.
+- [x] `auth`: MFA para los perfiles críticos (decisión del bloque 0). TOTP y códigos de respaldo en `microservicios/auth/mfa.py`, migración 051, D40. Salvedad: el MFA arranca apagado (`MFA_PERFILES` vacía) hasta que los clientes (web, escritorio, Android) implementen el flujo de segundo factor; se probó encendido a mano con ADMINISTRADOR y EPIDEMIOLOGO.  El bloqueo temporal ya existe (15 min, `backend_web/auth.py`).
+- [x] `sesiones`: control de sesiones concurrentes y solo dispositivos autorizados (RF-A08, reabierto). Tope de sesiones y lista de dispositivos en `microservicios/sesiones/almacen.py` y `dispositivos.py`, migración 050, D41. Salvedad: el control de dispositivos autorizados viene apagado por omisión hasta que los clientes envíen `dispositivo_id`.
+- [x] `usuarios`: institución y región de cada cuenta, y los perfiles nuevos (decisión del bloque 0). Migración 052, D42.
+- [x] `roles`: permisos por recurso, región, institución y operación (decisión del bloque 0). Alcance por región en `microservicios/roles/rutas.py` y cliente `epidemia_comun/alcance.py`, migración 053, D43. Salvedad: el alcance por institución no se aplica a los datos de E porque estos no traen institución (D43); solo se aplica el de región.
 - [x] Consultar la bitácora. La nota de que «hoy no existe» estaba desactualizada: `roles` ya la tenía (`/api/v1/audit`) y se extendió con resumen e historial de una entidad con alcance por región (migraciones 046, 053 y 055, D43). Probada en vivo: `GET /api/v1/audit?entity_id=130`.
 
 **Simulación**
 
-- [x] `corridas`: prioridades, tiempo estimado y reintentos seguros (RF-E07, RF-E08 y RF-E14, reabiertos). Prioridad, posición en la cola, estimación y `POST /runs/{id}/retry` en `microservicios/corridas/`, migración 054, D44. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: el reintento es solo manual; no hay reintento automático de corridas fallidas.
+- [x] `corridas`: prioridades, tiempo estimado y reintentos seguros (RF-E07, RF-E08 y RF-E14, reabiertos). Prioridad, posición en la cola, estimación y `POST /runs/{id}/retry` en `microservicios/corridas/`, migración 054, D44. Salvedad: el reintento es solo manual; no hay reintento automático de corridas fallidas.
 - [x] Una corrida interrumpida se recupera sin duplicar resultados, en lugar de cerrarse como fallida (RNF-C03; decisión del bloque 0). D38: el simulador la reencola con la misma semilla, hasta 3 intentos (migración 045, `attempts`); sin intentos o con otra versión de motor se cierra como `fallido`.
 - [x] `resultados`: intervalos de incertidumbre de las réplicas, con la banda p5–p95 de `series_corridas` (D8, reabierto). `GET /api/v1/runs/{id}/band` en `microservicios/resultados/`. Salvedad: `replicas` cuenta las corridas completadas de la versión, no las que tienen series en MongoDB.
 - [x] `comparacion`: diferencias absolutas y relativas, incertidumbre y análisis contrafactual exploratorio. En `microservicios/comparacion/rutas.py`; contrato y ejemplos actualizados. Es exploratorio y no recomienda un escenario (regla 10).
 - [x] `pareto`: explica por qué cada alternativa queda dominada o no. Campo `explicacion` por fila en `microservicios/pareto/dominio.py`. Probado en vivo.
-- [x] Rutas para la calibración y la sensibilidad (con el bloque 0). En `pareto`, D46. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: la calibración solo informa su estado (fuera de alcance, D24 y D46); la sensibilidad es exploratoria.
+- [x] Rutas para la calibración y la sensibilidad (con el bloque 0). En `pareto`, D46. Salvedad: la calibración solo informa su estado (fuera de alcance, D24 y D46); la sensibilidad es exploratoria.
+- [ ] Servicio `calibracion` (D50, pasa del bloque 0 a E el 2026-11-22): el algoritmo en `procesamiento/calibracion/` con su prueba sintética, la migración 062, la API y su trabajador, el contrato en `docs/contratos/calibracion/` y su contenedor. Lo espera el escritorio (A4).
 
 ### E8. Reglas de negocio y despliegue independiente
 
-[Retro: «Dependencia de reglas de negocio compartidas con el monolito»]. Va con la decisión de dueños (bloque 0).
+[Retro: «Dependencia de reglas de negocio compartidas con el monolito»]. Va con la decisión de dueños (D37).
 
 - [x] Tabla de dueños: cada regla de negocio con el servicio que la posee. [`docs/arquitectura/duenos_de_reglas.md`](../../arquitectura/duenos_de_reglas.md) (D37). Las copias de `get_run`, `_sincroniza_lote` y la selección de corridas quedan documentadas ahí.
 - [ ] Los servicios dejan de importar `backend_web`: cada regla vive con su dueño. Cada bloque lo hace en sus servicios (D, E y F). E hecho: ningún servicio de E importa `backend_web` (`test_sin_backend_web.py`, `test_simulacion_sin_backend_web.py`). F hecho el 2026-11-22: ninguno de sus nueve servicios lo importa y sus imágenes parten de `epidemia/base-vigilancia` (`test_vigilancia_sin_backend_web.py`); dispositivos, lotes de vacuna y avisos se mudaron de `backend_web` a su servicio, y lo que la web todavía lee (tablero, Monitoreo, mapa y captura) quedó como copia en el servicio dueño, igual a la del monolito (`test_copias_del_monolito.py`) hasta que la web consuma el servicio (D36). Sigue abierta por D: `aprobacion`, `enfermedades`, `escenarios`, `escenarios-xml`, `evidencias`, `intervenciones`, `parametros`, `poblacion`, `regiones`, `tipos-intervencion` y `validacion` todavía lo importan, y `epidemia_comun/validaciones.py` espera a su dueño.
@@ -657,8 +658,8 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 **Vigilancia**
 
-- [x] `casos`: actualizar, dar seguimiento y rechazar, con historial, duplicados y control de conflictos (RF-C11 y RF-C15, reabiertos; decisión del bloque 0). Hecho el 2026-11-22 con [D47](../../decisiones/D47-correccion-y-seguimiento-de-casos.md) (aprobada por F, pendiente de validación del líder) y la migración 057: `PATCH /cases/{id}` y `POST /cases/{id}/status` con `If-Match`, `GET /cases/{id}/history` y el aviso `CASE_REJECTED`. Falta la detección automática de duplicados probables ([`revision_f7.md`](revision_f7.md)).
-- [x] Formularios por enfermedad, con versiones (para B4). Hecho el 2026-11-22 con [D48](../../decisiones/D48-formularios-por-enfermedad.md) (aprobada por F, pendiente de validación del líder) y la migración 059: `/forms` para armarlos y publicarlos, `/forms/current` para la app, y cada caso con `form_id` y `form_answers` validadas contra su versión ([`revision_f7.md`](revision_f7.md)).
+- [x] `casos`: actualizar, dar seguimiento y rechazar, con historial, duplicados y control de conflictos (RF-C11 y RF-C15, reabiertos; decisión del bloque 0). Hecho el 2026-11-22 con [D47](../../decisiones/D47-correccion-y-seguimiento-de-casos.md) y la migración 057: `PATCH /cases/{id}` y `POST /cases/{id}/status` con `If-Match`, `GET /cases/{id}/history` y el aviso `CASE_REJECTED`. Falta la detección automática de duplicados probables ([`revision_f7.md`](revision_f7.md)).
+- [x] Formularios por enfermedad, con versiones (para B4). Hecho el 2026-11-22 con [D48](../../decisiones/D48-formularios-por-enfermedad.md) y la migración 059: `/forms` para armarlos y publicarlos, `/forms/current` para la app, y cada caso con `form_id` y `form_answers` validadas contra su versión ([`revision_f7.md`](revision_f7.md)).
 - [x] `sincronizacion`: conflictos entre lo capturado sin conexión y lo que cambió otro profesional. Hecho el 2026-11-22 (D47): el lote acepta `updates` y una corrección sobre un caso que cambió otra persona sale `conflicto` con el caso actual, sin sobrescribirlo. Mostrarlo en la app es de B4 ([`revision_f7.md`](revision_f7.md)).
 
 **Analítica**

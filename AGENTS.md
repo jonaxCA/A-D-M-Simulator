@@ -5,9 +5,8 @@
 
 ## Contexto
 
-Simulador de respuesta a epidemias (ver `README.md`). Proyecto universitario: seis personas
-programan. Buena parte del código se generó con IA y el equipo no lo conoce a fondo. Prefiere
-cambios pequeños, legibles y fáciles de revisar.
+Simulador de respuesta a epidemias (ver `README.md`). Proyecto universitario: siete personas
+programan. 
 
 ## Etapa actual: tercer parcial
 

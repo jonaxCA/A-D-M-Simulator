@@ -197,7 +197,7 @@ services:
       DATABASE_URL: ${DATABASE_URL_AUTH:-postgresql://svc_auth:${DB_PASSWORD_AUTH:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       SERVICIO_SESIONES_URL: http://sesiones:8000
       # Supuestos de D40 y D41. El MFA arranca apagado hasta que los clientes tengan los dos pasos;
-      # se activa con MFA_PERFILES=ADMINISTRADOR,EPIDEMIOLOGO.
+      # se activa con MFA_PERFILES=ADMINISTRADOR,EPIDEMIOLOGO,AUTORIDAD_SANITARIA.
       MFA_PERFILES: ${MFA_PERFILES:-}
       DISPOSITIVO_OBLIGATORIO: ${DISPOSITIVO_OBLIGATORIO:-0}
       MFA_ENROLAMIENTO_LIBRE: ${MFA_ENROLAMIENTO_LIBRE:-0}

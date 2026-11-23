@@ -1,6 +1,6 @@
 # D38 - Corridas interrumpidas: se reencolan, no se cierran como fallidas
 
-Fecha: 2026-11-19 · Estado: Aceptada (tomada en sesión por el equipo del salón 2; falta validarla con el líder) · Cambia RNF-C03
+Fecha: 2026-11-19 · Estado: Aceptada · Cambia RNF-C03
 
 ## Contexto
 La retroalimentación pide probar qué pasa si un trabajador se detiene después de guardar los resultados y antes de confirmar la corrida: no deben quedar corridas duplicadas ni resultados perdidos (demostración, paso 12).

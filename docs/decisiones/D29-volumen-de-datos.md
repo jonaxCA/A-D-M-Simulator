@@ -3,7 +3,7 @@
 Fecha: 2026-11-11 · Estado: Aceptada
 
 ## Contexto
-La rúbrica pide un conjunto considerable de datos y medir con y sin Redis. Qué es «considerable» depende del proyecto, y el profesor lo confirma cuando el sistema esté diseñado.
+La rúbrica pide un conjunto considerable de datos y medir con y sin Redis. 
 
 ## Opciones consideradas
 Candidato: las series diarias por corrida del ABM. La cifra no está propuesta.

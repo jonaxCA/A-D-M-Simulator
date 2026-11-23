@@ -42,8 +42,8 @@ con el bloqueo de cinco intentos de `auth/datos.py`, frena a quien adivina contr
 
 ### MFA (D40)
 
-- **Perfiles críticos:** `ADMINISTRADOR` y `EPIDEMIOLOGO`, cambiables con `MFA_PERFILES` (lista
-  separada por comas; sin definir o vacía, el MFA está apagado (valor por omisión) hasta que los clientes tengan los dos pasos; se activa con `MFA_PERFILES=ADMINISTRADOR,EPIDEMIOLOGO`). Los demás perfiles inician sesión como antes.
+- **Perfiles críticos:** `ADMINISTRADOR`, `EPIDEMIOLOGO` y `AUTORIDAD_SANITARIA`, cambiables con `MFA_PERFILES` (lista
+  separada por comas; sin definir o vacía, el MFA está apagado (valor por omisión) hasta que los clientes tengan los dos pasos; se activa con `MFA_PERFILES=ADMINISTRADOR,EPIDEMIOLOGO,AUTORIDAD_SANITARIA`). Los demás perfiles inician sesión como antes.
 - **Dos pasos:** con contraseña correcta y un perfil crítico, `/login` no regresa tokens sino
   `mfa_requerido`, `mfa_enrolado`, `mfa_token` y `mfa_expira`. El token es opaco (no un JWT),
   vive 5 min en Redis (`mfa:<huella>`) y se borra al usarlo o al quinto código fallido.
