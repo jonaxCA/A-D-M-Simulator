@@ -156,11 +156,15 @@ Con ese rol la app registra su teléfono (`dispositivos`), registra y consulta c
 sube sus fotos (`evidencias`), escanea lotes de vacuna (`vacunas`) y envía y consulta sus
 lotes de casos (`sincronizacion`). Es una cuenta de demostración: solo sirve en el entorno local.
 
-Los otros roles también pueden entrar, pero el inicio no les muestra «Capturar caso» ni «Mis
-casos» (RF-I19): solo los lotes de vacuna, los avisos y su perfil. La app guarda los roles que
-regresa el login con la sesión, para saberlos sin red; una sesión abierta antes de guardarlos los
-pregunta a `/users/me`. Ocultar el botón no es el candado: `casos` y `sincronizacion` rechazan a
-cualquier rol que no sea CAPTURISTA.
+Los otros perfiles también entran, con su propio menú (D56, `ui/inicio/Menu.kt`): el EPIDEMIOLOGO y
+la AUTORIDAD_SANITARIA ven «Casos» (los del servidor, con el seguimiento solo para leer),
+«Campañas», los lotes de vacuna para consultarlos, la consulta por zona y los avisos; el
+ADMINISTRADOR, lo mismo y además registra lotes; ANALISTA e INVESTIGADOR, la consulta por zona.
+Ninguno ve «Capturar caso» ni «Mis casos» (RF-I19). La app guarda los roles que regresa el login con
+la sesión, para saberlos sin red; una sesión abierta antes de guardarlos los pregunta a
+`/users/me`, y mientras tanto queda el menú del CAPTURISTA. Ocultar un botón no es el candado:
+`casos`, `sincronizacion` y `vacunas` rechazan a quien no debe, y `casos` y `zonas` recortan lo
+que se ve al alcance por región de la cuenta (D43).
 
 El inicio de sesión lleva captcha, que la app muestra y la persona contesta:
 

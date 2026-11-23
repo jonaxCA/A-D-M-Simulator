@@ -206,7 +206,38 @@ class ServidorFalso : Dispatcher() {
     @Volatile var versionRemota = 1
     val correcciones = CopyOnWriteArrayList<RecordedRequest>()
 
+    // GET /cases (D56): 25 por validar (ids 100 a 124) y 3 validados (200 a 202), paginados como el
+    // servicio y filtrados por status.
+    val casosEnServidor: List<Pair<Long, String>> =
+        (100L..124L).map { it to "pendiente" } + (200L..202L).map { it to "validado" }
+
+    private fun listaDeCasos(pedido: RecordedRequest): MockResponse {
+        val url = pedido.requestUrl!!
+        val estado = url.queryParameter("status")
+        val pagina = url.queryParameter("page")?.toInt() ?: 1
+        val tamano = url.queryParameter("per_page")?.toInt() ?: 20
+        val lista = casosEnServidor.filter { estado == null || it.second == estado }
+        val paginas = (lista.size + tamano - 1) / tamano
+        val casos = lista.drop((pagina - 1) * tamano).take(tamano).joinToString(",") { (id, status) ->
+            casoRemoto.replace("\"id\":41", "\"id\":$id").replace("\"status\":\"pendiente\"", "\"status\":\"$status\"")
+        }
+        return respuesta(200, """{"casos":[$casos],"total":${lista.size},"pagina":$pagina,"por_pagina":$tamano,"paginas":$paginas}""")
+    }
+
+    // vacunas: las campañas (D49), filtradas por status.
+    @Volatile var campanasEnServidor: List<Pair<Long, String>> = listOf(3L to "activa", 4L to "programada", 5L to "activa")
+
+    private fun campanas(pedido: RecordedRequest, ruta: String): MockResponse? {
+        if (ruta != "/api/v1/campaigns") return null
+        val estado = pedido.requestUrl!!.queryParameter("status")
+        val lista = campanasEnServidor.filter { estado == null || it.second == estado }
+        return respuesta(200, lista.joinToString(",", "{\"total\":${lista.size},\"campanas\":[", "]}") { (id, status) ->
+            """{"id":$id,"name":"Campaña $id","disease_id":1,"enfermedad":"Influenza","region_id":null,"municipio":"Nuevo León","starts_on":"2026-12-01","ends_on":"2026-12-15","target_population":120000,"description":"Adultos mayores","status":"$status","cancel_reason":null}"""
+        })
+    }
+
     private fun casos(pedido: RecordedRequest, ruta: String): MockResponse? = when {
+        ruta == "/api/v1/cases" && pedido.method == "GET" -> listaDeCasos(pedido)
         ruta == "/api/v1/forms/current" -> respuesta(200, formularios)
         ruta == "/api/v1/cases/incomplete" -> respuesta(
             200, """{"casos":[${casoRemoto.dropLast(1)},"faltantes":["edad","ubicación"]}],"total":1}""",
@@ -313,6 +344,7 @@ class ServidorFalso : Dispatcher() {
         notificaciones(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
         casos(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
         evidencias(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
+        campanas(request, request.path.orEmpty().substringBefore('?'))?.let { return it }
         SUBIDA.matchEntire(request.path.orEmpty().substringBefore('?'))?.takeIf { request.method == "POST" }?.let { ruta ->
             return evidencia ?: respuesta(
                 201,

@@ -18,7 +18,7 @@ Puerto externo: 5223; puerto interno en Docker: 8000. Contrato en
 | GET | `/api/v1/devices/{device_id}` | Uno propio; ADMINISTRADOR, cualquiera |
 | POST | `/api/v1/devices/{device_id}/revoke` | Lo revoca para siempre. Uno propio; ADMINISTRADOR, cualquiera |
 
-Las cuatro rutas son para los cuatro roles: cada quien maneja sus dispositivos y ADMINISTRADOR,
+Las cuatro rutas son para los seis perfiles (D42, D56): cada quien maneja sus dispositivos y ADMINISTRADOR,
 los de todos. El dispositivo de otra persona no existe para quien pregunta (404).
 
 - `device_uid` lo genera la app al instalarse (por ejemplo, un UUID): de 8 a 128 letras,

@@ -115,3 +115,33 @@ def test_mapa_desde_cache(cliente, token, redis_falso, monkeypatch):
     monkeypatch.setattr(consultas, "get_mapa_municipios",
                         lambda **_: pytest.fail("debió salir de la caché"))
     assert cliente.get("/api/v1/zones/map?format=json", headers=cabeceras).status_code == 200
+
+
+# ---- alcance por región (D43, D56) ---------------------------------------------------------
+
+def test_con_alcance_la_tabla_solo_trae_sus_municipios_y_pagina_aqui(cliente, token, alcance_falso):
+    alcance_falso["regiones"] = [2, 3]
+    datos = cliente.get("/api/v1/zones?format=json&size=1&page=2", headers=token()).get_json()
+    assert [z["id"] for z in datos["zonas"]] == [3]
+    assert (datos["total"], datos["pagina"], datos["paginas"], datos["desde"], datos["hasta"]) == (2, 2, 2, 2, 2)
+    # El mayor cambio sale solo de sus municipios: Apodaca y Escobedo empatan, gana la primera.
+    assert datos["mayor_cambio"]["zona"]["id"] == 2
+
+
+def test_con_alcance_un_municipio_ajeno_es_403(cliente, token, alcance_falso):
+    alcance_falso["regiones"] = [2, 3]
+    assert cliente.get("/api/v1/zones?format=json&region_id=1", headers=token()).status_code == 403
+    assert cliente.get("/api/v1/zones?format=json&region_id=2", headers=token()).status_code == 200
+
+
+def test_la_cuenta_nacional_ve_la_tabla_de_siempre(cliente, token, alcance_falso):
+    datos = cliente.get("/api/v1/zones?format=json", headers=token()).get_json()
+    assert datos["total"] == 4 and len(datos["zonas"]) == 4
+
+
+def test_la_exportacion_respeta_el_alcance(cliente, token, alcance_falso, monkeypatch):
+    from microservicios.zonas import rutas
+    monkeypatch.setattr(rutas, "log_audit", lambda *a, **k: None)
+    alcance_falso["regiones"] = [1]
+    datos = cliente.get("/api/v1/zones/export?format=json", headers=token()).get_json()
+    assert [z["id"] for z in datos["zonas"]] == [1] and datos["total"] == 1

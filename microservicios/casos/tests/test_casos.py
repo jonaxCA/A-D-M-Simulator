@@ -69,6 +69,8 @@ class BaseFalsa:
             return []
         if sql.startswith("SELECT version FROM cases"):
             return [(c["version"],) for c in self.casos if c["id"] == p[0]]
+        if sql.startswith("SELECT region_id FROM cases"):
+            return [(c["region_id"],) for c in self.casos if c["id"] == p[0]]
         if sql.startswith("SELECT version, action"):
             return [(h["version"], h["action"], int(h["changed_by"]),
                      datetime(2026, 10, 13, 9, 0, tzinfo=timezone.utc), h["status_before"],
@@ -89,6 +91,10 @@ class BaseFalsa:
         raise AssertionError(sql)
 
     def filtrar(self, sql, p):
+        # Solo el alcance (D43): la lista de regiones es el único parámetro que es lista.
+        if "c.region_id = ANY(%s)" in sql:
+            regiones = next(v for v in p if isinstance(v, list))
+            return [c for c in self.casos if c["region_id"] in regiones]
         return list(self.casos)
 
     @staticmethod
@@ -362,10 +368,50 @@ def test_crear_con_rol_sin_permiso_403(cliente, token, rol):
     assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE"
 
 
-@pytest.mark.parametrize("rol", ["CAPTURISTA", "EPIDEMIOLOGO", "ANALISTA", "ADMINISTRADOR"])
-def test_los_cuatro_roles_leen(cliente, token, rol):
+@pytest.mark.parametrize("rol", ["CAPTURISTA", "EPIDEMIOLOGO", "ANALISTA", "ADMINISTRADOR",
+                                 "INVESTIGADOR", "AUTORIDAD_SANITARIA"])
+def test_los_seis_perfiles_leen(cliente, token, rol):
     assert cliente.get("/api/v1/cases/1", headers=token(roles=(rol,))).status_code == 404
     assert cliente.get("/api/v1/cases?format=json", headers=token(roles=(rol,))).status_code == 200
+
+
+# ---- alcance por región (D43, D56) ---------------------------------------------------------
+
+def _dos_municipios(cliente, captura):
+    for region in (10, 11):
+        r = cliente.post("/api/v1/cases?format=json", json=cuerpo(local_uuid=str(uuid.uuid4()), region_id=region),
+                         headers=captura)
+        assert r.status_code == 201, r.get_json()
+
+
+def test_con_alcance_la_lista_y_los_incompletos_solo_traen_sus_municipios(cliente, captura, token, alcance_falso):
+    _dos_municipios(cliente, captura)
+    autoridad = token(roles=("AUTORIDAD_SANITARIA",))
+    alcance_falso["regiones"] = [11]
+    lista = cliente.get("/api/v1/cases?format=json", headers=autoridad).get_json()
+    assert (lista["total"], [c["region_id"] for c in lista["casos"]]) == (1, [11])
+    incompletos = cliente.get("/api/v1/cases/incomplete?format=json", headers=autoridad).get_json()
+    assert {c["region_id"] for c in incompletos["casos"]} <= {11}
+    alcance_falso["regiones"] = None
+    assert cliente.get("/api/v1/cases?format=json", headers=autoridad).get_json()["total"] == 2
+
+
+def test_con_alcance_el_detalle_y_el_historial_de_otro_municipio_son_403(cliente, captura, token, alcance_falso):
+    _dos_municipios(cliente, captura)
+    autoridad = token(roles=("AUTORIDAD_SANITARIA",))
+    alcance_falso["regiones"] = [11]
+    assert cliente.get("/api/v1/cases/1?format=json", headers=autoridad).status_code == 403
+    assert cliente.get("/api/v1/cases/1/history?format=json", headers=autoridad).status_code == 403
+    assert cliente.get("/api/v1/cases/2?format=json", headers=autoridad).status_code == 200
+    assert cliente.get("/api/v1/cases/2/history?format=json", headers=autoridad).status_code == 200
+    # Un caso que no existe sigue siendo 404, no 403.
+    assert cliente.get("/api/v1/cases/99/history?format=json", headers=autoridad).status_code == 404
+
+
+def test_una_cuenta_nacional_no_hace_la_consulta_de_la_region_del_historial(cliente, captura, base):
+    _dos_municipios(cliente, captura)
+    assert cliente.get("/api/v1/cases/1/history?format=json", headers=captura).status_code == 200
+    assert not [s for s in base.sentencias if "SELECT region_id FROM cases" in s[0]]
 
 
 def test_redis_caido_503(cliente, captura, apagar_redis):

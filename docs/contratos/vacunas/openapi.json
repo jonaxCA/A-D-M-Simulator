@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - vacunas",
     "version": "0.1.0",
-    "description": "Lotes de vacuna (tabla vaccine_lots) que la app móvil lee por QR o código de barras, y las dosis que se les aplican. Nunca se aplican más dosis de las que trae un lote, aunque dos teléfonos apliquen a la vez, ni a un lote caducado (la fecha se cuenta en hora de Monterrey). Registran y aplican CAPTURISTA y ADMINISTRADOR; consultan los cuatro roles. XML por defecto y JSON con ?format=json o Accept: application/json; los cuerpos se aceptan en los dos formatos."
+    "description": "Lotes de vacuna (tabla vaccine_lots) que la app móvil lee por QR o código de barras, y las dosis que se les aplican. Nunca se aplican más dosis de las que trae un lote, aunque dos teléfonos apliquen a la vez, ni a un lote caducado (la fecha se cuenta en hora de Monterrey). Registran y aplican CAPTURISTA y ADMINISTRADOR; consultan los seis perfiles. XML por defecto y JSON con ?format=json o Accept: application/json; los cuerpos se aceptan en los dos formatos."
   },
   "servers": [
     {
@@ -221,7 +221,7 @@
       "get": {
         "summary": "Buscar lotes",
         "operationId": "listar_lotes",
-        "description": "Los más recientes primero. Después de escanear, la app busca con lot_code: si total es 0, el lote no está registrado. Los cuatro roles.",
+        "description": "Los más recientes primero. Después de escanear, la app busca con lot_code: si total es 0, el lote no está registrado. Los seis perfiles.",
         "parameters": [
           {
             "in": "query",
@@ -359,7 +359,7 @@
       "get": {
         "summary": "Consultar un lote",
         "operationId": "consultar_lote",
-        "description": "Con sus dosis restantes y si ya caducó. Los cuatro roles.",
+        "description": "Con sus dosis restantes y si ya caducó. Los seis perfiles (D42, D56).",
         "parameters": [
           {
             "in": "path",
@@ -600,7 +600,7 @@
       "get": {
         "summary": "Campañas",
         "operationId": "listar_campanas",
-        "description": "Las campañas, de la más reciente a la más vieja (D49). Filtros: status, disease_id y region_id (las de ese municipio y las de todo el estado); limit de 1 a 200 (50). Los cuatro roles.",
+        "description": "Las campañas, de la más reciente a la más vieja (D49). Filtros: status, disease_id y region_id (las de ese municipio y las de todo el estado); limit de 1 a 200 (50). Los seis perfiles.",
         "security": [
           {
             "bearerAuth": []
@@ -834,7 +834,7 @@
       "get": {
         "summary": "Una campaña",
         "operationId": "consultar_campana",
-        "description": "Los cuatro roles.",
+        "description": "Los seis perfiles (D42, D56).",
         "security": [
           {
             "bearerAuth": []

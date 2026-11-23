@@ -97,4 +97,32 @@ class InicioViewModelTest {
 
         assertEquals(2, withTimeout(5_000) { modelo.noLeidos.first { it != null } })
     }
+
+    // ------------------------------------------------------------------ menú por perfil (D56)
+
+    @Test
+    fun el_epidemiologo_ve_lo_que_revisa_y_cuenta_por_validar_y_campanas_activas() = runBlocking<Unit> {
+        contenedor.almacen.abrir(tokens("a1", "r1"), cuenta = 12, roles = setOf("EPIDEMIOLOGO"))
+
+        val modelo = modelo()
+
+        val menu = withTimeout(5_000) { modelo.menu.first { it.revisa } }
+        assertFalse(menu.captura || menu.lotesRegistra)
+        assertEquals(25, withTimeout(5_000) { modelo.porValidar.first { it != null } })
+        assertEquals(2, withTimeout(5_000) { modelo.campanasActivas.first { it != null } })
+        val pedido = servidor.pedidosA("/api/v1/cases").first().requestUrl!!
+        assertEquals("pendiente" to "1", pedido.queryParameter("status") to pedido.queryParameter("per_page"))
+        assertTrue(servidor.pedidosA("/api/v1/cases/incomplete").isEmpty())
+    }
+
+    @Test
+    fun el_capturista_no_pide_lo_que_es_de_quien_revisa() = runBlocking<Unit> {
+        contenedor.almacen.abrir(tokens("a1", "r1"), cuenta = 12, roles = setOf("CAPTURISTA"))
+
+        val modelo = modelo()
+        modelo.contarAvisos()
+        withTimeout(5_000) { modelo.incompletos.first { it != null } }
+
+        assertTrue(servidor.pedidosA("/api/v1/cases").isEmpty() && servidor.pedidosA("/api/v1/campaigns").isEmpty())
+    }
 }
