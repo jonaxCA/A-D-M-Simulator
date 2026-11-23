@@ -432,7 +432,7 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 - [x] Campañas. Decididas en D49. `/campanas` con el servicio `vacunas`: consulta, alta y cancelación.
 - [x] Mapas epidemiológicos e indicadores.
 - [x] Reportes. `/reportes` reúne las descargas. Falta el reporte de la comparación (D2).
-- [x] Seguimiento de intervenciones. Lo definen C y E y lo registran en `decisiones/` (el bloque 0 lo delegó el 2026-11-22). Propuesta de C en [D51](../../decisiones/D51-seguimiento-de-intervenciones.md), falta que la valide E. `/intervenciones` muestra, por versión aprobada, lo programado, su costo, las corridas que lo simularon y las campañas de la vacunación.
+- [ ] Seguimiento de intervenciones. Lo definen C y E y lo registran en `decisiones/` (el bloque 0 lo delegó el 2026-11-22). **Falta que E valide [D51](../../decisiones/D51-seguimiento-de-intervenciones.md)**, la propuesta de C; la pantalla ya está. `/intervenciones` muestra, por versión aprobada, lo programado, su costo, las corridas que lo simularon y las campañas de la vacunación.
 - [x] Institución y región de cada cuenta en la administración de usuarios.
 - [x] Ninguna gráfica sin fuente, periodo, modelo, versión y unidades. Ficha bajo cada gráfica.
 

@@ -292,12 +292,25 @@ def test_review_con_cuerpo_invalido_422(cliente, mundo, revisor, cuerpo):
     assert revisar(cliente, revisor, cuerpo).status_code == 422
 
 
-def test_review_sin_token_401_y_solo_epidemiologo_403(cliente, token):
+def test_review_sin_token_401_y_analista_403(cliente, token):
+    # scenarios.approve (D1, 034): EPIDEMIOLOGO y ADMINISTRADOR; el ANALISTA no.
     cuerpo = {"decision": "aprobar"}
     assert revisar(cliente, {}, cuerpo).status_code == 401
-    for rol in ("ANALISTA", "ADMINISTRADOR"):
-        r = revisar(cliente, token(roles=(rol,)), cuerpo)
-        assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE"
+    r = revisar(cliente, token(roles=("ANALISTA",)), cuerpo)
+    assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE"
+
+
+def test_el_administrador_revisa_una_version_ajena(cliente, mundo, token):
+    mundo.estado = "en_revision"
+    r = revisar(cliente, token(roles=("ADMINISTRADOR",)), {"decision": "aprobar"})
+    assert r.status_code == 200 and mundo.estado == "aprobado"
+
+
+def test_el_administrador_tampoco_revisa_la_suya(cliente, mundo, token):
+    mundo.estado = "en_revision"
+    r = revisar(cliente, token(roles=("ADMINISTRADOR",), sub=str(AUTOR)), {"decision": "aprobar"})
+    assert r.status_code == 409 and "No puedes revisar una versión que tú creaste" in r.get_json()["detail"]
+    assert mundo.estado == "en_revision" and mundo.commits == 0
 
 
 def test_review_escenario_inexistente_404(cliente, revisor):

@@ -91,6 +91,8 @@ def mundo(monkeypatch):
                 return fila if params[0] == 77 and params[1] == 31 else None
             if sql.startswith("SELECT unit_cost"):
                 return m.tipo_costo[1:] if params[0] == m.tipo_costo[0] else None
+            if sql.startswith("SELECT cost_unit"):
+                return m.tipo_factor[1:] if params[0] == m.tipo_factor[0] else None
 
     class Conn:
         def cursor(self):
@@ -415,6 +417,47 @@ def test_factor_de_otra_version_404(cliente, token, mundo):
     assert r.status_code == 404 and not mundo.auditoria
 
 
+# --- personas-día de un tipo, sin versión (D3, D36) ----------------------------
+
+TIPO_FACTOR = "/api/v1/intervention-types/2/person-days"
+
+
+def test_factor_de_tipo_audita_en_la_misma_transaccion(cliente, token, mundo):
+    r = cliente.put(TIPO_FACTOR + "?format=json", headers=token(("EPIDEMIOLOGO",)), **con_json(FACTOR))
+    assert r.status_code == 200
+    assert r.get_json() == {"intervention_type_id": 2, **FACTOR}
+    assert [s[0].split()[0] for s in mundo.sentencias] == ["SELECT", "UPDATE"]
+    assert mundo.sentencias[1][1] == (0.5, None, True, 2) and mundo.commits == 1
+    contexto, accion, tipo, entidad, antes, despues, cur = mundo.auditoria[0]
+    assert (accion, tipo, entidad, contexto.user_id) == ("UPDATE", "intervention_types", 2, 7)
+    assert antes == {"person_days_per_unit": None, "person_days_source": None,
+                     "person_days_is_assumption": True}
+    assert despues == FACTOR and cur is not None
+
+
+def test_factor_de_tipo_solo_epidemiologo_y_administrador(cliente, token, mundo):
+    assert cliente.put(TIPO_FACTOR + "?format=json", **con_json(FACTOR)).status_code == 401
+    r = cliente.put(TIPO_FACTOR + "?format=json", headers=token(("ANALISTA",)), **con_json(FACTOR))
+    assert r.status_code == 403 and not mundo.sentencias
+    r = cliente.put(TIPO_FACTOR, headers=token(("ADMINISTRADOR",)), data=a_xml(FACTOR, "factor"),
+                    content_type="application/xml")
+    assert r.status_code == 200 and r.mimetype == "application/xml"
+    xmlschema.XMLSchema(str(CONTRATO / "intervencion.xsd")).validate(r.data.decode("utf-8"))
+
+
+def test_factor_de_tipo_solo_en_tipos_por_dosis(cliente, token, mundo):
+    mundo.tipo_factor = (2, "por_habitante_dia", None, None, True)
+    r = cliente.put(TIPO_FACTOR + "?format=json", headers=token(("ADMINISTRADOR",)), **con_json(FACTOR))
+    assert r.status_code == 422 and "por dosis" in r.get_json()["detail"]
+    assert not mundo.auditoria and mundo.commits == 0
+
+
+def test_factor_de_tipo_inexistente_404(cliente, token, mundo):
+    r = cliente.put("/api/v1/intervention-types/9/person-days?format=json",
+                    headers=token(("EPIDEMIOLOGO",)), **con_json(FACTOR))
+    assert r.status_code == 404 and not mundo.auditoria and mundo.commits == 0
+
+
 def test_redis_caido_503(cliente, token, mundo, apagar_redis):
     cabecera = token()
     apagar_redis()
@@ -476,7 +519,9 @@ def test_las_peticiones_de_ejemplo_se_aceptan(cliente, token, mundo):
                 ("mover_intervencion", "post", BASE + "/77/move", 200, ("ANALISTA",)),
                 ("actualizar_costo_intervencion", "put", BASE + "/77/cost", 200, ("EPIDEMIOLOGO",)),
                 ("actualizar_factor_personas_dia", "put", BASE + "/77/person-days", 200, ("EPIDEMIOLOGO",)),
-                ("actualizar_costo_tipo", "put", "/api/v1/intervention-types/2/cost", 200, ("EPIDEMIOLOGO",)))
+                ("actualizar_costo_tipo", "put", "/api/v1/intervention-types/2/cost", 200, ("EPIDEMIOLOGO",)),
+                ("actualizar_factor_tipo", "put", "/api/v1/intervention-types/2/person-days", 200,
+                 ("EPIDEMIOLOGO",)))
     for op, metodo, ruta, esperado, roles in llamadas:
         for ext, tipo in (("json", "application/json"), ("xml", "application/xml")):
             datos = (CONTRATO / "ejemplos" / ("%s_peticion.%s" % (op, ext))).read_bytes()

@@ -12,8 +12,9 @@ import secrets
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
-from flask import (Blueprint, current_app, jsonify, render_template, request, redirect,
+from flask import (Blueprint, abort, current_app, jsonify, render_template, request, redirect,
                    url_for, make_response, g, flash, session)
+from werkzeug.exceptions import HTTPException
 
 from backend_web import catalogo, formato, servicios
 from backend_web.servicios import ErrorServicio, ServicioNoDisponible
@@ -922,7 +923,6 @@ def caso_detalle(case_id):
     token = token_de_sesion()
     if request.method == "POST":
         if not tiene_permiso(g.user, "cases.approve"):
-            from flask import abort
             abort(403)
         try:
             servicios.cambia_estado_caso(
@@ -964,7 +964,6 @@ def campanas():
     errores, valores = [], {}
     if request.method == "POST":
         if not tiene_permiso(g.user, "catalogs.update"):
-            from flask import abort
             abort(403)
         valores = {k: (request.form.get(k) or "").strip() for k in
                    ("name", "disease_id", "region_id", "starts_on", "ends_on", "target_population",
@@ -1263,7 +1262,6 @@ def error_de_servicio(exc):
 @bp.app_errorhandler(Exception)
 def error_inesperado(exc):
     # La traza va al registro, nunca a la pantalla (RNF-E06).
-    from werkzeug.exceptions import HTTPException
     if isinstance(exc, HTTPException):
         return exc
     current_app.logger.exception("Error inesperado en %s", request.path)

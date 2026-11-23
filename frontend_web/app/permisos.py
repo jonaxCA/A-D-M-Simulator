@@ -43,10 +43,15 @@ def get_current_user():
 def permisos_de_la_sesion(token, user_id):
     guardados = session.get("permisos")
     if guardados and guardados.get("user_id") == user_id:
-        return set(guardados["codigos"])
-    datos = llamar("roles", "GET", "/api/v1/permissions/me", token=token)
-    session["permisos"] = {"user_id": user_id, "codigos": datos["permisos"]}
-    return set(datos["permisos"])
+        return set(guardados.get("codigos") or [])
+    try:
+        datos = llamar("roles", "GET", "/api/v1/permissions/me", token=token) or {}
+    except ErrorServicio:
+        # Si roles rechaza la consulta, la cuenta se queda sin permisos: falla cerrada.
+        return set()
+    codigos = list(datos.get("permisos") or [])
+    session["permisos"] = {"user_id": user_id, "codigos": codigos}
+    return set(codigos)
 
 
 def token_de_sesion():

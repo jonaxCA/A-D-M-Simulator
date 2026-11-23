@@ -35,6 +35,10 @@ from procesamiento.entrada_motor import (  # noqa: F401
 )
 
 from . import conversion
+# Normalizar y validar el codigo, y leer los parametros del formulario, viven en catalogo.py
+# (sin base) para que la web los use sin importar este modulo (D36).
+from .catalogo import (RE_CODIGO_ENFERMEDAD, normaliza_codigo,  # noqa: F401
+                       parametros_desde_form, valida_enfermedad)
 from .audit import log_audit
 from .db import a_jsonb, execute, get_conn, query
 
@@ -320,12 +324,6 @@ def get_enfermedades(busqueda=None, estado=None, pagina=1, por_pagina=10):
 # esquema entregado ya resuelve esto en la direccion correcta: PATOGENO_X se
 # siembra sin especificar is_active (o sea TRUE) y a proposito sin un solo
 # caso, porque es el "escenario de preparacion".
-
-# Normalizar y validar el codigo, y leer los parametros del formulario, viven en catalogo.py
-# (sin base) para que la web los use sin importar este modulo (D36).
-from .catalogo import (RE_CODIGO_ENFERMEDAD, normaliza_codigo,  # noqa: E402,F401
-                       parametros_desde_form, valida_enfermedad)
-
 
 def _actividad(casos_total, casos_30d):
     """Situacion epidemiologica derivada de `cases`, acotada a Nuevo Leon

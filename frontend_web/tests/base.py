@@ -78,10 +78,12 @@ class PuenteServicios:
                              "full_name": payload.get("full_name"),
                              "roles": payload.get("roles") or []}, sid=sid, jti=jti)
 
-    def __call__(self, servicio, metodo, ruta, token=None, params=None, cuerpo=None, correlacion=None):
+    def __call__(self, servicio, metodo, ruta, token=None, params=None, cuerpo=None, correlacion=None,
+                 cabeceras=None):
         from backend_web import servicios
         from backend_web.servicios import ErrorServicio, ServicioNoDisponible
-        cabeceras = dict(servicios.cabeceras_de_la_persona(), Accept="application/json")
+        cabeceras = dict(servicios.cabeceras_de_la_persona(), Accept="application/json",
+                         **(cabeceras or {}))
         if token:
             cabeceras["Authorization"] = "Bearer " + self._con_sesion(token)
         consulta = {k: v for k, v in dict(params or {}, format="json").items() if v is not None}
@@ -122,6 +124,10 @@ class AppTestCase(unittest.TestCase):
         super().setUpClass()
         cls.app = create_app()
         cls.app.testing = True
+        # El CSRF tiene sus propias pruebas (test_seguridad_web); aquí estorbaría a los formularios.
+        cls.app.config["CSRF_ACTIVO"] = cls.csrf_activo
+
+    csrf_activo = False
 
     def setUp(self):
         super().setUp()
