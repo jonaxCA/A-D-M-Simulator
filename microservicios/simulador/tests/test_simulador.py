@@ -64,6 +64,7 @@ def mundo(monkeypatch, redis_falso, mongo_falso):
     monkeypatch.setitem(trabajador.estado, "procesadas", 0)
     monkeypatch.setitem(trabajador.estado, "ultima", None)
     monkeypatch.setattr(trabajador, "series_pendientes", {})
+    monkeypatch.setattr(trabajador, "conciliacion_pendiente", [])
     return m
 
 
@@ -541,3 +542,81 @@ def test_ejemplos_iguales_al_contrato():
         ejemplo.with_suffix(".json").read_text(encoding="utf-8"))
     assert contenido["application/xml"]["examples"]["respuesta"]["value"] == \
         ejemplo.with_suffix(".xml").read_text(encoding="utf-8")
+
+
+HUELLA = "a" * 64
+
+
+@pytest.fixture
+def perdida(sin_base, monkeypatch, mongo_falso):
+    """La corrida 42 quedó completada y sin serie; el motor la regenera con `resultado`."""
+    p = {"resultado": dict(RESULTADO, huella_escenario=HUELLA),
+         "guardada": {"id": 42, "engine_version": "seir-ref-0.1", "scenario_checksum": HUELLA,
+                      "resumen": {"casos_acumulados": 3}}}
+    p["resultado"]["resumen"] = {"casos_acumulados": 3}
+    motor = motores.Motor("seir-ref", "seir-ref-0.1", lambda e, semilla: p["resultado"], ())
+    monkeypatch.setattr(trabajador, "del_nombre", lambda nombre: motor)
+    monkeypatch.setattr(datos, "corridas_completadas", lambda engine: [p["guardada"]])
+    return p
+
+
+def test_conciliar_regenera_la_serie_de_una_completada_sin_serie(perdida, mongo_falso):
+    assert trabajador.conciliar() is True
+    docs = list(mongo_falso["series_corridas"].find({"run_id": 42}, {"_id": 0}).sort("dia", 1))
+    assert [d["casos_activos"] for d in docs] == [10, 12]
+    assert docs[0]["semilla"] == 7 and docs[0]["scenario_id"] == 3
+    assert trabajador.conciliar() is True
+    assert mongo_falso["series_corridas"].count_documents({"run_id": 42}) == 2
+
+
+@pytest.mark.parametrize("campo,valor", [
+    ("engine_version", "seir-ref-0.2"), ("scenario_checksum", "b" * 64),
+    ("resumen", {"casos_acumulados": 4})])
+def test_conciliar_no_escribe_si_algo_no_coincide(perdida, mongo_falso, caplog, campo, valor):
+    perdida["guardada"][campo] = valor
+    with caplog.at_level(logging.WARNING, logger="simulador"):
+        assert trabajador.conciliar() is True
+    assert mongo_falso["series_corridas"].count_documents({}) == 0
+    assert any("no se regeneró" in r.getMessage() and campo in r.getMessage()
+               for r in caplog.records)
+
+
+def test_conciliar_no_toca_las_que_ya_tienen_serie_ni_las_pendientes(perdida, mongo_falso,
+                                                                      monkeypatch):
+    mongo_falso["series_corridas"].insert_one({"run_id": 42, "dia": 0, "casos_activos": 99})
+    assert trabajador.conciliar() is True
+    assert [d["casos_activos"] for d in mongo_falso["series_corridas"].find({"run_id": 42})] == [99]
+    mongo_falso["series_corridas"].delete_many({})
+    monkeypatch.setitem(trabajador.series_pendientes, 42, [])
+    assert trabajador.conciliar() is True
+    assert mongo_falso["series_corridas"].count_documents({}) == 0
+
+
+def test_conciliar_con_mongodb_caido_no_falla_y_sigue_pendiente(perdida, mongo_falso, apagar_mongo,
+                                                               redis_falso, monkeypatch):
+    monkeypatch.setattr(ejecucion, "reencola_corridas_interrumpidas", lambda *a: ([], []))
+    monkeypatch.setattr(datos, "corridas_encoladas", lambda engine: [])
+    apagar_mongo()
+    trabajador.recuperar()
+    assert trabajador.conciliacion_pendiente
+    assert trabajador.conciliar() is False
+    apagar_mongo.encender()
+    detener = threading.Event()
+    monkeypatch.setattr(trabajador.cola, "tomar", lambda llave: detener.set())
+    trabajador.ciclo(AJUSTES, detener)
+    assert trabajador.conciliacion_pendiente == []
+    assert mongo_falso["series_corridas"].count_documents({"run_id": 42}) == 2
+
+
+def test_f5_la_serie_pendiente_se_pierde_con_el_proceso_y_el_arranque_la_regenera(
+        perdida, mundo, mongo_falso, apagar_mongo, redis_falso, monkeypatch):
+    monkeypatch.setattr(ejecucion, "reencola_corridas_interrumpidas", lambda *a: ([], []))
+    monkeypatch.setattr(datos, "corridas_encoladas", lambda engine: [])
+    apagar_mongo()
+    assert trabajador.procesar(json.dumps({"id": 42}), AJUSTES) == "completado"
+    assert list(trabajador.series_pendientes) == [42]
+    trabajador.series_pendientes.clear()
+    apagar_mongo.encender()
+    trabajador.recuperar()
+    assert trabajador.conciliar() is True
+    assert mongo_falso["series_corridas"].count_documents({"run_id": 42}) == 2

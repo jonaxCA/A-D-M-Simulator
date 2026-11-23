@@ -55,6 +55,9 @@ pendiente = []
 # muere se pierden, pero la misma semilla vuelve a dar la misma serie (ver «Límites conocidos»
 # en el README).
 series_pendientes = {}
+# D38: al arrancar se busca qué corridas completadas perdieron su serie (MongoDB caído y el
+# proceso muerto antes de guardarla); sigue encendida hasta que MongoDB responde.
+conciliacion_pendiente = []
 
 
 def _en_cola(crudo):
@@ -92,6 +95,7 @@ def recuperar():
     if cerradas:
         log.warning("Se cerraron como fallidas %d corridas sin intentos o de otra versión.",
                     len(cerradas))
+    conciliacion_pendiente[:] = [True]
     try:
         reencolar()
     except RedisNoDisponible:
@@ -120,6 +124,41 @@ def reintentar_series():
             return
         del series_pendientes[run_id]
         log.info("Se guardó la serie pendiente de la corrida %s.", run_id)
+
+
+def conciliar():
+    # D38: regenera con la misma semilla la serie de las corridas completadas que no la tienen.
+    # Solo la guarda si el motor, la huella del escenario y el resumen salen iguales.
+    completadas = {c["id"]: c for c in datos.corridas_completadas(MOTOR)}
+    con_serie = mongo.opcional("simulador: buscar series perdidas",
+                               lambda: serie.con_serie(completadas))
+    if con_serie is None:
+        return False
+    for run_id in sorted(set(completadas) - con_serie - set(series_pendientes)):
+        guardada = completadas[run_id]
+        try:
+            run = datos.get_run(run_id)
+            escenario, _version, errores = ejecucion.escenario_de_version(run["scenario_version_id"])
+            if errores:
+                raise ValueError("; ".join(errores))
+            resultado = del_nombre(MOTOR).simular(escenario, run["seed"])
+            resumen = json.loads(json.dumps(resultado["resumen"], default=str))
+            difiere = [campo for campo, igual in (
+                ("engine_version", resultado["engine_version"] == guardada["engine_version"]),
+                ("scenario_checksum", resultado["huella_escenario"] == guardada["scenario_checksum"]),
+                ("resumen", resumen == guardada["resumen"])) if not igual]
+            if difiere:
+                log.warning("La serie de la corrida %s no se regeneró: difiere %s.",
+                            run_id, ", ".join(difiere))
+                continue
+            docs = serie.documentos(run, MOTOR, resultado)
+            if mongo.opcional("simulador: guardar la serie regenerada",
+                              lambda: serie.guardar(docs)) is None:
+                return False
+            log.info("Se regeneró la serie de la corrida %s.", run_id)
+        except Exception:
+            log.exception("No se pudo regenerar la serie de la corrida %s.", run_id)
+    return True
 
 
 def _avance(run_id, porcentaje):
@@ -192,12 +231,19 @@ def latir(detener):
 
 def ciclo(ajustes, detener):
     estado["activo"] = True
-    ultimo_reintento = 0.0
+    ultimo_reintento = ultima_conciliacion = 0.0
     try:
         while not detener.is_set():
             if series_pendientes and time.monotonic() - ultimo_reintento >= REINTENTO_SERIES:
                 ultimo_reintento = time.monotonic()
                 reintentar_series()
+            if conciliacion_pendiente and time.monotonic() - ultima_conciliacion >= REINTENTO_SERIES:
+                ultima_conciliacion = time.monotonic()
+                try:
+                    if conciliar():
+                        conciliacion_pendiente.clear()
+                except psycopg2.Error as exc:
+                    log.warning("No se pudo buscar series perdidas, se reintenta: %s", exc)
             try:
                 if pendiente:
                     try:
