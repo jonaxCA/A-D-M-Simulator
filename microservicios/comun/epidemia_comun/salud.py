@@ -1,12 +1,9 @@
 import os
 import time
 
-import requests
-
-from . import mongo
+from . import archivos, mongo
 
 DEPENDENCIAS_OPCIONALES = ("mongodb", "bucket")
-ESPERA = 2
 
 
 def usadas(declaradas=()):
@@ -22,11 +19,9 @@ def _mongodb():
 
 
 def _bucket():
-    # Cualquier respuesta por debajo de 500 cuenta como viva: el emulador responde 404 en "/".
-    url = os.environ.get("BUCKET_HEALTH_URL") or os.environ.get("BUCKET_URL")
-    if not url:
+    if not archivos.configurado():
         return "no_configurado"
-    return requests.get(url, timeout=ESPERA).status_code < 500
+    return archivos.ping()
 
 
 REVISIONES = {"mongodb": _mongodb, "bucket": _bucket}

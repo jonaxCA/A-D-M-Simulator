@@ -17,8 +17,9 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
    - Los servicios de simulación (`corridas`, `simulador`, `resultados`, `comparacion` y `pareto`)
      parten de `epidemia/base-simulacion` (`docker/base-simulacion.Dockerfile`): lo mismo, sin
      `backend_web` (E8). Los de identidad, de `epidemia/base-identidad`, y los de F (vigilancia,
-     analítica y plataforma), de `epidemia/base-vigilancia`. Los de D siguen en `epidemia/base`
-     mientras no se les quite `backend_web`.
+     analítica y plataforma), de `epidemia/base-vigilancia`, igual que `evidencias` (D, sin
+     `backend_web` desde D2). Los demás de D siguen en `epidemia/base` mientras no se les quite
+     `backend_web`.
    - El `Dockerfile` de un servicio solo copia su carpeta y su contrato. Úsalo igual que los
      demás, o el que genera `nuevo_servicio.py`.
 2. Cada servicio escucha en 8000 dentro de su contenedor y publica el puerto del catálogo
@@ -29,6 +30,10 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
    máquina. MongoDB (D28) se publica solo en `127.0.0.1:27018`; los servicios lo alcanzan como
    `mongodb:27017` con el usuario `epidemia`, que crea `mongo/10-usuario.js` con el volumen
    vacío. Un servicio que lo use lleva `MONGO_URL` y `depends_on: mongodb`.
+   - El emulador de Cloud Storage (`bucket`, `fake-gcs-server`, D30) se publica solo en
+     `127.0.0.1:4443`, porque las URLs firmadas apuntan ahí para que las abra el navegador. Crea el
+     bucket `epidemia-archivos` con `bucket/` y guarda los objetos en el volumen `bucket-datos`.
+     En GCP no se levanta: `docker-compose.gcs.yml` pone el bucket real (`crea_bucket.sh`).
 5. Los secretos van en el `.env` del compose, que no se versiona; solo `.env.example`.
    Nunca escribas un secreto en un `Dockerfile`, en el compose ni en una imagen.
 6. Redis ya está en el compose, con contraseña, `appendonly yes`, `maxmemory 256mb` y

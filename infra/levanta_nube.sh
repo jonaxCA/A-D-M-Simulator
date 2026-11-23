@@ -7,11 +7,12 @@
 #   bash infra/levanta_nube.sh
 #
 # infra/.env tiene que tener DOMINIO (el certificado de Let's Encrypt ya emitido) y las
-# contraseñas de genera_env.py. Corre docker con sudo.
+# contraseñas de genera_env.py, y BUCKET_NOMBRE (lo da infra/crea_bucket.sh). Corre docker con sudo.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 COMPOSE=(docker compose -f infra/docker-compose.yml -f infra/docker-compose.nginx.yml
          -f infra/docker-compose.letsencrypt.yml -f infra/docker-compose.cloud-logging.yml
+         -f infra/docker-compose.gcs.yml
          --profile identidad --profile catalogos --profile vigilancia --profile escenarios
          --profile simulacion --profile analitica --profile plataforma --profile web)
 LOG=${LOG:-$HOME/levanta.log}

@@ -73,7 +73,7 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 | 10 | `casos`          | Registra, consulta y corrige casos y cambia su estado (D47); formularios por enfermedad (D48) | `POST /api/v1/cases`, `POST /api/v1/cases/batch`, `GET /api/v1/cases`, `GET /api/v1/cases/{id}`, `PATCH /api/v1/cases/{id}`, `POST /api/v1/cases/{id}/status`, `GET /api/v1/cases/{id}/history`, `GET /api/v1/cases/incomplete`, `GET /api/v1/forms`, `GET /api/v1/forms/current`, `GET /api/v1/forms/{id}`, `POST /api/v1/forms`, `PUT /api/v1/forms/{id}`, `POST /api/v1/forms/{id}/publish` | `cases`, `case_history`, `case_forms` (D48)             | `diseases`, `regions`, `devices` (`id`, `user_id`, `is_revoked`) | `notificaciones` al descartar o marcar duplicado (`CASE_REJECTED`, best-effort) | 5221   |
 | 11 | `sincronizacion` | Recibe lotes de casos capturados sin conexión en la app móvil | `POST /api/v1/sync/cases`, `GET /api/v1/sync/batches/{id}`                                                               | — (los casos los escribe `casos`)                       | —                                                                | `casos`: el lote en una llamada (`/cases/batch`) y una por corrección (`PATCH /cases/{id}` con If-Match, D47), en JSON; reenvía el token de la persona; `notificaciones` una vez por lote con casos nuevos (best-effort) | 5222   |
 | 27 | `dispositivos`   | Registra, consulta y revoca los dispositivos de las apps      | `POST /api/v1/devices`, `GET /api/v1/devices`, `GET /api/v1/devices/{id}`, `POST /api/v1/devices/{id}/revoke`            | `devices` (alta, versión, última conexión y revocación) | —                                                                | —                                                              | 5223   |
-| 28 | `evidencias`     | Fotos y PDF de los casos, en un volumen de Docker             | `POST/GET /api/v1/cases/{id}/attachments`, `GET/DELETE /api/v1/attachments/{id}`, `GET /api/v1/attachments/{id}/content` | `case_attachments`; los archivos, en su volumen         | `cases` (`id`, `reported_by`)                                    | —                                                              | 5224   |
+| 28 | `evidencias`     | Los archivos en el bucket (D30): fotos y PDF de los casos y el reporte de una comparación (D35) | `POST/GET /api/v1/cases/{id}/attachments`, `GET/DELETE /api/v1/attachments/{id}`, `GET /api/v1/attachments/{id}/url`, `GET /api/v1/attachments/{id}/content`, `POST/GET /api/v1/reports`, `GET/DELETE /api/v1/reports/{id}`, `GET /api/v1/reports/{id}/url` | `case_attachments`, `comparison_reports` (039); los archivos, en el bucket | `cases` (`id`, `reported_by`), `simulation_runs` (`id`) | — (el bucket de Cloud Storage; en local, el emulador del compose) | 5224   |
 | 29 | `vacunas`        | Lotes de vacuna leídos por QR, las dosis que se les aplican y las campañas (D49) | `POST/GET /api/v1/vaccine-lots`, `GET /api/v1/vaccine-lots/{id}`, `POST /api/v1/vaccine-lots/{id}/doses`, `GET/POST /api/v1/campaigns`, `GET/PUT /api/v1/campaigns/{id}`, `POST /api/v1/campaigns/{id}/cancel` | `vaccine_lots` (alta y `doses_used`), `campaigns`       | `diseases`, `regions` (`id`, `name`, `level`, `parent_region_id`, `code`) | `notificaciones` al crear o cancelar una campaña (`CAMPAIGN`, best-effort) | 5225   |
 
 - `sincronizacion` usa Redis para que el mismo lote enviado dos veces no duplique casos
@@ -88,11 +88,16 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
   cuenta (422) o que está revocado (409), aunque el token siga vigente. Los casos que llegan
   por `sincronizacion` pasan por la misma revisión: salen rechazados en el resultado del lote,
   con `codigo` `CONFLICTO`, que los distingue de un caso con datos malos (`DATOS_INVALIDOS`).
-- `evidencias` guarda fotos (JPEG, PNG, WebP) y PDF de hasta 20 MB en su volumen de Docker, en
-  lugar de Cloud Storage; la base guarda ruta, tipo, tamaño y huella SHA-256. El tipo sale del
-  contenido. Las sube quien reportó el caso (D1: el ADMINISTRADOR no captura), las ven los cuatro roles que leen
-  casos (siempre con token) y solo ADMINISTRADOR las borra. La misma foto subida dos veces al
-  mismo caso no se duplica, así que la app puede reintentar.
+- `evidencias` es el servicio de los archivos (D30, D35). Guarda en el bucket fotos (JPEG, PNG,
+  WebP) y PDF de hasta 20 MB; la base guarda ruta, tipo, tamaño y huella SHA-256. El tipo sale del
+  contenido y, si el cliente manda `X-Content-SHA256`, la huella tiene que coincidir. Las fotos las
+  sube quien reportó el caso (D1: el ADMINISTRADOR no captura) y las ven los cuatro roles que leen
+  casos; el reporte (PDF) de una comparación lo suben ANALISTA y ADMINISTRADOR (`reports.upload`)
+  desde el escritorio o la web, identificado por sus corridas, y lo ven los roles con
+  `reports.read`. Solo ADMINISTRADOR borra. Todo es privado: se abre con una URL firmada que vence
+  en 15 minutos o se descarga con token. El mismo archivo subido dos veces no se duplica, así que la
+  app puede reintentar; con el bucket caído la subida da 503 y no queda registro. Es el único que usa
+  Cloud Storage (regla 12 de `microservicios/AGENTS.md`).
 - `vacunas` registra los lotes que la app lee por QR o código de barras (`lot_code` es único)
   y les descuenta las dosis aplicadas con un `UPDATE` condicionado: nunca más de las que quedan
   ni a un lote caducado (en hora de Monterrey). Registran y aplican CAPTURISTA y ADMINISTRADOR;

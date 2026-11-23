@@ -292,7 +292,7 @@ y el PDF pone las gráficas y el aviso de incertidumbre antes de la tabla.
 - [x] Avisar cuando las bandas p5–p95 de dos escenarios se enciman (A3, RF-H22, RF-F23).
 - [x] Mostrar la escala que ya responde `resultados`: habitantes por agente (D6, RF-H21, RF-F20).
 - [ ] **Bloqueado (E y F).** Ofrecer `abm-gpu` al lanzar solo si `corridas` anuncia que el despliegue lo acepta (D23, RF-H20, RF-E15).
-- [ ] **Bloqueado (D y F).** Subir el reporte al bucket y mostrar su URL firmada (D30, RF-F17). Faltan la ruta de reportes y el almacenamiento en el despliegue.
+- [ ] **Bloqueado (F).** Subir el reporte al bucket y mostrar su URL firmada (D30, RF-F17). Desbloqueado por D2 (2026-11-22): `POST /api/v1/reports?runs=…` de `evidencias` con el PDF en el cuerpo y `GET /api/v1/reports/{id}/url`; en local va al emulador. Falta el bucket en GCP.
 - [x] Leer `exp` del token sin verificar la firma y renovarlo antes de que venza (D35, RF-H23).
 - [x] La comparación dice «Personas-día» donde hoy dice «Costo», y muestra y exporta `costo_pesos` aparte, como «sin dato» cuando es nulo (D3, `ui/comparacion.py` y `exportar.py`). Desde el 2026-11-17 `pareto` ya manda personas-día en `costo`: hasta este cambio, la pantalla las rotula como costo.
 
@@ -333,7 +333,7 @@ La app solo habla JSON.
 
 - [x] Indicador de conexión fijo, visible en todas las pantallas (C3, RF-I20, RNF-E11). `ui/navegacion/IndicadorConexion.kt`.
 - [x] Menú por rol: un rol distinto del CAPTURISTA no ve la captura (C8, RF-I19). Los roles del login quedan con la sesión (`InicioViewModelTest`).
-- [ ] Las fotos se suben y se bajan con la `evidencias` del bucket (D30, RF-C03). Espera a D.
+- [ ] Las fotos se suben y se bajan con la `evidencias` del bucket (D30, RF-C03). D2 listo (2026-11-22): las rutas no cambian, el archivo va al bucket; `GET /api/v1/attachments/{id}/url` da la URL firmada, `X-Content-SHA256` revisa la huella y con el bucket caído la subida es 503 (reintentar, RNF-C19).
 - [ ] Probar que el aviso por lote no se repite cuando la app reintenta el mismo lote (D32, RF-C19). Espera a E.
 - [x] Mostrar los tipos de aviso de la migración 037 (`NEW_CASES`, `SCENARIO_SUBMITTED` y `SCENARIO_REJECTED`) en `Formato.kt` (D32).
 
@@ -393,9 +393,9 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 
 - [x] La corrida muestra su resumen desde `simulation_runs` y pide las curvas a `resultados`. Si `resultados` no responde, se ve el resumen sin curvas (D28, D20, RF-F21). Espera a D y a E.
 - [x] La web deja de leer `simulation_results`. Hecho en D1 (2026-11-18), también en `/comparacion`.
-- [ ] La web muestra la foto de un caso con una URL firmada que vence en minutos (D30, RF-C20). **Bloqueado (D2):** `evidencias` sigue en disco y no firma URL.
-- [ ] La web abre el reporte de una comparación con su URL firmada (RF-F17). **Bloqueado (D2):** falta la 039 y la ruta de reportes.
-- [ ] La web recibe el reporte de una comparación (ANALISTA y ADMINISTRADOR, `reports.upload`), lo valida por su contenido, su tamaño y su huella, y lo manda al bucket con la misma tabla y la misma interfaz que el escritorio (D35, RF-G16). **Bloqueado (D2).** El permiso ya existe (034) y `/reportes` deja el lugar.
+- [ ] La web muestra la foto de un caso con una URL firmada que vence en minutos (D30, RF-C20). Desbloqueado por D2 (2026-11-22): `GET /api/v1/attachments/{id}/url` de `evidencias`.
+- [ ] La web abre el reporte de una comparación con su URL firmada (RF-F17). Desbloqueado por D2 (2026-11-22): `GET /api/v1/reports?runs=…` y `GET /api/v1/reports/{id}/url` de `evidencias`.
+- [ ] La web recibe el reporte de una comparación (ANALISTA y ADMINISTRADOR, `reports.upload`), lo valida por su contenido, su tamaño y su huella, y lo manda al bucket con la misma tabla y la misma interfaz que el escritorio (D35, RF-G16). Desbloqueado por D2 (2026-11-22): la web lo reenvía por HTTP a `POST /api/v1/reports?runs=…` de `evidencias`, que valida contenido, tamaño y huella (`X-Content-SHA256`); no importa `epidemia_comun` (D36). El permiso ya existe (034) y `/reportes` deja el lugar.
 - [x] `/comparacion` dice personas-día en el eje y la tabla de la frontera, y muestra `costo_pesos` aparte (D3). Con la trazabilidad de cada costo.
 - [x] `/comparacion/costos` permite fijar las personas-día por dosis de la vacunación, con fuente o marca de supuesto (D3, migración 040). Sin ese factor, la comparación de escenarios con vacunación se niega. Ruta nueva en `intervenciones`: `PUT /api/v1/intervention-types/{id}/person-days`.
 
@@ -430,7 +430,7 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 - [x] Vigilancia: casos por región y periodo, con su seguimiento. `/vigilancia` y `/vigilancia/casos/<id>`, con el historial y el cambio de estado (D47).
 - [x] Campañas. Decididas en D49. `/campanas` con el servicio `vacunas`: consulta, alta y cancelación.
 - [x] Mapas epidemiológicos e indicadores.
-- [x] Reportes. `/reportes` reúne las descargas. Falta el reporte de la comparación (D2).
+- [x] Reportes. `/reportes` reúne las descargas. Falta el reporte de la comparación: la ruta ya está (D2, C3).
 - [ ] Seguimiento de intervenciones. Lo definen C y E y lo registran en `decisiones/` (el bloque 0 lo delegó el 2026-11-22).
 - [x] Institución y región de cada cuenta en la administración de usuarios.
 - [x] Ninguna gráfica sin fuente, periodo, modelo, versión y unidades. Ficha bajo cada gráfica.
@@ -459,14 +459,16 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### D2. Cloud Storage (D30, D-3)
 
-- [ ] Una interfaz de archivos en `epidemia_comun` que cambie de disco a bucket por configuración. La web también la usa (D35), y hoy no importa `epidemia_comun`: acordar con C dónde vive.
-- [ ] Emulador del bucket en el compose, para trabajar en local.
-- [ ] `evidencias` guarda en el bucket y deja de usar su volumen (RF-C03, RNF-B01).
-- [ ] URLs firmadas que vencen en minutos para los archivos privados (RNF-D17, RNF-D27).
-- [ ] Validar cada archivo por su contenido, su tamaño y su huella al subirlo (RNF-C09).
-- [ ] Tabla nueva con los metadatos de los reportes, y la ruta para subir uno (RF-F17). La usan el escritorio y la web (D35). Migración 039.
-- [ ] Si el bucket no responde, el caso se guarda y la foto se reintenta (RNF-C19).
-- [ ] Crear el bucket real en GCP, privado, con su cuenta de servicio (RNF-K12, RNF-K18). Con F.
+Decidido con el líder (2026-11-22): `evidencias` pasa a ser el servicio de los archivos (fotos y reportes); la biblioteca oficial `google-cloud-storage`, que en GCP firma con signBlob de la cuenta de servicio de la máquina; y E8 de `evidencias` en este mismo trabajo.
+
+- [x] Una interfaz de archivos en `epidemia_comun` que cambie de disco a bucket por configuración. La web también la usa (D35), y hoy no importa `epidemia_comun`: acordar con C dónde vive. `epidemia_comun/archivos.py` (`ARCHIVOS=disco|gcs`), con `tests/test_archivos.py`. La web no la importa: sube por HTTP a `evidencias`, así que usa la misma tabla y la misma interfaz (D35, D36). `/health` la usa para el bucket.
+- [x] Emulador del bucket en el compose, para trabajar en local. `bucket` (`fake-gcs-server:1.56.1`) en `127.0.0.1:4443`, con el bucket `epidemia-archivos` y el volumen `bucket-datos`. Se retiró `docker-compose.fallos.yml`.
+- [x] `evidencias` guarda en el bucket y deja de usar su volumen (RF-C03, RNF-B01). Sin `backend_web`: sus reglas pasaron a `microservicios/evidencias/datos.py` y su imagen parte de `base-vigilancia` (E8, `test_datos_sin_backend_web.py`).
+- [x] URLs firmadas que vencen en minutos para los archivos privados (RNF-D17, RNF-D27). V4 de 15 minutos: `GET /api/v1/attachments/{id}/url` y `GET /api/v1/reports/{id}/url`, sin caché.
+- [x] Validar cada archivo por su contenido, su tamaño y su huella al subirlo (RNF-C09). Tipo por contenido, hasta 20 MB y `X-Content-SHA256` (422 si no coincide); un reporte solo es PDF.
+- [x] Tabla nueva con los metadatos de los reportes, y la ruta para subir uno (RF-F17). La usan el escritorio y la web (D35). Migración 039. `comparison_reports` (identificado por sus corridas) y `POST/GET /api/v1/reports`, `GET/DELETE /api/v1/reports/{id}`; contrato y ejemplos en `docs/contratos/evidencias/`.
+- [x] Si el bucket no responde, el caso se guarda y la foto se reintenta (RNF-C19). La subida es 503 sin registro y `/health` sale degradado (`test_evidencias.py` y `test_compose_evidencias.py`, con el bucket detenido). Reintentar es de la app (B1).
+- [ ] Crear el bucket real en GCP, privado, con su cuenta de servicio (RNF-K12, RNF-K18). Con F. Listos `infra/crea_bucket.sh` (bucket privado, `storage.objectAdmin` solo sobre él y signBlob para la cuenta de la máquina) e `infra/docker-compose.gcs.yml`, que ya suma `levanta_nube.sh` (DESPLIEGUE_GCP §6 y §8). Falta correrlo con acceso al proyecto y aplicar la 039 en la máquina.
 
 ### D3. Volumen (D29, D-6)
 
@@ -478,7 +480,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 ### D4. Documentos
 
-- [ ] Diseño de MongoDB y de los buckets en la arquitectura v3, con qué información va a PostgreSQL y cuál a MongoDB [Retro: MongoDB]. La parte de MongoDB está hecha (§6 y §9 de `arquitectura_v3.md`: criterio, tabla por dato, cómo se relacionan, consistencia y volumen medido); falta la de los buckets, que espera a D2.
+- [x] Diseño de MongoDB y de los buckets en la arquitectura v3, con qué información va a PostgreSQL y cuál a MongoDB [Retro: MongoDB]. La parte de MongoDB está hecha (§6 y §9 de `arquitectura_v3.md`: criterio, tabla por dato, cómo se relacionan, consistencia y volumen medido). La de los buckets, con D2 (2026-11-22): §6, «Archivos en Cloud Storage».
 - [ ] Llenar la retención de cada dato en `matrices_v3.md`: hoy hay 48 «Por definir» (RNF-K07). Hechas las de MongoDB, `simulation_runs` y `simulation_results` (2026-11-18).
 - [ ] Actualizar `docs/arquitectura/microservicios.md` con lo que cada servicio escribe ahora.
 
@@ -594,7 +596,7 @@ Antes de empezar: `microservicios/AGENTS.md`.
 [Retro: «Dependencia de reglas de negocio compartidas con el monolito»]. Va con la decisión de dueños (D37).
 
 - [x] Tabla de dueños: cada regla de negocio con el servicio que la posee. [`docs/arquitectura/duenos_de_reglas.md`](../../arquitectura/duenos_de_reglas.md) (D37). Las copias de `get_run`, `_sincroniza_lote` y la selección de corridas quedan documentadas ahí.
-- [ ] Los servicios dejan de importar `backend_web`: cada regla vive con su dueño. Cada bloque lo hace en sus servicios (D, E y F). E hecho: ningún servicio de E importa `backend_web` (`test_sin_backend_web.py`, `test_simulacion_sin_backend_web.py`). F hecho el 2026-11-22: ninguno de sus nueve servicios lo importa y sus imágenes parten de `epidemia/base-vigilancia` (`test_vigilancia_sin_backend_web.py`); dispositivos, lotes de vacuna y avisos se mudaron de `backend_web` a su servicio, y lo que la web todavía lee (tablero, Monitoreo, mapa y captura) quedó como copia en el servicio dueño, igual a la del monolito (`test_copias_del_monolito.py`) hasta que la web consuma el servicio (D36). Sigue abierta por D: `aprobacion`, `enfermedades`, `escenarios`, `escenarios-xml`, `evidencias`, `intervenciones`, `parametros`, `poblacion`, `regiones`, `tipos-intervencion` y `validacion` todavía lo importan, y `epidemia_comun/validaciones.py` espera a su dueño.
+- [ ] Los servicios dejan de importar `backend_web`: cada regla vive con su dueño. Cada bloque lo hace en sus servicios (D, E y F). E hecho: ningún servicio de E importa `backend_web` (`test_sin_backend_web.py`, `test_simulacion_sin_backend_web.py`). F hecho el 2026-11-22: ninguno de sus nueve servicios lo importa y sus imágenes parten de `epidemia/base-vigilancia` (`test_vigilancia_sin_backend_web.py`); dispositivos, lotes de vacuna y avisos se mudaron de `backend_web` a su servicio, y lo que la web todavía lee (tablero, Monitoreo, mapa y captura) quedó como copia en el servicio dueño, igual a la del monolito (`test_copias_del_monolito.py`) hasta que la web consuma el servicio (D36). D: `evidencias` hecho el 2026-11-22 con D2 (sus reglas en `evidencias/datos.py`, imagen de `base-vigilancia`, `test_datos_sin_backend_web.py`). Sigue abierta por D: `aprobacion`, `enfermedades`, `escenarios`, `escenarios-xml`, `intervenciones`, `parametros`, `poblacion`, `regiones`, `tipos-intervencion` y `validacion` todavía lo importan, y `epidemia_comun/validaciones.py` espera a su dueño.
 - [ ] `epidemia_comun` queda solo con funciones técnicas. Revisar `sesiones` y `series_corridas`. Parte de E hecha: las curvas de corridas pasaron a `simulador/serie.py` y `resultados/serie.py`, y abrir sesiones a `sesiones` (auth la llama por HTTP). `ambito.py` (F) ya solo lee y valida parámetros: los catálogos los consulta cada servicio (2026-11-22). Sigue abierta: `validaciones.py` pendiente de D, y quedan copias documentadas (`get_run`, `_sincroniza_lote`, entrada del motor).
 - [x] Contratos de dominio separados de las clases internas. Las respuestas se arman con los campos del contrato (`epidemia_comun.contratos.proyectar`); ver «Contratos de dominio» en `duenos_de_reglas.md`. Aplicado en los servicios de E; D y F por su bloque.
 - [x] Demostrar que un servicio se construye y se despliega sin tocar a los demás. `usuarios` y `corridas` se reconstruyeron con `--no-deps` y los otros 32 contenedores no cambiaron; las imágenes no traen `backend_web`. Evidencia: [`docs/pruebas/despliegue_independiente/2026-11-20/`](../../pruebas/despliegue_independiente/2026-11-20/LEEME.md).

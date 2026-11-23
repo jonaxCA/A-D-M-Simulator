@@ -23,7 +23,7 @@ Es la visualización de P1 (paso 1.9) y de P3 (paso 3.7) de [`procesos_v3.md`](.
 | RF-G11 | Cada rol ve lo que le toca. El CAPTURISTA entra solo al tablero y al mapa (D1) | Cualquier otra pantalla responde 403 al CAPTURISTA. La bitácora es solo del ADMINISTRADOR | 1.9 | Web, Seguridad | Alta | En parte: falta revisar los candados contra D1 |
 | RF-G12 | El tablero y el monitoreo epidemiológico exportan a CSV | Salen el resumen del tablero y la serie del monitoreo | Soporte | Web | Media | Hecho |
 | RF-G15 | La web muestra la comparación de corridas, solo como consulta (D4) | ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR ven la vista; no exporta ni imprime, que es del escritorio | Soporte | Web | Media | Hecho |
-| RF-G16 | La web recibe archivos | El ANALISTA o el ADMINISTRADOR (`reports.upload`) sube el reporte de una comparación, que se valida por su contenido, su tamaño y su huella, y va al bucket (D30, D35) | Soporte | Web | Alta | Falta (D-5): la rúbrica lo pide y hoy la web no recibe archivos |
+| RF-G16 | La web recibe archivos | El ANALISTA o el ADMINISTRADOR (`reports.upload`) sube el reporte de una comparación, que se valida por su contenido, su tamaño y su huella, y va al bucket (D30, D35) | Soporte | Web | Alta | En parte: la ruta está hecha (D2): `POST /api/v1/reports` de `evidencias` valida contenido, tamaño y huella y guarda en el bucket. Falta el formulario de la web que la llama (C) |
 
 ## Fuera de alcance
 

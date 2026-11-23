@@ -33,7 +33,7 @@ La columna **Prueba** dice dónde están las pruebas que tocan ese paso, no que 
 | 3.3 | RF-E05, RF-E06, RF-H08 | RNF-G03 | Escritorio, Microservicios | `corridas` | `microservicios/corridas/tests` |
 | 3.4 | RF-E11, RF-H15 | RNF-G03 | Escritorio, Microservicios | `notificaciones` | `microservicios/notificaciones/tests` |
 | 3.5 | RF-F01, RF-F02, RF-F04 a RF-F08, RF-F19, RF-F20, RF-F22, RF-F23, RF-H10, RF-H11, RF-H21, RF-H22 | RNF-A09, RNF-I10, RNF-I11, RNF-I16 | Escritorio, Microservicios | `comparacion`, `resultados`, `pareto` | `microservicios/comparacion/tests`, `microservicios/pareto/tests`, `microservicios/resultados/tests`, `frontend_desktop/tests/test_resumen.py`, `procesamiento/tests/test_pareto.py` |
-| 3.6 | RF-F09, RF-F11, RF-F17, RF-H13 | RNF-D17, RNF-K12 | Escritorio, Microservicios | Falta: el servicio que sube el reporte (D-3) | Falta |
+| 3.6 | RF-F09, RF-F11, RF-F17, RF-H13 | RNF-D17, RNF-K12 | Escritorio, Microservicios | `evidencias` (`POST /api/v1/reports`, D2); falta que el escritorio lo suba | `microservicios/evidencias/tests` |
 | 3.7 | RF-F21, RF-F01, RF-F04, RF-F19, RF-G02, RF-G09 | RNF-A09, RNF-L12 | Web, Microservicios | — (directo a PostgreSQL); con D28, `resultados` para las curvas | `backend_web/tests`, `microservicios/resultados/tests` |
 
 ## Funciones de soporte

@@ -15,11 +15,11 @@ Dónde va cada dato y por qué. La regla está en [`brechas_v3.md`](../../arquit
 | RNF-K07 | Cada dato tiene definido cuánto vive | El inventario de datos dice la retención de cada tabla, colección y archivo | Bases de datos | Falta: la retención de las tablas de PostgreSQL y de los archivos está «Por definir» en `matrices_v3.md` |
 | RNF-K08 | Un registro no entra dos veces | Ver RF-C09 | Bases de datos | Hecho |
 | RNF-K11 | PostgreSQL es la fuente de verdad | Si Redis o MongoDB se pierden, lo que queda en PostgreSQL basta para seguir (D19) | Bases de datos | Hecho |
-| RNF-K12 | Ningún archivo va dentro de la base | PostgreSQL guarda solo el identificador, la ruta, el tipo, el tamaño, el propietario, la fecha, la huella y la privacidad. El archivo va a Cloud Storage (D30) | Bases de datos | En parte: hoy el archivo va a un volumen; falta el bucket (D-3) |
+| RNF-K12 | Ningún archivo va dentro de la base | PostgreSQL guarda solo el identificador, la ruta, el tipo, el tamaño, el propietario, la fecha, la huella y la privacidad. El archivo va a Cloud Storage (D30) | Bases de datos | Hecho (D2): el archivo va al bucket y la base guarda sus metadatos (`case_attachments`, `comparison_reports`) |
 | RNF-K14 | Las consultas frecuentes tienen su índice | En MongoDB: `{run_id, dia}` único y `{scenario_version_id, motor, dia}` en `series_corridas` (D28: `{batch_id}` no sirve para comparar); `{servicio, fecha}` con TTL en `historial_servicios`. Se mide con y sin índice (D29) | Bases de datos | Hecho: los índices existen (`test_mongo_real.py`) y se midieron con y sin ellos: 5 ms contra 849 ms la serie de una corrida ([`docs/pruebas/volumen/2026-11-18`](../../pruebas/volumen/2026-11-18/LEEME.md)) |
 | RNF-K16 | Cada tabla tiene un solo servicio dueño | Solo el dueño escribe en ella; el catálogo dice quién escribe y quién lee cada tabla | Bases de datos, Microservicios | Hecho |
 | RNF-K17 | Los documentos de MongoDB llevan su versión de esquema | Cada documento tiene `version_esquema`; quien lee acepta las versiones que conoce | Bases de datos | Hecho (D-1) |
-| RNF-K18 | Un solo bucket privado para los archivos | Sin lectura pública. Propuesta: los prefijos `evidencias/` y `reportes/` | Infraestructura, Bases de datos | Falta (D-3) |
+| RNF-K18 | Un solo bucket privado para los archivos | Sin lectura pública. Propuesta: los prefijos `evidencias/` y `reportes/` | Infraestructura, Bases de datos | Hecho en local con el emulador (D2): prefijos `evidencias/` y `reportes/`. En GCP lo crea `infra/crea_bucket.sh` (acceso uniforme, sin acceso público); falta correrlo (con F) |
 
 ## Fuera de alcance
 
