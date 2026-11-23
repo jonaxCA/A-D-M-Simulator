@@ -15,8 +15,9 @@ import unittest
 from unittest.mock import patch
 
 from frontend_web.tests.base import CAPTURISTA_PRUEBA, capturista_de_prueba, RutasConCorridas
-from backend_web import resultados, simulaciones
+from backend_web import simulaciones
 from backend_web.auth import create_token
+from backend_web.servicios import ErrorServicio, ServicioNoDisponible
 from backend_web.db import query
 from frontend_web.app.permisos import COOKIE_NAME
 
@@ -39,8 +40,7 @@ class SimulacionesRutasTests(RutasConCorridas):
             for ruta in ("/simulaciones", f"/simulaciones/corridas/{run_id}",
                          f"/simulaciones/corridas/{run_id}/estado"):
                 resp = client.get(ruta, follow_redirects=False)
-                self.assertEqual(resp.status_code, 302, ruta)
-                self.assertIn("/dashboard", resp.headers["Location"], ruta)
+                self.assertEqual(resp.status_code, 403, ruta)  # C1: sin simulations.read
 
             menu = client.get("/dashboard")
             self.assertNotIn(b'href="/simulaciones"', menu.data)
@@ -100,51 +100,66 @@ class SimulacionesRutasTests(RutasConCorridas):
             self.assertIn("cada agente representa 11.57", html)
             self.assertIn("habitantes</span>", html)
 
+    def _resultado(self, serie):
+        resumen = {"casos_acumulados": 10, "casos_activos_final": 1, "pico_casos_activos": 5,
+                   "dia_pico": 3, "hospitalizaciones": 2, "fallecimientos": 1, "tasa_ataque": 0.1}
+        return {"resumen": resumen, "serie": serie, "trazabilidad": [], "escala": None,
+                "engine_version": simulaciones.ENGINE_VERSION,
+                "categoria": {"categoria": "exploratoria", "texto": "Sin calibrar."}}
+
     def test_curvas_vienen_de_resultados_con_el_token_de_la_sesion(self):
         run_id = self._corre(424243)
-        serie = [{"dia": 0, "S": 1, "E": 0, "I": 0, "R": 0, "H": 0}]
+        serie = [{"dia": 0, "S": 1, "E": 0, "I": 0, "R": 0, "H": 0, "D": 0}]
         with self.app.test_client() as client:
             self._login(client, "alex.cavazos", "Epidemia2026!")
             token = client.get_cookie(COOKIE_NAME).value
-            with patch("frontend_web.app.routes.resultados.curvas_de_corrida",
-                       return_value=serie) as llama:
+            with patch("backend_web.servicios.resultado", return_value=self._resultado(serie)) as llama:
                 detalle = client.get(f"/simulaciones/corridas/{run_id}")
             self.assertEqual(llama.call_args[0][:2], (token, run_id))
             self.assertIn(b'"S": 1', detalle.data)
             self.assertIn(simulaciones.AVISO_SIMULACION.encode("utf-8"), detalle.data)
+            self.assertIn("Corrida exploratoria".encode("utf-8"), detalle.data)
 
-    def test_resultados_sin_respuesta_muestra_el_resumen_sin_curvas(self):
+    def test_resultados_sin_curvas_muestra_el_resumen(self):
+        # Sin MongoDB, resultados da los indicadores sin la serie (RF-F21).
         run_id = self._corre(424244)
         with self.app.test_client() as client:
             self._login(client, "alex.cavazos", "Epidemia2026!")
-            with patch("frontend_web.app.routes.resultados.curvas_de_corrida",
-                       return_value=None):
+            with patch("backend_web.servicios.resultado", return_value=self._resultado(None)):
                 detalle = client.get(f"/simulaciones/corridas/{run_id}")
             self.assertEqual(detalle.status_code, 200)
             self.assertIn(b"CASOS ACUMULADOS", detalle.data)
             self.assertIn("Las curvas no están disponibles".encode("utf-8"), detalle.data)
             self.assertNotIn(b'id="curvas-chart"', detalle.data)
 
+    def test_sin_el_servicio_resultados_la_corrida_se_sigue_viendo(self):
+        run_id = self._corre(424247)
+        with self.app.test_client() as client:
+            self._login(client, "alex.cavazos", "Epidemia2026!")
+            with patch("backend_web.servicios.resultado", side_effect=ServicioNoDisponible("resultados")):
+                detalle = client.get(f"/simulaciones/corridas/{run_id}")
+            self.assertEqual(detalle.status_code, 200)
+            self.assertIn(f"SIM-{run_id:05d}".encode(), detalle.data)
+            self.assertIn("servicio «resultados»".encode("utf-8"), detalle.data)
+
     def test_resultados_niega_el_acceso(self):
         run_id = self._corre(424245)
         with self.app.test_client() as client:
             self._login(client, "alex.cavazos", "Epidemia2026!")
-            with patch("frontend_web.app.routes.resultados.curvas_de_corrida",
-                       side_effect=resultados.SinAcceso(403)):
+            with patch("backend_web.servicios.resultado",
+                       side_effect=ErrorServicio("resultados", 403, "PERMISO_INSUFICIENTE")):
                 detalle = client.get(f"/simulaciones/corridas/{run_id}")
-            self.assertEqual(detalle.status_code, 302)
-            self.assertIn("denegado=1", detalle.headers["Location"])
+            self.assertEqual(detalle.status_code, 403)
 
     def test_resultados_con_401_pide_iniciar_sesion_de_nuevo(self):
         run_id = self._corre(424246)
         with self.app.test_client() as client:
             self._login(client, "alex.cavazos", "Epidemia2026!")
-            with patch("frontend_web.app.routes.resultados.curvas_de_corrida",
-                       side_effect=resultados.SinAcceso(401)):
+            with patch("backend_web.servicios.resultado",
+                       side_effect=ErrorServicio("resultados", 401, "TOKEN_EXPIRADO")):
                 detalle = client.get(f"/simulaciones/corridas/{run_id}")
             self.assertEqual(detalle.status_code, 302)
             self.assertIn("/login", detalle.headers["Location"])
-            self.assertNotIn("denegado", detalle.headers["Location"])
 
     def test_estado_de_una_corrida_fallida(self):
         run_id = self._corre(1, usuario="admin", forzar_error=True)

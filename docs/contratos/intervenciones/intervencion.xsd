@@ -8,6 +8,7 @@
        PUT    /api/v1/versions/{vid}/interventions/{id}/cost       raíz <costo_intervencion>
        PUT    /api/v1/versions/{vid}/interventions/{id}/person-days raíz <factor_personas_dia>
        PUT    /api/v1/intervention-types/{id}/cost                 raíz <costo_tipo>
+       PUT    /api/v1/intervention-types/{id}/person-days          raíz <factor_personas_dia>
      Como <intervencion> tiene tres formas, solo id es obligatorio en la raíz; dentro de
      <intervenciones_version> cada intervención va completa. Los cuerpos de las peticiones los
      valida el servicio. -->
@@ -130,11 +131,12 @@
   </xs:element>
 
   <!-- Las personas-día por dosis de la frontera de Pareto (D3, migración 040) también viven
-       en el tipo. -->
+       en el tipo. Fijado desde una intervención trae su id; desde el tipo
+       (PUT /api/v1/intervention-types/{id}/person-days), no. -->
   <xs:element name="factor_personas_dia">
     <xs:complexType>
       <xs:all>
-        <xs:element name="id" type="Entero"/>
+        <xs:element name="id" type="Entero" minOccurs="0"/>
         <xs:element name="intervention_type_id" type="Entero"/>
         <xs:element name="person_days_per_unit" type="NumeroONulo"/>
         <xs:element name="person_days_source" type="TextoONulo"/>

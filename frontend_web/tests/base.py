@@ -28,6 +28,12 @@ from frontend_web.app import create_app
 # atribuidos a alguien.
 CAPTURISTA_PRUEBA = "prueba.capturista"
 
+# Quien importa epidemia_comun.http.llamar para hablar con otro servicio.
+ENTRE_SERVICIOS = ("microservicios.auth.rutas.llamar", "epidemia_comun.sesiones.llamar",
+                   "epidemia_comun.alcance.llamar", "microservicios.comparacion.rutas.llamar",
+                   "microservicios.aprobacion.rutas.llamar", "microservicios.escenarios.rutas.llamar",
+                   "microservicios.casos.rutas.llamar", "microservicios.vacunas.rutas.llamar")
+
 
 def capturista_de_prueba():
     """Id de la cuenta CAPTURISTA de prueba; la crea o la reactiva."""
@@ -78,10 +84,12 @@ class PuenteServicios:
                              "full_name": payload.get("full_name"),
                              "roles": payload.get("roles") or []}, sid=sid, jti=jti)
 
-    def __call__(self, servicio, metodo, ruta, token=None, params=None, cuerpo=None, correlacion=None):
+    def __call__(self, servicio, metodo, ruta, token=None, params=None, cuerpo=None, correlacion=None,
+                 cabeceras=None):
         from backend_web import servicios
         from backend_web.servicios import ErrorServicio, ServicioNoDisponible
-        cabeceras = dict(servicios.cabeceras_de_la_persona(), Accept="application/json")
+        cabeceras = dict(servicios.cabeceras_de_la_persona(), Accept="application/json",
+                         **(cabeceras or {}))
         if token:
             cabeceras["Authorization"] = "Bearer " + self._con_sesion(token)
         consulta = {k: v for k, v in dict(params or {}, format="json").items() if v is not None}
@@ -93,6 +101,36 @@ class PuenteServicios:
             problema = r.get_json(silent=True) or {}
             raise ErrorServicio(servicio, r.status_code, problema.get("codigo"), problema.get("detail"))
         return r.get_json(silent=True)
+
+
+# La matriz de role_permissions (migraciones 010, 034 y 052), para simular a roles sin la base.
+_COMUNES = {"catalogs.read", "scenarios.read", "simulations.read", "cases.read", "reports.read",
+            "reports.export"}
+PERMISOS_POR_ROL = {
+    "ADMINISTRADOR": {"users.read", "users.create", "users.update", "users.delete", "catalogs.read",
+                      "catalogs.create", "catalogs.update", "scenarios.read", "scenarios.create",
+                      "scenarios.update", "scenarios.delete", "scenarios.publish", "scenarios.export",
+                      "scenarios.approve", "simulations.read", "simulations.run", "simulations.delete",
+                      "cases.read", "cases.update", "cases.approve", "reports.read", "reports.export",
+                      "reports.upload", "audit.read", "settings.read", "settings.update"},
+    "EPIDEMIOLOGO": {"catalogs.read", "catalogs.create", "catalogs.update", "scenarios.read",
+                     "scenarios.publish", "scenarios.export", "scenarios.approve", "simulations.read",
+                     "cases.read", "cases.update", "cases.approve", "reports.read", "reports.export",
+                     "settings.read"},
+    "ANALISTA": {"catalogs.read", "scenarios.read", "scenarios.create", "scenarios.update",
+                 "scenarios.delete", "scenarios.export", "simulations.read", "simulations.run",
+                 "simulations.delete", "cases.read", "reports.read", "reports.export", "reports.upload"},
+    "CAPTURISTA": {"catalogs.read", "cases.read", "cases.create", "cases.update"},
+    "INVESTIGADOR": _COMUNES | {"scenarios.export"},
+    "AUTORIDAD_SANITARIA": set(_COMUNES),
+}
+
+
+def permisos_simulados(token, user_id):
+    """Lo que responderia roles (GET /permissions/me) por los roles del token de la prueba."""
+    from backend_web.auth import decode_token
+    payload = decode_token(token) or {}
+    return set().union(*(PERMISOS_POR_ROL.get(r, set()) for r in payload.get("roles") or []))
 
 
 def sesion_simulada(token):
@@ -122,6 +160,10 @@ class AppTestCase(unittest.TestCase):
         super().setUpClass()
         cls.app = create_app()
         cls.app.testing = True
+        # El CSRF tiene sus propias pruebas (test_seguridad_web); aquí estorbaría a los formularios.
+        cls.app.config["CSRF_ACTIVO"] = cls.csrf_activo
+
+    csrf_activo = False
 
     def setUp(self):
         super().setUp()
@@ -136,21 +178,32 @@ class AppTestCase(unittest.TestCase):
                 simulado = patch(objetivo, side_effect=self.puente)
                 simulado.start()
                 self.addCleanup(simulado.stop)
-            for objetivo in ("microservicios.auth.rutas.llamar", "epidemia_comun.sesiones.llamar"):
+            # Lo que un servicio le pide a otro por epidemia_comun.http.llamar (D36): el alcance a
+            # roles, las curvas a resultados, los avisos a notificaciones, la validación.
+            for objetivo in ENTRE_SERVICIOS:
                 simulado = patch(objetivo, side_effect=self._entre_servicios)
                 simulado.start()
                 self.addCleanup(simulado.stop)
         if not self.sesion_real:
-            simulado = patch("frontend_web.app.sesion_servicios._actual", side_effect=sesion_simulada)
-            simulado.start()
-            self.addCleanup(simulado.stop)
+            for objetivo, falso in (("frontend_web.app.sesion_servicios._actual", sesion_simulada),
+                                    ("frontend_web.app.permisos.permisos_de_la_sesion", permisos_simulados)):
+                simulado = patch(objetivo, side_effect=falso)
+                simulado.start()
+                self.addCleanup(simulado.stop)
 
-    def _entre_servicios(self, servicio, metodo, ruta, cuerpo=None, token=None, **_):
-        # Lo que un servicio le pide a otro (auth o usuarios a sesiones) por HTTP, aquí contra su app en el proceso.
-        r = self.puente._cliente(servicio).open(
-            ruta, method=metodo.upper(), json=cuerpo,
-            headers=dict({"Accept": "application/json"}, **({"Authorization": "Bearer " + token} if token else {})))
-        return SimpleNamespace(status_code=r.status_code, json=r.get_json)
+    def _entre_servicios(self, servicio, metodo, ruta, cuerpo=None, token=None, cabeceras=None, **_):
+        # Lo que un servicio le pide a otro por HTTP, aquí contra su app en el proceso. Como el
+        # llamar de verdad, sin token explícito reenvía el de la petición en curso.
+        from flask import has_request_context, request
+        if token is None and has_request_context():
+            original = request.headers.get("Authorization", "")
+            token = original[7:].strip() if original.startswith("Bearer ") else None
+        encabezados = dict(cabeceras or {}, Accept="application/json")
+        if token:
+            encabezados["Authorization"] = "Bearer " + token
+        r = self.puente._cliente(servicio).open(ruta, method=metodo.upper(), json=cuerpo,
+                                                headers=encabezados)
+        return SimpleNamespace(status_code=r.status_code, json=r.get_json, content=r.data, text=r.get_data(as_text=True))
 
     def _captcha(self):
         """Los campos del captcha de auth, ya contestado (D36)."""

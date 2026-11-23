@@ -6,13 +6,14 @@ from frontend_web.app.permisos import COOKIE_NAME
 
 
 class ComparacionTablaTests(ConUsuarioSimulado):
-    @patch("frontend_web.app.routes.simulaciones.construir_comparacion_costo_impacto")
-    @patch("frontend_web.app.routes.queries.get_runs_completados_para_comparar")
-    @patch("frontend_web.app.routes.queries.get_corridas_para_comparar")
+    # Las corridas y sus indicadores los da comparacion; la frontera, pareto (D36).
+    @patch("backend_web.servicios.pareto")
+    @patch("backend_web.servicios.corridas")
+    @patch("backend_web.servicios.comparacion")
     def test_tabla_muestra_indicadores_comparativos(
         self, mock_corridas, mock_lista, mock_pareto
     ):
-        mock_pareto.return_value = (None, [])
+        mock_pareto.return_value = None
         mock_lista.return_value = []
         mock_corridas.return_value = [{
             "id": 42,

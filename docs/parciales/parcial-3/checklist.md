@@ -385,6 +385,7 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 ### C2. Sesión y seguridad
 
 - [x] La web registra y revisa su sesión en Redis; cerrar sesión deja el token sin valor (I3, RF-A12). Verificado el 2026-11-16: `demo_fallos.py web` y `redis` (`docs/pruebas/fallos/2026-11-16`).
+- [x] Segundo paso del MFA en el login de la web (D40): verificar el código o el de respaldo, enrolarse con el código de alta y ver los códigos de respaldo una vez (`/login/mfa`). Con el MFA o `DISPOSITIVO_OBLIGATORIO` prendidos, la web manda el dispositivo del navegador (D41). Con esto, la web ya no impide prender el MFA.
 - [x] Protección contra CSRF en los formularios (RNF-D07). `frontend_web/app/seguridad.py`: token por sesión en cada formulario POST.
 - [x] Encabezados de seguridad en las respuestas (RNF-D21). CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` y HSTS detrás de HTTPS.
 - [x] Verificar que ninguna consulta arma SQL con texto del usuario (RNF-D05) y que las plantillas escapan lo que muestran (RNF-D06). La web ya no tiene SQL (C6). Las plantillas no usan `|safe`; el JavaScript que arma HTML con datos del servidor los escapa (mapa, comparación y estado de la corrida).
@@ -431,7 +432,7 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 - [x] Campañas. Decididas en D49. `/campanas` con el servicio `vacunas`: consulta, alta y cancelación.
 - [x] Mapas epidemiológicos e indicadores.
 - [x] Reportes. `/reportes` reúne las descargas. Falta el reporte de la comparación: la ruta ya está (D2, C3).
-- [ ] Seguimiento de intervenciones. Lo definen C y E y lo registran en `decisiones/` (el bloque 0 lo delegó el 2026-11-22).
+- [ ] Seguimiento de intervenciones. Lo definen C y E y lo registran en `decisiones/` (el bloque 0 lo delegó el 2026-11-22). **Falta que E valide [D51](../../decisiones/D51-seguimiento-de-intervenciones.md)**, la propuesta de C; la pantalla ya está. `/intervenciones` muestra, por versión aprobada, lo programado, su costo, las corridas que lo simularon y las campañas de la vacunación.
 - [x] Institución y región de cada cuenta en la administración de usuarios.
 - [x] Ninguna gráfica sin fuente, periodo, modelo, versión y unidades. Ficha bajo cada gráfica.
 

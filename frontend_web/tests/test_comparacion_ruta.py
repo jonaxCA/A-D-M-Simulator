@@ -13,7 +13,8 @@ class ComparacionRutaTests(ConUsuarioSimulado):
             self.assertEqual(resp.status_code, 302)
             self.assertIn("/login", resp.headers["Location"])
 
-    @patch("frontend_web.app.routes.queries.get_runs_completados_para_comparar")
+    # La lista sale de corridas GET /runs?status=completado (D36).
+    @patch("backend_web.servicios.corridas")
     def test_comparacion_muestra_corridas_completadas(self, mock_runs):
         mock_runs.return_value = [{
             "id": 42,
@@ -44,8 +45,9 @@ class ComparacionRutaTests(ConUsuarioSimulado):
                 "Escenario de prueba".encode("utf-8"),
                 resp.data,
             )
+            self.assertEqual(mock_runs.call_args.args[1:], (100, "completado"))
 
-    @patch("frontend_web.app.routes.queries.get_runs_completados_para_comparar")
+    @patch("backend_web.servicios.corridas")
     def test_comparacion_vacia_muestra_mensaje(self, mock_runs):
         mock_runs.return_value = []
 
