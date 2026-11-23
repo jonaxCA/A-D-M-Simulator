@@ -145,7 +145,8 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
   a su servicio; lo que la web todavía lee (tablero, Monitoreo, mapa y captura) quedó como copia en
   el servicio dueño, igual a la del monolito hasta que la web consuma el servicio (D36). Ver
   `docs/arquitectura/duenos_de_reglas.md`.
-- **D42 y D43 (bloque E):** los perfiles INVESTIGADOR y AUTORIDAD_SANITARIA no están en los candados
+- **D42 y D43 (bloque E):** en parte, con D56 (2026-11-23): INVESTIGADOR y AUTORIDAD_SANITARIA ya leen en
+  `casos`, `vacunas` y `dispositivos`, y el alcance se aplica en `casos` y en la tabla de `zonas`. Antes: los perfiles INVESTIGADOR y AUTORIDAD_SANITARIA no están en los candados
   de las rutas de lectura de F, y el alcance por región no filtra casos, series, zonas ni
   indicadores. Las dos decisiones esperan la validación del líder.
 - **«Ninguna aplicación cliente se conecta a la base»:** la web todavía lee PostgreSQL para su

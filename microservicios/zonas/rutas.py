@@ -3,7 +3,7 @@ import math
 
 from flask import Response, g, request
 
-from epidemia_comun import cache
+from epidemia_comun import alcance, cache
 from epidemia_comun.auditoria import log_audit
 from epidemia_comun.bd import query
 from epidemia_comun.ambito import clave_ambito, filtros_ambito
@@ -67,6 +67,24 @@ def _mapa(disease_id, dias):
     return {"municipios": municipios, "serie": serie}
 
 
+def _alcance_de_zonas(f):
+    """D43: las regiones de la cuenta, o None si es nacional. Pedir un municipio fuera de ellas
+    es 403."""
+    permitidas = alcance.regiones_permitidas()
+    if permitidas is not None and f["region_id"] is not None and f["region_id"] not in permitidas:
+        raise ErrorAPI(403, "PERMISO_INSUFICIENTE", "El municipio está fuera del alcance de tu cuenta.")
+    return permitidas
+
+
+def pagina_en_alcance(zonas, permitidas, pagina, tamano):
+    """Las zonas de sus municipios, con la misma forma que get_monitoreo_zonas."""
+    suyas = [z for z in zonas if z["id"] in permitidas]
+    total = len(suyas)
+    return {"zonas": suyas[(pagina - 1) * tamano:pagina * tamano], "total": total, "pagina": pagina,
+            "paginas": max(1, -(-total // tamano)), "desde": (pagina - 1) * tamano + 1 if total else 0,
+            "hasta": min(pagina * tamano, total)}
+
+
 def registrar(app):
     # Mismo acceso que Monitoreo y Mapa en el monolito: cualquier cuenta con sesión.
     @app.get("/api/v1/zones")
@@ -84,14 +102,27 @@ def registrar(app):
         busqueda = (request.args.get("q") or "").strip() or None
         ambito = {"disease_id": f["disease_id"], "region_id": f["region_id"], "dias": f["dias"]}
 
-        tabla = json.dumps([busqueda, orden, pagina, tamano], ensure_ascii=False)
-        datos = cache.obtener("zonas", "zones:%s:%s" % (clave_ambito(f), tabla), TTL_CACHE,
-                              lambda: consultas.get_monitoreo_zonas(
-                                  busqueda=busqueda, orden=orden, pagina=pagina,
-                                  por_pagina=tamano, **ambito))
+        permitidas = _alcance_de_zonas(f)
+        if permitidas is None:
+            tabla = json.dumps([busqueda, orden, pagina, tamano], ensure_ascii=False)
+            datos = cache.obtener("zonas", "zones:%s:%s" % (clave_ambito(f), tabla), TTL_CACHE,
+                                  lambda: consultas.get_monitoreo_zonas(
+                                      busqueda=busqueda, orden=orden, pagina=pagina,
+                                      por_pagina=tamano, **ambito))
+        else:
+            # D43: la tabla completa (la misma para todos, en caché) recortada a sus municipios,
+            # y paginada aquí.
+            tabla = json.dumps([busqueda, orden, "todas"], ensure_ascii=False)
+            completa = cache.obtener("zonas", "zones:%s:%s" % (clave_ambito(f), tabla), TTL_CACHE,
+                                     lambda: consultas.get_monitoreo_zonas(
+                                         busqueda=busqueda, orden=orden, pagina=1,
+                                         por_pagina=TODAS, **ambito))
+            datos = pagina_en_alcance(completa["zonas"], permitidas, pagina, tamano)
         todas = cache.obtener("zonas", "zones-all:%s" % clave_ambito(f), TTL_CACHE,
                               lambda: consultas.get_monitoreo_zonas(pagina=1, por_pagina=TODAS,
                                                                     **ambito))
+        if permitidas is not None:
+            todas = {"zonas": [z for z in todas["zonas"] if z["id"] in permitidas]}
         datos["filtros"] = {"disease_id": f["disease_id"], "region_id": f["region_id"],
                             "days": f["dias"], "q": busqueda, "order": orden}
         datos["mayor_cambio"] = mayor_cambio(todas["zonas"])
@@ -117,10 +148,13 @@ def registrar(app):
         orden = request.args.get("order", "incidencia")
         if orden not in ORDENES:
             raise ErrorAPI(422, "DATOS_INVALIDOS", "order debe ser casos o incidencia.")
+        permitidas = _alcance_de_zonas(f)
         datos = consultas.get_monitoreo_zonas(
             disease_id=f["disease_id"], region_id=f["region_id"], dias=f["dias"],
             busqueda=(request.args.get("q") or "").strip() or None, orden=orden,
             pagina=1, por_pagina=TODAS)
+        if permitidas is not None:
+            datos = pagina_en_alcance(datos["zonas"], permitidas, 1, TODAS)
         log_audit(g.contexto, "EXPORT", "reports", entity_id="monitoreo_zonas")
         datos["filtros"] = {"disease_id": f["disease_id"], "region_id": f["region_id"],
                             "days": f["dias"], "order": orden}

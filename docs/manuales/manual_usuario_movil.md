@@ -10,8 +10,10 @@ también lee los lotes de vacuna por su código, aplica dosis y muestra los avis
 
 | Rol | Qué ve en la app |
 |---|---|
-| Capturista | Todo: capturar casos, mis casos y su seguimiento, lotes de vacuna, consulta por zona, avisos y perfil |
-| Analista, epidemiólogo y administrador | Lotes de vacuna, consulta por zona, avisos y perfil. No ven la captura: los casos los registra solo el capturista |
+| Capturista | Capturar casos, mis casos y su seguimiento, campañas, lotes de vacuna (registrar y aplicar), consulta por zona, avisos y perfil |
+| Epidemiólogo y autoridad sanitaria | Casos (los de tu alcance, para consultarlos), campañas, lotes de vacuna (solo consultar), consulta por zona, avisos y perfil. Validar o descartar casos se hace en la web |
+| Administrador | Lo mismo que el epidemiólogo, y además registra lotes y aplica dosis. No captura: los casos los registra solo el capturista |
+| Analista e investigador | Consulta por zona, avisos y perfil |
 
 **El inicio** es tu panel: cuántos casos faltan por enviar, cuántos tienen datos por completar,
 cuántos avisos sin leer tienes y cuántas enfermedades tienen formulario propio en el teléfono.

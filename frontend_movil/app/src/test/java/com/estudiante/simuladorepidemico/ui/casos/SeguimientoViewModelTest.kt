@@ -190,4 +190,14 @@ class SeguimientoViewModelTest {
         assertEquals("2 KB", tamanoLegible(1500))
         assertEquals("1.8 MB", tamanoLegible(1_843_200))
     }
+
+    @Test
+    fun si_el_perfil_no_ve_fotos_no_es_un_error() {
+        servidor.listaDeFotos = ServidorFalso.problema(403, "PERMISO_INSUFICIENTE")
+
+        val estado = modelo().espera { it.fotosSinAcceso }
+
+        assertNull(estado.errorFotos)
+        assertTrue(estado.fotos.isEmpty())
+    }
 }

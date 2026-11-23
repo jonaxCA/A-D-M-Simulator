@@ -14,7 +14,7 @@ igual que Monitoreo y Mapa en el monolito.
 
 | Método | Ruta                 | Qué regresa |
 |--------|----------------------|-------------|
-| GET    | `/api/v1/zones`      | Una fila por municipio: casos, incidencia, variación a 7 días, graves y semáforo (`estado`). Con paginación y `mayor_cambio` |
+| GET    | `/api/v1/zones`      | Una fila por municipio: casos, incidencia, variación a 7 días, graves y semáforo (`estado`). Con paginación y `mayor_cambio`. Con alcance por región (D43), solo sus municipios; uno ajeno en `region_id` es 403 |
 | GET    | `/api/v1/zones/map`  | Municipios con incidencia, nivel del semáforo (`nivel`) y tendencia de 14 días, más la serie acumulada día por día para la línea de tiempo |
 | GET    | `/api/v1/zones/heatmap` | Los casos con coordenadas, agregados en celdas, para un mapa de calor (ver abajo) |
 | GET    | `/api/v1/zones/jurisdictions` | Las cifras de `/zones` sumadas por jurisdicción sanitaria (ver abajo) |

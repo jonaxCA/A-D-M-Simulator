@@ -197,3 +197,21 @@ def test_en_la_carpeta_de_inicio_de_postgres_solo_van_scripts_de_inicio():
     todo .sh y .sql que haya ahí al crear una base nueva. aplica_migraciones.sh estuvo ahí, corrió
     sin argumentos y dejó la inicialización a medias (2026-11-21)."""
     assert sorted(p.name for p in (RAIZ / "infra/postgres").iterdir()) == ["10-inicializa.sh"]
+
+
+def test_quien_pide_el_alcance_conoce_a_roles():
+    """D43: un servicio que pide el alcance de la cuenta (epidemia_comun.alcance) se lo pide a roles por
+    HTTP. Sin SERVICIO_ROLES_URL en su contenedor, cada lectura da 503 (pasó con casos y zonas en
+    D56). roles lo calcula en su propia base."""
+    servicios = COMPOSE.split("\nservices:\n", 1)[1].split("\nvolumes:\n", 1)[0]
+    bloques = dict(re.findall(r"^  ([a-z][a-z0-9-]*):\n((?:(?:    .*)?\n)*)", servicios + "\n", re.M))
+    piden = set()
+    for carpeta in (RAIZ / "microservicios").iterdir():
+        if carpeta.name == "roles" or not (carpeta / "Dockerfile").exists():
+            continue
+        texto = "".join(p.read_text(encoding="utf-8") for p in carpeta.glob("*.py"))
+        if re.search(r"\b(regiones_permitidas|exige_region|exige_region_de)\(", texto):
+            piden.add(carpeta.name.replace("_", "-"))
+    assert {"casos", "zonas", "corridas"} <= piden
+    sin_roles = sorted(s for s in piden if "SERVICIO_ROLES_URL: http://roles:8000" not in bloques[s])
+    assert not sin_roles, sin_roles
