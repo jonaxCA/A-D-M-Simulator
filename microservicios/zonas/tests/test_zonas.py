@@ -2,7 +2,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from backend_web import queries
+from microservicios.zonas import consultas
 from microservicios.zonas.rutas import mayor_cambio
 
 
@@ -42,18 +42,18 @@ def llamadas(monkeypatch):
         return {"zonas": filas, "total": len(TODAS), "pagina": pagina, "paginas": 1,
                 "desde": inicio + 1, "hasta": inicio + len(filas)}
 
-    monkeypatch.setattr(queries, "get_monitoreo_zonas", monitoreo_zonas)
-    monkeypatch.setattr(queries, "get_mapa_municipios", lambda disease_id=None, dias=30: [
+    monkeypatch.setattr(consultas, "get_monitoreo_zonas", monitoreo_zonas)
+    monkeypatch.setattr(consultas, "get_mapa_municipios", lambda disease_id=None, dias=30: [
         {"id": 1, "region_code": "19039", "nombre": "Monterrey", "casos": 50,
          "incidencia": 4.4, "variacion": 20.0, "lat": 25.67, "lon": -100.31, "nivel": "baja"}])
-    monkeypatch.setattr(queries, "get_tendencia_zona", lambda region_id, disease_id=None, dias=14: [
+    monkeypatch.setattr(consultas, "get_tendencia_zona", lambda region_id, disease_id=None, dias=14: [
         {"fecha": "2026-10-11", "total": 2}])
-    monkeypatch.setattr(queries, "get_mapa_serie_temporal", lambda disease_id=None, dias=30: {
+    monkeypatch.setattr(consultas, "get_mapa_serie_temporal", lambda disease_id=None, dias=30: {
         "fechas": ["2026-10-11", "2026-10-12"], "dias_periodo": 2,
         "series": {"19039": {"casos": [1, 3], "incidencia": [0.1, 0.3], "variacion": [0.0, 50.0]},
                    "19006": {"casos": [0, 0], "incidencia": [0.0, 0.0], "variacion": [0.0, 0.0]}}})
-    monkeypatch.setattr(queries, "get_enfermedad", lambda i: {"id": i})
-    monkeypatch.setattr(queries, "get_region_municipio", lambda i: {"id": i})
+    monkeypatch.setattr(consultas, "get_enfermedad", lambda i: {"id": i})
+    monkeypatch.setattr(consultas, "get_region_municipio", lambda i: {"id": i})
     return registro
 
 
@@ -112,6 +112,6 @@ def test_mapa_rechaza_periodo_de_monitoreo(cliente, token):
 def test_mapa_desde_cache(cliente, token, redis_falso, monkeypatch):
     cabeceras = token()
     cliente.get("/api/v1/zones/map?format=json", headers=cabeceras)
-    monkeypatch.setattr(queries, "get_mapa_municipios",
+    monkeypatch.setattr(consultas, "get_mapa_municipios",
                         lambda **_: pytest.fail("debió salir de la caché"))
     assert cliente.get("/api/v1/zones/map?format=json", headers=cabeceras).status_code == 200

@@ -1,0 +1,47 @@
+{
+  "celda_grados": 0.01,
+  "minimo_por_celda": 3,
+  "total_casos": 114,
+  "casos_en_puntos": 103,
+  "casos_sin_coordenadas": 9,
+  "casos_suprimidos": 2,
+  "celdas_suprimidas": 1,
+  "puntos": [
+    {
+      "lat": 25.675,
+      "lon": -100.315,
+      "casos": 41,
+      "peso": 1.0
+    },
+    {
+      "lat": 25.685,
+      "lon": -100.305,
+      "casos": 27,
+      "peso": 0.6585
+    },
+    {
+      "lat": 25.745,
+      "lon": -100.215,
+      "casos": 18,
+      "peso": 0.439
+    },
+    {
+      "lat": 25.665,
+      "lon": -100.275,
+      "casos": 11,
+      "peso": 0.2683
+    },
+    {
+      "lat": 25.805,
+      "lon": -100.295,
+      "casos": 6,
+      "peso": 0.1463
+    }
+  ],
+  "filtros": {
+    "disease_id": null,
+    "region_id": null,
+    "days": 30,
+    "cell": 0.01
+  }
+}

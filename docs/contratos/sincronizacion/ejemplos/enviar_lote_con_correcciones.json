@@ -1,0 +1,72 @@
+{
+  "batch_id": "0b6f5a53-1d1f-4f52-8a0a-5d0a4a0e9c11",
+  "device_id": 3,
+  "recibido_en": "2026-10-04T18:05:00+00:00",
+  "total": 1,
+  "creados": 1,
+  "duplicados": 0,
+  "rechazados": 0,
+  "resultados": [
+    {
+      "indice": 0,
+      "local_uuid": "11111111-1111-4111-8111-111111111111",
+      "resultado": "creado",
+      "case_id": 43,
+      "codigo": null,
+      "errores": []
+    }
+  ],
+  "actualizados": 1,
+  "conflictos": 1,
+  "actualizaciones_rechazadas": 0,
+  "actualizaciones": [
+    {
+      "indice": 0,
+      "case_id": 41,
+      "resultado": "actualizado",
+      "version": 2,
+      "codigo": null,
+      "errores": [],
+      "caso": null
+    },
+    {
+      "indice": 1,
+      "case_id": 42,
+      "resultado": "conflicto",
+      "version": 3,
+      "codigo": "CONFLICTO",
+      "errores": [
+        "El caso cambió desde que lo leíste: tenías la versión 2 y ya va en la 3. Vuelve a consultarlo y decide con lo que tiene ahora."
+      ],
+      "caso": {
+        "id": 42,
+        "local_uuid": "22222222-2222-4222-8222-222222222222",
+        "device_id": 3,
+        "reported_by": 7,
+        "disease_id": 1,
+        "enfermedad": "COVID-19",
+        "region_id": 10,
+        "municipio": "Monterrey",
+        "age": 28,
+        "sex": "M",
+        "onset_date": "2026-09-29",
+        "report_date": "2026-10-02",
+        "latitude": null,
+        "longitude": null,
+        "test_result": "positivo",
+        "severity": "leve",
+        "status": "validado",
+        "created_at": "2026-10-02T09:15:00+00:00",
+        "synced_at": "2026-10-02T09:15:00+00:00",
+        "version": 3,
+        "updated_at": "2026-10-03T11:20:00+00:00",
+        "updated_by": 9,
+        "status_reason": null,
+        "duplicate_of": null,
+        "form_id": null,
+        "form_answers": null
+      }
+    }
+  ],
+  "repetido": false
+}

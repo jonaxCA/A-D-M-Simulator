@@ -1,9 +1,9 @@
 """
 Dispositivos de las apps: la tabla devices (migraciones 002 y 031).
 
-La escribe solo el microservicio dispositivos: registrar uno, volver a
-registrarse desde el mismo (actualiza su version y su ultima conexion) y
-revocarlo. casos la lee para no aceptar un caso de un dispositivo ajeno o
+La escribe solo este servicio (E8: antes vivía en backend_web): registrar uno,
+volver a registrarse desde el mismo (actualiza su version y su ultima conexion)
+y revocarlo. casos la lee para no aceptar un caso de un dispositivo ajeno o
 revocado. push_token no sale de aqui ni entra a la bitacora: solo se dice si
 hay uno.
 """
@@ -12,8 +12,8 @@ import re
 import psycopg2.errors
 import psycopg2.extras
 
-from .audit import log_audit
-from .db import get_conn, query
+from epidemia_comun.auditoria import log_audit
+from epidemia_comun.bd import get_conn, query
 
 # ck_devices_platform (002).
 PLATAFORMAS = ("android", "ios", "desktop")

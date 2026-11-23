@@ -22,11 +22,13 @@ específicas. Sin MongoDB, Cloud Storage ni nginx.
   transacción, con `log_audit(..., cur=cur)`, como hoy. Un 403 también queda anotado, como
   `PERMISSION_DENIED`, desde `requiere_token` (D36, migración 046). La consulta de la
   bitácora es de `roles` (D37).
-- **Un contenedor por servicio.** Todos parten de la misma imagen base, escuchan en el puerto
-  8000 dentro de su contenedor y publican un puerto propio hacia fuera, según la tabla.
-- **La lógica no se reescribe.** Los servicios importan `backend_web`, cuya capa de datos ya
-  no depende de Flask, y el motor de `procesamiento/`. Al construir la API de un dominio, ese
-  dominio sale de `queries.py` a su propio módulo, con `queries.py` como fachada (LIMP-11e).
+- **Un contenedor por servicio.** Todos parten de una imagen base (`infra/docker/`), escuchan en
+  el puerto 8000 dentro de su contenedor y publican un puerto propio hacia fuera, según la tabla.
+- **Cada regla con su servicio (E8, D37).** Los servicios de E y F ya no importan `backend_web`:
+  sus imágenes parten de `base-identidad`, `base-simulacion` y `base-vigilancia`, y sus reglas
+  viven en su carpeta ([`duenos_de_reglas.md`](duenos_de_reglas.md)). Los de D todavía lo
+  importan desde `epidemia/base`. `procesamiento/` (el motor) solo va en las imágenes que lo
+  usan: `base-simulacion` y `epidemia/base`.
 
 ## Esquema de puertos
 
@@ -68,11 +70,11 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 
 | #  | Servicio         | Hace una cosa                                                 | Rutas principales                                                                                                        | Escribe                                                 | Lee                                                              | Llama a                                                        | Puerto |
 |----|------------------|---------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|------------------------------------------------------------------|----------------------------------------------------------------|--------|
-| 10 | `casos`          | Registra y consulta casos                                     | `POST /api/v1/cases`, `GET /api/v1/cases`, `GET /api/v1/cases/{id}`                                                      | `cases`                                                 | `diseases`, `regions`, `devices` (`id`, `user_id`, `is_revoked`) | —                                                              | 5221   |
-| 11 | `sincronizacion` | Recibe lotes de casos capturados sin conexión en la app móvil | `POST /api/v1/sync/cases`, `GET /api/v1/sync/batches/{id}`                                                               | — (los casos los escribe `casos`)                       | —                                                                | `casos`, uno por caso, en JSON; reenvía el token de la persona; `notificaciones` una vez por lote con casos nuevos (best-effort) | 5222   |
+| 10 | `casos`          | Registra, consulta y corrige casos y cambia su estado (D47); formularios por enfermedad (D48) | `POST /api/v1/cases`, `POST /api/v1/cases/batch`, `GET /api/v1/cases`, `GET /api/v1/cases/{id}`, `PATCH /api/v1/cases/{id}`, `POST /api/v1/cases/{id}/status`, `GET /api/v1/cases/{id}/history`, `GET /api/v1/cases/incomplete`, `GET /api/v1/forms`, `GET /api/v1/forms/current`, `GET /api/v1/forms/{id}`, `POST /api/v1/forms`, `PUT /api/v1/forms/{id}`, `POST /api/v1/forms/{id}/publish` | `cases`, `case_history`, `case_forms` (D48)             | `diseases`, `regions`, `devices` (`id`, `user_id`, `is_revoked`) | `notificaciones` al descartar o marcar duplicado (`CASE_REJECTED`, best-effort) | 5221   |
+| 11 | `sincronizacion` | Recibe lotes de casos capturados sin conexión en la app móvil | `POST /api/v1/sync/cases`, `GET /api/v1/sync/batches/{id}`                                                               | — (los casos los escribe `casos`)                       | —                                                                | `casos`: el lote en una llamada (`/cases/batch`) y una por corrección (`PATCH /cases/{id}` con If-Match, D47), en JSON; reenvía el token de la persona; `notificaciones` una vez por lote con casos nuevos (best-effort) | 5222   |
 | 27 | `dispositivos`   | Registra, consulta y revoca los dispositivos de las apps      | `POST /api/v1/devices`, `GET /api/v1/devices`, `GET /api/v1/devices/{id}`, `POST /api/v1/devices/{id}/revoke`            | `devices` (alta, versión, última conexión y revocación) | —                                                                | —                                                              | 5223   |
 | 28 | `evidencias`     | Fotos y PDF de los casos, en un volumen de Docker             | `POST/GET /api/v1/cases/{id}/attachments`, `GET/DELETE /api/v1/attachments/{id}`, `GET /api/v1/attachments/{id}/content` | `case_attachments`; los archivos, en su volumen         | `cases` (`id`, `reported_by`)                                    | —                                                              | 5224   |
-| 29 | `vacunas`        | Lotes de vacuna leídos por QR y las dosis que se les aplican  | `POST/GET /api/v1/vaccine-lots`, `GET /api/v1/vaccine-lots/{id}`, `POST /api/v1/vaccine-lots/{id}/doses`                 | `vaccine_lots` (alta y `doses_used`)                    | `diseases`, `regions` (`id`, `name`)                             | —                                                              | 5225   |
+| 29 | `vacunas`        | Lotes de vacuna leídos por QR, las dosis que se les aplican y las campañas (D49) | `POST/GET /api/v1/vaccine-lots`, `GET /api/v1/vaccine-lots/{id}`, `POST /api/v1/vaccine-lots/{id}/doses`, `GET/POST /api/v1/campaigns`, `GET/PUT /api/v1/campaigns/{id}`, `POST /api/v1/campaigns/{id}/cancel` | `vaccine_lots` (alta y `doses_used`), `campaigns`       | `diseases`, `regions` (`id`, `name`, `level`, `parent_region_id`, `code`) | `notificaciones` al crear o cancelar una campaña (`CAMPAIGN`, best-effort) | 5225   |
 
 - `sincronizacion` usa Redis para que el mismo lote enviado dos veces no duplique casos
   (`sync:lote:<id>`, 7 días). Regresa el resultado de cada caso: creado (201 de `casos`),
@@ -118,8 +120,11 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
   que crea avisos es interna. Es best-effort: si falla, el cambio de estado se mantiene.
 - `sincronizacion` → `notificaciones`: un aviso `NEW_CASES` por lote, a los EPIDEMIOLOGO, solo
   cuando el lote se procesa por primera vez y crea al menos un caso. También con token de
-  servicio y best-effort. `POST /api/v1/notifications` acepta `role` (hoy solo `EPIDEMIOLOGO`) en
-  lugar de `user_id`: crea un aviso por cada persona activa con ese rol.
+  servicio y best-effort. `POST /api/v1/notifications` acepta `role` (`EPIDEMIOLOGO` o
+  `ADMINISTRADOR`) en lugar de `user_id`: crea un aviso por cada persona activa con ese rol.
+- `estado-servicios` → `notificaciones`: las alertas técnicas (F7), un aviso `SYSTEM` a los
+  ADMINISTRADOR cuando un servicio cambia de estado durante 30 s. Con token de servicio; lo que
+  no se entrega se reintenta cada 60 s (ver su README).
 
 ## Simulación
 
@@ -157,15 +162,15 @@ de Docker; en tu máquina, `127.0.0.1:6380`, para no chocar con Memurai).
 | #  | Servicio      | Hace una cosa                                      | Rutas principales                                                     | Escribe | Lee                                   | Llama a       | Puerto |
 |----|---------------|----------------------------------------------------|-----------------------------------------------------------------------|---------|---------------------------------------|---------------|--------|
 | 22 | `indicadores` | Indicadores del tablero y situación por enfermedad | `GET /api/v1/dashboard/indicators`, `GET /api/v1/dashboard/situation`, `GET /api/v1/dashboard/curve` (públicas); `GET /api/v1/dashboard/situation/export` (con sesión) | `audit_log` (EXPORT, migración 046) | `cases`, `regions`, `simulation_runs` | Redis (caché) | 5251   |
-| 23 | `series`      | Curva epidémica y series por edad y sexo           | `GET /api/v1/series/cases`, `.../by-age`, `.../by-sex`, `.../totals`  | —       | `cases`                               | Redis (caché) | 5252   |
-| 24 | `zonas`       | Mapa por municipio y detalle por zona              | `GET /api/v1/zones`, `GET /api/v1/zones/diseases`, `GET /api/v1/zones/export`, `GET /api/v1/zones/map` | `audit_log` (EXPORT, migración 046) | `cases`, `regions`, `diseases` | Redis (caché) | 5253   |
+| 23 | `series`      | Curva epidémica y series por edad y sexo           | `GET /api/v1/series/cases`, `.../by-age`, `.../by-sex`, `.../totals`, `.../aggregate`, `.../highcharts`  | —       | `cases`                               | Redis (caché) | 5252   |
+| 24 | `zonas`       | Mapa por municipio y detalle por zona              | `GET /api/v1/zones`, `GET /api/v1/zones/diseases`, `GET /api/v1/zones/export`, `GET /api/v1/zones/map`, `GET /api/v1/zones/heatmap`, `GET /api/v1/zones/jurisdictions`, `GET /api/v1/zones/geometry`, `GET /api/v1/zones/locate` | `audit_log` (EXPORT, migración 046) | `cases`, `regions`, `diseases` | Redis (caché) | 5253   |
 
 ## Plataforma
 
 | #  | Servicio           | Hace una cosa                                  | Rutas principales                                                                                                              | Escribe         | Lee | Llama a                                  | Puerto |
 |----|--------------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|-----------------|-----|------------------------------------------|--------|
-| 25 | `notificaciones`   | Avisos para las apps                           | `GET /api/v1/notifications`, `POST /api/v1/notifications/{id}/read`, `POST /api/v1/notifications` (solo con token de servicio) | `notifications` | `users` (`id`, `is_active`), `user_roles`, `roles` | —                                        | 5261   |
-| 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/{nombre}/history`                                 | MongoDB `historial_servicios` (un sondeo por documento, 30 días, D28) | MongoDB `historial_servicios` | El `/health` de los 26, incluido el suyo, **en XML** | 5262   |
+| 25 | `notificaciones`   | Avisos para las apps                           | `GET /api/v1/notifications`, `POST /api/v1/notifications/{id}/read`, `POST /api/v1/notifications` (solo con token de servicio), `GET` y `PUT /api/v1/notifications/preferences` (D49) | `notifications`, `notification_preferences` | `users` (`id`, `is_active`), `user_roles`, `roles` | —                                        | 5261   |
+| 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/capacity`, `GET /api/v1/services/{nombre}/history`                                 | MongoDB `historial_servicios` (un sondeo por documento, 30 días, D28) | MongoDB `historial_servicios` | El `/health` de los 26, incluido el suyo, **en XML**; `notificaciones` para las alertas técnicas (F7) | 5262   |
 | —  | `consola`          | Página tipo Swagger/Postman para probar los 29 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
 
 - La `consola` es una página: el navegador llama a cada servicio con la URL que da el
@@ -225,12 +230,14 @@ guarda su huella (SHA-256).
 | `queue:simulaciones:<motor>` | Corridas por ejecutar con ese motor y prioridad normal: `{"id", "forzar_error"}` en JSON | **Sin TTL**: la vacía el `simulador`, y lo que manda es PostgreSQL | `corridas`                                     | `cola`     |
 | `queue:simulaciones:<motor>:<prioridad>` | Las de prioridad `alta` o `baja` de ese motor (D44); el simulador las toma en el orden alta, normal y baja | **Sin TTL**: la vacía el `simulador`, y lo que manda es PostgreSQL | `corridas` | `cola` |
 | `lock:corrida:<version>`     | Marca de la petición que lo tomó                                                  | Unos segundos                                                      | `corridas`                                     | `candados` |
+| `worker:<motor>:<simulador>` | Latido de un simulador: su motor, su nombre (el del contenedor), la corrida que ejecuta y cuántas lleva, en JSON; `estado-servicios` cuenta los vivos y los ocupados por motor | 30 s; el simulador lo renueva cada 10 s mientras su trabajador corre | `simulador` | — |
 | `job:<id>:progress`          | Avance de una corrida (10, 30, 90 y 100)                                          | 24 h (86400 s), desde el último avance                             | `simulador`                                    | —          |
 | `cache:<servicio>:<clave>`   | La respuesta, en JSON                                                             | Corto; lo fija cada servicio (`resultados`: 300 s)                 | `resultados`, `indicadores`, `series`, `zonas` | `cache`    |
 | `sync:lote:<id>`             | Resultado de un lote ya recibido                                                  | 7 días (`SYNC_LOTE_TTL_SECONDS`, por defecto 604800)               | `sincronizacion`                               | —          |
 | `sync:lote:<id>:candado`     | Marca de la petición que está procesando ese lote                                 | 300 s                                                              | `sincronizacion`                               | `candados` |
 | `ratelimit:<usuario>:<ruta>` | Contador de peticiones de la ventana; sin sesión, `<usuario>` es `ip-<dirección>` y `<ruta>` es `MÉTODO:regla` | La ventana (60 s por defecto)                                      | todos los servicios                            | `limites`  |
 | `health:<servicio>`          | Último sondeo de un servicio, en JSON                                             | Tres intervalos de sondeo: 30 s con `SONDEO_SEGUNDOS` en 10        | `estado-servicios`                             | —          |
+| `alert:<servicio>`           | Lo último que se avisó de un servicio a los ADMINISTRADOR (`estado`) y cuándo se avisó su última falla, en JSON (alertas técnicas, F7) | 7 días, desde el último aviso; si vence con el servicio caído, la falla se vuelve a avisar | `estado-servicios` | — |
 | `errors:<servicio>`          | Contador de respuestas 5xx del servicio (sin contar `/health`); lo lee el panel   | 24 h, desde el primer error de la ventana                          | todos los servicios                            | —          |
 
 - Todas las rutas protegidas leen `session:` y `jwt:revoked:` desde `@requiere_token`

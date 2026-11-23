@@ -17,6 +17,8 @@ from epidemia_comun.formatos import de_xml
 from epidemia_comun.http import llamar
 from epidemia_comun.redis_compartido import opcional
 
+from . import alertas
+
 log = logging.getLogger(__name__)
 
 # Los del catálogo (docs/arquitectura/microservicios.md), en su orden, con su perfil del
@@ -221,15 +223,29 @@ def vigentes(nombres):
     return [registros[n] for n in nombres]
 
 
-def _ciclo():
+def _ciclo(vigia=None):
     while True:
         inicio = time.monotonic()
+        registros = None
         try:
-            guardar(sondear_varios(list(SERVICIOS)))
+            registros = sondear_varios(list(SERVICIOS))
+            guardar(registros)
         except Exception:
             log.exception("Falló una ronda del sondeo")
+        if vigia is not None and registros:
+            try:
+                vigia.revisar(registros)
+            except Exception:
+                log.exception("Falló la revisión de las alertas técnicas")
         time.sleep(max(0, intervalo() - (time.monotonic() - inicio)))
 
 
-def iniciar():
-    threading.Thread(target=_ciclo, name="sondeo", daemon=True).start()
+def iniciar(ajustes=None):
+    # Con los ajustes de la app (el token de servicio), cada ronda revisa también las alertas
+    # técnicas (alertas.py, F7).
+    vigia = None
+    if ajustes is not None and alertas.activas():
+        vigia = alertas.Alertas(ajustes)
+    elif ajustes is not None:
+        log.info("Alertas técnicas apagadas: falta SERVICIO_NOTIFICACIONES_URL o ALERTAS_TECNICAS=0.")
+    threading.Thread(target=_ciclo, args=(vigia,), name="sondeo", daemon=True).start()

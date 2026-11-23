@@ -8,8 +8,8 @@ from xml.etree import ElementTree as ET
 import psycopg2
 import pytest
 
-from backend_web import dispositivos, queries
-from microservicios.casos import rutas
+from microservicios.casos import captura as datos_captura
+from microservicios.casos import formularios, rutas
 
 ENFERMEDADES = [{"id": 1, "name": "COVID-19", "code": "SARS"}]
 MUNICIPIOS = [{"id": 10, "name": "Monterrey"}, {"id": 11, "name": "Apodaca"}]
@@ -19,6 +19,8 @@ UUID_A = "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f"
 class BaseFalsa:
     def __init__(self):
         self.casos = []
+        self.historial = []
+        self.formularios = {}   # id -> versión de un formulario (D48)
         self.sentencias = []
         self.commits = 0
         self.rollbacks = 0
@@ -26,13 +28,15 @@ class BaseFalsa:
         self.carrera = False
 
     def _fila(self, c):
-        nombres = {1: "COVID-19"}
+        nombres = {1: "COVID-19", 2: "Dengue"}
         muni = {10: "Monterrey", 11: "Apodaca"}
         return (c["id"], c["local_uuid"], c["device_id"], int(c["reported_by"]), c["disease_id"],
                 nombres[c["disease_id"]], c["region_id"], muni[c["region_id"]], c["age"],
                 c["sex"], c["onset_date"], c["report_date"], c["latitude"], c["longitude"],
-                c["test_result"], c["severity"], "pendiente",
-                datetime(2026, 10, 12, 10, 0, tzinfo=timezone.utc), c["synced_at"])
+                c["test_result"], c["severity"], c["status"],
+                datetime(2026, 10, 12, 10, 0, tzinfo=timezone.utc), c["synced_at"],
+                c["version"], c["updated_at"], c["updated_by"], c["status_reason"],
+                c["duplicate_of"], c["form_id"], c["form_answers"])
 
     def ejecutar(self, sql, p):
         self.sentencias.append((sql, p))
@@ -45,6 +49,33 @@ class BaseFalsa:
                 return []
             self.casos.append(dict(self._base(p), id=len(self.casos) + 1))
             return [(len(self.casos),)]
+        if sql.startswith("UPDATE cases SET"):
+            columnas = [a.split(" = ")[0] for a in
+                        sql[len("UPDATE cases SET "):sql.index(", version = version + 1")].split(", ")]
+            *valores, usuario, case_id, version = p
+            caso = next((c for c in self.casos if c["id"] == case_id and c["version"] == version), None)
+            if caso is None:
+                return []
+            caso.update(zip(columnas, valores))
+            if isinstance(caso.get("form_answers"), str):
+                caso["form_answers"] = json.loads(caso["form_answers"])
+            caso.update(version=version + 1, updated_by=int(usuario),
+                        updated_at=datetime(2026, 10, 13, 9, 0, tzinfo=timezone.utc))
+            return [(caso["version"],)]
+        if sql.startswith("INSERT INTO case_history"):
+            self.historial.append(dict(zip(("case_id", "version", "action", "changed_by",
+                                            "status_before", "status_after", "changes", "reason",
+                                            "device_id"), p)))
+            return []
+        if sql.startswith("SELECT version FROM cases"):
+            return [(c["version"],) for c in self.casos if c["id"] == p[0]]
+        if sql.startswith("SELECT version, action"):
+            return [(h["version"], h["action"], int(h["changed_by"]),
+                     datetime(2026, 10, 13, 9, 0, tzinfo=timezone.utc), h["status_before"],
+                     h["status_after"], json.loads(h["changes"]), h["reason"], h["device_id"])
+                    for h in sorted(self.historial, key=lambda h: h["version"]) if h["case_id"] == p[0]]
+        if sql.startswith("SELECT id, disease_id, status FROM cases"):
+            return [(c["id"], c["disease_id"], c["status"]) for c in self.casos if c["id"] == p[0]]
         if "FROM cases c" in sql and sql.startswith("SELECT count"):
             return [(len(self.filtrar(sql, p)),)]
         if sql.startswith("SELECT c.id"):
@@ -65,7 +96,9 @@ class BaseFalsa:
         return dict(local_uuid=p[0], device_id=p[1], reported_by=p[2], disease_id=p[3],
                     region_id=p[4], age=p[5], sex=p[6], onset_date=p[7], report_date=p[8],
                     latitude=p[9], longitude=p[10], test_result=p[11], severity=p[12],
-                    synced_at=p[13])
+                    synced_at=p[13], status="pendiente", version=1, updated_at=None,
+                    updated_by=None, status_reason=None, duplicate_of=None, form_id=p[14],
+                    form_answers=json.loads(p[15]) if p[15] else None)
 
 
 class Cursor:
@@ -111,10 +144,19 @@ def base(monkeypatch):
         yield Conexion(falsa)
 
     monkeypatch.setattr(rutas, "get_conn", get_conn)
-    monkeypatch.setattr(queries, "get_enfermedades_para_captura", lambda: ENFERMEDADES)
-    monkeypatch.setattr(queries, "get_municipios_catalogo", lambda: MUNICIPIOS)
+    monkeypatch.setattr(datos_captura, "get_enfermedades_para_captura", lambda: ENFERMEDADES)
+    monkeypatch.setattr(datos_captura, "get_municipios_catalogo", lambda: MUNICIPIOS)
     simula_dispositivos(monkeypatch, falsa)
+    simula_formularios(monkeypatch, falsa)
     return falsa
+
+
+def simula_formularios(monkeypatch, falsa):
+    """Los formularios de la base falsa: por id y la versión publicada de cada enfermedad."""
+    monkeypatch.setattr(formularios, "por_id", lambda form_id: falsa.formularios.get(form_id))
+    monkeypatch.setattr(formularios, "vigentes", lambda disease_id=None: [
+        f for f in falsa.formularios.values() if f["status"] == "publicado"
+        and (disease_id is None or f["disease_id"] == disease_id)])
 
 
 def simula_dispositivos(monkeypatch, falsa):
@@ -125,7 +167,7 @@ def simula_dispositivos(monkeypatch, falsa):
         dueno, revocado = falsa.dispositivos.get(device_id, (None, False))
         return "ajeno" if dueno != user_id else ("revocado" if revocado else "ok")
 
-    monkeypatch.setattr(dispositivos, "estado_para_captura", estado)
+    monkeypatch.setattr(datos_captura, "estado_para_captura", estado)
 
 
 @pytest.fixture
@@ -419,7 +461,7 @@ def test_lote_cada_caso_con_su_resultado_y_en_orden(cliente, captura, base, bita
 
 def test_lote_lee_los_catalogos_y_el_dispositivo_una_sola_vez(cliente, captura, base, monkeypatch):
     cuenta = {"catalogo": 0, "dispositivo": 0}
-    original = dispositivos.estado_para_captura
+    original = datos_captura.estado_para_captura
 
     def enfermedades():
         cuenta["catalogo"] += 1
@@ -429,8 +471,8 @@ def test_lote_lee_los_catalogos_y_el_dispositivo_una_sola_vez(cliente, captura, 
         cuenta["dispositivo"] += 1
         return original(device_id, user_id)
 
-    monkeypatch.setattr(queries, "get_enfermedades_para_captura", enfermedades)
-    monkeypatch.setattr(dispositivos, "estado_para_captura", estado)
+    monkeypatch.setattr(datos_captura, "get_enfermedades_para_captura", enfermedades)
+    monkeypatch.setattr(datos_captura, "estado_para_captura", estado)
     casos = [cuerpo(local_uuid=str(uuid.uuid4())) for _ in range(5)]
     r = cliente.post("/api/v1/cases/batch?format=json", json={"cases": casos}, headers=captura)
     assert [f["estado"] for f in r.get_json()["resultados"]] == [201] * 5

@@ -1,0 +1,109 @@
+{
+  "grupos": [
+    "Femenino",
+    "Masculino",
+    "No especificado"
+  ],
+  "total_casos": 68,
+  "total": 4,
+  "pagina": 1,
+  "paginas": 1,
+  "periodos": [
+    {
+      "inicio": "2026-10-25",
+      "fin": "2026-10-31",
+      "semana_epi": "2026-43",
+      "completo": true,
+      "casos": 10,
+      "acumulado": 10,
+      "por_grupo": [
+        {
+          "grupo": "Femenino",
+          "casos": 6
+        },
+        {
+          "grupo": "Masculino",
+          "casos": 4
+        },
+        {
+          "grupo": "No especificado",
+          "casos": 0
+        }
+      ]
+    },
+    {
+      "inicio": "2026-11-01",
+      "fin": "2026-11-07",
+      "semana_epi": "2026-44",
+      "completo": true,
+      "casos": 17,
+      "acumulado": 27,
+      "por_grupo": [
+        {
+          "grupo": "Femenino",
+          "casos": 9
+        },
+        {
+          "grupo": "Masculino",
+          "casos": 7
+        },
+        {
+          "grupo": "No especificado",
+          "casos": 1
+        }
+      ]
+    },
+    {
+      "inicio": "2026-11-08",
+      "fin": "2026-11-14",
+      "semana_epi": "2026-45",
+      "completo": true,
+      "casos": 22,
+      "acumulado": 49,
+      "por_grupo": [
+        {
+          "grupo": "Femenino",
+          "casos": 12
+        },
+        {
+          "grupo": "Masculino",
+          "casos": 10
+        },
+        {
+          "grupo": "No especificado",
+          "casos": 0
+        }
+      ]
+    },
+    {
+      "inicio": "2026-11-15",
+      "fin": "2026-11-21",
+      "semana_epi": "2026-46",
+      "completo": true,
+      "casos": 19,
+      "acumulado": 68,
+      "por_grupo": [
+        {
+          "grupo": "Femenino",
+          "casos": 8
+        },
+        {
+          "grupo": "Masculino",
+          "casos": 11
+        },
+        {
+          "grupo": "No especificado",
+          "casos": 0
+        }
+      ]
+    }
+  ],
+  "filtros": {
+    "disease_id": null,
+    "region_id": null,
+    "desde": "2026-10-25",
+    "hasta": "2026-11-21",
+    "intervalo": "semana",
+    "agrupar": "sexo"
+  }
+}

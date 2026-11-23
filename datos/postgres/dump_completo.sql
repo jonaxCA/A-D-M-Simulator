@@ -37,6 +37,15 @@ SET client_encoding = 'UTF8';
 --                                                       045_intentos_de_corridas.sql
 --                                                       050_dispositivos_de_sesion.sql
 --                                                       051_mfa.sql
+--                                                       052_instituciones_y_perfiles.sql
+--                                                       053_alcances_de_usuario.sql
+--                                                       054_prioridad_de_corridas.sql
+--                                                       055_historial_con_alcance.sql
+--                                                       056_nombres_oficiales_municipios.sql
+--                                                       057_seguimiento_de_casos.sql
+--                                                       058_centroide_de_marin.sql
+--                                                       059_formularios_por_enfermedad.sql
+--                                                       060_campanas_y_preferencias.sql
 --
 -- Cada bloque original conserva su propio BEGIN/COMMIT y su propio INSERT en
 -- schema_migrations, asi que este archivo se comporta exactamente igual que
@@ -4756,6 +4765,419 @@ GRANT SELECT ON scenarios, scenario_versions, scenario_interventions TO svc_role
 
 INSERT INTO schema_migrations (version, description)
 VALUES ('055', 'Identidad: svc_roles lee escenarios para aplicar el alcance regional al historial (D43)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 056_nombres_oficiales_municipios.sql
+-- Dominio: catalogos.
+--
+-- 010_datos_iniciales.sql cargo sin acento el nombre de cuatro de los diez
+-- municipios del area metropolitana. Esta migracion les pone el nombre del
+-- catalogo de INEGI (datos/geo/nl_catalogo_oficial.json):
+--     19018  Garcia                    ->  García
+--     19019  San Pedro Garza Garcia    ->  San Pedro Garza García
+--     19031  Juarez                    ->  Juárez
+--     19046  San Nicolas de los Garza  ->  San Nicolás de los Garza
+--
+-- Los otros seis de 010 ya coinciden con el catalogo, y los 41 restantes los
+-- carga datos/postgres/semillas/nl_municipios_completos.sql con el nombre
+-- oficial. Con esta migracion, los 51 municipios de regions quedan como los
+-- publica INEGI, y las APIs que los muestran (zonas, regiones, series por
+-- municipio) dejan de mezclar nombres con y sin acento.
+--
+-- POR QUE NO SE CORRIGE 010: ya esta aplicada en todas las bases. Editarla
+-- dejaria las instalaciones nuevas con un nombre y las existentes con otro.
+--
+-- Es idempotente: cada fila se actualiza solo si todavia tiene el nombre sin
+-- acento, asi que correrla dos veces no cambia nada y no pisa un nombre que
+-- alguien haya corregido por otro medio. Buscar por clave y nombre a la vez
+-- tambien la hace segura en una base que no haya corrido 012 (claves 19046 y
+-- 19048 intercambiadas): ahi 19046 es Santa Catarina y no se toca. Las tablas
+-- que apuntan a regions usan el id, no el nombre, asi que nada mas cambia.
+-- =============================================================================
+
+BEGIN;
+
+UPDATE regions r
+SET    name = v.oficial
+FROM (VALUES
+    ('19018', 'Garcia',                   'García'),
+    ('19019', 'San Pedro Garza Garcia',   'San Pedro Garza García'),
+    ('19031', 'Juarez',                   'Juárez'),
+    ('19046', 'San Nicolas de los Garza', 'San Nicolás de los Garza')
+) AS v(code, anterior, oficial)
+WHERE  r.code  = v.code
+  AND  r.level = 'municipio'
+  AND  r.name  = v.anterior;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('056', 'Catalogos: nombre oficial de INEGI, con acento, de cuatro municipios de 010')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 057_seguimiento_de_casos.sql
+-- Dominio: vigilancia. Corregir un caso y cambiar su estado, con control de
+-- versión e historial (D47, F7; RF-C11 y RF-C15).
+--
+-- - cases.version: cada cambio la sube en 1. Quien corrige o cambia el estado
+--   manda la versión que leyó (If-Match); si alguien lo cambió antes, el cambio
+--   se rechaza en vez de sobrescribir en silencio lo que hizo otra persona.
+-- - updated_at y updated_by: el último cambio. status_reason: el motivo del
+--   estado (obligatorio al descartar, marcar duplicado o reabrir).
+--   duplicate_of: el caso original de uno marcado como duplicado.
+-- - case_history: una fila por cambio, con la versión que dejó, quién y cuándo,
+--   el estado antes y después, los campos que cambiaron ({campo: {antes,
+--   despues}}), el motivo y el dispositivo, si vino de la app móvil.
+-- - CASE_REJECTED: el aviso al capturista cuando su caso se descarta o se
+--   marca como duplicado.
+-- - svc_casos actualiza solo las columnas que se corrigen y las del
+--   seguimiento; nunca local_uuid, reported_by ni device_id.
+-- - Los casos que ya existen quedan en la versión 1, sin historial. Uno que ya
+--   estaba 'duplicado' se queda sin duplicate_of: el CHECK solo exige que un
+--   duplicate_of venga con el estado 'duplicado', no al revés.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE cases
+    ADD COLUMN IF NOT EXISTS version       INTEGER      NOT NULL DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS updated_at    TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS updated_by    BIGINT,
+    ADD COLUMN IF NOT EXISTS status_reason VARCHAR(500),
+    ADD COLUMN IF NOT EXISTS duplicate_of  BIGINT;
+
+ALTER TABLE cases
+    DROP CONSTRAINT IF EXISTS fk_cases_updated_by,
+    ADD  CONSTRAINT fk_cases_updated_by
+        FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE RESTRICT,
+    DROP CONSTRAINT IF EXISTS fk_cases_duplicate_of,
+    ADD  CONSTRAINT fk_cases_duplicate_of
+        FOREIGN KEY (duplicate_of) REFERENCES cases (id) ON DELETE RESTRICT,
+    DROP CONSTRAINT IF EXISTS ck_cases_version,
+    ADD  CONSTRAINT ck_cases_version CHECK (version >= 1),
+    DROP CONSTRAINT IF EXISTS ck_cases_duplicate_of,
+    ADD  CONSTRAINT ck_cases_duplicate_of CHECK (
+        duplicate_of IS NULL OR (status = 'duplicado' AND duplicate_of <> id));
+
+COMMENT ON COLUMN cases.version IS
+    'Versión del caso: empieza en 1 y cada corrección o cambio de estado la sube en 1. Quien cambia el caso manda la que leyó (If-Match, D47).';
+COMMENT ON COLUMN cases.updated_at IS 'Momento del último cambio; nulo si nunca se cambió.';
+COMMENT ON COLUMN cases.updated_by IS 'Quién hizo el último cambio. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN cases.status_reason IS
+    'Motivo del estado actual: obligatorio al descartar, marcar duplicado o reabrir (D47).';
+COMMENT ON COLUMN cases.duplicate_of IS
+    'Caso original de uno marcado como duplicado. Referencia a cases.id. [llave foranea]';
+
+CREATE TABLE IF NOT EXISTS case_history (
+    id            BIGSERIAL     PRIMARY KEY,
+    case_id       BIGINT        NOT NULL,
+    version       INTEGER       NOT NULL,
+    action        VARCHAR(20)   NOT NULL,
+    changed_by    BIGINT        NOT NULL,
+    changed_at    TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    status_before VARCHAR(20),
+    status_after  VARCHAR(20),
+    changes       JSONB         NOT NULL DEFAULT '{}'::jsonb,
+    reason        VARCHAR(500),
+    device_id     BIGINT,
+
+    CONSTRAINT uq_case_history_version UNIQUE (case_id, version),
+    CONSTRAINT fk_case_history_case
+        FOREIGN KEY (case_id)    REFERENCES cases (id)   ON DELETE RESTRICT,
+    CONSTRAINT fk_case_history_user
+        FOREIGN KEY (changed_by) REFERENCES users (id)   ON DELETE RESTRICT,
+    CONSTRAINT fk_case_history_device
+        FOREIGN KEY (device_id)  REFERENCES devices (id) ON DELETE SET NULL,
+    CONSTRAINT ck_case_history_action CHECK (action IN ('correccion', 'estado')),
+    CONSTRAINT ck_case_history_version CHECK (version >= 2)
+);
+
+COMMENT ON TABLE case_history IS
+    'Historial de un caso: una fila por corrección o cambio de estado (D47). Solo la escribe svc_casos.';
+COMMENT ON COLUMN case_history.id IS 'Identificador del cambio. [llave primaria]';
+COMMENT ON COLUMN case_history.case_id IS 'Caso que cambió. Referencia a cases.id. [llave foranea]';
+COMMENT ON COLUMN case_history.version IS 'Versión del caso que dejó este cambio (la primera es la 2).';
+COMMENT ON COLUMN case_history.action IS 'correccion (datos del caso) o estado (validar, descartar, duplicado, reabrir).';
+COMMENT ON COLUMN case_history.changed_by IS 'Quién hizo el cambio. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN case_history.changed_at IS 'Momento del cambio.';
+COMMENT ON COLUMN case_history.status_before IS 'Estado del caso antes del cambio.';
+COMMENT ON COLUMN case_history.status_after IS 'Estado del caso después del cambio.';
+COMMENT ON COLUMN case_history.changes IS 'Campos que cambiaron: {campo: {antes, despues}}.';
+COMMENT ON COLUMN case_history.reason IS 'Motivo que dio quien hizo el cambio.';
+COMMENT ON COLUMN case_history.device_id IS 'Dispositivo desde el que llegó, si vino de la app móvil. Referencia a devices.id. [llave foranea]';
+
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS ck_notifications_type;
+ALTER TABLE notifications ADD CONSTRAINT ck_notifications_type CHECK (type IN
+    ('RUN_FINISHED', 'RUN_FAILED', 'THRESHOLD_EXCEEDED', 'ASSIGNMENT',
+     'SCENARIO_PUBLISHED', 'SCENARIO_APPROVED', 'SCENARIO_SUBMITTED',
+     'SCENARIO_REJECTED', 'NEW_CASES', 'SYSTEM', 'CASE_REJECTED'));
+
+COMMENT ON COLUMN notifications.type IS
+    'Tipo: RUN_FINISHED, RUN_FAILED, THRESHOLD_EXCEEDED, ASSIGNMENT, SCENARIO_PUBLISHED, SCENARIO_APPROVED, SCENARIO_SUBMITTED, SCENARIO_REJECTED, NEW_CASES, SYSTEM o CASE_REJECTED.';
+
+GRANT UPDATE (disease_id, region_id, age, sex, onset_date, report_date, latitude, longitude,
+              test_result, severity, status, version, updated_at, updated_by, status_reason,
+              duplicate_of) ON cases TO svc_casos;
+GRANT SELECT, INSERT ON case_history TO svc_casos;
+GRANT USAGE ON SEQUENCE case_history_id_seq TO svc_casos;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('057', 'Vigilancia: version, motivo e historial de cada caso, y el aviso CASE_REJECTED (D47)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 058_centroide_de_marin.sql
+-- Dominio: catalogos.
+--
+-- El marcador de un municipio (centroid_lat y centroid_lon) sale de
+-- datos/geo/nl_centroides.json, que calcula datos/scripts/build_municipios_inegi.py
+-- sobre la geometria oficial de INEGI. Marin (19034) es concavo y su centroide
+-- caia fuera de el, dentro de Doctor Gonzalez, a 1.3 km de su frontera: los
+-- mapas de marcadores lo dibujaban en el municipio equivocado. El script ahora
+-- usa un punto interior cuando el centroide queda fuera (solo pasa con Marin):
+--     19034  Marin  (25.874423, -99.964649)  ->  (25.886678, -100.022912)
+--
+-- Las instalaciones nuevas lo cargan ya corregido desde la semilla
+-- nl_municipios_completos.sql (Marin no esta en 010), que corre despues del
+-- dump: aqui la fila todavia no existe y no se toca nada. Esta migracion es para
+-- las bases que ya existen. Idempotente: solo cambia la fila si todavia tiene el
+-- punto viejo, asi que no pisa uno corregido por otro medio.
+-- =============================================================================
+
+BEGIN;
+
+UPDATE regions
+SET    centroid_lat = 25.886678,
+       centroid_lon = -100.022912
+WHERE  code = '19034'
+  AND  level = 'municipio'
+  AND  centroid_lat = 25.874423
+  AND  centroid_lon = -99.964649;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('058', 'Catalogos: el marcador de Marin dentro de su municipio (su centroide caia en Doctor Gonzalez)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 059_formularios_por_enfermedad.sql
+-- Dominio: vigilancia. Formularios por enfermedad, con versiones (D48, F7).
+--
+-- - Los campos fijos de un caso (enfermedad, municipio, fechas, edad, sexo,
+--   ubicación, resultado y gravedad) se quedan como están. Cada enfermedad
+--   puede sumar los suyos en un formulario: case_forms guarda cada versión,
+--   con sus campos en orden (fields, una lista de objetos: clave, etiqueta,
+--   tipo, obligatorio, mínimo, máximo, opciones...).
+-- - Una versión nace 'borrador', se edita y se publica; publicada ya no
+--   cambia. Al publicar otra, la anterior pasa a 'retirado', pero sigue
+--   valiendo para los casos que se capturaron con ella sin conexión.
+-- - A lo más un borrador y una versión publicada por enfermedad (índices
+--   únicos parciales).
+-- - required: con la versión vigente marcada, un caso de esa enfermedad tiene
+--   que traer sus respuestas. Nace en false: la app todavía no manda
+--   formularios (B4).
+-- - cases.form_id y cases.form_answers: la versión con que se capturó el caso y
+--   sus respuestas, ya validadas por casos. Van juntas o ninguna.
+-- - svc_casos administra case_forms; en cases corrige form_id y form_answers.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS case_forms (
+    id            BIGSERIAL     PRIMARY KEY,
+    disease_id    SMALLINT      NOT NULL,
+    version       INTEGER       NOT NULL,
+    status        VARCHAR(20)   NOT NULL DEFAULT 'borrador',
+    title         VARCHAR(160)  NOT NULL,
+    fields        JSONB         NOT NULL DEFAULT '[]'::jsonb,
+    required      BOOLEAN       NOT NULL DEFAULT false,
+    created_by    BIGINT        NOT NULL,
+    created_at    TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ,
+    published_by  BIGINT,
+    published_at  TIMESTAMPTZ,
+
+    CONSTRAINT uq_case_forms_version UNIQUE (disease_id, version),
+    CONSTRAINT fk_case_forms_disease
+        FOREIGN KEY (disease_id)   REFERENCES diseases (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_case_forms_creador
+        FOREIGN KEY (created_by)   REFERENCES users (id)    ON DELETE RESTRICT,
+    CONSTRAINT fk_case_forms_publicador
+        FOREIGN KEY (published_by) REFERENCES users (id)    ON DELETE RESTRICT,
+    CONSTRAINT ck_case_forms_status CHECK (status IN ('borrador', 'publicado', 'retirado')),
+    CONSTRAINT ck_case_forms_version CHECK (version >= 1),
+    CONSTRAINT ck_case_forms_fields CHECK (jsonb_typeof(fields) = 'array'),
+    CONSTRAINT ck_case_forms_publicacion CHECK (
+        (status = 'borrador') = (published_at IS NULL)
+        AND (published_at IS NULL) = (published_by IS NULL))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_case_forms_vigente
+    ON case_forms (disease_id) WHERE status = 'publicado';
+CREATE UNIQUE INDEX IF NOT EXISTS ux_case_forms_borrador
+    ON case_forms (disease_id) WHERE status = 'borrador';
+
+COMMENT ON TABLE case_forms IS
+    'Formulario de captura de una enfermedad, por versión (D48): los campos que suma a los fijos del caso.';
+COMMENT ON COLUMN case_forms.id IS 'Identificador de la versión del formulario. [llave primaria]';
+COMMENT ON COLUMN case_forms.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
+COMMENT ON COLUMN case_forms.version IS 'Número de versión dentro de la enfermedad, desde 1.';
+COMMENT ON COLUMN case_forms.status IS
+    'borrador (se edita), publicado (la vigente; ya no cambia) o retirado (la reemplazó otra; sigue valiendo para los casos capturados con ella).';
+COMMENT ON COLUMN case_forms.title IS 'Título que muestra la app.';
+COMMENT ON COLUMN case_forms.fields IS
+    'Campos en orden: [{clave, etiqueta, tipo (texto, entero, decimal, fecha, booleano, opcion, opciones), obligatorio, minimo, maximo, max_largo, opciones [{valor, etiqueta}], ayuda}]. Los valida casos.';
+COMMENT ON COLUMN case_forms.required IS
+    'Si es la vigente y está en true, un caso de la enfermedad tiene que traer sus respuestas.';
+COMMENT ON COLUMN case_forms.created_by IS 'Quién creó el borrador. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN case_forms.created_at IS 'Momento en que se creó el borrador.';
+COMMENT ON COLUMN case_forms.updated_at IS 'Último cambio del borrador.';
+COMMENT ON COLUMN case_forms.published_by IS 'Quién lo publicó. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN case_forms.published_at IS 'Momento de la publicación; nulo en un borrador.';
+
+ALTER TABLE cases
+    ADD COLUMN IF NOT EXISTS form_id      BIGINT,
+    ADD COLUMN IF NOT EXISTS form_answers JSONB;
+
+ALTER TABLE cases
+    DROP CONSTRAINT IF EXISTS fk_cases_form,
+    ADD  CONSTRAINT fk_cases_form
+        FOREIGN KEY (form_id) REFERENCES case_forms (id) ON DELETE RESTRICT,
+    DROP CONSTRAINT IF EXISTS ck_cases_formulario,
+    ADD  CONSTRAINT ck_cases_formulario CHECK (
+        (form_id IS NULL) = (form_answers IS NULL)
+        AND (form_answers IS NULL OR jsonb_typeof(form_answers) = 'object'));
+
+COMMENT ON COLUMN cases.form_id IS
+    'Versión del formulario de la enfermedad con que se capturó el caso; nulo si no trajo formulario. Referencia a case_forms.id. [llave foranea]';
+COMMENT ON COLUMN cases.form_answers IS
+    'Respuestas al formulario, {clave: valor}, ya validadas contra su versión. Va junto con form_id.';
+
+GRANT SELECT, INSERT, UPDATE ON case_forms TO svc_casos;
+GRANT USAGE ON SEQUENCE case_forms_id_seq TO svc_casos;
+GRANT UPDATE (form_id, form_answers) ON cases TO svc_casos;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('059', 'Vigilancia: formularios por enfermedad con versiones y las respuestas de cada caso (D48)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 060_campanas_y_preferencias.sql
+-- Dominio: vigilancia y plataforma. Campañas, avisos de datos incompletos y
+-- preferencias de avisos por persona (D49, F7).
+--
+-- - campaigns: una campaña de salud de una enfermedad, en un municipio o en
+--   todo Nuevo León (region_id nulo), con sus fechas, la población objetivo y
+--   la descripción. La administra vacunas; su estado (programada, activa,
+--   terminada o cancelada) sale de las fechas y de cancelled_at. Sin coberturas:
+--   eso es el servicio opcional de vacunación.
+-- - notification_preferences: los tipos de aviso que una persona apagó (o
+--   volvió a prender). Sin fila, el tipo está prendido. SYSTEM no se apaga.
+-- - CAMPAIGN (a los CAPTURISTA, al crear una campaña) y DATA_INCOMPLETE (a quien
+--   capturó casos a los que les faltan datos) entran al CHECK de notifications.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS campaigns (
+    id                BIGSERIAL     PRIMARY KEY,
+    name              VARCHAR(160)  NOT NULL,
+    disease_id        SMALLINT      NOT NULL,
+    region_id         INTEGER,
+    starts_on         DATE          NOT NULL,
+    ends_on           DATE          NOT NULL,
+    target_population INTEGER,
+    description       TEXT,
+    created_by        BIGINT        NOT NULL,
+    created_at        TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ,
+    cancelled_at      TIMESTAMPTZ,
+    cancelled_by      BIGINT,
+    cancel_reason     VARCHAR(500),
+
+    CONSTRAINT fk_campaigns_disease
+        FOREIGN KEY (disease_id)   REFERENCES diseases (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_campaigns_region
+        FOREIGN KEY (region_id)    REFERENCES regions (id)  ON DELETE RESTRICT,
+    CONSTRAINT fk_campaigns_creador
+        FOREIGN KEY (created_by)   REFERENCES users (id)    ON DELETE RESTRICT,
+    CONSTRAINT fk_campaigns_cancelo
+        FOREIGN KEY (cancelled_by) REFERENCES users (id)    ON DELETE RESTRICT,
+    CONSTRAINT ck_campaigns_fechas CHECK (ends_on >= starts_on),
+    CONSTRAINT ck_campaigns_poblacion CHECK (target_population IS NULL OR target_population > 0),
+    CONSTRAINT ck_campaigns_descripcion CHECK (description IS NULL OR length(description) <= 2000),
+    CONSTRAINT ck_campaigns_cancelacion CHECK (
+        (cancelled_at IS NULL) = (cancelled_by IS NULL)
+        AND (cancelled_at IS NULL) = (cancel_reason IS NULL))
+);
+
+CREATE INDEX IF NOT EXISTS ix_campaigns_fechas ON campaigns (starts_on, ends_on);
+
+COMMENT ON TABLE campaigns IS
+    'Campaña de salud de una enfermedad, en un municipio o en todo Nuevo León (D49). La escribe svc_vacunas.';
+COMMENT ON COLUMN campaigns.id IS 'Identificador de la campaña. [llave primaria]';
+COMMENT ON COLUMN campaigns.name IS 'Nombre de la campaña.';
+COMMENT ON COLUMN campaigns.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
+COMMENT ON COLUMN campaigns.region_id IS 'Municipio de Nuevo León; nulo si es todo el estado. Referencia a regions.id. [llave foranea]';
+COMMENT ON COLUMN campaigns.starts_on IS 'Primer día de la campaña.';
+COMMENT ON COLUMN campaigns.ends_on IS 'Último día de la campaña.';
+COMMENT ON COLUMN campaigns.target_population IS 'Población objetivo (personas), si se conoce.';
+COMMENT ON COLUMN campaigns.description IS 'A quién va dirigida y qué se hace (hasta 2000 caracteres).';
+COMMENT ON COLUMN campaigns.created_by IS 'Quién la creó. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN campaigns.created_at IS 'Momento de alta.';
+COMMENT ON COLUMN campaigns.updated_at IS 'Último cambio.';
+COMMENT ON COLUMN campaigns.cancelled_at IS 'Momento de la cancelación; nulo si no se canceló.';
+COMMENT ON COLUMN campaigns.cancelled_by IS 'Quién la canceló. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN campaigns.cancel_reason IS 'Motivo de la cancelación.';
+
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    user_id    BIGINT       NOT NULL,
+    type       VARCHAR(40)  NOT NULL,
+    enabled    BOOLEAN      NOT NULL,
+    updated_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT pk_notification_preferences PRIMARY KEY (user_id, type),
+    CONSTRAINT fk_notification_preferences_user
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT ck_notification_preferences_system CHECK (type <> 'SYSTEM')
+);
+
+COMMENT ON TABLE notification_preferences IS
+    'Los tipos de aviso que una persona apagó o volvió a prender (D49). Sin fila, el tipo está prendido.';
+COMMENT ON COLUMN notification_preferences.user_id IS 'Persona. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN notification_preferences.type IS 'Tipo de aviso (como notifications.type); SYSTEM no se apaga.';
+COMMENT ON COLUMN notification_preferences.enabled IS 'false: notificaciones no le crea avisos de ese tipo.';
+COMMENT ON COLUMN notification_preferences.updated_at IS 'Último cambio.';
+
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS ck_notifications_type;
+ALTER TABLE notifications ADD CONSTRAINT ck_notifications_type CHECK (type IN
+    ('RUN_FINISHED', 'RUN_FAILED', 'THRESHOLD_EXCEEDED', 'ASSIGNMENT',
+     'SCENARIO_PUBLISHED', 'SCENARIO_APPROVED', 'SCENARIO_SUBMITTED',
+     'SCENARIO_REJECTED', 'NEW_CASES', 'SYSTEM', 'CASE_REJECTED', 'CAMPAIGN',
+     'DATA_INCOMPLETE'));
+
+COMMENT ON COLUMN notifications.type IS
+    'Tipo: RUN_FINISHED, RUN_FAILED, THRESHOLD_EXCEEDED, ASSIGNMENT, SCENARIO_PUBLISHED, SCENARIO_APPROVED, SCENARIO_SUBMITTED, SCENARIO_REJECTED, NEW_CASES, SYSTEM, CASE_REJECTED, CAMPAIGN o DATA_INCOMPLETE.';
+
+GRANT SELECT, INSERT, UPDATE ON campaigns TO svc_vacunas;
+GRANT USAGE ON SEQUENCE campaigns_id_seq TO svc_vacunas;
+GRANT SELECT (level, parent_region_id, code) ON regions TO svc_vacunas;
+GRANT SELECT, INSERT, UPDATE ON notification_preferences TO svc_notificaciones;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('060', 'Campañas, preferencias de avisos y los tipos CAMPAIGN y DATA_INCOMPLETE (D49)')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;

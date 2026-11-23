@@ -45,6 +45,11 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `052_instituciones_y_perfiles.sql` | `institutions`, `users.institution_id` y `users.region_id` (opcionales), y los roles INVESTIGADOR y AUTORIDAD_SANITARIA con permisos de solo lectura como supuesto (D42). `svc_usuarios` es dueño de `institutions` |
 | `055_historial_con_alcance.sql` | `svc_roles` lee `scenarios`, `scenario_versions` y `scenario_interventions` para aplicar el alcance regional (D43) al historial de un escenario |
 | `053_alcances_de_usuario.sql` | `user_scopes`: la región o institución a la que se limita una cuenta; sin filas es nacional (D43). `svc_roles` es dueño |
+| `056_nombres_oficiales_municipios.sql` | Nombre oficial de INEGI, con acento, de cuatro municipios que `010` cargó sin él: García, San Pedro Garza García, Juárez y San Nicolás de los Garza |
+| `057_seguimiento_de_casos.sql` | `cases.version`, `updated_at`, `updated_by`, `status_reason` y `duplicate_of`; `case_history` (un cambio por fila) y el aviso `CASE_REJECTED`. `svc_casos` actualiza solo las columnas que se corrigen (D47) |
+| `058_centroide_de_marin.sql` | El marcador de Marín (`centroid_lat`, `centroid_lon`) dentro de su municipio: su centroide caía en Doctor González. Solo para bases que ya existen; las nuevas lo traen de la semilla |
+| `059_formularios_por_enfermedad.sql` | `case_forms` (el formulario de cada enfermedad, por versión: borrador, publicado o retirado) y `cases.form_id` y `form_answers` (D48). `svc_casos` lo administra |
+| `060_campanas_y_preferencias.sql` | `campaigns` (las escribe `svc_vacunas`), `notification_preferences` (los avisos que una persona apaga; SYSTEM no) y los tipos `CAMPAIGN` y `DATA_INCOMPLETE` (D49) |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.
@@ -73,7 +78,12 @@ problema: ya falta la 018.
 | 053 | E | Alcance por región o institución de cada cuenta (D43) |
 | 054 | E | `simulation_runs.priority`: prioridad de la corrida en la cola y permisos para reintentarla (D44) |
 | 055 | E | `svc_roles` lee escenarios para el alcance regional del historial (D43) |
-| 056 en adelante | — | Se piden al líder |
+| 056 | F | Nombre oficial, con acento, de los cuatro municipios de `010` que no lo tenían (asignada por el líder, 2026-11-22) |
+| 057 | F | Corrección y estado de los casos con versión e historial, y el aviso `CASE_REJECTED` (D47) |
+| 058 | F | El marcador de Marín dentro de su municipio (2026-11-22) |
+| 059 | F | Formularios por enfermedad con versiones y las respuestas de cada caso (D48, 2026-11-22) |
+| 060 | F | Campañas, preferencias de avisos y los avisos de campaña y de datos incompletos (D49, 2026-11-22) |
+| 061 en adelante | — | Se piden al líder |
 
 1. **Cada migración corre en cualquier orden.** El dump las tiene en el orden en
    que se integran, y una instalación limpia las corre por número: la 034 llegará

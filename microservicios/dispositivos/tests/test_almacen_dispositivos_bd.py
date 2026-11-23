@@ -1,17 +1,12 @@
-"""
-Dispositivos de backend_web/dispositivos.py, que escribe el microservicio
-dispositivos y lee casos.
-
-Ejecutar:
-    python -m unittest backend_web.tests.test_dispositivos -v
-"""
+"""Dispositivos (almacen.py) contra la base de pruebas: los escribe este servicio y casos los lee."""
 import unittest
 import uuid
 
-from backend_web import dispositivos
-from backend_web.db import query
-from backend_web.tests.base import contexto_de_prueba, escribe, id_de_usuario, requiere_base
+from microservicios.pruebas_bd import contexto_de_prueba, escribe, id_de_usuario, tiene_base
+from epidemia_comun.bd import query
+from microservicios.dispositivos import almacen as dispositivos
 
+requiere_base = unittest.skipUnless(tiene_base(), "Requiere la base de pruebas")
 
 class ValidaDispositivoTests(unittest.TestCase):
     def test_uno_valido_no_tiene_errores(self):

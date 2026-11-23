@@ -9,9 +9,9 @@ IDENTIDAD = ("auth", "sesiones", "usuarios", "roles")
 SIMULACION = ("corridas", "resultados", "comparacion", "pareto")
 SERVICIOS_E = IDENTIDAD + SIMULACION
 PROHIBIDOS = ("backend_web",)
-# Pendiente de D y F: estos módulos de epidemia_comun importan backend_web de forma diferida
-# (ambito.py, validaciones.py). Ningún servicio de E los usa; cuando se muden, se quita la exención.
-COMUN_CON_REGLAS_AJENAS = {"ambito.py", "validaciones.py"}
+# Pendiente de D: validaciones.py importa backend_web de forma diferida. Ningún servicio de E
+# lo usa; cuando se mude, se quita la exención. ambito.py (F) ya no lo importa (E8).
+COMUN_CON_REGLAS_AJENAS = {"validaciones.py"}
 
 
 def _importaciones(ruta):
@@ -52,9 +52,9 @@ def test_las_exenciones_son_exactamente_los_modulos_que_importan_backend_web():
     assert con_backend == COMUN_CON_REGLAS_AJENAS
 
 
-# Esos módulos tienen helpers genéricos (entero_positivo, diccionario) que sí se usan; lo ajeno son
-# estas dos funciones, que importan backend_web de forma diferida.
-FUNCIONES_AJENAS = ("parametros_epidemiologicos", "filtros_ambito")
+# validaciones.py tiene helpers genéricos (entero_positivo, diccionario) que sí se usan; lo ajeno
+# es esta función, que importa backend_web de forma diferida.
+FUNCIONES_AJENAS = ("parametros_epidemiologicos",)
 
 
 def test_ningun_servicio_de_e_usa_las_funciones_que_piden_backend_web():

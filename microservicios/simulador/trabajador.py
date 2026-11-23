@@ -16,6 +16,7 @@ import logging
 import os
 import socket
 import time
+from datetime import datetime, timezone
 
 import psycopg2
 
@@ -32,6 +33,10 @@ log = logging.getLogger("simulador")
 PROGRESO_TTL = 86400
 PAUSA_SIN_REDIS = 5
 REINTENTO_SERIES = 30
+# El latido (worker:<motor>:<simulador>) vence si no se renueva: un simulador muerto o colgado
+# deja de contar como vivo en estado-servicios a los 30 s como mucho.
+LATIDO_CADA = 10
+LATIDO_TTL = 30
 AVISOS = {"completado": ("RUN_FINISHED", "La corrida %s terminó"),
           "fallido": ("RUN_FAILED", "La corrida %s falló")}
 # Un motor que no está implementado (abm-gpu sin FLAME GPU) detiene el arranque: sin esto, el
@@ -164,6 +169,25 @@ def procesar(crudo, ajustes):
     if final:
         avisar(run_id, final, ajustes)
     return final
+
+
+def latido():
+    """Avisa a estado-servicios que este simulador está vivo y qué corre (F7). Best-effort: con
+    Redis caído no hay latido, y tampoco puede tomar corridas."""
+    datos = {"nombre": estado["trabajador"], "motor": MOTOR,
+             "corrida_actual": estado["corrida_actual"], "procesadas": estado["procesadas"],
+             "visto": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    opcional("simulador: latido", lambda r: r.set(llaves.latido(MOTOR, estado["trabajador"]),
+                                                   json.dumps(datos), ex=LATIDO_TTL))
+
+
+def latir(detener):
+    # En su propio hilo: durante una corrida larga el ciclo no vuelve a la cola y el latido
+    # tiene que seguir. Si el hilo del trabajador termina (activo en False), deja de latir.
+    while not detener.is_set():
+        if estado["activo"]:
+            latido()
+        detener.wait(LATIDO_CADA)
 
 
 def ciclo(ajustes, detener):

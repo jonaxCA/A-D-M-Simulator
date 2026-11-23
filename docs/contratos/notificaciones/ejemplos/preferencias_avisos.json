@@ -1,0 +1,22 @@
+{
+  "preferencias": [
+    {
+      "type": "CASE_REJECTED",
+      "nombre": "Caso descartado",
+      "enabled": true,
+      "fijo": false
+    },
+    {
+      "type": "CAMPAIGN",
+      "nombre": "Campañas",
+      "enabled": false,
+      "fijo": false
+    },
+    {
+      "type": "DATA_INCOMPLETE",
+      "nombre": "Datos incompletos",
+      "enabled": true,
+      "fijo": false
+    }
+  ]
+}

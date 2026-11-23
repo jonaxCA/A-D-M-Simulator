@@ -592,6 +592,103 @@
         }
       }
     },
+    "/api/v1/services/capacity": {
+      "get": {
+        "summary": "Colas y capacidad de los simuladores por motor",
+        "operationId": "capacidad_simuladores",
+        "description": "Por motor (`seir-ref`, `abm-ref` y `abm-gpu`, aunque no tenga simulador): `en_cola`, las corridas que esperan en sus colas de Redis, y `en_cola_por_prioridad` (`alta`, `normal` y `baja`, D44); `vivos`, los simuladores con latido; `ocupados`, los que están corriendo una; y `libres`. Cada simulador renueva su latido cada 10 s y vence a los `latido_segundos` (30): uno muerto o colgado deja de contar en ese lapso. En `simuladores`, cada uno con su `nombre` (el del contenedor), `corrida_actual` (`null` si está libre), `procesadas` desde que arrancó y `visto` (ISO 8601, UTC). El de `abm-gpu` de la PC con GPU cuenta igual, por el túnel (D23). Con corridas en cola y `vivos` en 0, esas corridas no avanzan. Sale de Redis: con Redis caído responde 503.",
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "revisado": "2026-11-21T18:30:05+00:00",
+                  "latido_segundos": 30,
+                  "motores": [
+                    {
+                      "nombre": "seir-ref",
+                      "en_cola": 0,
+                      "en_cola_por_prioridad": {
+                        "alta": 0,
+                        "normal": 0,
+                        "baja": 0
+                      },
+                      "vivos": 1,
+                      "ocupados": 0,
+                      "libres": 1,
+                      "simuladores": [
+                        {
+                          "nombre": "5c1f0e2a9b3d",
+                          "corrida_actual": null,
+                          "procesadas": 12,
+                          "visto": "2026-11-21T18:30:01+00:00"
+                        }
+                      ]
+                    },
+                    {
+                      "nombre": "abm-ref",
+                      "en_cola": 3,
+                      "en_cola_por_prioridad": {
+                        "alta": 1,
+                        "normal": 2,
+                        "baja": 0
+                      },
+                      "vivos": 1,
+                      "ocupados": 1,
+                      "libres": 0,
+                      "simuladores": [
+                        {
+                          "nombre": "8d4b7a6c2e10",
+                          "corrida_actual": 41,
+                          "procesadas": 7,
+                          "visto": "2026-11-21T18:30:04+00:00"
+                        }
+                      ]
+                    },
+                    {
+                      "nombre": "abm-gpu",
+                      "en_cola": 2,
+                      "en_cola_por_prioridad": {
+                        "alta": 0,
+                        "normal": 2,
+                        "baja": 0
+                      },
+                      "vivos": 0,
+                      "ocupados": 0,
+                      "libres": 0,
+                      "simuladores": []
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "capacidad"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<capacidad><revisado>2026-11-21T18:30:05+00:00</revisado><latido_segundos tipo=\"numero\">30</latido_segundos><motores><motor><nombre>seir-ref</nombre><en_cola tipo=\"numero\">0</en_cola><en_cola_por_prioridad><alta tipo=\"numero\">0</alta><normal tipo=\"numero\">0</normal><baja tipo=\"numero\">0</baja></en_cola_por_prioridad><vivos tipo=\"numero\">1</vivos><ocupados tipo=\"numero\">0</ocupados><libres tipo=\"numero\">1</libres><simuladores><simulador><nombre>5c1f0e2a9b3d</nombre><corrida_actual nil=\"true\" /><procesadas tipo=\"numero\">12</procesadas><visto>2026-11-21T18:30:01+00:00</visto></simulador></simuladores></motor><motor><nombre>abm-ref</nombre><en_cola tipo=\"numero\">3</en_cola><en_cola_por_prioridad><alta tipo=\"numero\">1</alta><normal tipo=\"numero\">2</normal><baja tipo=\"numero\">0</baja></en_cola_por_prioridad><vivos tipo=\"numero\">1</vivos><ocupados tipo=\"numero\">1</ocupados><libres tipo=\"numero\">0</libres><simuladores><simulador><nombre>8d4b7a6c2e10</nombre><corrida_actual tipo=\"numero\">41</corrida_actual><procesadas tipo=\"numero\">7</procesadas><visto>2026-11-21T18:30:04+00:00</visto></simulador></simuladores></motor><motor><nombre>abm-gpu</nombre><en_cola tipo=\"numero\">2</en_cola><en_cola_por_prioridad><alta tipo=\"numero\">0</alta><normal tipo=\"numero\">2</normal><baja tipo=\"numero\">0</baja></en_cola_por_prioridad><vivos tipo=\"numero\">0</vivos><ocupados tipo=\"numero\">0</ocupados><libres tipo=\"numero\">0</libres><simuladores /></motor></motores></capacidad>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "503": {
+            "description": "Redis no está disponible"
+          }
+        }
+      }
+    },
     "/api/v1/services/{nombre}/history": {
       "get": {
         "summary": "Historial de salud de un servicio",

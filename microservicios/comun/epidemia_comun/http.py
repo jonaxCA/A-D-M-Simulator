@@ -7,8 +7,9 @@ from .errores import ErrorAPI
 
 
 def llamar(servicio, metodo, ruta, formato="json", cuerpo=None, token=None,
-           correlation_id=None, timeout=5, urls=None):
-    """Llama a otro servicio sin reintentar escrituras automáticamente."""
+           correlation_id=None, timeout=5, urls=None, cabeceras=None):
+    """Llama a otro servicio sin reintentar escrituras automáticamente. `cabeceras` agrega otras,
+    como If-Match para corregir un caso (D47)."""
     if formato not in ("json", "xml"):
         raise ValueError("El formato debe ser json o xml.")
     if not ruta.startswith("/") or ruta.startswith("//"):
@@ -17,7 +18,7 @@ def llamar(servicio, metodo, ruta, formato="json", cuerpo=None, token=None,
     base = urls.get(servicio) or os.environ.get("SERVICIO_" + servicio.upper().replace("-", "_") + "_URL")
     if not base:
         raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "No se configuró el servicio solicitado.")
-    encabezados = {"Accept": "application/" + formato}
+    encabezados = dict(cabeceras or {}, Accept="application/" + formato)
     # Conserva la identidad y la correlación de la petición actual.
     try:
         from flask import has_request_context, g, request

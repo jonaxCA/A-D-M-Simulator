@@ -89,7 +89,7 @@ Los tres usan PostgreSQL, que basta para la rúbrica («PostgreSQL o MongoDB»).
 | Cliente | Para quién | Qué hace | Formato | Estado |
 |---|---|---|---|---|
 | **Web** (`frontend_web/`, `backend_web/`) | Todos los roles; sitio público sin sesión | Tablero, mapa, catálogos, casos, administración y bitácora. Consulta escenarios y corridas, y el EPIDEMIOLOGO aprueba o rechaza versiones (D4). Consume los servicios (D36): si uno no responde, solo la sección que depende de él muestra el aviso | HTML | **Hecho** en funciones; el paso a los servicios va en curso (C6). Falta recibir el reporte de una comparación (D-5, D35) y mostrar la categoría de D39 |
-| **Android** (`frontend_movil/`) | CAPTURISTA en campo | P1: casos sin conexión con GPS y fotos, sincronización por lotes, lotes de vacuna por QR o código de barras, avisos y perfil | JSON | **Hecho**: usa once servicios y seis capacidades del teléfono (cámara, GPS, código QR y de barras, notificaciones, almacenamiento local y sincronización). También el indicador de conexión fijo (C3) y la captura solo para el CAPTURISTA (C8). C9 lo cerró D32; editar y rechazar casos lo reabre la retroalimentación (bloques 0, F y B) |
+| **Android** (`frontend_movil/`) | CAPTURISTA en campo | P1: casos sin conexión con GPS y fotos, sincronización por lotes, lotes de vacuna por QR o código de barras, avisos y perfil | JSON | **Hecho**: usa once servicios y seis capacidades del teléfono (cámara, GPS, código QR y de barras, notificaciones, almacenamiento local y sincronización). También el indicador de conexión fijo (C3) y la captura solo para el CAPTURISTA (C8). C9 lo cerró D32; editar y rechazar casos lo reabre la retroalimentación: el servidor ya los tiene, con versión, historial y conflictos en la sincronización (D47, 2026-11-22); falta la app (B4) |
 | **Escritorio** (`frontend_desktop/`) | ANALISTA y ADMINISTRADOR | P2 y P3: escenarios y su XML validado con XSD, envío a revisión, lotes de réplicas, comparación con Pareto, exportación e impresión | XML | **Hecho**, con la escala de D6, el aviso de bandas encimadas (D8), la revisión de `exp` del JWT con renovación anticipada (C10, D35), la ficha de cada corrida con su categoría de D39 en PDF, los indicadores municipales de `zonas` y la trazabilidad de cada gráfica (PR #173). Falta ofrecer `abm-gpu` en el selector de motor (RF-H20), mostrar la categoría de D39 en la interfaz y los módulos de A4 que esperan a los bloques 0, D y E |
 | **Consola** (`microservicios/consola`) | El equipo | Swagger, probador y panel de salud de los 29 servicios | JSON y XML | **Hecho**. Es herramienta de pruebas, no cliente del producto |
 
@@ -114,7 +114,7 @@ El catálogo de los 29 servicios, con sus puertos, tablas y llamadas, está en [
   - Un simulador cuyo motor no corre en esa máquina no arranca.
 - **Corridas interrumpidas (D38, hecho; migración 045).** Al arrancar, el simulador regresa a `encolado` las `ejecutando` de su motor y las reencola, hasta 3 intentos; si cambió la versión del motor o se llega al tope, se cierran como `fallido` y su serie se borra. Las `encolado` se vuelven a meter a la cola sin duplicar (D19). Detalle en §8.
 - **La web consume los servicios (D36, en curso; bloque C).** `backend_web` deja de leer la base y llama por HTTP al servicio dueño (`backend_web/servicios.py`), con el JWT de la sesión (D34), JSON y `X-Correlation-ID`, y espera 5 s. La web no importa `epidemia_comun` ni lee Redis: la sesión la valida cada servicio, así que cumple que todos los componentes consulten Redis al autenticar (I3). Si un servicio no responde, solo la sección que depende de él muestra el aviso; si caen `sesiones` o Redis, la web falla cerrada, como los servicios. Los módulos pasan en el orden de D36; ya pasaron la sesión y la aprobación.
-- **Dueños de las reglas de negocio (D37, en curso; E8).** Hecho en los servicios de E (sus imágenes parten de `base-identidad` y `base-simulacion`, sin `backend_web`); las copias que quedan entre servicios están en [`duenos_de_reglas.md`](duenos_de_reglas.md). Cada regla se muda de `backend_web` a su servicio dueño, cada bloque en los suyos; si otro servicio la necesita, la llama por HTTP. `procesamiento/` es la excepción: es la biblioteca de los modelos y la importan `simulador` y `validacion`.
+- **Dueños de las reglas de negocio (D37, en curso; E8).** Hecho en los servicios de E y de F (sus imágenes parten de `base-identidad`, `base-simulacion` y `base-vigilancia`, sin `backend_web`); falta D; las copias que quedan entre servicios están en [`duenos_de_reglas.md`](duenos_de_reglas.md). Cada regla se muda de `backend_web` a su servicio dueño, cada bloque en los suyos; si otro servicio la necesita, la llama por HTTP. `procesamiento/` es la excepción: es la biblioteca de los modelos y la importan `simulador` y `validacion`.
 
 ## 6. Datos
 
@@ -244,8 +244,11 @@ flowchart TB
 ```
 
 - **Monitoreo:** `estado-servicios` sondea el `/health` de los 29 servicios (PostgreSQL, Redis,
-  MongoDB y tiempo de respuesta) y guarda el historial en MongoDB; la consola (`/consola/`) lo
-  muestra. Los registros de los 37 contenedores van a Cloud Logging. La web todavía lee
+  MongoDB y tiempo de respuesta) y guarda el historial en MongoDB; además cuenta, por motor, las
+  corridas en cola y los simuladores vivos y ocupados, con el latido que cada simulador deja en
+  Redis, también el de la PC con GPU (F7). La consola (`/consola/`) muestra las dos cosas. Si
+  un servicio cae, se degrada o se recupera durante 30 s, los ADMINISTRADOR reciben un aviso
+  `SYSTEM` de `notificaciones` (alertas técnicas, F7). Los registros de los 37 contenedores van a Cloud Logging. La web todavía lee
   PostgreSQL directo en los módulos que no pasaron a los servicios (D36).
 - **Archivos:** las fotos de los casos están en el volumen `evidencias-datos` de la VM; pasarlas
   a Cloud Storage con URLs firmadas es del bloque D (D30, D35).

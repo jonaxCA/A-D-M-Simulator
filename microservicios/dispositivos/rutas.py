@@ -1,16 +1,17 @@
 """Servicio dispositivos: registra, consulta y revoca los dispositivos de las apps.
 
 Cada quien registra, ve y revoca los suyos; ADMINISTRADOR, los de todos. Las
-reglas están en backend_web.dispositivos. Revocar es para siempre, y casos
+reglas están en almacen.py. Revocar es para siempre, y casos
 deja de aceptar casos de ese dispositivo aunque el token siga vigente.
 """
 from flask import g, request
 
-from backend_web import dispositivos
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import diccionario, entero_positivo
+
+from . import almacen
 
 ROLES = ("CAPTURISTA", "ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 LIMITE, LIMITE_MAX = 50, 200
@@ -23,7 +24,7 @@ def _es_admin():
 def _visible(device_id):
     """El dispositivo, si es de quien pregunta o pregunta ADMINISTRADOR. El de otra
     persona no existe para quien pregunta."""
-    fila = dispositivos.get_dispositivo(entero_positivo(device_id, "id"))
+    fila = almacen.get_dispositivo(entero_positivo(device_id, "id"))
     if fila is None or (fila["user_id"] != g.contexto.user_id and not _es_admin()):
         raise ErrorAPI(404, "NO_ENCONTRADO", "No existe el dispositivo.")
     return fila
@@ -34,10 +35,10 @@ def registrar(app):
     @requiere_token(roles=ROLES)
     def alta():
         datos = diccionario(leer_cuerpo())
-        errores = dispositivos.valida_dispositivo(datos)
+        errores = almacen.valida_dispositivo(datos)
         if errores:
             raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
-        fila, creado, conflicto = dispositivos.registrar_dispositivo(
+        fila, creado, conflicto = almacen.registrar_dispositivo(
             g.contexto.user_id, datos, contexto=g.contexto)
         if conflicto:
             raise ErrorAPI(409, "CONFLICTO", conflicto)
@@ -58,7 +59,7 @@ def registrar(app):
             if dueno != g.contexto.user_id and not _es_admin():
                 raise ErrorAPI(403, "PERMISO_INSUFICIENTE",
                                "Solo ADMINISTRADOR ve los dispositivos de otra cuenta.")
-        filas = dispositivos.listar_dispositivos(dueno, limite)
+        filas = almacen.listar_dispositivos(dueno, limite)
         return responder({"total": len(filas), "dispositivos": filas}, "listado")
 
     @app.get("/api/v1/devices/<device_id>")
@@ -70,7 +71,7 @@ def registrar(app):
     @requiere_token(roles=ROLES)
     def revocar(device_id):
         fila = _visible(device_id)
-        revocado, error = dispositivos.revocar_dispositivo(
+        revocado, error = almacen.revocar_dispositivo(
             fila["id"], contexto=g.contexto, user_id=None if _es_admin() else g.contexto.user_id)
         if error and error.startswith("No existe"):
             raise ErrorAPI(404, "NO_ENCONTRADO", error)

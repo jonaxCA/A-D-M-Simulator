@@ -11,7 +11,7 @@ import requests
 from epidemia_comun import llaves
 from epidemia_comun.formatos import a_xml
 from microservicios.estado_servicios import app as modulo_app
-from microservicios.estado_servicios import sondeo
+from microservicios.estado_servicios import capacidad, sondeo
 
 RAIZ = Path(__file__).resolve().parents[3]
 
@@ -375,3 +375,79 @@ def test_url_publica_detras_de_nginx(cliente, monkeypatch):
     assert casos["url"] == "https://epidemia.example.com/casos"
     assert casos["docs"] == "https://epidemia.example.com/casos/docs"
     assert casos["openapi"] == "https://epidemia.example.com/casos/openapi.json"
+
+
+# ------------------------------------------------- colas y capacidad por motor (F7)
+
+def _latido(redis_falso, motor, nombre, corrida=None, procesadas=0):
+    redis_falso.set(llaves.latido(motor, nombre),
+                    json.dumps({"nombre": nombre, "motor": motor, "corrida_actual": corrida,
+                                "procesadas": procesadas, "visto": "2026-11-21T18:30:01+00:00"}),
+                    ex=capacidad.LATIDO_SEGUNDOS)
+
+
+def test_capacidad_por_motor_con_sus_colas_y_simuladores(cliente, redis_falso):
+    redis_falso.lpush(llaves.cola_con_prioridad("abm-ref", "normal"), '{"id": 7}', '{"id": 8}')
+    redis_falso.lpush(llaves.cola_con_prioridad("abm-ref", "alta"), '{"id": 9}')
+    redis_falso.lpush(llaves.cola_con_prioridad("abm-gpu", "baja"), '{"id": 10}')
+    _latido(redis_falso, "abm-ref", "b2", corrida=41, procesadas=7)
+    _latido(redis_falso, "abm-ref", "a1", procesadas=3)
+    _latido(redis_falso, "seir-ref", "c3")
+    datos = cliente.get("/api/v1/services/capacity?format=json").get_json()
+    assert datos["latido_segundos"] == 30
+    motores = {m["nombre"]: m for m in datos["motores"]}
+    assert list(motores) == list(capacidad.MOTORES)
+    abm = motores["abm-ref"]
+    assert abm["en_cola"] == 3
+    assert abm["en_cola_por_prioridad"] == {"alta": 1, "normal": 2, "baja": 0}
+    assert (abm["vivos"], abm["ocupados"], abm["libres"]) == (2, 1, 1)
+    assert [s["nombre"] for s in abm["simuladores"]] == ["a1", "b2"]
+    assert abm["simuladores"][1] == {"nombre": "b2", "corrida_actual": 41, "procesadas": 7,
+                                     "visto": "2026-11-21T18:30:01+00:00"}
+    # Corridas en cola sin simulador vivo: no avanzan, y se ve.
+    gpu = motores["abm-gpu"]
+    assert (gpu["en_cola"], gpu["vivos"], gpu["simuladores"]) == (1, 0, [])
+    assert (motores["seir-ref"]["en_cola"], motores["seir-ref"]["libres"]) == (0, 1)
+
+
+def test_capacidad_sin_simuladores_ni_corridas(cliente):
+    datos = cliente.get("/api/v1/services/capacity?format=json").get_json()
+    assert [(m["en_cola"], m["vivos"], m["ocupados"], m["libres"]) for m in datos["motores"]] \
+        == [(0, 0, 0, 0)] * len(capacidad.MOTORES)
+
+
+def test_un_latido_vencido_no_cuenta(cliente, redis_falso):
+    _latido(redis_falso, "seir-ref", "viejo")
+    redis_falso.delete(llaves.latido("seir-ref", "viejo"))
+    datos = cliente.get("/api/v1/services/capacity?format=json").get_json()
+    assert datos["motores"][0]["vivos"] == 0
+
+
+def test_capacidad_en_xml(cliente, redis_falso):
+    _latido(redis_falso, "abm-ref", "a1", corrida=5)
+    raiz = ET.fromstring(cliente.get("/api/v1/services/capacity").data)
+    assert raiz.tag == "capacidad"
+    abm = next(m for m in raiz.findall("motores/motor") if m.findtext("nombre") == "abm-ref")
+    assert abm.findtext("simuladores/simulador/corrida_actual") == "5"
+    assert abm.findtext("en_cola_por_prioridad/alta") == "0"
+
+
+def test_capacidad_con_redis_caido_es_503(cliente, apagar_redis):
+    apagar_redis()
+    assert cliente.get("/api/v1/services/capacity?format=json").status_code == 503
+
+
+def test_los_motores_son_los_de_procesamiento():
+    from procesamiento.contrato import MOTORES
+    assert capacidad.MOTORES == MOTORES
+
+
+def test_el_latido_del_simulador_cuenta_como_vivo_y_ocupado(cliente, redis_falso, monkeypatch):
+    from microservicios.simulador import trabajador
+    monkeypatch.setitem(trabajador.estado, "corrida_actual", 12)
+    trabajador.latido()
+    motor = next(m for m in cliente.get("/api/v1/services/capacity?format=json").get_json()["motores"]
+                 if m["nombre"] == trabajador.MOTOR)
+    assert (motor["vivos"], motor["ocupados"]) == (1, 1)
+    assert motor["simuladores"][0]["nombre"] == trabajador.estado["trabajador"]
+    assert trabajador.LATIDO_TTL == capacidad.LATIDO_SEGUNDOS
