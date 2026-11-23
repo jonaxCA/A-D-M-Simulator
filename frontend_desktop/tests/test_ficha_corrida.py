@@ -78,8 +78,13 @@ def test_ficha_lee_xml_y_exporta_pdf(qt, monkeypatch, tmp_path):
     pdf = QPdfDocument()
     assert pdf.load(str(ruta)) == QPdfDocument.Error.None_
     paginas = " ".join(pdf.getAllText(i).text() for i in range(pdf.pageCount()))
-    assert all(valor in paginas for valor in ("Ficha de la corrida SIM-0042", "seir-ref-0.1", "r0",
-                                               "Casos activos de la corrida", "Metodología"))
+    # Sin espacios: al extraer el texto, QtPdf 6.12 junta algunas palabras ("Casosactivos de la
+    # corrida") aunque el PDF las trae separadas. Lo que se revisa es que el contenido esté.
+    sin_espacios = "".join(paginas.split())
+    faltan = [valor for valor in ("Ficha de la corrida SIM-0042", "seir-ref-0.1", "r0",
+                                  "Casos activos de la corrida", "Metodología")
+              if "".join(valor.split()) not in sin_espacios]
+    assert not faltan, faltan
 
     monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.No)
     ficha.repetir.click()
