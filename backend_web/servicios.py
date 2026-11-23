@@ -29,6 +29,7 @@ PUERTOS = {"auth": 5201, "sesiones": 5202, "usuarios": 5203, "roles": 5204,
            "comparacion": 5244, "pareto": 5245, "indicadores": 5251, "series": 5252,
            "zonas": 5253, "notificaciones": 5261, "estado-servicios": 5262}
 TIEMPO_ESPERA = 5
+TIEMPO_ESPERA_ARCHIVO = 30
 
 
 class ServicioNoDisponible(Exception):
@@ -65,8 +66,9 @@ def url_base(servicio):
 
 
 def llamar(servicio, metodo, ruta, token=None, params=None, cuerpo=None, correlacion=None,
-           cabeceras=None):
-    """El JSON de la respuesta. Levanta ErrorServicio (4xx) o ServicioNoDisponible."""
+           cabeceras=None, archivo=None, tipo=None):
+    """El JSON de la respuesta. Levanta ErrorServicio (4xx) o ServicioNoDisponible. `archivo` son
+    los bytes que van tal cual en el cuerpo, con su `tipo` (evidencias no recibe formularios)."""
     consulta = dict(params or {}, format="json")
     consulta = {k: v for k, v in consulta.items() if v is not None}
     url = "%s%s?%s" % (url_base(servicio), ruta, urllib.parse.urlencode(consulta))
@@ -79,9 +81,13 @@ def llamar(servicio, metodo, ruta, token=None, params=None, cuerpo=None, correla
     if cuerpo is not None:
         datos = json.dumps(cuerpo, default=str).encode("utf-8")
         enviadas["Content-Type"] = "application/json"
+    elif archivo is not None:
+        datos = archivo
+        enviadas["Content-Type"] = tipo or "application/octet-stream"
     peticion = urllib.request.Request(url, data=datos, headers=enviadas, method=metodo.upper())
     try:
-        with urllib.request.urlopen(peticion, timeout=TIEMPO_ESPERA) as respuesta:
+        with urllib.request.urlopen(
+                peticion, timeout=TIEMPO_ESPERA if archivo is None else TIEMPO_ESPERA_ARCHIVO) as respuesta:
             contenido = respuesta.read()
             return json.loads(contenido) if contenido else None
     except urllib.error.HTTPError as error:
@@ -399,6 +405,34 @@ def comparacion(token, run_ids):
 def pareto(token, run_ids, metrica="fallecimientos"):
     return llamar("pareto", "GET", "/api/v1/pareto", token=token,
                   params={"runs": ",".join(str(i) for i in run_ids), "metric": metrica})
+
+
+# --- Archivos en el bucket: fotos de los casos y reportes de una comparación (D30, D35) ---------
+
+def evidencias_caso(token, case_id):
+    return con_fechas(llamar("evidencias", "GET", "/api/v1/cases/%d/attachments" % case_id,
+                             token=token)["evidencias"], "uploaded_at")
+
+
+def url_evidencia(token, evidencia_id):
+    return llamar("evidencias", "GET", "/api/v1/attachments/%d/url" % evidencia_id, token=token)
+
+
+def reportes_comparacion(token, run_ids=None):
+    params = {"runs": ",".join(str(i) for i in run_ids)} if run_ids else None
+    return con_fechas(llamar("evidencias", "GET", "/api/v1/reports", token=token,
+                             params=params)["reportes"], "uploaded_at")
+
+
+def url_reporte(token, reporte_id):
+    return llamar("evidencias", "GET", "/api/v1/reports/%d/url" % reporte_id, token=token)
+
+
+def sube_reporte(token, run_ids, titulo, pdf, huella):
+    """El PDF tal cual, con su SHA-256 para que evidencias revise que llegó completo (RNF-C09)."""
+    return llamar("evidencias", "POST", "/api/v1/reports", token=token, archivo=pdf,
+                  tipo="application/pdf", cabeceras={"X-Content-SHA256": huella},
+                  params=_sin_nulos({"runs": ",".join(str(i) for i in run_ids), "title": titulo}))
 
 
 # --- Vigilancia: casos y campañas (C7) -----------------------------------------------------

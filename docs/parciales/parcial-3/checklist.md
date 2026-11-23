@@ -395,9 +395,9 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 
 - [x] La corrida muestra su resumen desde `simulation_runs` y pide las curvas a `resultados`. Si `resultados` no responde, se ve el resumen sin curvas (D28, D20, RF-F21). Espera a D y a E.
 - [x] La web deja de leer `simulation_results`. Hecho en D1 (2026-11-18), también en `/comparacion`.
-- [ ] La web muestra la foto de un caso con una URL firmada que vence en minutos (D30, RF-C20). Desbloqueado por D2 (2026-11-22): `GET /api/v1/attachments/{id}/url` de `evidencias`.
-- [ ] La web abre el reporte de una comparación con su URL firmada (RF-F17). Desbloqueado por D2 (2026-11-22): `GET /api/v1/reports?runs=…` y `GET /api/v1/reports/{id}/url` de `evidencias`.
-- [ ] La web recibe el reporte de una comparación (ANALISTA y ADMINISTRADOR, `reports.upload`), lo valida por su contenido, su tamaño y su huella, y lo manda al bucket con la misma tabla y la misma interfaz que el escritorio (D35, RF-G16). Desbloqueado por D2 (2026-11-22): la web lo reenvía por HTTP a `POST /api/v1/reports?runs=…` de `evidencias`, que valida contenido, tamaño y huella (`X-Content-SHA256`); no importa `epidemia_comun` (D36). El permiso ya existe (034) y `/reportes` deja el lugar.
+- [x] La web muestra la foto de un caso con una URL firmada que vence en minutos (D30, RF-C20). Hecho el 2026-11-23: `/vigilancia/casos/<id>` lista las evidencias y `/vigilancia/evidencias/<id>` pide a `evidencias` `GET /api/v1/attachments/{id}/url` al abrirla (no deja la URL escrita en la página).
+- [x] La web abre el reporte de una comparación con su URL firmada (RF-F17). Hecho el 2026-11-23: `/comparacion` lista los reportes de las corridas (`GET /api/v1/reports?runs=…`) y `/comparacion/reportes/<id>` pide `GET /api/v1/reports/{id}/url`; `/reportes` lista los guardados.
+- [x] La web recibe el reporte de una comparación (ANALISTA y ADMINISTRADOR, `reports.upload`), lo valida por su contenido, su tamaño y su huella, y lo manda al bucket con la misma tabla y la misma interfaz que el escritorio (D35, RF-G16). Hecho el 2026-11-23 (`POST /comparacion/reportes`, `backend_web/archivos.py`): la web lo reenvía por HTTP a `POST /api/v1/reports?runs=…` de `evidencias`, que valida contenido, tamaño y huella (`X-Content-SHA256`); no importa `epidemia_comun` (D36). El permiso ya existe (034) y `/reportes` deja el lugar.
 - [x] `/comparacion` dice personas-día en el eje y la tabla de la frontera, y muestra `costo_pesos` aparte (D3). Con la trazabilidad de cada costo.
 - [x] `/comparacion/costos` permite fijar las personas-día por dosis de la vacunación, con fuente o marca de supuesto (D3, migración 040). Sin ese factor, la comparación de escenarios con vacunación se niega. Ruta nueva en `intervenciones`: `PUT /api/v1/intervention-types/{id}/person-days`.
 
@@ -432,7 +432,7 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 - [x] Vigilancia: casos por región y periodo, con su seguimiento. `/vigilancia` y `/vigilancia/casos/<id>`, con el historial y el cambio de estado (D47).
 - [x] Campañas. Decididas en D49. `/campanas` con el servicio `vacunas`: consulta, alta y cancelación.
 - [x] Mapas epidemiológicos e indicadores.
-- [x] Reportes. `/reportes` reúne las descargas. Falta el reporte de la comparación: la ruta ya está (D2, C3).
+- [x] Reportes. `/reportes` reúne las descargas. El reporte de la comparación ya se abre y se sube (C3).
 - [ ] Seguimiento de intervenciones. Lo definen C y E y lo registran en `decisiones/` (el bloque 0 lo delegó el 2026-11-22). **Falta que E valide [D51](../../decisiones/D51-seguimiento-de-intervenciones.md)**, la propuesta de C; la pantalla ya está. `/intervenciones` muestra, por versión aprobada, lo programado, su costo, las corridas que lo simularon y las campañas de la vacunación.
 - [x] Institución y región de cada cuenta en la administración de usuarios.
 - [x] Ninguna gráfica sin fuente, periodo, modelo, versión y unidades. Ficha bajo cada gráfica.

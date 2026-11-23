@@ -88,7 +88,9 @@ el modelo y la versión del escenario.
 ## 4. Vigilancia y campañas
 
 - **Vigilancia:** los casos de campo por enfermedad, municipio, estado y rango de fechas. Pulsa
-  **Seguimiento** para ver un caso y su historial de cambios.
+  **Seguimiento** para ver un caso, sus fotos y su historial de cambios.
+  - Las fotos y PDF del caso se abren con un enlace que vence en 15 minutos. Si abres una
+    después de ese tiempo, la web pide uno nuevo.
 - **El epidemiólogo** cambia el estado de un caso: lo valida, lo descarta, lo marca duplicado
   de otro o lo reabre.
   - Descartar y marcar duplicado piden un motivo. Quien capturó el caso recibe el aviso.
@@ -105,8 +107,8 @@ el modelo y la versión del escenario.
   filtros.
 - **Reportes:** reúne las descargas: el resumen de situación, el monitoreo por zona y el
   catálogo de enfermedades. Cada descarga queda en la bitácora con quien la pidió.
-  - El reporte de una comparación, el que sube la app de escritorio, todavía no se descarga
-    aquí: espera el almacenamiento de archivos.
+  - Abajo se listan los reportes de comparaciones que ya están guardados. **Abrir** descarga el
+    PDF con un enlace que vence en 15 minutos.
 
 ## 6. Catálogos
 
@@ -140,6 +142,10 @@ el modelo y la versión del escenario.
   - El costo de la frontera está en **personas-día**. El costo en pesos se muestra aparte y no
     entra en la frontera.
   - El sistema no elige una alternativa.
+  - Abajo de las curvas, **Reporte de esta comparación** lista los PDF guardados de esas corridas.
+    El analista y el administrador suben uno: elige el PDF (hasta 20 MB), pon un título si
+    quieres y pulsa **Subir reporte**. Se revisa su contenido y su huella antes de guardarlo; si
+    ya estaba subido, se queda el mismo.
 - **Intervenciones** (seguimiento, D51): por cada versión aprobada se ve:
   - lo que se programó: tipo, días del horizonte, cobertura y cumplimiento;
   - su costo en pesos y, para la vacunación, sus personas-día por dosis;
