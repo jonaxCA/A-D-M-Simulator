@@ -573,20 +573,20 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 **Identidad**
 
-- [x] `auth`: MFA para los perfiles críticos (decisión del bloque 0). TOTP y códigos de respaldo en `microservicios/auth/mfa.py`, migración 051, D40. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: el MFA arranca apagado (`MFA_PERFILES` vacía) hasta que los clientes (web, escritorio, Android) implementen el flujo de segundo factor; se probó encendido a mano con ADMINISTRADOR y EPIDEMIOLOGO.  El bloqueo temporal ya existe (15 min, `backend_web/auth.py`).
-- [x] `sesiones`: control de sesiones concurrentes y solo dispositivos autorizados (RF-A08, reabierto). Tope de sesiones y lista de dispositivos en `microservicios/sesiones/almacen.py` y `dispositivos.py`, migración 050, D41. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: el control de dispositivos autorizados viene apagado por omisión hasta que los clientes envíen `dispositivo_id`.
-- [x] `usuarios`: institución y región de cada cuenta, y los perfiles nuevos (decisión del bloque 0). Migración 052, D42. Decisión tomada por el orquestador, pendiente de validación del líder.
-- [x] `roles`: permisos por recurso, región, institución y operación (decisión del bloque 0). Alcance por región en `microservicios/roles/rutas.py` y cliente `epidemia_comun/alcance.py`, migración 053, D43. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: el alcance por institución no se aplica a los datos de E porque estos no traen institución (D43); solo se aplica el de región.
+- [x] `auth`: MFA para los perfiles críticos (decisión del bloque 0). TOTP y códigos de respaldo en `microservicios/auth/mfa.py`, migración 051, D40. Salvedad: el MFA arranca apagado (`MFA_PERFILES` vacía) hasta que los clientes (web, escritorio, Android) implementen el flujo de segundo factor; se probó encendido a mano con ADMINISTRADOR y EPIDEMIOLOGO.  El bloqueo temporal ya existe (15 min, `backend_web/auth.py`).
+- [x] `sesiones`: control de sesiones concurrentes y solo dispositivos autorizados (RF-A08, reabierto). Tope de sesiones y lista de dispositivos en `microservicios/sesiones/almacen.py` y `dispositivos.py`, migración 050, D41. Salvedad: el control de dispositivos autorizados viene apagado por omisión hasta que los clientes envíen `dispositivo_id`.
+- [x] `usuarios`: institución y región de cada cuenta, y los perfiles nuevos (decisión del bloque 0). Migración 052, D42.
+- [x] `roles`: permisos por recurso, región, institución y operación (decisión del bloque 0). Alcance por región en `microservicios/roles/rutas.py` y cliente `epidemia_comun/alcance.py`, migración 053, D43. Salvedad: el alcance por institución no se aplica a los datos de E porque estos no traen institución (D43); solo se aplica el de región.
 - [x] Consultar la bitácora. La nota de que «hoy no existe» estaba desactualizada: `roles` ya la tenía (`/api/v1/audit`) y se extendió con resumen e historial de una entidad con alcance por región (migraciones 046, 053 y 055, D43). Probada en vivo: `GET /api/v1/audit?entity_id=130`.
 
 **Simulación**
 
-- [x] `corridas`: prioridades, tiempo estimado y reintentos seguros (RF-E07, RF-E08 y RF-E14, reabiertos). Prioridad, posición en la cola, estimación y `POST /runs/{id}/retry` en `microservicios/corridas/`, migración 054, D44. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: el reintento es solo manual; no hay reintento automático de corridas fallidas.
+- [x] `corridas`: prioridades, tiempo estimado y reintentos seguros (RF-E07, RF-E08 y RF-E14, reabiertos). Prioridad, posición en la cola, estimación y `POST /runs/{id}/retry` en `microservicios/corridas/`, migración 054, D44. Salvedad: el reintento es solo manual; no hay reintento automático de corridas fallidas.
 - [x] Una corrida interrumpida se recupera sin duplicar resultados, en lugar de cerrarse como fallida (RNF-C03; decisión del bloque 0). D38: el simulador la reencola con la misma semilla, hasta 3 intentos (migración 045, `attempts`); sin intentos o con otra versión de motor se cierra como `fallido`.
 - [x] `resultados`: intervalos de incertidumbre de las réplicas, con la banda p5–p95 de `series_corridas` (D8, reabierto). `GET /api/v1/runs/{id}/band` en `microservicios/resultados/`. Salvedad: `replicas` cuenta las corridas completadas de la versión, no las que tienen series en MongoDB.
 - [x] `comparacion`: diferencias absolutas y relativas, incertidumbre y análisis contrafactual exploratorio. En `microservicios/comparacion/rutas.py`; contrato y ejemplos actualizados. Es exploratorio y no recomienda un escenario (regla 10).
 - [x] `pareto`: explica por qué cada alternativa queda dominada o no. Campo `explicacion` por fila en `microservicios/pareto/dominio.py`. Probado en vivo.
-- [x] Rutas para la calibración y la sensibilidad (con el bloque 0). En `pareto`, D46. Decisión tomada por el orquestador, pendiente de validación del líder. Salvedad: la calibración solo informa su estado (fuera de alcance, D24 y D46); la sensibilidad es exploratoria.
+- [x] Rutas para la calibración y la sensibilidad (con el bloque 0). En `pareto`, D46. Salvedad: la calibración solo informa su estado (fuera de alcance, D24 y D46); la sensibilidad es exploratoria.
 
 ### E8. Reglas de negocio y despliegue independiente
 
