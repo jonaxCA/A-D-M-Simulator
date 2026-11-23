@@ -118,6 +118,7 @@
       <xs:element name="region" type="xs:string"/>
       <xs:element name="autor" type="xs:string"/>
       <xs:element name="n_intervenciones" type="Entero"/>
+      <xs:element name="n_ajustes" type="Entero"/>
     </xs:all>
   </xs:complexType>
 

@@ -316,6 +316,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      SERVICIO_ROLES_URL: http://roles:8000
       DATABASE_URL: ${DATABASE_URL_PARAMETROS:-postgresql://svc_parametros:${DB_PASSWORD_PARAMETROS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:

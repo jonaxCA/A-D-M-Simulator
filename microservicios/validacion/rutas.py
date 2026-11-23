@@ -27,6 +27,20 @@ CAMPOS_INTERVENCION = ("code", "start_day", "end_day", "coverage", "compliance")
 CONOCIDOS = set(CAMPOS_ESCALARES) | {"estratificar", "population_by_age", "interventions"}
 
 
+def avisos_de_ajustes(detalle):
+    # Un aviso por parámetro que la versión cambia del catálogo (044, D59): lo que ve quien revisa.
+    catalogo = (detalle.get("escenario") or {}).get("default_params") or {}
+    ajustes = ((detalle.get("version") or {}).get("param_overrides")) or {}
+    avisos = []
+    for clave, ajuste in sorted(ajustes.items()):
+        base = catalogo.get(clave)
+        base = base.get("valor") if isinstance(base, dict) else None
+        respaldo = "supuesto" if ajuste.get("supuesto") else "fuente: %s" % ajuste.get("fuente")
+        avisos.append("El parámetro %s se ajustó en esta versión: catálogo %s, versión %s (%s)."
+                      % (clave, "sin dato" if base is None else base, ajuste.get("valor"), respaldo))
+    return avisos
+
+
 def _es_verdadero(valor):
     if isinstance(valor, bool):
         return valor
@@ -159,6 +173,7 @@ def registrar(app):
         return responder({
             "version_id": fila["id"], "scenario_id": fila["scenario_id"],
             "version_number": fila["version_number"], "status": fila["status"],
-            "valido": not errores, "errores": list(errores), "avisos": list(avisos),
+            "valido": not errores, "errores": list(errores),
+            "avisos": list(avisos) + avisos_de_ajustes(detalle),
             "huella": huella.de_version(fila["id"]),
         }, "validacion")

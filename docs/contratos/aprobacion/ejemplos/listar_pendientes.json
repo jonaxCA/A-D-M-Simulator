@@ -12,7 +12,8 @@
       "enfermedad": "Influenza",
       "region": "Monterrey",
       "autor": "Ana Analista",
-      "n_intervenciones": 1
+      "n_intervenciones": 1,
+      "n_ajustes": 1
     }
   ]
 }

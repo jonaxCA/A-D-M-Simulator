@@ -2464,7 +2464,7 @@ def get_escenario_detalle(scenario_id, version_number=None):
                    v.horizon_days, v.initial_infected, v.notes, v.created_at,
                    v.population_by_age, v.population_age_unknown, v.age_unknown_policy,
                    v.created_by, v.submitted_at, v.reviewed_at, v.review_comment,
-                   {congelados},
+                   v.param_overrides, {congelados},
                    u.full_name AS autor, r.full_name AS revisor
             FROM scenario_versions v
             JOIN users u ON u.id = v.created_by
@@ -2493,7 +2493,9 @@ def get_escenario_detalle(scenario_id, version_number=None):
         "escenario": dict(escenario),
         "version": dict(version) if version else None,
         "intervenciones": intervenciones,
-        "parametros_enfermedad": congelada or escenario["default_params"],
+        # Un borrador: el catálogo vivo con los ajustes de la versión encima (044, D59).
+        "parametros_enfermedad": congelada or {**(escenario["default_params"] or {}),
+                                               **((version or {}).get("param_overrides") or {})},
         "parametros_congelados": congelada is not None,
         "parametros_sin_congelar": bool(
             version and version["status"] != "borrador" and congelada is None),
@@ -2816,15 +2818,17 @@ def crea_version(scenario_id, datos, *, contexto):
                     """INSERT INTO scenario_versions
                            (scenario_id, version_number, is_current, population_size,
                             horizon_days, initial_infected, notes, created_by, status,
-                            population_by_age, population_age_unknown, age_unknown_policy)
+                            population_by_age, population_age_unknown, age_unknown_policy,
+                            param_overrides)
                        VALUES (%s, %s, true, %s, %s, %s, %s, %s, 'borrador',
-                               %s::jsonb, %s, %s)
+                               %s::jsonb, %s, %s,
+                               (SELECT param_overrides FROM scenario_versions WHERE id = %s))
                        RETURNING id""",
                     (scenario_id, siguiente, datos["population_size"],
                      datos["horizon_days"], datos["initial_infected"], datos["notes"],
                      user_id,
                      a_jsonb(datos["population_by_age"]) if datos["population_by_age"] else None,
-                     datos["population_age_unknown"], datos["age_unknown_policy"]))
+                     datos["population_age_unknown"], datos["age_unknown_policy"], origen_id))
                 nueva_id = cur.fetchone()[0]
                 cur.execute(_SQL_COPIA_INTERVENCIONES, (nueva_id, origen_id))
                 copiadas = cur.rowcount
@@ -2890,14 +2894,16 @@ def duplica_escenario(scenario_id, version_number, nombre, *, contexto):
                     """INSERT INTO scenario_versions
                            (scenario_id, version_number, is_current, population_size,
                             horizon_days, initial_infected, notes, created_by, status,
-                            population_by_age, population_age_unknown, age_unknown_policy)
+                            population_by_age, population_age_unknown, age_unknown_policy,
+                            param_overrides)
                        VALUES (%s, 1, true, %s, %s, %s, %s, %s, 'borrador',
-                               %s::jsonb, %s, %s)
+                               %s::jsonb, %s, %s,
+                               (SELECT param_overrides FROM scenario_versions WHERE id = %s))
                        RETURNING id""",
                     (nuevo_id, poblacion, dias, iniciales,
                      f"Duplicado de la versión {version_number} del escenario "
                      f"#{scenario_id}.", user_id,
-                     a_jsonb(por_edad) if por_edad else None, sin_edad, politica))
+                     a_jsonb(por_edad) if por_edad else None, sin_edad, politica, origen_id))
                 nueva_version_id = cur.fetchone()[0]
                 cur.execute(_SQL_COPIA_INTERVENCIONES, (nueva_version_id, origen_id))
                 copiadas = cur.rowcount
@@ -2983,7 +2989,7 @@ def envia_a_revision(scenario_id, *, contexto):
                     cur.execute(
                         """UPDATE scenario_versions v
                            SET status = 'en_revision', submitted_at = now(),
-                               disease_params = d.default_params
+                               disease_params = d.default_params || v.param_overrides
                            FROM scenarios s
                            JOIN diseases d ON d.id = s.disease_id
                            WHERE v.id = %s AND v.status = 'borrador' AND s.id = v.scenario_id

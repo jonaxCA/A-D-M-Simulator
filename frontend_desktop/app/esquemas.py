@@ -14,6 +14,7 @@ POR_RESPUESTA = {
     ("parametros", "parametros"): "parametros/parametros.xsd",
     ("parametros", "versiones_parametros"): "parametros/parametros.xsd",
     ("parametros", "version_parametros"): "parametros/parametros.xsd",
+    ("parametros", "ajustes_version"): "parametros/parametros.xsd",
     ("intervenciones", "intervenciones_version"): "intervenciones/intervencion.xsd",
     ("intervenciones", "intervencion"): "intervenciones/intervencion.xsd",
     ("aprobacion", "envio"): "aprobacion/aprobacion.xsd",

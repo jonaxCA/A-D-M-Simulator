@@ -57,6 +57,20 @@ class AprobacionBdTests(unittest.TestCase):
             datos.envia(self.version_id, contexto=self.autor)
         self.assertEqual(error.exception.estado, 409)
 
+    def test_enviar_congela_el_catalogo_con_los_ajustes_encima(self):
+        # 044, D59: la foto es el catálogo con los ajustes de la versión; la bandeja los cuenta.
+        escribe("UPDATE scenario_versions SET param_overrides = %s::jsonb WHERE id = %s",
+                ('{"r0": {"valor": 3.2, "fuente": null, "supuesto": true}}', self.version_id))
+        datos.envia(self.version_id, contexto=self.autor)
+        catalogo = query("SELECT d.default_params FROM diseases d JOIN scenarios s ON s.disease_id = d.id "
+                         "WHERE s.id = %s", (self.scenario_id,), one=True)["default_params"]
+        foto = self.version()["disease_params"]
+        self.assertEqual(foto["r0"], {"valor": 3.2, "fuente": None, "supuesto": True})
+        self.assertEqual({k: v for k, v in foto.items() if k != "r0"},
+                         {k: v for k, v in catalogo.items() if k != "r0"})
+        pendiente = next(p for p in datos.pendientes() if p["scenario_id"] == self.scenario_id)
+        self.assertEqual(pendiente["n_ajustes"], 1)
+
     def test_devolver_la_regresa_a_borrador_editable_con_el_motivo(self):
         datos.envia(self.version_id, contexto=self.autor)
         self.assertEqual(datos.resuelve(self.version_id, "devolver", "Falta la fuente", contexto=self.revisor),

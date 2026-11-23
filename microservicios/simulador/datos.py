@@ -203,7 +203,7 @@ def version_para_motor(version_id):
         SELECT sv.id, sv.scenario_id, sv.version_number, sv.status, sv.population_size,
                sv.horizon_days, sv.initial_infected, sv.population_by_age,
                sv.population_age_unknown, sv.age_unknown_policy, sv.disease_params,
-               d.default_params
+               sv.param_overrides, d.default_params
         FROM scenario_versions sv
         JOIN scenarios s ON s.id = sv.scenario_id
         JOIN diseases d ON d.id = s.disease_id

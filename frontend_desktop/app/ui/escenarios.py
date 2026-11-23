@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFileDialog, QFrame, Q
                                QPlainTextEdit, QPushButton, QScrollArea, QTabWidget, QVBoxLayout, QWidget)
 
 from .. import api, esquemas, servicios
+from .ajustes import DialogoAjustes
 from .auditoria import DialogoAuditoria
 from .comun import celda, dato_vertical, encabezado, estado, fecha, num, tabla, tarjeta
 from .formularios import DialogoEscenario, DialogoVersion, FormIntervencion, mostrar_parametros
@@ -137,6 +138,8 @@ class VistaEscenarios(QWidget):
         rejilla.addLayout(cuadro)
         self.b_parametros = QPushButton("Consultar parámetros de la enfermedad")
         self.b_parametros.clicked.connect(self.consultar_parametros)
+        self.b_ajustes = QPushButton("Ajustar parámetros de esta versión")
+        self.b_ajustes.clicked.connect(self.abrir_ajustes)
         self.b_zonas = QPushButton("Indicadores municipales")
         self.b_zonas.clicked.connect(self.abrir_zonas)
         self.b_auditoria = QPushButton("Historial de auditoría")
@@ -145,6 +148,7 @@ class VistaEscenarios(QWidget):
         self.b_modelo.clicked.connect(self.abrir_modelo)
         accesos = QHBoxLayout()
         accesos.addWidget(self.b_parametros)
+        accesos.addWidget(self.b_ajustes)
         accesos.addWidget(self.b_zonas)
         accesos.addWidget(self.b_auditoria)
         accesos.addWidget(self.b_modelo)
@@ -365,6 +369,7 @@ class VistaEscenarios(QWidget):
         for b in (self.b_validar, self.b_exportar, self.b_duplicar):
             b.setEnabled(hay)
         self.b_parametros.setEnabled(bool(hay and self.detalle.get("disease_id")))
+        self.b_ajustes.setEnabled(bool(hay and self._version().get("id") and self.detalle.get("disease_id")))
         self.b_zonas.setEnabled(self.b_parametros.isEnabled())
         self.b_auditoria.setEnabled(hay)
         self.b_modelo.setEnabled(bool(hay and self.detalle.get("disease_id") and self.detalle.get("region_id")))
@@ -459,6 +464,14 @@ class VistaEscenarios(QWidget):
         nombre = self.detalle.get("enfermedad") or "Enfermedad %s" % enfermedad_id
         en_hilo(_estado_y_versiones, self.c, enfermedad_id,
                 listo=lambda datos: mostrar_parametros(self, nombre, *datos))
+
+    def abrir_ajustes(self):
+        d = self.detalle
+        dialogo = DialogoAjustes(self, self.v, self._version()["id"], d.get("enfermedad") or "Enfermedad",
+                                 self._editable())
+        # Un ajuste cambia los avisos de la validación: se consultan otra vez al cerrar.
+        dialogo.finished.connect(lambda _: self.validar())
+        dialogo.open()
 
     def abrir_zonas(self):
         d = self.detalle

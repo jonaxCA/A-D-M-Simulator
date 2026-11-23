@@ -99,6 +99,17 @@ def versiones_parametros(c, enfermedad_id):
     return datos.get("versiones") or []
 
 
+def ajustes_version(c, version_id):
+    # Lo que la versión cambia del catálogo de la enfermedad (D59): catálogo, ajustes y parámetros efectivos.
+    return c.pedir("parametros", "GET", "/api/v1/versions/%s/parameters" % version_id)
+
+
+def ajustar_version(c, version_id, parametros):
+    # {clave: {valor, fuente, supuesto, intervalo?} | None}; None vuelve al catálogo. El servidor valida y decide.
+    return c.pedir("parametros", "PUT", "/api/v1/versions/%s/parameters" % version_id,
+                   {"parametros": parametros}, "ajustes")
+
+
 def firma_version(c, version_id):
     return c.pedir("aprobacion", "GET", "/api/v1/versions/%s/signature" % version_id)
 

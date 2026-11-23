@@ -179,6 +179,16 @@ parámetros de la enfermedad, cada una con su fecha y el motivo del cambio. Pasa
 el nombre de un parámetro para leer su definición. Para consultar los valores guardados de una
 corrida, abre su ficha en Simulaciones.
 
+**Ajustar parámetros de esta versión** abre los parámetros que se simularán en la versión que ves:
+el valor del catálogo, el de la versión, su incertidumbre y su fuente. En el **borrador vigente de
+tu escenario** puedes cambiar uno: elígelo en la tabla, escribe el valor (las tasas, en %), su fuente
+o marca **Es un supuesto del equipo**, y si quieres un intervalo, y pulsa **Aplicar ajuste**.
+**Volver al catálogo** quita el ajuste. El catálogo no cambia y los demás escenarios tampoco: el ajuste
+es solo de esta versión. Al enviarla a revisión se congela el catálogo con tus ajustes, y quien
+revisa los ve como advertencias en la validación. En una versión ya enviada, o que no es tuya, la
+pantalla solo consulta. El servidor decide si el valor cabe en los límites del motor y si falta la
+fuente, y explica el rechazo.
+
 **Indicadores municipales** abre los datos registrados por el servicio `zonas` para la enfermedad.
 Elige 7, 30 o 60 días. Los polígonos muestran los límites oficiales de INEGI y sus colores
 indican el nivel de incidencia informado. El gris indica que el servicio no devolvió indicadores
