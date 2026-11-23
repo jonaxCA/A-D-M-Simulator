@@ -209,11 +209,11 @@ Cada una reemplaza o amplía una decisión vigente (ver [«Lo que la retroalimen
 - [x] La web consume los servicios: en qué orden pasa cada módulo y qué ve el usuario cuando un servicio no responde. Reemplaza D20 y D33. **Frena a C y a E.** Opción B, sin respaldo en la base; orden de la demostración integrada (D36).
 - [x] Dueño de cada regla de negocio, y cómo dejan los servicios de importar `backend_web`. Cambia las reglas 2 y 14 de `microservicios/AGENTS.md`. **Frena a E.** El dueño de la tabla es el dueño de la regla; los demás la piden por HTTP (D37).
 - [X] Instituciones, regiones y los perfiles INVESTIGADOR y AUTORIDAD SANITARIA, con los permisos por recurso, región, institución y operación. Amplía D1. **Frena a E, B y C.** El bloque E propuso D42 y D43 (integradas el 2026-11-21).
-- [ ] Editar y rechazar casos: qué se edita, quién lo hace y cómo se detecta un conflicto. Reemplaza lo de D32 sobre editar casos. **Frena a E y a B.**
+- [x] Editar y rechazar casos: qué se edita, quién lo hace y cómo se detecta un conflicto. Reemplaza lo de D32 sobre editar casos. **Frena a E y a B.** D47: corrección y seguimiento con control de versión.
 - [ ] Calibración: método, función de pérdida, métricas de ajuste, datos y dónde corre. Reemplaza D24. **Frena a A.**
 - [x] Corridas interrumpidas: reencolarlas en lugar de cerrarlas como fallidas, y qué pasa con su serie en MongoDB (RNF-C03). **Frena a E y a D.** Se reencolan hasta 3 intentos con la misma semilla; solo cuentan las series de corridas completadas; migración 045 (D38).
 - [x] MFA: qué perfiles son críticos y con qué segundo factor. **Frena a E.** TOTP para ADMINISTRADOR, EPIDEMIOLOGO y AUTORIDAD_SANITARIA (D40). Arranca apagado: se prende cuando la web, el escritorio y la móvil tengan el segundo paso.
-- [ ] Qué son «campañas» y «seguimiento de intervenciones» en la web, y qué datos llevan. **Frena a C y a E.**
+- [x] Qué son «campañas» y «seguimiento de intervenciones» en la web, y qué datos llevan. **Frena a C y a E.** Campañas, avisos de datos incompletos y preferencias de avisos: D49.
 - [ ] Qué agrupa un proyecto de investigación del escritorio y dónde vive. **Frena a A y a E.**
 - [ ] Reservar los números de migración para lo nuevo: instituciones y perfiles, casos, corridas, proyectos y calibración.
 
@@ -657,8 +657,8 @@ Antes de empezar: `microservicios/AGENTS.md`.
 
 **Vigilancia**
 
-- [x] `casos`: actualizar, dar seguimiento y rechazar, con historial, duplicados y control de conflictos (RF-C11 y RF-C15, reabiertos; decisión del bloque 0). Hecho el 2026-11-22 con [D47](../../decisiones/D47-correccion-y-seguimiento-de-casos.md) (aprobada por F, pendiente de validación del líder) y la migración 057: `PATCH /cases/{id}` y `POST /cases/{id}/status` con `If-Match`, `GET /cases/{id}/history` y el aviso `CASE_REJECTED`. Falta la detección automática de duplicados probables ([`revision_f7.md`](revision_f7.md)).
-- [x] Formularios por enfermedad, con versiones (para B4). Hecho el 2026-11-22 con [D48](../../decisiones/D48-formularios-por-enfermedad.md) (aprobada por F, pendiente de validación del líder) y la migración 059: `/forms` para armarlos y publicarlos, `/forms/current` para la app, y cada caso con `form_id` y `form_answers` validadas contra su versión ([`revision_f7.md`](revision_f7.md)).
+- [x] `casos`: actualizar, dar seguimiento y rechazar, con historial, duplicados y control de conflictos (RF-C11 y RF-C15, reabiertos; decisión del bloque 0). Hecho el 2026-11-22 con [D47](../../decisiones/D47-correccion-y-seguimiento-de-casos.md) y la migración 057: `PATCH /cases/{id}` y `POST /cases/{id}/status` con `If-Match`, `GET /cases/{id}/history` y el aviso `CASE_REJECTED`. Falta la detección automática de duplicados probables ([`revision_f7.md`](revision_f7.md)).
+- [x] Formularios por enfermedad, con versiones (para B4). Hecho el 2026-11-22 con [D48](../../decisiones/D48-formularios-por-enfermedad.md) y la migración 059: `/forms` para armarlos y publicarlos, `/forms/current` para la app, y cada caso con `form_id` y `form_answers` validadas contra su versión ([`revision_f7.md`](revision_f7.md)).
 - [x] `sincronizacion`: conflictos entre lo capturado sin conexión y lo que cambió otro profesional. Hecho el 2026-11-22 (D47): el lote acepta `updates` y una corrección sobre un caso que cambió otra persona sale `conflicto` con el caso actual, sin sobrescribirlo. Mostrarlo en la app es de B4 ([`revision_f7.md`](revision_f7.md)).
 
 **Analítica**

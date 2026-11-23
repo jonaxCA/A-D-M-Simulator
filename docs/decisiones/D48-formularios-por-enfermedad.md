@@ -1,6 +1,6 @@
 # D48 - Formularios de captura por enfermedad, con versiones
 
-Fecha: 2026-11-22 · Estado: Aceptada (aprobada por el dueño del bloque F; pendiente de validación del líder) · Atiende la retroalimentación de la app móvil (formularios por enfermedad) · Amplía D1 y D47
+Fecha: 2026-11-22 · Estado: Aceptada · Atiende la retroalimentación de la app móvil (formularios por enfermedad) · Amplía D1 y D47
 
 ## Contexto
 La retroalimentación pide formularios definidos por enfermedad, con versiones, validaciones y datos

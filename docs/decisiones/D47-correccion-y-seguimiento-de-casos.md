@@ -1,6 +1,6 @@
 # D47 - Corrección y seguimiento de casos con control de versión
 
-Fecha: 2026-11-22 · Estado: Aceptada (aprobada por el dueño del bloque F; pendiente de validación del líder) · Reabre RF-C11 y RF-C15 · Cambia D32 (los casos ya se corrigen) · Amplía D1
+Fecha: 2026-11-22 · Estado: Aceptada · Reabre RF-C11 y RF-C15 · Cambia D32 (los casos ya se corrigen) · Amplía D1
 
 ## Contexto
 La retroalimentación pide actualizar los casos y darles seguimiento, sin sobrescribir en silencio
