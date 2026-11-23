@@ -26,7 +26,7 @@ Cada pieza lleva su estado:
 | Población de un escenario | Habitantes | Agentes; el factor de escala se calcula fuera del motor | D6 | **Hecho** |
 | Réplicas | — | 30 por omisión, semillas 1..N; el escritorio resume, con aviso de bandas encimadas | D8 | **Hecho**. Reabierto: `resultados` con intervalos de incertidumbre (bloque E) |
 | MongoDB | Fuera de la etapa | `historial_servicios` y `series_corridas` | D28 | **Hecho** (D-1); ver §6 |
-| Archivos | Volumen de Docker de `evidencias` | Cloud Storage con URLs firmadas | D30, D35 | **Hecho** en el servicio y en local con el emulador (D2, 2026-11-22); en GCP falta crear el bucket (`infra/crea_bucket.sh`, con F) |
+| Archivos | Volumen de Docker de `evidencias` | Cloud Storage con URLs firmadas | D30, D35 | **Hecho** en el servicio y en local con el emulador (D2, 2026-11-22); y en GCP (2026-11-23), en `gs://integracion-515321-archivos`, con la cuenta `epidemia-vm` |
 | Límites de consumo | Fuera de la etapa | Un contador por usuario y regla en Redis, en `epidemia_comun` | D31 | Hecho en la biblioteca (S2); ver §8 |
 | Salud y panel | `/health` con PostgreSQL y Redis; historial en Redis | Más MongoDB, bucket y tiempo de respuesta; historial en MongoDB y número de errores | D28 | Falta, en parte (N3, N4; bloque F) |
 | Despliegue | Pendiente | Compute Engine: una VM principal; la GPU, en una PC conectada por un túnel (D23) | D23, D25, D26 | **Hecho** (2026-11-20): la web, los 29 servicios y las bases corren en la VM detrás de nginx con Let's Encrypt, el firewall solo deja 80 y 443 y los registros de cada contenedor van a Cloud Logging (N1, N6). Aparte quedan el diagrama de distribución (N2) y decidir Secret Manager (S5) |
@@ -78,7 +78,7 @@ Los tres procesos integrales que pide la rúbrica, paso a paso, están en [`proc
 
 | Proceso | Usuario y app | Servicios | Redis | PostgreSQL o MongoDB | Archivo en bucket | Auditoría | Notificación | Visualización |
 |---|---|---|---|---|---|---|---|---|
-| P1 · Captura en campo | CAPTURISTA, Android | `auth`, `sesiones`, `dispositivos`, `enfermedades`, `regiones`, `sincronizacion`, `casos`, `evidencias`, `vacunas` | Sí: sesión, candado y resultado del lote | Sí: `cases` | **Hecho** en local: las fotos van al bucket y se abren con URL firmada (D2); en GCP, al crear el bucket | Sí | **Hecho**: `sincronizacion` avisa a los EPIDEMIOLOGO por lote con casos nuevos (`NEW_CASES`, D32) | Sí: tablero y mapa de la web |
+| P1 · Captura en campo | CAPTURISTA, Android | `auth`, `sesiones`, `dispositivos`, `enfermedades`, `regiones`, `sincronizacion`, `casos`, `evidencias`, `vacunas` | Sí: sesión, candado y resultado del lote | Sí: `cases` | **Hecho** en local: las fotos van al bucket y se abren con URL firmada (D2); también en GCP (2026-11-23) | Sí | **Hecho**: `sincronizacion` avisa a los EPIDEMIOLOGO por lote con casos nuevos (`NEW_CASES`, D32) | Sí: tablero y mapa de la web |
 | P2 · Diseño y aprobación | ANALISTA en el escritorio; EPIDEMIOLOGO en la web | `escenarios`, `intervenciones`, `validacion`, `escenarios-xml`, `aprobacion`, `notificaciones` | Sí: sesión | Sí | No corresponde (D32); el XML de intercambio, solo si sobra tiempo | Sí | **Hecho**: `aprobacion` avisa a los EPIDEMIOLOGO al enviar a revisión y al autor al aprobar o rechazar; la web dictamina por medio de `aprobacion` (D32, D36) | Sí: estado de la versión |
 | P3 · Simulación y comparación | ANALISTA en el escritorio; consulta en la web | `corridas`, `simulador`, `resultados`, `comparacion`, `pareto`, `notificaciones` | Sí: sesión, candado, cola y avance | Sí: el resumen en `simulation_runs` (038) y la serie en `series_corridas` (MongoDB); `simulation_results` se retiró (041) | En el servicio: `POST /api/v1/reports` y su URL firmada (D2); falta que el escritorio lo suba (A) | Sí | Sí: al terminar o fallar una corrida | Sí: escritorio y web |
 
@@ -123,7 +123,7 @@ El catálogo de los 30 servicios, con sus puertos, tablas y llamadas, está en [
 | PostgreSQL | La fuente de verdad: usuarios y roles, catálogos, casos, escenarios y versiones, corridas y sus resúmenes, avisos, auditoría y los metadatos de cada archivo. Esquema: migraciones de `datos/postgres/migraciones/`, con los números reservados en su README | **Hecho** |
 | Redis | Lo temporal y reconstruible (v2 §5.2): sesiones, revocaciones, captcha, caché, candados, resultado de lotes, avance de corridas y una cola por motor. Nuevo: `ratelimit:<usuario|ip>:<MÉTODO:regla>` (D31) | **Hecho** |
 | MongoDB | El historial de salud de los servicios y las series diarias de las corridas (D28). Cliente e índices en `epidemia_comun/mongo.py` | **Hecho** (D1 del checklist del tercer parcial) |
-| Cloud Storage | Fotos y evidencias y el reporte de una comparación; el XML de intercambio no corresponde (D30, D32, D35). Interfaz en `epidemia_comun/archivos.py`; solo la usa `evidencias` | **Hecho** en local con el emulador (D2); en GCP falta crear el bucket |
+| Cloud Storage | Fotos y evidencias y el reporte de una comparación; el XML de intercambio no corresponde (D30, D32, D35). Interfaz en `epidemia_comun/archivos.py`; solo la usa `evidencias` | **Hecho** en local con el emulador (D2) y en GCP (2026-11-23) |
 
 **Diseño de MongoDB (D-1, D28).**
 
@@ -243,7 +243,7 @@ flowchart TB
     IAP --> PG & RD & MG
     LE -.->|certificado por HTTP 80, renovación cada 12 h| NG
     VM -->|registros de cada contenedor| LOG
-    MS -.->|evidencias, D2: falta crear el bucket| GCS[(Cloud Storage<br/>fotos y reportes)]
+    MS -.->|evidencias, D2: URLs firmadas| GCS[(Cloud Storage<br/>fotos y reportes)]
 ```
 
 - **Monitoreo:** `estado-servicios` sondea el `/health` de los 30 servicios (PostgreSQL, Redis,
@@ -254,8 +254,9 @@ flowchart TB
   `SYSTEM` de `notificaciones` (alertas técnicas, F7). Los registros de los 37 contenedores van a Cloud Logging. La web todavía lee
   PostgreSQL directo en los módulos que no pasaron a los servicios (D36).
 - **Archivos:** desde D2 (2026-11-22) `evidencias` guarda en Cloud Storage con URLs firmadas
-  (D30, D35). En la VM se levanta con `infra/docker-compose.gcs.yml` después de crear el bucket con
-  `infra/crea_bucket.sh`; hasta entonces las fotos siguen en el volumen `evidencias-datos`.
+  (D30, D35). En la VM corre desde 2026-11-23 con `infra/docker-compose.gcs.yml`, sobre
+  `gs://integracion-515321-archivos` (lo crea `infra/crea_bucket.sh`), y con la cuenta de servicio
+  `epidemia-vm`, no la de Compute por omisión (DESPLIEGUE_GCP §2 y §6).
 
 - **Máquinas:**
   - La VM principal corre el mismo `infra/docker-compose.yml` que en local, con nginx enfrente.
@@ -390,7 +391,7 @@ Los entregables del tercer parcial y dónde los cubre la v3:
 | Microservicios desplegados | §5, §8 | En local **hecho**; en GCP falta |
 | Aplicación móvil Android funcional e integrada | §4 | **Hecho** |
 | Aplicación de escritorio funcional e integrada | §4 | **Hecho** |
-| Buckets configurados y URLs firmadas | §6 | **Hecho** en local con el emulador (D2); en GCP falta crear el bucket |
+| Buckets configurados y URLs firmadas | §6 | **Hecho** en local con el emulador (D2) y en GCP (2026-11-23) |
 | Health checks y panel de monitoreo | §9 | En parte |
 | Algoritmo complejo | §7 | **Hecho** |
 | Conjunto de datos de alto volumen | §6, §9 | **Hecho** (falta confirmar la cifra con el profesor y repetir la inserción con `scenario_id`) |
