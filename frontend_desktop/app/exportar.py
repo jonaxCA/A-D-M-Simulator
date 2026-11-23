@@ -247,19 +247,44 @@ def documento(html, imagenes):
     return doc
 
 
-def guardar_pdf(ruta, html, imagenes):
-    from PySide6.QtCore import QIODevice, QSaveFile
+def _imprimir_pdf(dispositivo, html, imagenes):
     from PySide6.QtGui import QPageLayout, QPageSize, QPdfWriter
 
-    archivo = QSaveFile(str(ruta))
-    if not archivo.open(QIODevice.OpenModeFlag.WriteOnly):
-        raise OSError(archivo.errorString())
-    escritor = QPdfWriter(archivo)
+    escritor = QPdfWriter(dispositivo)
     escritor.setPageSize(QPageSize(QPageSize.A4))
     escritor.setPageOrientation(QPageLayout.Orientation.Landscape)
     escritor.setResolution(96)
     documento(html, imagenes).print_(escritor)
     del escritor
+
+
+def pdf_en_memoria(html, imagenes):
+    """El mismo PDF que guardar_pdf, sin pasar por el disco: es el que se sube al bucket (RF-F17)."""
+    from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+
+    datos = QByteArray()
+    buffer = QBuffer(datos)
+    if not buffer.open(QIODevice.OpenModeFlag.WriteOnly):
+        raise OSError("No se pudo preparar el reporte.")
+    _imprimir_pdf(buffer, html, imagenes)
+    buffer.close()
+    contenido = bytes(datos.data())
+    if not contenido:
+        raise OSError("No se pudo generar el contenido del reporte.")
+    return contenido
+
+
+def corridas_del_reporte(datos):
+    return sorted({r["id"] for e in datos["escenarios"] for r in e.get("replicas") or [] if r.get("id")})
+
+
+def guardar_pdf(ruta, html, imagenes):
+    from PySide6.QtCore import QIODevice, QSaveFile
+
+    archivo = QSaveFile(str(ruta))
+    if not archivo.open(QIODevice.OpenModeFlag.WriteOnly):
+        raise OSError(archivo.errorString())
+    _imprimir_pdf(archivo, html, imagenes)
     if not archivo.size():
         raise OSError("No se pudo generar el contenido del reporte.")
     if not archivo.commit():

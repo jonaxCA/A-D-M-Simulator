@@ -91,13 +91,15 @@ class Cliente:
                 raise ErrorServicio("El directorio no conoce el servicio %s." % servicio)
             return self.urls[servicio]
 
-    def _una_vez(self, servicio, metodo, ruta, cuerpo, params, publico, accept, etag):
+    def _una_vez(self, servicio, metodo, ruta, cuerpo, params, publico, accept, etag, tipo="application/xml",
+                 cabeceras=None):
         cid = str(uuid.uuid4())
-        headers = {"Accept": accept, "X-Correlation-ID": cid}
+        headers = dict(cabeceras or {})
+        headers.update({"Accept": accept, "X-Correlation-ID": cid})
         if etag:
             headers["If-None-Match"] = etag
         if cuerpo is not None:
-            headers["Content-Type"] = "application/xml"
+            headers["Content-Type"] = tipo
         if not publico and self.access:
             headers["Authorization"] = "Bearer " + self.access
         inicio = time.monotonic()
@@ -112,18 +114,19 @@ class Cliente:
         return r
 
     def enviar(self, servicio, metodo, ruta, cuerpo=None, params=None, publico=False, *,
-               accept="application/xml", etag=None):
+               accept="application/xml", etag=None, tipo="application/xml", cabeceras=None):
+        """tipo y cabeceras sirven para los cuerpos que no son XML: el PDF del reporte y el CSV de un conjunto."""
         if not publico and self.access and ruta != "/api/v1/sessions/logout":
             exp = _expiracion_jwt(self.access)
             if exp is not None and exp <= time.time() + MARGEN_RENOVACION_SEGUNDOS:
                 self._renovar(self.access)
         token = self.access
-        r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico, accept, etag)
+        r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico, accept, etag, tipo, cabeceras)
         if r.status_code == 401 and not publico:
             error = _problema(servicio, r)
             if error.codigo == "TOKEN_EXPIRADO":
                 self._renovar(token)
-                r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico, accept, etag)
+                r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico, accept, etag, tipo, cabeceras)
             elif error.codigo in FIN_DE_SESION:
                 self.olvidar()
                 raise SesionCerrada("La sesión terminó. Vuelve a iniciar sesión.", 401, error.codigo)
@@ -139,6 +142,10 @@ class Cliente:
     def pedir(self, servicio, metodo, ruta, datos=None, raiz="solicitud", params=None, publico=False):
         cuerpo = None if datos is None else xmlio.escribir(datos, raiz)
         r = self.enviar(servicio, metodo, ruta, cuerpo, params, publico)
+        return self.leer_respuesta(servicio, r)
+
+    def leer_respuesta(self, servicio, r):
+        """Valida la respuesta XML con su XSD, si lo tiene, y la convierte en diccionario."""
         if not r.content:
             return {}
         try:
@@ -174,15 +181,31 @@ class Cliente:
             self.refresh = datos["refresh_token"]
             bitacora.accion(self.nombre_usuario(), "renovó el token de acceso")
 
-    def iniciar_sesion(self, usuario, password, captcha_id, respuesta):
-        datos = self.pedir("auth", "POST", "/api/v1/auth/login",
-                           {"usuario": usuario, "password": password,
-                            "captcha_id": captcha_id, "captcha_respuesta": respuesta},
-                           "login", publico=True)
+    def iniciar_sesion(self, usuario, password, captcha_id, respuesta, dispositivo=None):
+        cuerpo = {"usuario": usuario, "password": password,
+                  "captcha_id": captcha_id, "captcha_respuesta": respuesta}
+        if dispositivo:
+            cuerpo.update(dispositivo_id=dispositivo, dispositivo_etiqueta="App de escritorio")
+        datos = self.pedir("auth", "POST", "/api/v1/auth/login", cuerpo, "login", publico=True)
+        if datos.get("mfa_requerido"):
+            # D40: un perfil crítico no recibe tokens hasta el segundo paso.
+            bitacora.accion(usuario, "pidió el segundo paso del inicio de sesión")
+            return datos
+        return self._guardar_sesion(datos, "inició sesión")
+
+    def segundo_paso(self, accion, mfa_token, **campos):
+        """accion: verify (código TOTP o de respaldo), enroll (secreto nuevo) o confirm (primer código)."""
+        datos = self.pedir("auth", "POST", "/api/v1/auth/mfa/%s" % accion, dict(campos, mfa_token=mfa_token),
+                           "mfa", publico=True)
+        if accion == "enroll":
+            return datos
+        return self._guardar_sesion(datos, "inició sesión con MFA")
+
+    def _guardar_sesion(self, datos, texto):
         self.access = datos["access_token"]
         self.refresh = datos["refresh_token"]
         self.usuario = datos.get("usuario") or {}
-        bitacora.accion(self.nombre_usuario(), "inició sesión")
+        bitacora.accion(self.nombre_usuario(), texto)
         return datos
 
     def cerrar_sesion(self):

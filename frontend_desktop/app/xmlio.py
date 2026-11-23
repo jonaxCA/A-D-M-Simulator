@@ -14,7 +14,8 @@ SINGULARES = {"regiones": "region", "enfermedades": "enfermedad",
               "filas": "fila", "frontera": "corrida", "dominado_por": "corrida",
               "desglose_costo": "intervencion", "trazabilidad_costos": "costo",
               "avisos": "aviso", "notificaciones": "notificacion", "dispositivos": "dispositivo",
-              "evidencias": "evidencia", "lotes": "lote",
+              "evidencias": "evidencia", "lotes": "lote", "reportes": "reporte", "run_ids": "run_id",
+              "conjuntos": "conjunto", "fallas": "falla",
               "desglose_por_grupo": "grupo_edad", "trazabilidad": "parametro",
               "simplificaciones": "simplificacion", "servicios": "servicio",
               "causas": "causa", "sondeos": "sondeo", "eventos": "evento",
@@ -41,6 +42,9 @@ def _valor(nodo):
 def _es_lista(nodo, hijos):
     if hijos and all(h.tag == "item" for h in hijos):
         return True
+    # Un valor con tipo o con texto es escalar aunque su etiqueta sea plural (<puntos tipo="numero">4</puntos>).
+    if not hijos and (nodo.get("tipo") or nodo.get("nil") or (nodo.text or "").strip()):
+        return False
     etiqueta = SINGULARES.get(nodo.tag)
     if etiqueta:
         return all(h.tag == etiqueta for h in hijos)

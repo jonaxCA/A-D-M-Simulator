@@ -8,6 +8,7 @@ from . import tareas
 from .avisos import DialogoAvisos
 from .comparacion import VistaComparacion
 from .comun import NOMBRES_ROL
+from .datos import VistaDatos
 from .escenarios import VistaEscenarios
 from .login import DialogoLogin
 from .simulaciones import VistaSimulaciones
@@ -28,9 +29,10 @@ class Ventana(QMainWindow):
         self.escenarios = VistaEscenarios(self)
         self.simulaciones = VistaSimulaciones(self)
         self.comparacion = VistaComparacion(self)
+        self.gestion_datos = VistaDatos(self)
         self.pila = QStackedWidget()
         self.pila.setObjectName("contenido")
-        for vista in (self.escenarios, self.simulaciones, self.comparacion):
+        for vista in (self.escenarios, self.simulaciones, self.comparacion, self.gestion_datos):
             self.pila.addWidget(vista)
 
         cuerpo = QWidget()
@@ -70,7 +72,7 @@ class Ventana(QMainWindow):
         capa.addWidget(sub)
         capa.addWidget(seccion)
         self.grupo = QButtonGroup(self)
-        for i, nombre in enumerate(("Escenarios", "Simulaciones", "Comparación")):
+        for i, nombre in enumerate(("Escenarios", "Simulaciones", "Comparación", "Datos")):
             boton = QPushButton("%s\tCtrl+%d" % (nombre, i + 1))
             boton.setCheckable(True)
             boton.clicked.connect(lambda _=False, i=i: self.ir(i))

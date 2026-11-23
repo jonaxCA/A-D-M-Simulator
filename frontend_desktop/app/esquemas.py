@@ -21,6 +21,7 @@ POR_RESPUESTA = {
     ("resultados", "resultado"): "resultados/resultado.xsd",
     ("escenarios-xml", "escenario"): "escenarios-xml/escenario.xsd",
     ("enfermedades", "enfermedad"): "enfermedades/enfermedad.xsd",
+    ("importacion", "serie_observada"): "importacion/serie_observada.xsd",
 }
 PROBLEMA = "comun/error.xsd"
 ESCENARIO = "escenarios-xml/escenario.xsd"
