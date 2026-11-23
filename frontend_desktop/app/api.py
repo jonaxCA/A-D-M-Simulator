@@ -91,9 +91,11 @@ class Cliente:
                 raise ErrorServicio("El directorio no conoce el servicio %s." % servicio)
             return self.urls[servicio]
 
-    def _una_vez(self, servicio, metodo, ruta, cuerpo, params, publico):
+    def _una_vez(self, servicio, metodo, ruta, cuerpo, params, publico, accept, etag):
         cid = str(uuid.uuid4())
-        headers = {"Accept": "application/xml", "X-Correlation-ID": cid}
+        headers = {"Accept": accept, "X-Correlation-ID": cid}
+        if etag:
+            headers["If-None-Match"] = etag
         if cuerpo is not None:
             headers["Content-Type"] = "application/xml"
         if not publico and self.access:
@@ -109,18 +111,19 @@ class Cliente:
                           (time.monotonic() - inicio) * 1000)
         return r
 
-    def enviar(self, servicio, metodo, ruta, cuerpo=None, params=None, publico=False):
+    def enviar(self, servicio, metodo, ruta, cuerpo=None, params=None, publico=False, *,
+               accept="application/xml", etag=None):
         if not publico and self.access and ruta != "/api/v1/sessions/logout":
             exp = _expiracion_jwt(self.access)
             if exp is not None and exp <= time.time() + MARGEN_RENOVACION_SEGUNDOS:
                 self._renovar(self.access)
         token = self.access
-        r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico)
+        r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico, accept, etag)
         if r.status_code == 401 and not publico:
             error = _problema(servicio, r)
             if error.codigo == "TOKEN_EXPIRADO":
                 self._renovar(token)
-                r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico)
+                r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico, accept, etag)
             elif error.codigo in FIN_DE_SESION:
                 self.olvidar()
                 raise SesionCerrada("La sesión terminó. Vuelve a iniciar sesión.", 401, error.codigo)

@@ -53,13 +53,13 @@ responde `No module named 'frontend_desktop'`.
 
 ### Servidor
 
-La app no guarda datos propios: todo lo pide a los microservicios, en XML. Solo necesita
-conocer la dirección del **directorio de servicios**:
+La app consulta los microservicios en XML. El servicio de zonas entrega los límites municipales
+en GeoJSON. Configura la dirección del **directorio de servicios** según el entorno.
 
 - **En tu máquina:** `http://localhost:5262`, que es el valor por omisión. Los servicios se
   levantan con Docker, como indica `frontend_desktop/README.md`.
-- **En la nube:** antes de abrir la app, define
-  `EPIDEMIA_DIRECTORIO=https://<dominio>/estado-servicios`.
+- **En la nube:** ejecuta
+  `EPIDEMIA_DIRECTORIO=https://epidemos.app/estado-servicios python -m frontend_desktop.run`.
 
 La dirección en uso aparece al pie de la ventana de inicio de sesión.
 
@@ -156,11 +156,13 @@ el puntero sobre el nombre de un parámetro para leer su definición. Para consu
 valores guardados de una corrida, abre su ficha en Simulaciones.
 
 **Indicadores municipales** abre los datos registrados por el servicio `zonas` para la enfermedad.
-Elige 7, 30 o 60 días. Cada punto representa las coordenadas de un municipio y su color indica
-el nivel de incidencia informado. Selecciona un municipio y abre **Serie registrada** para ver
-sus fechas, casos acumulados e incidencia por 100 000 habitantes.
+Elige 7, 30 o 60 días. Los polígonos muestran los límites oficiales de INEGI y sus colores
+indican el nivel de incidencia informado. El gris indica que el servicio no devolvió indicadores
+para ese municipio. Haz clic en un polígono o en la tabla y abre **Serie registrada** para ver
+sus fechas, casos acumulados e incidencia por 100 000 habitantes. Si falla la descarga de límites,
+aparecen los marcadores que entrega el servicio.
 
-![Indicadores con el XML de ejemplo del servicio zonas](img/escritorio/indicadores_municipales.png)
+![Geometría oficial y datos del ejemplo XML de zonas](img/escritorio/indicadores_municipales.png)
 
 ### 5.3 Intervenciones
 
@@ -203,6 +205,10 @@ resultado aparece abajo de la tabla:
 - **errores:** impiden simular y hay que corregirlos;
 - **advertencias:** no impiden simular, pero conviene leerlas. Por ejemplo, un parámetro sin
   fuente documentada.
+
+**Validación del modelo** consulta el estado de calibración y su evidencia para la enfermedad
+y región del escenario. En una versión aprobada, **Sensibilidad exploratoria** consulta
+el estudio del servidor para un parámetro y los cambios porcentuales que indiques.
 
 ### 5.5 Enviar a revisión
 
@@ -443,7 +449,9 @@ bitácora de auditoría de todo lo que cambias.
 
 En Escenarios, **Versiones** muestra el autor y la fecha de cada versión. Para la versión
 seleccionada muestra, cuando el servidor los informa, el envío, la fecha y la persona que revisó
-o aprobó el escenario. El historial de cambios por operación se consulta en la auditoría del servidor.
+o aprobó el escenario. **Historial de auditoría** muestra las operaciones del escenario, de
+cada versión que selecciones o de las intervenciones de la versión abierta. Selecciona un evento
+para ver los campos antes y después. El servidor aplica el rol y alcance regional de tu cuenta.
 
 ## 10. Problemas frecuentes
 
