@@ -1,5 +1,6 @@
 package com.estudiante.simuladorepidemico.ui.casos
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,17 +28,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.estudiante.simuladorepidemico.local.CasoLocal
 import com.estudiante.simuladorepidemico.local.ConteoFotos
 import com.estudiante.simuladorepidemico.local.EstadoCaso
+import com.estudiante.simuladorepidemico.red.CasoRemoto
 import com.estudiante.simuladorepidemico.ui.fecha
 import com.estudiante.simuladorepidemico.ui.tema.TemaEpidemia
 
 @Composable
-fun PantallaMisCasos(modelo: MisCasosViewModel, alVolver: () -> Unit) {
+fun PantallaMisCasos(modelo: MisCasosViewModel, alVolver: () -> Unit, alAbrir: (Long) -> Unit) {
     val filas by modelo.filas.collectAsStateWithLifecycle()
-    ListaCasos(filas, alVolver, modelo::enviarAhora, modelo::descartar)
+    val incompletos by modelo.incompletos.collectAsStateWithLifecycle()
+    // Al llegar y al volver de un seguimiento, donde pudo completarse alguno.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { modelo.cargarIncompletos() }
+    ListaCasos(filas, alVolver, modelo::enviarAhora, modelo::descartar, incompletos, alAbrir)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,6 +54,8 @@ fun ListaCasos(
     alVolver: () -> Unit,
     alEnviar: () -> Unit,
     alDescartar: (CasoLocal) -> Unit,
+    incompletos: List<CasoRemoto>? = null,
+    alAbrir: (Long) -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -74,8 +83,37 @@ fun ListaCasos(
                 modifier = Modifier.padding(relleno).padding(24.dp),
             )
             else -> LazyColumn(contentPadding = PaddingValues(bottom = 16.dp), modifier = Modifier.padding(relleno)) {
+                if (!incompletos.isNullOrEmpty()) {
+                    item {
+                        Text(
+                            "Les faltan datos",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp),
+                        )
+                    }
+                    items(incompletos, key = { "servidor-${it.id}" }) { caso ->
+                        Column(
+                            modifier = Modifier.fillMaxWidth().clickable { alAbrir(caso.id) }.padding(horizontal = 24.dp, vertical = 12.dp),
+                        ) {
+                            Text("Caso ${caso.id} · ${caso.nombreEnfermedad ?: ""}", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Falta: ${caso.faltantes.joinToString()}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.tertiary,
+                            )
+                        }
+                        HorizontalDivider()
+                    }
+                    item {
+                        Text(
+                            "En este teléfono",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp),
+                        )
+                    }
+                }
                 items(filas, key = { it.caso.localUuid }) { fila ->
-                    FilaDeCaso(fila, alDescartar)
+                    FilaDeCaso(fila, alDescartar, alAbrir)
                     HorizontalDivider()
                 }
             }
@@ -83,11 +121,15 @@ fun ListaCasos(
     }
 }
 
+// Un caso que ya llegó al servidor abre su seguimiento: su estado ahí, su historial y la corrección.
 @Composable
-private fun FilaDeCaso(fila: FilaCaso, alDescartar: (CasoLocal) -> Unit) {
+private fun FilaDeCaso(fila: FilaCaso, alDescartar: (CasoLocal) -> Unit, alAbrir: (Long) -> Unit) {
     val caso = fila.caso
+    val enServidor = caso.caseId
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth()
+            .then(if (enServidor != null) Modifier.clickable { alAbrir(enServidor) } else Modifier)
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(fila.enfermedad, style = MaterialTheme.typography.titleMedium)
@@ -100,7 +142,7 @@ private fun FilaDeCaso(fila: FilaCaso, alDescartar: (CasoLocal) -> Unit) {
             EstadoCaso.PENDIENTE ->
                 (if (caso.lote == null) "Por enviar" else "Enviando") to MaterialTheme.colorScheme.tertiary
             EstadoCaso.ENVIADO ->
-                (caso.caseId?.let { "Enviado · caso $it" } ?: "Enviado") to MaterialTheme.colorScheme.primary
+                (caso.caseId?.let { "Recibido · caso $it · ver seguimiento" } ?: "Recibido") to MaterialTheme.colorScheme.primary
             EstadoCaso.RECHAZADO -> "Rechazado" to MaterialTheme.colorScheme.error
         }
         Text(estado, style = MaterialTheme.typography.labelLarge, color = color)

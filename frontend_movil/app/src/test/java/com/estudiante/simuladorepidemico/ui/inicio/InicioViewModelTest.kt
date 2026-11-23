@@ -31,7 +31,7 @@ class InicioViewModelTest {
     private val contenedor = contenedorDePrueba(servidor, casos, catalogo, programarAvisos = { consultas++ }) { envios++ }
 
     private fun modelo() = InicioViewModel(
-        contenedor.sesion, casos, contenedor.catalogos, contenedor.avisos, contenedor.programarEnvio, contenedor.programarAvisos,
+        contenedor.sesion, casos, contenedor.catalogos, contenedor.avisos, contenedor.apis, catalogo, contenedor.programarEnvio, contenedor.programarAvisos,
     )
 
     @Before

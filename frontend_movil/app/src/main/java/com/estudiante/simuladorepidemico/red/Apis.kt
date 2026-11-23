@@ -1,6 +1,7 @@
 package com.estudiante.simuladorepidemico.red
 
 import com.estudiante.simuladorepidemico.red.api.AuthApi
+import com.estudiante.simuladorepidemico.red.api.CasosApi
 import com.estudiante.simuladorepidemico.red.api.DispositivosApi
 import com.estudiante.simuladorepidemico.red.api.EnfermedadesApi
 import com.estudiante.simuladorepidemico.red.api.EvidenciasApi
@@ -10,6 +11,7 @@ import com.estudiante.simuladorepidemico.red.api.SesionesApi
 import com.estudiante.simuladorepidemico.red.api.SincronizacionApi
 import com.estudiante.simuladorepidemico.red.api.UsuariosApi
 import com.estudiante.simuladorepidemico.red.api.VacunasApi
+import com.estudiante.simuladorepidemico.red.api.ZonasApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -30,6 +32,8 @@ class Apis(
     suspend fun evidencias(): EvidenciasApi = crear("evidencias", conToken)
     suspend fun vacunas(): VacunasApi = crear("vacunas", conToken)
     suspend fun notificaciones(): NotificacionesApi = crear("notificaciones", conToken)
+    suspend fun casos(): CasosApi = crear("casos", conToken)
+    suspend fun zonas(): ZonasApi = crear("zonas", conToken)
     suspend fun enfermedades(): EnfermedadesApi = crear("enfermedades", sinToken)
     suspend fun regiones(): RegionesApi = crear("regiones", sinToken)
 
