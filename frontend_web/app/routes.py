@@ -448,7 +448,8 @@ def export_enfermedades_csv():
     filtros = _filtros_enfermedades(request.args)
     filas, pagina = [], 1
     while True:
-        listado = servicios.enfermedades(filtros["busqueda"], filtros["estado"], pagina, EXPORT_POR_PAGINA)
+        listado = servicios.exporta_enfermedades(token_de_sesion(), filtros["busqueda"], filtros["estado"],
+                                                 pagina, EXPORT_POR_PAGINA)
         filas += listado["enfermedades"]
         if pagina >= listado["paginas"]:
             break
