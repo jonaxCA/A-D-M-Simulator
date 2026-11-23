@@ -294,7 +294,7 @@ la biblioteca oficial `google-cloud-storage`. Solo lo usa `evidencias` (regla 12
 | `ping()` | Si el bucket responde (lista un objeto, 2 s) o si la carpeta se puede escribir | — |
 
 - **Firma.** En GCP no hay llaves en el `.env`: la biblioteca firma con signBlob de IAM usando la cuenta
-  de servicio de la máquina (necesita el alcance `cloud-platform` y el rol
+  de servicio de la máquina, `epidemia-vm` (necesita el alcance `cloud-platform` y el rol
   `roles/iam.serviceAccountTokenCreator` sobre sí misma; los da `infra/crea_bucket.sh`). Con el
   emulador, que no revisa firmas, firma un firmante falso con la misma forma de V4.
 - **Bucket caído.** `crear_app` convierte `BucketNoDisponible` en 503 `SERVICIO_NO_DISPONIBLE` con
