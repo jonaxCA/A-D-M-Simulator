@@ -152,6 +152,36 @@ def test_filtros_invalidos_son_422(cliente, consulta):
     assert cliente.get("/api/v1/diseases?format=json&" + consulta).status_code == 422
 
 
+# --- exportar (F-3): la misma lista, con sesión y su EXPORT en la bitácora ----------------
+
+def test_exportar_pide_sesion(cliente, bitacora):
+    assert cliente.get("/api/v1/diseases/export?format=json").status_code == 401
+    assert bitacora == []
+
+
+def test_exportar_anota_un_export_con_quien_lo_pidio(cliente, bitacora, epidemiologo):
+    r = cliente.get("/api/v1/diseases/export?format=json", headers=epidemiologo)
+    assert r.status_code == 200 and r.get_json() == LISTADO
+    assert len(bitacora) == 1
+    usuario, accion, entidad, entity_id, _, _ = bitacora[0]
+    assert (accion, entidad, entity_id) == ("EXPORT", "reports", "catalogo_enfermedades")
+    assert usuario is not None
+
+
+def test_exportar_pasa_los_filtros_y_solo_anota_la_primera_pagina(cliente, bitacora, epidemiologo):
+    # Una descarga de varias páginas es un solo EXPORT.
+    cliente.get("/api/v1/diseases/export?q=covid&status=activa&page=2&size=5&format=json",
+                headers=epidemiologo)
+    assert cliente.pedidos == [{"busqueda": "covid", "estado": "activa", "pagina": 2, "por_pagina": 5}]
+    assert bitacora == []
+
+
+@pytest.mark.parametrize("consulta", ["size=101", "page=0", "status=borrada"])
+def test_exportar_con_filtros_invalidos_es_422(cliente, bitacora, epidemiologo, consulta):
+    r = cliente.get("/api/v1/diseases/export?format=json&" + consulta, headers=epidemiologo)
+    assert r.status_code == 422 and bitacora == []
+
+
 def test_detalle_y_no_encontrado(cliente):
     datos = cliente.get("/api/v1/diseases/1?format=json").get_json()
     assert datos["code"] == "SARS_COV_2_ANCESTRAL" and "default_params" not in datos
