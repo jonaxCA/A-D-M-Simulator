@@ -36,6 +36,24 @@ def registrar(app):
             estado=estado, pagina=pagina, por_pagina=tamano)
         return responder(datos, "catalogo_enfermedades")
 
+    # La misma lista, para descargarla: pide sesión para que la bitácora sepa quién exportó (F-3).
+    @app.get("/api/v1/diseases/export")
+    @requiere_token()
+    def exportar():
+        pagina = entero_positivo(request.args.get("page", "1"), "page")
+        tamano = entero_positivo(request.args.get("size", "100"), "size")
+        if tamano > 100:
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "size no puede ser mayor que 100.")
+        estado = request.args.get("status")
+        if estado not in (None, "activa", "inactiva"):
+            raise ErrorAPI(422, "DATOS_INVALIDOS", "status debe ser activa o inactiva.")
+        datos = queries.get_enfermedades(
+            busqueda=(request.args.get("q") or "").strip() or None,
+            estado=estado, pagina=pagina, por_pagina=tamano)
+        if pagina == 1:
+            log_audit(g.contexto, "EXPORT", "reports", entity_id="catalogo_enfermedades")
+        return responder(datos, "catalogo_enfermedades")
+
     # Las tarjetas del catálogo. «Detectadas» son las enfermedades con un caso pendiente o validado
     # en un municipio de Nuevo León en los últimos 30 días; lo demás es solo del catálogo.
     @app.get("/api/v1/diseases/stats")

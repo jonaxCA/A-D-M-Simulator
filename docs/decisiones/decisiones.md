@@ -55,5 +55,6 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D48 | Formularios de captura por enfermedad, con versiones                          | Aceptada | D1, D47 | [D48-formularios-por-enfermedad.md](D48-formularios-por-enfermedad.md) |
 | D49 | Campañas, avisos de datos incompletos y preferencias de avisos                 | Aceptada | D1, D32, D47 | [D49-campanas-incompletos-y-preferencias.md](D49-campanas-incompletos-y-preferencias.md) |
 | D50 | Calibración de `seir-ref` contra una serie pública agregada, en el servicio `calibracion` | Aceptada | D22, D37, D39, D46 | [D50-calibracion-de-los-modelos.md](D50-calibracion-de-los-modelos.md) |
+| D51 | Seguimiento de intervenciones en la web, con lo que ya dan los servicios | Propuesta (C; falta E) | D3, D4, D36, D49 | [D51-seguimiento-de-intervenciones.md](D51-seguimiento-de-intervenciones.md) |
 | D52 | Retención de los datos: cómo termina cada uno, sin purgas por antigüedad      | Aceptada | D19, D28, D30 | [D52-retencion-de-los-datos.md](D52-retencion-de-los-datos.md) |
 | D53 | Importación de series observadas: el servicio `importacion` y la serie de D50 en la 061 | Aceptada | D43, D50, D52 | [D53-importacion-de-series-observadas.md](D53-importacion-de-series-observadas.md) |

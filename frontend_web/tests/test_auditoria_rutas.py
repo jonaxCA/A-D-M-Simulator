@@ -58,7 +58,7 @@ class AuditoriaRutasTests(RutasConCorridas):
         with self.app.test_client() as client:
             self._login(client, "alex.cavazos", "Epidemia2026!")
             resp = client.get("/auditoria", follow_redirects=False)
-            self.assertEqual(resp.status_code, 302)
+            self.assertEqual(resp.status_code, 403)  # RF-L05: la bitácora es del ADMINISTRADOR
 
     def test_filtro_de_accion_incluye_las_etapas_de_simulacion(self):
         with self.app.test_client() as client:

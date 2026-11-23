@@ -37,7 +37,7 @@ Hay cosas que se hacen en otra aplicación:
 | Enfermedades y regiones (consulta) | ✓ | ✓ | ✓ | — |
 | Dar de alta o editar enfermedades y sus parámetros | ✓ | ✓ | — | — |
 | Corregir la población y las bandas de edad de un municipio | ✓ | — | — | — |
-| Escenarios, simulaciones y comparación | ✓ | ✓ | ✓ | — |
+| Escenarios, seguimiento de intervenciones, simulaciones y comparación | ✓ | ✓ | ✓ | — |
 | Aprobar o rechazar una versión (nunca la propia) | ✓ | ✓ | — | — |
 | Costos y personas-día de las intervenciones | ✓ | ✓ | — | — |
 | Usuarios y bitácora de auditoría | ✓ | — | — | — |
@@ -56,6 +56,21 @@ intento queda en la bitácora. El capturista solo ve el tablero y el mapa: captu
 
 La sesión dura hasta 8 horas y se renueva sola mientras la usas. Si dice que la sesión venció,
 entra de nuevo.
+
+### Verificación en dos pasos
+
+Cuando el MFA está prendido (D40), el administrador, el epidemiólogo y la autoridad sanitaria dan un
+segundo paso después de la contraseña:
+
+- **Si ya tienes el segundo factor:** escribe los 6 dígitos de tu app autenticadora, o uno de tus
+  códigos de respaldo.
+- **La primera vez:**
+  1. Pide a un administrador tu **código de alta**.
+  2. Escríbelo y agrega a tu app autenticadora la clave que te muestra la pantalla.
+  3. Escribe el código de 6 dígitos que te dé la app.
+  4. La pantalla te muestra tus **códigos de respaldo** una sola vez: guárdalos.
+- **El paso vence en 5 minutos.** Si vence, inicia sesión otra vez.
+- **Varios códigos incorrectos bloquean el segundo paso** durante 15 minutos.
 
 ## 3. Tablero y mapa
 
@@ -125,6 +140,12 @@ el modelo y la versión del escenario.
   - El costo de la frontera está en **personas-día**. El costo en pesos se muestra aparte y no
     entra en la frontera.
   - El sistema no elige una alternativa.
+- **Intervenciones** (seguimiento, D51): por cada versión aprobada se ve:
+  - lo que se programó: tipo, días del horizonte, cobertura y cumplimiento;
+  - su costo en pesos y, para la vacunación, sus personas-día por dosis;
+  - las corridas que la simularon, con un enlace para compararlas;
+  - para la vacunación, las campañas de su enfermedad.
+  - Los días son del horizonte simulado, no fechas de calendario.
 - **Editar costos** (epidemiólogo y administrador): el costo en pesos de cada tipo de
   intervención y las **personas-día por dosis** de la vacunación, cada uno con su fuente o su
   marca de supuesto. Sin ese factor, la comparación de escenarios con vacunación se niega.

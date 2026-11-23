@@ -317,7 +317,8 @@ def test_contrato_servido_es_el_de_docs(cliente):
         "/api/v1/roles", "/api/v1/roles/{role_id}/permissions",
         "/api/v1/roles/assignments/{user_id}", "/api/v1/audit", "/api/v1/audit/summary",
         "/api/v1/audit/filters", "/api/v1/audit/history/{entity_type}/{entity_id}",
-        "/api/v1/scopes/me", "/api/v1/scopes/{user_id}"}
+        "/api/v1/scopes/me", "/api/v1/scopes/{user_id}",
+        "/api/v1/permissions/me", "/api/v1/audit/denied"}
 
 
 class Alcances:

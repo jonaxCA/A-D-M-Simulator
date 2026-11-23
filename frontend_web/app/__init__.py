@@ -39,9 +39,15 @@ def configura_registro():
     raiz.setLevel(logging.INFO)
 
 
+# Los valores de ejemplo de .env.example y de la documentación: con ellos la app no arranca.
+SECRETOS_DE_EJEMPLO = {"dev-secret-cambiar-en-despliegue", "CAMBIAR_POR_UNA_CADENA_LARGA_Y_ALEATORIA",
+                       "CAMBIAR_POR_OTRA_CADENA_LARGA_Y_ALEATORIA",
+                       "pon-aqui-cualquier-cadena-larga-y-aleatoria"}
+
+
 def secreto_de_la_cookie():
     secreto = (os.environ.get("SECRET_KEY") or os.environ.get("JWT_SECRET_KEY") or "").strip()
-    if not secreto:
+    if not secreto or secreto in SECRETOS_DE_EJEMPLO:
         raise RuntimeError("Falta SECRET_KEY en el .env de la web. Genera uno con: "
                            "python -c \"import secrets; print(secrets.token_urlsafe(48))\"")
     return secreto

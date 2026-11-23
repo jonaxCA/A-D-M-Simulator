@@ -118,6 +118,9 @@
       <xs:element name="version_number" type="Entero"/>
       <xs:element name="scenario_name" type="xs:string"/>
       <xs:element name="requested_by_username" type="xs:string"/>
+      <!-- Para la comparación de la web (C6). -->
+      <xs:element name="disease_name" type="xs:string"/>
+      <xs:element name="region_name" type="xs:string"/>
     </xs:all>
   </xs:complexType>
 
