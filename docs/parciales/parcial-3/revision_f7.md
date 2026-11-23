@@ -71,10 +71,10 @@ No vienen en la lista de 26 servicios: entraron con D27 para la móvil.
 | Pide | Estado | Cómo, o qué falta |
 |---|---|---|
 | Incidencia | **Cumple** | Tasa por 100 000 habitantes de la semana, contra la previa (`/dashboard/indicators`) |
-| Prevalencia | Falta | Casos activos sí; prevalencia como tasa, no |
+| Prevalencia | **Hecho** (2026-11-23, D57) | `prevalencia`: casos de los últimos 14 días por 100 000 habitantes (supuesto: un caso sigue activo 14 días) |
 | Mortalidad | **Hecho** (2026-11-21) | `tasa_mortalidad` (fallecidos por 100 000 habitantes, contra la semana previa) y `letalidad` (% de los casos) |
-| Hospitalizaciones | Parcial | No hay un dato de hospitalización; desde el 2026-11-21, `casos_graves` (% con gravedad `grave`) es lo más cercano |
-| Capacidad utilizada | Falta | No hay fuente de capacidad (es el servicio opcional 31) |
+| Hospitalizaciones | **Hecho**, estimadas (2026-11-23, D57) | `hospitalizaciones`: casos graves de los últimos 14 días; la plataforma no registra hospitalizaciones y el supuesto va en el numerador |
+| Capacidad utilizada | **Hecho** (2026-11-23, D57) | `capacidad_utilizada`: hospitalizaciones estimadas entre las camas censables del sector público de Nuevo León (DGIS, Recursos en Salud Sectorial, cierre 2025), con su `fuente` |
 | Numerador, denominador y periodo | **Hecho** (2026-11-21) | `indicadores` en `/dashboard/indicators`: cada uno con `numerador`, `denominador`, `factor`, `periodo` (fechas), la semana previa y la variación |
 
 ### `series` (5252)

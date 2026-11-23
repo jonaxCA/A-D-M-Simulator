@@ -29,7 +29,8 @@
         "valor": 104,
         "numerador": 104
       },
-      "variacion_pct": 15.4
+      "variacion_pct": 15.4,
+      "fuente": null
     },
     {
       "clave": "tasa_incidencia",
@@ -57,7 +58,8 @@
         "valor": 1.8,
         "numerador": 104
       },
-      "variacion_pct": 16.7
+      "variacion_pct": 16.7,
+      "fuente": null
     },
     {
       "clave": "tasa_mortalidad",
@@ -85,7 +87,8 @@
         "valor": 0.02,
         "numerador": 1
       },
-      "variacion_pct": 150.0
+      "variacion_pct": 150.0,
+      "fuente": null
     },
     {
       "clave": "letalidad",
@@ -107,7 +110,8 @@
         "dias": 7
       },
       "previo": null,
-      "variacion_pct": null
+      "variacion_pct": null,
+      "fuente": null
     },
     {
       "clave": "casos_graves",
@@ -129,7 +133,81 @@
         "dias": 7
       },
       "previo": null,
-      "variacion_pct": null
+      "variacion_pct": null,
+      "fuente": null
+    },
+    {
+      "clave": "prevalencia",
+      "nombre": "Prevalencia de casos activos",
+      "valor": 3.9,
+      "unidad": "casos por 100 000 habitantes",
+      "numerador": {
+        "valor": 224,
+        "descripcion": "Casos reportados en los últimos 14 días: se suponen activos (D57)"
+      },
+      "denominador": {
+        "valor": 5784442,
+        "descripcion": "Habitantes de Nuevo León"
+      },
+      "factor": 100000,
+      "periodo": {
+        "desde": "2026-11-08",
+        "hasta": "2026-11-21",
+        "dias": 14
+      },
+      "previo": null,
+      "variacion_pct": null,
+      "fuente": null
+    },
+    {
+      "clave": "hospitalizaciones",
+      "nombre": "Hospitalizaciones estimadas",
+      "valor": 21,
+      "unidad": "casos",
+      "numerador": {
+        "valor": 21,
+        "descripcion": "Casos con gravedad «grave» reportados en los últimos 14 días; cada uno se supone hospitalizado y en una cama censable durante 14 días (D57)"
+      },
+      "denominador": null,
+      "factor": null,
+      "periodo": {
+        "desde": "2026-11-08",
+        "hasta": "2026-11-21",
+        "dias": 14
+      },
+      "previo": null,
+      "variacion_pct": null,
+      "fuente": null
+    },
+    {
+      "clave": "capacidad_utilizada",
+      "nombre": "Capacidad hospitalaria utilizada",
+      "valor": 0.5,
+      "unidad": "% de las camas censables",
+      "numerador": {
+        "valor": 21,
+        "descripcion": "Hospitalizaciones estimadas: casos graves de los últimos 14 días"
+      },
+      "denominador": {
+        "valor": 4339,
+        "descripcion": "Camas censables del sector público de Nuevo León al 2025-12-31 (DGIS)"
+      },
+      "factor": 100,
+      "periodo": {
+        "desde": "2026-11-08",
+        "hasta": "2026-11-21",
+        "dias": 14
+      },
+      "previo": null,
+      "variacion_pct": null,
+      "fuente": {
+        "documento": "Secretaría de Salud, Dirección General de Información en Salud (DGIS). Recursos en Salud Sectorial, cierre anual 2025",
+        "url": "http://www.dgis.salud.gob.mx/descargas/datosabiertos/recursosSalud/Recursos_Salud_Sectorial_2025.zip",
+        "licencia": "Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente",
+        "corte": "2025-12-31",
+        "alcance": "Sector público: Secretaría de Salud, IMSS, ISSSTE, Servicios de Salud IMSS-Bienestar, DIF, servicios estatales, municipales y universitarios, y los demás que reporta la DGIS. No incluye hospitales privados.",
+        "sha256": "cea7529a75253d6212a6a79c5c0082048a6f104e361a9b5137345af29e3fe747"
+      }
     },
     {
       "clave": "zonas_en_riesgo",
@@ -151,7 +229,8 @@
         "dias": 7
       },
       "previo": null,
-      "variacion_pct": null
+      "variacion_pct": null,
+      "fuente": null
     },
     {
       "clave": "simulaciones_activas",
@@ -170,7 +249,8 @@
         "dias": null
       },
       "previo": null,
-      "variacion_pct": null
+      "variacion_pct": null,
+      "fuente": null
     }
   ]
 }

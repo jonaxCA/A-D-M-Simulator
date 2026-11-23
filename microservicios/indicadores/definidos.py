@@ -8,14 +8,25 @@ los 7 anteriores.
 
 Con `factor`, valor = numerador / denominador × factor. Sin él, valor = numerador, y el
 denominador, si viene, es el total de referencia (los municipios, para las zonas en riesgo).
+
+D57 suma prevalencia, hospitalizaciones y capacidad hospitalaria utilizada. La plataforma no
+registra hospitalizaciones ni altas: se estiman con dos supuestos, a la vista en cada numerador.
+Un caso sigue activo DIAS_ACTIVO días desde su reporte, y un caso con gravedad «grave» está
+hospitalizado y ocupa una cama censable ese tiempo. Las camas censables son las del sector público
+de Nuevo León según la DGIS (capacidad.py), y el indicador trae esa `fuente`.
 """
 from datetime import timedelta
 
 from epidemia_comun.bd import query
 
+from . import capacidad
+
 ESTADO_NL = "19"
 POR_100K = 100000
 POR_CIENTO = 100
+# D57, supuesto: los días que un caso sigue activo (y uno grave, hospitalizado) desde su reporte.
+# Es la ventana de dos semanas que la consulta ya trae (current_date - 13).
+DIAS_ACTIVO = 14
 # Casos por 100 000 habitantes en la semana a partir de los cuales un municipio está en riesgo
 # (el mismo umbral de zonas_en_riesgo).
 UMBRAL_RIESGO = 10
@@ -63,6 +74,10 @@ def _semana(hoy, atras=0):
     return {"desde": (hasta - timedelta(days=6)).isoformat(), "hasta": hasta.isoformat(), "dias": 7}
 
 
+def _ultimos(hoy, dias):
+    return {"desde": (hoy - timedelta(days=dias - 1)).isoformat(), "hasta": hoy.isoformat(), "dias": dias}
+
+
 def _valor(numerador, denominador, factor, decimales):
     if factor is None:
         return numerador
@@ -72,9 +87,9 @@ def _valor(numerador, denominador, factor, decimales):
 
 
 def _indicador(clave, nombre, unidad, numerador, denominador, factor=None, periodo=None,
-               previo=None, decimales=1):
+               previo=None, decimales=1, fuente=None):
     """numerador y denominador son (valor, descripción); previo, el numerador de la semana
-    anterior (el denominador no cambia)."""
+    anterior (el denominador no cambia). `fuente`, la de un dato que no sale de los casos."""
     valor = _valor(numerador[0], denominador and denominador[0], factor, decimales)
     resultado = {
         "clave": clave, "nombre": nombre, "valor": valor, "unidad": unidad,
@@ -84,6 +99,7 @@ def _indicador(clave, nombre, unidad, numerador, denominador, factor=None, perio
         "factor": factor,
         "periodo": periodo or {"desde": None, "hasta": None, "dias": None},
         "previo": None, "variacion_pct": None,
+        "fuente": fuente,
     }
     if previo is not None:
         anterior = _valor(previo[0], denominador and denominador[0], factor, decimales)
@@ -100,6 +116,12 @@ def calcular():
     casos = (f["casos"], "Casos reportados en el periodo")
     fallecidos = "Casos con gravedad «fallecido» reportados en el periodo"
     graves = "Casos con gravedad «grave» reportados en el periodo"
+    # D57: los de los últimos DIAS_ACTIVO días (las dos semanas de la consulta).
+    ultimos = _ultimos(hoy, DIAS_ACTIVO)
+    activos = f["casos"] + f["casos_previos"]
+    hospitalizados = f["graves"] + f["graves_previos"]
+    camas, fuente_camas = capacidad.camas_censables()
+    supuesto = ("se supone hospitalizado y en una cama censable durante %d días (D57)" % DIAS_ACTIVO)
     return [
         _indicador("casos_activos", "Casos de la semana", "casos", (f["casos"], CASOS), None,
                    periodo=semana, previo=(f["casos_previos"], hoy)),
@@ -113,6 +135,19 @@ def calcular():
                    casos, POR_CIENTO, semana),
         _indicador("casos_graves", "Casos graves", "% de los casos", (f["graves"], graves),
                    casos, POR_CIENTO, semana),
+        _indicador("prevalencia", "Prevalencia de casos activos", "casos por 100 000 habitantes",
+                   (activos, "Casos reportados en los últimos %d días: se suponen activos (D57)"
+                    % DIAS_ACTIVO), poblacion, POR_100K, ultimos),
+        _indicador("hospitalizaciones", "Hospitalizaciones estimadas", "casos",
+                   (hospitalizados, "Casos con gravedad «grave» reportados en los últimos %d días; "
+                    "cada uno %s" % (DIAS_ACTIVO, supuesto)), None, periodo=ultimos),
+        _indicador("capacidad_utilizada", "Capacidad hospitalaria utilizada", "% de las camas censables",
+                   (hospitalizados, "Hospitalizaciones estimadas: casos graves de los últimos %d días"
+                    % DIAS_ACTIVO),
+                   None if camas is None else
+                   (camas, "Camas censables del sector público de Nuevo León al %s (DGIS)"
+                    % fuente_camas["corte"]),
+                   POR_CIENTO, ultimos, fuente=fuente_camas),
         _indicador("zonas_en_riesgo", "Zonas en riesgo", "municipios",
                    (f["zonas"], "Municipios con más de %d casos por 100 000 habitantes en el periodo"
                     % UMBRAL_RIESGO),

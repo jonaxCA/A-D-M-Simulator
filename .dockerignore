@@ -14,6 +14,8 @@ venv/
 # Ninguna imagen los usa; sin ellos cada build le manda menos a Docker.
 evidencias/
 datos/
-# Salvo los municipios de cada jurisdicción sanitaria y su geometría, que lee zonas (F7).
+# Salvo los municipios de cada jurisdicción sanitaria y su geometría, que lee zonas (F7), y las
+# camas censables de Nuevo León, que lee indicadores (D57).
 !datos/geo/nl_jurisdicciones_sanitarias.json
 !datos/geo/nl_municipios.geojson
+!datos/capacidad/camas_censables_nl.csv
