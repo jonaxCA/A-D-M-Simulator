@@ -295,7 +295,9 @@ El servicio `evidencias` (puerto 5224) guarda fotos (JPEG, PNG o WebP) y PDF de 
   hasta que se sincroniza: guarda sus fotos y súbelas con el `case_id` que regresa el lote.
 - Subir otra vez la misma foto al mismo caso responde 200 con la que ya estaba: reintentar una
   subida que se cortó no la duplica.
-- `GET /api/v1/attachments/{id}/content` regresa el archivo, siempre con token.
+- `GET /api/v1/cases/{case_id}/attachments` lista las de un caso, con su tipo y su huella.
+- `GET /api/v1/attachments/{id}/url` da una URL firmada del bucket (D30) que vence en 15 minutos;
+  `GET /api/v1/attachments/{id}/content` regresa el archivo por el servicio, siempre con token.
 - Reduce las fotos antes de subirlas (por ejemplo, a 1600 px por lado): una foto de cámara de
   varios MB tarda en subir con datos móviles.
 
@@ -315,6 +317,12 @@ El servicio `evidencias` (puerto 5224) guarda fotos (JPEG, PNG o WebP) y PDF de 
   `case_id`. Una subida que falla por red se reintenta; una que evidencias rechaza (403, 404, 413
   o 422) queda con su motivo. Subida o rechazada, el archivo se borra del teléfono. Mis casos dice
   cuántas van subidas, por subir o rechazadas; descartar un caso rechazado borra sus fotos.
+- En el seguimiento de un caso, **Fotos** lista las que tiene en `evidencias`. "Ver" pide la URL
+  firmada justo antes de bajarla (no se guarda) y baja el archivo directo del bucket con el
+  cliente **sin token**: el de la sesión no sale hacia Google. Lo que llega se compara con la
+  huella SHA-256 de la lista y, si no coincide, no se muestra. Hasta 20 MB; se decodifica
+  reducida a 2048 px por lado y no se escribe en el teléfono. Los PDF no se abren en la app.
+  Si `evidencias` no responde, el caso se sigue viendo (`SeguimientoViewModelTest`).
 
 ## 8. Lotes de vacuna (QR)
 
@@ -402,4 +410,3 @@ Lo que pidió la retroalimentación para la app (B4 del checklist del tercer par
 | Necesidad de la app | Estado |
 |---------------------|--------|
 | Notificaciones push | Solo consulta; no hay envío |
-| Fotos en el bucket con URL firmada | Espera a D2: hoy `evidencias` guarda en su volumen |

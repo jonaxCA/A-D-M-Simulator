@@ -134,6 +134,24 @@ data class Evidencia(
     val id: Long,
     @SerialName("case_id") val caso: Long,
     @SerialName("size_bytes") val tamano: Long = 0,
+    @SerialName("mime_type") val tipo: String = "image/jpeg",
+    // La huella del archivo en el bucket: lo que se baja se compara con ella antes de mostrarlo.
+    val sha256: String? = null,
+    @SerialName("uploaded_at") val subida: String? = null,
+)
+
+@Serializable
+data class EvidenciasDeCaso(
+    @SerialName("case_id") val caso: Long,
+    val evidencias: List<Evidencia> = emptyList(),
+)
+
+// D30: un permiso temporal para bajar el archivo directo del bucket; vence en minutos.
+@Serializable
+data class UrlFirmada(
+    val id: Long,
+    val url: String,
+    @SerialName("expires_at") val vence: String? = null,
 )
 
 @Serializable

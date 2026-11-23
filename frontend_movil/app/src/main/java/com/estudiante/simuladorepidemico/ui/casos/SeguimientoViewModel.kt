@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.estudiante.simuladorepidemico.red.Apis
 import com.estudiante.simuladorepidemico.red.CambioDeCaso
 import com.estudiante.simuladorepidemico.red.CasoRemoto
+import com.estudiante.simuladorepidemico.red.Evidencia
 import com.estudiante.simuladorepidemico.red.mensajeDeError
 import com.estudiante.simuladorepidemico.red.problema
 import com.estudiante.simuladorepidemico.sesion.Sesion
@@ -16,7 +17,11 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import retrofit2.HttpException
+import java.security.MessageDigest
 import java.time.LocalDate
+
+fun huella(bytes: ByteArray): String =
+    MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
 data class Correccion(
     val edad: String = "",
@@ -37,7 +42,15 @@ data class EstadoSeguimiento(
     val guardando: Boolean = false,
     // Otra persona cambió el caso desde que se leyó (412): ya se muestra como quedó.
     val conflicto: String? = null,
+    // Las fotos del caso en evidencias (D30). Si evidencias no responde, el caso se sigue viendo.
+    val fotos: List<Evidencia> = emptyList(),
+    val errorFotos: String? = null,
+    val bajandoFoto: Long? = null,
+    val fotoAbierta: FotoAbierta? = null,
 )
+
+// Lo bajado del bucket, ya comparado con la huella que dio evidencias.
+class FotoAbierta(val id: Long, val tipo: String, val bytes: ByteArray)
 
 // D47: el CAPTURISTA corrige sus casos mientras siguen pendientes; validar o descartar es del
 // EPIDEMIOLOGO. Cada corrección manda en If-Match la versión que se leyó, así que nunca pisa en
@@ -63,8 +76,48 @@ class SeguimientoViewModel(private val apis: Apis, private val sesion: Sesion, p
                 throw e
             } catch (e: Exception) {
                 estado = estado.copy(cargando = false, error = mensajeDeError(e))
+                return@launch
+            }
+            cargarFotos()
+        }
+    }
+
+    private suspend fun cargarFotos() {
+        estado = try {
+            estado.copy(fotos = apis.evidencias().deCaso(caseId).evidencias, errorFotos = null)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            estado.copy(fotos = emptyList(), errorFotos = "No se pudieron consultar las fotos: ${mensajeDeError(e)}")
+        }
+    }
+
+    // La URL firmada se pide justo antes de bajar (vence en minutos) y no se guarda. Lo que llega se
+    // compara con la huella de evidencias: si no coincide, no se muestra.
+    fun verFoto(foto: Evidencia) {
+        if (estado.bajandoFoto != null) return
+        estado = estado.copy(bajandoFoto = foto.id, errorFotos = null)
+        viewModelScope.launch {
+            estado = try {
+                val firmada = apis.evidencias().url(foto.id)
+                val bytes = apis.bajarFirmada(firmada.url)
+                if (foto.sha256 != null && huella(bytes) != foto.sha256.lowercase()) {
+                    estado.copy(bajandoFoto = null, errorFotos = "La foto que llegó no coincide con la del servidor; no se muestra.")
+                } else {
+                    estado.copy(bajandoFoto = null, fotoAbierta = FotoAbierta(foto.id, foto.tipo, bytes))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: HttpException) {
+                estado.copy(bajandoFoto = null, errorFotos = mensajeDeError(e))
+            } catch (e: Exception) {
+                estado.copy(bajandoFoto = null, errorFotos = "No se pudo bajar la foto. Revisa tu conexión e inténtalo de nuevo.")
             }
         }
+    }
+
+    fun cerrarFoto() {
+        estado = estado.copy(fotoAbierta = null)
     }
 
     fun corregir() {
