@@ -204,6 +204,7 @@ class AprobacionRutasTests(_ConEscenario):
             html = self._html(revisor, "/revisiones")
             self.assertIn(self.NOMBRE, html)
             self.assertIn("Pendientes de revisión", html)
+            self.assertNotIn("versiónes", html)
 
     def test_el_analista_no_dictamina(self):
         self._envia()
