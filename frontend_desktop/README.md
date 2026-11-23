@@ -154,3 +154,7 @@ python -m pytest frontend_desktop
 
 `test_humo.py` levanta la ventana sin pantalla (`QT_QPA_PLATFORM=offscreen`). Sus respuestas
 salen de `docs/contratos/*/ejemplos`.
+
+En Windows, sin pantalla Qt no encuentra fuentes y los PDF de las pruebas salen con cuadros en
+lugar de letras: fallan las tres que leen el texto del PDF. La app exporta bien; para las pruebas,
+indica la carpeta de fuentes (en PowerShell, `$env:QT_QPA_FONTDIR = "C:\Windows\Fonts"`).
