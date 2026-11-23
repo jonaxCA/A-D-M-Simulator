@@ -8,11 +8,12 @@ tablero y el mapa, que ven todos los roles, usan login_required.
 """
 import csv
 import io
+import secrets
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
 from flask import (Blueprint, current_app, jsonify, render_template, request, redirect,
-                   url_for, make_response, g, flash)
+                   url_for, make_response, g, flash, session)
 
 from backend_web import catalogo, formato, servicios
 from backend_web.servicios import ErrorServicio, ServicioNoDisponible
@@ -23,6 +24,8 @@ from .permisos import (login_required, requiere_permiso, tiene_permiso, get_curr
                        token_de_sesion, COOKIE_NAME)
 
 bp = Blueprint("main", __name__)
+
+COOKIE_DISPOSITIVO = "dispositivo_web"
 
 # Las exportaciones bajan todo lo que pasa el filtro de la pantalla; enfermedades pagina de 100.
 EXPORT_POR_PAGINA = 100
@@ -152,10 +155,12 @@ def login():
         return _pantalla_login(None, "")
 
     usuario = (request.form.get("usuario") or "").strip()
+    # Identifica a este navegador ante sesiones (D41); solo se manda si auth lo exige.
+    dispositivo = request.cookies.get(COOKIE_DISPOSITIVO) or secrets.token_urlsafe(24)
     try:
         datos = sesion_servicios.iniciar(usuario, request.form.get("password") or "",
                                          request.form.get("captcha_id") or "",
-                                         request.form.get("captcha_respuesta") or "")
+                                         request.form.get("captcha_respuesta") or "", dispositivo)
     except ServicioNoDisponible:
         return _pantalla_login(MENSAJE_SIN_SESIONES, usuario, 503)
     except ErrorServicio as exc:
@@ -163,11 +168,77 @@ def login():
         mensaje = MENSAJE_CREDENCIALES if credenciales else (exc.detalle or MENSAJE_CREDENCIALES)
         return _pantalla_login(mensaje, usuario, 401 if credenciales else exc.estado)
     next_url = destino_seguro(request.args.get("next")) or url_for("main.dashboard")
-    resp = make_response(redirect(next_url))
+    if datos.get("mfa_requerido"):
+        # El token de MFA vive 5 minutos; el secreto TOTP nunca pasa por la sesión.
+        session["mfa"] = {"token": datos["mfa_token"], "enrolado": datos.get("mfa_enrolado", False),
+                          "next": next_url}
+        resp = make_response(redirect(url_for("main.login_mfa")))
+    else:
+        resp = _con_tokens(make_response(redirect(next_url)), datos)
+    resp.set_cookie(COOKIE_DISPOSITIVO, dispositivo, httponly=True, secure=request.is_secure,
+                    samesite="Lax", max_age=60 * 60 * 24 * 365)
+    return resp
+
+
+def _con_tokens(resp, datos):
     for nombre, valor in ((COOKIE_NAME, datos["access_token"]), (COOKIE_REFRESH, datos["refresh_token"])):
         resp.set_cookie(nombre, valor, httponly=True, secure=request.is_secure, samesite="Lax",
                         max_age=60 * 60 * 8)
     return resp
+
+
+MENSAJES_MFA = {
+    "MFA_CODIGO_INVALIDO": "El código no es correcto. Revisa la hora de tu teléfono e intenta de nuevo.",
+    "MFA_TOKEN_INVALIDO": "El paso de verificación venció. Inicia sesión otra vez.",
+}
+
+
+@bp.route("/login/mfa", methods=["GET", "POST"])
+def login_mfa():
+    """El segundo paso de los perfiles críticos (D40): verificar el código, o enrolarse con el código
+    de alta y confirmar. auth valida, cuenta los intentos, bloquea y audita."""
+    pendiente = session.get("mfa")
+    if not pendiente:
+        return redirect(url_for("main.login"))
+
+    def pantalla(paso, error=None, estado=200, **extra):
+        return render_template("login_mfa.html", paso=paso, error=error, **extra), estado
+
+    paso_inicial = "verificar" if pendiente["enrolado"] else "enrolar"
+    if request.method == "GET":
+        return pantalla(paso_inicial)
+
+    accion = request.form.get("accion")
+    try:
+        if accion == "enrolar":
+            alta = (request.form.get("codigo_alta") or "").strip()
+            datos = sesion_servicios.mfa("enroll", pendiente["token"],
+                                         **({"codigo_alta": alta} if alta else {}))
+            return pantalla("confirmar", secreto=datos["secreto"], uri=datos["uri"],
+                            algoritmo=datos.get("algoritmo"), digitos=datos.get("digitos"),
+                            periodo=datos.get("periodo"))
+        if accion not in ("verificar", "confirmar"):
+            return pantalla(paso_inicial, "Elige una opción del formulario.", 400)
+        datos = sesion_servicios.mfa("verify" if accion == "verificar" else "confirm", pendiente["token"],
+                                     codigo=(request.form.get("codigo") or "").strip())
+    except ServicioNoDisponible:
+        return pantalla(paso_inicial, MENSAJE_SIN_SESIONES, 503)
+    except ErrorServicio as exc:
+        if exc.codigo == "MFA_TOKEN_INVALIDO":
+            session.pop("mfa", None)
+            flash(MENSAJES_MFA[exc.codigo], "error")
+            return redirect(url_for("main.login"))
+        paso = "verificar" if accion == "verificar" else paso_inicial
+        return pantalla(paso, MENSAJES_MFA.get(exc.codigo) or exc.detalle or "No se pudo verificar.",
+                        exc.estado if exc.estado in (401, 403, 409, 422, 429) else 400)
+
+    if datos.get("codigos_respaldo"):
+        resp = make_response(render_template("login_mfa.html", paso="respaldos", error=None,
+                                             codigos=datos["codigos_respaldo"],
+                                             siguiente=pendiente["next"]))
+    else:
+        resp = make_response(redirect(pendiente["next"]))
+    return _con_tokens(resp, datos)
 
 
 @bp.route("/logout")
@@ -918,6 +989,39 @@ def campanas():
                              defecto=LISTADO_VACIO)["enfermedades"],
         municipios=seccion("regiones", servicios.municipios_catalogo, defecto=[]),
         active_nav="campanas"), 400 if errores else 200
+
+
+# ---------------------------------------------------------------------------
+# Seguimiento de intervenciones (D51): lo programado, su costo, lo simulado y lo aplicado
+# ---------------------------------------------------------------------------
+@bp.route("/intervenciones")
+@requiere_permiso("scenarios.read", "scenario_interventions")
+def seguimiento_intervenciones():
+    token = token_de_sesion()
+    busqueda = (request.args.get("q") or "").strip().lower()
+    versiones = [v for v in seccion("escenarios", servicios.todas_las_versiones, token, defecto=[])
+                 if v["status"] == "aprobado"
+                 and (not busqueda or busqueda in (v["scenario_name"] or "").lower())]
+    tipos = {t["code"]: t for t in seccion("tipos-intervencion", servicios.tipos_intervencion, defecto=[])}
+    corridas_por_version = {}
+    for c in seccion("corridas", servicios.corridas, token, 100, defecto=[]):
+        corridas_por_version.setdefault(c["scenario_version_id"], []).append(c)
+    campanas = seccion("vacunas", servicios.campanas, token, defecto=[])
+
+    filas = []
+    for v in versiones:
+        intervenciones = seccion("intervenciones", servicios.intervenciones_version, token, v["id"],
+                                 defecto=None)
+        corridas = corridas_por_version.get(v["id"], [])
+        por_dosis = any((tipos.get(i["code"]) or {}).get("cost_unit") == "por_dosis"
+                        for i in intervenciones or [])
+        filas.append({
+            "version": v, "intervenciones": intervenciones, "corridas": corridas,
+            "completadas": [c["id"] for c in corridas if c["status"] == "completado"],
+            "campanas": [c for c in campanas if c.get("enfermedad") == v["disease_name"]] if por_dosis else [],
+        })
+    return render_template("intervenciones.html", filas=filas, tipos=tipos,
+                           busqueda=request.args.get("q") or "", active_nav="intervenciones")
 
 
 # ---------------------------------------------------------------------------
