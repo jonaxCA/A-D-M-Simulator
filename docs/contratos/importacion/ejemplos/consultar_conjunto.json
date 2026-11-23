@@ -1,0 +1,26 @@
+{
+  "id": 1,
+  "code": "COVID19_NL_2020_SINTOMAS",
+  "version": 1,
+  "name": "Casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, primera ola de 2020",
+  "disease": "SARS_COV_2_ANCESTRAL",
+  "region": "19",
+  "region_id": 1,
+  "metric": "casos_confirmados",
+  "period": "semana",
+  "source": "Secretaría de Salud, Dirección General de Epidemiología. Datos Abiertos de COVID-19, cierre anual 2020 (COVID19MEXICO2020.zip)",
+  "license": "Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente",
+  "source_url": "https://datosabiertos.salud.gob.mx/gobmx/salud/datos_abiertos/historicos/2020/COVID19MEXICO2020.zip",
+  "cutoff_date": "2021-10-31",
+  "sha256": "64c90685b68a1164bfa093eeef8c8d33d35d93d9d8b8f3d2d6315359a18dab90",
+  "imported_by": null,
+  "created_at": "2026-11-22T18:00:00+00:00",
+  "resumen": {
+    "puntos": 22,
+    "inicio": "2020-03-01",
+    "fin": "2020-07-26",
+    "total": 22259,
+    "maximo": 3295,
+    "periodos_en_cero": 0
+  }
+}

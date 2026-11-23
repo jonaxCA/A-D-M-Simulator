@@ -28,7 +28,7 @@ Lo que la materia o las decisiones del equipo ya fijaron. La lista de la materia
 | RNF-L21 | El alcance geográfico es Nuevo León y sus 51 municipios | — | Bases de datos | Hecho |
 | RNF-L27 | La población sale del Censo 2020 | El factor de escala es habitantes del censo entre agentes simulados (D6) | Bases de datos | Hecho |
 | RNF-L29 | Hay tres clientes: web, Android y escritorio | Android y escritorio atienden procesos distintos y el escritorio no copia a la web | Web, Móvil, Escritorio | Hecho |
-| RNF-L30 | Son 29 microservicios, cada uno con una sola tarea (D27) | El catálogo está en [`microservicios.md`](../../arquitectura/microservicios.md) | Microservicios | Hecho |
+| RNF-L30 | Son 30 microservicios, cada uno con una sola tarea (D27, D53) | El catálogo está en [`microservicios.md`](../../arquitectura/microservicios.md) | Microservicios | Hecho |
 | RNF-L31 | La web no lleva SQL en `frontend_web` | Los datos se piden a `backend_web` | Web | Hecho |
 
 ## Fuera de alcance

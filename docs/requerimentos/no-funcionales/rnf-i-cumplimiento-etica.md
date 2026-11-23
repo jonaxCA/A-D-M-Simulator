@@ -14,7 +14,7 @@ El sistema es un proyecto universitario que simula escenarios: no es una herrami
 | RNF-I09 | Los supuestos están a la vista | Todo parámetro de enfermedad y todo costo lleva su fuente o la marca de supuesto (RF-B09) | Web, Microservicios | Hecho |
 | RNF-I10 | No se le pone precio a una vida | La frontera usa personas-día; el costo en pesos va aparte y no entra a la frontera (D3) | Microservicios, Escritorio | Hecho |
 | RNF-I11 | Nunca se muestra una sola curva como si fuera el resultado | La comparación muestra la mediana con su banda del percentil 5 al 95 (D8) | Escritorio | Hecho |
-| RNF-I15 | Los datos de la demostración son sintéticos | `gen_demo_data.py` genera los casos; no hay datos reales de pacientes | Bases de datos | Hecho |
+| RNF-I15 | Los datos de la demostración son sintéticos | `gen_demo_data.py` genera los casos; no hay datos reales de pacientes. La única excepción son series públicas agregadas con licencia, solo para calibrar y validar (D50): la de la 061 y las que entren por `importacion` (D53) | Bases de datos | Hecho |
 | RNF-I16 | El sistema no decide: muestra opciones y costos | La comparación no recomienda un escenario (RN-36) | Escritorio, Web | Hecho |
 | RNF-I18 | Las limitaciones del modelo están escritas | Están en [`ficha_simulador.md`](../../arquitectura/ficha_simulador.md); sin calibración, los resultados son escenarios y no pronósticos (D24) | Microservicios | Hecho |
 
@@ -22,7 +22,7 @@ El sistema es un proyecto universitario que simula escenarios: no es una herrami
 
 | ID | Qué pedía | Por qué sale |
 |---|---|---|
-| RNF-I01 | Cumplir la Ley General de Salud | El proyecto no opera con datos reales ni tiene convenio con una dependencia; lo que aplica es RNF-I05 y RNF-I15 |
+| RNF-I01 | Cumplir la Ley General de Salud | El proyecto no opera con datos de pacientes ni tiene convenio con una dependencia; lo que aplica es RNF-I05 y RNF-I15. Las series públicas agregadas de D50 son conteos, sin registros por persona |
 | RNF-I02 | Cumplir la NOM-017-SSA2-2012 | Igual que RNF-I01 |
 | RNF-I03 | Cumplir la NOM-004-SSA3-2012 | Igual que RNF-I01 |
 | RNF-I04 | Cumplir las leyes de protección de datos | Igual que RNF-I01 |

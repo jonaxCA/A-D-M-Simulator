@@ -53,6 +53,7 @@ services:
   dispositivos: *cloud-logging
   evidencias: *cloud-logging
   vacunas: *cloud-logging
+  importacion: *cloud-logging
   validacion: *cloud-logging
   escenarios: *cloud-logging
   intervenciones: *cloud-logging

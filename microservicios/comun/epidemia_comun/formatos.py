@@ -41,7 +41,8 @@ SINGULARES = {"regiones": "region", "enfermedades": "enfermedad",
               "sin_replicas": "corrida_id", "bandas_encimadas": "encimada",
               "dominada_por": "alternativa", "compromisos": "compromiso", "empatada_con": "corrida",
               "criterios": "criterio", "semillas": "semilla", "modelos": "modelo",
-              "calibrado": "enfermedad_region", "validado": "enfermedad_region"}
+              "calibrado": "enfermedad_region", "validado": "enfermedad_region",
+              "conjuntos": "conjunto", "fallas": "falla"}
 
 
 # Un nombre de etiqueta XML no puede iniciar con numero ni contener "+".

@@ -1,7 +1,7 @@
 # EPIDEMIA — Catálogo de microservicios
 
-Son **29 microservicios** pequeños, cada uno con una sola tarea, más una **consola** web para
-probarlos. Los usan las apps de escritorio (XML) y móvil (JSON) y el sistema web, que desde D36
+Son **30 microservicios** pequeños, cada uno con una sola tarea, más una **consola** web para
+probarlos. Van del 1 al 31: el 30 es `calibracion` (D50), que el bloque E todavía no escribe. Los usan las apps de escritorio (XML) y móvil (JSON) y el sistema web, que desde D36
 los consume por HTTP, módulo por módulo, sin credenciales de PostgreSQL, MongoDB ni Redis.
 
 Parten de los siete servicios de `arquitectura_v1.md`, divididos en tareas específicas. Guardan
@@ -28,9 +28,10 @@ D30), y entran por nginx con HTTPS (D25, D26). Cuánto vive cada dato: el invent
   bitácora es de `roles` (D37).
 - **Un contenedor por servicio.** Todos parten de una imagen base (`infra/docker/`), escuchan en
   el puerto 8000 dentro de su contenedor y publican un puerto propio hacia fuera, según la tabla.
-- **Cada regla con su servicio (E8, D37).** Los servicios de E y F, y `evidencias` (D2), ya no
-  importan `backend_web`: sus imágenes parten de `base-identidad`, `base-simulacion` y
-  `base-vigilancia`, y sus reglas viven en su carpeta ([`duenos_de_reglas.md`](duenos_de_reglas.md)).
+- **Cada regla con su servicio (E8, D37).** Los servicios de E y F, `evidencias` (D2) e
+  `importacion` (D6) no importan `backend_web`: sus imágenes parten de `base-identidad`,
+  `base-simulacion` y `base-vigilancia`, y sus reglas viven en su carpeta
+  ([`duenos_de_reglas.md`](duenos_de_reglas.md)).
   Los de catálogos y escenarios (`enfermedades`, `parametros`, `regiones`, `poblacion`,
   `tipos-intervencion`, `escenarios`, `intervenciones`, `aprobacion`, `validacion` y
   `escenarios-xml`) todavía lo importan desde `epidemia/base` (D7 del checklist).
@@ -43,7 +44,7 @@ D30), y entran por nginx con HTTPS (D25, D26). Cuánto vive cada dato: el invent
 |------------|-----------|
 | Identidad  | 5201–5204 |
 | Catálogos  | 5211–5215 |
-| Vigilancia | 5221–5225 |
+| Vigilancia | 5221–5226 |
 | Escenarios | 5231–5235 |
 | Simulación | 5241–5245 |
 | Analítica  | 5251–5253 |
@@ -84,6 +85,7 @@ solo en local).
 | 27 | `dispositivos`   | Registra, consulta y revoca los dispositivos de las apps      | `POST /api/v1/devices`, `GET /api/v1/devices`, `GET /api/v1/devices/{id}`, `POST /api/v1/devices/{id}/revoke`            | `devices` (alta, versión, última conexión y revocación) | —                                                                | —                                                              | 5223   |
 | 28 | `evidencias`     | Los archivos en el bucket (D30): fotos y PDF de los casos y el reporte de una comparación (D35) | `POST/GET /api/v1/cases/{id}/attachments`, `GET/DELETE /api/v1/attachments/{id}`, `GET /api/v1/attachments/{id}/url`, `GET /api/v1/attachments/{id}/content`, `POST/GET /api/v1/reports`, `GET/DELETE /api/v1/reports/{id}`, `GET /api/v1/reports/{id}/url` | `case_attachments`, `comparison_reports` (039); los archivos, en el bucket | `cases` (`id`, `reported_by`), `simulation_runs` (`id`) | — (el bucket de Cloud Storage; en local, el emulador del compose) | 5224   |
 | 29 | `vacunas`        | Lotes de vacuna leídos por QR, las dosis que se les aplican y las campañas (D49) | `POST/GET /api/v1/vaccine-lots`, `GET /api/v1/vaccine-lots/{id}`, `POST /api/v1/vaccine-lots/{id}/doses`, `GET/POST /api/v1/campaigns`, `GET/PUT /api/v1/campaigns/{id}`, `POST /api/v1/campaigns/{id}/cancel` | `vaccine_lots` (alta y `doses_used`), `campaigns`       | `diseases`, `regions` (`id`, `name`, `level`, `parent_region_id`, `code`) | `notificaciones` al crear o cancelar una campaña (`CAMPAIGN`, best-effort) | 5225   |
+| 31 | `importacion`    | Importa series observadas agregadas (CSV, JSON o XML), las revisa y registra su fuente y su versión (D53) | `POST /api/v1/datasets`, `POST /api/v1/datasets/validate`, `GET /api/v1/datasets`, `GET /api/v1/datasets/{id}`, `GET /api/v1/datasets/{id}/points` | `observed_datasets`, `observed_points` (061) | `diseases` (`id`, `code`), `regions` (`id`, `code`, `parent_region_id`) | `roles`, el alcance de la cuenta (D43) | 5226   |
 
 - `sincronizacion` usa Redis para que el mismo lote enviado dos veces no duplique casos
   (`sync:lote:<id>`, 7 días). Regresa el resultado de cada caso: creado (201 de `casos`),
@@ -112,6 +114,16 @@ solo en local).
   ni a un lote caducado (en hora de Monterrey). Registran y aplican CAPTURISTA y ADMINISTRADOR;
   consultan los cuatro roles. Ligar un caso a su lote (`cases.vaccine_lot_id`) es de `casos` y
   todavía no se hace.
+- `importacion` recibe una serie agregada: el archivo va tal cual en el cuerpo (`text/csv`,
+  `application/json` o `application/xml`, este contra `serie_observada.xsd`) y sus metadatos en la
+  consulta. Cada punto lleva solo `periodo_inicio` y `valor`; una columna de más se rechaza, porque
+  ningún registro por persona entra al sistema (RNF-I05, D50). Revisa que los periodos vayan
+  seguidos, sin repetirse ni dejar huecos, y que la enfermedad, la región, la licencia y el corte
+  vengan. Importar otra vez la misma clave crea la versión siguiente, y el mismo archivo regresa la
+  que ya estaba; nada se edita ni se borra (D52). `/validate` hace la misma revisión sin guardar.
+  Importan EPIDEMIOLOGO, ANALISTA y ADMINISTRADOR (`datasets.upload`); consultan los roles con
+  `simulations.read`, dentro de su alcance por región. La 061 trae la serie con que se calibra
+  (D50): casos confirmados de COVID-19 en Nuevo León por semana, de la DGE.
 
 ## Escenarios
 
@@ -185,7 +197,7 @@ solo en local).
 |----|--------------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|-----------------|-----|------------------------------------------|--------|
 | 25 | `notificaciones`   | Avisos para las apps                           | `GET /api/v1/notifications`, `POST /api/v1/notifications/{id}/read`, `POST /api/v1/notifications` (solo con token de servicio), `GET` y `PUT /api/v1/notifications/preferences` (D49) | `notifications`, `notification_preferences` | `users` (`id`, `is_active`), `user_roles`, `roles` | —                                        | 5261   |
 | 26 | `estado-servicios` | Lista de servicios y sondeo de su salud        | `GET /api/v1/services`, `GET /api/v1/services/health`, `GET /api/v1/services/capacity`, `GET /api/v1/services/{nombre}/history`                                 | MongoDB `historial_servicios` (un sondeo por documento, 30 días, D28) | MongoDB `historial_servicios` | El `/health` de los 26, incluido el suyo, **en XML**; `notificaciones` para las alertas técnicas (F7) | 5262   |
-| —  | `consola`          | Página tipo Swagger/Postman para probar los 29 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
+| —  | `consola`          | Página tipo Swagger/Postman para probar los 30 | —                                                                                                                              | —               | —   | Todos, desde el navegador                | 5260   |
 
 - La `consola` es una página: el navegador llama a cada servicio con la URL que da el
   directorio, y cada servicio abre CORS solo para `CONSOLE_ORIGIN` (en el compose,
@@ -219,8 +231,9 @@ web (JSON, D36) ─────┤                 │
                   base de datos ◄── pareto   (el resumen, sin resultados)
    sincronizacion ──JSON (el lote y las correcciones)──► casos
    evidencias ──► bucket de Cloud Storage   (fotos y reportes, URLs firmadas)
+   importacion ──► roles   (el alcance; la serie va a la base)
 
-   estado-servicios ──XML──► /health de los 29
+   estado-servicios ──XML──► /health de los 30
           └──► MongoDB (historial_servicios)
 ```
 

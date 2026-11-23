@@ -71,6 +71,16 @@ copia, abajo.
 | `estado_para_captura` (si un dispositivo puede capturar) | `dispositivos` | `dispositivos/almacen.py`; lectura de solo consulta en `casos/captura.py` | F | copia (la misma prueba) |
 | `get_enfermedad` y `get_region_municipio` (que existan la enfermedad y el municipio de un filtro) | `enfermedades` y `regiones` | lecturas de solo consulta en `series/consultas.py` y `zonas/consultas.py` | F | copia (la misma prueba) |
 
+## Bloque D: archivos y series observadas
+
+`evidencias` e `importacion` no importan `backend_web` y sus imágenes parten de
+`epidemia/base-vigilancia` (`test_datos_sin_backend_web.py`).
+
+| Regla de negocio | Servicio dueño | Dónde vive | Bloque | Estado |
+|---|---|---|---|---|
+| Validar un archivo por su contenido, su tamaño y su huella; guardarlo en el bucket (D30, D35) | `evidencias` | `evidencias/datos.py` y `evidencias/reportes.py` | D | movida (D2) |
+| Revisar una serie observada: solo agregados, periodos seguidos, metadatos de fuente, licencia y corte; versionarla por clave (D53) | `importacion` | `importacion/lectura.py` y `importacion/datos.py` | D | nació ahí (D6) |
+
 ## Pendientes de D
 
 | Regla de negocio | Servicio dueño | Dónde vive hoy | Bloque | Estado |

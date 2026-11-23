@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Serie observada que recibe el servicio importacion en POST /api/v1/datasets (D53), y la que
+  regresa en GET /api/v1/datasets/{id}/points. Sin espacio de nombres, igual que el resto de
+  los documentos XML de los servicios. Cada punto lleva solo el inicio de su periodo y su
+  valor: una serie agregada, nunca registros por persona (RNF-I05). Los metadatos (fuente,
+  licencia, corte) van en la consulta. Que los periodos vayan seguidos, sin repetirse y sin
+  huecos lo revisa el servicio y lo reporta como 422.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:complexType name="Valor">
+    <xs:simpleContent>
+      <xs:extension base="xs:nonNegativeInteger">
+        <xs:attribute name="tipo" type="xs:string" fixed="numero"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="Punto">
+    <xs:sequence>
+      <xs:element name="periodo_inicio" type="xs:date"/>
+      <xs:element name="valor" type="Valor"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="serie_observada">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="dataset_id" minOccurs="0">
+          <xs:complexType>
+            <xs:simpleContent>
+              <xs:extension base="xs:positiveInteger">
+                <xs:attribute name="tipo" type="xs:string" fixed="numero"/>
+              </xs:extension>
+            </xs:simpleContent>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="period" minOccurs="0">
+          <xs:simpleType>
+            <xs:restriction base="xs:string">
+              <xs:enumeration value="semana"/>
+              <xs:enumeration value="dia"/>
+            </xs:restriction>
+          </xs:simpleType>
+        </xs:element>
+        <xs:element name="puntos">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="punto" type="Punto" maxOccurs="5000"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

@@ -87,6 +87,7 @@ services:
       DB_PASSWORD_DISPOSITIVOS: ${DB_PASSWORD_DISPOSITIVOS:-}
       DB_PASSWORD_EVIDENCIAS: ${DB_PASSWORD_EVIDENCIAS:-}
       DB_PASSWORD_VACUNAS: ${DB_PASSWORD_VACUNAS:-}
+      DB_PASSWORD_IMPORTACION: ${DB_PASSWORD_IMPORTACION:-}
       DB_PASSWORD_COMPARACION: ${DB_PASSWORD_COMPARACION:-}
       DB_PASSWORD_CORRIDAS: ${DB_PASSWORD_CORRIDAS:-}
       DB_PASSWORD_ENFERMEDADES: ${DB_PASSWORD_ENFERMEDADES:-}
@@ -480,6 +481,26 @@ services:
       DATABASE_URL: ${DATABASE_URL_VACUNAS:-postgresql://svc_vacunas:${DB_PASSWORD_VACUNAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       # El aviso CAMPAIGN a los CAPTURISTA (D49).
       SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  importacion:
+    <<: *servicio-base
+    build:
+      <<: *construye-vigilancia
+      dockerfile: microservicios/importacion/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5226:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      # El alcance por región de la cuenta (D43).
+      SERVICIO_ROLES_URL: http://roles:8000
+      DATABASE_URL: ${DATABASE_URL_IMPORTACION:-postgresql://svc_importacion:${DB_PASSWORD_IMPORTACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
