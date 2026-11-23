@@ -11,15 +11,20 @@ D48). Es el único servicio que escribe en ellas.
 |---|---|---|
 | `POST /cases` | CAPTURISTA (D1: el ADMINISTRADOR no captura) | Valida con `captura.valida_caso` (catálogo vigente de enfermedades y municipios, fechas, rangos, coordenadas completas), inserta con `status = pendiente` y deja un `CREATE` en `audit_log`, en la misma transacción. `reported_by` sale del token. |
 | `POST /cases/batch` | CAPTURISTA | Hasta 100 casos en una petición; la usa `sincronizacion` (F4). Cada caso recibe el resultado que tendría en `POST /cases` (201, 200 si ya existía, 409 o 422) en `resultados`, en el mismo orden (`indice`) y en su propia transacción: uno rechazado no detiene a los demás. Los catálogos y cada dispositivo se revisan una vez por lote. El límite de D31 cuenta los casos, no la petición, en la misma cuenta que `POST /cases`. Si la base falla, todo el lote es 503 y se reenvía (`local_uuid` evita duplicados). |
-| `GET /cases` | CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR | Lista paginada. Filtros: `disease_id`, `region_id` (municipio), `status`, `sex`, `from`, `to` (sobre `report_date`), `page` (1), `per_page` (20, máx. 100). Regresa `casos`, `total`, `pagina`, `por_pagina`, `paginas`. |
-| `GET /cases/{id}` | los cuatro roles | Un caso; 404 si no existe. El `ETag` es su versión. |
+| `GET /cases` | los seis perfiles (D42, D56) | Lista paginada. Filtros: `disease_id`, `region_id` (municipio), `status`, `sex`, `from`, `to` (sobre `report_date`), `page` (1), `per_page` (20, máx. 100). Regresa `casos`, `total`, `pagina`, `por_pagina`, `paginas`. |
+| `GET /cases/{id}` | los seis perfiles | Un caso; 404 si no existe. El `ETag` es su versión. |
 | `PATCH /cases/{id}` | EPIDEMIOLOGO (cualquier caso pendiente o validado), CAPTURISTA (los suyos, pendientes) | Corrige los campos que vienen en el cuerpo (ver «Corrección y estado»). |
 | `POST /cases/{id}/status` | EPIDEMIOLOGO | Valida, descarta, marca duplicado o reabre. |
-| `GET /cases/{id}/history` | los cuatro roles | Un cambio por versión, del más viejo al más nuevo. |
-| `GET /cases/incomplete` | los cuatro roles (la CAPTURISTA, solo los suyos) | Los casos pendientes o validados a los que les faltan datos, con `faltantes` (D49). |
-| `GET /forms` | los cuatro roles (los borradores, solo EPIDEMIOLOGO y ADMINISTRADOR) | Las versiones de los formularios; filtros `disease_id` y `status`. |
-| `GET /forms/current` | los cuatro roles | La versión vigente de cada enfermedad (o de una, con `disease_id`): lo que la app guarda para capturar sin red. |
-| `GET /forms/{id}` | los cuatro roles | Una versión. |
+| `GET /cases/{id}/history` | los seis perfiles | Un cambio por versión, del más viejo al más nuevo. |
+| `GET /cases/incomplete` | los seis perfiles (la CAPTURISTA, solo los suyos) | Los casos pendientes o validados a los que les faltan datos, con `faltantes` (D49). |
+| `GET /forms` | los seis perfiles (los borradores, solo EPIDEMIOLOGO y ADMINISTRADOR) | Las versiones de los formularios; filtros `disease_id` y `status`. |
+| `GET /forms/current` | los seis perfiles | La versión vigente de cada enfermedad (o de una, con `disease_id`): lo que la app guarda para capturar sin red. |
+| `GET /forms/{id}` | los seis perfiles | Una versión. |
+
+**Alcance por región (D43, D56).** Una cuenta con alcance solo ve los casos de sus municipios: la
+lista y los incompletos los recortan, y el detalle o el historial de un caso ajeno es 403. Una
+cuenta nacional no cambia nada. El alcance se pide a `roles` en cada petición
+(`epidemia_comun.alcance`).
 | `POST /forms` | EPIDEMIOLOGO, ADMINISTRADOR | Crea la versión siguiente de una enfermedad, en borrador. |
 | `PUT /forms/{id}` | EPIDEMIOLOGO, ADMINISTRADOR | Reemplaza un borrador; uno publicado o retirado ya no cambia (409). |
 | `POST /forms/{id}/publish` | EPIDEMIOLOGO, ADMINISTRADOR | Publica el borrador y retira la versión vigente. |

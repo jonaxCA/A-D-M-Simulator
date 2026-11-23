@@ -276,6 +276,34 @@ data class CambioDeCaso(
 @Serializable
 data class HistorialDeCaso(val cambios: List<CambioDeCaso> = emptyList())
 
+// Una página de GET /cases: los que la cuenta puede ver (su región, D43), del más reciente al más viejo.
+@Serializable
+data class PaginaCasos(
+    val casos: List<CasoRemoto> = emptyList(),
+    val total: Int = 0,
+    val pagina: Int = 1,
+    val paginas: Int = 0,
+)
+
+// Una campaña de salud (D49, vacunas). Su estado sale de las fechas: programada, activa, terminada,
+// o cancelada.
+@Serializable
+data class Campana(
+    val id: Long,
+    @SerialName("name") val nombre: String,
+    val enfermedad: String? = null,
+    val municipio: String? = null,
+    @SerialName("starts_on") val inicio: String,
+    @SerialName("ends_on") val fin: String,
+    @SerialName("target_population") val poblacionObjetivo: Long? = null,
+    @SerialName("description") val descripcion: String? = null,
+    val status: String,
+    @SerialName("cancel_reason") val motivoCancelacion: String? = null,
+)
+
+@Serializable
+data class ListaCampanas(val total: Int = 0, val campanas: List<Campana> = emptyList())
+
 // Una fila de la consulta por zona (zonas): casos e incidencia por 100 mil en el periodo.
 @Serializable
 data class Zona(

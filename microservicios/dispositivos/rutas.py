@@ -13,7 +13,9 @@ from epidemia_comun.validaciones import diccionario, entero_positivo
 
 from . import almacen
 
-ROLES = ("CAPTURISTA", "ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
+# Cualquiera que entre a la app registra su teléfono; también los perfiles de D42 (D56).
+ROLES = ("CAPTURISTA", "ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR", "INVESTIGADOR",
+         "AUTORIDAD_SANITARIA")
 LIMITE, LIMITE_MAX = 50, 200
 
 

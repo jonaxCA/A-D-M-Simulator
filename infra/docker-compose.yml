@@ -391,6 +391,8 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_CASOS:-postgresql://svc_casos:${DB_PASSWORD_CASOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # El alcance por región de cada cuenta (D43, D56) se le pide a roles en cada lectura.
+      SERVICIO_ROLES_URL: http://roles:8000
       # El aviso CASE_REJECTED a quien capturó un caso descartado o duplicado (D47).
       SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
     depends_on:
@@ -807,6 +809,8 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_ZONAS:-postgresql://svc_zonas:${DB_PASSWORD_ZONAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # El alcance por región de cada cuenta (D43, D56) se le pide a roles en cada lectura.
+      SERVICIO_ROLES_URL: http://roles:8000
     depends_on:
       postgres:
         condition: service_healthy

@@ -20,6 +20,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -230,5 +231,23 @@ class VacunasViewModelTest {
         assertEquals(Paso.ESCANEAR, modelo.estado.paso)
         assertNull(modelo.estado.lote)
         assertEquals(listOf("Influenza A"), modelo.estado.enfermedades.map { it.nombre })
+    }
+
+    // ------------------------------------------------------------------ solo consulta (D56)
+
+    @Test
+    fun quien_solo_consulta_ve_el_lote_pero_no_se_le_ofrece_registrar_uno_nuevo() {
+        servidor.nuevoLote("FL-1", total = 5)
+        val modelo = VacunasViewModel(contenedor.apis, catalogo, registra = false)
+
+        modelo.leido("FL-1")
+        assertEquals(Paso.LOTE, modelo.espera { it.paso == Paso.LOTE }.paso)
+        modelo.otroCodigo()
+        assertFalse(modelo.estado.registra)
+
+        modelo.leido("NUEVO-1")
+        val estado = modelo.espera { it.paso == Paso.ESCANEAR && it.error != null }
+        assertEquals(NO_REGISTRADO, estado.error)
+        assertTrue(servidor.pedidos.none { it.method == "POST" })
     }
 }

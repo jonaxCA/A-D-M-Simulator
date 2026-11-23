@@ -367,7 +367,7 @@ La app solo habla JSON.
 - [x] Alertas: tareas nuevas, registros rechazados, campañas y eventos de vigilancia, desde `notificaciones`. `CASE_REJECTED` («Caso descartado»), `CAMPAIGN` («Campaña») y `DATA_INCOMPLETE` («Datos incompletos») en `Formato.kt`.
 - [x] Control de calidad: avisa de campos incompletos, fechas incoherentes y posibles duplicados. La captura dice qué falta sin impedir guardar, rechaza fechas incoherentes y pide confirmar un posible duplicado del teléfono.
 - [x] Perfil con institución, región asignada y estado de conexión. E7 ya los daba; Mi perfil los muestra.
-- [ ] Menú para cada perfil de campo. Los perfiles ya están decididos (D42).
+- [x] Menú para cada perfil de campo. D56 (2026-11-23): CAPTURISTA captura; EPIDEMIOLOGO (vigilancia y campañas) y AUTORIDAD_SANITARIA (supervisor regional, con su alcance D43) consultan casos del servidor, campañas, lotes, zonas y avisos, sin validar ni descartar (eso es de la web); ANALISTA e INVESTIGADOR, consulta por zona. `casos`, `vacunas` y `dispositivos` ya dejan leer a los perfiles de D42 y `casos` y `zonas` aplican el alcance por región (`MenuTest`, `CasosServidorViewModelTest`, `CampanasViewModelTest`).
 
 ## C. Sistema web · `frontend_web/` y `backend_web/`
 

@@ -231,6 +231,11 @@ private fun FichaLote(lote: LoteVacuna, estado: EstadoVacunas, acciones: Accione
     when {
         lote.vencido -> Text("Caducado: ya no se le pueden aplicar dosis.", color = MaterialTheme.colorScheme.error)
         lote.dosisRestantes == 0 -> Text("Ya no le quedan dosis.", color = MaterialTheme.colorScheme.error)
+        !estado.registra -> Text(
+            "Tu perfil consulta los lotes; las dosis las aplica el capturista.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         else -> {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FilledTonalButton(

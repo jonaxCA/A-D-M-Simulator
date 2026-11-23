@@ -43,6 +43,9 @@ data class EstadoVacunas(
     val registrando: Boolean = false,
     val enfermedades: List<Enfermedad> = emptyList(),
     val municipios: List<Municipio> = emptyList(),
+    // D56: el EPIDEMIOLOGO y la AUTORIDAD_SANITARIA consultan; registrar y aplicar es del CAPTURISTA
+    // y el ADMINISTRADOR (los que vacunas deja escribir).
+    val registra: Boolean = true,
 ) {
     // Por aplicación: vacunas acepta de 1 a 1,000, y nunca más de las que quedan.
     val maximoDeDosis: Int
@@ -54,12 +57,13 @@ const val APLICAR_MAXIMO = 1000
 // Como lo valida vacunas: de 1 a 60 caracteres visibles, sin espacios.
 private val CODIGO = Regex("^[\\x21-\\x7e]{1,60}$")
 private const val SIN_RED = "Sin conexión: consultar lotes y aplicar dosis necesita red."
+const val NO_REGISTRADO = "Ese lote no está registrado. Registrarlo y aplicar dosis lo hace el capturista."
 
 // Escanear (o escribir) el código, buscar el lote, registrarlo si no existe y aplicar dosis
 // (README, sección 8). Todo necesita red: quien garantiza que no se apliquen más dosis de las que
 // trae el lote es el servidor.
-class VacunasViewModel(private val apis: Apis, catalogo: CatalogoDao) : ViewModel() {
-    var estado by mutableStateOf(EstadoVacunas())
+class VacunasViewModel(private val apis: Apis, catalogo: CatalogoDao, registra: Boolean = true) : ViewModel() {
+    var estado by mutableStateOf(EstadoVacunas(registra = registra))
         private set
 
     init {
@@ -89,6 +93,7 @@ class VacunasViewModel(private val apis: Apis, catalogo: CatalogoDao) : ViewMode
             estado = try {
                 val lote = apis.vacunas().buscar(limpio).lotes.firstOrNull { it.codigo == limpio }
                 if (lote != null) estado.copy(paso = Paso.LOTE, lote = lote, dosis = 1)
+                else if (!estado.registra) estado.copy(paso = Paso.ESCANEAR, error = NO_REGISTRADO)
                 else estado.copy(paso = Paso.REGISTRAR, registro = DatosLote())
             } catch (e: CancellationException) {
                 throw e
@@ -99,7 +104,7 @@ class VacunasViewModel(private val apis: Apis, catalogo: CatalogoDao) : ViewMode
     }
 
     fun otroCodigo() {
-        estado = EstadoVacunas(enfermedades = estado.enfermedades, municipios = estado.municipios)
+        estado = EstadoVacunas(enfermedades = estado.enfermedades, municipios = estado.municipios, registra = estado.registra)
     }
 
     fun cambiarDosis(n: Int) {

@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - casos",
     "version": "0.1.0",
-    "description": "Registra y consulta casos epidemiológicos (tabla cases). Reutiliza valida_caso del monolito. XML por defecto y JSON con ?format=json o Accept: application/json; los cuerpos se aceptan en los dos formatos. Roles: crear = solo CAPTURISTA (D1); consultar = los cuatro roles (matriz de permisos cases.create / cases.read). Los ejemplos están en docs/contratos/casos/ejemplos; el XSD del recurso, en caso.xsd."
+    "description": "Registra y consulta casos epidemiológicos (tabla cases). Reutiliza valida_caso del monolito. XML por defecto y JSON con ?format=json o Accept: application/json; los cuerpos se aceptan en los dos formatos. Roles: crear = solo CAPTURISTA (D1); consultar = los seis perfiles de D42, recortado al alcance por región de la cuenta (D43, D56; matriz de permisos cases.create / cases.read). Los ejemplos están en docs/contratos/casos/ejemplos; el XSD del recurso, en caso.xsd."
   },
   "servers": [
     {
@@ -3037,7 +3037,7 @@
         "tags": [
           "casos"
         ],
-        "description": "Roles: los cuatro; la CAPTURISTA ve los que capturó, los demás todos (D49). Los casos pendientes o validados a los que les falta edad, sexo, inicio de síntomas, resultado, gravedad o ubicación; cada uno con faltantes. Paginado como GET /cases. Al capturar un caso (o un lote) así, quien lo capturó recibe un aviso DATA_INCOMPLETE.",
+        "description": "Roles: los seis perfiles; la CAPTURISTA ve los que capturó, los demás todos (D49). Los casos pendientes o validados a los que les falta edad, sexo, inicio de síntomas, resultado, gravedad o ubicación; cada uno con faltantes. Paginado como GET /cases. Al capturar un caso (o un lote) así, quien lo capturó recibe un aviso DATA_INCOMPLETE.",
         "parameters": [
           {
             "in": "query",

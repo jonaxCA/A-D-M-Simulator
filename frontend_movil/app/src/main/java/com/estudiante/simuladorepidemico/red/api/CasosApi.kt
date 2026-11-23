@@ -4,6 +4,7 @@ import com.estudiante.simuladorepidemico.red.CasoRemoto
 import com.estudiante.simuladorepidemico.red.HistorialDeCaso
 import com.estudiante.simuladorepidemico.red.ListaCasosRemotos
 import com.estudiante.simuladorepidemico.red.ListaFormularios
+import com.estudiante.simuladorepidemico.red.PaginaCasos
 import kotlinx.serialization.json.JsonObject
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -15,6 +16,14 @@ import retrofit2.http.Query
 // Los casos ya en el servidor (D47, D49) y los formularios por enfermedad (D48). La captura no pasa
 // por aquí: va en lotes a sincronizacion.
 interface CasosApi {
+    // D56: los casos que el servidor deja ver a la cuenta; `estado` null trae todos.
+    @GET("api/v1/cases")
+    suspend fun lista(
+        @Query("status") estado: String? = null,
+        @Query("page") pagina: Int = 1,
+        @Query("per_page") tamano: Int = 20,
+    ): PaginaCasos
+
     @GET("api/v1/cases/incomplete")
     suspend fun incompletos(@Query("per_page") tamano: Int = 100): ListaCasosRemotos
 

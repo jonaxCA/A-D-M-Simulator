@@ -47,6 +47,7 @@ data class EstadoSeguimiento(
     val errorFotos: String? = null,
     val bajandoFoto: Long? = null,
     val fotoAbierta: FotoAbierta? = null,
+    val fotosSinAcceso: Boolean = false,
 )
 
 // Lo bajado del bucket, ya comparado con la huella que dio evidencias.
@@ -87,6 +88,10 @@ class SeguimientoViewModel(private val apis: Apis, private val sesion: Sesion, p
             estado.copy(fotos = apis.evidencias().deCaso(caseId).evidencias, errorFotos = null)
         } catch (e: CancellationException) {
             throw e
+        } catch (e: HttpException) {
+            // 403: el perfil no ve fotos (evidencias, D56). No es un error de la persona.
+            if (e.code() == 403) estado.copy(fotos = emptyList(), errorFotos = null, fotosSinAcceso = true)
+            else estado.copy(fotos = emptyList(), errorFotos = "No se pudieron consultar las fotos: ${mensajeDeError(e)}")
         } catch (e: Exception) {
             estado.copy(fotos = emptyList(), errorFotos = "No se pudieron consultar las fotos: ${mensajeDeError(e)}")
         }
