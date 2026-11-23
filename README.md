@@ -47,6 +47,18 @@ Abre <http://localhost:5000/>. Falta crear el rol `epidemia_app` y darle permiso
 
 **Guía completa, credenciales y solución de problemas: [docs/INSTALACION.md](docs/INSTALACION.md).** Despliegue en la nube (https://epidemos.app): [docs/DESPLIEGUE_GCP.md](docs/DESPLIEGUE_GCP.md).
 
+## Atajos para levantar todo
+
+Desde la raíz, con Docker y las dependencias de `frontend_web/` y `frontend_desktop/` instaladas:
+
+```bash
+python epidemia.py up        # microservicios en Docker (crea infra/.env con las contraseñas si falta)
+python epidemia.py web       # sitio en http://localhost:5000
+python epidemia.py desktop   # app de escritorio
+python epidemia.py estado    # estado de los contenedores (también: logs [servicio], pruebas)
+python epidemia.py down      # baja los contenedores; conserva la base (para borrarla: docker compose ... down -v)
+```
+
 ## Microservicios (segundo parcial)
 
 - Arquitectura de lo construido: [docs/arquitectura/arquitectura_v2.md](docs/arquitectura/arquitectura_v2.md).

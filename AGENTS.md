@@ -54,6 +54,9 @@ Calibración (D24), IA predictiva, visualización 3D y un modelo económico sofi
 
 ## Comandos
 
+- Atajos (`epidemia.py`, en la raíz): `python epidemia.py up | down | web | desktop | estado |
+  logs [servicio] | pruebas`. Hacen lo que describen los puntos de abajo; si cambias un perfil o un
+  comando, cámbialo también ahí.
 - Sitio: `python -m frontend_web.run`.
 - Microservicios: `python infra/genera_env.py` (crea `infra/.env` con las contraseñas) y
   `docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait`. Levanta PostgreSQL con la base de la demostración, Redis, MongoDB y los servicios. No
