@@ -1,6 +1,6 @@
 # D50 - Calibración de `seir-ref` contra una serie pública agregada, en el servicio `calibracion`
 
-Fecha: 2026-11-22 · Estado: Propuesta · Reemplaza D24 · Enmienda D39 (supuestos de una predicción) y D46 (la ruta de calibración pasa a `calibracion`) · Reabre RF-C16, RF-E17, RF-F13, RF-F14 y RNF-L28 · Cambia RNF-I01, RNF-I04 y RNF-I15
+Fecha: 2026-11-22 · Estado: Aceptada · Reemplaza D24 · Enmienda D39 (supuestos de una predicción) y D46 (la ruta de calibración pasa a `calibracion`) · Reabre RF-C16, RF-E17, RF-F13, RF-F14 y RNF-L28 · Cambia RNF-I01, RNF-I04 y RNF-I15
 
 ## Contexto
 - La retroalimentación pide calibrar y validar contra observaciones. Pide «ajustar parámetros a datos históricos, registrar métodos de calibración, funciones de pérdida, versiones y métricas de ajuste» (`RETROALIMENTACION_SEGUNDO_PARCIAL.txt`, l. 129 y 131, como sugerencia de servicio). Para el escritorio pide «ajustar parámetros con series históricas y comparar los resultados de ajuste» (l. 189). Cita a los CDC: la utilidad de un modelo depende de su validación contra observaciones (l. 139).

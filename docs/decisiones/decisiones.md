@@ -29,7 +29,7 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D21 | Lo no implementado pasa al tercer parcial                                      | Aceptada  | —           | [D21-pendientes-pasan-al-tercer-parcial.md](D21-pendientes-pasan-al-tercer-parcial.md) |
 | D22 | Implementar el modelo basado en agentes (ABM)                                  | Aceptada  | D2          | [D22-modelo-basado-en-agentes.md](D22-modelo-basado-en-agentes.md)                     |
 | D23 | Tecnología del ABM: CPU o GPU                                                  | Aceptada  | D22         | [D23-tecnologia-del-abm.md](D23-tecnologia-del-abm.md)                                 |
-| D24 | Calibración y parámetros de los agentes                                        | Reabierta | D22         | [D24-calibracion-del-abm.md](D24-calibracion-del-abm.md)                               |
+| D24 | Calibración y parámetros de los agentes                                        | Reemplazada por D50 | D22         | [D24-calibracion-del-abm.md](D24-calibracion-del-abm.md)                               |
 | D25 | nginx como terminador TLS y entrada única                                      | Aceptada  | D13         | [D25-nginx-como-entrada.md](D25-nginx-como-entrada.md)                                 |
 | D26 | Certificado HTTPS                                                              | Aceptada  | D25         | [D26-certificado-https.md](D26-certificado-https.md)                                   |
 | D27 | Servicios nuevos para la app móvil                                             | Aceptada  | —           | [D27-servicios-nuevos-para-la-movil.md](D27-servicios-nuevos-para-la-movil.md)         |
@@ -54,4 +54,4 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D47 | Corrección y seguimiento de casos con control de versión                    | Aceptada | D1, D32 | [D47-correccion-y-seguimiento-de-casos.md](D47-correccion-y-seguimiento-de-casos.md) |
 | D48 | Formularios de captura por enfermedad, con versiones                          | Aceptada | D1, D47 | [D48-formularios-por-enfermedad.md](D48-formularios-por-enfermedad.md) |
 | D49 | Campañas, avisos de datos incompletos y preferencias de avisos                 | Aceptada | D1, D32, D47 | [D49-campanas-incompletos-y-preferencias.md](D49-campanas-incompletos-y-preferencias.md) |
-| D50 | Calibración de `seir-ref` contra una serie pública agregada, en el servicio `calibracion` | Propuesta | D22, D37, D39, D46 | [D50-calibracion-de-los-modelos.md](D50-calibracion-de-los-modelos.md) |
+| D50 | Calibración de `seir-ref` contra una serie pública agregada, en el servicio `calibracion` | Aceptada | D22, D37, D39, D46 | [D50-calibracion-de-los-modelos.md](D50-calibracion-de-los-modelos.md) |
