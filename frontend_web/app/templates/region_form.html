@@ -19,6 +19,7 @@
 
 <div class="card form-card">
   <form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     {# Vacio = la columna esta en NULL. No se puede usar |default: 0 es un
        valor legitimo y se perderia. Tampoco se puede imprimir None: volveria
        como el texto "None" y la ruta no podria verificar el formulario. #}

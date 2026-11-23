@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from time import monotonic
@@ -5,14 +6,45 @@ from uuid import uuid4
 
 from flask import Flask, g, has_request_context, request
 
-from backend_web import servicios, simulaciones
-from backend_web.auth import secreto_jwt
-from epidemia_comun import registro
-from epidemia_comun.servir import detras_de_proxy
+from backend_web import formato as simulaciones
+from backend_web import servicios
 
-from . import presentacion
+from . import presentacion, seguridad
 
 from ..config import Config
+
+# El mismo formato de registro que los servicios: fecha, «web», nivel, X-Correlation-ID y mensaje.
+FORMATO_REGISTRO = "%(asctime)s web %(levelname)s %(correlation_id)s %(message)s"
+
+
+def detras_de_proxy():
+    return os.environ.get("DETRAS_DE_PROXY", "").lower() in ("1", "true", "si")
+
+
+class _Correlacion(logging.Filter):
+    def filter(self, record):
+        record.correlation_id = (getattr(g, "correlation_id", None) if has_request_context() else None) or "-"
+        return True
+
+
+def configura_registro():
+    raiz = logging.getLogger()
+    if any(getattr(h, "_web", False) for h in raiz.handlers):
+        return
+    manejador = logging.StreamHandler()
+    manejador._web = True
+    manejador.setFormatter(logging.Formatter(FORMATO_REGISTRO, "%Y-%m-%dT%H:%M:%S%z"))
+    manejador.addFilter(_Correlacion())
+    raiz.addHandler(manejador)
+    raiz.setLevel(logging.INFO)
+
+
+def secreto_de_la_cookie():
+    secreto = (os.environ.get("SECRET_KEY") or os.environ.get("JWT_SECRET_KEY") or "").strip()
+    if not secreto:
+        raise RuntimeError("Falta SECRET_KEY en el .env de la web. Genera uno con: "
+                           "python -c \"import secrets; print(secrets.token_urlsafe(48))\"")
+    return secreto
 
 # Un X-Correlation-ID que llega del navegador se acepta solo si es corto y sin caracteres raros:
 # va a los registros, y un salto de línea ahí inventaría líneas falsas.
@@ -43,10 +75,9 @@ def navegador_de_la_peticion():
 
 
 def registra_peticiones(app):
-    """Cada petición deja una línea en el registro, con el formato de los servicios
-    (epidemia_comun.registro): fecha, «web», nivel, X-Correlation-ID, método, ruta, estado y
-    tiempo. En la nube van a Cloud Logging (N6)."""
-    registro.configurar("web")
+    """Cada petición deja una línea en el registro, con el formato de los servicios: fecha, «web»,
+    nivel, X-Correlation-ID, método, ruta, estado y tiempo. En la nube van a Cloud Logging (N6)."""
+    configura_registro()
 
     @app.before_request
     def inicio_peticion():
@@ -67,13 +98,14 @@ def create_app():
     servicios.cabeceras_de_la_persona = navegador_de_la_peticion
     app = Flask(__name__)
     app.config.from_object(Config)
-    # Falla aqui, al arrancar, con un mensaje que dice que falta: no en la
-    # primera peticion que necesite firmar algo. Con D36 la web ya no firma JWT; su cookie usa
-    # SECRET_KEY y, mientras no lo haya, JWT_SECRET_KEY (que secreto_jwt revisa).
-    app.config["SECRET_KEY"] = (os.environ.get("SECRET_KEY") or "").strip() or secreto_jwt()
+    # Falla al arrancar, con un mensaje que dice que falta, y no en la primera peticion.
+    app.config["SECRET_KEY"] = secreto_de_la_cookie()
     # Detrás de nginx todo llega por HTTPS: la cookie de Flask solo viaja cifrada.
     app.config["SESSION_COOKIE_SECURE"] = detras_de_proxy()
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     registra_peticiones(app)
+    seguridad.registrar(app)
 
     from .routes import bp
     app.register_blueprint(bp)

@@ -29,6 +29,7 @@ def iniciar(usuario, password, captcha_id, captcha_respuesta):
                            "captcha_respuesta": captcha_respuesta})
     u = datos["usuario"]
     session["cuenta"] = {"username": u["username"], "full_name": u["full_name"]}
+    session.pop("permisos", None)
     return datos
 
 
@@ -67,3 +68,4 @@ def cerrar(access):
     except (ErrorServicio, ServicioNoDisponible):
         pass
     session.pop("cuenta", None)
+    session.pop("permisos", None)

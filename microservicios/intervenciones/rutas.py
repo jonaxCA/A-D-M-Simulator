@@ -258,6 +258,38 @@ def registrar(app):
             conn.commit()
         return responder({"intervention_type_id": type_id, **nuevo}, "costo_tipo")
 
+    # El factor de personas-día por dosis desde el catálogo de tipos, sin pasar por una versión:
+    # la pantalla de costos de la web (D3, D36).
+    @app.put("/api/v1/intervention-types/<int:type_id>/person-days")
+    @requiere_token(roles=ROLES_COSTO)
+    def personas_dia_de_tipo(type_id):
+        campos = ("person_days_per_unit", "person_days_source", "person_days_is_assumption")
+        nuevo = _valor_con_fuente(campos, "El factor de personas-dia")
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""SELECT cost_unit, person_days_per_unit, person_days_source,
+                                      person_days_is_assumption
+                               FROM intervention_types WHERE id = %s AND is_active
+                               FOR UPDATE""", (type_id,))
+                fila = cur.fetchone()
+                if fila is None:
+                    raise ErrorAPI(404, "NO_ENCONTRADO", "No existe ese tipo de intervención activo.")
+                if fila[0] != "por_dosis":
+                    raise ErrorAPI(422, "DATOS_INVALIDOS",
+                                   "Solo los tipos por dosis llevan factor: las demás "
+                                   "intervenciones cuentan sus personas-día por definición.")
+                antes = dict(zip(campos, fila[1:]))
+                cur.execute("""UPDATE intervention_types
+                               SET person_days_per_unit = %s, person_days_source = %s,
+                                   person_days_is_assumption = %s
+                               WHERE id = %s""",
+                            (nuevo["person_days_per_unit"], nuevo["person_days_source"],
+                             nuevo["person_days_is_assumption"], type_id))
+                log_audit(g.contexto, "UPDATE", "intervention_types", type_id,
+                          data_before=antes, data_after=nuevo, cur=cur)
+            conn.commit()
+        return responder({"intervention_type_id": type_id, **nuevo}, "factor_personas_dia")
+
     @app.put("/api/v1/versions/<int:version_id>/interventions/<int:intervention_id>/person-days")
     @requiere_token(roles=ROLES_COSTO)
     def personas_dia(version_id, intervention_id):

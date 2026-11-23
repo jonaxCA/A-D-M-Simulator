@@ -2483,6 +2483,364 @@
           }
         }
       }
+    },
+    "/api/v1/intervention-types/{type_id}/person-days": {
+      "put": {
+        "summary": "Fijar el factor de personas-día de un tipo",
+        "description": "Personas-día que cuenta cada dosis en la frontera de Pareto (D3), desde el catálogo de tipos y sin pasar por una versión (pantalla de costos de la web). Solo tipos por_dosis (si no, 422). Con fuente o marcado como supuesto. Roles: EPIDEMIOLOGO, ADMINISTRADOR. Auditado (UPDATE de intervention_types).",
+        "operationId": "actualizar_factor_tipo",
+        "tags": [
+          "intervenciones"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type_id",
+            "required": true,
+            "description": "Id del tipo de intervención (intervention_types.id).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Costo unitario y su fuente.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "person_days_per_unit"
+                ],
+                "properties": {
+                  "person_days_per_unit": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "person_days_source": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Obligatoria si el factor no es un supuesto."
+                  },
+                  "person_days_is_assumption": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "person_days_per_unit": 0.5,
+                "person_days_source": "Supuesto del equipo",
+                "person_days_is_assumption": true
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "person_days_per_unit"
+                ],
+                "properties": {
+                  "person_days_per_unit": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "person_days_source": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Obligatoria si el factor no es un supuesto."
+                  },
+                  "person_days_is_assumption": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "additionalProperties": false,
+                "xml": {
+                  "name": "factor_personas_dia"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<factor_personas_dia><person_days_per_unit tipo=\"numero\">0.5</person_days_per_unit><person_days_source>Supuesto del equipo</person_days_source><person_days_is_assumption tipo=\"booleano\">true</person_days_is_assumption></factor_personas_dia>"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Costo actualizado",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "intervention_type_id": 4,
+                  "person_days_per_unit": 0.5,
+                  "person_days_source": "Supuesto del equipo",
+                  "person_days_is_assumption": true
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "factor_personas_dia"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<costo_tipo><intervention_type_id tipo=\"numero\">2</intervention_type_id><unit_cost tipo=\"numero\">1500.0</unit_cost><cost_source>SSNL 2025</cost_source><cost_is_assumption tipo=\"booleano\">false</cost_is_assumption></costo_tipo>\n",
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<factor_personas_dia><intervention_type_id tipo=\"numero\">4</intervention_type_id><person_days_per_unit tipo=\"numero\">0.5</person_days_per_unit><person_days_source>Supuesto del equipo</person_days_source><person_days_is_assumption tipo=\"booleano\">true</person_days_is_assumption></factor_personas_dia>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/intervention-types/{type_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/intervention-types/{type_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/intervention-types/{type_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/intervention-types/{type_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/intervention-types/{type_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/intervention-types/{type_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "El recurso no existe (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe ese tipo de intervención activo.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/intervention-types/{type_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe ese tipo de intervención activo.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/intervention-types/{type_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type no soportado: usa application/json o application/xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unsupported Media Type",
+                  "status": 415,
+                  "detail": "Usa Content-Type: application/json o application/xml.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/intervention-types/{type_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unsupported Media Type</title><status tipo=\"numero\">415</status><detail>Usa Content-Type: application/json o application/xml.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/intervention-types/{type_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos (DATOS_INVALIDOS); el detalle trae los mensajes de validación en español.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "Un costo que no es supuesto debe incluir una fuente.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/intervention-types/{type_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>Un costo que no es supuesto debe incluir una fuente.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/intervention-types/{type_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/intervention-types/{type_id}/cost"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/intervention-types/{type_id}/cost</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

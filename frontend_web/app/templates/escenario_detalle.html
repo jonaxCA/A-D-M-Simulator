@@ -123,6 +123,7 @@
 <div class="card form-card">
   <div class="detalle-titulo">Dictamen</div>
   <form method="post" action="{{ url_for('main.version_revisar', scenario_id=escenario.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     <div class="field">
       <label for="comentario">Motivo</label>
       <textarea id="comentario" name="comentario" maxlength="1000"></textarea>

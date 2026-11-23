@@ -1,0 +1,88 @@
+{% extends "base_app.html" %}
+{% block title %}Vigilancia{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Vigilancia epidemiológica</h1>
+    <p class="subtitle">
+      Casos capturados en campo por región y periodo, con su estado y su seguimiento.
+      Fuente: servicio casos (app móvil). Fechas de reporte del {{ filtros.desde }} al {{ filtros.hasta }}.
+    </p>
+  </div>
+</div>
+
+{% include "_mensajes.html" %}
+
+<form class="card filtros-card" method="get" action="{{ url_for('main.vigilancia') }}">
+  <div class="field">
+    <label for="enfermedad">Enfermedad</label>
+    <select id="enfermedad" name="enfermedad">
+      <option value="">Todas</option>
+      {% for e in enfermedades %}<option value="{{ e.id }}" {{ 'selected' if filtros.disease_id == e.id }}>{{ e.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="municipio">Municipio</label>
+    <select id="municipio" name="municipio">
+      <option value="">Todo Nuevo León</option>
+      {% for m in municipios %}<option value="{{ m.id }}" {{ 'selected' if filtros.region_id == m.id }}>{{ m.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="estado">Estado</label>
+    <select id="estado" name="estado">
+      <option value="">Todos</option>
+      {% for clave, texto in estados.items() %}<option value="{{ clave }}" {{ 'selected' if filtros.estado == clave }}>{{ texto }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="desde">Desde</label>
+    <input type="date" id="desde" name="desde" value="{{ filtros.desde }}">
+  </div>
+  <div class="field">
+    <label for="hasta">Hasta</label>
+    <input type="date" id="hasta" name="hasta" value="{{ filtros.hasta }}">
+  </div>
+  <div class="filtro-acciones">
+    <a class="btn" href="{{ url_for('main.vigilancia') }}">Limpiar</a>
+    <button type="submit" class="btn btn-primary">Aplicar</button>
+  </div>
+</form>
+
+<div class="card table-card">
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead>
+        <tr>
+          <th>Caso</th><th>Reporte</th><th>Enfermedad</th><th>Municipio</th>
+          <th>Edad · sexo</th><th>Resultado</th><th>Gravedad</th><th>Estado</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in listado.casos %}
+        <tr>
+          <td><code class="codigo-chip">#{{ c.id }}</code></td>
+          <td>{{ c.report_date }}</td>
+          <td>{{ c.enfermedad }}</td>
+          <td>{{ c.municipio }}</td>
+          <td>{{ c.age if c.age is not none else '—' }} · {{ c.sex or '—' }}</td>
+          <td>{{ c.test_result or '—' }}</td>
+          <td>{{ c.severity or '—' }}</td>
+          <td><span class="badge badge-{{ 'correcto' if c.status == 'validado' else ('pendiente' if c.status == 'pendiente' else 'inactivo') }}">{{ estados.get(c.status, c.status) }}</span></td>
+          <td class="col-acciones"><a class="btn btn-mini" href="{{ url_for('main.caso_detalle', case_id=c.id) }}">Seguimiento</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="tabla-vacia">No hay casos con esos filtros.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="tabla-footer">
+    <span class="tabla-conteo">{{ listado.total }} caso{{ 's' if listado.total != 1 }} · página {{ listado.pagina }} de {{ listado.paginas or 1 }}</span>
+    <span>
+      {% if listado.pagina > 1 %}<a class="btn btn-mini" href="{{ url_for('main.vigilancia', pagina=listado.pagina - 1, **filtros_url) }}">← Anterior</a>{% endif %}
+      {% if listado.pagina < listado.paginas %}<a class="btn btn-mini" href="{{ url_for('main.vigilancia', pagina=listado.pagina + 1, **filtros_url) }}">Siguiente →</a>{% endif %}
+    </span>
+  </div>
+</div>
+{% endblock %}

@@ -334,7 +334,9 @@
                       "scenario_id": 3,
                       "version_number": 2,
                       "scenario_name": "Brote de influenza en Monterrey",
-                      "requested_by_username": "ana"
+                      "requested_by_username": "ana",
+                      "disease_name": "Influenza",
+                      "region_name": "Monterrey"
                     },
                     {
                       "id": 41,
@@ -349,7 +351,9 @@
                       "scenario_id": 3,
                       "version_number": 2,
                       "scenario_name": "Brote de influenza en Monterrey",
-                      "requested_by_username": "ana"
+                      "requested_by_username": "ana",
+                      "disease_name": "Influenza",
+                      "region_name": "Monterrey"
                     }
                   ]
                 }

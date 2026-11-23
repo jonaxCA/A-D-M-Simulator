@@ -21,6 +21,9 @@
     </aside>
     <div class="main">
       <div class="content">
+        {% for s in servicios_caidos %}
+        <div class="alert alert-warn">Este dato no está disponible por ahora (servicio «{{ s }}»). Intenta de nuevo en unos minutos.</div>
+        {% endfor %}
         {% block content %}{% endblock %}
       </div>
     </div>

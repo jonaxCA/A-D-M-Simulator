@@ -1,0 +1,6 @@
+{
+  "intervention_type_id": 4,
+  "person_days_per_unit": 0.5,
+  "person_days_source": "Supuesto del equipo",
+  "person_days_is_assumption": true
+}
