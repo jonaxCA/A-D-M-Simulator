@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  # Ruff revisa la sintaxis de 3.9 por target-version en ruff.toml, no por la versión con que corre.
+  # Ruff revisa la sintaxis de 3.12 por target-version en ruff.toml, no por la versión con que corre.
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -17,13 +17,13 @@ jobs:
       - run: pip install ruff==0.17.6
       - run: ruff check --output-format github .
 
-  # En contenedor porque setup-python ya no trae 3.9 para el Ubuntu de ubuntu-latest.
+  # En las imágenes oficiales de Python, que traen la versión exacta sin depender del Ubuntu del runner.
   pruebas:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.9", "3.13"]
+        python: ["3.12", "3.13"]
     container: python:${{ matrix.python }}-bookworm
     env:
       QT_QPA_PLATFORM: offscreen

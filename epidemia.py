@@ -7,7 +7,7 @@
 #     python epidemia.py estado    estado de los contenedores
 #     python epidemia.py logs [servicio]
 #     python epidemia.py pruebas [args]  motor, microservicios y escritorio; args van a pytest
-#     python epidemia.py lint      ruff (sintaxis de Python 3.9, nombres sin definir)
+#     python epidemia.py lint      ruff (sintaxis de Python 3.12, nombres sin definir)
 #     python epidemia.py prepara-pruebas  crea de nuevo la base de pruebas
 #     python epidemia.py verifica  compara el dump con las migraciones
 #     python epidemia.py psql | redis | mongo   consola dentro del contenedor
@@ -84,7 +84,7 @@ def doctor(_):
         fallas += not ok
         print("[%s] %s" % ("ok" if ok else "!!", texto))
 
-    reporta(sys.version_info >= (3, 9), "Python %d.%d (se pide 3.9 o más)" % sys.version_info[:2])
+    reporta(sys.version_info >= (3, 12), "Python %d.%d (se pide 3.12 o más)" % sys.version_info[:2])
     docker = shutil.which("docker")
     reporta(bool(docker), "docker en el PATH")
     if docker:

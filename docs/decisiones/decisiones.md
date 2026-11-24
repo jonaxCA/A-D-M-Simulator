@@ -64,3 +64,4 @@ Estados: **Aceptada**, **Pendiente** (nadie ha decidido), **Propuesta** (hay una
 | D57 | Prevalencia, hospitalizaciones y capacidad hospitalaria utilizada en el tablero, con las camas censables de la DGIS | Aceptada (F; falta el líder) | F7, RF-G07 | [D57-capacidad-hospitalaria-utilizada.md](D57-capacidad-hospitalaria-utilizada.md) |
 | D58 | Catálogos con fuente y versiones: definiciones de caso, incertidumbre, jurisdicciones, población y efectividad | Aceptada | D5, D37, D50, D52 | [D58-catalogos-con-fuente-y-versiones.md](D58-catalogos-con-fuente-y-versiones.md) |
 | D59 | Ajustes de los parámetros de la enfermedad en una versión de escenario | Aceptada | D5, D37, D58 | [D59-ajustes-de-parametros-por-version.md](D59-ajustes-de-parametros-por-version.md) |
+| D60 | Python 3.12 como versión mínima | Por confirmar | — | [D60-python-3-12-como-minimo.md](D60-python-3-12-como-minimo.md) |

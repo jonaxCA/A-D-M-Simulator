@@ -53,7 +53,7 @@ git commit -m "Agrega validación de token en auth-service"
 Commits chicos y frecuentes. Uno por unidad de trabajo que tenga sentido por sí sola, no uno gigante al final del día.
 
 Antes de subir, corre `python epidemia.py pruebas` y `python epidemia.py lint`. GitHub Actions
-corre lo mismo en cada PR, en Python 3.9 y 3.13 (`.github/workflows/pruebas.yml`).
+corre lo mismo en cada PR, en Python 3.12 y 3.13 (`.github/workflows/pruebas.yml`).
 
 ### 3. Cuando terminas
 

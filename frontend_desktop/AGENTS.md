@@ -33,4 +33,4 @@ tests/            pytest; test_humo.py usa los ejemplos de docs/contratos
 5. **La bitácora no guarda tokens, contraseñas ni cuerpos de petición.**
 6. **Las pantallas de resultados muestran el `aviso` que manda el servidor** (regla 9), y la
    comparación no recomienda (regla 10).
-7. **Python 3.9.** Las dependencias van en `requerimientos.txt`.
+7. **Python 3.12** (D60). Las dependencias van en `requerimientos.txt`.
