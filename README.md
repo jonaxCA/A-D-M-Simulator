@@ -29,7 +29,7 @@ el móvil en JSON.
 
 ## Para correrlo
 
-Necesitas Docker y Python 3.9 o superior. Desde la raíz del repositorio:
+Necesitas Docker y Python 3.12 o superior. Desde la raíz del repositorio:
 
 ```bash
 python -m venv .venv 

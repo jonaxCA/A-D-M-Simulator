@@ -14,7 +14,7 @@ una sola URL, la del directorio de `estado-servicios` (D13), y de ahí saca las 
 
 ## Instalar y correr
 
-Desde la raíz del repositorio, con Python 3.9 o superior. Se usa un entorno virtual porque
+Desde la raíz del repositorio, con Python 3.12 o superior. Se usa un entorno virtual porque
 Debian y Ubuntu no dejan instalar con pip en el Python del sistema (PEP 668):
 
 ```bash

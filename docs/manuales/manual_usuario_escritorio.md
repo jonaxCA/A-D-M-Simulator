@@ -38,7 +38,7 @@ validar → enviar a revisión                                         comparar 
 
 ### Instalar y abrir la app
 
-Necesitas Python 3.9 o superior. Abre una terminal **en la raíz del repositorio**:
+Necesitas Python 3.12 o superior. Abre una terminal **en la raíz del repositorio**:
 
 ```bash
 python3 -m venv .venv

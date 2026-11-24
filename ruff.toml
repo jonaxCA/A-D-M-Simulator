@@ -1,0 +1,7 @@
+# Solo lo que rompe: errores de sintaxis, nombres sin definir y sintaxis que no corre en
+# Python 3.12 (regla 11 de AGENTS.md, D60). Imports sin usar (F401) quedan fuera hasta limpiarlos.
+target-version = "py312"
+extend-exclude = ["frontend_movil", "docs"]
+
+[lint]
+select = ["E9", "F63", "F7", "F82"]

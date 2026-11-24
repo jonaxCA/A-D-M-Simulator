@@ -10,6 +10,7 @@ arme el contexto a partir del JWT y de los encabezados de la peticion.
 El sitio web lo arma con frontend_web.app.permisos.contexto_de_peticion().
 """
 from dataclasses import dataclass
+from typing import Optional
 
 # Lo que queda en audit_log.user_agent cuando no hay peticion detras.
 AGENTE_SIN_PETICION = "hilo de simulacion (sin peticion HTTP)"
@@ -17,8 +18,8 @@ AGENTE_SIN_PETICION = "hilo de simulacion (sin peticion HTTP)"
 
 @dataclass(frozen=True)
 class Contexto:
-    user_id: int | None        # None: nadie inicio sesion (p. ej. un login fallido)
-    ip: str | None             # None: no hubo peticion HTTP
+    user_id: Optional[int]     # None: nadie inicio sesion (p. ej. un login fallido)
+    ip: Optional[str]          # None: no hubo peticion HTTP
     user_agent: str            # ya recortado a 255, el tamanio de la columna
 
     @classmethod

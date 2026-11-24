@@ -8,7 +8,7 @@ Lo que la materia o las decisiones del equipo ya fijaron. La lista de la materia
 
 | ID | Requerimiento | Criterio de aceptación | Componente | Estado |
 |---|---|---|---|---|
-| RNF-L01 | El código de Python corre en Python 3.9 | Sin `match` ni uniones con barra (`X` o `Y`) en anotaciones | Microservicios, Web, Escritorio | Hecho |
+| RNF-L01 | El código de Python corre en Python 3.12 (D60) | Ruff con `target-version = "py312"` y CI en 3.12 y 3.13 | Microservicios, Web, Escritorio | Hecho |
 | RNF-L02 | La web y los microservicios son de Flask | La web es un monolito; cada microservicio es una app pequeña | Web, Microservicios | Hecho |
 | RNF-L04 | La app Android es de Kotlin | Usa Room para lo local y WorkManager para sincronizar | Móvil | Hecho |
 | RNF-L05 | La app de escritorio es de Python con PySide6 | — | Escritorio | Hecho |

@@ -4,7 +4,7 @@
 
 - `arquitectura/`: arquitectura (v1 y v2 obsoletas, v3 del tercer parcial), procesos, matrices, catálogo de microservicios (`microservicios.md`) y modelo de datos.
 - `contratos/`: contratos por servicio (OpenAPI, XSD, ejemplos) y colección de Postman. Tiene su propio `AGENTS.md`.
-- `decisiones/`: una decisión por archivo (D1 a D59), el índice con su estado (`decisiones.md`), la plantilla (`plantilla_ADR.md`) y pendientes (`todo.md`).
+- `decisiones/`: una decisión por archivo (D1 a D60), el índice con su estado (`decisiones.md`), la plantilla (`plantilla_ADR.md`) y pendientes (`todo.md`).
 - `desarrollo/`: guías para desarrollar (por escribir).
 - `manuales/`: manuales de usuario de cada aplicación; las capturas van en `manuales/img/`.
 - `parciales/`: el checklist de cada parcial y, en el tercero, la retroalimentación y las revisiones.
