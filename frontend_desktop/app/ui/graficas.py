@@ -140,6 +140,46 @@ def curvas(v, escenarios, elegido, seleccionar):
     _poner(v, g)
 
 
+def ajuste(v, semanas):
+    if not semanas:
+        sin_datos(v, "El servicio no devolvió semanas para este ajuste")
+        return
+    g, eje_x, eje_y = _grafica("Semana desde el inicio de la serie", "Casos por semana")
+    alto, bajo, mediana, observado = QLineSeries(), QLineSeries(), QLineSeries(), QScatterSeries()
+    for i, s in enumerate(semanas):
+        alto.append(i, s["p95"])
+        bajo.append(i, s["p5"])
+        mediana.append(i, s["mediana"])
+        observado.append(i, s["observado"])
+    banda = QAreaSeries(alto, bajo)
+    alto.setParent(banda)
+    bajo.setParent(banda)
+    relleno = color(1)
+    relleno.setAlpha(50)
+    banda.setBrush(QBrush(relleno))
+    banda.setPen(QPen(Qt.NoPen))
+    _agregar(g, banda, (eje_x, eje_y), en_leyenda=False)
+    mediana.setName("Mediana simulada")
+    mediana.setPen(QPen(color(1), 2))
+    _agregar(g, mediana, (eje_x, eje_y))
+    observado.setName("Observado")
+    observado.setMarkerSize(9)
+    observado.setColor(QColor("#0F172A"))
+    _agregar(g, observado, (eje_x, eje_y))
+    valores_y = [s[k] for s in semanas for k in ("observado", "p95")]
+    primera = next((i for i, s in enumerate(semanas) if s["ventana"] == "validacion"), None)
+    if primera is not None:
+        corte = QLineSeries()
+        corte.setName("Inicio de la validación")
+        corte.setPen(QPen(QColor("#B91C1C"), 1, Qt.DashLine))
+        corte.append(primera - 0.5, 0)
+        corte.append(primera - 0.5, max(valores_y))
+        _agregar(g, corte, (eje_x, eje_y))
+    _rango(eje_x, [0, len(semanas) - 1], 0.02)
+    _rango(eje_y, valores_y)
+    _poner(v, g)
+
+
 def _escala(maximo):
     for divisor, nombre in ((1e6, " (millones)"), (1e3, " (miles)")):
         if maximo >= divisor:

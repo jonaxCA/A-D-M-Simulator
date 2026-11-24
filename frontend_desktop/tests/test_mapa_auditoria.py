@@ -159,9 +159,9 @@ def test_validacion_consumida_por_contrato_y_solo_version_aprobada(qt):
     class Cliente:
         def pedir(self, servicio, metodo, ruta, params=None):
             llamadas.append((servicio, metodo, ruta, params))
-            if ruta.endswith("/calibration"):
+            if ruta.endswith("/calibrations/state"):
                 assert params == {"disease": 2, "region": 3}
-                return ejemplo("pareto", "consultar_calibracion")
+                return ejemplo("calibracion", "estado_calibracion")
             assert params == {"version": 7, "parameter": "r0", "percent": "-10,10"}
             return ejemplo("pareto", "consultar_sensibilidad")
 

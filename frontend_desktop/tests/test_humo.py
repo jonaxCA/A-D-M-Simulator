@@ -21,6 +21,10 @@ RUTAS = [
     ("corridas", r"/api/v1/runs", "corridas/ejemplos/listar_corridas.xml"),
     ("corridas", r"/api/v1/runs/\d+", "corridas/ejemplos/consultar_corrida.xml"),
     ("notificaciones", r"/api/v1/notifications", "notificaciones/ejemplos/listar_notificaciones.xml"),
+    ("calibracion", r"/api/v1/calibrations", "calibracion/ejemplos/listar_calibraciones.xml"),
+    ("calibracion", r"/api/v1/calibrations/\d+", "calibracion/ejemplos/consultar_calibracion.xml"),
+    ("calibracion", r"/api/v1/calibrations/\d+/fit", "calibracion/ejemplos/ajuste_calibracion.xml"),
+    ("importacion", r"/api/v1/datasets", "importacion/ejemplos/listar_conjuntos.xml"),
 ]
 
 
@@ -91,6 +95,10 @@ def test_la_ventana_carga_con_respuestas_de_ejemplo(tmp_path, monkeypatch):
     assert simulaciones.tabla.rowCount() == 1
     assert simulaciones.pestanas.tabText(3) == "Todas · 2"
     assert "1 ejecutando" in ventana.cola.text()
+
+    ventana.ir(5)
+    esperar(app)
+    assert errores == [] and ventana.calibracion.tabla.rowCount() == 2 and ventana.calibracion.conjunto.count() == 2
 
     comparacion = ventana.comparacion
     comparacion._mostrar(datos_comparacion())

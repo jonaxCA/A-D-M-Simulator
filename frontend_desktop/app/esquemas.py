@@ -27,6 +27,8 @@ POR_RESPUESTA = {
     ("escenarios-xml", "escenario"): "escenarios-xml/escenario.xsd",
     ("enfermedades", "enfermedad"): "enfermedades/enfermedad.xsd",
     ("importacion", "serie_observada"): "importacion/serie_observada.xsd",
+    **{("calibracion", raiz): "calibracion/calibracion.xsd" for raiz in (
+        "calibracion", "calibraciones", "estado_calibracion", "evaluacion", "ajuste", "escenario_calibrado")},
 }
 PROBLEMA = "comun/error.xsd"
 ESCENARIO = "escenarios-xml/escenario.xsd"

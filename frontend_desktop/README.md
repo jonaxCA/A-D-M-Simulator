@@ -105,6 +105,15 @@ corridas de inmediato.
 - Mete y saca escenarios de la misma enfermedad y región (`PUT /scenarios/{id}/project`), y los
   archiva o restaura (`/scenarios/{id}/archive` y `/restore`).
 
+**Calibración** (D50, RF-E17, RF-F13, RF-F14)
+- Lanza, sigue y cancela calibraciones de `seir-ref` por ABC por rechazo contra una serie observada
+  (`/calibrations` del servicio `calibracion`), con muestras, semillas, cuantil y semilla del muestreo.
+- Muestra el conjunto y su versión, el motor, el método y la huella, los estimados de R₀, ρ y φ, el
+  RMSE, el R² y la cobertura de las ventanas de calibración y validación, y la gráfica de lo observado
+  contra la mediana y la banda p5–p95 (`/fit`). Evalúa un juego de parámetros sin guardar (`/evaluate`).
+- Crea el borrador del escenario calibrado (`/scenario`): escenario, intervenciones y R₀ con su
+  fuente. Pasa por revisión como cualquier otro. Declarar un modelo calibrado no se hace desde aquí.
+
 **Además**
 - La barra de estado muestra la salud de los servicios, la cola y los avisos de
   `notificaciones`.

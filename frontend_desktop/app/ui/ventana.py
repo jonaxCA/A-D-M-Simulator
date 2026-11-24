@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainW
 from .. import api, bitacora, config, servicios
 from . import tareas
 from .avisos import DialogoAvisos
+from .calibracion import VistaCalibracion
 from .comparacion import VistaComparacion
 from .comun import NOMBRES_ROL
 from .datos import VistaDatos
@@ -32,9 +33,11 @@ class Ventana(QMainWindow):
         self.comparacion = VistaComparacion(self)
         self.gestion_datos = VistaDatos(self)
         self.proyectos = VistaProyectos(self)
+        self.calibracion = VistaCalibracion(self)
         self.pila = QStackedWidget()
         self.pila.setObjectName("contenido")
-        for vista in (self.escenarios, self.simulaciones, self.comparacion, self.gestion_datos, self.proyectos):
+        for vista in (self.escenarios, self.simulaciones, self.comparacion, self.gestion_datos, self.proyectos,
+                       self.calibracion):
             self.pila.addWidget(vista)
 
         cuerpo = QWidget()
@@ -74,7 +77,7 @@ class Ventana(QMainWindow):
         capa.addWidget(sub)
         capa.addWidget(seccion)
         self.grupo = QButtonGroup(self)
-        for i, nombre in enumerate(("Escenarios", "Simulaciones", "Comparación", "Datos", "Proyectos")):
+        for i, nombre in enumerate(("Escenarios", "Simulaciones", "Comparación", "Datos", "Proyectos", "Calibración")):
             boton = QPushButton("%s\tCtrl+%d" % (nombre, i + 1))
             boton.setCheckable(True)
             boton.clicked.connect(lambda _=False, i=i: self.ir(i))

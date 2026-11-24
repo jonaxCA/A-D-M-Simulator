@@ -19,7 +19,9 @@ SINGULARES = {"regiones": "region", "enfermedades": "enfermedad",
               "desglose_por_grupo": "grupo_edad", "trazabilidad": "parametro",
               "simplificaciones": "simplificacion", "servicios": "servicio",
               "causas": "causa", "sondeos": "sondeo", "eventos": "evento",
-              "modelos": "modelo", "semillas": "semilla"}
+              "modelos": "modelo", "semillas": "semilla",
+              "calibraciones": "calibracion", "semanas": "semana", "estimados": "parametro",
+              "motores_calibrables": "motor"}
 
 # Listas que el servidor escribe con <item>; vacías llegan como <errores />.
 LISTAS_DE_ITEM = {"errores", "roles", "versiones", "pendientes", "required", "enum", "grupos_edad"}
