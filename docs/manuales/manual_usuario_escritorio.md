@@ -118,9 +118,9 @@ sesión también se cierra.
 
 ![Vista de Escenarios](img/escritorio/escenarios.png)
 
-- **Barra lateral (izquierda).** Tiene las cinco pantallas: **Escenarios** (Ctrl+1),
-  **Simulaciones** (Ctrl+2), **Comparación** (Ctrl+3), **Datos** (Ctrl+4) y **Proyectos**
-  (Ctrl+5). Abajo están tu nombre, tu rol y **Cerrar sesión**.
+- **Barra lateral (izquierda).** Tiene las seis pantallas: **Escenarios** (Ctrl+1),
+  **Simulaciones** (Ctrl+2), **Comparación** (Ctrl+3), **Datos** (Ctrl+4), **Proyectos**
+  (Ctrl+5) y **Calibración** (Ctrl+6). Abajo están tu nombre, tu rol y **Cerrar sesión**.
 - **Encabezado.** Muestra el título de lo que estás viendo y, a la derecha, las acciones
   disponibles. Una acción en gris no está permitida en ese momento; por ejemplo, no se puede
   lanzar corridas de un borrador.
@@ -522,6 +522,39 @@ borra nunca. **Restaurar proyecto** lo vuelve a activo.
 Si el servidor rechaza algo (otra enfermedad o región, un proyecto archivado, una versión en
 revisión), el motivo aparece debajo del formulario.
 
+## 9A. Calibración y validación
+
+La pantalla **Calibración** (Ctrl+6) ajusta `seir-ref` a una serie observada y muestra qué tan bien
+lo logra (D50). El método es ABC por rechazo: prueba muchas combinaciones de R₀, ρ (proporción de
+casos que se notifican) y φ (reducción por las medidas) y se queda con las que mejor se parecen a
+lo observado.
+
+**Lanzar.** Elige el conjunto observado (los de la pantalla Datos), ajusta muestras, semillas,
+cuantil y semilla del muestreo, y pulsa **Lanzar**. Tarda unos minutos: la lista se actualiza sola
+y **Cancelar la seleccionada** la detiene. El servidor limita cuántas puedes tener a la vez.
+
+**Leer el resultado.** Al elegir una calibración completada verás:
+- el conjunto y su versión, el motor, el método y la huella de la configuración, para saber con
+  qué se hizo;
+- los estimados (mediana y p5–p95) de R₀, ρ y φ;
+- el **RMSE**, el **R²** y la **cobertura** de la ventana de calibración y de la de validación. La
+  validación usa semanas que la calibración no vio. Un R² negativo significa que el modelo falla
+  ahí más que un promedio simple, y se muestra tal cual;
+- la gráfica de lo observado contra la mediana y la banda p5–p95 simuladas, con una línea roja
+  donde empieza la validación. La banda junta la incertidumbre de los parámetros y el ruido entre
+  semillas. D50 pide una cobertura de al menos 80 % en validación para llamar validado al modelo;
+  si no llega, sigue siendo exploratorio.
+
+**Evaluar parámetros.** Escribe R₀, ρ y φ y pulsa **Evaluar contra el conjunto elegido** para ver
+la misma gráfica y métricas con ese juego, sin guardar nada.
+
+**Crear escenario calibrado.** Con una calibración completada, crea un escenario en borrador con la
+población del censo, el R₀ calibrado (con su fuente y su intervalo) y las intervenciones de la
+serie, y lo abre en Escenarios. Desde ahí sigue el flujo normal de validación y envío a revisión.
+
+La pantalla no declara calibrado ni validado a ningún modelo: eso es un cambio revisado en el
+repositorio (D39).
+
 ## 10. Avisos
 
 El botón **Avisos (N)** de la barra de estado abre las notificaciones; N es cuántas no has
@@ -581,6 +614,7 @@ para ver los campos antes y después. El servidor aplica el rol y alcance region
 | Ctrl+3    | Comparación                                          |
 | Ctrl+4    | Datos observados                                     |
 | Ctrl+5    | Proyectos de investigación                           |
+| Ctrl+6    | Calibración y validación                             |
 | Enter     | Buscar (en el buscador) o Entrar (en el inicio de sesión) |
 
 ## 14. Glosario
