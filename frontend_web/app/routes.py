@@ -21,7 +21,7 @@ from backend_web.servicios import ErrorServicio, ServicioNoDisponible
 
 from . import formularios, presentacion, sesion_servicios
 from .sesion_servicios import COOKIE_REFRESH, MENSAJE_CREDENCIALES, MENSAJE_SIN_SESIONES
-from .permisos import (login_required, requiere_permiso, tiene_permiso, get_current_user,
+from .permisos import (login_required, requiere_permiso, exige_permiso, tiene_permiso, get_current_user,
                        token_de_sesion, COOKIE_NAME)
 
 bp = Blueprint("main", __name__)
@@ -991,8 +991,7 @@ def caso_detalle(case_id):
     EPIDEMIOLOGO (cases.approve, D47), con la versión que se leyó para no pisar otro cambio."""
     token = token_de_sesion()
     if request.method == "POST":
-        if not tiene_permiso(g.user, "cases.approve"):
-            abort(403)
+        exige_permiso(g.user, "cases.approve", "cases")
         try:
             servicios.cambia_estado_caso(
                 token, case_id, request.form.get("version", type=int), request.form.get("estado"),
@@ -1049,8 +1048,7 @@ def campanas():
     token = token_de_sesion()
     errores, valores = [], {}
     if request.method == "POST":
-        if not tiene_permiso(g.user, "catalogs.update"):
-            abort(403)
+        exige_permiso(g.user, "catalogs.update", "campaigns")
         valores = {k: (request.form.get(k) or "").strip() for k in
                    ("name", "disease_id", "region_id", "starts_on", "ends_on", "target_population",
                     "description")}
