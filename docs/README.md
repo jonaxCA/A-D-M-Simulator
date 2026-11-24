@@ -11,7 +11,7 @@ la instalación y por el catálogo de microservicios; lo demás lo vas abriendo 
 | `arquitectura/`     | La arquitectura (la v3 es la del tercer parcial), el catálogo de microservicios y el modelo de datos |
 | `contratos/`        | El contrato de cada servicio (OpenAPI, XSD y ejemplos) y la colección de Postman                     |
 | `decisiones/`       | Las decisiones del equipo (D1 en adelante), su plantilla y las que siguen abiertas                   |
-| `requerimentos/`    | Requerimientos, historias de usuario, reglas de negocio, permisos por rol y trazabilidad             |
+| `requerimientos/`    | Requerimientos, historias de usuario, reglas de negocio, permisos por rol y trazabilidad             |
 | `manuales/`         | Manual de usuario de las apps de escritorio, web y móvil                                             |
 | `pruebas/`          | Resultados de las pruebas (carga, volumen, fallos, calibración) y cómo repetirlas                    |
 | `parciales/`        | El plan y el checklist de cada parcial                                                               |
@@ -40,5 +40,5 @@ enlace. Si agregas o quitas una carpeta, actualiza la tabla de arriba y el índi
 - Cómo levantar todo: [INSTALACION.md](INSTALACION.md).
 - Qué hace cada servicio: [arquitectura/microservicios.md](arquitectura/microservicios.md).
 - Por qué se hizo así: [decisiones/decisiones.md](decisiones/decisiones.md).
-- Qué se pidió: [requerimentos/README.md](requerimentos/README.md).
+- Qué se pidió: [requerimientos/README.md](requerimientos/README.md).
 - Cómo colaborar: [CONTRIBUTING.md](../CONTRIBUTING.md).

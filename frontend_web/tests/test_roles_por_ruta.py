@@ -4,7 +4,7 @@ Los servicios están simulados (D36): sesiones y roles contestan por el token de
 demás está caído. La prueba solo mira el candado: con un rol que no debe entrar la ruta responde
 403 y deja su PERMISSION_DENIED en roles; con uno que debe entrar no responde 403 ni manda al login,
 aunque la pantalla después diga que su servicio no responde. La tabla sale de
-docs/requerimentos/matriz-permisos.md, no de los permisos que usa el código.
+docs/requerimientos/matriz-permisos.md, no de los permisos que usa el código.
 """
 import re
 from unittest.mock import patch

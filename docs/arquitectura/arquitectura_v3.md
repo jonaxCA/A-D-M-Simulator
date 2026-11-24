@@ -1,6 +1,6 @@
 # Arquitectura v3
 
-> **Estado: Borrador** · 2026-11-14 · Al día con las ramas integradas el 2026-11-19 · Por validar en equipo (paso 6 de §11 de [`brechas_v3.md`](brechas_v3.md)). Al validarse reemplaza a [`arquitectura_v2.md`](arquitectura_v2.md); mientras tanto, lo que este documento no cambia sigue como en la v2.
+> **Estado: Aceptada** · 2026-11-14 · Al día con las ramas integradas el 2026-11-19 · Por validar en equipo (paso 6 de §11 de [`brechas_v3.md`](brechas_v3.md)). Al validarse reemplaza a [`arquitectura_v2.md`](arquitectura_v2.md); mientras tanto, lo que este documento no cambia sigue como en la v2.
 
 La v3 es la arquitectura del tercer parcial: las apps cliente, la entrada por nginx, MongoDB, Cloud Storage, los límites de consumo, el ABM y el despliegue en GCP. Sale de los tres procesos ([`procesos_v3.md`](procesos_v3.md)), de las decisiones D1 a D39 ([`decisiones.md`](../decisiones/decisiones.md)), de la retroalimentación del profesor ([checklist del tercer parcial](../parciales/parcial-3/checklist.md)) y del código de `feat/tercer-parcial` al 2026-11-19. Enlaza en vez de copiar: el detalle de cada servicio está en [`microservicios.md`](microservicios.md), y el del simulador en [`ficha_simulador.md`](ficha_simulador.md).
 
