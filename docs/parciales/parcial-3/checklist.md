@@ -381,7 +381,7 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 - [x] Cambiar el candado de cada ruta según la [matriz de permisos](../../requerimentos/matriz-permisos.md).
 - [x] El CAPTURISTA entra solo al tablero y al mapa; lo demás le responde 403 (RF-G11).
 - [x] Cuenta de prueba de CAPTURISTA en `datos/postgres/semillas/demo_datos_nl.sql`. Ya existía: `karla.trevino`.
-- [ ] Probar cada pantalla con un rol que entra y con uno que no (pruebas de roles). Pendiente: las pruebas de la web deben simular los servicios (D36).
+- [x] Probar cada pantalla con un rol que entra y con uno que no (pruebas de roles). Hecho el 2026-11-23 en `frontend_web/tests/test_roles_por_ruta.py`, sin base y con los servicios simulados (D36): cada una de las 47 rutas con candado contra ADMINISTRADOR, EPIDEMIOLOGO, ANALISTA y CAPTURISTA según la matriz de permisos (entra, o 403 con su `PERMISSION_DENIED` en `roles`); sin sesión, al login; un rol que la matriz no conoce no entra; y una ruta nueva sin fila en la tabla hace fallar la prueba. Encontró dos 403 dentro de la ruta (validar un caso y alta de campañas) que no dejaban `PERMISSION_DENIED`: ahora pasan por `permisos.exige_permiso`. Queda a la vista una divergencia: el ADMINISTRADOR puede enviar la validación de un caso desde la web (la 010 le da todos los permisos), aunque D47 y la matriz dicen que no valida; lo frena el servicio `casos`. INVESTIGADOR y AUTORIDAD_SANITARIA no están en la matriz y no se prueban. Las pruebas viejas que usan la base siguen pendientes de pasar a servicios simulados (C6).
 
 ### C2. Sesión y seguridad
 
