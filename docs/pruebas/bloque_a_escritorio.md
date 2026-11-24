@@ -67,7 +67,7 @@ Las pantallas y sus controles están en el [manual de usuario](../manuales/manua
 | A1 y configuraciones por versión | A define los cambios de interfaz y, con D, el alcance de los parámetros que se guardan por versión (el bloque 0 lo delegó el 2026-11-22). D define el contrato. |
 | A2, almacenamiento y nube | E publica los motores habilitados. D y F entregan la ruta de reportes, el bucket y las URLs firmadas. F habilita HTTPS. |
 | Gestión de datos y proyectos | A y D acuerdan el modelo del proyecto, el identificador y las reglas de calidad de los conjuntos (el bloque 0 lo delegó el 2026-11-22). D expone la carga, consulta y versionado. |
-| Calibración, sensibilidad y recuperación | El escritorio consume D46. El método de calibración y los criterios de validación con datos observados están en D50; E expone sus rutas en el servicio `calibracion`. E participa en la demostración de recuperación del trabajador. |
+| Calibración, sensibilidad y recuperación | El escritorio consume el servicio `calibracion` (D50, E7) desde el 2026-11-23: pantalla Calibración (Ctrl+6, `ui/calibracion.py`, `test_calibracion.py`) y estado de calibración en Validación del modelo (`/calibrations/state`). Falta la demostración de recuperación del trabajador contra los contenedores (D38), de E. |
 | Repetición histórica | D y E exponen el identificador y la versión del conjunto, los parámetros históricos y el contrato de reejecución. |
 
 El [checklist](../parciales/parcial-3/checklist.md#a-app-de-escritorio--frontend_desktop)
@@ -80,6 +80,7 @@ distingue lo terminado en la rama, lo parcial y lo bloqueado.
 | Escritorio y TLS | PySide6 mostró el captcha XML de `https://epidemos.app/estado-servicios` con verificación del certificado activa. El directorio anunció 29 servicios con HTTPS en el dominio y la salud reportó 29 sanos, 0 degradados y 0 caídos. |
 | Rutas protegidas en nube | Las rutas de geometría y de historial respondieron 401 `TOKEN_AUSENTE` sin sesión. Queda por probar el recorrido con cuenta de demostración y permisos de región. |
 | Plano, historial y validación | Regresión en `test_mapa_auditoria.py`: 51 polígonos de INEGI, interior de anillos, selección y serie, ETag y renovación del token, historial paginado con 403, estado de calibración y sensibilidad para versión aprobada. |
+| Calibración y validación con datos observados (D50) | `test_calibracion.py`: rutas, métodos, parámetros y cuerpo de cada llamada contra los ejemplos de `docs/contratos/calibracion/`; el borrador calibrado (escenario con población del censo, 3 intervenciones y R₀ con fuente); la pantalla lista, sondea solo mientras hay una en curso, muestra RMSE, R² (negativo sin maquillar) y cobertura de validación contra el 80 % de D50, y la gráfica con lo observado y el corte de la validación; un 429 se explica en la pantalla y un 403 llega a la ventana. `test_mapa_auditoria.py` migra el estado de calibración a `/calibrations/state`. |
 | Suite local de escritorio | 315 pruebas aprobadas en la rama de integración. Se ejecutó completa porque cambiaron el cliente HTTP y el lector XML compartidos. |
 
 ## MFA, reporte al bucket, datos observados y proyectos · 23 de noviembre

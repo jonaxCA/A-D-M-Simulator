@@ -138,8 +138,54 @@ def historial_auditoria(c, entidad, identificador, limite, desplazamiento):
 
 
 def estado_calibracion(c, enfermedad_id, region_id):
-    return c.pedir("pareto", "GET", "/api/v1/pareto/calibration",
+    return c.pedir("calibracion", "GET", "/api/v1/calibrations/state",
                    params={"disease": enfermedad_id, "region": region_id})
+
+
+def calibraciones(c, estado=None, conjunto=None):
+    params = {k: v for k, v in (("status", estado), ("dataset", conjunto)) if v}
+    return c.pedir("calibracion", "GET", "/api/v1/calibrations", params=params or None).get("calibraciones") or []
+
+
+def calibracion(c, calibracion_id):
+    return c.pedir("calibracion", "GET", "/api/v1/calibrations/%s" % calibracion_id)
+
+
+def lanzar_calibracion(c, conjunto_id, muestras, semillas, cuantil, semilla_muestreo):
+    cuerpo = {"dataset_id": conjunto_id, "engine": "seir-ref", "samples": muestras, "seeds": semillas,
+              "quantile": cuantil, "sampling_seed": semilla_muestreo}
+    return c.pedir("calibracion", "POST", "/api/v1/calibrations", cuerpo, "solicitud")
+
+
+def cancelar_calibracion(c, calibracion_id):
+    return c.pedir("calibracion", "POST", "/api/v1/calibrations/%s/cancel" % calibracion_id)
+
+
+def ajuste_calibracion(c, calibracion_id):
+    return c.pedir("calibracion", "GET", "/api/v1/calibrations/%s/fit" % calibracion_id)
+
+
+def evaluar_parametros(c, conjunto_id, r0, rho, phi):
+    return c.pedir("calibracion", "GET", "/api/v1/calibrations/evaluate",
+                   params={"dataset": conjunto_id, "r0": r0, "rho": rho, "phi": phi})
+
+
+def escenario_calibrado(c, calibracion_id):
+    return c.pedir("calibracion", "GET", "/api/v1/calibrations/%s/scenario" % calibracion_id)
+
+
+def crear_borrador_calibrado(c, calibracion_id):
+    cal = escenario_calibrado(c, calibracion_id)
+    base = dict(cal["escenario"])
+    fuentes = ["%s: %s" % (i["code"], i["fuente"]) for i in cal["intervenciones"] if i.get("fuente")]
+    base["notes"] = "\n".join([base.get("notes") or ""] + fuentes).strip()
+    creado = crear_escenario(c, base)
+    version = escenario(c, creado["id"])["version"]
+    for i in cal["intervenciones"]:
+        agregar_intervencion(c, version["id"], {k: i[k] for k in ("code", "start_day", "end_day", "coverage",
+                                                                   "compliance", "params")})
+    ajustar_version(c, version["id"], cal["param_overrides"])
+    return {"escenario_id": creado["id"], "version": version, "intervenciones": len(cal["intervenciones"])}
 
 
 def sensibilidad(c, version_id, parametro, cambios):

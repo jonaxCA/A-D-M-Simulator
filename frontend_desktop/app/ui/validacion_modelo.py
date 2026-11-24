@@ -28,6 +28,9 @@ class DialogoValidacionModelo(QDialog):
         capa_estado.addWidget(self.estado)
         self.modelos = tabla(["Versión", "Estado", "Categoría", "Motivo", "Evidencia"], estirar=(3, 4))
         capa_estado.addWidget(self.modelos)
+        ver = QPushButton("Ver calibraciones y ajuste con datos observados")
+        ver.clicked.connect(lambda: (ventana.ir(5), self.close()))
+        capa_estado.addWidget(ver)
         pestanas.addTab(estado, "Estado de calibración")
 
         estudio = QWidget()
