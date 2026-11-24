@@ -57,7 +57,8 @@ económico sofisticado.
 ## Comandos
 
 - Atajos (`epidemia.py`, en la raíz): `python epidemia.py up | down | web | desktop | estado |
-  logs [servicio] | pruebas`. Hacen lo que describen los puntos de abajo; si cambias un perfil o un
+  logs [servicio] | pruebas [args de pytest] | lint | prepara-pruebas | verifica | psql | redis |
+  mongo | doctor`. Hacen lo que describen los puntos de abajo; si cambias un perfil o un
   comando, cámbialo también ahí.
 - Sitio: `python -m frontend_web.run`.
 - Microservicios: `python infra/genera_env.py` (crea `infra/.env` con las contraseñas) y
@@ -65,6 +66,9 @@ económico sofisticado.
   levantes con `--profile '*'`: incluye el perfil `gpu`, que sin una GPU de NVIDIA falla y deja
   servicios sin arrancar (ver `docs/INSTALACION.md`). Para bajar todo, en cambio, sí:
   `docker compose -f infra/docker-compose.yml --profile '*' down`.
+- Dependencias de desarrollo (pruebas, ruff, pre-commit): `pip install -r requerimientos-dev.txt`.
+  Ruff (`ruff.toml`) revisa sintaxis de Python 3.9 y nombres sin definir; CI corre lint y pruebas
+  en cada PR.
 - Pruebas de los microservicios y de la biblioteca común:
   `python -m pytest microservicios`.
 - App de escritorio: `pip install -r frontend_desktop/requerimientos.txt` y
