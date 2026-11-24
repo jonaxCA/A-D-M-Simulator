@@ -146,13 +146,14 @@ class VistaEscenarios(QWidget):
         self.b_auditoria.clicked.connect(self.abrir_auditoria)
         self.b_modelo = QPushButton("Validación del modelo")
         self.b_modelo.clicked.connect(self.abrir_modelo)
-        accesos = QHBoxLayout()
-        accesos.addWidget(self.b_parametros)
-        accesos.addWidget(self.b_ajustes)
-        accesos.addWidget(self.b_zonas)
-        accesos.addWidget(self.b_auditoria)
-        accesos.addWidget(self.b_modelo)
-        accesos.addStretch(1)
+        # En una sola fila, los cinco accesos eran más anchos que el centro de la ventana y obligaban
+        # a desplazarse a lo ancho: van en una cuadrícula de dos por fila (con tres tampoco cabían a
+        # 1440 px con la escala de 125 % de Windows).
+        accesos = QGridLayout()
+        for i, boton in enumerate((self.b_parametros, self.b_ajustes, self.b_zonas, self.b_auditoria,
+                                   self.b_modelo)):
+            accesos.addWidget(boton, i // 2, i % 2)
+        accesos.setColumnStretch(2, 1)
         rejilla.addLayout(accesos)
         capa.addWidget(datos)
 
