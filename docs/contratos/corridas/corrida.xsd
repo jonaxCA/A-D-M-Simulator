@@ -109,6 +109,7 @@
       <xs:element name="status" type="estadoCorrida"/>
       <xs:element name="seed" type="Entero"/>
       <xs:element name="engine" type="MotorONulo"/>
+      <xs:element name="engine_version" type="TextoONulo"/>
       <xs:element name="queued_at" type="xs:dateTime"/>
       <xs:element name="started_at" type="FechaHoraONulo"/>
       <xs:element name="finished_at" type="FechaHoraONulo"/>
@@ -116,6 +117,7 @@
       <xs:element name="scenario_version_id" type="Entero"/>
       <xs:element name="scenario_id" type="Entero"/>
       <xs:element name="version_number" type="Entero"/>
+      <xs:element name="horizon_days" type="Entero"/>
       <xs:element name="scenario_name" type="xs:string"/>
       <xs:element name="requested_by_username" type="xs:string"/>
       <!-- Para la comparación de la web (C6). -->

@@ -37,8 +37,9 @@ CAMPOS_CORRIDA = (
     'estimate_reason',
 )
 CAMPOS_LISTADO = (
-    'id', 'status', 'seed', 'engine', 'queued_at', 'started_at', 'finished_at',
-    'error_message', 'scenario_version_id', 'scenario_id', 'version_number',
+    'id', 'status', 'seed', 'engine', 'engine_version', 'queued_at', 'started_at',
+    'finished_at', 'error_message', 'scenario_version_id', 'scenario_id', 'version_number',
+    'horizon_days',
     'scenario_name', 'requested_by_username', 'disease_name', 'region_name',
 )
 

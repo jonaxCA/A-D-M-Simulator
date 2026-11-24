@@ -82,10 +82,11 @@ def test_comparacion_carga_versiones_solo_de_semillas_completas():
                 assert params["engine"] == "seir-ref"
                 vid = params["scenario_version_id"]
                 return {"corridas": [{"id": vid * 10 + s, "seed": s, "engine": "seir-ref",
+                                      "engine_version": "seir-ref-0.1", "horizon_days": 150,
                                       "scenario_name": str(vid), "version_number": 1} for s in (1, 2)]}
             if servicio == "corridas":
                 self.metadatos.append(int(ruta.rsplit("/", 1)[1]))
-                return {"engine_version": "seir-ref-0.1"}
+                return {}
             if servicio == "pareto":
                 assert params["runs"] == "11,21"
                 return {}
@@ -94,7 +95,7 @@ def test_comparacion_carga_versiones_solo_de_semillas_completas():
     cliente = Cliente()
     datos = servicios.cargar_comparacion(cliente, [1, 2], "fallecimientos", "seir-ref")
     assert datos["semillas"] == [1]
-    assert sorted(cliente.metadatos) == [11, 21]
+    assert cliente.metadatos == []
     assert all(resumen.trazable(e) for e in datos["escenarios"])
 
 
