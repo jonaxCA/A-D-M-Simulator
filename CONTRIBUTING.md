@@ -11,11 +11,14 @@ Una sola vez, al entrar al proyecto.
 ```bash
 git clone https://github.com/<organizacion>/<repo>.git
 cd <repo>
-cp .env.example .env      # pide las credenciales al responsable de infraestructura
-docker compose up
+python -m venv .venv && source .venv/bin/activate   # en Windows: .venv\Scripts\activate
+pip install -r requerimientos-dev.txt
+pre-commit install        # revisa cada commit: ruff, llaves privadas, archivos grandes, commits a main
+python epidemia.py up     # crea infra/.env si falta y levanta los microservicios
+python epidemia.py doctor # confirma que todo responde
 ```
 
-Si `docker compose up` no levanta el sistema, **no le sigas por tu cuenta**: avisa en el canal del equipo. Que el proyecto arranque en menos de 15 minutos es responsabilidad del equipo, no tuya.
+Si `python epidemia.py up` no levanta el sistema, **no le sigas por tu cuenta**: avisa en el canal del equipo. Que el proyecto arranque en menos de 15 minutos es responsabilidad del equipo, no tuya.
 
 Configura tu identidad de Git si no lo has hecho:
 
@@ -33,7 +36,7 @@ Estos son los comandos que vas a usar el 95% del tiempo.
 ### 1. Antes de empezar una tarea
 
 ```bash
-git checkout main
+git checkout feat/tercer-parcial   # la rama base del parcial; main está atrasada
 git pull
 git checkout -b feat/nombre-descriptivo
 ```
@@ -48,6 +51,9 @@ git commit -m "Agrega validación de token en auth-service"
 ```
 
 Commits chicos y frecuentes. Uno por unidad de trabajo que tenga sentido por sí sola, no uno gigante al final del día.
+
+Antes de subir, corre `python epidemia.py pruebas` y `python epidemia.py lint`. GitHub Actions
+corre lo mismo en cada PR, en Python 3.12 y 3.13 (`.github/workflows/pruebas.yml`).
 
 ### 3. Cuando terminas
 
@@ -73,7 +79,7 @@ En GitHub aparecerá un botón **Compare & pull request**. Ahí:
 ### 6. Limpieza local
 
 ```bash
-git checkout main
+git checkout feat/tercer-parcial
 git pull
 git branch -d feat/nombre-descriptivo
 ```
@@ -158,13 +164,13 @@ Cambiar un contrato sin avisar rompe el trabajo de otras personas sin que se ent
 
 ## Prevenir conflictos
 
-Cuando tu rama lleva días abierta, trae lo nuevo de `main` hacia tu rama:
+Cuando tu rama lleva días abierta, trae lo nuevo de la rama base (`feat/tercer-parcial`) hacia tu rama:
 
 ```bash
-git checkout main
+git checkout feat/tercer-parcial
 git pull
 git checkout mi-rama
-git merge main
+git merge feat/tercer-parcial
 ```
 
 Resuelves el conflicto ahí, en pequeño, en vez de acumularlo hasta la PR.

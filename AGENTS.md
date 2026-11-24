@@ -52,12 +52,13 @@ económico sofisticado.
    `prediccion` o `validada`) con su explicación, como la regresa `resultados` (D39). Mientras
    no haya calibración, todo es exploratorio (`AVISO_SIMULACION`).
 10. La comparación muestra opciones y costos; no recomienda un escenario.
-11. El código debe correr en Python 3.9: sin `match` ni `X | Y` en anotaciones.
+11. El código debe correr en Python 3.12 (D60).
 
 ## Comandos
 
 - Atajos (`epidemia.py`, en la raíz): `python epidemia.py up | down | web | desktop | estado |
-  logs [servicio] | pruebas`. Hacen lo que describen los puntos de abajo; si cambias un perfil o un
+  logs [servicio] | pruebas [args de pytest] | lint | prepara-pruebas | verifica | psql | redis |
+  mongo | doctor`. Hacen lo que describen los puntos de abajo; si cambias un perfil o un
   comando, cámbialo también ahí.
 - Sitio: `python -m frontend_web.run`.
 - Microservicios: `python infra/genera_env.py` (crea `infra/.env` con las contraseñas) y
@@ -65,6 +66,9 @@ económico sofisticado.
   levantes con `--profile '*'`: incluye el perfil `gpu`, que sin una GPU de NVIDIA falla y deja
   servicios sin arrancar (ver `docs/INSTALACION.md`). Para bajar todo, en cambio, sí:
   `docker compose -f infra/docker-compose.yml --profile '*' down`.
+- Dependencias de desarrollo (pruebas, ruff, pre-commit): `pip install -r requerimientos-dev.txt`.
+  Ruff (`ruff.toml`) revisa sintaxis de Python 3.12 y nombres sin definir; CI corre lint y pruebas
+  en cada PR.
 - Pruebas de los microservicios y de la biblioteca común:
   `python -m pytest microservicios`.
 - App de escritorio: `pip install -r frontend_desktop/requerimientos.txt` y
@@ -77,7 +81,7 @@ económico sofisticado.
 
 ## Decisiones
 
-Las registradas en `docs/decisiones/decisiones.md` (D1 a D59) están aceptadas, salvo las
+Las registradas en `docs/decisiones/decisiones.md` (D1 a D60) están aceptadas, salvo las
 marcadas como reemplazadas (D20 y D33, por D36; D24, por D50) y las que sigan como propuesta (D51). Si una
 tarea pide algo que ninguna cubre, pregunta antes de implementarlo y regístralo ahí.
 

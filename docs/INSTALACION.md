@@ -40,7 +40,7 @@ Para los microservicios y Docker, sigue en **Docker: microservicios del grupo 14
 | Requisito | Versión | Cómo verificar |
 |---|---|---|
 | **PostgreSQL** | 15 o superior | `psql --version` |
-| **Python** | 3.9 o superior | `python3 --version` (en Windows: `python --version`) |
+| **Python** | 3.12 o superior | `python3 --version` (en Windows: `python --version`) |
 | **Conexión a internet** | — | Necesaria al abrir la app: las gráficas usan Highcharts desde su CDN |
 
 > **PostgreSQL 15 es obligatorio**, no es capricho: la migración `006_escenarios.sql`

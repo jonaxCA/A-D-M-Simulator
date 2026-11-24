@@ -97,8 +97,7 @@ docs/contratos/ un openapi.json (y su .xsd, si aplica) por servicio
     colecciones de D28. Google Cloud Storage solo en `evidencias` (D30). nginx es solo la
     entrada de D25 (en `infra/`): ningún servicio lo llama. Una dependencia nueva se acuerda con
     el equipo y va en los requerimientos de `comun`, no de un solo servicio.
-13. **Python.** Compatible con 3.9 (regla 11 de la raíz), aunque la imagen use una versión
-    más nueva: el código de `backend_web` también lo corre el monolito.
+13. **Python.** Compatible con 3.12 (regla 11 de la raíz, D60), la versión de la imagen.
 14. **Sin `backend_web`.** Ningún servicio ni `epidemia_comun` importa `backend_web` ni a otro
     servicio; se conocen por sus contratos (D37). La web consume los servicios por HTTP (D36):
     si una pantalla necesita un dato sin ruta, la ruta la agrega el bloque dueño (E9).

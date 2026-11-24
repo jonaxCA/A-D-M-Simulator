@@ -96,7 +96,7 @@ def agrega(ruta_zip):
         establecimientos, con_camas, camas = por.get(codigo, (0, 0, 0))
         escritor.writerow((codigo, nombres[codigo], establecimientos, con_camas, camas))
     CSV.parent.mkdir(parents=True, exist_ok=True)
-    CSV.write_text(salida.getvalue(), encoding="utf-8", newline="\n")
+    CSV.write_bytes(salida.getvalue().encode("utf-8"))
     print("%s: %d camas censables en %d municipios" % (CSV.name, total,
                                                        sum(1 for v in por.values() if v[2])))
 
