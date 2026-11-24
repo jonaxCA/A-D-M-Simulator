@@ -52,12 +52,43 @@ QPushButton#peligro:disabled { background: #FCA5A5; border-color: #FCA5A5; }
 QPushButton#ficha { border: 1px solid #CBD5E1; background: #FFFFFF; }
 QPushButton#ficha:checked { border: 1px solid #3B82F6; background: #EFF6FF; color: #1D4ED8; }
 
-QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QPlainTextEdit {
-    background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 4px; padding: 4px 6px;
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QPlainTextEdit, QTextEdit, QDateEdit, QDateTimeEdit, QTimeEdit {
+    background: #FFFFFF; color: #0F172A; border: 1px solid #CBD5E1; border-radius: 4px; padding: 4px 6px;
 }
-QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus { border-color: #3B82F6; }
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QPlainTextEdit:focus, QTextEdit:focus,
+QDateEdit:focus, QDateTimeEdit:focus, QTimeEdit:focus { border-color: #3B82F6; }
+QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled, QDateEdit:disabled {
+    background: #F1F5F9; color: #94A3B8; border-color: #E2E8F0;
+}
+/* La lista que se despliega de un QComboBox y el calendario de las fechas. */
+QComboBox QAbstractItemView, QCalendarWidget QAbstractItemView {
+    background: #FFFFFF; color: #0F172A; border: 1px solid #CBD5E1;
+    selection-background-color: #EFF6FF; selection-color: #0F172A; outline: none;
+}
+QCheckBox, QRadioButton { color: #0F172A; spacing: 6px; }
+QCheckBox:disabled, QRadioButton:disabled { color: #94A3B8; }
 
-QTableWidget, QListWidget { background: #FFFFFF; border: 1px solid #E2E8F0; selection-background-color: #EFF6FF; selection-color: #0F172A; }
+/* Áreas con desplazamiento: toman el fondo de su tarjeta, no uno propio. */
+QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }
+QTabWidget > QStackedWidget > QWidget { background: transparent; }
+QTabBar { background: transparent; }
+
+QSplitter::handle { background: #E2E8F0; }
+QSplitter::handle:horizontal { width: 2px; }
+QSplitter::handle:vertical { height: 2px; }
+QSplitter::handle:hover { background: #3B82F6; }
+
+QToolTip { background: #0F172A; color: #FFFFFF; border: none; padding: 4px 8px; }
+QMenu { background: #FFFFFF; color: #0F172A; border: 1px solid #E2E8F0; padding: 4px; }
+QMenu::item { padding: 6px 16px; border-radius: 3px; }
+QMenu::item:selected { background: #EFF6FF; color: #0F172A; }
+
+QTableWidget, QTableView, QListWidget, QListView, QTreeView {
+    background: #FFFFFF; color: #0F172A; border: 1px solid #E2E8F0;
+    selection-background-color: #EFF6FF; selection-color: #0F172A;
+}
+QTableWidget::item:hover, QListWidget::item:hover { background: #F8FAFC; }
+QTableWidget::item:selected { background: #EFF6FF; color: #0F172A; }
 QListWidget::item { padding: 8px; border-bottom: 1px solid #F1F5F9; }
 QListWidget::item:selected { background: #EFF6FF; border-left: 3px solid #3B82F6; }
 QHeaderView::section { background: #F8FAFC; color: #475569; border: none; border-bottom: 1px solid #E2E8F0; padding: 6px; }

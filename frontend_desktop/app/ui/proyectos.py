@@ -7,8 +7,8 @@ from html import escape
 
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDateEdit, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
-                               QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSplitter, QVBoxLayout,
-                               QWidget)
+                               QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSplitter,
+                               QVBoxLayout, QWidget)
 
 from .. import api, servicios
 from .comun import celda, encabezado, estado, tabla, tarjeta
@@ -118,6 +118,9 @@ class VistaProyectos(QWidget):
         forma_capa.addLayout(forma)
         forma_capa.addLayout(botones)
         forma_capa.addWidget(self.mensaje)
+        # La tarjeta del formulario conserva su alto: sin esto, con la de escenarios oculta (proyecto
+        # nuevo), se estiraba a toda la columna y repartía el espacio entre los campos.
+        marco.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         capa.addWidget(marco)
 
         marco_esc, esc = tarjeta("Escenarios del proyecto")
@@ -149,6 +152,8 @@ class VistaProyectos(QWidget):
         esc.addLayout(fila_agregar)
         esc.addWidget(self.nota_agregar)
         capa.addWidget(marco_esc, 1)
+        # Con factor 0 solo crece si la tarjeta de escenarios está oculta: deja el formulario arriba.
+        capa.addStretch(0)
         self.marco_escenarios = marco_esc
 
         desplazable = QScrollArea()

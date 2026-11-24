@@ -245,7 +245,6 @@ class FormIntervencion(QWidget):
         dias.addWidget(self.inicio)
         dias.addWidget(QLabel("a"))
         dias.addWidget(self.fin)
-        dias.addWidget(self.hasta_el_final)
         dias.addStretch(1)
         self.forma = QFormLayout()
         self.forma.setRowWrapPolicy(QFormLayout.WrapAllRows)
@@ -253,6 +252,8 @@ class FormIntervencion(QWidget):
         self.forma.addRow(self.descripcion)
         self.forma.addRow(self.costo)
         self.forma.addRow("Días", dias)
+        # En su renglón: junto a los días no cabía en el panel de 300 px y lo cortaba.
+        self.forma.addRow(self.hasta_el_final)
         self.forma.addRow(self.duracion)
         self.forma.addRow("Cobertura (0–1)", self.cobertura)
         self.forma.addRow("Cumplimiento (0–1)", self.cumplimiento)

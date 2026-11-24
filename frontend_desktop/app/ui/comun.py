@@ -15,6 +15,9 @@ ESTADOS = {"borrador": ("Borrador", "gris"), "en_revision": ("En revisión", "az
            "archivado": ("Archivado", "gris"), "activo": ("Activo", "verde")}
 NOMBRES_ROL = {"ANALISTA": "Analista", "ADMINISTRADOR": "Administrador",
                "EPIDEMIOLOGO": "Epidemiólogo", "CAPTURISTA": "Capturista"}
+# Tablas: ancho mínimo de una columna y, desde cuántos caracteres, la celda lleva su texto de ayuda.
+ANCHO_MINIMO_COLUMNA = 56
+LARGO_CON_AYUDA = 20
 
 
 def estado(clave):
@@ -32,6 +35,9 @@ def pastilla(clave, texto=None):
 def celda(texto, clave_estado=None, alinear_derecha=False, dato=None):
     item = QTableWidgetItem("—" if texto is None else str(texto))
     item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+    if texto is not None and len(str(texto)) > LARGO_CON_AYUDA:
+        # Si la columna no alcanza, la celda se corta con «…»: el texto completo queda al pasar el mouse.
+        item.setToolTip(str(texto))
     if clave_estado:
         frente, fondo = TONOS[estado(clave_estado)[1]]
         item.setForeground(QBrush(QColor(frente)))
@@ -55,6 +61,11 @@ def tabla(columnas, estirar=(0,)):
     t.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
     for columna in estirar:
         t.horizontalHeader().setSectionResizeMode(columna, QHeaderView.Stretch)
+    # Sin mínimo, la columna que se estira quedaba en unos píxeles cuando las demás llenaban la
+    # tabla («omb» por «Nombre»): con él, la tabla se desplaza a lo ancho en lugar de aplastarla.
+    t.horizontalHeader().setMinimumSectionSize(ANCHO_MINIMO_COLUMNA)
+    for i, nombre in enumerate(columnas):
+        t.horizontalHeaderItem(i).setToolTip(nombre)
     t.horizontalHeader().setHighlightSections(False)
     return t
 
