@@ -1,12 +1,20 @@
 # Dueños de las reglas de negocio
 
-> **Estado: Vigente** · 2026-11-20, F el 2026-11-22 · E8 (D37). Cada regla vive en un solo servicio; los demás la
+> **Estado: Vigente** · 2026-11-20, F el 2026-11-22, D y las copias el 2026-11-23 · E8 (D37). Cada regla vive en un solo servicio; los demás la
 > piden por HTTP con `llamar()` y no la reescriben. `epidemia_comun` solo guarda lo técnico
 > (verificar tokens, Redis, formatos, errores, llaves). Catálogo: [`microservicios.md`](microservicios.md).
 
 Estado: **movida** = ya vive con su dueño y no queda copia en `epidemia_comun` ni en otro
-servicio; **copia** = existe más de una y hay que dejar una; **pendiente** = la mueve el bloque
-indicado.
+servicio; **lectura copiada** = otro servicio lee las mismas columnas con la misma consulta, sin
+decidir ni escribir nada, y `test_copias_de_lectura.py` exige que siga igual a la del dueño;
+**copia del monolito** = la de `backend_web`, que se va cuando se retire (D36).
+
+Ningún servicio importa `backend_web` (2026-11-23): las guardas son `test_sin_backend_web.py`,
+`test_simulacion_sin_backend_web.py`, `test_vigilancia_sin_backend_web.py` y
+`test_datos_sin_backend_web.py`. `epidemia/base`, la imagen con `backend_web`, queda solo para la
+consola y la web. `procesamiento/` es la biblioteca de los modelos y no es de ningún servicio
+(D37): la importan los de simulación, `calibracion` y los de D que revisan contra el motor
+(`enfermedades`, `parametros` y `validacion`).
 
 ## Bloque E: identidad y simulación
 
@@ -30,7 +38,7 @@ indicado.
 | Resultados, indicadores y banda p5-p95 (D8) | `resultados` | `resultados/rutas.py` | E | movida |
 | Comparar corridas: diferencias, incertidumbre y contrafactual | `comparacion` | `comparacion/rutas.py` | E | movida |
 | Costo-impacto, frontera de Pareto y sensibilidad | `pareto` | `pareto/dominio.py`, `pareto/rutas.py` | E | movida |
-| Elegir hasta N corridas a comparar (`corridas_a_comparar`) | `comparacion` y `pareto` | `comparacion/seleccion.py` y `pareto/seleccion.py` (una copia en cada uno, D36) | E | movida |
+| Elegir hasta N corridas a comparar (`corridas_a_comparar`) | `comparacion` y `pareto` | `comparacion/seleccion.py` y `pareto/seleccion.py`: el mismo archivo, que `test_copias_de_lectura.py` exige igual | E | movida |
 
 ## Bloque F: vigilancia, analítica y plataforma
 
@@ -63,10 +71,14 @@ copia, abajo.
 | Regla de negocio | Servicio dueño | Dónde vive | Bloque | Estado |
 |---|---|---|---|---|
 | Armar la entrada del motor desde una versión (`entrada_de_version`) | `simulador` (la usa `pareto` para el costo-impacto) | `procesamiento/entrada_motor.py` (se importa, D37) | E | movida a `procesamiento`; no es de ningún servicio |
-| `get_run` (corrida con su versión, escenario y región) | `corridas` | `corridas/datos.py`; copias en `resultados/datos.py`, `simulador/datos.py` y `pareto/datos.py` | E | copia: las lecturas de solo consulta quedan, la regla es de `corridas` |
-| `_sincroniza_lote` (estado del lote según sus corridas) | `simulador` | `simulador/datos.py`; copia en `corridas/datos.py` (cancelar y reintentar) | E | copia: pendiente dejar una |
-| `region_de_version` (para el alcance) | `corridas` | `corridas/datos.py`; copia en `pareto/datos.py` | E | copia |
-| `version_para_motor` (las filas de una versión que entran al motor) | `simulador` | `simulador/datos.py`; copia en `validacion/huella.py` para la huella con la que se firma una versión (D55) | D | copia: `test_la_huella_es_la_misma_que_calcula_el_simulador` exige que las consultas sigan iguales |
+| El estado del lote sigue al de su corrida | la base | el trigger `tg_simulation_runs_sincroniza_lote` (065); antes, `_sincroniza_lote` copiado en `simulador` y `corridas` | E | movida a la base (2026-11-23): corre en la transacción de quien cambia la corrida |
+| `get_run` y `get_motor_run` (corrida con su versión, escenario y región; su motor) | `corridas` | `corridas/datos.py`; `get_run` en `resultados/datos.py`, `simulador/datos.py` y `pareto/datos.py`, y `get_motor_run` en `simulador/datos.py` | E | lectura copiada |
+| `get_resultado_run` (el resumen de una corrida) | `resultados` | `resultados/datos.py`; en `pareto/datos.py` | E | lectura copiada |
+| `region_de_version` (para el alcance) | `corridas` | `corridas/datos.py`; en `pareto/datos.py` | E | lectura copiada |
+| `version_para_motor` (las filas de una versión que entran al motor) | `simulador` | `simulador/datos.py`; en `pareto/datos.py`, y sus consultas en `validacion/huella.py` para la huella con la que se firma una versión (D55) | E, D | lectura copiada; la de `validacion` la vigila `test_la_huella_es_la_misma_que_calcula_el_simulador` |
+| `escenario_detalle` (un escenario, una versión y sus intervenciones) | `escenarios` | `escenarios/datos.py`; en `validacion/datos.py` | D | lectura copiada |
+| `tipos` (los tipos de intervención activos con su `param_schema`) | `tipos-intervencion` | `tipos_intervencion/datos.py`; en `intervenciones/datos.py` | D | lectura copiada |
+| Leer un número del texto de un formulario (`conversion.entero`, `numero_de_esquema`) | todos (técnico) | `epidemia_comun/conversion.py`, copia de `backend_web/conversion.py`; otra en `casos/conversion.py` | E | se queda en `epidemia_comun`; `test_copias_del_monolito.py` exige que sean iguales |
 | Monolito `backend_web` (`queries.py`, `simulaciones.py`) | los de arriba | `backend_web/` | C | se retira cuando la web consuma los servicios (D36, E9) |
 | Consultas del tablero, de Monitoreo y del mapa; validación y catálogos de la captura | `indicadores`, `series`, `zonas` y `casos` | sus `consultas.py`, `casos/captura.py` y `casos/conversion.py`; copia en `backend_web/queries.py` y `backend_web/conversion.py`, que la web todavía lee | F (la web, C) | copia: la del monolito se va cuando la web consuma el servicio (D36); hasta entonces `test_copias_del_monolito.py` exige que sean iguales |
 | `estado_para_captura` (si un dispositivo puede capturar) | `dispositivos` | `dispositivos/almacen.py`; lectura de solo consulta en `casos/captura.py` | F | copia (la misma prueba) |
@@ -74,11 +86,10 @@ copia, abajo.
 
 ## Bloque D: archivos, series observadas, escenarios y catálogos
 
-`evidencias`, `importacion`, `aprobacion`, `poblacion` y `tipos-intervencion` no importan
-`backend_web` y sus imágenes parten de `epidemia/base-vigilancia` (`test_datos_sin_backend_web.py`).
-`parametros` tampoco lo importa, pero usa los límites del motor y sigue en `epidemia/base`.
-`escenarios`, `enfermedades` y `regiones` todavía lo importan para lo que ya tenían (alta y
-versiones, lista y alta, catálogo de municipios), pero lo nuevo de D54 y D58 vive en su carpeta.
+Ninguno importa `backend_web` (2026-11-23, `test_datos_sin_backend_web.py`). Los que no usan el
+motor parten de `epidemia/base-vigilancia`; `enfermedades`, `parametros` y `validacion`, de
+`epidemia/base-simulacion`. Las funciones originales siguen en `backend_web/queries.py`, sin uso
+fuera de sus pruebas, hasta que se retire el monolito.
 
 | Regla de negocio | Servicio dueño | Dónde vive | Bloque | Estado |
 |---|---|---|---|---|
@@ -86,13 +97,18 @@ versiones, lista y alta, catálogo de municipios), pero lo nuevo de D54 y D58 vi
 | Revisar una serie observada: solo agregados, periodos seguidos, metadatos de fuente, licencia y corte; versionarla por clave (D53) | `importacion` | `importacion/lectura.py` y `importacion/datos.py` | D | nació ahí (D6) |
 | Enviar a revisión, aprobar con firma, rechazar y devolver una versión; la bandeja (D55) | `aprobacion` | `aprobacion/datos.py` (`envia_a_revision`, `resuelve_revision` y `get_pendientes_revision` siguen en `backend_web`, ya sin uso fuera de sus pruebas, hasta que se retire el monolito) | D | movida (D7) |
 | La huella de la entrada del motor de una versión (la firma, D55) | `validacion` | `validacion/huella.py`, con `procesamiento.contrato.huella` | D | nació ahí (D7) |
+| Revisar un escenario o una versión nueva contra el motor (`valida_escenario`, `valida_version`, `revisa_version`) | `validacion` | `validacion/reglas.py`; `escenarios` y `escenarios-xml` le piden el dictamen por HTTP | D | movida (E8, 2026-11-23) |
+| Alta, versión siguiente y duplicado de un escenario; la lista | `escenarios` | `escenarios/datos.py` | D | movida (E8, 2026-11-23) |
+| Validar, agregar, quitar y mover una intervención; validar su costo (`valida_intervencion`, `valida_costo_intervencion`) | `intervenciones` | `intervenciones/reglas.py` y `datos.py`; `validacion` le pide `POST /interventions/validate` | D | movida (E8, 2026-11-23) |
+| Lista de enfermedades con su actividad y su estado de parámetros; reglas del alta | `enfermedades` | `enfermedades/datos.py` y `reglas.py` | D | movida (E8, 2026-11-23) |
+| Catálogo de los municipios de NL con la fuente de su población | `regiones` | `regiones/datos.py` | D | movida (E8, 2026-11-23) |
 | Proyectos de investigación, archivar un escenario y los responsables de cada versión (D54) | `escenarios` | `escenarios/datos.py` | D | nació ahí (D7) |
 | Rangos de los parámetros epidemiológicos (`parametros_epidemiologicos`), su intervalo y sus versiones (D58) | `parametros` | `parametros/reglas.py` y `parametros/datos.py` (ya no en `epidemia_comun/validaciones.py`); los límites, de `procesamiento.entrada_motor` | D | movida (D7) |
 | Ajustes de los parámetros de la enfermedad en una versión de escenario, y los parámetros efectivos (D59) | `parametros` | `parametros/rutas.py` (las reglas, las de `parametros/reglas.py`); `procesamiento.entrada_motor.parametros_efectivos` los combina; `aprobacion` y el monolito congelan «catálogo con ajustes» al enviar | D | nació ahí (A4) |
 | Definiciones de caso versionadas y clasificación de las enfermedades (D58) | `enfermedades` | `enfermedades/datos.py` | D | nació ahí (D7) |
 | Jerarquía, jurisdicciones sanitarias y búsqueda territorial (D58) | `regiones` | `regiones/datos.py`; `zonas` sigue leyendo las jurisdicciones de `datos/geo/` para agrupar casos | D | nació ahí (D7) |
 | Corregir la población y las bandas de un municipio, con sus versiones y periodos (D58) | `poblacion` | `poblacion/datos.py` (`actualiza_poblacion_municipio` y `actualiza_grupos_edad_municipio` siguen en `backend_web`, ya sin uso fuera de sus pruebas) | D | movida (D7) |
-| Catálogo de tipos de intervención y sus supuestos de efectividad (D58) | `tipos-intervencion` | `tipos_intervencion/datos.py` (`get_tipos_intervencion` sigue en `backend_web` para `validacion` e `intervenciones`) | D | movida (D7) |
+| Catálogo de tipos de intervención y sus supuestos de efectividad (D58) | `tipos-intervencion` | `tipos_intervencion/datos.py` | D | movida (D7) |
 
 ## Contratos de dominio
 

@@ -1,20 +1,17 @@
-"""Servicio enfermedades: el catálogo, su clasificación y las definiciones de caso versionadas (D58).
-
-La lista y el alta siguen con las reglas de backend_web.queries (E8 pendiente); la ficha, la
-clasificación y las definiciones de caso viven en datos.py.
-"""
+# Servicio enfermedades: el catálogo, su clasificación y las definiciones de caso versionadas
+# (D58). Sus reglas viven en datos.py y reglas.py (E8).
 import psycopg2
 from flask import g, request
 
-from backend_web import queries
-from backend_web.audit import log_audit
-from backend_web.db import get_conn, query
+from epidemia_comun.auditoria import log_audit
+from epidemia_comun.bd import get_conn, query
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import diccionario, entero_positivo
 
 from . import datos as bd
+from .reglas import valida_enfermedad
 
 ESTADO_NL = "19"
 ROLES_EDITAN = ("EPIDEMIOLOGO", "ADMINISTRADOR")
@@ -79,7 +76,7 @@ def registrar(app):
         estado = request.args.get("status")
         if estado not in (None, "activa", "inactiva"):
             raise ErrorAPI(422, "DATOS_INVALIDOS", "status debe ser activa o inactiva.")
-        datos = queries.get_enfermedades(
+        datos = bd.lista(
             busqueda=(request.args.get("q") or "").strip() or None,
             estado=estado, pagina=pagina, por_pagina=tamano)
         return responder(datos, "catalogo_enfermedades")
@@ -95,7 +92,7 @@ def registrar(app):
         estado = request.args.get("status")
         if estado not in (None, "activa", "inactiva"):
             raise ErrorAPI(422, "DATOS_INVALIDOS", "status debe ser activa o inactiva.")
-        datos = queries.get_enfermedades(
+        datos = bd.lista(
             busqueda=(request.args.get("q") or "").strip() or None,
             estado=estado, pagina=pagina, por_pagina=tamano)
         if pagina == 1:
@@ -178,7 +175,7 @@ def registrar(app):
             raise ErrorAPI(422, "DATOS_INVALIDOS", "code y name deben ser texto.")
         codigo = datos["code"].strip()
         nombre = datos["name"].strip()
-        errores = queries.valida_enfermedad(codigo, nombre)
+        errores = valida_enfermedad(codigo, nombre)
         if errores:
             raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
         descripcion = datos.get("description")

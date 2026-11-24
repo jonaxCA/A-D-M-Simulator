@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<validacion><valido tipo="booleano">true</valido><errores /><avisos /><datos><population_size tipo="numero">1200000</population_size><horizon_days tipo="numero">90</horizon_days><initial_infected tipo="numero">20</initial_infected><population_by_age nil="true" /><population_age_unknown tipo="numero">0</population_age_unknown><age_unknown_policy nil="true" /><notes>Más días de horizonte</notes></datos></validacion>

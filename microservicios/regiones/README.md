@@ -18,9 +18,8 @@
 - `/health`, `/docs`, `/openapi.json` se obtienen de `epidemia_comun`.
 - XML predeterminado; JSON con `?format=json`.
 
-El catálogo de municipios reutiliza `backend_web.queries.get_regiones_catalogo()` y
-`get_region_municipio()` (E8 pendiente); la jerarquía, las jurisdicciones y la búsqueda viven en
-`datos.py`. Solo lectura sobre `regions`, `region_age_groups`, `health_areas` y
+El catálogo de municipios, la jerarquía, las jurisdicciones y la búsqueda viven en `datos.py` (E8);
+su imagen parte de `epidemia/base-vigilancia`, sin `backend_web`. Solo lectura sobre `regions`, `region_age_groups`, `health_areas` y
 `health_area_municipalities`; no escribe ni necesita bitácora. La geometría y los mapas son de `zonas`.
 
 Corre en `infra/docker-compose.yml`.

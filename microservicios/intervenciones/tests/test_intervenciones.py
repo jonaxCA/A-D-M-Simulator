@@ -6,9 +6,9 @@ from xml.etree import ElementTree as ET
 import pytest
 import xmlschema
 
-from backend_web import queries
 from epidemia_comun.formatos import a_xml
-from microservicios.intervenciones import rutas
+from microservicios.intervenciones import datos as bd
+from microservicios.intervenciones import reglas, rutas
 
 RAIZ = Path(__file__).resolve().parents[3]
 CONTRATO = RAIZ / "docs/contratos/intervenciones"
@@ -52,7 +52,7 @@ def mundo(monkeypatch):
             return m.version if (params[0] == 31 and m.version) else None
         return list(m.filas)
     monkeypatch.setattr(rutas, "query", query)
-    monkeypatch.setattr(queries, "get_tipos_intervencion", lambda: TIPOS)
+    monkeypatch.setattr(bd, "tipos", lambda: TIPOS)
 
     def agrega(version_id, datos, *, contexto):
         m.llamadas.append(("agrega", version_id, datos, contexto))
@@ -62,17 +62,17 @@ def mundo(monkeypatch):
                             "params": datos["params"], "order_index": 1, "code": datos["code"],
                             "name": "Vacunación", "target_layer": "todas"})
         return m.resultado
-    monkeypatch.setattr(queries, "agrega_intervencion", agrega)
+    monkeypatch.setattr(bd, "agrega", agrega)
 
     def quita(version_id, iid, *, contexto):
         m.llamadas.append(("quita", version_id, iid, contexto))
         return m.resultado
-    monkeypatch.setattr(queries, "quita_intervencion", quita)
+    monkeypatch.setattr(bd, "quita", quita)
 
     def mueve(version_id, iid, direccion, *, contexto):
         m.llamadas.append(("mueve", version_id, iid, direccion, contexto))
         return m.resultado
-    monkeypatch.setattr(queries, "mueve_intervencion", mueve)
+    monkeypatch.setattr(bd, "mueve", mueve)
 
     class Cur:
         def __enter__(self):
@@ -160,7 +160,7 @@ def test_agregar_json_con_contexto_del_token(cliente, token, mundo):
     _, version_id, datos, contexto = mundo.llamadas[0]
     assert version_id == 31 and datos["intervention_type_id"] == 2
     assert datos["params"] == {"eficacia": 0.7} and datos["coverage"] == 0.6
-    assert contexto.user_id == 7  # la bitácora la escribe queries.agrega_intervencion
+    assert contexto.user_id == 7  # la bitácora la escribe datos.agrega
 
 
 def test_agregar_xml(cliente, token, mundo):
@@ -538,3 +538,53 @@ def test_las_peticiones_de_ejemplo_se_aceptan(cliente, token, mundo):
             mundo.filas = [dict(EXISTENTE)]
             r = getattr(cliente, metodo)(ruta + "?format=json", headers=token(roles), data=datos, content_type=tipo)
             assert r.status_code == esperado, (op, ext, r.data)
+
+
+def test_validar_intervenciones_sin_guardar(cliente, mundo, token):
+    cuerpo = {"horizon_days": 120, "interventions": [
+        {"code": "CIERRE_ESCUELAS", "start_day": 10, "end_day": 40, "params": {"reduccion": 0.5}},
+        {"code": "CIERRE_ESCUELAS", "start_day": 30, "params": {"reduccion": 0.4}},
+        dict(NUEVA)]}
+    r = cliente.post("/api/v1/interventions/validate?format=json", json=cuerpo, headers=token())
+    assert r.status_code == 200
+    dictamen = r.get_json()
+    assert dictamen["valido"] is False
+    assert len(dictamen["errores"]) == 1 and dictamen["errores"][0].startswith("Intervención 2: Ya hay")
+    assert [i["code"] for i in dictamen["intervenciones"]] == ["CIERRE_ESCUELAS", "VACUNACION"]
+    assert dictamen["intervenciones"][0] == {
+        "intervention_type_id": 1, "code": "CIERRE_ESCUELAS", "start_day": 10, "end_day": 40,
+        "coverage": None, "compliance": None, "params": {"reduccion": 0.5}}
+    assert mundo.llamadas == []
+    xml = cliente.post("/api/v1/interventions/validate", json=cuerpo, headers=token())
+    xmlschema.XMLSchema(str(CONTRATO / "intervencion.xsd")).validate(xml.data.decode("utf-8"))
+
+
+def test_validar_intervenciones_revisa_el_cuerpo(cliente, mundo, token):
+    def valida(cuerpo, roles=("ANALISTA",)):
+        return cliente.post("/api/v1/interventions/validate?format=json", json=cuerpo, headers=token(roles))
+    assert valida({"horizon_days": 120, "interventions": []}).get_json() == {
+        "valido": True, "errores": [], "intervenciones": []}
+    assert valida({"horizon_days": 0, "interventions": []}).status_code == 422
+    assert valida({"horizon_days": 120, "interventions": ["x"]}).status_code == 422
+    assert valida({"horizon_days": 120, "interventions": [{"code": "VACUNACION", "params": 3}]}).status_code == 422
+    assert valida({"horizon_days": 120, "otro": 1}).status_code == 422
+    assert valida({"horizon_days": 120, "interventions": []}, ("CAPTURISTA",)).status_code == 403
+    assert cliente.post("/api/v1/interventions/validate", json={}).status_code == 401
+
+
+def test_las_reglas_de_una_intervencion():
+    version = {"horizon_days": 100}
+    datos, errores = reglas.valida_intervencion(
+        {"code": "CIERRE_ESCUELAS", "start_day": "5", "end_day": "2", "coverage": "2",
+         "p_CIERRE_ESCUELAS_reduccion": "1.5"}, TIPOS, version, [])
+    assert errores == ["El día de fin no puede ser anterior al de inicio.",
+                       "La cobertura debe estar entre 0 y 1.",
+                       "«reduccion» no puede ser mayor que 1."]
+    assert datos["end_day"] is None
+    _, errores = reglas.valida_intervencion({"code": "OTRO", "start_day": ""}, TIPOS, version, [])
+    assert errores == ["Elige un tipo de intervención del catálogo.", "El día de inicio es obligatorio."]
+    assert reglas.se_traslapan(10, None, 50, 60, 100) and not reglas.se_traslapan(10, 20, 21, None, 100)
+    assert reglas.valida_costo_intervencion("12.5", "", False) == (
+        {"unit_cost": 12.5, "cost_source": None, "cost_is_assumption": False},
+        ["Un costo que no es supuesto debe incluir una fuente."])
+    assert reglas.valida_costo_intervencion("nan", None, True) == (None, ["El importe debe ser numerico."])

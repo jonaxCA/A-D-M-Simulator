@@ -59,6 +59,7 @@ sin Alembic: se ejecutan en orden y cada uno registra su aplicación en la tabla
 | `062_calibraciones.sql` | `calibrations` (una calibración de `seir-ref` contra un conjunto de la 061: configuración, estado, intentos, avance y resultado en JSONB), el permiso `calibrations.run` (EPIDEMIOLOGO, ANALISTA y ADMINISTRADOR) y el rol `svc_calibracion` (D50) |
 | `063_casos_sinteticos.sql` | Nuevo `COMMENT ON TABLE cases`: en la demostración son sintéticos y no calibran (D50) |
 | `064_proyectos_archivado_y_firma.sql` | `research_projects` y `scenarios.project_id` (proyectos de investigación, D54), el UPDATE de `scenarios.status` para archivar y `fn_version_aprobada` sin corridas de escenarios archivados (D54), `scenario_versions.approval_sha256` (la firma de la versión aprobada) y el aviso `SCENARIO_RETURNED` (devolver para cambios, D55) |
+| `065_sincroniza_lote.sql` | El trigger `tg_simulation_runs_sincroniza_lote`: el lote toma el estado de su corrida, y su `finished_at` si es terminal, en la misma transacción. Reemplaza las dos copias de `_sincroniza_lote` de `corridas` y `simulador` (E8, D37) |
 
 El orden importa: `005` referencia catálogos de `004`, y `007` referencia
 escenarios de `006`. No cambien la numeración.

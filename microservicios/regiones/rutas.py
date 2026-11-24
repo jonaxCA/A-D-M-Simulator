@@ -1,15 +1,12 @@
-"""Servicio regiones: el estado y sus municipios, la jerarquía territorial, las jurisdicciones
-sanitarias y la búsqueda territorial (D58). El catálogo de municipios sigue con las reglas de
-backend_web.queries (E8 pendiente); lo nuevo vive en datos.py. Todo es público.
-"""
+# Servicio regiones: el estado y sus municipios, la jerarquía territorial, las jurisdicciones
+# sanitarias y la búsqueda territorial (D58). Sus reglas viven en datos.py (E8). Todo es público.
 from flask import request
 
+from epidemia_comun.bd import query
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import responder
 from epidemia_comun.limites import limitar
 from epidemia_comun.validaciones import entero_positivo
-from backend_web import queries
-from backend_web.db import query
 
 from . import datos as bd
 
@@ -61,13 +58,13 @@ def registrar(app):
             raise ErrorAPI(422, "DATOS_INVALIDOS", "order debe ser nombre, poblacion o poblacion_60.")
         if direccion not in ("asc", "desc"):
             raise ErrorAPI(422, "DATOS_INVALIDOS", "direction debe ser asc o desc.")
-        datos = queries.get_regiones_catalogo(busqueda=buscar, orden=orden, direccion=direccion)
+        datos = bd.catalogo(busqueda=buscar, orden=orden, direccion=direccion)
         return responder(datos, "catalogo_regiones")
 
     @app.get("/api/v1/regions/<int:region_id>")
     @limitar("normal")
     def region(region_id):
-        item = queries.get_region_municipio(region_id)
+        item = bd.municipio(region_id)
         if item is None:
             raise ErrorAPI(404, "NO_ENCONTRADO", "No se encontró el municipio.")
         return responder(dict(item), "region")

@@ -14,13 +14,13 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
    - El compose la construye primero: es el servicio `base`, con cero réplicas, y cada
      servicio la pide con `additional_contexts` (`epidemia/base: service:base`). Así nunca
      se busca en Docker Hub. No la publiques ahí.
-   - Los servicios de simulación (`corridas`, `simulador`, `resultados`, `comparacion`, `pareto` y
-     `calibracion`, con su trabajador)
-     parten de `epidemia/base-simulacion` (`docker/base-simulacion.Dockerfile`): lo mismo, sin
-     `backend_web` (E8). Los de identidad, de `epidemia/base-identidad`, y los de F (vigilancia,
-     analítica y plataforma), de `epidemia/base-vigilancia`, igual que `evidencias`, `importacion`, `aprobacion`, `poblacion` y `tipos-intervencion` (D, sin
-     `backend_web` desde D2). Los demás de D siguen en `epidemia/base` mientras no se les quite
-     `backend_web`.
+   - Ningún servicio parte de `epidemia/base` (E8): esa imagen, con `backend_web`, queda para la
+     consola y la web. Los de simulación (`corridas`, `simulador`, `resultados`, `comparacion`,
+     `pareto` y `calibracion`, con su trabajador) y los de D que usan el motor (`enfermedades`,
+     `parametros` y `validacion`) parten de `epidemia/base-simulacion`
+     (`docker/base-simulacion.Dockerfile`): lo mismo, con `procesamiento/` y sin `backend_web`. Los
+     de identidad, de `epidemia/base-identidad`; los de F y los demás de D, de
+     `epidemia/base-vigilancia`, solo con `epidemia_comun`.
    - El `Dockerfile` de un servicio solo copia su carpeta y su contrato. Úsalo igual que los
      demás, o el que genera `nuevo_servicio.py`.
 2. Cada servicio escucha en 8000 dentro de su contenedor y publica el puerto del catálogo

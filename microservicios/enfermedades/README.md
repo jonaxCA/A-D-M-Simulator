@@ -2,8 +2,10 @@
 
 Puerto externo previsto: 5211; puerto interno en Docker: 8000.
 
-La lista y el alta reutilizan las consultas y reglas de `backend_web` (E8 pendiente); la ficha,
-la clasificación y las definiciones de caso viven en `datos.py` (D58). Sus rutas quedan bajo
+Sus reglas viven aquí (E8, D37): `datos.py` (la lista con su actividad en Nuevo León, la ficha, la
+clasificación y las definiciones de caso, D58) y `reglas.py` (el código y el nombre del alta). La
+lista dice si cada enfermedad se puede simular con `procesamiento.entrada_motor`, así que su imagen
+parte de `epidemia/base-simulacion`, sin `backend_web`. Sus rutas quedan bajo
 `/api/v1` y tienen contrato en `docs/contratos/enfermedades/openapi.json` y `enfermedad.xsd`.
 
 **Clasificación.** La ficha (`GET /diseases/{id}`) trae `transmission` (respiratoria o vectorial),
@@ -32,7 +34,7 @@ enfermedades de la web: registradas, activas, inactivas, altas en 30 días y `de
 
 ## Ejecución en desarrollo
 
-Instalar los requerimientos de `backend_web` y `microservicios/comun`,
+Instalar los requerimientos de `procesamiento` y `microservicios/comun`,
 configurar `JWT_SECRET_KEY`, `REDIS_URL` y `DATABASE_URL`, y levantar
 `python -m microservicios.enfermedades.app` desde la raíz con `PYTHONPATH`
 incluyendo `microservicios/comun`.

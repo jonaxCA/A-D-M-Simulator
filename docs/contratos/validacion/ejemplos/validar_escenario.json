@@ -3,5 +3,24 @@
   "errores": [],
   "avisos": [
     "Parámetro infeccioso_dias sin fuente documentada."
-  ]
+  ],
+  "datos": {
+    "name": "Brote de influenza en Monterrey",
+    "description": "Escenario base",
+    "disease_id": 1,
+    "region_id": 2,
+    "population_size": 1110000,
+    "horizon_days": 60,
+    "initial_infected": 10,
+    "population_by_age": {
+      "0-19": 300000,
+      "20-39": 350000,
+      "40-59": 280000,
+      "60-79": 150000,
+      "80+": 30000
+    },
+    "population_age_unknown": 0,
+    "age_unknown_policy": null,
+    "notes": "Primera versión"
+  }
 }

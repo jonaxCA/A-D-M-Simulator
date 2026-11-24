@@ -2835,6 +2835,372 @@
           }
         }
       }
+    },
+    "/api/v1/interventions/validate": {
+      "post": {
+        "summary": "Validar intervenciones sin guardar",
+        "description": "Revisa, en orden, las intervenciones de un escenario que todavía no se guarda: el tipo del catálogo, los días dentro del horizonte, cobertura y cumplimiento entre 0 y 1, los parámetros contra el param_schema de su tipo y que dos del mismo tipo no se encimen. Es la misma regla que el alta, sin escribir nada; la pide validacion (E8, D37). Un dictamen no válido no es un error HTTP: errores trae una línea por falla con el número de la intervención, e intervenciones las válidas, normalizadas. Un cuerpo mal formado es 422.",
+        "operationId": "validar_intervenciones",
+        "tags": [
+          "intervenciones"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Horizonte e intervenciones.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "horizon_days"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "horizon_days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Horizonte del escenario: el día de fin no puede pasarlo."
+                  },
+                  "interventions": {
+                    "type": "array",
+                    "description": "Las intervenciones en orden, con los campos de POST /versions/{version_id}/interventions.",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                }
+              },
+              "example": {
+                "horizon_days": 120,
+                "interventions": [
+                  {
+                    "code": "CIERRE_ESCUELAS",
+                    "start_day": 5,
+                    "end_day": 40,
+                    "coverage": 0.8,
+                    "compliance": 0.7,
+                    "params": {
+                      "reduccion": 1.0
+                    }
+                  },
+                  {
+                    "code": "CIERRE_ESCUELAS",
+                    "start_day": 30,
+                    "end_day": 60,
+                    "params": {
+                      "reduccion": 0.5
+                    }
+                  },
+                  {
+                    "code": "VACUNACION",
+                    "start_day": 10,
+                    "coverage": 0.6,
+                    "params": {
+                      "eficacia": 0.7,
+                      "dosis_diarias": 2000
+                    }
+                  }
+                ]
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "horizon_days"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "horizon_days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Horizonte del escenario: el día de fin no puede pasarlo."
+                  },
+                  "interventions": {
+                    "type": "array",
+                    "description": "Las intervenciones en orden, con los campos de POST /versions/{version_id}/interventions.",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                },
+                "xml": {
+                  "name": "intervenciones"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<intervenciones><horizon_days tipo=\"numero\">120</horizon_days><interventions><item><code>CIERRE_ESCUELAS</code><start_day tipo=\"numero\">5</start_day><end_day tipo=\"numero\">40</end_day><coverage tipo=\"numero\">0.8</coverage><compliance tipo=\"numero\">0.7</compliance><params><reduccion tipo=\"numero\">1.0</reduccion></params></item><item><code>CIERRE_ESCUELAS</code><start_day tipo=\"numero\">30</start_day><end_day tipo=\"numero\">60</end_day><params><reduccion tipo=\"numero\">0.5</reduccion></params></item><item><code>VACUNACION</code><start_day tipo=\"numero\">10</start_day><coverage tipo=\"numero\">0.6</coverage><params><eficacia tipo=\"numero\">0.7</eficacia><dosis_diarias tipo=\"numero\">2000</dosis_diarias></params></item></interventions></intervenciones>\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dictamen: válido o no (ver valido, errores, intervenciones).",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "valido": false,
+                  "errores": [
+                    "Intervención 2: Ya hay una intervención «Cierre de escuelas» del día 5 al 40, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra."
+                  ],
+                  "intervenciones": [
+                    {
+                      "intervention_type_id": 1,
+                      "code": "CIERRE_ESCUELAS",
+                      "start_day": 5,
+                      "end_day": 40,
+                      "coverage": 0.8,
+                      "compliance": 0.7,
+                      "params": {
+                        "reduccion": 1.0
+                      }
+                    },
+                    {
+                      "intervention_type_id": 5,
+                      "code": "VACUNACION",
+                      "start_day": 10,
+                      "end_day": null,
+                      "coverage": 0.6,
+                      "compliance": null,
+                      "params": {
+                        "eficacia": 0.7,
+                        "dosis_diarias": 2000
+                      }
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "validacion_intervenciones"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<validacion_intervenciones><valido tipo=\"booleano\">false</valido><errores><item>Intervención 2: Ya hay una intervención «Cierre de escuelas» del día 5 al 40, y esta se traslapa. Dos del mismo tipo encimadas contarían su efecto dos veces: ajusta las fechas o quita la otra.</item></errores><intervenciones><intervencion><intervention_type_id tipo=\"numero\">1</intervention_type_id><code>CIERRE_ESCUELAS</code><start_day tipo=\"numero\">5</start_day><end_day tipo=\"numero\">40</end_day><coverage tipo=\"numero\">0.8</coverage><compliance tipo=\"numero\">0.7</compliance><params><reduccion tipo=\"numero\">1.0</reduccion></params></intervencion><intervencion><intervention_type_id tipo=\"numero\">5</intervention_type_id><code>VACUNACION</code><start_day tipo=\"numero\">10</start_day><end_day nil=\"true\" /><coverage tipo=\"numero\">0.6</coverage><compliance nil=\"true\" /><params><eficacia tipo=\"numero\">0.7</eficacia><dosis_diarias tipo=\"numero\">2000</dosis_diarias></params></intervencion></intervenciones></validacion_intervenciones>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Solo quien creó el escenario puede editar sus intervenciones.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>Solo quien creó el escenario puede editar sus intervenciones.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type no soportado: usa application/json o application/xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unsupported Media Type",
+                  "status": 415,
+                  "detail": "Usa Content-Type: application/json o application/xml.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unsupported Media Type</title><status tipo=\"numero\">415</status><detail>Usa Content-Type: application/json o application/xml.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "El cuerpo no tiene la forma esperada (DATOS_INVALIDOS): horizon_days falta o no es entero positivo, o una intervención no es un objeto.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "direction debe ser subir o bajar (o up o down).",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>direction debe ser subir o bajar (o up o down).</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/versions/{version_id}/interventions/{intervention_id}/move"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/versions/{version_id}/interventions/{intervention_id}/move</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
