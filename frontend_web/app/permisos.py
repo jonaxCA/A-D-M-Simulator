@@ -86,6 +86,14 @@ def _audita_negado(codigo, modulo):
         pass
 
 
+def exige_permiso(user, codigo, modulo="web"):
+    """El candado de una acción dentro de una ruta que ya pasó su requiere_permiso: 403 con su
+    PERMISSION_DENIED (RF-A05), igual que el de la ruta."""
+    if not tiene_permiso(user, codigo):
+        _audita_negado(codigo, modulo)
+        abort(403)
+
+
 def login_required(view):
     """Solo pide sesion: el tablero y el mapa, que ven todos los roles (matriz de permisos)."""
     @wraps(view)
