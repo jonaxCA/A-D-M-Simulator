@@ -52,6 +52,20 @@ Cuentas de la base de demostración (`docs/INSTALACION.md`):
 El escenario «Ola Influenza ZMM - otono 2026» ya está aprobado, así que sirve para lanzar
 corridas de inmediato.
 
+### Instalador para Windows
+
+`instalador/` arma `EPIDEMIA-Escritorio.exe`: un solo archivo, sin consola, que apunta a
+`https://epidemos.app/estado-servicios` por omisión (las variables de arriba siguen mandando si se
+definen). Lleva dentro los XSD de `docs/contratos` y `estilo.qss`.
+
+```powershell
+pip install pyinstaller
+pyinstaller --noconfirm --clean frontend_desktop/instalador/epidemia_escritorio.spec
+dist\EPIDEMIA-Escritorio.exe --verificar resultado.txt   # revisa que el paquete traiga sus XSD y su estilo
+```
+
+`instalador/crea_icono.py` vuelve a dibujar `icono.ico`.
+
 ## Qué hace
 
 **Sesión**
