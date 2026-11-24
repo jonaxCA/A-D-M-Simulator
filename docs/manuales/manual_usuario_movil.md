@@ -61,8 +61,9 @@ En el inicio, **Capturar caso**.
 La app revisa lo mismo que el servidor: fechas que no estén en el futuro, el inicio de síntomas
 antes del reporte, la edad de 0 a 120 años y los campos del formulario. Además:
 
-- Si faltan datos importantes (edad, sexo, inicio de síntomas, resultado, gravedad o ubicación),
-  te lo dice; puedes guardarlo así y completarlo después.
+- Si al caso le faltan datos importantes (edad, sexo, inicio de síntomas, resultado, gravedad o
+  ubicación), se guarda igual y el aviso de **Caso guardado** dice cuáles faltan; puedes completarlo
+  después en **Mis casos**.
 - Si ya hay en el teléfono un caso de la misma enfermedad, municipio, fecha, edad y sexo, te avisa
   de un posible duplicado. Si es otro caso, toca **Es otro caso: guardarlo**.
 

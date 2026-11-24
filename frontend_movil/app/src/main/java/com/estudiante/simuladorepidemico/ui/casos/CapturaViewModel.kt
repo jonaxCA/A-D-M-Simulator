@@ -52,6 +52,8 @@ data class EstadoCaptura(
     val errores: List<String> = emptyList(),
     val guardando: Boolean = false,
     val guardados: Int = 0,
+    // Lo que le faltó al último caso guardado (D49): se avisa al guardarlo, sin impedirlo.
+    val faltantesDelGuardado: List<String> = emptyList(),
     val descargando: Boolean = false,
     val errorCatalogos: String? = null,
     val ubicacion: Ubicacion? = null,
@@ -353,7 +355,7 @@ class CapturaViewModel(
                 guardando = false, inicioSintomas = null, edad = "", sexo = null, resultadoPrueba = null,
                 severidad = null, ubicacion = null, errorUbicacion = null, fotos = emptyList(), errorFoto = null,
                 respuestas = emptyMap(), latitudManual = "", longitudManual = "", posibleDuplicado = false,
-                guardados = estado.guardados + 1,
+                faltantesDelGuardado = faltantesDe(datos), guardados = estado.guardados + 1,
             )
         }
     }
