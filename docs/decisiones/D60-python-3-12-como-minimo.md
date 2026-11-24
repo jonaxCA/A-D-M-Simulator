@@ -1,6 +1,6 @@
 # D60 - Python 3.12 como versión mínima
 
-Fecha: 2026-11-23 · Estado: Por confirmar · Reemplaza la versión de la regla 11 de `AGENTS.md`
+Fecha: 2026-11-23 · Estado: Aceptada · Reemplaza la versión de la regla 11 de `AGENTS.md`
 
 ## Contexto
 La regla 11 pedía que el código corriera en Python 3.9. Viene del primer sprint (#16, #64) y no tiene razón registrada. Hoy nada la necesita:
@@ -27,4 +27,4 @@ B. Es la versión más nueva que ya corre en todas partes donde sabemos que corr
 ## Consecuencias
 - Quien use el Python de fábrica de macOS (3.9) tiene que instalar 3.12 o más para correr el sitio, el escritorio o las pruebas fuera de Docker.
 - Los contenedores no cambian.
-- Falta que el equipo confirme que todos tienen 3.12 o más (`python epidemia.py doctor`).
+- Quien tenga una versión menor lo ve con `python epidemia.py doctor`.

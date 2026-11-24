@@ -82,7 +82,7 @@ económico sofisticado.
 ## Decisiones
 
 Las registradas en `docs/decisiones/decisiones.md` (D1 a D60) están aceptadas, salvo las
-marcadas como reemplazadas (D20 y D33, por D36; D24, por D50), las que sigan como propuesta (D51) y las que estén por confirmar (D60). Si una
+marcadas como reemplazadas (D20 y D33, por D36; D24, por D50) y las que sigan como propuesta (D51). Si una
 tarea pide algo que ninguna cubre, pregunta antes de implementarlo y regístralo ahí.
 
 ## Qué manda cuando dos fuentes se contradicen
