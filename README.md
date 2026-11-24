@@ -11,7 +11,7 @@ Enrique Ortiz Davila.
 
 ## Cómo está armado
 
-En el sistema cuenta con 31 microservicios Flask, cada uno en su contenedor de Docker, con
+El sistema cuenta con 31 microservicios Flask, cada uno en su contenedor de Docker, con
 PostgreSQL, MongoDB, Redis y JWT. Las tres aplicaciones hablan solo con ellos: el escritorio en XML y
 el móvil en JSON.
 
