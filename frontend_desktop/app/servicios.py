@@ -1,7 +1,6 @@
 import hashlib
 import re
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from . import api, config, esquemas, resumen, xmlio
@@ -450,26 +449,6 @@ def marcar_leido(c, aviso_id):
     return c.pedir("notificaciones", "POST", "/api/v1/notifications/%s/read" % aviso_id)
 
 
-def _versiones_motor(c, elegidas):
-    pendientes = [r for lista in elegidas.values() for r in lista if r.get("engine") and not r.get("engine_version")]
-    if not pendientes:
-        return
-    with ThreadPoolExecutor(max_workers=6) as grupo:
-        for i in range(0, len(pendientes), 6):
-            lote = pendientes[i:i + 6]
-            trabajos = [grupo.submit(corrida, c, r["id"]) for r in lote]
-            for r, trabajo in zip(lote, trabajos):
-                try:
-                    detalle = trabajo.result()
-                    r["engine_version"] = detalle.get("engine_version")
-                    r["horizon_days"] = detalle.get("horizon_days")
-                except api.SesionCerrada:
-                    raise
-                except api.ErrorServicio as exc:
-                    if exc.status != 404:
-                        return
-
-
 def cargar_comparacion(c, version_ids, metrica, motor=None):
     grupos = {}
     for vid in version_ids:
@@ -493,7 +472,6 @@ def cargar_comparacion(c, version_ids, metrica, motor=None):
         if exc.status != 422:
             raise
         datos_pareto = {"filas": [], "avisos": motivos_sin_costo(str(exc))}
-    _versiones_motor(c, elegidas)
     return resumen.armar(elegidas, comparadas, datos_pareto, metrica, aviso)
 
 

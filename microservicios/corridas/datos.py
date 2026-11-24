@@ -107,8 +107,9 @@ def get_runs_recientes(limit=20, *, scenario_id=None, scenario_version_id=None, 
     params.append(limit)
     return query(
         f"""
-        SELECT r.id, r.status, r.seed, b.engine, r.queued_at, r.started_at, r.finished_at,
-               r.error_message, r.scenario_version_id, sv.scenario_id, sv.version_number,
+        SELECT r.id, r.status, r.seed, b.engine, r.engine_version, r.queued_at, r.started_at,
+               r.finished_at, r.error_message, r.scenario_version_id, sv.scenario_id,
+               sv.version_number, sv.horizon_days,
                s.name AS scenario_name, u.username AS requested_by_username,
                d.name AS disease_name, reg.name AS region_name
         FROM simulation_runs r

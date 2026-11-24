@@ -228,7 +228,7 @@
       "get": {
         "summary": "Corridas recientes",
         "operationId": "listar_corridas",
-        "description": "Las más recientes de cualquier escenario, como la lista de la pantalla Simulaciones, con el motor (engine) de cada una. Los filtros se combinan; from y to son días de Monterrey (America/Monterrey) de queued_at, los dos incluidos. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (D42).",
+        "description": "Las más recientes de cualquier escenario, como la lista de la pantalla Simulaciones, con el motor (engine), su versión (engine_version, como en GET /runs/{id}) y el horizonte (horizon_days) de cada una. Los filtros se combinan; from y to son días de Monterrey (America/Monterrey) de queued_at, los dos incluidos. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (D42).",
         "parameters": [
           {
             "in": "query",
@@ -326,6 +326,7 @@
                       "status": "ejecutando",
                       "seed": 982314,
                       "engine": "seir-ref",
+                      "engine_version": "seir-ref-0.1",
                       "queued_at": "2026-10-20T15:03:00+00:00",
                       "started_at": "2026-10-20T15:03:00+00:00",
                       "finished_at": null,
@@ -333,6 +334,7 @@
                       "scenario_version_id": 11,
                       "scenario_id": 3,
                       "version_number": 2,
+                      "horizon_days": 150,
                       "scenario_name": "Brote de influenza en Monterrey",
                       "requested_by_username": "ana",
                       "disease_name": "Influenza",
@@ -343,6 +345,7 @@
                       "status": "fallido",
                       "seed": 7,
                       "engine": "seir-ref",
+                      "engine_version": "seir-ref-0.1",
                       "queued_at": "2026-10-20T14:00:00+00:00",
                       "started_at": "2026-10-20T14:00:00+00:00",
                       "finished_at": "2026-10-20T14:00:00+00:00",
@@ -350,6 +353,7 @@
                       "scenario_version_id": 11,
                       "scenario_id": 3,
                       "version_number": 2,
+                      "horizon_days": 150,
                       "scenario_name": "Brote de influenza en Monterrey",
                       "requested_by_username": "ana",
                       "disease_name": "Influenza",
@@ -368,7 +372,7 @@
                 "examples": {
                   "respuesta": {
                     "summary": "Respuesta real",
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<listado><total tipo=\"numero\">2</total><corridas><corrida><id tipo=\"numero\">43</id><status>ejecutando</status><seed tipo=\"numero\">982314</seed><engine>seir-ref</engine><queued_at>2026-10-20T15:03:00+00:00</queued_at><started_at>2026-10-20T15:03:00+00:00</started_at><finished_at nil=\"true\" /><error_message nil=\"true\" /><scenario_version_id tipo=\"numero\">11</scenario_version_id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Brote de influenza en Monterrey</scenario_name><requested_by_username>ana</requested_by_username><disease_name>Influenza</disease_name><region_name>Monterrey</region_name></corrida><corrida><id tipo=\"numero\">41</id><status>fallido</status><seed tipo=\"numero\">7</seed><engine>seir-ref</engine><queued_at>2026-10-20T14:00:00+00:00</queued_at><started_at>2026-10-20T14:00:00+00:00</started_at><finished_at>2026-10-20T14:00:00+00:00</finished_at><error_message>Error forzado de prueba: se solicito explicitamente desde la pantalla de simulaciones (opcion visible solo para ADMINISTRADOR). Demuestra el camino encolado -&gt; ejecutando -&gt; fallido sin depender de que un escenario real este incompleto.</error_message><scenario_version_id tipo=\"numero\">11</scenario_version_id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><scenario_name>Brote de influenza en Monterrey</scenario_name><requested_by_username>ana</requested_by_username><disease_name>Influenza</disease_name><region_name>Monterrey</region_name></corrida></corridas></listado>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<listado><total tipo=\"numero\">2</total><corridas><corrida><id tipo=\"numero\">43</id><status>ejecutando</status><seed tipo=\"numero\">982314</seed><engine>seir-ref</engine><engine_version>seir-ref-0.1</engine_version><queued_at>2026-10-20T15:03:00+00:00</queued_at><started_at>2026-10-20T15:03:00+00:00</started_at><finished_at nil=\"true\" /><error_message nil=\"true\" /><scenario_version_id tipo=\"numero\">11</scenario_version_id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><horizon_days tipo=\"numero\">150</horizon_days><scenario_name>Brote de influenza en Monterrey</scenario_name><requested_by_username>ana</requested_by_username><disease_name>Influenza</disease_name><region_name>Monterrey</region_name></corrida><corrida><id tipo=\"numero\">41</id><status>fallido</status><seed tipo=\"numero\">7</seed><engine>seir-ref</engine><engine_version>seir-ref-0.1</engine_version><queued_at>2026-10-20T14:00:00+00:00</queued_at><started_at>2026-10-20T14:00:00+00:00</started_at><finished_at>2026-10-20T14:00:00+00:00</finished_at><error_message>Error forzado de prueba: se solicito explicitamente desde la pantalla de simulaciones (opcion visible solo para ADMINISTRADOR). Demuestra el camino encolado -&gt; ejecutando -&gt; fallido sin depender de que un escenario real este incompleto.</error_message><scenario_version_id tipo=\"numero\">11</scenario_version_id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><horizon_days tipo=\"numero\">150</horizon_days><scenario_name>Brote de influenza en Monterrey</scenario_name><requested_by_username>ana</requested_by_username><disease_name>Influenza</disease_name><region_name>Monterrey</region_name></corrida></corridas></listado>\n"
                   }
                 }
               }
