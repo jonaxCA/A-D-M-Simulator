@@ -25,14 +25,15 @@ x-construye-identidad: &construye-identidad
   additional_contexts:
     epidemia/base-identidad: service:base-identidad
 
-# Los de simulación parten de epidemia/base-simulacion, sin backend_web (E8).
+# Los de simulación, y los de D que usan el motor (enfermedades, parametros y validacion), parten
+# de epidemia/base-simulacion, sin backend_web (E8).
 x-construye-simulacion: &construye-simulacion
   context: ..
   additional_contexts:
     epidemia/base-simulacion: service:base-simulacion
 
-# Los de F (vigilancia, analítica y plataforma) parten de epidemia/base-vigilancia, sin
-# backend_web (E8).
+# Los de F (vigilancia, analítica y plataforma) y los demás de D parten de epidemia/base-vigilancia,
+# sin backend_web (E8). epidemia/base, con backend_web, queda solo para la consola y la web.
 x-construye-vigilancia: &construye-vigilancia
   context: ..
   additional_contexts:
@@ -290,7 +291,7 @@ services:
   enfermedades:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/enfermedades/Dockerfile
     profiles: [catalogos]
     ports:
@@ -308,7 +309,7 @@ services:
   parametros:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/parametros/Dockerfile
     profiles: [catalogos]
     ports:
@@ -327,7 +328,7 @@ services:
   regiones:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/regiones/Dockerfile
     profiles: [catalogos]
     ports:
@@ -515,7 +516,7 @@ services:
   validacion:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/validacion/Dockerfile
     profiles: [escenarios]
     ports:
@@ -525,6 +526,8 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_VALIDACION:-postgresql://svc_validacion:${DB_PASSWORD_VALIDACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # Las reglas de cada intervención son de intervenciones (D37): se le piden al validar.
+      SERVICIO_INTERVENCIONES_URL: http://intervenciones:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -533,7 +536,7 @@ services:
   escenarios:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/escenarios/Dockerfile
     profiles: [escenarios]
     ports:
@@ -556,7 +559,7 @@ services:
   intervenciones:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/intervenciones/Dockerfile
     profiles: [escenarios]
     ports:
@@ -598,7 +601,7 @@ services:
   escenarios-xml:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/escenarios_xml/Dockerfile
     profiles: [escenarios]
     ports:

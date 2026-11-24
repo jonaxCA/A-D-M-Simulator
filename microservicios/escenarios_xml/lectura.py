@@ -1,5 +1,5 @@
 """Lecturas de PostgreSQL de escenarios-xml (solo SELECT; este servicio no escribe tablas)."""
-from backend_web.db import query
+from epidemia_comun.bd import query
 
 
 def leer_escenario(scenario_id, version_number=None):

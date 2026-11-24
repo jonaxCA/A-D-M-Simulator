@@ -76,3 +76,84 @@ def busca(texto, limite=20):
             salida.append({"tipo": "jurisdiccion", "id": a["numero"], "code": None, "nombre": a["nombre"],
                            "padre": None})
     return salida[:limite]
+
+
+# El catálogo de municipios de NL (antes en backend_web.queries, E8). Solo se ordena por una
+# columna de esta lista: nunca se interpola la entrada en el SQL.
+ORDEN_REGIONES = {"nombre": "r.name", "poblacion": "r.population"}
+FUENTE_60 = "Grupos 60-79 y 80+ del Censo 2020"
+
+
+def _fuente_campo(motivo, fecha, por, fuente_censal):
+    # Un ajuste manual vigente nunca se le atribuye a INEGI.
+    if motivo is None:
+        return {"tipo": "censal", "fuente": fuente_censal}
+    return {"tipo": "manual", "motivo": motivo, "fecha": fecha, "por": por}
+
+
+def _ultima_correccion_grupos_edad(region_ids):
+    if not region_ids:
+        return {}
+    filas = query(
+        """SELECT DISTINCT ON (a.entity_id)
+                  a.entity_id, a.data_after ->> 'age_correction_reason' AS reason,
+                  a.occurred_at, u.full_name
+           FROM audit_log a
+           LEFT JOIN users u ON u.id = a.user_id
+           WHERE a.entity_type = 'regions'
+             AND a.entity_id = ANY(%s)
+             AND a.data_after ? 'population_by_age'
+             AND (a.data_after -> 'age_groups_modified') ?| ARRAY['60-79', '80+']
+           ORDER BY a.entity_id, a.occurred_at DESC, a.id DESC""",
+        ([str(i) for i in region_ids],))
+    return {f["entity_id"]: f for f in filas}
+
+
+def catalogo(busqueda=None, orden="nombre", direccion="asc"):
+    columna = ORDEN_REGIONES.get(orden, ORDEN_REGIONES["nombre"])
+    direccion_sql = "DESC" if direccion == "desc" else "ASC"
+    condiciones = ["r.parent_region_id = (SELECT id FROM regions WHERE code = %s)"]
+    params = [ESTADO]
+    if busqueda:
+        condiciones.append("(r.name ILIKE %s OR r.code ILIKE %s)")
+        params += ["%" + busqueda + "%"] * 2
+    filas = query(
+        """SELECT r.id, r.code, r.name, r.population, r.population_60plus
+           FROM regions r WHERE %s
+           ORDER BY %s %s, r.name ASC""" % (" AND ".join(condiciones), columna, direccion_sql),
+        tuple(params))
+    ajustes = {}
+    if filas:
+        ajustes = {a["region_id"]: a for a in query(
+            """SELECT a.region_id, a.reason, a.adjusted_at, u.full_name
+               FROM region_population_adjustments a
+               LEFT JOIN users u ON u.id = a.adjusted_by
+               WHERE a.region_id = ANY(%s) AND a.field = 'population'""",
+            ([f["id"] for f in filas],))}
+    correcciones = _ultima_correccion_grupos_edad([f["id"] for f in filas])
+    municipios = []
+    for f in filas:
+        ajuste = ajustes.get(f["id"], {})
+        edad = correcciones.get(str(f["id"]))
+        municipios.append({
+            "id": f["id"], "code": f["code"], "nombre": f["name"], "poblacion": f["population"],
+            "poblacion_60": f["population_60plus"],
+            "fuente_poblacion": _fuente_campo(ajuste.get("reason"), ajuste.get("adjusted_at"),
+                                              ajuste.get("full_name"), "INEGI, Censo 2020"),
+            "fuente_poblacion_60": (_fuente_campo(edad["reason"], edad["occurred_at"], edad["full_name"],
+                                                  FUENTE_60)
+                                    if edad else {"tipo": "derivado", "fuente": FUENTE_60}),
+        })
+    return {"municipios": municipios, "total": len(municipios), "busqueda": busqueda or "",
+            "orden": orden if orden in ORDEN_REGIONES else "nombre",
+            "direccion": direccion if direccion in ("asc", "desc") else "asc"}
+
+
+def municipio(region_id):
+    # None si no existe o no es un municipio de NL: la ruta no confía en el id de la URL.
+    return query(
+        """SELECT r.id, r.code, r.name, r.level, r.parent_region_id, r.population, r.population_60plus
+           FROM regions r
+           WHERE r.id = %s AND r.level = 'municipio'
+             AND r.parent_region_id = (SELECT id FROM regions WHERE code = %s)""",
+        (region_id, ESTADO), one=True)

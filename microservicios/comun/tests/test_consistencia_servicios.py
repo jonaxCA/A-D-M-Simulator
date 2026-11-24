@@ -1,7 +1,7 @@
 """Consistencia entre servicios: lo que arma un servicio llamador lo aceptan los de verdad.
 
 escenarios-xml (importar) llama a validacion, escenarios e intervenciones; escenarios llama a
-validacion. Aquí las tres apps reales (con la base simulada) atienden esas llamadas dentro del
+validacion, y validacion a intervenciones para revisar las intervenciones (D37). Aquí las apps reales (con la base simulada) atienden esas llamadas dentro del
 mismo proceso, de modo que un campo renombrado o desconocido en un lado rompe esta prueba.
 """
 import copy
@@ -11,12 +11,15 @@ from pathlib import Path
 import pytest
 import requests
 
-from backend_web import queries
 from epidemia_comun.formatos import a_xml, de_xml
+from microservicios.escenarios import datos as datos_escenarios
 from microservicios.escenarios import rutas as rutas_escenarios
 from microservicios.escenarios_xml import lectura, mapeo
 from microservicios.escenarios_xml import rutas as rutas_xml
+from microservicios.intervenciones import datos as datos_intervenciones
 from microservicios.intervenciones import rutas as rutas_intervenciones
+from microservicios.validacion import datos as datos_validacion
+from microservicios.validacion import rutas as rutas_validacion
 from procesamiento.tests.corpus_resolver import ENFERMEDAD
 
 RAIZ = Path(__file__).resolve().parents[3]
@@ -60,17 +63,16 @@ def red(crear_cliente, token, monkeypatch):
     cabeceras = token(roles=("ANALISTA",))
     escrito = {"escenarios": [], "intervenciones": [], "llamadas": []}
 
-    monkeypatch.setattr(queries, "get_regiones_para_escenario", lambda: [copy.deepcopy(REGION)])
-    monkeypatch.setattr(queries, "get_enfermedades_para_escenario",
+    monkeypatch.setattr(datos_validacion, "regiones_para_escenario", lambda: [copy.deepcopy(REGION)])
+    monkeypatch.setattr(datos_validacion, "enfermedades_para_escenario",
                         lambda: copy.deepcopy(ENFERMEDADES))
-    monkeypatch.setattr(queries, "get_tipos_intervencion", lambda: copy.deepcopy(TIPOS))
-    monkeypatch.setattr(queries, "query",
-                        lambda sql, params=(), one=False: {"default_params": copy.deepcopy(ENFERMEDAD)})
+    monkeypatch.setattr(datos_validacion, "parametros_de", lambda i: copy.deepcopy(ENFERMEDAD))
+    monkeypatch.setattr(datos_intervenciones, "tipos", lambda: copy.deepcopy(TIPOS))
 
     def crea_escenario(datos, *, contexto):
         escrito["escenarios"].append(datos)
         return True, None, 12
-    monkeypatch.setattr(queries, "crea_escenario", crea_escenario)
+    monkeypatch.setattr(datos_escenarios, "crea_escenario", crea_escenario)
 
     def detalle(scenario_id, numero=None):
         if scenario_id != 12:
@@ -86,7 +88,11 @@ def red(crear_cliente, token, monkeypatch):
                             "age_unknown_policy": "prorratear", "autor": "Ana", "revisor": None,
                             "submitted_at": None, "reviewed_at": None, "review_comment": None},
                 "intervenciones": [], "editable": True}
-    monkeypatch.setattr(queries, "get_escenario_detalle", detalle)
+    monkeypatch.setattr(datos_escenarios, "escenario_detalle", detalle)
+    monkeypatch.setattr(datos_escenarios, "escenarios", lambda ids: {
+        i: {"id": i, "project_id": None, "owner_id": 7, "disease_id": 1, "region_id": 9,
+            "status": "borrador"} for i in ids if i == 12})
+    monkeypatch.setattr(datos_validacion, "escenario_detalle", detalle)
 
     def query_version(sql, params=(), one=False):
         if "FROM scenario_versions" in sql:
@@ -99,7 +105,7 @@ def red(crear_cliente, token, monkeypatch):
         escrito["intervenciones"].append(dict(datos, id=100 + len(escrito["intervenciones"]),
                                               order_index=len(escrito["intervenciones"])))
         return True, None
-    monkeypatch.setattr(queries, "agrega_intervencion", agrega)
+    monkeypatch.setattr(datos_intervenciones, "agrega", agrega)
 
     def llamar(servicio, metodo, ruta, formato="json", cuerpo=None, **_):
         escrito["llamadas"].append((servicio, metodo, ruta, formato, cuerpo))
@@ -114,6 +120,7 @@ def red(crear_cliente, token, monkeypatch):
         return Respuesta(respuesta)
     monkeypatch.setattr(rutas_xml, "llamar", llamar)
     monkeypatch.setattr(rutas_escenarios, "llamar", llamar)
+    monkeypatch.setattr(rutas_validacion, "llamar", llamar)
     monkeypatch.setattr(lectura, "resolver_ids", lambda *a: (copy.deepcopy(IDS), []))
     escrito["cabeceras"] = cabeceras
     escrito["clientes"] = clientes
@@ -185,9 +192,14 @@ def test_importar_de_punta_a_punta_con_los_servicios_reales(red):
     assert r.status_code == 201, r.data
     datos = r.get_json()
     assert (datos["scenario_id"], datos["version_id"], datos["intervenciones_creadas"]) == (12, 31, 2)
-    assert [(c[0], c[1]) for c in red["llamadas"]] == [
-        ("validacion", "POST"), ("escenarios", "POST"), ("validacion", "POST"),
-        ("escenarios", "GET"), ("intervenciones", "POST"), ("intervenciones", "POST")]
+    # validacion revisa las intervenciones del documento con intervenciones (D37) antes del alta.
+    assert [(c[0], c[1], c[2]) for c in red["llamadas"]] == [
+        ("validacion", "POST", "/api/v1/validate"),
+        ("intervenciones", "POST", "/api/v1/interventions/validate"),
+        ("escenarios", "POST", "/api/v1/scenarios"), ("validacion", "POST", "/api/v1/validate"),
+        ("escenarios", "GET", "/api/v1/scenarios/12"),
+        ("intervenciones", "POST", "/api/v1/versions/31/interventions"),
+        ("intervenciones", "POST", "/api/v1/versions/31/interventions")]
     # la única pérdida declarada: la región destino de la intervención
     assert any("19039" in a for a in datos["avisos"])
     assert len(red["intervenciones"]) == 2
@@ -322,10 +334,10 @@ def test_sincronizacion_y_casos_reales_201_nuevo_y_200_duplicado(crear_cliente, 
 def test_aprobacion_lee_el_dictamen_de_la_validacion_real(red, monkeypatch):
     from microservicios.aprobacion import rutas as rutas_aprobacion
     from microservicios.validacion import huella as huella_validacion
-    monkeypatch.setattr(queries, "get_version_simulacion",
+    monkeypatch.setattr(datos_validacion, "version_simulacion",
                         lambda vid: {"id": 31, "scenario_id": 12, "version_number": 1,
                                      "status": "borrador"} if vid == 31 else None)
-    monkeypatch.setattr(queries, "revisa_version", lambda detalle: ([], ["Aviso del motor"]))
+    monkeypatch.setattr(rutas_validacion, "revisa_version", lambda detalle: ([], ["Aviso del motor"]))
     # La huella con la que aprobacion firma (D55); su cálculo se prueba en validacion.
     monkeypatch.setattr(huella_validacion, "de_version", lambda vid: "ab" * 32)
 

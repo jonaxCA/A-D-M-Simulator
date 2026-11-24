@@ -7,6 +7,7 @@ import psycopg2.extras
 from epidemia_comun.auditoria import log_audit
 from epidemia_comun.bd import a_jsonb, get_conn, query
 from epidemia_comun.errores import ErrorAPI
+from procesamiento.entrada_motor import estado_parametros
 
 FICHA = ("id", "code", "name", "description", "is_active", "created_at", "transmission", "icd10",
          "classification_source")
@@ -117,3 +118,60 @@ def clasifica(disease_id, cambios, *, contexto):
             log_audit(contexto, "UPDATE", "diseases", disease_id, data_before=dict(antes),
                       data_after=dict(cambios), cur=cur)
         conn.commit()
+
+
+ESTADO_NL = "19"
+
+
+def _actividad(casos_total, casos_30d):
+    # La situación epidemiológica en Nuevo León, derivada de cases; no es is_active.
+    if casos_30d:
+        return "con_casos"
+    if casos_total:
+        return "historico"
+    return "sin_casos"
+
+
+def lista(busqueda=None, estado=None, pagina=1, por_pagina=10):
+    # Una enfermedad sin casos sigue apareciendo (LEFT JOIN). count(*) OVER () da el total filtrado
+    # antes del LIMIT, sin repetir el WHERE.
+    condiciones, params = [], []
+    if busqueda:
+        condiciones.append("(d.name ILIKE %s OR d.code ILIKE %s)")
+        params += ["%" + busqueda + "%"] * 2
+    if estado == "activa":
+        condiciones.append("d.is_active")
+    elif estado == "inactiva":
+        condiciones.append("NOT d.is_active")
+    donde = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
+    pagina = max(1, pagina)
+    filas = query(
+        """SELECT d.id, d.code, d.name, d.description, d.is_active, d.created_at, d.default_params,
+                  count(c.id) AS casos_total,
+                  count(c.id) FILTER (WHERE c.report_date >= current_date - 29) AS casos_30d,
+                  max(c.report_date) AS ultimo_caso,
+                  count(*) OVER () AS total_filtrado
+           FROM diseases d
+           LEFT JOIN cases c
+                  ON c.disease_id = d.id
+                 AND c.status IN ('pendiente', 'validado')
+                 AND c.region_id IN (SELECT id FROM regions
+                                     WHERE parent_region_id = (SELECT id FROM regions WHERE code = %%s))
+           %s
+           GROUP BY d.id
+           ORDER BY d.name
+           LIMIT %%s OFFSET %%s""" % donde,
+        tuple([ESTADO_NL] + params + [por_pagina, (pagina - 1) * por_pagina]))
+    total = filas[0]["total_filtrado"] if filas else 0
+    return {
+        "enfermedades": [{
+            "id": f["id"], "code": f["code"], "nombre": f["name"], "descripcion": f["description"],
+            "activa": f["is_active"], "actividad": _actividad(f["casos_total"], f["casos_30d"]),
+            "alta": f["created_at"], "casos_total": f["casos_total"], "casos_30d": f["casos_30d"],
+            "ultimo_caso": f["ultimo_caso"], "parametros": estado_parametros(f["default_params"]),
+        } for f in filas],
+        "total": total, "pagina": pagina, "por_pagina": por_pagina,
+        "paginas": max(1, -(-total // por_pagina)),
+        "desde": (pagina - 1) * por_pagina + 1 if total else 0,
+        "hasta": min(pagina * por_pagina, total),
+    }

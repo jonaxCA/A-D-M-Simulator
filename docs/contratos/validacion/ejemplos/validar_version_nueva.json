@@ -1,0 +1,14 @@
+{
+  "valido": true,
+  "errores": [],
+  "avisos": [],
+  "datos": {
+    "population_size": 1200000,
+    "horizon_days": 90,
+    "initial_infected": 20,
+    "population_by_age": null,
+    "population_age_unknown": 0,
+    "age_unknown_policy": null,
+    "notes": "Más días de horizonte"
+  }
+}

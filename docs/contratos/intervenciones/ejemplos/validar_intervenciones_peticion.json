@@ -1,0 +1,32 @@
+{
+  "horizon_days": 120,
+  "interventions": [
+    {
+      "code": "CIERRE_ESCUELAS",
+      "start_day": 5,
+      "end_day": 40,
+      "coverage": 0.8,
+      "compliance": 0.7,
+      "params": {
+        "reduccion": 1.0
+      }
+    },
+    {
+      "code": "CIERRE_ESCUELAS",
+      "start_day": 30,
+      "end_day": 60,
+      "params": {
+        "reduccion": 0.5
+      }
+    },
+    {
+      "code": "VACUNACION",
+      "start_day": 10,
+      "coverage": 0.6,
+      "params": {
+        "eficacia": 0.7,
+        "dosis_diarias": 2000
+      }
+    }
+  ]
+}

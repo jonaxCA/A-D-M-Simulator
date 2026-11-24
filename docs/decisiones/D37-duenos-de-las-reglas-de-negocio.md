@@ -44,3 +44,9 @@ Opción B. La A cambia el nombre del acoplamiento sin quitarlo. La C reparte la 
 - Algunas lecturas que hoy son una consulta local pasan a ser una llamada HTTP: más latencia y un fallo posible más (503 `SERVICIO_NO_DISPONIBLE`).
 - La regla 14 («el monolito no se toca para consumir servicios») se retira por D36. El paso 2 de «Antes de escribir código» pasa a decir «busca la regla en su servicio dueño».
 - `backend_web` termina siendo solo la capa HTTP de la web (D36).
+
+## Cierre de E8 (2026-11-23)
+- Ningún servicio importa `backend_web`; `epidemia/base` queda solo para la consola y la web. Las reglas de `enfermedades`, `escenarios`, `escenarios-xml`, `intervenciones`, `regiones` y `validacion` pasaron a su carpeta. Revisar un escenario es de `validacion`: `escenarios` le pide el dictamen y guarda el formulario normalizado que regresa; las reglas de una intervención son de `intervenciones`, y `validacion` se las pide (`POST /api/v1/interventions/validate`).
+- `ambito.py` y `validaciones.py` se quedaron en `epidemia_comun`, pero ya solo con lo técnico: leer y validar parámetros, sin catálogos ni reglas de dominio. Se suma `conversion.py` (leer un número del texto de un formulario).
+- **La excepción de `procesamiento/` se amplía:** lo importan los servicios que corren o revisan contra el motor: los de simulación, `calibracion` (D50), `enfermedades` (el estado de los parámetros), `parametros` (los límites) y `validacion`.
+- **Copias:** una regla que escribe ya no se copia. El estado del lote, que llevaban `simulador` y `corridas`, es un trigger de la base (065). Las lecturas de solo consulta que otro servicio hace con la misma SQL que el dueño (`get_run`, `version_para_motor`, `escenario_detalle`, los tipos de intervención…) se quedan, porque pedirlas por HTTP no cambia quién decide. A diferencia de la opción C, no van sin pruebas: `test_copias_de_lectura.py` exige que sigan iguales a las del dueño.

@@ -1,14 +1,10 @@
-"""Servicio escenarios: alta, versiones nuevas, historial, duplicado, proyectos y archivado.
-
-Las reglas del alta, la versión siguiente y el duplicado son las de backend_web.queries (E8
-pendiente); aquí solo se adaptan el cuerpo JSON/XML y los códigos de respuesta. Los proyectos de
-investigación, el archivado y el historial con sus responsables (D54) viven en datos.py, con su
-bitácora en la misma transacción. Las lecturas aplican el alcance por región de D43.
-"""
+# Servicio escenarios: alta, versiones nuevas, historial, duplicado, proyectos y archivado. Sus
+# reglas y su SQL viven en datos.py (E8); antes de guardar un alta o una versión nueva le pide el
+# dictamen a validacion, que devuelve el formulario normalizado (D37). Las lecturas aplican el
+# alcance por región de D43.
 from flask import g, request
 
-from backend_web import queries
-from backend_web.db import query
+from epidemia_comun.bd import query
 from epidemia_comun.http import llamar
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
@@ -49,7 +45,7 @@ def _texto(valor):
 
 
 def _formulario(datos, permitidos):
-    """Del cuerpo JSON/XML a los campos planos que esperan las valida_* del monolito."""
+    """Del cuerpo JSON/XML a los campos planos que revisa validacion."""
     datos = diccionario(datos)
     extra = set(datos) - permitidos
     if extra:
@@ -117,7 +113,7 @@ def _intervencion(i):
 
 
 def _detalle(scenario_id, numero=None):
-    detalle = queries.get_escenario_detalle(scenario_id, numero)
+    detalle = bd.escenario_detalle(scenario_id, numero)
     if detalle is None:
         raise ErrorAPI(404, "NO_ENCONTRADO", "No existe el escenario o esa versión.")
     return detalle
@@ -129,9 +125,9 @@ def _es_dueno_o_admin(escenario):
             or "ADMINISTRADOR" in (usuario.get("roles") or []))
 
 
-def _validar_con_servicio(entrada):
-    """Pasa el escenario por el servicio validacion antes de guardarlo."""
-    respuesta = llamar("validacion", "POST", "/api/v1/validate", formato="json", cuerpo=entrada)
+def _validar_con_servicio(ruta, entrada):
+    """El dictamen de validacion antes de guardar; regresa el formulario normalizado."""
+    respuesta = llamar("validacion", "POST", ruta, formato="json", cuerpo=entrada)
     if respuesta.status_code >= 500:
         raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio validacion no pudo responder.")
     try:
@@ -152,7 +148,7 @@ def _validar_con_servicio(entrada):
         else:
             detalle = str(errores or "validacion rechazó el escenario.")
         raise ErrorAPI(422, "DATOS_INVALIDOS", detalle)
-
+    return resultado["datos"]
 
 
 
@@ -195,11 +191,11 @@ def _proyecto_de(cuerpo, actual=None):
         valores["objective"] = objetivo
     if "disease_id" in cuerpo:
         valores["disease_id"] = entero_positivo(cuerpo["disease_id"], "disease_id")
-        if valores["disease_id"] not in {e["id"] for e in queries.get_enfermedades_para_escenario()}:
+        if not bd.enfermedad_activa(valores["disease_id"]):
             raise _invalido("No existe la enfermedad %s o no está activa." % valores["disease_id"])
     if "region_id" in cuerpo:
         valores["region_id"] = entero_positivo(cuerpo["region_id"], "region_id")
-        if valores["region_id"] not in {r["id"] for r in queries.get_regiones_para_escenario()}:
+        if not bd.region_de_nl(valores["region_id"]):
             raise _invalido("No existe la región %s." % valores["region_id"])
     for campo in ("period_start", "period_end"):
         if campo in cuerpo:
@@ -273,7 +269,7 @@ def registrar(app):
         busqueda = (request.args.get("q") or "").strip() or None
         proyecto = _project_id(request.args.get("project_id"))
         archivados = _booleano(request.args.get("archived"), "archived")
-        filas = queries.get_escenarios(busqueda=busqueda)
+        filas = bd.lista(busqueda=busqueda)
         propios = bd.escenarios([f["id"] for f in filas])
         permitidas = regiones_permitidas()
         salida = []
@@ -351,16 +347,11 @@ def registrar(app):
         cuerpo = diccionario(leer_cuerpo())
         project_id = _project_id(cuerpo.pop("project_id", None))
         form, estratificar = _formulario(cuerpo, CAMPOS_ALTA)
-        regiones = queries.get_regiones_para_escenario()
-        enfermedades = queries.get_enfermedades_para_escenario()
-        datos, errores = queries.valida_escenario(form, regiones, enfermedades)
-        if errores:
-            raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
+        datos = _validar_con_servicio("/api/v1/validate", dict(form, estratificar=estratificar))
         exige_region(datos["region_id"])
         if project_id is not None:
             _proyecto_destino(project_id, datos["disease_id"], datos["region_id"])
-        _validar_con_servicio(dict(form, estratificar=estratificar))
-        ok, error, scenario_id = queries.crea_escenario(datos, contexto=g.contexto)
+        ok, error, scenario_id = bd.crea_escenario(datos, contexto=g.contexto)
         if not ok:
             _falla(error)
         if project_id is not None:
@@ -384,14 +375,10 @@ def registrar(app):
         if detalle["version"]["status"] == "en_revision":
             raise ErrorAPI(409, "CONFLICTO", "La versión vigente está en revisión: espera el "
                            "dictamen (o que te la devuelvan) antes de crear otra.")
-        form, _ = _formulario(leer_cuerpo(), CAMPOS_VERSION)
-        region = next((r for r in queries.get_regiones_para_escenario()
-                       if r["id"] == detalle["escenario"]["region_id"]), None)
-        datos, errores = queries.valida_version(
-            form, region, detalle["escenario"]["default_params"])
-        if errores:
-            raise ErrorAPI(422, "DATOS_INVALIDOS", " ".join(errores))
-        ok, error, numero = queries.crea_version(scenario_id, datos, contexto=g.contexto)
+        form, estratificar = _formulario(leer_cuerpo(), CAMPOS_VERSION)
+        datos = _validar_con_servicio("/api/v1/validate/version",
+                                      dict(form, scenario_id=scenario_id, estratificar=estratificar))
+        ok, error, numero = bd.crea_version(scenario_id, datos, contexto=g.contexto)
         if not ok:
             _falla(error)
         return responder({"scenario_id": scenario_id, "version_number": numero,
@@ -414,7 +401,7 @@ def registrar(app):
             numero = detalle["version"]["version_number"]
         else:
             numero = entero_positivo(datos["version"], "version")
-        ok, error, nuevo_id = queries.duplica_escenario(
+        ok, error, nuevo_id = bd.duplica_escenario(
             scenario_id, numero, nombre, contexto=g.contexto)
         if not ok:
             _falla(error)

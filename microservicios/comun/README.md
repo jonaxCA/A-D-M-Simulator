@@ -22,6 +22,11 @@ plantilla (bloque A), y **Redis** (bloque K).
   Los catálogos los consulta el servicio con lo que pasa en `catalogos` (`get_enfermedad` y
   `get_region_municipio`), sin `backend_web` (E8). La usan `series` y `zonas`.
 
+- `conversion.entero(valor, errores, etiqueta=..., minimo=..., maximo=...)`, `decimal`, `fecha` y
+  `numero_de_esquema`: leen un número o una fecha del texto de un formulario y anotan en `errores`
+  el motivo en español. Es copia de `backend_web/conversion.py` (`test_copias_del_monolito.py`). La
+  usan `intervenciones` y `validacion` (E8).
+
 - `archivos.guardar(objeto, datos, tipo)`, `leer(objeto)`, `borrar(objeto)`, `url_firmada(objeto,
   minutos=15, nombre=None)` y `ping()`: los archivos en disco o en Cloud Storage (D30). Ver «Archivos».
 

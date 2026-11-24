@@ -1,4 +1,4 @@
-FROM epidemia/base
+FROM epidemia/base-vigilancia
 COPY microservicios/intervenciones/ /app/microservicios/intervenciones/
 COPY docs/contratos/intervenciones/ /app/docs/contratos/intervenciones/
 USER epidemia

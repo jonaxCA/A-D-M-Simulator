@@ -3,7 +3,8 @@
 Puerto externo previsto: 5212; puerto interno en Docker: 8000.
 
 Sus reglas viven aquí (D37, E8): `reglas.py` valida los parámetros con los límites del motor
-(`procesamiento.entrada_motor`) y `datos.py` los guarda con su versión. Ya no importa `backend_web`
+(`procesamiento.entrada_motor`) y `datos.py` los guarda con su versión. Su imagen parte de
+`epidemia/base-simulacion`. Ya no importa `backend_web`
 ni usa `epidemia_comun/validaciones.py`. Sus rutas quedan bajo `/api/v1` y tienen contrato en
 `docs/contratos/parametros/openapi.json` y `parametros.xsd`.
 

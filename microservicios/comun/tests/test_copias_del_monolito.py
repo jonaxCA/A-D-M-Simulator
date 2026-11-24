@@ -57,3 +57,9 @@ def test_la_copia_es_igual_a_la_original(copia, original, nombre):
 def test_la_conversion_de_casos_es_la_del_monolito():
     assert ((RAIZ / "microservicios/casos/conversion.py").read_bytes()
             == (RAIZ / "backend_web/conversion.py").read_bytes())
+
+
+def test_la_conversion_de_la_biblioteca_es_la_del_monolito():
+    # Leer números del texto de un formulario es técnico: la usan intervenciones y validacion (E8).
+    assert ((RAIZ / "microservicios/comun/epidemia_comun/conversion.py").read_bytes()
+            == (RAIZ / "backend_web/conversion.py").read_bytes())
