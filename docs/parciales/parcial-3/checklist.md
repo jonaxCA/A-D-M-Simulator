@@ -6,7 +6,7 @@ Objetivo: dejar el sistema **funcionalmente completo** y desplegado en GCP, con 
 
 Este documento son las tareas. No repite los requerimientos: cada casilla cita su origen.
 
-- Los ID `RF-…` y `RNF-…` están en [`requerimentos/`](../../requerimentos/README.md).
+- Los ID `RF-…` y `RNF-…` están en [`requerimientos/`](../../requerimientos/README.md).
 - Las brechas (`I1`, `D-1`, `S6`, `N3`…) están en [`brechas_v3.md`](../../arquitectura/brechas_v3.md).
 - Las decisiones (`D1` a `D35`) están en [`decisiones.md`](../../decisiones/decisiones.md), y sus pendientes en [`decisiones/todo.md`](../../decisiones/todo.md).
 - `[Retro: …]` cita la retroalimentación del segundo parcial por su tema.
@@ -378,7 +378,7 @@ La web deja de ir directo a PostgreSQL y a Redis, y consume los servicios (C6; r
 - [x] Migración 034: crea `scenarios.approve`, lo da a EPIDEMIOLOGO y ADMINISTRADOR, quita `audit.read` al EPIDEMIOLOGO (RF-L05) y quita `cases.create` al ADMINISTRADOR. También crea `reports.upload` para ANALISTA y ADMINISTRADOR (D35). `034_permisos_d1_y_reportes.sql` (2026-11-22); amplía el CHECK de `permissions.action` con `upload`. `aprobacion` deja revisar también al ADMINISTRADOR.
 - [x] Quitar la captura de casos de la web: `/reportes/nuevo`, sus enlaces y su plantilla.
 - [x] Guardar los permisos en la sesión y crear `requiere_permiso(codigo)`, que responde 403 y registra `PERMISSION_DENIED` (RF-A05). `frontend_web/app/permisos.py`; los permisos salen de `roles` `GET /api/v1/permissions/me` y el 403 se anota con `POST /api/v1/audit/denied`.
-- [x] Cambiar el candado de cada ruta según la [matriz de permisos](../../requerimentos/matriz-permisos.md).
+- [x] Cambiar el candado de cada ruta según la [matriz de permisos](../../requerimientos/matriz-permisos.md).
 - [x] El CAPTURISTA entra solo al tablero y al mapa; lo demás le responde 403 (RF-G11).
 - [x] Cuenta de prueba de CAPTURISTA en `datos/postgres/semillas/demo_datos_nl.sql`. Ya existía: `karla.trevino`.
 - [x] Probar cada pantalla con un rol que entra y con uno que no (pruebas de roles). Hecho el 2026-11-23 en `frontend_web/tests/test_roles_por_ruta.py`, sin base y con los servicios simulados (D36): cada una de las 47 rutas con candado contra ADMINISTRADOR, EPIDEMIOLOGO, ANALISTA y CAPTURISTA según la matriz de permisos (entra, o 403 con su `PERMISSION_DENIED` en `roles`); sin sesión, al login; un rol que la matriz no conoce no entra; y una ruta nueva sin fila en la tabla hace fallar la prueba. Encontró dos 403 dentro de la ruta (validar un caso y alta de campañas) que no dejaban `PERMISSION_DENIED`: ahora pasan por `permisos.exige_permiso`. Queda a la vista una divergencia: el ADMINISTRADOR puede enviar la validación de un caso desde la web (la 010 le da todos los permisos), aunque D47 y la matriz dicen que no valida; lo frena el servicio `casos`. INVESTIGADOR y AUTORIDAD_SANITARIA no están en la matriz y no se prueban. Las pruebas viejas que usan la base siguen pendientes de pasar a servicios simulados (C6).
@@ -690,7 +690,7 @@ No es para terminar módulos: es para corregir, probar y documentar.
 
 ## Fuera de alcance
 
-- Lo que cada módulo lista en «Fuera de alcance» de [`requerimentos/`](../../requerimentos/README.md), salvo lo que [la retroalimentación reabre](#lo-que-la-retroalimentación-reabre).
+- Lo que cada módulo lista en «Fuera de alcance» de [`requerimientos/`](../../requerimientos/README.md), salvo lo que [la retroalimentación reabre](#lo-que-la-retroalimentación-reabre).
 - Lo que la retroalimentación llama propuesta o recomendación:
   - los servicios 27 a 38, de `calidad-datos` a `gobierno-datos`;
   - Kotlin con Jetpack Compose y MVVM en Android (de todos modos ya se usa);

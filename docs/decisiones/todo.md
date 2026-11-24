@@ -45,7 +45,7 @@ D1 quedó aceptada el 2026-11-07 (ver [`D01-permisos-y-auditoria.md`](D01-permis
 
 ### Documentos
 
-- `requerimentos/matriz-permisos.md`: «Aprobar / rechazar escenario» pasa a Admin ✓ (hoy dice —). El encabezado «Estado: por confirmar» debe actualizarse con esta decisión.
+- `requerimientos/matriz-permisos.md`: «Aprobar / rechazar escenario» pasa a Admin ✓ (hoy dice —). El encabezado «Estado: por confirmar» debe actualizarse con esta decisión.
 
 ### Preguntas abiertas
 

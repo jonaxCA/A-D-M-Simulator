@@ -21,7 +21,7 @@ Primero se termina el documento de arquitectura. El código se toca después, co
 
 | #  | Problema                                                                                                                                                                                   | Evidencia                       | Tipo                                         |
 |----|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|----------------------------------------------|
-| E5 | Los requerimientos funcionales, la trazabilidad y el contexto general están marcados como **Obsoleto**, y la matriz de permisos y las reglas de negocio como "revisar". La v3 no tiene una base de requerimientos vigente. | Encabezados de `requerimentos/` | Borrador del 2026-11-16 en [`requerimentos/`](../requerimentos/README.md); falta validarlo en equipo |
+| E5 | Los requerimientos funcionales, la trazabilidad y el contexto general están marcados como **Obsoleto**, y la matriz de permisos y las reglas de negocio como "revisar". La v3 no tiene una base de requerimientos vigente. | Encabezados de `requerimientos/` | Borrador del 2026-11-16 en [`requerimientos/`](../requerimientos/README.md); falta validarlo en equipo |
 | E7 | La v2 deja fuera de alcance MongoDB, Cloud Storage y los límites de consumo, que ya decidieron D28, D30 y D31.                                                                             | `arquitectura_v2.md` §9.1 y §8  | Contradicción: la v3 tiene que incluirlos    |
 
 ## 2. Aplicaciones cliente
@@ -90,7 +90,7 @@ Los requerimientos se trabajan en tres momentos. Antes son insumo (§9.0), duran
 ### 9.0 Insumos
 
 - **Rúbrica:** los requisitos de la materia. No son los del producto, pero hay que cumplirlos.
-- **Roles (D1) y reglas de negocio** (`requerimentos/reglas-negocio.md`, en revisión): quién hace cada paso y con qué restricciones.
+- **Roles (D1) y reglas de negocio** (`requerimientos/reglas-negocio.md`, en revisión): quién hace cada paso y con qué restricciones.
 - **Los `rf-*.md` y `rnf-*.md` obsoletos:** materia prima. Se consultan al escribir cada proceso; no se actualizan antes.
 
 ### 9.1 Escribir los procesos paso a paso
@@ -168,7 +168,7 @@ Cada punto de la rúbrica (Android, escritorio, integración, seguridad, nube, m
 2. Sacar las matrices y el inventario de datos (§9.2 y §9.3).
 3. Escribir la v3 a partir de la v2, con un apartado por cliente, el diagrama de despliegue en GCP con nginx y el diseño de MongoDB y de GCS.
 4. Validar la v3 contra la rúbrica (§9.5) y confirmar el volumen con el profesor (§8).
-5. Redactar los requerimientos, las historias de usuario y la trazabilidad (§9.6). **Borrador del 2026-11-16** en [`requerimentos/`](../requerimentos/README.md); falta validarlo en equipo.
+5. Redactar los requerimientos, las historias de usuario y la trazabilidad (§9.6). **Borrador del 2026-11-16** en [`requerimientos/`](../requerimientos/README.md); falta validarlo en equipo.
 6. Escribir el plan de implementación con las tareas que salen de los RF. **Borrador del 2026-11-16** en [`parciales/parcial-3/checklist.md`](../parciales/parcial-3/checklist.md); falta validarlo en equipo.
 7. Marcar la v2 como Obsoleta.
 

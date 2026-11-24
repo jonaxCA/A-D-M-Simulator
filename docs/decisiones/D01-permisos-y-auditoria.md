@@ -3,7 +3,7 @@
 Fecha: 2026-11-07 · Estado: Aceptada
 
 ## Contexto
-La matriz de permisos (`docs/requerimentos/matriz-permisos.md`) sale del plan del primer parcial y está marcada «revisar». Propone: el capturista registra casos (RN-04), el analista crea escenarios (RN-05, «propuesta»), el epidemiólogo aprueba o rechaza versiones (RN-03 y RN-12) y solo el administrador consulta la auditoría (RF-L05). `AGENTS.md` deja abiertas justo esas tres preguntas. Los permisos viven en `role_permissions` (migración 010) y cada ruta lleva su candado.
+La matriz de permisos (`docs/requerimientos/matriz-permisos.md`) sale del plan del primer parcial y está marcada «revisar». Propone: el capturista registra casos (RN-04), el analista crea escenarios (RN-05, «propuesta»), el epidemiólogo aprueba o rechaza versiones (RN-03 y RN-12) y solo el administrador consulta la auditoría (RF-L05). `AGENTS.md` deja abiertas justo esas tres preguntas. Los permisos viven en `role_permissions` (migración 010) y cada ruta lleva su candado.
 
 ## Opciones consideradas
 Las preguntas, la tabla de desajustes entre el código y la matriz, y la propuesta de cambio están en la sección D1 de [`propuesta_correcciones_primer_parcial.md`](../propuesta_correcciones_primer_parcial.md).
