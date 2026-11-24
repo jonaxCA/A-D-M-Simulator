@@ -380,6 +380,30 @@ class CapturaViewModelTest {
         assertEquals(listOf("inicio de síntomas", "resultado", "gravedad", "ubicación"), faltantesDe(estado))
     }
 
+    // El aviso de lo que falta va con el caso guardado, no con el formulario vacío que queda después.
+    @Test
+    fun lo_que_falta_se_avisa_al_guardar_y_un_caso_completo_no_avisa() {
+        val modelo = modelo()
+        modelo.espera { !it.sinCatalogos }
+        modelo.elegirEnfermedad(1)
+        modelo.elegirMunicipio(10)
+        modelo.cambiarEdad("34")
+        modelo.elegirSexo("F")
+        modelo.guardar()
+        val incompleto = modelo.espera { it.guardados == 1 }
+        assertEquals(listOf("inicio de síntomas", "resultado", "gravedad", "ubicación"), incompleto.faltantesDelGuardado)
+
+        modelo.cambiarEdad("41")
+        modelo.elegirSexo("M")
+        modelo.cambiarInicioSintomas(hoy.minusDays(2))
+        modelo.elegirResultado("positivo")
+        modelo.elegirSeveridad("leve")
+        modelo.ubicar(precisa = true)
+        modelo.espera { !it.ubicando }
+        modelo.guardar()
+        assertEquals(emptyList<String>(), modelo.espera { it.guardados == 2 }.faltantesDelGuardado)
+    }
+
     @Test
     fun una_imagen_que_no_se_puede_leer_lo_dice() {
         val modelo = modelo()

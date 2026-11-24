@@ -46,6 +46,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -214,7 +215,18 @@ fun PantallaCaptura(modelo: CapturaViewModel, alVolver: () -> Unit) {
 fun FormularioCaso(estado: EstadoCaptura, hoy: LocalDate, acciones: AccionesCaptura) {
     val avisos = remember { SnackbarHostState() }
     LaunchedEffect(estado.guardados) {
-        if (estado.guardados > 0) avisos.showSnackbar("Caso guardado. Se envía en cuanto haya conexión.")
+        if (estado.guardados > 0) {
+            val faltantes = estado.faltantesDelGuardado
+            if (faltantes.isEmpty()) {
+                avisos.showSnackbar("Caso guardado. Se envía en cuanto haya conexión.")
+            } else {
+                avisos.showSnackbar(
+                    "Caso guardado. Se envía en cuanto haya conexión. Le faltan: ${faltantes.joinToString()}; " +
+                        "puedes completarlo en Mis casos.",
+                    duration = SnackbarDuration.Long,
+                )
+            }
+        }
     }
     Scaffold(
         topBar = {
@@ -300,14 +312,8 @@ fun FormularioCaso(estado: EstadoCaptura, hoy: LocalDate, acciones: AccionesCapt
             estado.formulario?.let { SeccionFormulario(it, estado.respuestas, hoy, acciones.cambiarRespuesta) }
             SeccionUbicacion(estado, acciones)
             SeccionFotos(estado, acciones)
-            val faltantes = faltantesDe(estado)
-            if (faltantes.isNotEmpty()) {
-                Text(
-                    "Faltan datos: ${faltantes.joinToString()}. Puedes guardarlo así y completarlo después en Mis casos.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.tertiary,
-                )
-            }
+            // Lo que le falta al caso (D49) se avisa al guardarlo, no aquí: los campos son opcionales y,
+            // con el formulario vacío, el aviso salía siempre.
             if (estado.posibleDuplicado) {
                 Text(
                     "Ya hay en este teléfono un caso de la misma enfermedad, municipio, fecha, edad y sexo. " +
