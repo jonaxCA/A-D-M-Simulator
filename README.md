@@ -1,73 +1,62 @@
-# EPIDEMIA — Sistema Monolítico v0.1
+# EPIDEMIA — Simulador de respuesta a epidemias v0.0.1
 
-Responsables de programación de este Sprint:
+Una plataforma para la vigilancia epidemiológica y la comparación de intervenciones políticas.
+Con ella se arma un escenario, se simula un brote, se prueban medidas (cierres, vacunación) y se
+comparan sus resultados y su costo. Los modelos son exploratorios: sirven para comparar opciones,
+no predicen cifras reales ni dicen cuál conviene. Trabajamos con datos de demostración de Nuevo León.
 
--- Rolando Rivas Dávalos
--- Carlos Rodrigo Gómez González
--- Jonathan Correa Ascencio
--- Mauricio Gallardo Barbosa
--- Luz Colunga
--- Victor Hugo Gutierrez Cavazos
--- Enrique Ortiz Davila
+Es un proyecto universitario, programado por Rolando Rivas Dávalos, Carlos Rodrigo Gómez González,
+Jonathan Correa Ascencio, Mauricio Gallardo Barbosa, Luz Colunga, Victor Hugo Gutierrez Cavazos y
+Enrique Ortiz Davila.
 
-Primera versión funcional del **Simulador de respuesta a epidemias** (Primer Avance):
-dashboard público, login con JWT, mapa por municipio de Nuevo León, monitoreo,
-catálogo de enfermedades, captura de casos, gestión de usuarios y bitácora de
-auditoría. Corre como una sola app Flask contra PostgreSQL. El motor de simulación
-de referencia vive en `procesamiento/motor/` y todavía no está conectado a las pantallas.
+## Cómo está armado
 
-## Estructura
+El sistema cuenta con 31 microservicios Flask, cada uno en su contenedor de Docker, con
+PostgreSQL, MongoDB, Redis y JWT. Las tres aplicaciones hablan solo con ellos: el escritorio en XML y
+el móvil en JSON.
 
-| Carpeta | Contenido |
-|---|---|
-| `backend_web/` | Capa de datos: conexión, consultas SQL, auditoría y credenciales |
-| `frontend_web/` | Sitio web Flask (rutas, plantillas, estáticos) |
-| `procesamiento/` | Motor de simulación y sus pruebas |
-| `datos/` | Esquema y semillas de PostgreSQL, datos geográficos y scripts |
-| `docs/` | Guía de instalación completa y plan de trabajo |
+| Carpeta                         | Qué hay                                                                                         |
+|---------------------------------|-------------------------------------------------------------------------------------------------|
+| `microservicios/`               | Los servicios: identidad, catálogos, vigilancia, escenarios, simulación, analítica y plataforma |
+| `procesamiento/`                | Los motores: SEIR de referencia (`motor/`), modelo basado en agentes (`abm/`) y calibración     |
+| `frontend_desktop/`             | App de escritorio (PySide6) para crear escenarios, lanzar corridas, compararlas y calibrar      |
+| `frontend_web/`, `backend_web/` | Sitio web (Flask) para consultar, aprobar, ver el mapa y administrar                            |
+| `frontend_movil/`               | App Android (Kotlin y Compose) para capturar casos en campo                                     |
+| `datos/`                        | Migraciones y semillas de PostgreSQL, datos geográficos y scripts                               |
+| `infra/`                        | Docker Compose, nginx, MongoDB, bucket y despliegue en la nube                                  |
+| `pruebas_carga/`                | Pruebas de carga con Locust                                                                     |
+| `docs/`                         | Arquitectura, contratos de cada servicio, decisiones, manuales, pruebas y el checklist          |
 
-## Instalación mínima
+## Para correrlo
 
-Requiere PostgreSQL 15+ y Python 3.9+. Desde la raíz del repositorio:
-
-```bash
-createdb -h localhost -U postgres simulador_epidemico
-psql -h localhost -U postgres -d simulador_epidemico -v ON_ERROR_STOP=1 -f datos/postgres/dump_completo.sql
-psql -h localhost -U postgres -d simulador_epidemico -v ON_ERROR_STOP=1 -f datos/postgres/semillas/nl_municipios_completos.sql
-psql -h localhost -U postgres -d simulador_epidemico -v ON_ERROR_STOP=1 -f datos/postgres/semillas/demo_datos_nl.sql
-
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r frontend_web/requerimientos.txt
-cp .env.example .env        # y edita DATABASE_URL y JWT_SECRET_KEY
-python -m frontend_web.run
-```
-
-Abre <http://localhost:5000/>. Falta crear el rol `epidemia_app` y darle permisos
-(pasos 1 y 3 de la guía completa). Usuario de prueba: `diana.flores` / `Epidemia2026!`.
-
-**Guía completa, credenciales y solución de problemas: [docs/INSTALACION.md](docs/INSTALACION.md).** Despliegue en la nube (https://epidemos.app): [docs/DESPLIEGUE_GCP.md](docs/DESPLIEGUE_GCP.md).
-
-## Atajos para levantar todo
-
-Desde la raíz, con Docker y las dependencias de `frontend_web/` y `frontend_desktop/` instaladas:
+Necesitas Docker y Python 3.9 o superior. Desde la raíz del repositorio:
 
 ```bash
-python epidemia.py up        # microservicios en Docker (crea infra/.env con las contraseñas si falta)
-python epidemia.py web       # sitio en http://localhost:5000
-python epidemia.py desktop   # app de escritorio
-python epidemia.py estado    # estado de los contenedores (también: logs [servicio], pruebas)
-python epidemia.py down      # baja los contenedores; conserva la base (para borrarla: docker compose ... down -v)
+python -m venv .venv 
+source .venv/bin/activate      # en Windows: .venv\Scripts\activate
+
+pip install -r frontend_web/requerimientos.txt -r frontend_desktop/requerimientos.txt
+
+python epidemia.py up        # levanta los microservicios (crea infra/.env con las contraseñas si falta)
+python epidemia.py web       # el sitio queda en http://localhost:5000
+python epidemia.py desktop   # abre la app de escritorio
+python epidemia.py estado    # cómo van los contenedores (también: logs [servicio], pruebas, down)
 ```
 
-## Microservicios (segundo parcial)
+Para entrar puedes usar la cuenta de prueba `diana.flores` / `Epidemia2026!`. La app móvil se abre con
+Android Studio desde la carpeta `frontend_movil/` (ver su [README](frontend_movil/README.md)).
 
-- Arquitectura de lo construido: [docs/arquitectura/arquitectura_v2.md](docs/arquitectura/arquitectura_v2.md).
-- Catálogo completo de los 31 servicios: [docs/arquitectura/microservicios.md](docs/arquitectura/microservicios.md).
-
-## Pruebas del motor
-
-Desde la raíz del repositorio:
+## Pruebas
 
 ```bash
-python -m pytest procesamiento/tests
+python epidemia.py pruebas                  # motor, microservicios y escritorio
+python -m pytest frontend_web backend_web   # estas usan la base de pruebas (docs/INSTALACION.md)
 ```
+
+## Dónde seguir leyendo
+
+- Instalación a mano, base de pruebas y problemas frecuentes: [docs/INSTALACION.md](docs/INSTALACION.md).
+- Despliegue de la nube (https://epidemos.app): [docs/DESPLIEGUE_GCP.md](docs/DESPLIEGUE_GCP.md).
+- Funciones de cada servicio: [docs/arquitectura/microservicios.md](docs/arquitectura/microservicios.md).
+- Decisiones arquitecturales: [docs/decisiones/decisiones.md](docs/decisiones/decisiones.md).
+- Cómo colaborar: [CONTRIBUTING.md](CONTRIBUTING.md).
