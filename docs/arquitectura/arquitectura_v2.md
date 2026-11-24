@@ -1,8 +1,8 @@
 # Arquitectura y stack tecnológico — v2
+
+> **Estado: Obsoleta** · 2026-11-23 · 
  
 La v2 reemplaza a la v1: el sistema web es un monolito que habla directo con PostgreSQL, y 26 microservicios pequeños (más una consola de pruebas) atienden solo a las apps de escritorio y móvil. Se basa en `docs/arquitectura/microservicios.md`, `docs/decisiones/decisiones.md` (D9 a D16) y el checklist del segundo parcial (hoy `docs/parciales/parcial-2/checklist.md`) del repositorio A-D-M-Simulator, revisados el 23 de octubre de 2026.
- 
-Si este documento y el catálogo `microservicios.md` no coinciden, manda el catálogo. Si el catálogo y el código no coinciden, manda el código.
  
 ## Qué cambió respecto al v1
  

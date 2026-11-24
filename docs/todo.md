@@ -17,7 +17,7 @@ aqui en docs/:
 - [X] separar req. funcionales por modulo
 - [X] dependencias dentro de cada modulo
 - [X] historias-usuario.md
-- [X] ACTUALIZAR REQUERIMENTOS (borrador del 2026-11-16, por validar en equipo)
+- [X] ACTUALIZAR REQUERIMIENTOS (borrador del 2026-11-16, por validar en equipo)
 - [ ] actualizar arquitectura a v3
 - [ ] checar todo.md y formato de decisiones/
 - [X] agregar plan final en parciales/parcial-3/ (`checklist.md`, borrador del 2026-11-16, por validar en equipo)

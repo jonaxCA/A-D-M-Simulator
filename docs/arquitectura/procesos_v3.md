@@ -9,7 +9,7 @@ Cómo leer las tablas:
 - Cada renglón es un paso del proceso **como debe quedar en la v3**. Lo que hoy existe se describe como está en el código (revisado el 2026-11-11).
 - **Falta (ID):** el paso o la pieza no existe; el ID es su brecha en `brechas_v3.md`.
 - **Propuesta:** una forma de cerrar una brecha que el equipo todavía no ha decidido.
-- **RF:** el ID del requerimiento viejo (`requerimentos/funcionales/rf-*.md`; reescritos el 2026-11-16 a partir de estas tablas) que corresponde al paso, como pide §10.1. «Nuevo (D)» era un paso sin RF: el 2.7 quedó como RF-D15 y el 2.8 como RF-D16.
+- **RF:** el ID del requerimiento viejo (`requerimientos/funcionales/rf-*.md`; reescritos el 2026-11-16 a partir de estas tablas) que corresponde al paso, como pide §10.1. «Nuevo (D)» era un paso sin RF: el 2.7 quedó como RF-D15 y el 2.8 como RF-D16.
 - **Formato:** JSON en la móvil, XML en el escritorio y HTML en la web, que va directo a PostgreSQL (D20). Entre servicios es JSON.
 - **Escribe en** y **Lee de:** PG es PostgreSQL. «Teléfono» es lo que la app guarda localmente.
 

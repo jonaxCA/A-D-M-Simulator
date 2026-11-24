@@ -14,8 +14,8 @@ probarlos. Los usan las apps de escritorio (XML, `frontend_desktop/`) y móvil (
   su puerto y sus llaves de Redis. Si algo de aquí choca con el catálogo, gana el catálogo.
 - [`docs/parciales/parcial-2/checklist.md`](../docs/parciales/parcial-2/checklist.md) tiene las
   tareas, quién las tiene y la **definición de terminado** de un servicio.
-- `docs/arquitectura/arquitectura_v1.md` describe el sistema final, con MongoDB, Cloud
-  Storage y nginx. No lo sigas donde contradiga al catálogo.
+- `docs/arquitectura/arquitectura_v3.md` describe el sistema del tercer parcial, con MongoDB,
+  Cloud Storage y nginx. No lo sigas donde contradiga al catálogo.
 
 ```
 microservicios/
@@ -200,6 +200,6 @@ de implementarlo.
 3. El catálogo (`docs/arquitectura/microservicios.md`).
 4. Este archivo.
 5. El `AGENTS.md` de la raíz.
-6. `docs/arquitectura/arquitectura_v1.md`.
+6. `docs/arquitectura/arquitectura_v3.md`.
 
 Para el esquema de la base, las migraciones ganan sobre cualquier documento.

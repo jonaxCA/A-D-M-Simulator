@@ -77,8 +77,8 @@ económico sofisticado.
 
 ## Decisiones
 
-Las registradas en `docs/decisiones/decisiones.md` (D1 a D46) están aceptadas, salvo las
-marcadas como reemplazadas (D20 y D33, por D36). Si una
+Las registradas en `docs/decisiones/decisiones.md` (D1 a D59) están aceptadas, salvo las
+marcadas como reemplazadas (D20 y D33, por D36; D24, por D50) y las que sigan como propuesta (D51). Si una
 tarea pide algo que ninguna cubre, pregunta antes de implementarlo y regístralo ahí.
 
 ## Qué manda cuando dos fuentes se contradicen
@@ -86,8 +86,8 @@ tarea pide algo que ninguna cubre, pregunta antes de implementarlo y regístralo
 1. Lo que pida la persona en la sesión.
 2. `docs/decisiones/decisiones.md`.
 3. Este archivo.
-4. `docs/arquitectura/arquitectura_v1.md`.
-5. `docs/contexto/simulador.md`.
+4. `docs/arquitectura/arquitectura_v3.md`.
+5. `docs/arquitectura/ficha_simulador.md`.
 
 Para el esquema de la base, las migraciones ganan sobre cualquier documento. Dentro de
 `microservicios/`, `infra/` y `docs/contratos/`, el catálogo
