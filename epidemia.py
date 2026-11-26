@@ -4,6 +4,7 @@
 #     python epidemia.py up        microservicios en Docker (crea infra/.env si falta)
 #     python epidemia.py web       sitio en http://localhost:5000
 #     python epidemia.py desktop   app de escritorio (usa frontend_desktop/.venv si existe)
+#     python epidemia.py desktop --nube   la misma, contra los servicios de https://epidemos.app
 #     python epidemia.py estado    estado de los contenedores
 #     python epidemia.py logs [servicio]
 #     python epidemia.py pruebas [args]  motor, microservicios y escritorio; args van a pytest
@@ -14,6 +15,7 @@
 #     python epidemia.py doctor    revisa Python, Docker, infra/.env y la salud de los servicios
 #     python epidemia.py down      baja los contenedores (conserva la base)
 import argparse
+import os
 import re
 import shutil
 import subprocess
@@ -23,6 +25,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
 PERFILES = ["identidad", "catalogos", "vigilancia", "escenarios", "simulacion", "analitica", "plataforma"]
+DIRECTORIO_NUBE = "https://epidemos.app/estado-servicios"
 COMPOSE = ["docker", "compose", "-f", "infra/docker-compose.yml"]
 PRUEBAS = ["microservicios", "procesamiento/tests", "frontend_desktop"]
 CONSOLAS = {
@@ -62,6 +65,12 @@ def web(_):
     except Exception:
         print("Aviso: `auth` no responde en :5201; levanta los servicios con `python epidemia.py up`.")
     return python("-m", "frontend_web.run")
+
+
+def desktop(a):
+    if a.nube:
+        os.environ["EPIDEMIA_DIRECTORIO"] = DIRECTORIO_NUBE
+    return python("-m", "frontend_desktop.run", carpeta="frontend_desktop")
 
 
 def es_ruta(arg):
@@ -109,7 +118,6 @@ def main():
         "up": ("Levanta los microservicios en Docker", up),
         "down": ("Baja todos los contenedores; conserva la base", lambda a: compose("down", todos=True)),
         "web": ("Corre el sitio web en :5000", web),
-        "desktop": ("Abre la app de escritorio", lambda a: python("-m", "frontend_desktop.run", carpeta="frontend_desktop")),
         "estado": ("Estado de los contenedores", lambda a: compose("ps")),
         "lint": ("Corre ruff sobre todo el repositorio", lambda a: python("-m", "ruff", "check", ".")),
         "prepara-pruebas": ("Crea de nuevo la base de pruebas",
@@ -122,6 +130,9 @@ def main():
                             lambda a, s=servicio, c=cmd: compose("exec", s, "sh", "-c", c))
     for nombre, (ayuda, f) in comandos.items():
         sub.add_parser(nombre, help=ayuda).set_defaults(f=f)
+    escritorio = sub.add_parser("desktop", help="Abre la app de escritorio")
+    escritorio.add_argument("--nube", action="store_true", help="usa los servicios de %s" % DIRECTORIO_NUBE)
+    escritorio.set_defaults(f=desktop)
     pruebas = sub.add_parser("pruebas", help="Corre pytest del motor, los microservicios y el escritorio")
     pruebas.add_argument("args", nargs="*", help="se pasan a pytest; sin rutas corre las tres carpetas")
     pruebas.set_defaults(f=lambda a: python("-m", "pytest", *(a.args if any(es_ruta(x) for x in a.args)
