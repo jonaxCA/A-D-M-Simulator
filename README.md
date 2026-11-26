@@ -61,3 +61,9 @@ python -m pytest frontend_web backend_web   # estas usan la base de pruebas (doc
 - Funciones de cada servicio: [docs/arquitectura/microservicios.md](docs/arquitectura/microservicios.md).
 - Decisiones arquitecturales: [docs/decisiones/decisiones.md](docs/decisiones/decisiones.md).
 - Cómo colaborar: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Licencia
+
+El proyecto es [MIT](LICENSE), excepto `procesamiento/abm_gpu/`, que usa FLAME GPU 2 y es
+[AGPL-3.0](procesamiento/abm_gpu/LICENSE). El simulador, cuando corre `abm-gpu`, se distribuye
+bajo AGPL-3.0 (D61).
