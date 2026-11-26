@@ -40,6 +40,7 @@ pip install -r frontend_web/requerimientos.txt -r frontend_desktop/requerimiento
 python epidemia.py up        # levanta los microservicios (crea infra/.env con las contraseñas si falta)
 python epidemia.py web       # el sitio queda en http://localhost:5000
 python epidemia.py desktop   # abre la app de escritorio
+python epidemia.py desktop --nube   # la misma, contra https://epidemos.app
 python epidemia.py estado    # cómo van los contenedores (también: logs [servicio], pruebas, down)
 ```
 
