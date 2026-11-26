@@ -120,3 +120,8 @@ python infra/pruebas_integracion.py --gpu -- -k gpu
 
 Sin `--gpu`, ese compose no levanta `simulador-gpu` y la prueba se salta: así corre en una PC sin
 GPU de NVIDIA.
+
+## Licencia
+
+FLAME GPU 2 es AGPL-3.0, así que esta carpeta también ([`LICENSE`](LICENSE)), igual que el
+simulador cuando carga `pyflamegpu`. El resto del repositorio es MIT (D61).
