@@ -23,7 +23,9 @@
 - Lo nuevo va en módulos propios (`escenarios.py`, `simulaciones.py`), no en `queries.py`.
 - Regresa datos crudos (números, fechas, códigos); el formato para pantalla va en `frontend_web`.
 - El puente con el motor vive aquí: leer la versión aprobada, armar la entrada, llamar a
-  `from procesamiento.motor import simular` y guardar en `simulation_runs` y `simulation_results`.
+  `from procesamiento.motor import simular` y guardar el resumen en `simulation_runs` (038). La
+  serie diaria no pasa por aquí: el simulador la guarda en MongoDB con `guardar_serie`, antes de
+  confirmar la corrida (D28), y la web la pide a `resultados` (`resultados.py`).
 - Si importas el motor, agrega `-r ../procesamiento/requerimientos.txt` a `requerimientos.txt`;
   si no, NumPy no se instala en las máquinas de los demás.
 

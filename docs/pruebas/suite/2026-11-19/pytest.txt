@@ -1,0 +1,102 @@
+........................................................................................................................ [  4%]
+....................................................F.................................................................................. [ 10%]
+.................................................................... [ 13%]
+................................................................................... [ 16%]
+........................................................................ [ 19%]
+........................................................................ [ 22%]
+........................................................................ [ 25%]
+........................................................................ [ 28%]
+.....................................sssss..........s.ss............ssss [ 31%]
+.....sss.........s.s.s.s.s.sss.............s..s.ssss.................... [ 33%]
+........................................................................ [ 36%]
+........................................................................ [ 39%]
+........................................................................ [ 42%]
+......................................................sssss............................................. [ 46%]
+........................................................................ [ 49%]
+........................................................................ [ 52%]
+........................................................................ [ 55%]
+........................................................................ [ 58%]
+........................................................................ [ 61%]
+........................................................................ [ 64%]
+........................................................................ [ 67%]
+....................ssssssssssssssssssssssssssssssssssssssssssssssssssss [ 70%]
+ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss [ 73%]
+ssssssssssssss.......................................................... [ 76%]
+........................................................................ [ 79%]
+........................................................................ [ 82%]
+........................................................................ [ 84%]
+..............................................sssssssss........s....................................... [ 89%]
+.................................................................. [ 91%]
+........................................................................ [ 94%]
+........................................................................ [ 97%]
+......................................................F...               [100%]
+=================================== FAILURES ===================================
+_ NotificacionesTests.test_aviso_a_un_rol_salta_a_los_inactivos_y_audita_cada_uno _
+
+self = <backend_web.tests.test_notificaciones.NotificacionesTests testMethod=test_aviso_a_un_rol_salta_a_los_inactivos_y_audita_cada_uno>
+
+    def test_aviso_a_un_rol_salta_a_los_inactivos_y_audita_cada_uno(self):
+        inactivos = {f["id"] for f in query(
+            """SELECT u.id FROM users u JOIN user_roles ur ON ur.user_id = u.id
+               JOIN roles r ON r.id = ur.role_id WHERE r.code = 'EPIDEMIOLOGO' AND NOT u.is_active""")}
+>       self.assertTrue(inactivos, "La semilla de pruebas debe traer un epidemiólogo inactivo.")
+E       AssertionError: set() is not true : La semilla de pruebas debe traer un epidemiólogo inactivo.
+
+backend_web/tests/test_notificaciones.py:98: AssertionError
+______________________ test_tipos_numero_nulo_y_frontera _______________________
+
+    def test_tipos_numero_nulo_y_frontera():
+        datos = xmlio.leer(ejemplo("pareto/ejemplos/comparar_costo_impacto.xml"))
+        assert datos["base"] is None
+        assert datos["frontera"] == [12, 14, 13, 15]
+        assert datos["filas"][0]["desglose_costo"] == []
+>       assert datos["filas"][1]["costo"] == 292500000
+E       assert 19500000 == 292500000
+
+frontend_desktop/tests/test_xmlio.py:35: AssertionError
+=============================== warnings summary ===============================
+microservicios/estado_servicios/tests/test_estado_servicios.py: 323 warnings
+  /home/carog/.venvs/epidemia/lib/python3.14/site-packages/mongomock/helpers.py:73: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED backend_web/tests/test_notificaciones.py::NotificacionesTests::test_aviso_a_un_rol_salta_a_los_inactivos_y_audita_cada_uno
+FAILED frontend_desktop/tests/test_xmlio.py::test_tipos_numero_nulo_y_frontera
+SKIPPED [29] microservicios/comun/tests/test_interoperabilidad.py:50: ruta pública o solo para servicios
+SKIPPED [1] microservicios/comun/tests/test_mongo_real.py:47: Sin MONGO_URL_PRUEBAS
+SKIPPED [1] microservicios/comun/tests/test_mongo_real.py:58: Sin MONGO_URL_PRUEBAS
+SKIPPED [1] microservicios/comun/tests/test_mongo_real.py:64: Sin MONGO_URL_PRUEBAS
+SKIPPED [1] microservicios/comun/tests/test_mongo_real.py:78: Sin MONGO_URL_PRUEBAS
+SKIPPED [1] microservicios/comun/tests/test_mongo_real.py:87: Sin MONGO_URL_PRUEBAS
+SKIPPED [1] microservicios/pruebas_integracion/contenedores/test_compose_abm.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [1] microservicios/pruebas_integracion/contenedores/test_compose_cola.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [1] microservicios/pruebas_integracion/contenedores/test_compose_dispositivos.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [1] microservicios/pruebas_integracion/contenedores/test_compose_evidencias.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [3] microservicios/pruebas_integracion/contenedores/test_compose_fallos.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [1] microservicios/pruebas_integracion/contenedores/test_compose_flujo.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [1] microservicios/pruebas_integracion/contenedores/test_compose_gpu.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [1] microservicios/pruebas_integracion/contenedores/test_compose_limites.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [2] microservicios/pruebas_integracion/contenedores/test_compose_mongo.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [1] microservicios/pruebas_integracion/contenedores/test_compose_perfil.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [1] microservicios/pruebas_integracion/contenedores/test_compose_redis.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [2] microservicios/pruebas_integracion/contenedores/test_compose_revocacion.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [19] microservicios/pruebas_integracion/contenedores/test_compose_roles_bd.py:57: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [11] microservicios/pruebas_integracion/contenedores/test_compose_roles_bd.py:63: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [1] microservicios/pruebas_integracion/contenedores/test_compose_roles_bd.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [29] microservicios/pruebas_integracion/contenedores/test_compose_servicios.py:12: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [29] microservicios/pruebas_integracion/contenedores/test_compose_servicios.py:20: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [29] microservicios/pruebas_integracion/contenedores/test_compose_servicios.py:27: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [1] microservicios/pruebas_integracion/contenedores/test_compose_vacunas.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [3] microservicios/pruebas_integracion/contenedores/test_compose_xml.py: Sin compose de pruebas: python infra/pruebas_integracion.py
+SKIPPED [1] procesamiento/tests/test_abm_gpu.py:37: abm-gpu no corre en esta máquina: abm-gpu necesita pyflamegpu (FLAME GPU 2) y una GPU de NVIDIA: No module named 'pyflamegpu'
+SKIPPED [1] procesamiento/tests/test_abm_gpu.py:68: abm-gpu no corre en esta máquina: abm-gpu necesita pyflamegpu (FLAME GPU 2) y una GPU de NVIDIA: No module named 'pyflamegpu'
+SKIPPED [1] procesamiento/tests/test_abm_gpu.py:59: abm-gpu no corre en esta máquina: abm-gpu necesita pyflamegpu (FLAME GPU 2) y una GPU de NVIDIA: No module named 'pyflamegpu'
+SKIPPED [1] procesamiento/tests/test_abm_gpu.py:50: abm-gpu no corre en esta máquina: abm-gpu necesita pyflamegpu (FLAME GPU 2) y una GPU de NVIDIA: No module named 'pyflamegpu'
+SKIPPED [1] procesamiento/tests/test_abm_gpu.py:92: abm-gpu no corre en esta máquina: abm-gpu necesita pyflamegpu (FLAME GPU 2) y una GPU de NVIDIA: No module named 'pyflamegpu'
+SKIPPED [1] procesamiento/tests/test_abm_gpu.py:83: abm-gpu no corre en esta máquina: abm-gpu necesita pyflamegpu (FLAME GPU 2) y una GPU de NVIDIA: No module named 'pyflamegpu'
+SKIPPED [1] procesamiento/tests/test_abm_gpu.py:108: abm-gpu no corre en esta máquina: abm-gpu necesita pyflamegpu (FLAME GPU 2) y una GPU de NVIDIA: No module named 'pyflamegpu'
+SKIPPED [1] procesamiento/tests/test_abm_gpu.py:115: abm-gpu no corre en esta máquina: abm-gpu necesita pyflamegpu (FLAME GPU 2) y una GPU de NVIDIA: No module named 'pyflamegpu'
+SKIPPED [1] procesamiento/tests/test_abm_gpu.py:118: abm-gpu no corre en esta máquina: abm-gpu necesita pyflamegpu (FLAME GPU 2) y una GPU de NVIDIA: No module named 'pyflamegpu'
+SKIPPED [1] procesamiento/tests/test_contrato_motor.py:30: abm-gpu no corre en esta máquina: abm-gpu necesita pyflamegpu (FLAME GPU 2) y una GPU de NVIDIA: No module named 'pyflamegpu'
+2 failed, 2281 passed, 182 skipped, 323 warnings, 689 subtests passed in 336.80s (0:05:36)

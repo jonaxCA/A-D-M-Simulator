@@ -1,0 +1,26 @@
+{
+  "modulos": [
+    "diseases",
+    "roles",
+    "simulation_run",
+    "users"
+  ],
+  "acciones": [
+    "LOGIN",
+    "LOGIN_FAILED",
+    "PERMISSION_DENIED",
+    "UPDATE",
+    "RUN::completado",
+    "RUN::encolado"
+  ],
+  "usuarios": [
+    {
+      "id": 9,
+      "full_name": "Ana Analista"
+    },
+    {
+      "id": 7,
+      "full_name": "Admin"
+    }
+  ]
+}

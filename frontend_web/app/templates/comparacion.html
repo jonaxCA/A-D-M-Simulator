@@ -21,8 +21,6 @@
 <div class="alert alert-warn">{{ aviso_simulacion }}</div>
 
 <div class="card">
-
-<div class="card">
   <div class="card-header">
     <div>
       <h3>Corridas completadas</h3>
@@ -124,9 +122,41 @@
     </table>
   </div>
 
+  {% if sin_curvas %}
+  <div class="alert alert-warn">Sin curvas para {% for i in sin_curvas %}{{ i | id_sim }}{{ ", " if not loop.last }}{% endfor %}:
+    el servicio de resultados no respondió. La tabla sí muestra sus indicadores.</div>
+  {% endif %}
+  <p class="ficha-grafica">Fuente: corridas simuladas seleccionadas (servicios comparacion y resultados) · Periodo: días del horizonte de cada corrida · Modelo y versión: los de cada corrida en la tabla de abajo · Unidades: agentes simulados por día.</p>
   <div id="comparacion-casos" style="height: 340px;"></div>
   <div id="comparacion-hospitalizaciones" style="height: 340px;"></div>
   <div id="comparacion-fallecimientos" style="height: 340px;"></div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3>Reporte de esta comparación</h3>
+      <p class="subtitle">El PDF que arma la app de escritorio se guarda en el bucket de archivos y se abre con un enlace que vence en minutos.</p>
+    </div>
+  </div>
+  {% set vacio = 'Todavía no hay un reporte de estas corridas.' %}
+  {% include "_reportes_tabla.html" %}
+  {% if puede('reports.upload') %}
+  <form method="post" action="{{ url_for('main.reporte_subir') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    {% for i in run_ids %}<input type="hidden" name="run_id" value="{{ i }}">{% endfor %}
+    <div class="field">
+      <label for="archivo">PDF del reporte</label>
+      <input type="file" id="archivo" name="archivo" accept="application/pdf" required>
+      <p class="field-hint">Hasta 20 MB. Se valida por su contenido y su huella antes de guardarlo.</p>
+    </div>
+    <div class="field">
+      <label for="titulo">Título (opcional)</label>
+      <input type="text" id="titulo" name="titulo" maxlength="200">
+    </div>
+    <div class="page-actions"><button type="submit" class="btn btn-primary">Subir reporte</button></div>
+  </form>
+  {% endif %}
 </div>
 
 {% if errores_pareto %}
@@ -145,11 +175,69 @@
       <h3>Impacto sanitario vs costo de intervención</h3>
       <p class="subtitle">
         Cada punto representa una corrida. La línea une los escenarios de la frontera de Pareto.
+        El costo de la frontera está en personas-día (D3); el costo en pesos va aparte y no
+        entra en la frontera.
       </p>
     </div>
   </div>
 
   <div id="comparacion-pareto" style="height: 420px;"></div>
+
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead>
+        <tr>
+          <th>Corrida</th>
+          <th>Costo (personas-día)</th>
+          <th>{{ comparacion_pareto.metrica|default('Fallecimientos')|capitalize }}</th>
+          <th>En la frontera</th>
+          <th>Costo en pesos (aparte)</th>
+          <th>Motor</th>
+          <th>Días · población</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in comparacion_pareto.filas %}
+        <tr>
+          <td>{{ f.nombre }}</td>
+          <td>{{ "{:,.0f}".format(f.costo or 0) }}</td>
+          <td>{{ "{:,.0f}".format(f.impacto or 0) }}</td>
+          <td>{{ "No" if f.dominado else "Sí" }}</td>
+          <td>{{ "$ {:,.2f}".format(f.costo_pesos) if f.costo_pesos is not none else "—" }}</td>
+          <td>{{ f.engine_version or "—" }}</td>
+          <td>{{ f.dias }} · {{ "{:,}".format(f.poblacion) if f.poblacion else "—" }}</td>
+        </tr>
+        {% if f.explicacion and f.explicacion.texto %}
+        <tr><td colspan="7" class="field-hint">{{ f.explicacion.texto }}</td></tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if comparacion_pareto.trazabilidad_costos %}
+  <h4>De dónde sale cada costo</h4>
+  <p class="field-hint">{{ comparacion_pareto.modelo_costo }}</p>
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead><tr><th>Tipo</th><th>Valor</th><th>Unidad</th><th>Fuente</th><th>Estado</th></tr></thead>
+      <tbody>
+        {% for t in comparacion_pareto.trazabilidad_costos %}
+        <tr>
+          <td>{{ t.tipo }}</td>
+          <td>{{ t.valor }}</td>
+          <td>{{ t.unidad | replace('_', ' ') }}</td>
+          <td>{{ t.fuente or "—" }}</td>
+          <td>{{ "Supuesto" if t.estado == "supuesto" else (t.estado or "—") }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% for aviso in comparacion_pareto.avisos or [] %}
+  <div class="alert alert-warn">{{ aviso }}</div>
+  {% endfor %}
 
   <div class="alert alert-warn">
     <strong>La decisión final corresponde al usuario.</strong>
@@ -187,7 +275,7 @@
       title: { text: titulo },
       credits: { enabled: false },
       xAxis: { title: { text: 'Día' } },
-      yAxis: { title: { text: 'Personas' } },
+      yAxis: { title: { text: 'Agentes simulados' } },
       tooltip: { shared: true },
       series: seriesPara(campo)
     });
@@ -222,28 +310,34 @@
       backgroundColor: 'transparent'
     },
     title: {
-      text: 'Costo total vs fallecimientos'
+      text: 'Costo en personas-día vs fallecimientos'
     },
     subtitle: {
-      text: 'Menor costo y menor impacto se ubican hacia la esquina inferior izquierda.'
+      text: 'Menor costo y menor impacto se ubican hacia la esquina inferior izquierda. ' +
+        'Fuente: corridas simuladas (resultados y pareto); costos del catálogo de intervenciones.'
     },
     credits: {
       enabled: false
     },
     xAxis: {
       title: {
-        text: 'Costo total de intervención'
+        text: 'Costo de intervención (personas-día)'
       }
     },
     yAxis: {
       title: {
-        text: 'Fallecimientos'
+        text: 'Fallecimientos (personas)'
       }
     },
     tooltip: {
       formatter: function () {
-        return '<b>' + this.point.name + '</b><br>' +
-          'Costo: ' + Highcharts.numberFormat(this.x, 2) + '<br>' +
+        var fila = filas[this.point.index] || {};
+        var nombre = String(this.point.name || '').replace(/[&<>"']/g, function (c) {
+          return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+        });
+        return '<b>' + nombre + '</b><br>' +
+          'Costo: ' + Highcharts.numberFormat(this.x, 0) + ' personas-día<br>' +
+          (fila.costo_pesos != null ? 'En pesos (aparte): $' + Highcharts.numberFormat(fila.costo_pesos, 2) + '<br>' : '') +
           'Fallecimientos: ' + Highcharts.numberFormat(this.y, 0);
       }
     },

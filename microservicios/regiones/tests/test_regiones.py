@@ -2,7 +2,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from backend_web import queries
+from microservicios.regiones import datos as bd
 
 MONTERREY = {"id": 39, "code": "19039", "name": "Monterrey", "level": "municipio",
              "parent_region_id": 1, "population": 1142994, "population_60plus": 158771}
@@ -19,8 +19,8 @@ CATALOGO = {
 @pytest.fixture
 def cliente(crear_cliente, monkeypatch):
     pedidos = []
-    monkeypatch.setattr(queries, "get_regiones_catalogo", lambda **f: pedidos.append(f) or CATALOGO)
-    monkeypatch.setattr(queries, "get_region_municipio",
+    monkeypatch.setattr(bd, "catalogo", lambda **f: pedidos.append(f) or CATALOGO)
+    monkeypatch.setattr(bd, "municipio",
                         lambda i: dict(MONTERREY) if i == 39 else None)
     c = crear_cliente("regiones")
     c.pedidos = pedidos
@@ -80,3 +80,153 @@ def test_responde_aunque_redis_este_caido(cliente, apagar_redis):
     apagar_redis()
     assert cliente.get("/api/v1/regions?format=json").status_code == 200
     assert cliente.get("/api/v1/regions/39").status_code == 200
+
+
+ESTADO = {"id": 1, "code": "19", "name": "Nuevo Leon", "population": 5784442,
+          "population_60plus": 654050}
+
+
+@pytest.fixture
+def base_estado(monkeypatch):
+    from microservicios.regiones import rutas
+    base = {"estado": dict(ESTADO), "correccion": None, "consultas": []}
+
+    def query(sql, params=(), one=False):
+        base["consultas"].append((" ".join(sql.split()), params))
+        return base["estado"] if "FROM regions" in sql else base["correccion"]
+    monkeypatch.setattr(rutas, "query", query)
+    return base
+
+
+def test_estado_con_su_fuente_derivada(cliente, base_estado):
+    r = cliente.get("/api/v1/regions/state?format=json")
+    assert r.status_code == 200
+    assert r.get_json() == {"id": 1, "code": "19", "nombre": "Nuevo Leon", "poblacion": 5784442,
+                            "poblacion_60": 654050, "fuente_poblacion": {"tipo": "agregado"},
+                            "fuente_poblacion_60": {"tipo": "derivado",
+                                                    "fuente": "Grupos 60-79 y 80+ del Censo 2020"}}
+    assert base_estado["consultas"][0][1] == ("19",) and base_estado["consultas"][1][1] == ("1",)
+    assert ET.fromstring(cliente.get("/api/v1/regions/state").data).tag == "estado"
+
+
+def test_estado_con_una_correccion_manual_del_60(cliente, base_estado):
+    base_estado["correccion"] = {"motivo": "Conteo rápido 2025", "fecha": "2026-11-10T10:00:00+00:00",
+                                 "por": "Admin"}
+    fuente = cliente.get("/api/v1/regions/state?format=json").get_json()["fuente_poblacion_60"]
+    assert fuente == {"tipo": "manual", "motivo": "Conteo rápido 2025",
+                      "fecha": "2026-11-10T10:00:00+00:00", "por": "Admin"}
+    base_estado["correccion"] = {"motivo": None, "fecha": "2026-11-10T10:00:00+00:00", "por": "Admin"}
+    fuente = cliente.get("/api/v1/regions/state?format=json").get_json()["fuente_poblacion_60"]
+    assert fuente["tipo"] == "censal"
+
+
+def test_estado_inexistente_es_404_y_no_choca_con_el_municipio(cliente, base_estado):
+    assert cliente.get("/api/v1/regions/39?format=json").get_json()["population"] == 1142994
+    base_estado["estado"] = None
+    r = cliente.get("/api/v1/regions/state?format=json")
+    assert r.status_code == 404 and r.get_json()["codigo"] == "NO_ENCONTRADO"
+
+
+def test_estado_publico_aunque_redis_este_caido(cliente, base_estado, apagar_redis):
+    apagar_redis()
+    assert cliente.get("/api/v1/regions/state?format=json").status_code == 200
+    assert cliente.post("/api/v1/regions/state?format=json", json={}).status_code == 405
+
+
+def test_el_catalogo_publico_limita_por_ip(cliente, monkeypatch):
+    monkeypatch.setenv("LIMITE_NORMAL", "2/60")
+    estados = [cliente.get("/api/v1/regions").status_code for _ in range(3)]
+    assert estados[:2] == [200, 200] and estados[2] == 429
+    assert [cliente.get("/api/v1/regions/39").status_code for _ in range(3)] == [200, 200, 429]
+
+
+# ---- jerarquía, jurisdicciones y búsqueda (D58) -------------------------------------------------
+
+
+REGION_ESTADO = {"id": 1, "code": "19", "nombre": "Nuevo León", "nivel": "estado", "poblacion": 5784442, "padre_id": None}
+JURISDICCION = {"numero": 3, "nombre": "Jurisdicción Sanitaria No. 3",
+                "circunscripcion": "Sur de Monterrey y los municipios de Villa de García, San Pedro Garza García y Santa Catarina",
+                "fuente": "Reglamento Interior, art. 27", "url": "http://www.ordenjuridico.gob.mx/x.pdf",
+                "municipios": [{"code": "19039", "parcial": True, "region_id": 39, "nombre": "Monterrey"}]}
+
+
+@pytest.fixture
+def territorio(monkeypatch):
+    monkeypatch.setattr(bd, "region", lambda i: {1: dict(REGION_ESTADO), 39: dict(REGION_ESTADO, id=39, code="19039", nombre="Monterrey",
+                                                                         nivel="municipio", padre_id=1)}.get(i))
+    monkeypatch.setattr(bd, "hijos", lambda i: [{"id": 39, "code": "19039", "nombre": "Monterrey",
+                                                "nivel": "municipio", "poblacion": 1142994}] if i == 1 else [])
+    monkeypatch.setattr(bd, "jurisdicciones", lambda numero=None: [dict(JURISDICCION)] if numero in (None, 3) else [])
+    monkeypatch.setattr(bd, "jurisdicciones_de", lambda code: [
+        {"numero": n, "nombre": "Jurisdicción Sanitaria No. %d" % n, "parcial": True} for n in (1, 2, 3)]
+        if code == "19039" else [])
+
+
+def test_hijos_de_una_region(cliente, territorio):
+    datos = cliente.get("/api/v1/regions/1/children?format=json").get_json()
+    assert datos["region"]["nivel"] == "estado" and datos["total"] == 1 and datos["hijos"][0]["code"] == "19039"
+    assert cliente.get("/api/v1/regions/39/children?format=json").get_json()["total"] == 0
+    assert cliente.get("/api/v1/regions/999/children?format=json").status_code == 404
+    raiz = ET.fromstring(cliente.get("/api/v1/regions/1/children").data)
+    assert raiz.find("hijos/region/nombre").text == "Monterrey"
+
+
+def test_jurisdicciones_sanitarias(cliente, territorio):
+    datos = cliente.get("/api/v1/health-areas?format=json").get_json()
+    assert datos["total"] == 1 and datos["jurisdicciones_sanitarias"][0]["municipios"][0]["parcial"] is True
+    assert cliente.get("/api/v1/health-areas/3?format=json").get_json()["numero"] == 3
+    assert cliente.get("/api/v1/health-areas/9?format=json").status_code == 404
+    assert cliente.get("/api/v1/health-areas/x?format=json").status_code == 422
+    de_mty = cliente.get("/api/v1/regions/39/health-areas?format=json").get_json()
+    assert [j["numero"] for j in de_mty["jurisdicciones_sanitarias"]] == [1, 2, 3]
+    assert cliente.get("/api/v1/regions/999/health-areas?format=json").status_code == 404
+    raiz = ET.fromstring(cliente.get("/api/v1/health-areas").data)
+    assert raiz.find("jurisdicciones_sanitarias/jurisdiccion/municipios/municipio/code").text == "19039"
+
+
+def test_busqueda_sin_acentos_en_estado_municipios_y_jurisdicciones(cliente, monkeypatch):
+    def query(sql, params=(), one=False):
+        if "FROM regions" in sql:
+            return [{"id": 1, "code": "19", "name": "Nuevo León", "level": "estado", "padre": None},
+                    {"id": 39, "code": "19039", "name": "Monterrey", "level": "municipio", "padre": "Nuevo León"},
+                    {"id": 21, "code": "19021", "name": "General Escobedo", "level": "municipio",
+                     "padre": "Nuevo León"}]
+        return [{"id": 3, "numero": 3, "nombre": "Jurisdicción Sanitaria No. 3", "circunscripcion": "Sur de Monterrey",
+                 "fuente": "F", "url": None}]
+    monkeypatch.setattr(bd, "query", query)
+    datos = cliente.get("/api/v1/regions/search?q=MONTERREY&format=json").get_json()
+    assert [(c["tipo"], c["nombre"]) for c in datos["coincidencias"]] == [
+        ("municipio", "Monterrey"), ("jurisdiccion", "Jurisdicción Sanitaria No. 3")]
+    assert cliente.get("/api/v1/regions/search?q=nuevo leon&format=json").get_json()["coincidencias"][0]["tipo"] == "estado"
+    assert cliente.get("/api/v1/regions/search?q=jurisdiccion&format=json").get_json()["total"] == 1
+    assert cliente.get("/api/v1/regions/search?q=19021&format=json").get_json()["coincidencias"][0]["id"] == 21
+    assert cliente.get("/api/v1/regions/search?q=x&format=json").status_code == 422
+    assert ET.fromstring(cliente.get("/api/v1/regions/search?q=monte").data).tag == "busqueda_territorial"
+
+
+def test_el_catalogo_marca_los_ajustes_manuales_y_los_del_censo(monkeypatch):
+    consultas = []
+
+    def query(sql, params=None, one=False):
+        consultas.append((sql, params))
+        if "FROM regions r WHERE" in sql:
+            return [{"id": 39, "code": "19039", "name": "Monterrey", "population": 1142994,
+                     "population_60plus": 158771},
+                    {"id": 40, "code": "19040", "name": "Montemorelos", "population": 67428,
+                     "population_60plus": 9000}]
+        if "region_population_adjustments" in sql:
+            return [{"region_id": 40, "reason": "Conteo municipal", "adjusted_at": "2026-11-20",
+                     "full_name": "Ana"}]
+        return [{"entity_id": "39", "reason": "Corrección", "occurred_at": "2026-11-21", "full_name": "Ana"}]
+    monkeypatch.setattr(bd, "query", query)
+    catalogo = bd.catalogo(busqueda="mont", orden="poblacion", direccion="desc")
+    monterrey, montemorelos = catalogo["municipios"]
+    assert monterrey["fuente_poblacion"] == {"tipo": "censal", "fuente": "INEGI, Censo 2020"}
+    assert monterrey["fuente_poblacion_60"]["tipo"] == "manual"
+    assert montemorelos["fuente_poblacion"]["motivo"] == "Conteo municipal"
+    assert montemorelos["fuente_poblacion_60"] == {"tipo": "derivado", "fuente": bd.FUENTE_60}
+    assert (catalogo["orden"], catalogo["direccion"], catalogo["busqueda"]) == ("poblacion", "desc", "mont")
+    sql, params = consultas[0]
+    assert "ORDER BY r.population DESC" in sql and params == ("19", "%mont%", "%mont%")
+    # El orden poblacion_60 no está en la lista: cae a nombre, como en el monolito.
+    assert bd.catalogo(orden="poblacion_60")["orden"] == "nombre"

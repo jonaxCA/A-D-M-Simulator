@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - casos",
     "version": "0.1.0",
-    "description": "Registra y consulta casos epidemiológicos (tabla cases). Reutiliza valida_caso del monolito. XML por defecto y JSON con ?format=json o Accept: application/json; los cuerpos se aceptan en los dos formatos. Roles: crear = CAPTURISTA y ADMINISTRADOR; consultar = los cuatro roles (matriz de permisos cases.create / cases.read). Los ejemplos están en docs/contratos/casos/ejemplos; el XSD del recurso, en caso.xsd."
+    "description": "Registra y consulta casos epidemiológicos (tabla cases). Reutiliza valida_caso del monolito. XML por defecto y JSON con ?format=json o Accept: application/json; los cuerpos se aceptan en los dos formatos. Roles: crear = solo CAPTURISTA (D1); consultar = los seis perfiles de D42, recortado al alcance por región de la cuenta (D43, D56; matriz de permisos cases.create / cases.read). Los ejemplos están en docs/contratos/casos/ejemplos; el XSD del recurso, en caso.xsd."
   },
   "servers": [
     {
@@ -150,6 +150,48 @@
             "type": "boolean",
             "readOnly": true,
             "description": "Solo en POST: true si el local_uuid ya existía."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "readOnly": true,
+            "description": "Sube en 1 con cada corrección o cambio de estado. Va también en el ETag; quien cambia el caso la manda en If-Match (D47)."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true,
+            "description": "Último cambio; null si nunca se cambió."
+          },
+          "updated_by": {
+            "type": "integer",
+            "nullable": true,
+            "readOnly": true,
+            "description": "Quién hizo el último cambio."
+          },
+          "status_reason": {
+            "type": "string",
+            "maxLength": 500,
+            "nullable": true,
+            "readOnly": true,
+            "description": "Motivo del estado: obligatorio al descartar, marcar duplicado o reabrir."
+          },
+          "duplicate_of": {
+            "type": "integer",
+            "nullable": true,
+            "readOnly": true,
+            "description": "El caso original, si este es un duplicado."
+          },
+          "form_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Versión del formulario de la enfermedad con que se capturó (D48); null si no trajo."
+          },
+          "form_answers": {
+            "type": "object",
+            "nullable": true,
+            "description": "Respuestas al formulario, {clave: valor}, validadas contra su versión."
           }
         },
         "required": [
@@ -242,6 +284,15 @@
               "fallecido"
             ],
             "nullable": true
+          },
+          "form_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "La versión del formulario con que se capturó (la vigente o una anterior, si se capturó sin red). Con ella, form_answers."
+          },
+          "form_answers": {
+            "type": "object",
+            "description": "Respuestas: {clave: valor}. Se validan contra esa versión: obligatorios, tipos, rangos y opciones (D48)."
           }
         },
         "required": [
@@ -307,6 +358,77 @@
           "codigo",
           "instance"
         ]
+      },
+      "LoteCasosEntrada": {
+        "type": "object",
+        "required": [
+          "cases"
+        ],
+        "additionalProperties": false,
+        "xml": {
+          "name": "lote_casos"
+        },
+        "properties": {
+          "cases": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/CasoEntrada"
+            }
+          }
+        }
+      },
+      "ResultadoLoteCasos": {
+        "type": "object",
+        "required": [
+          "total",
+          "resultados"
+        ],
+        "xml": {
+          "name": "resultado_lote_casos"
+        },
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "resultados": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "indice",
+                "estado"
+              ],
+              "properties": {
+                "indice": {
+                  "type": "integer",
+                  "description": "Posición del caso en el lote, desde 0."
+                },
+                "estado": {
+                  "type": "integer",
+                  "enum": [
+                    200,
+                    201,
+                    409,
+                    422
+                  ],
+                  "description": "El que tendría el caso en POST /api/v1/cases."
+                },
+                "caso": {
+                  "$ref": "#/components/schemas/Caso"
+                },
+                "codigo": {
+                  "type": "string",
+                  "description": "Con 409 o 422: CONFLICTO o DATOS_INVALIDOS."
+                },
+                "detail": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -318,7 +440,7 @@
         "tags": [
           "casos"
         ],
-        "description": "Valida con las reglas del monolito (catálogo vigente de enfermedades y municipios, fechas, rangos, coordenadas completas) e inserta con status pendiente; reported_by sale del token y queda un CREATE en audit_log en la misma transacción. Si local_uuid ya existe regresa 200 con el caso existente y duplicado=true (sin validar ni escribir); si no se manda, el servicio genera uno. Roles: CAPTURISTA, ADMINISTRADOR.",
+        "description": "Valida con las reglas del monolito (catálogo vigente de enfermedades y municipios, fechas, rangos, coordenadas completas) e inserta con status pendiente; reported_by sale del token y queda un CREATE en audit_log en la misma transacción. Si local_uuid ya existe regresa 200 con el caso existente y duplicado=true (sin validar ni escribir); si no se manda, el servicio genera uno. Roles: CAPTURISTA (D1: el ADMINISTRADOR no captura). Formulario de la enfermedad (D48): con form_id y form_answers, las respuestas se validan contra esa versión (publicada o retirada, de la misma enfermedad). Sin formulario el caso se acepta, salvo que la versión vigente de la enfermedad tenga required en true.",
         "parameters": [
           {
             "in": "query",
@@ -411,6 +533,13 @@
                   "status": "pendiente",
                   "created_at": "2026-10-12T10:00:00+00:00",
                   "synced_at": "2026-10-12T10:00:00+00:00",
+                  "version": 1,
+                  "updated_at": null,
+                  "updated_by": null,
+                  "status_reason": null,
+                  "duplicate_of": null,
+                  "form_id": null,
+                  "form_answers": null,
                   "duplicado": false
                 }
               },
@@ -421,7 +550,7 @@
                     "name": "caso"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><duplicado tipo=\"booleano\">false</duplicado></caso>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /><form_id nil=\"true\" /><form_answers nil=\"true\" /><duplicado tipo=\"booleano\">false</duplicado></caso>\n"
               }
             }
           },
@@ -452,6 +581,13 @@
                   "status": "pendiente",
                   "created_at": "2026-10-12T10:00:00+00:00",
                   "synced_at": "2026-10-12T10:00:00+00:00",
+                  "version": 1,
+                  "updated_at": null,
+                  "updated_by": null,
+                  "status_reason": null,
+                  "duplicate_of": null,
+                  "form_id": null,
+                  "form_answers": null,
                   "duplicado": true
                 }
               },
@@ -462,7 +598,7 @@
                     "name": "caso"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><duplicado tipo=\"booleano\">true</duplicado></caso>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /><form_id nil=\"true\" /><form_answers nil=\"true\" /><duplicado tipo=\"booleano\">true</duplicado></caso>\n"
               }
             }
           },
@@ -548,7 +684,7 @@
             }
           },
           "503": {
-            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml.",
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -718,7 +854,14 @@
                       "severity": "leve",
                       "status": "pendiente",
                       "created_at": "2026-10-12T10:00:00+00:00",
-                      "synced_at": "2026-10-12T10:00:00+00:00"
+                      "synced_at": "2026-10-12T10:00:00+00:00",
+                      "version": 1,
+                      "updated_at": null,
+                      "updated_by": null,
+                      "status_reason": null,
+                      "duplicate_of": null,
+                      "form_id": null,
+                      "form_answers": null
                     },
                     {
                       "id": 1,
@@ -739,7 +882,14 @@
                       "severity": "leve",
                       "status": "pendiente",
                       "created_at": "2026-10-12T10:00:00+00:00",
-                      "synced_at": "2026-10-12T10:00:00+00:00"
+                      "synced_at": "2026-10-12T10:00:00+00:00",
+                      "version": 1,
+                      "updated_at": null,
+                      "updated_by": null,
+                      "status_reason": null,
+                      "duplicate_of": null,
+                      "form_id": null,
+                      "form_answers": null
                     }
                   ],
                   "total": 41,
@@ -755,7 +905,7 @@
                     "name": "lista_casos"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<lista_casos><casos><item><id tipo=\"numero\">2</id><local_uuid>8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at></item><item><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at></item></casos><total tipo=\"numero\">41</total><pagina tipo=\"numero\">1</pagina><por_pagina tipo=\"numero\">2</por_pagina><paginas tipo=\"numero\">21</paginas></lista_casos>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<lista_casos><casos><item><id tipo=\"numero\">2</id><local_uuid>8a3d2c10-77b5-4c1e-9f0a-2b6d9c4e1a77</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /><form_id nil=\"true\" /><form_answers nil=\"true\" /></item><item><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /><form_id nil=\"true\" /><form_answers nil=\"true\" /></item></casos><total tipo=\"numero\">41</total><pagina tipo=\"numero\">1</pagina><por_pagina tipo=\"numero\">2</por_pagina><paginas tipo=\"numero\">21</paginas></lista_casos>\n"
               }
             }
           },
@@ -841,7 +991,7 @@
             }
           },
           "503": {
-            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml.",
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -873,6 +1023,310 @@
         }
       }
     },
+    "/api/v1/cases/batch": {
+      "post": {
+        "summary": "Crea varios casos en una sola petición (la usa sincronizacion)",
+        "operationId": "crear_lote_casos",
+        "tags": [
+          "casos"
+        ],
+        "description": "Hasta 100 casos. Cada uno recibe el resultado que tendría en POST /api/v1/cases (201 creado, 200 si su local_uuid ya existía, 409 si el dispositivo está revocado, 422 si sus datos no pasan), en el mismo orden (`indice`) y en su propia transacción: uno rechazado no detiene a los demás. Los catálogos y cada dispositivo se revisan una sola vez por lote. El límite de consumo (D31) cuenta los casos, no la petición, en la misma cuenta que POST /api/v1/cases. Si la base no responde, todo el lote responde 503 y se puede reenviar: local_uuid evita duplicados. Solo CAPTURISTA.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Caso a registrar. Obligatorios: disease_id, region_id, report_date.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoteCasosEntrada"
+              },
+              "example": {
+                "cases": [
+                  {
+                    "local_uuid": "7a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d",
+                    "device_id": 3,
+                    "disease_id": 1,
+                    "region_id": 10,
+                    "report_date": "2026-10-01",
+                    "onset_date": "2026-09-28",
+                    "age": 34,
+                    "sex": "F",
+                    "latitude": 25.6866,
+                    "longitude": -100.3161,
+                    "test_result": "positivo",
+                    "severity": "leve"
+                  },
+                  {
+                    "local_uuid": "8b3c4d5e-6f7a-4b2c-9d3e-4f5a6b7c8d9e",
+                    "device_id": 3,
+                    "disease_id": 1,
+                    "region_id": 10,
+                    "report_date": "2099-01-01",
+                    "onset_date": "2026-09-28",
+                    "age": 34,
+                    "sex": "F",
+                    "latitude": 25.6866,
+                    "longitude": -100.3161,
+                    "test_result": "positivo",
+                    "severity": "leve"
+                  }
+                ]
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "lote_casos"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<lote_casos><cases><item><local_uuid>7a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d</local_uuid><device_id tipo=\"numero\">3</device_id><disease_id tipo=\"numero\">1</disease_id><region_id tipo=\"numero\">10</region_id><report_date>2026-10-01</report_date><onset_date>2026-09-28</onset_date><age tipo=\"numero\">34</age><sex>F</sex><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity></item><item><local_uuid>8b3c4d5e-6f7a-4b2c-9d3e-4f5a6b7c8d9e</local_uuid><device_id tipo=\"numero\">3</device_id><disease_id tipo=\"numero\">1</disease_id><region_id tipo=\"numero\">10</region_id><report_date>2099-01-01</report_date><onset_date>2026-09-28</onset_date><age tipo=\"numero\">34</age><sex>F</sex><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity></item></cases></lote_casos>\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado de cada caso, en el orden en que llegaron.",
+            "headers": {
+              "X-Correlation-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoLoteCasos"
+                },
+                "example": {
+                  "total": 2,
+                  "resultados": [
+                    {
+                      "indice": 0,
+                      "estado": 201,
+                      "caso": {
+                        "id": 1,
+                        "local_uuid": "7a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d",
+                        "device_id": 3,
+                        "reported_by": 7,
+                        "disease_id": 1,
+                        "enfermedad": "COVID-19",
+                        "region_id": 10,
+                        "municipio": "Monterrey",
+                        "age": 34,
+                        "sex": "F",
+                        "onset_date": "2026-09-28",
+                        "report_date": "2026-10-01",
+                        "latitude": 25.6866,
+                        "longitude": -100.3161,
+                        "test_result": "positivo",
+                        "severity": "leve",
+                        "status": "pendiente",
+                        "created_at": "2026-10-12T10:00:00+00:00",
+                        "synced_at": "2026-10-12T10:00:00+00:00",
+                        "version": 1,
+                        "updated_at": null,
+                        "updated_by": null,
+                        "status_reason": null,
+                        "duplicate_of": null,
+                        "form_id": null,
+                        "form_answers": null,
+                        "duplicado": false
+                      }
+                    },
+                    {
+                      "indice": 1,
+                      "estado": 422,
+                      "codigo": "DATOS_INVALIDOS",
+                      "detail": "La fecha de reporte no puede estar en el futuro."
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "resultado_lote_casos"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<resultado_lote_casos><total tipo=\"numero\">2</total><resultados><item><indice tipo=\"numero\">0</indice><estado tipo=\"numero\">201</estado><caso><id tipo=\"numero\">1</id><local_uuid>7a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /><form_id nil=\"true\" /><form_answers nil=\"true\" /><duplicado tipo=\"booleano\">false</duplicado></caso></item><item><indice tipo=\"numero\">1</indice><estado tipo=\"numero\">422</estado><codigo>DATOS_INVALIDOS</codigo><detail>La fecha de reporte no puede estar en el futuro.</detail></item></resultados></resultado_lote_casos>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/cases/batch"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/cases/batch</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/cases/batch"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/cases/batch</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "El lote mismo no sirve: sin casos, con más de 100, un caso que no es un objeto o campos que no son `cases`. Los datos de cada caso no dan 422 aquí: van en su resultado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "cases debe traer al menos un caso.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/cases/batch"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>cases debe traer al menos un caso.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/cases/batch</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO): la cuenta pasó su límite de casos (D31). La cabecera Retry-After trae los segundos de espera; no se guardó ningún caso del lote.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Too Many Requests",
+                  "status": 429,
+                  "detail": "Demasiadas peticiones; intenta de nuevo en 42 segundos.",
+                  "codigo": "LIMITE_EXCEDIDO",
+                  "instance": "/api/v1/cases/batch"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Too Many Requests</title><status tipo=\"numero\">429</status><detail>Demasiadas peticiones; intenta de nuevo en 42 segundos.</detail><codigo>LIMITE_EXCEDIDO</codigo><instance>/api/v1/cases/batch</instance></problem>\n"
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "Redis no está disponible.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/cases/batch"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>Redis no está disponible.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/cases/batch</instance></problem>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo JSON/XML ilegible, o ?format desconocido (DATOS_INVALIDOS)."
+          }
+        }
+      }
+    },
     "/api/v1/cases/{case_id}": {
       "get": {
         "summary": "Consultar un caso",
@@ -880,7 +1334,7 @@
         "tags": [
           "casos"
         ],
-        "description": "Roles: CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR.",
+        "description": "Roles: CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR. El ETag de la respuesta es la versión del caso, la que se manda en If-Match para corregirlo o cambiar su estado.",
         "parameters": [
           {
             "in": "path",
@@ -940,7 +1394,20 @@
                   "severity": "leve",
                   "status": "pendiente",
                   "created_at": "2026-10-12T10:00:00+00:00",
-                  "synced_at": "2026-10-12T10:00:00+00:00"
+                  "synced_at": "2026-10-12T10:00:00+00:00",
+                  "version": 1,
+                  "updated_at": null,
+                  "updated_by": null,
+                  "status_reason": null,
+                  "duplicate_of": null,
+                  "form_id": 4,
+                  "form_answers": {
+                    "fiebre_dias": 3,
+                    "signos_alarma": [
+                      "dolor_abdominal"
+                    ],
+                    "hospitalizado": false
+                  }
                 }
               },
               "application/xml": {
@@ -950,7 +1417,16 @@
                     "name": "caso"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at></caso>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">34</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /><form_id tipo=\"numero\">4</form_id><form_answers><fiebre_dias tipo=\"numero\">3</fiebre_dias><signos_alarma><item>dolor_abdominal</item></signos_alarma><hospitalizado tipo=\"booleano\">false</hospitalizado></form_answers></caso>\n"
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "La versión del caso como queda, entre comillas: la siguiente If-Match.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"1\""
               }
             }
           },
@@ -1036,7 +1512,7 @@
             }
           },
           "503": {
-            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml.",
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1064,6 +1540,1629 @@
           },
           "400": {
             "description": "Cuerpo JSON/XML ilegible, o ?format desconocido (DATOS_INVALIDOS)."
+          }
+        }
+      },
+      "patch": {
+        "summary": "Corregir un caso",
+        "operationId": "corregir_caso",
+        "tags": [
+          "casos"
+        ],
+        "description": "Roles: EPIDEMIOLOGO (cualquier caso pendiente o validado) y CAPTURISTA (solo los suyos, mientras estén pendientes); D47. Solo los campos que vienen en el cuerpo, más `reason` (motivo, opcional) y `device_id` (si la corrección viene de la app móvil). Se valida junto con el resto del caso, igual que al capturarlo. If-Match lleva la versión que se leyó: si el caso cambió desde entonces, 412 con el ETag de la versión actual y nada se toca. Si nada cambia, regresa el mismo caso sin subir la versión. Cada cambio deja una fila en el historial. También form_answers (validadas contra la versión del caso) y form_id (otra versión, con sus form_answers; null quita el formulario). Si se cambia la enfermedad de un caso con formulario, hay que mandar el de la nueva o form_id null.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "\"1\"",
+            "description": "La versión del caso que leíste: el ETag de GET /cases/{case_id} o el campo version. Se acepta con o sin comillas y con W/."
+          },
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "age": 35,
+                "severity": "grave",
+                "reason": "La edad y la gravedad se capturaron mal"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "correccion_caso"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<correccion_caso><age tipo=\"numero\">35</age><severity>grave</severity><reason>La edad y la gravedad se capturaron mal</reason></correccion_caso>\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "El caso como queda.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Caso"
+                },
+                "example": {
+                  "id": 1,
+                  "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+                  "device_id": 3,
+                  "reported_by": 7,
+                  "disease_id": 1,
+                  "enfermedad": "COVID-19",
+                  "region_id": 10,
+                  "municipio": "Monterrey",
+                  "age": 35,
+                  "sex": "F",
+                  "onset_date": "2026-09-28",
+                  "report_date": "2026-10-01",
+                  "latitude": 25.6866,
+                  "longitude": -100.3161,
+                  "test_result": "positivo",
+                  "severity": "grave",
+                  "status": "pendiente",
+                  "created_at": "2026-10-12T10:00:00+00:00",
+                  "synced_at": "2026-10-12T10:00:00+00:00",
+                  "version": 2,
+                  "updated_at": "2026-10-13T09:00:00+00:00",
+                  "updated_by": 7,
+                  "status_reason": null,
+                  "duplicate_of": null,
+                  "form_id": null,
+                  "form_answers": null
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">35</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>grave</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">2</version><updated_at>2026-10-13T09:00:00+00:00</updated_at><updated_by tipo=\"numero\">7</updated_by><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /><form_id nil=\"true\" /><form_answers nil=\"true\" /></caso>\n"
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "La versión del caso como queda, entre comillas: la siguiente If-Match.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"2\""
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (CONFLICTO): el caso está descartado o duplicado; se reabre antes de corregirlo, o el dispositivo está revocado."
+          },
+          "412": {
+            "description": "Precondition Failed (CONFLICTO): el caso cambió desde la versión de If-Match. El ETag trae la versión actual.",
+            "headers": {
+              "ETag": {
+                "description": "La versión actual del caso.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Precondition Failed",
+                  "status": 412,
+                  "detail": "El caso cambió desde que lo leíste: tenías la versión 1 y ya va en la 2. Vuelve a consultarlo y decide con lo que tiene ahora.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/cases/1"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Precondition Failed</title><status tipo=\"numero\">412</status><detail>El caso cambió desde que lo leíste: tenías la versión 1 y ya va en la 2. Vuelve a consultarlo y decide con lo que tiene ahora.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/cases/1</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity (DATOS_INVALIDOS): un campo que no se corrige, ninguno que corregir o un valor que no pasa la validación del caso."
+          },
+          "428": {
+            "description": "Precondition Required (DATOS_INVALIDOS): falta If-Match."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO, D31). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "404": {
+            "description": "Not Found. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        }
+      }
+    },
+    "/api/v1/cases/{case_id}/status": {
+      "post": {
+        "summary": "Cambiar el estado de un caso",
+        "operationId": "cambiar_estado_caso",
+        "tags": [
+          "casos"
+        ],
+        "description": "Rol: EPIDEMIOLOGO (D47). `status`: validado, descartado, duplicado o pendiente (reabrir). Transiciones: pendiente → validado, descartado o duplicado; validado → descartado, duplicado o pendiente; descartado y duplicado → pendiente. `reason` es obligatorio al descartar, marcar duplicado o reabrir; `duplicate_of` (el caso original: existe, es de la misma enfermedad y no es otro duplicado) solo va con duplicado. Al descartar o marcar duplicado, quien capturó el caso recibe un aviso CASE_REJECTED. If-Match como en la corrección.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "\"1\"",
+            "description": "La versión del caso que leíste: el ETag de GET /cases/{case_id} o el campo version. Se acepta con o sin comillas y con W/."
+          },
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "status": "descartado",
+                "reason": "Resultado negativo confirmado por el laboratorio estatal"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "cambio_estado_caso"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<cambio_estado_caso><status>descartado</status><reason>Resultado negativo confirmado por el laboratorio estatal</reason></cambio_estado_caso>\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "El caso como queda.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Caso"
+                },
+                "example": {
+                  "id": 1,
+                  "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+                  "device_id": 3,
+                  "reported_by": 7,
+                  "disease_id": 1,
+                  "enfermedad": "COVID-19",
+                  "region_id": 10,
+                  "municipio": "Monterrey",
+                  "age": 35,
+                  "sex": "F",
+                  "onset_date": "2026-09-28",
+                  "report_date": "2026-10-01",
+                  "latitude": 25.6866,
+                  "longitude": -100.3161,
+                  "test_result": "positivo",
+                  "severity": "grave",
+                  "status": "descartado",
+                  "created_at": "2026-10-12T10:00:00+00:00",
+                  "synced_at": "2026-10-12T10:00:00+00:00",
+                  "version": 3,
+                  "updated_at": "2026-10-14T16:30:00+00:00",
+                  "updated_by": 9,
+                  "status_reason": "Resultado negativo confirmado por el laboratorio estatal",
+                  "duplicate_of": null,
+                  "form_id": null,
+                  "form_answers": null
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<caso><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age tipo=\"numero\">35</age><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude tipo=\"numero\">25.6866</latitude><longitude tipo=\"numero\">-100.3161</longitude><test_result>positivo</test_result><severity>grave</severity><status>descartado</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">3</version><updated_at>2026-10-14T16:30:00+00:00</updated_at><updated_by tipo=\"numero\">9</updated_by><status_reason>Resultado negativo confirmado por el laboratorio estatal</status_reason><duplicate_of nil=\"true\" /><form_id nil=\"true\" /><form_answers nil=\"true\" /></caso>\n"
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "La versión del caso como queda, entre comillas: la siguiente If-Match.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"2\""
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (CONFLICTO): esa transición no se permite desde el estado actual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "Un caso descartado no puede pasar a validado; desde descartado puede pasar a: pendiente.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/cases/1/status"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>Un caso descartado no puede pasar a validado; desde descartado puede pasar a: pendiente.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/cases/1/status</instance></problem>\n"
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition Failed (CONFLICTO): el caso cambió desde la versión de If-Match.",
+            "headers": {
+              "ETag": {
+                "description": "La versión actual del caso.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity (DATOS_INVALIDOS): status desconocido, falta el motivo o el caso original no sirve."
+          },
+          "428": {
+            "description": "Precondition Required (DATOS_INVALIDOS): falta If-Match."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO, D31). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "404": {
+            "description": "Not Found. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        }
+      }
+    },
+    "/api/v1/cases/{case_id}/history": {
+      "get": {
+        "summary": "Historial de un caso",
+        "operationId": "historial_caso",
+        "tags": [
+          "casos"
+        ],
+        "description": "Roles: CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR. Un cambio por versión, del más viejo al más nuevo (D47): `action` (correccion o estado), quién (`changed_by`) y cuándo (`changed_at`), el estado antes y después, `changes` ({campo: {antes, despues}}), el motivo y el dispositivo si vino de la app móvil. `version` es la versión actual del caso; uno que nunca cambió trae `cambios` vacío.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El historial.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "case_id": 1,
+                  "version": 3,
+                  "cambios": [
+                    {
+                      "version": 2,
+                      "action": "correccion",
+                      "changed_by": 7,
+                      "changed_at": "2026-10-13T09:00:00+00:00",
+                      "status_before": "pendiente",
+                      "status_after": "pendiente",
+                      "changes": {
+                        "age": {
+                          "antes": 34,
+                          "despues": 35
+                        },
+                        "severity": {
+                          "antes": "leve",
+                          "despues": "grave"
+                        }
+                      },
+                      "reason": "La edad y la gravedad se capturaron mal",
+                      "device_id": 3
+                    },
+                    {
+                      "version": 3,
+                      "action": "estado",
+                      "changed_by": 9,
+                      "changed_at": "2026-10-14T16:30:00+00:00",
+                      "status_before": "pendiente",
+                      "status_after": "descartado",
+                      "changes": {
+                        "status": {
+                          "antes": "pendiente",
+                          "despues": "descartado"
+                        }
+                      },
+                      "reason": "Resultado negativo confirmado por el laboratorio estatal",
+                      "device_id": null
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "historial_caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<historial_caso><case_id tipo=\"numero\">1</case_id><version tipo=\"numero\">3</version><cambios><item><version tipo=\"numero\">2</version><action>correccion</action><changed_by tipo=\"numero\">7</changed_by><changed_at>2026-10-13T09:00:00+00:00</changed_at><status_before>pendiente</status_before><status_after>pendiente</status_after><changes><age><antes tipo=\"numero\">34</antes><despues tipo=\"numero\">35</despues></age><severity><antes>leve</antes><despues>grave</despues></severity></changes><reason>La edad y la gravedad se capturaron mal</reason><device_id tipo=\"numero\">3</device_id></item><item><version tipo=\"numero\">3</version><action>estado</action><changed_by tipo=\"numero\">9</changed_by><changed_at>2026-10-14T16:30:00+00:00</changed_at><status_before>pendiente</status_before><status_after>descartado</status_after><changes><status><antes>pendiente</antes><despues>descartado</despues></status></changes><reason>Resultado negativo confirmado por el laboratorio estatal</reason><device_id nil=\"true\" /></item></cambios></historial_caso>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO, D31). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "404": {
+            "description": "Not Found. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        }
+      }
+    },
+    "/api/v1/forms": {
+      "get": {
+        "summary": "Formularios por enfermedad",
+        "operationId": "listar_formularios",
+        "tags": [
+          "formularios"
+        ],
+        "description": "Roles: CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR (los borradores, solo EPIDEMIOLOGO y ADMINISTRADOR). Todas las versiones, por enfermedad y versión. status filtra (borrador, publicado o retirado).",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Solo los de esta enfermedad"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "borrador",
+                "publicado",
+                "retirado"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 1,
+                  "formularios": [
+                    {
+                      "id": 4,
+                      "disease_id": 2,
+                      "version": 1,
+                      "status": "publicado",
+                      "title": "Dengue: datos clínicos",
+                      "fields": [
+                        {
+                          "clave": "fiebre_dias",
+                          "etiqueta": "Días con fiebre",
+                          "tipo": "entero",
+                          "obligatorio": true,
+                          "minimo": 0,
+                          "maximo": 30
+                        },
+                        {
+                          "clave": "signos_alarma",
+                          "etiqueta": "Signos de alarma",
+                          "tipo": "opciones",
+                          "obligatorio": false,
+                          "opciones": [
+                            {
+                              "valor": "dolor_abdominal",
+                              "etiqueta": "Dolor abdominal intenso"
+                            },
+                            {
+                              "valor": "vomito",
+                              "etiqueta": "Vómito persistente"
+                            },
+                            {
+                              "valor": "sangrado",
+                              "etiqueta": "Sangrado de mucosas"
+                            }
+                          ]
+                        },
+                        {
+                          "clave": "hospitalizado",
+                          "etiqueta": "¿Está hospitalizado?",
+                          "tipo": "booleano",
+                          "obligatorio": false
+                        }
+                      ],
+                      "required": false,
+                      "created_by": 9,
+                      "created_at": "2026-11-22T10:00:00+00:00",
+                      "updated_at": null,
+                      "published_by": 9,
+                      "published_at": "2026-11-22T10:30:00+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "lista_formularios"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<lista_formularios><total tipo=\"numero\">1</total><formularios><formulario><id tipo=\"numero\">4</id><disease_id tipo=\"numero\">2</disease_id><version tipo=\"numero\">1</version><status>publicado</status><title>Dengue: datos clínicos</title><fields><campo><clave>fiebre_dias</clave><etiqueta>Días con fiebre</etiqueta><tipo>entero</tipo><obligatorio tipo=\"booleano\">true</obligatorio><minimo tipo=\"numero\">0</minimo><maximo tipo=\"numero\">30</maximo></campo><campo><clave>signos_alarma</clave><etiqueta>Signos de alarma</etiqueta><tipo>opciones</tipo><obligatorio tipo=\"booleano\">false</obligatorio><opciones><opcion><valor>dolor_abdominal</valor><etiqueta>Dolor abdominal intenso</etiqueta></opcion><opcion><valor>vomito</valor><etiqueta>Vómito persistente</etiqueta></opcion><opcion><valor>sangrado</valor><etiqueta>Sangrado de mucosas</etiqueta></opcion></opciones></campo><campo><clave>hospitalizado</clave><etiqueta>¿Está hospitalizado?</etiqueta><tipo>booleano</tipo><obligatorio tipo=\"booleano\">false</obligatorio></campo></fields><required tipo=\"booleano\">false</required><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T10:00:00+00:00</created_at><updated_at nil=\"true\" /><published_by tipo=\"numero\">9</published_by><published_at>2026-11-22T10:30:00+00:00</published_at></formulario></formularios></lista_formularios>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "422": {
+            "description": "Unprocessable Entity (DATOS_INVALIDOS): filtro inválido."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO, D31). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear un borrador",
+        "operationId": "crear_formulario",
+        "tags": [
+          "formularios"
+        ],
+        "description": "Roles: EPIDEMIOLOGO, ADMINISTRADOR. La versión siguiente de la enfermedad, en borrador. Cada campo: clave (minúsculas, dígitos y _; no repite un campo fijo del caso), etiqueta, tipo (texto, entero, decimal, fecha, booleano, opcion u opciones), obligatorio, y según el tipo minimo y maximo, max_largo (texto, hasta 2000) u opciones ({valor, etiqueta}, de 2 a 50), más ayuda. De 1 a 60 campos. required: con la versión vigente en true, un caso de la enfermedad tiene que traer sus respuestas.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "disease_id": 2,
+                "title": "Dengue: datos clínicos",
+                "fields": [
+                  {
+                    "clave": "fiebre_dias",
+                    "etiqueta": "Días con fiebre",
+                    "tipo": "entero",
+                    "obligatorio": true,
+                    "minimo": 0,
+                    "maximo": 30
+                  },
+                  {
+                    "clave": "signos_alarma",
+                    "etiqueta": "Signos de alarma",
+                    "tipo": "opciones",
+                    "obligatorio": false,
+                    "opciones": [
+                      {
+                        "valor": "dolor_abdominal",
+                        "etiqueta": "Dolor abdominal intenso"
+                      },
+                      {
+                        "valor": "vomito",
+                        "etiqueta": "Vómito persistente"
+                      },
+                      {
+                        "valor": "sangrado",
+                        "etiqueta": "Sangrado de mucosas"
+                      }
+                    ]
+                  },
+                  {
+                    "clave": "hospitalizado",
+                    "etiqueta": "¿Está hospitalizado?",
+                    "tipo": "booleano",
+                    "obligatorio": false
+                  }
+                ],
+                "required": false
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "formulario"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<formulario><disease_id tipo=\"numero\">2</disease_id><title>Dengue: datos clínicos</title><fields><campo><clave>fiebre_dias</clave><etiqueta>Días con fiebre</etiqueta><tipo>entero</tipo><obligatorio tipo=\"booleano\">true</obligatorio><minimo tipo=\"numero\">0</minimo><maximo tipo=\"numero\">30</maximo></campo><campo><clave>signos_alarma</clave><etiqueta>Signos de alarma</etiqueta><tipo>opciones</tipo><obligatorio tipo=\"booleano\">false</obligatorio><opciones><opcion><valor>dolor_abdominal</valor><etiqueta>Dolor abdominal intenso</etiqueta></opcion><opcion><valor>vomito</valor><etiqueta>Vómito persistente</etiqueta></opcion><opcion><valor>sangrado</valor><etiqueta>Sangrado de mucosas</etiqueta></opcion></opciones></campo><campo><clave>hospitalizado</clave><etiqueta>¿Está hospitalizado?</etiqueta><tipo>booleano</tipo><obligatorio tipo=\"booleano\">false</obligatorio></campo></fields><required tipo=\"booleano\">false</required></formulario>\n"
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Creado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 4,
+                  "disease_id": 2,
+                  "version": 1,
+                  "status": "borrador",
+                  "title": "Dengue: datos clínicos",
+                  "fields": [
+                    {
+                      "clave": "fiebre_dias",
+                      "etiqueta": "Días con fiebre",
+                      "tipo": "entero",
+                      "obligatorio": true,
+                      "minimo": 0,
+                      "maximo": 30
+                    },
+                    {
+                      "clave": "signos_alarma",
+                      "etiqueta": "Signos de alarma",
+                      "tipo": "opciones",
+                      "obligatorio": false,
+                      "opciones": [
+                        {
+                          "valor": "dolor_abdominal",
+                          "etiqueta": "Dolor abdominal intenso"
+                        },
+                        {
+                          "valor": "vomito",
+                          "etiqueta": "Vómito persistente"
+                        },
+                        {
+                          "valor": "sangrado",
+                          "etiqueta": "Sangrado de mucosas"
+                        }
+                      ]
+                    },
+                    {
+                      "clave": "hospitalizado",
+                      "etiqueta": "¿Está hospitalizado?",
+                      "tipo": "booleano",
+                      "obligatorio": false
+                    }
+                  ],
+                  "required": false,
+                  "created_by": 9,
+                  "created_at": "2026-11-22T10:00:00+00:00",
+                  "updated_at": null,
+                  "published_by": null,
+                  "published_at": null
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "formulario"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<formulario><id tipo=\"numero\">4</id><disease_id tipo=\"numero\">2</disease_id><version tipo=\"numero\">1</version><status>borrador</status><title>Dengue: datos clínicos</title><fields><campo><clave>fiebre_dias</clave><etiqueta>Días con fiebre</etiqueta><tipo>entero</tipo><obligatorio tipo=\"booleano\">true</obligatorio><minimo tipo=\"numero\">0</minimo><maximo tipo=\"numero\">30</maximo></campo><campo><clave>signos_alarma</clave><etiqueta>Signos de alarma</etiqueta><tipo>opciones</tipo><obligatorio tipo=\"booleano\">false</obligatorio><opciones><opcion><valor>dolor_abdominal</valor><etiqueta>Dolor abdominal intenso</etiqueta></opcion><opcion><valor>vomito</valor><etiqueta>Vómito persistente</etiqueta></opcion><opcion><valor>sangrado</valor><etiqueta>Sangrado de mucosas</etiqueta></opcion></opciones></campo><campo><clave>hospitalizado</clave><etiqueta>¿Está hospitalizado?</etiqueta><tipo>booleano</tipo><obligatorio tipo=\"booleano\">false</obligatorio></campo></fields><required tipo=\"booleano\">false</required><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T10:00:00+00:00</created_at><updated_at nil=\"true\" /><published_by nil=\"true\" /><published_at nil=\"true\" /></formulario>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "404": {
+            "description": "No existe la enfermedad (NO_ENCONTRADO)."
+          },
+          "409": {
+            "description": "La enfermedad ya tiene un borrador: se edita o se publica (CONFLICTO)."
+          },
+          "422": {
+            "description": "Una definición que no pasa (DATOS_INVALIDOS)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO, D31). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/forms/current": {
+      "get": {
+        "summary": "Formularios vigentes",
+        "operationId": "formularios_vigentes",
+        "tags": [
+          "formularios"
+        ],
+        "description": "Roles: CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR (los borradores, solo EPIDEMIOLOGO y ADMINISTRADOR). La versión publicada de cada enfermedad que tiene formulario (o de una, con disease_id): lo que la app guarda para capturar sin conexión. Una versión anterior sigue valiendo para lo ya capturado.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Solo los de esta enfermedad"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 1,
+                  "formularios": [
+                    {
+                      "id": 4,
+                      "disease_id": 2,
+                      "version": 1,
+                      "status": "publicado",
+                      "title": "Dengue: datos clínicos",
+                      "fields": [
+                        {
+                          "clave": "fiebre_dias",
+                          "etiqueta": "Días con fiebre",
+                          "tipo": "entero",
+                          "obligatorio": true,
+                          "minimo": 0,
+                          "maximo": 30
+                        },
+                        {
+                          "clave": "signos_alarma",
+                          "etiqueta": "Signos de alarma",
+                          "tipo": "opciones",
+                          "obligatorio": false,
+                          "opciones": [
+                            {
+                              "valor": "dolor_abdominal",
+                              "etiqueta": "Dolor abdominal intenso"
+                            },
+                            {
+                              "valor": "vomito",
+                              "etiqueta": "Vómito persistente"
+                            },
+                            {
+                              "valor": "sangrado",
+                              "etiqueta": "Sangrado de mucosas"
+                            }
+                          ]
+                        },
+                        {
+                          "clave": "hospitalizado",
+                          "etiqueta": "¿Está hospitalizado?",
+                          "tipo": "booleano",
+                          "obligatorio": false
+                        }
+                      ],
+                      "required": false,
+                      "created_by": 9,
+                      "created_at": "2026-11-22T10:00:00+00:00",
+                      "updated_at": null,
+                      "published_by": 9,
+                      "published_at": "2026-11-22T10:30:00+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "lista_formularios"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<lista_formularios><total tipo=\"numero\">1</total><formularios><formulario><id tipo=\"numero\">4</id><disease_id tipo=\"numero\">2</disease_id><version tipo=\"numero\">1</version><status>publicado</status><title>Dengue: datos clínicos</title><fields><campo><clave>fiebre_dias</clave><etiqueta>Días con fiebre</etiqueta><tipo>entero</tipo><obligatorio tipo=\"booleano\">true</obligatorio><minimo tipo=\"numero\">0</minimo><maximo tipo=\"numero\">30</maximo></campo><campo><clave>signos_alarma</clave><etiqueta>Signos de alarma</etiqueta><tipo>opciones</tipo><obligatorio tipo=\"booleano\">false</obligatorio><opciones><opcion><valor>dolor_abdominal</valor><etiqueta>Dolor abdominal intenso</etiqueta></opcion><opcion><valor>vomito</valor><etiqueta>Vómito persistente</etiqueta></opcion><opcion><valor>sangrado</valor><etiqueta>Sangrado de mucosas</etiqueta></opcion></opciones></campo><campo><clave>hospitalizado</clave><etiqueta>¿Está hospitalizado?</etiqueta><tipo>booleano</tipo><obligatorio tipo=\"booleano\">false</obligatorio></campo></fields><required tipo=\"booleano\">false</required><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T10:00:00+00:00</created_at><updated_at nil=\"true\" /><published_by tipo=\"numero\">9</published_by><published_at>2026-11-22T10:30:00+00:00</published_at></formulario></formularios></lista_formularios>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO, D31). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/forms/{form_id}": {
+      "get": {
+        "summary": "Una versión de un formulario",
+        "operationId": "consultar_formulario",
+        "tags": [
+          "formularios"
+        ],
+        "description": "Roles: CAPTURISTA, EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR (los borradores, solo EPIDEMIOLOGO y ADMINISTRADOR). Cualquier versión (un borrador, solo para quien los arma).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 4,
+                  "disease_id": 2,
+                  "version": 1,
+                  "status": "publicado",
+                  "title": "Dengue: datos clínicos",
+                  "fields": [
+                    {
+                      "clave": "fiebre_dias",
+                      "etiqueta": "Días con fiebre",
+                      "tipo": "entero",
+                      "obligatorio": true,
+                      "minimo": 0,
+                      "maximo": 30
+                    },
+                    {
+                      "clave": "signos_alarma",
+                      "etiqueta": "Signos de alarma",
+                      "tipo": "opciones",
+                      "obligatorio": false,
+                      "opciones": [
+                        {
+                          "valor": "dolor_abdominal",
+                          "etiqueta": "Dolor abdominal intenso"
+                        },
+                        {
+                          "valor": "vomito",
+                          "etiqueta": "Vómito persistente"
+                        },
+                        {
+                          "valor": "sangrado",
+                          "etiqueta": "Sangrado de mucosas"
+                        }
+                      ]
+                    },
+                    {
+                      "clave": "hospitalizado",
+                      "etiqueta": "¿Está hospitalizado?",
+                      "tipo": "booleano",
+                      "obligatorio": false
+                    }
+                  ],
+                  "required": false,
+                  "created_by": 9,
+                  "created_at": "2026-11-22T10:00:00+00:00",
+                  "updated_at": null,
+                  "published_by": 9,
+                  "published_at": "2026-11-22T10:30:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "formulario"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<formulario><id tipo=\"numero\">4</id><disease_id tipo=\"numero\">2</disease_id><version tipo=\"numero\">1</version><status>publicado</status><title>Dengue: datos clínicos</title><fields><campo><clave>fiebre_dias</clave><etiqueta>Días con fiebre</etiqueta><tipo>entero</tipo><obligatorio tipo=\"booleano\">true</obligatorio><minimo tipo=\"numero\">0</minimo><maximo tipo=\"numero\">30</maximo></campo><campo><clave>signos_alarma</clave><etiqueta>Signos de alarma</etiqueta><tipo>opciones</tipo><obligatorio tipo=\"booleano\">false</obligatorio><opciones><opcion><valor>dolor_abdominal</valor><etiqueta>Dolor abdominal intenso</etiqueta></opcion><opcion><valor>vomito</valor><etiqueta>Vómito persistente</etiqueta></opcion><opcion><valor>sangrado</valor><etiqueta>Sangrado de mucosas</etiqueta></opcion></opciones></campo><campo><clave>hospitalizado</clave><etiqueta>¿Está hospitalizado?</etiqueta><tipo>booleano</tipo><obligatorio tipo=\"booleano\">false</obligatorio></campo></fields><required tipo=\"booleano\">false</required><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T10:00:00+00:00</created_at><updated_at nil=\"true\" /><published_by tipo=\"numero\">9</published_by><published_at>2026-11-22T10:30:00+00:00</published_at></formulario>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "404": {
+            "description": "No existe (NO_ENCONTRADO)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO, D31). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Editar un borrador",
+        "operationId": "editar_formulario",
+        "tags": [
+          "formularios"
+        ],
+        "description": "Roles: EPIDEMIOLOGO, ADMINISTRADOR. Reemplaza title, fields y required. Una versión publicada o retirada ya no cambia: 409. Cada campo: clave (minúsculas, dígitos y _; no repite un campo fijo del caso), etiqueta, tipo (texto, entero, decimal, fecha, booleano, opcion u opciones), obligatorio, y según el tipo minimo y maximo, max_largo (texto, hasta 2000) u opciones ({valor, etiqueta}, de 2 a 50), más ayuda. De 1 a 60 campos. required: con la versión vigente en true, un caso de la enfermedad tiene que traer sus respuestas.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "title": "Dengue: datos clínicos",
+                "fields": [
+                  {
+                    "clave": "fiebre_dias",
+                    "etiqueta": "Días con fiebre",
+                    "tipo": "entero",
+                    "obligatorio": true,
+                    "minimo": 0,
+                    "maximo": 30
+                  },
+                  {
+                    "clave": "signos_alarma",
+                    "etiqueta": "Signos de alarma",
+                    "tipo": "opciones",
+                    "obligatorio": false,
+                    "opciones": [
+                      {
+                        "valor": "dolor_abdominal",
+                        "etiqueta": "Dolor abdominal intenso"
+                      },
+                      {
+                        "valor": "vomito",
+                        "etiqueta": "Vómito persistente"
+                      },
+                      {
+                        "valor": "sangrado",
+                        "etiqueta": "Sangrado de mucosas"
+                      }
+                    ]
+                  },
+                  {
+                    "clave": "hospitalizado",
+                    "etiqueta": "¿Está hospitalizado?",
+                    "tipo": "booleano",
+                    "obligatorio": false
+                  }
+                ],
+                "required": false
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "formulario"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<formulario><title>Dengue: datos clínicos</title><fields><campo><clave>fiebre_dias</clave><etiqueta>Días con fiebre</etiqueta><tipo>entero</tipo><obligatorio tipo=\"booleano\">true</obligatorio><minimo tipo=\"numero\">0</minimo><maximo tipo=\"numero\">30</maximo></campo><campo><clave>signos_alarma</clave><etiqueta>Signos de alarma</etiqueta><tipo>opciones</tipo><obligatorio tipo=\"booleano\">false</obligatorio><opciones><opcion><valor>dolor_abdominal</valor><etiqueta>Dolor abdominal intenso</etiqueta></opcion><opcion><valor>vomito</valor><etiqueta>Vómito persistente</etiqueta></opcion><opcion><valor>sangrado</valor><etiqueta>Sangrado de mucosas</etiqueta></opcion></opciones></campo><campo><clave>hospitalizado</clave><etiqueta>¿Está hospitalizado?</etiqueta><tipo>booleano</tipo><obligatorio tipo=\"booleano\">false</obligatorio></campo></fields><required tipo=\"booleano\">false</required></formulario>\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 4,
+                  "disease_id": 2,
+                  "version": 1,
+                  "status": "borrador",
+                  "title": "Dengue: datos clínicos",
+                  "fields": [
+                    {
+                      "clave": "fiebre_dias",
+                      "etiqueta": "Días con fiebre",
+                      "tipo": "entero",
+                      "obligatorio": true,
+                      "minimo": 0,
+                      "maximo": 30
+                    },
+                    {
+                      "clave": "signos_alarma",
+                      "etiqueta": "Signos de alarma",
+                      "tipo": "opciones",
+                      "obligatorio": false,
+                      "opciones": [
+                        {
+                          "valor": "dolor_abdominal",
+                          "etiqueta": "Dolor abdominal intenso"
+                        },
+                        {
+                          "valor": "vomito",
+                          "etiqueta": "Vómito persistente"
+                        },
+                        {
+                          "valor": "sangrado",
+                          "etiqueta": "Sangrado de mucosas"
+                        }
+                      ]
+                    },
+                    {
+                      "clave": "hospitalizado",
+                      "etiqueta": "¿Está hospitalizado?",
+                      "tipo": "booleano",
+                      "obligatorio": false
+                    }
+                  ],
+                  "required": false,
+                  "created_by": 9,
+                  "created_at": "2026-11-22T10:00:00+00:00",
+                  "updated_at": null,
+                  "published_by": null,
+                  "published_at": null
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "formulario"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<formulario><id tipo=\"numero\">4</id><disease_id tipo=\"numero\">2</disease_id><version tipo=\"numero\">1</version><status>borrador</status><title>Dengue: datos clínicos</title><fields><campo><clave>fiebre_dias</clave><etiqueta>Días con fiebre</etiqueta><tipo>entero</tipo><obligatorio tipo=\"booleano\">true</obligatorio><minimo tipo=\"numero\">0</minimo><maximo tipo=\"numero\">30</maximo></campo><campo><clave>signos_alarma</clave><etiqueta>Signos de alarma</etiqueta><tipo>opciones</tipo><obligatorio tipo=\"booleano\">false</obligatorio><opciones><opcion><valor>dolor_abdominal</valor><etiqueta>Dolor abdominal intenso</etiqueta></opcion><opcion><valor>vomito</valor><etiqueta>Vómito persistente</etiqueta></opcion><opcion><valor>sangrado</valor><etiqueta>Sangrado de mucosas</etiqueta></opcion></opciones></campo><campo><clave>hospitalizado</clave><etiqueta>¿Está hospitalizado?</etiqueta><tipo>booleano</tipo><obligatorio tipo=\"booleano\">false</obligatorio></campo></fields><required tipo=\"booleano\">false</required><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T10:00:00+00:00</created_at><updated_at nil=\"true\" /><published_by nil=\"true\" /><published_at nil=\"true\" /></formulario>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "404": {
+            "description": "No existe (NO_ENCONTRADO)."
+          },
+          "409": {
+            "description": "Ya está publicado o retirado (CONFLICTO)."
+          },
+          "422": {
+            "description": "Una definición que no pasa (DATOS_INVALIDOS)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO, D31). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/forms/{form_id}/publish": {
+      "post": {
+        "summary": "Publicar un borrador",
+        "operationId": "publicar_formulario",
+        "tags": [
+          "formularios"
+        ],
+        "description": "Roles: EPIDEMIOLOGO, ADMINISTRADOR. El borrador pasa a publicado y la versión vigente de la enfermedad, a retirado, en la misma transacción.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 4,
+                  "disease_id": 2,
+                  "version": 1,
+                  "status": "publicado",
+                  "title": "Dengue: datos clínicos",
+                  "fields": [
+                    {
+                      "clave": "fiebre_dias",
+                      "etiqueta": "Días con fiebre",
+                      "tipo": "entero",
+                      "obligatorio": true,
+                      "minimo": 0,
+                      "maximo": 30
+                    },
+                    {
+                      "clave": "signos_alarma",
+                      "etiqueta": "Signos de alarma",
+                      "tipo": "opciones",
+                      "obligatorio": false,
+                      "opciones": [
+                        {
+                          "valor": "dolor_abdominal",
+                          "etiqueta": "Dolor abdominal intenso"
+                        },
+                        {
+                          "valor": "vomito",
+                          "etiqueta": "Vómito persistente"
+                        },
+                        {
+                          "valor": "sangrado",
+                          "etiqueta": "Sangrado de mucosas"
+                        }
+                      ]
+                    },
+                    {
+                      "clave": "hospitalizado",
+                      "etiqueta": "¿Está hospitalizado?",
+                      "tipo": "booleano",
+                      "obligatorio": false
+                    }
+                  ],
+                  "required": false,
+                  "created_by": 9,
+                  "created_at": "2026-11-22T10:00:00+00:00",
+                  "updated_at": null,
+                  "published_by": 9,
+                  "published_at": "2026-11-22T10:30:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "formulario"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<formulario><id tipo=\"numero\">4</id><disease_id tipo=\"numero\">2</disease_id><version tipo=\"numero\">1</version><status>publicado</status><title>Dengue: datos clínicos</title><fields><campo><clave>fiebre_dias</clave><etiqueta>Días con fiebre</etiqueta><tipo>entero</tipo><obligatorio tipo=\"booleano\">true</obligatorio><minimo tipo=\"numero\">0</minimo><maximo tipo=\"numero\">30</maximo></campo><campo><clave>signos_alarma</clave><etiqueta>Signos de alarma</etiqueta><tipo>opciones</tipo><obligatorio tipo=\"booleano\">false</obligatorio><opciones><opcion><valor>dolor_abdominal</valor><etiqueta>Dolor abdominal intenso</etiqueta></opcion><opcion><valor>vomito</valor><etiqueta>Vómito persistente</etiqueta></opcion><opcion><valor>sangrado</valor><etiqueta>Sangrado de mucosas</etiqueta></opcion></opciones></campo><campo><clave>hospitalizado</clave><etiqueta>¿Está hospitalizado?</etiqueta><tipo>booleano</tipo><obligatorio tipo=\"booleano\">false</obligatorio></campo></fields><required tipo=\"booleano\">false</required><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T10:00:00+00:00</created_at><updated_at nil=\"true\" /><published_by tipo=\"numero\">9</published_by><published_at>2026-11-22T10:30:00+00:00</published_at></formulario>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "404": {
+            "description": "No existe (NO_ENCONTRADO)."
+          },
+          "409": {
+            "description": "No es un borrador (CONFLICTO)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO, D31). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cases/incomplete": {
+      "get": {
+        "summary": "Casos con datos incompletos",
+        "operationId": "casos_incompletos",
+        "tags": [
+          "casos"
+        ],
+        "description": "Roles: los seis perfiles; la CAPTURISTA ve los que capturó, los demás todos (D49). Los casos pendientes o validados a los que les falta edad, sexo, inicio de síntomas, resultado, gravedad o ubicación; cada uno con faltantes. Paginado como GET /cases. Al capturar un caso (o un lote) así, quien lo capturó recibe un aviso DATA_INCOMPLETE.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con el encabezado Accept: application/json. Si chocan manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador para rastrear la petición entre servicios. Si falta, el servicio genera uno y lo devuelve en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Los casos incompletos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "casos": [
+                    {
+                      "id": 1,
+                      "local_uuid": "6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f",
+                      "device_id": 3,
+                      "reported_by": 7,
+                      "disease_id": 1,
+                      "enfermedad": "COVID-19",
+                      "region_id": 10,
+                      "municipio": "Monterrey",
+                      "age": null,
+                      "sex": "F",
+                      "onset_date": "2026-09-28",
+                      "report_date": "2026-10-01",
+                      "latitude": null,
+                      "longitude": null,
+                      "test_result": "positivo",
+                      "severity": "leve",
+                      "status": "pendiente",
+                      "created_at": "2026-10-12T10:00:00+00:00",
+                      "synced_at": "2026-10-12T10:00:00+00:00",
+                      "version": 1,
+                      "updated_at": null,
+                      "updated_by": null,
+                      "status_reason": null,
+                      "duplicate_of": null,
+                      "form_id": null,
+                      "form_answers": null,
+                      "faltantes": [
+                        "edad",
+                        "ubicación"
+                      ]
+                    }
+                  ],
+                  "total": 1,
+                  "pagina": 1,
+                  "por_pagina": 20,
+                  "paginas": 1
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "casos_incompletos"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<casos_incompletos><casos><item><id tipo=\"numero\">1</id><local_uuid>6f1f4f0e-3c6b-4f4c-9d9e-1a2b3c4d5e6f</local_uuid><device_id tipo=\"numero\">3</device_id><reported_by tipo=\"numero\">7</reported_by><disease_id tipo=\"numero\">1</disease_id><enfermedad>COVID-19</enfermedad><region_id tipo=\"numero\">10</region_id><municipio>Monterrey</municipio><age nil=\"true\" /><sex>F</sex><onset_date>2026-09-28</onset_date><report_date>2026-10-01</report_date><latitude nil=\"true\" /><longitude nil=\"true\" /><test_result>positivo</test_result><severity>leve</severity><status>pendiente</status><created_at>2026-10-12T10:00:00+00:00</created_at><synced_at>2026-10-12T10:00:00+00:00</synced_at><version tipo=\"numero\">1</version><updated_at nil=\"true\" /><updated_by nil=\"true\" /><status_reason nil=\"true\" /><duplicate_of nil=\"true\" /><form_id nil=\"true\" /><form_answers nil=\"true\" /><faltantes><item>edad</item><item>ubicación</item></faltantes></item></casos><total tipo=\"numero\">1</total><pagina tipo=\"numero\">1</pagina><por_pagina tipo=\"numero\">20</por_pagina><paginas tipo=\"numero\">1</paginas></casos_incompletos>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity. RFC 7807; en XML, application/problem+xml."
+          },
+          "401": {
+            "description": "Unauthorized. RFC 7807; en XML, application/problem+xml."
+          },
+          "403": {
+            "description": "Forbidden. RFC 7807; en XML, application/problem+xml."
+          },
+          "503": {
+            "description": "Service Unavailable. RFC 7807; en XML, application/problem+xml. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO): la cuenta pasó su límite de casos (D31). La cabecera Retry-After trae los segundos de espera; no se guardó ningún caso del lote.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }

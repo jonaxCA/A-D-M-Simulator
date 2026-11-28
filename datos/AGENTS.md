@@ -1,11 +1,12 @@
 # AGENTS.md — datos
 
-> **Estado: Vigente** · 2026-10-07 · Complementa el `AGENTS.md` de la raíz.
+> **Estado: Vigente** · 2026-11-08 · Complementa el `AGENTS.md` de la raíz.
 
 ## Migraciones nuevas
 
-1. Confirma el número con la persona: hay números reservados. Las del segundo parcial van de
-   la 026 en adelante (D16 de `docs/decisiones.md`).
+1. Usa el número reservado para tu bloque en «Números reservados» de
+   `postgres/migraciones/README.md`, y confírmalo con la persona. Si no hay uno para lo que
+   haces, pregunta antes de crear el archivo.
 2. Copia la estructura de la 017: encabezado, `BEGIN;` … `COMMIT;` y registro en `schema_migrations`.
 3. Hazla idempotente (`IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) y agrega `COMMENT ON` a todo lo nuevo.
 4. Copia el archivo tal cual al final de `postgres/dump_completo.sql` y actualiza el número de
@@ -28,7 +29,8 @@
 - No relajes las reglas de negocio de la base para que el código pase: `fn_version_aprobada`,
   el CHECK que impide aprobar la versión propia y el trigger que hace de `audit_log` una tabla
   de solo inserción.
-- No edites a mano `censo/` ni `geo/`. Si un dato oficial está mal, corrígelo desde la fuente
-  que cita el archivo.
+- No edites a mano `censo/`, `geo/` ni `observados/`. Si un dato oficial está mal, corrígelo
+  desde la fuente que cita el archivo. Los registros por persona (como el archivo de casos de la
+  DGE) nunca entran: se procesan en local y solo se guarda el agregado (D50, RNF-I05).
 - `population_size` va de 1,000 a 20,000,000 (migración 023); Nuevo León completo
   (5,784,442 habitantes) cabe.

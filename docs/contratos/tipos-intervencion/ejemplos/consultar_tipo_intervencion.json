@@ -1,23 +1,71 @@
 {
-  "id": 1,
-  "code": "CIERRE_ESCUELAS",
-  "name": "Cierre de escuelas",
-  "description": "Desactiva la capa escuela a partir del dia indicado.",
-  "target_layer": "escuela",
-  "primitive": "edge_modifier",
+  "id": 5,
+  "code": "VACUNACION",
+  "name": "Campania de vacunacion",
+  "description": "Reduce la susceptibilidad de los agentes seleccionados, con eficacia parcial y criterio de prioridad.",
+  "target_layer": "todas",
+  "primitive": "node_attr",
   "param_schema": {
     "type": "object",
+    "required": [
+      "eficacia",
+      "dosis_diarias"
+    ],
     "properties": {
-      "reduccion": {
+      "eficacia": {
         "type": "number",
-        "default": 1.0,
         "maximum": 1,
         "minimum": 0
+      },
+      "prioridad": {
+        "enum": [
+          "edad_desc",
+          "zona",
+          "ocupacion",
+          "aleatorio"
+        ],
+        "type": "string"
+      },
+      "edad_minima": {
+        "type": "integer",
+        "maximum": 120,
+        "minimum": 0
+      },
+      "dosis_diarias": {
+        "type": "integer",
+        "minimum": 1
       }
     }
   },
   "unit_cost": null,
-  "cost_unit": "por_habitante_dia",
+  "cost_unit": "por_dosis",
   "cost_source": null,
-  "cost_is_assumption": true
+  "cost_is_assumption": true,
+  "person_days_per_unit": null,
+  "person_days_source": null,
+  "person_days_is_assumption": true,
+  "efectividad": [
+    {
+      "parametro": "eficacia",
+      "enfermedad": "INFLUENZA_ESTACIONAL",
+      "valor": 0.59,
+      "min": 0.51,
+      "max": 0.67,
+      "fuente": "Osterholm et al. 2012, Lancet Infect Dis 12(1):36-44: eficacia agrupada de la vacuna trivalente inactivada en adultos, 59% (IC95% 51-67), contra influenza confirmada por RT-PCR o cultivo. El motor la aplica como protección completa de una fracción de los vacunados. doi:10.1016/S1473-3099(11)70295-X",
+      "supuesto": false,
+      "updated_by": null,
+      "updated_at": "2026-11-23T10:00:00+00:00"
+    },
+    {
+      "parametro": "eficacia",
+      "enfermedad": "SARS_COV_2_ANCESTRAL",
+      "valor": 0.95,
+      "min": 0.903,
+      "max": 0.976,
+      "fuente": "Polack et al. 2020, N Engl J Med 383(27):2603-2615: la vacuna BNT162b2 tuvo 95% de eficacia contra COVID-19 desde 7 días después de la segunda dosis (intervalo creíble 95%: 90.3-97.6). El motor la aplica como protección completa de una fracción de los vacunados. doi:10.1056/NEJMoa2034577",
+      "supuesto": false,
+      "updated_by": null,
+      "updated_at": "2026-11-23T10:00:00+00:00"
+    }
+  ]
 }

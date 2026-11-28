@@ -296,6 +296,42 @@
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>version debe ser un entero positivo.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/5/export</instance></problem>"
               }
             }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió. Estado parcial: el escenario 12 (versión 31, borrador) ya existe con 1 de 2 intervenciones; falló la de orden 1 (VACUNACION) y las siguientes no se intentaron. No se reintentó ni se borró nada: agrega las faltantes con POST /api/v1/versions/31/interventions o descarta el escenario.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios/1/export"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió. Estado parcial: el escenario 12 (versión 31, borrador) ya existe con 1 de 2 intervenciones; falló la de orden 1 (VACUNACION) y las siguientes no se intentaron. No se reintentó ni se borró nada: agrega las faltantes con POST /api/v1/versions/31/interventions o descarta el escenario.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/1/export</instance></problem>"
+              }
+            }
           }
         }
       }
@@ -536,7 +572,7 @@
             }
           },
           "503": {
-            "description": "Service Unavailable",
+            "description": "Service Unavailable. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -556,6 +592,18 @@
                   "type": "string"
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió. Estado parcial: el escenario 12 (versión 31, borrador) ya existe con 1 de 2 intervenciones; falló la de orden 1 (VACUNACION) y las siguientes no se intentaron. No se reintentó ni se borró nada: agrega las faltantes con POST /api/v1/versions/31/interventions o descarta el escenario.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/import</instance></problem>"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }

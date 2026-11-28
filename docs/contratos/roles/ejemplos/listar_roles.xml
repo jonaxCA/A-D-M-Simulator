@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<catalogo_roles><total tipo="numero">3</total><roles><item><id tipo="numero">3</id><code>ANALISTA</code><name>Analista</name></item><item><id tipo="numero">2</id><code>EPIDEMIOLOGO</code><name>Epidemiólogo</name></item><item><id tipo="numero">1</id><code>ADMINISTRADOR</code><name>Administrador</name></item></roles></catalogo_roles>

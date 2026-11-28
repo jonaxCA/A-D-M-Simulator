@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - escenarios",
     "version": "0.1.0",
-    "description": "Servicio escenarios: alta (escenario y versión 1 en una transacción, validada), versiones nuevas que nunca sobrescriben, historial y duplicado. Roles: ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR; versionar solo quien creó el escenario o un ADMINISTRADOR. Los cuerpos se aceptan en JSON o XML; las respuestas, XML por defecto o JSON con ?format=json."
+    "description": "Servicio escenarios: alta (escenario y versión 1 en una transacción, validada), versiones nuevas que nunca sobrescriben, historial con sus responsables, duplicado, proyectos de investigación y archivado (D54). Escriben ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR; versionar, archivar o mover de proyecto solo quien creó el escenario o un ADMINISTRADOR. Leen además INVESTIGADOR y AUTORIDAD_SANITARIA (D42). Una cuenta con alcance por región (D43) solo ve y escribe escenarios y proyectos de sus regiones (403 fuera). Un escenario archivado es de solo lectura: no recibe versiones, cambios de intervenciones, envíos a revisión ni corridas. Los cuerpos se aceptan en JSON o XML; las respuestas, XML por defecto o JSON con ?format=json."
   },
   "servers": [
     {
@@ -64,7 +64,7 @@
     "/api/v1/scenarios": {
       "get": {
         "summary": "Listar escenarios",
-        "description": "Escenarios con su versión vigente, del más reciente al más antiguo. Abierto a los tres roles.",
+        "description": "Escenarios de las regiones que cubre la cuenta, con su versión vigente y su proyecto. Los archivados no salen salvo con ?archived=true.",
         "operationId": "listar_escenarios",
         "tags": [
           "escenarios"
@@ -76,6 +76,24 @@
             "description": "Busca por nombre de escenario, enfermedad o región.",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "description": "Solo los escenarios de ese proyecto.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "archived",
+            "description": "true incluye los escenarios archivados.",
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           },
           {
@@ -109,7 +127,9 @@
         "x-roles": [
           "ANALISTA",
           "EPIDEMIOLOGO",
-          "ADMINISTRADOR"
+          "ADMINISTRADOR",
+          "INVESTIGADOR",
+          "AUTORIDAD_SANITARIA"
         ],
         "responses": {
           "200": {
@@ -144,7 +164,8 @@
                       "population_size": 1142994,
                       "horizon_days": 120,
                       "initial_infected": 50,
-                      "por_edad": true
+                      "por_edad": true,
+                      "project_id": 4
                     }
                   ]
                 }
@@ -156,7 +177,7 @@
                     "name": "lista_escenarios"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<lista_escenarios><total tipo=\"numero\">1</total><escenarios><escenario><id tipo=\"numero\">12</id><name>Brote de influenza en Monterrey</name><description>Escenario base.</description><status>borrador</status><created_at>2026-09-20T15:30:00+00:00</created_at><enfermedad>Influenza estacional</enfermedad><region>Monterrey</region><autor>Ana Analista</autor><version_number tipo=\"numero\">2</version_number><version_status>borrador</version_status><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">120</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><por_edad tipo=\"booleano\">true</por_edad></escenario></escenarios></lista_escenarios>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<lista_escenarios><total tipo=\"numero\">1</total><escenarios><escenario><id tipo=\"numero\">12</id><name>Brote de influenza en Monterrey</name><description>Escenario base.</description><status>borrador</status><created_at>2026-09-20T15:30:00+00:00</created_at><enfermedad>Influenza estacional</enfermedad><region>Monterrey</region><autor>Ana Analista</autor><version_number tipo=\"numero\">2</version_number><version_status>borrador</version_status><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">120</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><por_edad tipo=\"booleano\">true</por_edad><project_id tipo=\"numero\">4</project_id></escenario></escenarios></lista_escenarios>\n"
               }
             }
           },
@@ -242,7 +263,7 @@
             }
           },
           "503": {
-            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -265,6 +286,18 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }
@@ -365,6 +398,12 @@
                   "notes": {
                     "type": "string",
                     "nullable": true
+                  },
+                  "project_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "nullable": true,
+                    "description": "Proyecto activo de la misma enfermedad y región (D54)."
                   }
                 },
                 "additionalProperties": false
@@ -431,6 +470,12 @@
                   "notes": {
                     "type": "string",
                     "nullable": true
+                  },
+                  "project_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "nullable": true,
+                    "description": "Proyecto activo de la misma enfermedad y región (D54)."
                   }
                 },
                 "additionalProperties": false,
@@ -461,7 +506,8 @@
                 "example": {
                   "id": 13,
                   "version_number": 1,
-                  "status": "borrador"
+                  "status": "borrador",
+                  "project_id": 4
                 }
               },
               "application/xml": {
@@ -471,7 +517,7 @@
                     "name": "escenario"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><id tipo=\"numero\">13</id><version_number tipo=\"numero\">1</version_number><status>borrador</status></escenario>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><id tipo=\"numero\">13</id><version_number tipo=\"numero\">1</version_number><status>borrador</status><project_id tipo=\"numero\">4</project_id></escenario>\n"
               }
             }
           },
@@ -638,7 +684,7 @@
             }
           },
           "503": {
-            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -661,6 +707,254 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/versions": {
+      "get": {
+        "summary": "Versiones de todos los escenarios",
+        "description": "Todas las versiones de todos los escenarios en una sola llamada, con el nombre del escenario, la enfermedad, la región y quién la creó y revisó (nombre completo). Las aprobadas van primero, porque son las únicas que se pueden correr; después, de la más nueva a la más vieja. Filtro opcional status (borrador, en_revision, aprobado o rechazado). La usa la pantalla de simulaciones de la web (D36). ANALISTA, EPIDEMIOLOGO y ADMINISTRADOR.",
+        "operationId": "listar_versiones",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Solo las versiones en ese estado.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "borrador",
+                "en_revision",
+                "aprobado",
+                "rechazado"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR",
+          "INVESTIGADOR",
+          "AUTORIDAD_SANITARIA"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de escenarios",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 1,
+                  "versiones": [
+                    {
+                      "id": 11,
+                      "scenario_id": 3,
+                      "version_number": 2,
+                      "status": "aprobado",
+                      "population_size": 200000,
+                      "horizon_days": 180,
+                      "initial_infected": 100,
+                      "created_at": "2026-10-18T16:00:00+00:00",
+                      "reviewed_at": "2026-10-19T17:30:00+00:00",
+                      "review_comment": "Parámetros con fuente.",
+                      "scenario_name": "Brote de influenza en Monterrey",
+                      "scenario_status": "borrador",
+                      "disease_name": "Influenza",
+                      "region_name": "Monterrey",
+                      "creado_por": "Ana Analista",
+                      "revisado_por": "Eva Epidemióloga"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "versiones"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<versiones><total tipo=\"numero\">1</total><versiones><item><id tipo=\"numero\">11</id><scenario_id tipo=\"numero\">3</scenario_id><version_number tipo=\"numero\">2</version_number><status>aprobado</status><population_size tipo=\"numero\">200000</population_size><horizon_days tipo=\"numero\">180</horizon_days><initial_infected tipo=\"numero\">100</initial_infected><created_at>2026-10-18T16:00:00+00:00</created_at><reviewed_at>2026-10-19T17:30:00+00:00</reviewed_at><review_comment>Parámetros con fuente.</review_comment><scenario_name>Brote de influenza en Monterrey</scenario_name><scenario_status>borrador</scenario_status><disease_name>Influenza</disease_name><region_name>Monterrey</region_name><creado_por>Ana Analista</creado_por><revisado_por>Eva Epidemióloga</revisado_por></item></versiones></versiones>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/versions</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios/versions</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso o no es quien creó el escenario (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios/versions</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "status no es borrador, en_revision, aprobado ni rechazado (DATOS_INVALIDOS)."
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios/versions"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/versions</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }
@@ -726,7 +1020,9 @@
         "x-roles": [
           "ANALISTA",
           "EPIDEMIOLOGO",
-          "ADMINISTRADOR"
+          "ADMINISTRADOR",
+          "INVESTIGADOR",
+          "AUTORIDAD_SANITARIA"
         ],
         "responses": {
           "200": {
@@ -756,6 +1052,7 @@
                   "region_id": 5,
                   "region": "Monterrey",
                   "autor": "Ana Analista",
+                  "project_id": 4,
                   "editable": true,
                   "version": {
                     "id": 31,
@@ -788,7 +1085,8 @@
                     "revisor": null,
                     "submitted_at": null,
                     "reviewed_at": null,
-                    "review_comment": null
+                    "review_comment": null,
+                    "created_by": 3
                   },
                   "intervenciones": [
                     {
@@ -805,7 +1103,10 @@
                       },
                       "order_index": 0
                     }
-                  ]
+                  ],
+                  "region_poblacion": 1142994,
+                  "parametros_congelados": true,
+                  "parametros_sin_congelar": false
                 }
               },
               "application/xml": {
@@ -815,7 +1116,7 @@
                     "name": "escenario"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><id tipo=\"numero\">12</id><name>Brote de influenza en Monterrey</name><description>Escenario base.</description><status>borrador</status><owner_id tipo=\"numero\">7</owner_id><created_at>2026-09-20T15:30:00+00:00</created_at><disease_id tipo=\"numero\">3</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">5</region_id><region>Monterrey</region><autor>Ana Analista</autor><editable tipo=\"booleano\">true</editable><version><id tipo=\"numero\">31</id><version_number tipo=\"numero\">2</version_number><status>borrador</status><is_current tipo=\"booleano\">true</is_current><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">120</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><notes>Se amplía el horizonte a 120 días.</notes><created_at>2026-09-22T10:05:00+00:00</created_at><por_edad tipo=\"booleano\">true</por_edad><grupos_edad><item><grupo>0-14</grupo><poblacion tipo=\"numero\">250000</poblacion></item><item><grupo>15-64</grupo><poblacion tipo=\"numero\">760000</poblacion></item><item><grupo>65+</grupo><poblacion tipo=\"numero\">132994</poblacion></item></grupos_edad><population_age_unknown tipo=\"numero\">0</population_age_unknown><age_unknown_policy nil=\"true\" /><autor>Ana Analista</autor><revisor nil=\"true\" /><submitted_at nil=\"true\" /><reviewed_at nil=\"true\" /><review_comment nil=\"true\" /></version><intervenciones><intervencion><id tipo=\"numero\">77</id><code>CIERRE_ESCUELAS</code><name>Cierre de escuelas</name><target_layer>escuela</target_layer><start_day tipo=\"numero\">10</start_day><end_day tipo=\"numero\">40</end_day><coverage tipo=\"numero\">0.8</coverage><compliance tipo=\"numero\">0.9</compliance><params><reduccion tipo=\"numero\">0.5</reduccion></params><order_index tipo=\"numero\">0</order_index></intervencion></intervenciones></escenario>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><id tipo=\"numero\">12</id><name>Brote de influenza en Monterrey</name><description>Escenario base.</description><status>borrador</status><owner_id tipo=\"numero\">7</owner_id><created_at>2026-09-20T15:30:00+00:00</created_at><disease_id tipo=\"numero\">3</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">5</region_id><region>Monterrey</region><autor>Ana Analista</autor><project_id tipo=\"numero\">4</project_id><editable tipo=\"booleano\">true</editable><version><id tipo=\"numero\">31</id><version_number tipo=\"numero\">2</version_number><status>borrador</status><is_current tipo=\"booleano\">true</is_current><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">120</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><notes>Se amplía el horizonte a 120 días.</notes><created_at>2026-09-22T10:05:00+00:00</created_at><por_edad tipo=\"booleano\">true</por_edad><grupos_edad><item><grupo>0-14</grupo><poblacion tipo=\"numero\">250000</poblacion></item><item><grupo>15-64</grupo><poblacion tipo=\"numero\">760000</poblacion></item><item><grupo>65+</grupo><poblacion tipo=\"numero\">132994</poblacion></item></grupos_edad><population_age_unknown tipo=\"numero\">0</population_age_unknown><age_unknown_policy nil=\"true\" /><autor>Ana Analista</autor><revisor nil=\"true\" /><submitted_at nil=\"true\" /><reviewed_at nil=\"true\" /><review_comment nil=\"true\" /><created_by tipo=\"numero\">3</created_by></version><intervenciones><intervencion><id tipo=\"numero\">77</id><code>CIERRE_ESCUELAS</code><name>Cierre de escuelas</name><target_layer>escuela</target_layer><start_day tipo=\"numero\">10</start_day><end_day tipo=\"numero\">40</end_day><coverage tipo=\"numero\">0.8</coverage><compliance tipo=\"numero\">0.9</compliance><params><reduccion tipo=\"numero\">0.5</reduccion></params><order_index tipo=\"numero\">0</order_index></intervencion></intervenciones><region_poblacion tipo=\"numero\">1142994</region_poblacion><parametros_congelados tipo=\"booleano\">true</parametros_congelados><parametros_sin_congelar tipo=\"booleano\">false</parametros_sin_congelar></escenario>\n"
               }
             }
           },
@@ -955,7 +1256,7 @@
             }
           },
           "503": {
-            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -980,6 +1281,18 @@
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}</instance></problem>\n"
               }
             }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -987,7 +1300,7 @@
     "/api/v1/scenarios/{scenario_id}/versions": {
       "get": {
         "summary": "Historial de versiones",
-        "description": "Todas las versiones del escenario, la más reciente primero, con el conteo de intervenciones.",
+        "description": "Versiones del escenario, la más reciente primero, con sus responsables: quién la creó, cuándo se envió, quién la revisó y cuándo, el comentario (en un borrador, el motivo por el que se devolvió: `devuelta`) y la firma de la aprobada (`approval_sha256`, D55). Lo que pasó entre medio está en `roles` (`GET /api/v1/audit/history/...`, D43).",
         "operationId": "historial_versiones",
         "tags": [
           "escenarios"
@@ -1034,7 +1347,9 @@
         "x-roles": [
           "ANALISTA",
           "EPIDEMIOLOGO",
-          "ADMINISTRADOR"
+          "ADMINISTRADOR",
+          "INVESTIGADOR",
+          "AUTORIDAD_SANITARIA"
         ],
         "responses": {
           "200": {
@@ -1057,6 +1372,7 @@
                   "total": 2,
                   "versiones": [
                     {
+                      "id": 32,
                       "version_number": 2,
                       "status": "borrador",
                       "is_current": true,
@@ -1066,10 +1382,19 @@
                       "notes": "Se amplía el horizonte a 120 días.",
                       "created_at": "2026-09-22T10:05:00+00:00",
                       "por_edad": true,
+                      "created_by": 7,
                       "autor": "Ana Analista",
+                      "submitted_at": null,
+                      "reviewed_by": null,
+                      "revisor": null,
+                      "reviewed_at": null,
+                      "review_comment": "Falta la fuente del R0.",
+                      "devuelta": true,
+                      "approval_sha256": null,
                       "n_intervenciones": 1
                     },
                     {
+                      "id": 31,
                       "version_number": 1,
                       "status": "aprobado",
                       "is_current": false,
@@ -1079,7 +1404,15 @@
                       "notes": null,
                       "created_at": "2026-09-20T15:30:00+00:00",
                       "por_edad": true,
+                      "created_by": 7,
                       "autor": "Ana Analista",
+                      "submitted_at": "2026-09-20T16:00:00+00:00",
+                      "reviewed_by": 9,
+                      "revisor": "Elena Epidemióloga",
+                      "reviewed_at": "2026-09-21T09:30:00+00:00",
+                      "review_comment": null,
+                      "devuelta": false,
+                      "approval_sha256": "3f1c8a0b6d2e4f5a7b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a",
                       "n_intervenciones": 1
                     }
                   ]
@@ -1092,7 +1425,7 @@
                     "name": "historial_versiones"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<historial_versiones><scenario_id tipo=\"numero\">12</scenario_id><total tipo=\"numero\">2</total><versiones><item><version_number tipo=\"numero\">2</version_number><status>borrador</status><is_current tipo=\"booleano\">true</is_current><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">120</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><notes>Se amplía el horizonte a 120 días.</notes><created_at>2026-09-22T10:05:00+00:00</created_at><por_edad tipo=\"booleano\">true</por_edad><autor>Ana Analista</autor><n_intervenciones tipo=\"numero\">1</n_intervenciones></item><item><version_number tipo=\"numero\">1</version_number><status>aprobado</status><is_current tipo=\"booleano\">false</is_current><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">90</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><notes nil=\"true\" /><created_at>2026-09-20T15:30:00+00:00</created_at><por_edad tipo=\"booleano\">true</por_edad><autor>Ana Analista</autor><n_intervenciones tipo=\"numero\">1</n_intervenciones></item></versiones></historial_versiones>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<historial_versiones><scenario_id tipo=\"numero\">12</scenario_id><total tipo=\"numero\">2</total><versiones><item><id tipo=\"numero\">32</id><version_number tipo=\"numero\">2</version_number><status>borrador</status><is_current tipo=\"booleano\">true</is_current><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">120</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><notes>Se amplía el horizonte a 120 días.</notes><created_at>2026-09-22T10:05:00+00:00</created_at><por_edad tipo=\"booleano\">true</por_edad><created_by tipo=\"numero\">7</created_by><autor>Ana Analista</autor><submitted_at nil=\"true\" /><reviewed_by nil=\"true\" /><revisor nil=\"true\" /><reviewed_at nil=\"true\" /><review_comment>Falta la fuente del R0.</review_comment><devuelta tipo=\"booleano\">true</devuelta><approval_sha256 nil=\"true\" /><n_intervenciones tipo=\"numero\">1</n_intervenciones></item><item><id tipo=\"numero\">31</id><version_number tipo=\"numero\">1</version_number><status>aprobado</status><is_current tipo=\"booleano\">false</is_current><population_size tipo=\"numero\">1142994</population_size><horizon_days tipo=\"numero\">90</horizon_days><initial_infected tipo=\"numero\">50</initial_infected><notes nil=\"true\" /><created_at>2026-09-20T15:30:00+00:00</created_at><por_edad tipo=\"booleano\">true</por_edad><created_by tipo=\"numero\">7</created_by><autor>Ana Analista</autor><submitted_at>2026-09-20T16:00:00+00:00</submitted_at><reviewed_by tipo=\"numero\">9</reviewed_by><revisor>Elena Epidemióloga</revisor><reviewed_at>2026-09-21T09:30:00+00:00</reviewed_at><review_comment nil=\"true\" /><devuelta tipo=\"booleano\">false</devuelta><approval_sha256>3f1c8a0b6d2e4f5a7b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a</approval_sha256><n_intervenciones tipo=\"numero\">1</n_intervenciones></item></versiones></historial_versiones>\n"
               }
             }
           },
@@ -1205,7 +1538,7 @@
             }
           },
           "503": {
-            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1230,12 +1563,24 @@
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
               }
             }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       },
       "post": {
         "summary": "Crear la versión siguiente",
-        "description": "Crea la versión siguiente (borrador, vigente) copiando las intervenciones de la vigente; nunca sobrescribe una versión existente. Solo quien creó el escenario o un ADMINISTRADOR.",
+        "description": "Crea la versión siguiente (borrador, vigente) copiando las intervenciones de la vigente; nunca sobrescribe una versión existente. Solo quien creó el escenario o un ADMINISTRADOR. 409 si el escenario está archivado o si la versión vigente está en revisión (hay que esperar el dictamen o que la devuelvan).",
         "operationId": "crear_version",
         "tags": [
           "escenarios"
@@ -1594,7 +1939,7 @@
             }
           },
           "503": {
-            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1619,6 +1964,18 @@
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}/versions</instance></problem>\n"
               }
             }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -1626,7 +1983,7 @@
     "/api/v1/scenarios/{scenario_id}/duplicate": {
       "post": {
         "summary": "Duplicar un escenario",
-        "description": "Crea un escenario nuevo (de quien duplica, borrador, versión 1) a partir de una versión de otro, con sus intervenciones. No exige ser dueño del original.",
+        "description": "Crea un escenario nuevo (de quien duplica, borrador, versión 1) a partir de una versión de otro, con sus intervenciones. No exige ser dueño del original. El duplicado se queda en el proyecto del original si este sigue activo.",
         "operationId": "duplicar_escenario",
         "tags": [
           "escenarios"
@@ -1750,7 +2107,8 @@
                   "duplicado_de": 12,
                   "version_origen": 2,
                   "version_number": 1,
-                  "status": "borrador"
+                  "status": "borrador",
+                  "project_id": 4
                 }
               },
               "application/xml": {
@@ -1760,7 +2118,7 @@
                     "name": "escenario"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><id tipo=\"numero\">14</id><duplicado_de tipo=\"numero\">12</duplicado_de><version_origen tipo=\"numero\">2</version_origen><version_number tipo=\"numero\">1</version_number><status>borrador</status></escenario>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><id tipo=\"numero\">14</id><duplicado_de tipo=\"numero\">12</duplicado_de><version_origen tipo=\"numero\">2</version_origen><version_number tipo=\"numero\">1</version_number><status>borrador</status><project_id tipo=\"numero\">4</project_id></escenario>\n"
               }
             }
           },
@@ -1954,7 +2312,7 @@
             }
           },
           "503": {
-            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE).",
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1977,6 +2335,2863 @@
                   }
                 },
                 "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}/duplicate</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "summary": "Listar proyectos de investigación",
+        "description": "Proyectos de las regiones que cubre la cuenta (D43), del cambio más reciente al más viejo.",
+        "operationId": "listar_proyectos",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "description": "activo (por defecto), archivado o todos.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "activo",
+                "archivado",
+                "todos"
+              ],
+              "default": "activo"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "description": "Busca en el nombre del proyecto.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR",
+          "INVESTIGADOR",
+          "AUTORIDAD_SANITARIA"
+        ],
+        "responses": {
+          "200": {
+            "description": "Listar proyectos de investigación",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 1,
+                  "proyectos": [
+                    {
+                      "id": 4,
+                      "name": "Influenza en Monterrey, temporada 2026",
+                      "objective": "Comparar el cierre de escuelas contra la vacunación por edad.",
+                      "disease_id": 3,
+                      "enfermedad": "Influenza estacional",
+                      "region_id": 5,
+                      "region": "Monterrey",
+                      "period_start": "2026-10-01",
+                      "period_end": "2027-03-31",
+                      "motores": [
+                        "seir-ref",
+                        "abm-ref"
+                      ],
+                      "owner_id": 7,
+                      "autor": "Ana Analista",
+                      "status": "activo",
+                      "created_at": "2026-11-23T10:00:00+00:00",
+                      "updated_at": "2026-11-23T10:00:00+00:00",
+                      "n_escenarios": 2
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "lista_proyectos"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<lista_proyectos><total tipo=\"numero\">1</total><proyectos><proyecto><id tipo=\"numero\">4</id><name>Influenza en Monterrey, temporada 2026</name><objective>Comparar el cierre de escuelas contra la vacunación por edad.</objective><disease_id tipo=\"numero\">3</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">5</region_id><region>Monterrey</region><period_start>2026-10-01</period_start><period_end>2027-03-31</period_end><motores><motor>seir-ref</motor><motor>abm-ref</motor></motores><owner_id tipo=\"numero\">7</owner_id><autor>Ana Analista</autor><status>activo</status><created_at>2026-11-23T10:00:00+00:00</created_at><updated_at>2026-11-23T10:00:00+00:00</updated_at><n_escenarios tipo=\"numero\">2</n_escenarios></proyecto></proyectos></lista_proyectos>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/projects"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/projects</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/projects"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/projects</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "No tienes permiso para esta operación.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/projects"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>No tienes permiso para esta operación.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/projects</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "status inválido (DATOS_INVALIDOS).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "status debe ser uno de: activo, archivado, todos.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/projects"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>status debe ser uno de: activo, archivado, todos.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/projects</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/projects"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/projects</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear un proyecto de investigación",
+        "description": "Un proyecto agrupa escenarios de una enfermedad y una región, con su objetivo, su periodo de estudio y los motores que contempla (D54). La región tiene que estar en el alcance de la cuenta.",
+        "operationId": "crear_proyecto",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "El proyecto nuevo.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 160
+                  },
+                  "objective": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "nullable": true
+                  },
+                  "disease_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "region_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "period_start": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "period_end": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "motores": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "seir-ref",
+                        "abm-ref",
+                        "abm-gpu"
+                      ]
+                    },
+                    "description": "En XML: <motores><motor>seir-ref</motor>...</motores>."
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "disease_id",
+                  "region_id",
+                  "period_start",
+                  "period_end",
+                  "motores"
+                ]
+              },
+              "example": {
+                "name": "Influenza en Monterrey, temporada 2026",
+                "objective": "Comparar el cierre de escuelas contra la vacunación por edad.",
+                "disease_id": 3,
+                "region_id": 5,
+                "period_start": "2026-10-01",
+                "period_end": "2027-03-31",
+                "motores": [
+                  "seir-ref",
+                  "abm-ref"
+                ]
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 160
+                  },
+                  "objective": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "nullable": true
+                  },
+                  "disease_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "region_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "period_start": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "period_end": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "motores": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "seir-ref",
+                        "abm-ref",
+                        "abm-gpu"
+                      ]
+                    },
+                    "description": "En XML: <motores><motor>seir-ref</motor>...</motores>."
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "disease_id",
+                  "region_id",
+                  "period_start",
+                  "period_end",
+                  "motores"
+                ],
+                "xml": {
+                  "name": "proyecto"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<proyecto><name>Influenza en Monterrey, temporada 2026</name><objective>Comparar el cierre de escuelas contra la vacunación por edad.</objective><disease_id tipo=\"numero\">3</disease_id><region_id tipo=\"numero\">5</region_id><period_start>2026-10-01</period_start><period_end>2027-03-31</period_end><motores><motor>seir-ref</motor><motor>abm-ref</motor></motores></proyecto>\n"
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Crear un proyecto de investigación",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 4,
+                  "name": "Influenza en Monterrey, temporada 2026",
+                  "objective": "Comparar el cierre de escuelas contra la vacunación por edad.",
+                  "disease_id": 3,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 5,
+                  "region": "Monterrey",
+                  "period_start": "2026-10-01",
+                  "period_end": "2027-03-31",
+                  "motores": [
+                    "seir-ref",
+                    "abm-ref"
+                  ],
+                  "owner_id": 7,
+                  "autor": "Ana Analista",
+                  "status": "activo",
+                  "created_at": "2026-11-23T10:00:00+00:00",
+                  "updated_at": "2026-11-23T10:00:00+00:00",
+                  "n_escenarios": 0
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "proyecto"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<proyecto><id tipo=\"numero\">4</id><name>Influenza en Monterrey, temporada 2026</name><objective>Comparar el cierre de escuelas contra la vacunación por edad.</objective><disease_id tipo=\"numero\">3</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">5</region_id><region>Monterrey</region><period_start>2026-10-01</period_start><period_end>2027-03-31</period_end><motores><motor>seir-ref</motor><motor>abm-ref</motor></motores><owner_id tipo=\"numero\">7</owner_id><autor>Ana Analista</autor><status>activo</status><created_at>2026-11-23T10:00:00+00:00</created_at><updated_at>2026-11-23T10:00:00+00:00</updated_at><n_escenarios tipo=\"numero\">0</n_escenarios></proyecto>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/projects"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/projects</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/projects"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/projects</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso, el proyecto está fuera del alcance de la cuenta (D43) o no es de quien lo creó (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "El dato está fuera del alcance de tu cuenta.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/projects"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>El dato está fuera del alcance de tu cuenta.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/projects</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "Ya tienes un proyecto con ese nombre (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "Ya tienes un proyecto con ese nombre.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/projects"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>Ya tienes un proyecto con ese nombre.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/projects</instance></problem>\n"
+              }
+            }
+          },
+          "415": {
+            "description": "El cuerpo no es JSON ni XML.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unsupported Media Type",
+                  "status": 415,
+                  "detail": "Usa Content-Type: application/json o application/xml.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/projects"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unsupported Media Type</title><status tipo=\"numero\">415</status><detail>Usa Content-Type: application/json o application/xml.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/projects</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos (DATOS_INVALIDOS).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "period_end no puede ser antes de period_start.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/projects"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>period_end no puede ser antes de period_start.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/projects</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/projects"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/projects</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}": {
+      "get": {
+        "summary": "Consultar un proyecto",
+        "description": "El proyecto con sus escenarios (también los archivados) y el estado de la versión vigente de cada uno.",
+        "operationId": "consultar_proyecto",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "description": "Id del proyecto.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR",
+          "INVESTIGADOR",
+          "AUTORIDAD_SANITARIA"
+        ],
+        "responses": {
+          "200": {
+            "description": "Consultar un proyecto",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 4,
+                  "name": "Influenza en Monterrey, temporada 2026",
+                  "objective": "Comparar el cierre de escuelas contra la vacunación por edad.",
+                  "disease_id": 3,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 5,
+                  "region": "Monterrey",
+                  "period_start": "2026-10-01",
+                  "period_end": "2027-03-31",
+                  "motores": [
+                    "seir-ref",
+                    "abm-ref"
+                  ],
+                  "owner_id": 7,
+                  "autor": "Ana Analista",
+                  "status": "activo",
+                  "created_at": "2026-11-23T10:00:00+00:00",
+                  "updated_at": "2026-11-23T10:00:00+00:00",
+                  "n_escenarios": 2,
+                  "escenarios": [
+                    {
+                      "id": 12,
+                      "name": "Brote de influenza en Monterrey",
+                      "status": "borrador",
+                      "owner_id": 7,
+                      "version_number": 2,
+                      "version_status": "aprobado"
+                    },
+                    {
+                      "id": 14,
+                      "name": "Brote de influenza en Monterrey (copia)",
+                      "status": "borrador",
+                      "owner_id": 7,
+                      "version_number": 1,
+                      "version_status": "borrador"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "proyecto"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<proyecto><id tipo=\"numero\">4</id><name>Influenza en Monterrey, temporada 2026</name><objective>Comparar el cierre de escuelas contra la vacunación por edad.</objective><disease_id tipo=\"numero\">3</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">5</region_id><region>Monterrey</region><period_start>2026-10-01</period_start><period_end>2027-03-31</period_end><motores><motor>seir-ref</motor><motor>abm-ref</motor></motores><owner_id tipo=\"numero\">7</owner_id><autor>Ana Analista</autor><status>activo</status><created_at>2026-11-23T10:00:00+00:00</created_at><updated_at>2026-11-23T10:00:00+00:00</updated_at><n_escenarios tipo=\"numero\">2</n_escenarios><escenarios><escenario><id tipo=\"numero\">12</id><name>Brote de influenza en Monterrey</name><status>borrador</status><owner_id tipo=\"numero\">7</owner_id><version_number tipo=\"numero\">2</version_number><version_status>aprobado</version_status></escenario><escenario><id tipo=\"numero\">14</id><name>Brote de influenza en Monterrey (copia)</name><status>borrador</status><owner_id tipo=\"numero\">7</owner_id><version_number tipo=\"numero\">1</version_number><version_status>borrador</version_status></escenario></escenarios></proyecto>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso, el proyecto está fuera del alcance de la cuenta (D43) o no es de quien lo creó (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "El dato está fuera del alcance de tu cuenta.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>El dato está fuera del alcance de tu cuenta.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "No existe el proyecto (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el proyecto.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el proyecto.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Cambiar un proyecto",
+        "description": "Cambia el nombre, el objetivo, el periodo o los motores. La enfermedad y la región no cambian si el proyecto ya tiene escenarios. Solo quien lo creó o un ADMINISTRADOR; un proyecto archivado no se cambia.",
+        "operationId": "cambiar_proyecto",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "description": "Id del proyecto.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Solo los campos que cambian.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 160
+                  },
+                  "objective": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "nullable": true
+                  },
+                  "disease_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "region_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "period_start": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "period_end": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "motores": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "seir-ref",
+                        "abm-ref",
+                        "abm-gpu"
+                      ]
+                    },
+                    "description": "En XML: <motores><motor>seir-ref</motor>...</motores>."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "period_end": "2027-04-30"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 160
+                  },
+                  "objective": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "nullable": true
+                  },
+                  "disease_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "region_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "period_start": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "period_end": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "motores": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "seir-ref",
+                        "abm-ref",
+                        "abm-gpu"
+                      ]
+                    },
+                    "description": "En XML: <motores><motor>seir-ref</motor>...</motores>."
+                  }
+                },
+                "additionalProperties": false,
+                "xml": {
+                  "name": "proyecto"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<proyecto><period_end>2027-04-30</period_end></proyecto>\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cambiar un proyecto",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 4,
+                  "name": "Influenza en Monterrey, temporada 2026",
+                  "objective": "Comparar el cierre de escuelas contra la vacunación por edad.",
+                  "disease_id": 3,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 5,
+                  "region": "Monterrey",
+                  "period_start": "2026-10-01",
+                  "period_end": "2027-04-30",
+                  "motores": [
+                    "seir-ref",
+                    "abm-ref"
+                  ],
+                  "owner_id": 7,
+                  "autor": "Ana Analista",
+                  "status": "activo",
+                  "created_at": "2026-11-23T10:00:00+00:00",
+                  "updated_at": "2026-11-23T10:00:00+00:00",
+                  "n_escenarios": 2
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "proyecto"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<proyecto><id tipo=\"numero\">4</id><name>Influenza en Monterrey, temporada 2026</name><objective>Comparar el cierre de escuelas contra la vacunación por edad.</objective><disease_id tipo=\"numero\">3</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">5</region_id><region>Monterrey</region><period_start>2026-10-01</period_start><period_end>2027-04-30</period_end><motores><motor>seir-ref</motor><motor>abm-ref</motor></motores><owner_id tipo=\"numero\">7</owner_id><autor>Ana Analista</autor><status>activo</status><created_at>2026-11-23T10:00:00+00:00</created_at><updated_at>2026-11-23T10:00:00+00:00</updated_at><n_escenarios tipo=\"numero\">2</n_escenarios></proyecto>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso, el proyecto está fuera del alcance de la cuenta (D43) o no es de quien lo creó (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "El dato está fuera del alcance de tu cuenta.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>El dato está fuera del alcance de tu cuenta.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "No existe el proyecto (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el proyecto.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el proyecto.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "El proyecto está archivado o ya tiene escenarios y se quiso cambiar su enfermedad o región (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "El proyecto está archivado: restáuralo antes de cambiarlo.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>El proyecto está archivado: restáuralo antes de cambiarlo.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "415": {
+            "description": "El cuerpo no es JSON ni XML.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unsupported Media Type",
+                  "status": 415,
+                  "detail": "Usa Content-Type: application/json o application/xml.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unsupported Media Type</title><status tipo=\"numero\">415</status><detail>Usa Content-Type: application/json o application/xml.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos (DATOS_INVALIDOS).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "No hay nada que cambiar.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>No hay nada que cambiar.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/projects/{project_id}"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/projects/{project_id}</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}/archive": {
+      "post": {
+        "summary": "Archivar un proyecto",
+        "description": "Un proyecto archivado no recibe escenarios nuevos; los que tiene no cambian. Solo quien lo creó o un ADMINISTRADOR.",
+        "operationId": "archivar_proyecto",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "description": "Id del proyecto.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "responses": {
+          "200": {
+            "description": "Archivar un proyecto",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 4,
+                  "name": "Influenza en Monterrey, temporada 2026",
+                  "objective": "Comparar el cierre de escuelas contra la vacunación por edad.",
+                  "disease_id": 3,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 5,
+                  "region": "Monterrey",
+                  "period_start": "2026-10-01",
+                  "period_end": "2027-03-31",
+                  "motores": [
+                    "seir-ref",
+                    "abm-ref"
+                  ],
+                  "owner_id": 7,
+                  "autor": "Ana Analista",
+                  "status": "archivado",
+                  "created_at": "2026-11-23T10:00:00+00:00",
+                  "updated_at": "2026-11-23T10:00:00+00:00",
+                  "n_escenarios": 2
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "proyecto"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<proyecto><id tipo=\"numero\">4</id><name>Influenza en Monterrey, temporada 2026</name><objective>Comparar el cierre de escuelas contra la vacunación por edad.</objective><disease_id tipo=\"numero\">3</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">5</region_id><region>Monterrey</region><period_start>2026-10-01</period_start><period_end>2027-03-31</period_end><motores><motor>seir-ref</motor><motor>abm-ref</motor></motores><owner_id tipo=\"numero\">7</owner_id><autor>Ana Analista</autor><status>archivado</status><created_at>2026-11-23T10:00:00+00:00</created_at><updated_at>2026-11-23T10:00:00+00:00</updated_at><n_escenarios tipo=\"numero\">2</n_escenarios></proyecto>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/projects/{project_id}/archive"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/projects/{project_id}/archive</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/projects/{project_id}/archive"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/projects/{project_id}/archive</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso, el proyecto está fuera del alcance de la cuenta (D43) o no es de quien lo creó (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "El dato está fuera del alcance de tu cuenta.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/projects/{project_id}/archive"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>El dato está fuera del alcance de tu cuenta.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/projects/{project_id}/archive</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "No existe el proyecto (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el proyecto.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/projects/{project_id}/archive"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el proyecto.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/projects/{project_id}/archive</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "Ya estaba en ese estado (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "El proyecto ya está archivado.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/projects/{project_id}/archive"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>El proyecto ya está archivado.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/projects/{project_id}/archive</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/projects/{project_id}/archive"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/projects/{project_id}/archive</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}/restore": {
+      "post": {
+        "summary": "Restaurar un proyecto archivado",
+        "description": "Lo vuelve a activo.",
+        "operationId": "restaurar_proyecto",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "description": "Id del proyecto.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "responses": {
+          "200": {
+            "description": "Restaurar un proyecto archivado",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 4,
+                  "name": "Influenza en Monterrey, temporada 2026",
+                  "objective": "Comparar el cierre de escuelas contra la vacunación por edad.",
+                  "disease_id": 3,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 5,
+                  "region": "Monterrey",
+                  "period_start": "2026-10-01",
+                  "period_end": "2027-03-31",
+                  "motores": [
+                    "seir-ref",
+                    "abm-ref"
+                  ],
+                  "owner_id": 7,
+                  "autor": "Ana Analista",
+                  "status": "activo",
+                  "created_at": "2026-11-23T10:00:00+00:00",
+                  "updated_at": "2026-11-23T10:00:00+00:00",
+                  "n_escenarios": 2
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "proyecto"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<proyecto><id tipo=\"numero\">4</id><name>Influenza en Monterrey, temporada 2026</name><objective>Comparar el cierre de escuelas contra la vacunación por edad.</objective><disease_id tipo=\"numero\">3</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">5</region_id><region>Monterrey</region><period_start>2026-10-01</period_start><period_end>2027-03-31</period_end><motores><motor>seir-ref</motor><motor>abm-ref</motor></motores><owner_id tipo=\"numero\">7</owner_id><autor>Ana Analista</autor><status>activo</status><created_at>2026-11-23T10:00:00+00:00</created_at><updated_at>2026-11-23T10:00:00+00:00</updated_at><n_escenarios tipo=\"numero\">2</n_escenarios></proyecto>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/projects/{project_id}/restore"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/projects/{project_id}/restore</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/projects/{project_id}/restore"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/projects/{project_id}/restore</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso, el proyecto está fuera del alcance de la cuenta (D43) o no es de quien lo creó (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "El dato está fuera del alcance de tu cuenta.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/projects/{project_id}/restore"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>El dato está fuera del alcance de tu cuenta.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/projects/{project_id}/restore</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "No existe el proyecto (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el proyecto.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/projects/{project_id}/restore"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el proyecto.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/projects/{project_id}/restore</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "Ya estaba en ese estado (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "El proyecto ya está activo.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/projects/{project_id}/restore"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>El proyecto ya está activo.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/projects/{project_id}/restore</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/projects/{project_id}/restore"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/projects/{project_id}/restore</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/{scenario_id}/project": {
+      "put": {
+        "summary": "Poner un escenario en un proyecto",
+        "description": "Mete el escenario a un proyecto activo de su misma enfermedad y región, lo cambia de proyecto o, con project_id null, lo saca. Solo quien creó el escenario o un ADMINISTRADOR.",
+        "operationId": "mover_a_proyecto",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "description": "Id del escenario.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "El proyecto, o null para sacarlo del suyo.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "project_id"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "project_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "nullable": true
+                  }
+                }
+              },
+              "example": {
+                "project_id": 4
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "project_id"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "project_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "nullable": true
+                  }
+                },
+                "xml": {
+                  "name": "escenario"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><project_id tipo=\"numero\">4</project_id></escenario>\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Poner un escenario en un proyecto",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "scenario_id": 12,
+                  "project_id": 4
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "escenario"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><scenario_id tipo=\"numero\">12</scenario_id><project_id tipo=\"numero\">4</project_id></escenario>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}/project"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}/project</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/project"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios/{scenario_id}/project</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso, el escenario está fuera del alcance de la cuenta (D43) o no es de quien lo creó (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Solo quien creó el escenario puede moverlo de proyecto.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/project"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>Solo quien creó el escenario puede moverlo de proyecto.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios/{scenario_id}/project</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "No existe el escenario (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el escenario.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/scenarios/{scenario_id}/project"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el escenario.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/scenarios/{scenario_id}/project</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "El escenario o el proyecto están archivados (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "El proyecto está archivado: no recibe escenarios.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/scenarios/{scenario_id}/project"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>El proyecto está archivado: no recibe escenarios.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/scenarios/{scenario_id}/project</instance></problem>\n"
+              }
+            }
+          },
+          "415": {
+            "description": "El cuerpo no es JSON ni XML.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unsupported Media Type",
+                  "status": 415,
+                  "detail": "Usa Content-Type: application/json o application/xml.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}/project"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unsupported Media Type</title><status tipo=\"numero\">415</status><detail>Usa Content-Type: application/json o application/xml.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}/project</instance></problem>\n"
+              }
+            }
+          },
+          "422": {
+            "description": "No existe el proyecto, o no es de la enfermedad y la región del escenario (DATOS_INVALIDOS).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Entity",
+                  "status": 422,
+                  "detail": "El escenario no es de la enfermedad y la región del proyecto.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}/project"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unprocessable Entity</title><status tipo=\"numero\">422</status><detail>El escenario no es de la enfermedad y la región del proyecto.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}/project</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/project"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}/project</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/{scenario_id}/archive": {
+      "post": {
+        "summary": "Archivar un escenario",
+        "description": "RF-D12 (D54): el escenario queda de solo lectura y deja de salir en la lista. No recibe versiones, cambios de intervenciones, envíos a revisión ni corridas (la base las rechaza); sus corridas y resultados se siguen consultando. 409 si su versión vigente está en revisión. Solo quien lo creó o un ADMINISTRADOR.",
+        "operationId": "archivar_escenario",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "description": "Id del escenario.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "responses": {
+          "200": {
+            "description": "Archivar un escenario",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 12,
+                  "status": "archivado"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "escenario"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><id tipo=\"numero\">12</id><status>archivado</status></escenario>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}/archive"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}/archive</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/archive"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios/{scenario_id}/archive</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso, el escenario está fuera del alcance de la cuenta (D43) o no es de quien lo creó (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Solo quien creó el escenario puede archivarlo o restaurarlo.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/archive"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>Solo quien creó el escenario puede archivarlo o restaurarlo.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios/{scenario_id}/archive</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "No existe el escenario (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el escenario.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/scenarios/{scenario_id}/archive"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el escenario.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/scenarios/{scenario_id}/archive</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "Ya está archivado, o su versión vigente está en revisión (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "La versión vigente está en revisión: espera el dictamen antes de archivar el escenario.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/scenarios/{scenario_id}/archive"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>La versión vigente está en revisión: espera el dictamen antes de archivar el escenario.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/scenarios/{scenario_id}/archive</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/archive"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}/archive</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/{scenario_id}/restore": {
+      "post": {
+        "summary": "Restaurar un escenario archivado",
+        "description": "Lo vuelve a activo (status borrador). Solo quien lo creó o un ADMINISTRADOR.",
+        "operationId": "restaurar_escenario",
+        "tags": [
+          "escenarios"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "description": "Id del escenario.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Formato de la respuesta. XML por defecto; JSON con ?format=json o con Accept: application/json. Si chocan, manda ?format. Un valor desconocido es 400.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-ID",
+            "required": false,
+            "description": "Identificador de correlación; si falta, el servicio genera uno y lo regresa en el mismo encabezado.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "ANALISTA",
+          "EPIDEMIOLOGO",
+          "ADMINISTRADOR"
+        ],
+        "responses": {
+          "200": {
+            "description": "Restaurar un escenario archivado",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "Identificador de correlación de la petición.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 12,
+                  "status": "borrador"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "escenario"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<escenario><id tipo=\"numero\">12</id><status>borrador</status></escenario>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida: JSON o XML mal formado, o ?format desconocido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "El cuerpo JSON o XML es inválido.",
+                  "codigo": "DATOS_INVALIDOS",
+                  "instance": "/api/v1/scenarios/{scenario_id}/restore"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Bad Request</title><status tipo=\"numero\">400</status><detail>El cuerpo JSON o XML es inválido.</detail><codigo>DATOS_INVALIDOS</codigo><instance>/api/v1/scenarios/{scenario_id}/restore</instance></problem>\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, está vencido, revocado o es inválido (TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_REVOCADO, TOKEN_INVALIDO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Falta Authorization: Bearer.",
+                  "codigo": "TOKEN_AUSENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/restore"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Unauthorized</title><status tipo=\"numero\">401</status><detail>Falta Authorization: Bearer.</detail><codigo>TOKEN_AUSENTE</codigo><instance>/api/v1/scenarios/{scenario_id}/restore</instance></problem>\n"
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso, el escenario está fuera del alcance de la cuenta (D43) o no es de quien lo creó (PERMISO_INSUFICIENTE).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Solo quien creó el escenario puede archivarlo o restaurarlo.",
+                  "codigo": "PERMISO_INSUFICIENTE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/restore"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Forbidden</title><status tipo=\"numero\">403</status><detail>Solo quien creó el escenario puede archivarlo o restaurarlo.</detail><codigo>PERMISO_INSUFICIENTE</codigo><instance>/api/v1/scenarios/{scenario_id}/restore</instance></problem>\n"
+              }
+            }
+          },
+          "404": {
+            "description": "No existe el escenario (NO_ENCONTRADO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "No existe el escenario.",
+                  "codigo": "NO_ENCONTRADO",
+                  "instance": "/api/v1/scenarios/{scenario_id}/restore"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Not Found</title><status tipo=\"numero\">404</status><detail>No existe el escenario.</detail><codigo>NO_ENCONTRADO</codigo><instance>/api/v1/scenarios/{scenario_id}/restore</instance></problem>\n"
+              }
+            }
+          },
+          "409": {
+            "description": "No estaba archivado (CONFLICTO).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "El escenario ya está activo.",
+                  "codigo": "CONFLICTO",
+                  "instance": "/api/v1/scenarios/{scenario_id}/restore"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Conflict</title><status tipo=\"numero\">409</status><detail>El escenario ya está activo.</detail><codigo>CONFLICTO</codigo><instance>/api/v1/scenarios/{scenario_id}/restore</instance></problem>\n"
+              }
+            }
+          },
+          "503": {
+            "description": "Redis o un servicio del que depende no está disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "El servicio no respondió.",
+                  "codigo": "SERVICIO_NO_DISPONIBLE",
+                  "instance": "/api/v1/scenarios/{scenario_id}/restore"
+                }
+              },
+              "application/problem+xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "problem"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<problem><type>about:blank</type><title>Service Unavailable</title><status tipo=\"numero\">503</status><detail>El servicio no respondió.</detail><codigo>SERVICIO_NO_DISPONIBLE</codigo><instance>/api/v1/scenarios/{scenario_id}/restore</instance></problem>\n"
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }

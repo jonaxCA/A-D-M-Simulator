@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Las respuestas del servicio corridas (puerto 5241). La raíz <corrida> la usan tres rutas,
+     cada una con sus campos:
+       POST /api/v1/runs               id, batch_id, scenario_version_id, seed, engine,
+                                       forzar_error, priority y status (encolado)
+       GET  /api/v1/runs/{id}          el detalle completo, con progress, engine, terminal,
+                                       priority, queue_position y la estimación (D44)
+       POST /api/v1/runs/{id}/retry    id, seed, priority y status (encolado)
+       POST /api/v1/runs/{id}/cancel   id y status (cancelado)
+     Por eso solo id y status son obligatorios. La raíz <listado> es GET /api/v1/runs, y
+     <equivalencia>, GET /api/v1/runs/{id}/equivalent.
+     El cuerpo de POST /api/v1/runs (raíz <solicitud>) lo valida el servicio. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
+
+  <xs:include schemaLocation="../comun/tipos.xsd"/>
+
+  <xs:simpleType name="estadoCorrida">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="encolado"/>
+      <xs:enumeration value="ejecutando"/>
+      <xs:enumeration value="completado"/>
+      <xs:enumeration value="fallido"/>
+      <xs:enumeration value="cancelado"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="prioridad">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="baja"/>
+      <xs:enumeration value="normal"/>
+      <xs:enumeration value="alta"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="estadoVersion">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="borrador"/>
+      <xs:enumeration value="en_revision"/>
+      <xs:enumeration value="aprobado"/>
+      <xs:enumeration value="rechazado"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Los de ck_simulation_batches_engine (migración 014). Vacío en una corrida sin lote. -->
+  <xs:simpleType name="motor">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="seir-ref"/>
+      <xs:enumeration value="abm-ref"/>
+      <xs:enumeration value="abm-gpu"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="motorOVacio">
+    <xs:union memberTypes="motor vacio"/>
+  </xs:simpleType>
+
+  <xs:complexType name="MotorONulo">
+    <xs:simpleContent>
+      <xs:extension base="motorOVacio">
+        <xs:attribute name="nil" type="xs:string" fixed="true"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:element name="corrida">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="id" type="Entero"/>
+        <xs:element name="status" type="estadoCorrida"/>
+        <xs:element name="batch_id" type="EnteroONulo" minOccurs="0"/>
+        <xs:element name="scenario_version_id" type="Entero" minOccurs="0"/>
+        <xs:element name="seed" type="Entero" minOccurs="0"/>
+        <xs:element name="engine" type="MotorONulo" minOccurs="0"/>
+        <xs:element name="forzar_error" type="Booleano" minOccurs="0"/>
+        <xs:element name="progress" type="Entero" minOccurs="0"/>
+        <xs:element name="engine_version" type="TextoONulo" minOccurs="0"/>
+        <xs:element name="queued_at" type="xs:dateTime" minOccurs="0"/>
+        <xs:element name="started_at" type="FechaHoraONulo" minOccurs="0"/>
+        <xs:element name="finished_at" type="FechaHoraONulo" minOccurs="0"/>
+        <xs:element name="error_message" type="TextoONulo" minOccurs="0"/>
+        <xs:element name="requested_by" type="Entero" minOccurs="0"/>
+        <xs:element name="version_number" type="Entero" minOccurs="0"/>
+        <xs:element name="scenario_id" type="Entero" minOccurs="0"/>
+        <xs:element name="version_status" type="estadoVersion" minOccurs="0"/>
+        <xs:element name="population_size" type="Entero" minOccurs="0"/>
+        <xs:element name="horizon_days" type="Entero" minOccurs="0"/>
+        <xs:element name="initial_infected" type="Entero" minOccurs="0"/>
+        <xs:element name="scenario_name" type="xs:string" minOccurs="0"/>
+        <xs:element name="disease_id" type="Entero" minOccurs="0"/>
+        <xs:element name="disease_name" type="xs:string" minOccurs="0"/>
+        <xs:element name="region_id" type="Entero" minOccurs="0"/>
+        <xs:element name="region_name" type="xs:string" minOccurs="0"/>
+        <xs:element name="requested_by_username" type="xs:string" minOccurs="0"/>
+        <xs:element name="requested_by_nombre" type="xs:string" minOccurs="0"/>
+        <xs:element name="terminal" type="Booleano" minOccurs="0"/>
+        <xs:element name="priority" type="prioridad" minOccurs="0"/>
+        <xs:element name="queue_position" type="EnteroONulo" minOccurs="0"/>
+        <xs:element name="estimated_seconds" type="EnteroONulo" minOccurs="0"/>
+        <xs:element name="estimate_samples" type="Entero" minOccurs="0"/>
+        <xs:element name="estimate_reason" type="TextoONulo" minOccurs="0"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Una fila de GET /api/v1/runs: siempre trae todos sus campos. -->
+  <xs:complexType name="CorridaReciente">
+    <xs:all>
+      <xs:element name="id" type="Entero"/>
+      <xs:element name="status" type="estadoCorrida"/>
+      <xs:element name="seed" type="Entero"/>
+      <xs:element name="engine" type="MotorONulo"/>
+      <xs:element name="engine_version" type="TextoONulo"/>
+      <xs:element name="queued_at" type="xs:dateTime"/>
+      <xs:element name="started_at" type="FechaHoraONulo"/>
+      <xs:element name="finished_at" type="FechaHoraONulo"/>
+      <xs:element name="error_message" type="TextoONulo"/>
+      <xs:element name="scenario_version_id" type="Entero"/>
+      <xs:element name="scenario_id" type="Entero"/>
+      <xs:element name="version_number" type="Entero"/>
+      <xs:element name="horizon_days" type="Entero"/>
+      <xs:element name="scenario_name" type="xs:string"/>
+      <xs:element name="requested_by_username" type="xs:string"/>
+      <!-- Para la comparación de la web (C6). -->
+      <xs:element name="disease_name" type="xs:string"/>
+      <xs:element name="region_name" type="xs:string"/>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- GET /api/v1/runs/engines: los motores que el despliegue acepta (MOTORES_HABILITADOS). -->
+  <xs:element name="motores">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="total" type="Entero"/>
+        <xs:element name="referencia" type="motor"/>
+        <xs:element name="motores">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="motor" type="motor" minOccurs="1" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="listado">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="total" type="Entero"/>
+        <xs:element name="corridas">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="corrida" type="CorridaReciente" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- El resumen de simulation_runs (indicadores, desglose por grupo de edad…): su forma es la
+       del motor, así que no se fija aquí. -->
+  <xs:complexType name="ResumenLibre" mixed="true">
+    <xs:sequence>
+      <xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:anyAttribute processContents="skip"/>
+  </xs:complexType>
+
+  <!-- La corrida equivalente, o <equivalente nil="true"/> si es la primera con esa combinación. -->
+  <xs:complexType name="EquivalenteONulo">
+    <xs:sequence minOccurs="0">
+      <xs:element name="id" type="Entero"/>
+      <xs:element name="resumen" type="ResumenLibre"/>
+    </xs:sequence>
+    <xs:attribute name="nil" type="xs:string" fixed="true"/>
+  </xs:complexType>
+
+  <xs:element name="equivalencia">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="run_id" type="Entero"/>
+        <xs:element name="scenario_version_id" type="Entero"/>
+        <xs:element name="seed" type="Entero"/>
+        <xs:element name="scenario_checksum" type="TextoONulo"/>
+        <xs:element name="equivalente" type="EquivalenteONulo"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

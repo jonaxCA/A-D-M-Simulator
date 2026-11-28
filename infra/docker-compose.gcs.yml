@@ -1,0 +1,32 @@
+# El bucket real de Cloud Storage en la máquina de GCP (D30), en lugar del emulador. Se suma a los
+# archivos de la nube (infra/levanta_nube.sh):
+#
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.nginx.yml \
+#     -f infra/docker-compose.letsencrypt.yml -f infra/docker-compose.cloud-logging.yml \
+#     -f infra/docker-compose.gcs.yml <los perfiles de docs/INSTALACION.md, con web y sin gpu> up -d --wait
+#
+# El bucket lo crea infra/crea_bucket.sh, que dice qué poner en BUCKET_NOMBRE de infra/.env.
+# evidencias toma las credenciales de la cuenta de servicio de la máquina, epidemia-vm (servidor de
+# metadatos), y firma las URLs con signBlob de esa misma cuenta: no hay llaves en el .env ni en la
+# imagen. La máquina usa epidemia-vm con el alcance cloud-platform, nunca la cuenta de Compute por
+# omisión (docs/DESPLIEGUE_GCP.md, §2). En una PC no se suma.
+
+services:
+  # El emulador no se levanta en la nube; queda en un perfil que nadie activa.
+  bucket:
+    profiles: [emulador-bucket]
+
+  web:
+    environment:
+      BUCKET_URL_PUBLICA: ""
+
+  evidencias:
+    environment:
+      STORAGE_EMULATOR_HOST: ""
+      BUCKET_URL_PUBLICA: ""
+      BUCKET_NOMBRE: ${BUCKET_NOMBRE:?Falta BUCKET_NOMBRE en infra/.env (ver infra/crea_bucket.sh)}
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

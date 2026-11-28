@@ -6,7 +6,8 @@ from xml.etree import ElementTree as ET
 import pytest
 import xmlschema
 
-from backend_web import queries
+from microservicios.enfermedades import datos as enfermedades_datos
+from microservicios.parametros import datos as parametros_datos
 
 CONTRATOS = Path(__file__).resolve().parents[3] / "docs/contratos"
 PROBLEM = xmlschema.XMLSchema(str(CONTRATOS / "comun/problem.xsd"))
@@ -15,11 +16,13 @@ PARAMETROS = xmlschema.XMLSchema(str(CONTRATOS / "parametros/parametros.xsd"))
 RESULTADO = xmlschema.XMLSchema(str(CONTRATOS / "resultados/resultado.xsd"))
 
 FICHA = {"id": 1, "code": "SARS_COV_2_ANCESTRAL", "name": "COVID-19", "description": None,
-         "is_active": True, "created_at": datetime(2026, 9, 1, 16, tzinfo=timezone.utc)}
+         "is_active": True, "created_at": datetime(2026, 9, 1, 16, tzinfo=timezone.utc),
+         "transmission": "respiratoria", "icd10": "U07.1, U07.2", "classification_source": "OMS"}
 
 # Los formatos que conviven en diseases.default_params.
 PARAMS = {
-    "r0": {"valor": 2.5, "fuente": "Liu et al. 2020", "supuesto": False},
+    "r0": {"valor": 2.5, "fuente": "Liu et al. 2020", "supuesto": False,
+           "intervalo": {"min": 2.0, "max": 3.0, "tipo": "IC95"}},
     "infeccioso_dias": {"valor": 4.8, "fuente": None, "supuesto": True},
     "incubacion_dias": {"desv": 1.5, "dist": "lognormal", "media": 5.1},
     "letalidad_por_edad": {"valor": {"0-19": 3.11e-05, "80+": 0.00526},
@@ -30,15 +33,13 @@ PARAMS = {
 
 @pytest.fixture
 def enfermedades(crear_cliente, monkeypatch):
-    monkeypatch.setattr(queries, "get_enfermedad", lambda i: dict(FICHA) if i == 1 else None)
+    monkeypatch.setattr(enfermedades_datos, "enfermedad", lambda i: dict(FICHA) if i == 1 else None)
     return crear_cliente("enfermedades")
 
 
 @pytest.fixture
 def parametros(crear_cliente, monkeypatch):
-    def fila(i):
-        return {**FICHA, "default_params": PARAMS} if i == 1 else None
-    monkeypatch.setattr(queries, "get_enfermedad", fila)
+    monkeypatch.setattr(parametros_datos, "parametros", lambda i: dict(PARAMS) if i == 1 else None)
     return crear_cliente("parametros")
 
 
@@ -50,6 +51,21 @@ EJEMPLOS = [a for a in sorted(CONTRATOS.glob("*/ejemplos/*.xml"))
 @pytest.mark.parametrize("archivo", EJEMPLOS, ids=lambda a: a.name)
 def test_ejemplos_de_los_contratos(archivo):
     ESQUEMAS[ET.parse(archivo).getroot().tag].validate(str(archivo))
+
+
+# Raíces como <corrida> o <intervencion> se repiten entre servicios con otro contenido: estos
+# XSD se aplican por carpeta. Describen las respuestas; las peticiones las valida el servicio.
+POR_CARPETA = {carpeta: xmlschema.XMLSchema(str(CONTRATOS / carpeta / (xsd + ".xsd")))
+               for carpeta, xsd in [("corridas", "corrida"), ("intervenciones", "intervencion"),
+                                    ("aprobacion", "aprobacion"), ("comparacion", "comparacion"),
+                                    ("pareto", "pareto"), ("calibracion", "calibracion")]}
+RESPUESTAS = [a for carpeta in POR_CARPETA for a in sorted((CONTRATOS / carpeta / "ejemplos").glob("*.xml"))
+              if "peticion" not in a.name]
+
+
+@pytest.mark.parametrize("archivo", RESPUESTAS, ids=lambda a: "%s/%s" % (a.parent.parent.name, a.name))
+def test_respuestas_de_ejemplo_por_servicio(archivo):
+    POR_CARPETA[archivo.parent.parent.name].validate(str(archivo))
 
 
 def test_enfermedad_real(enfermedades):
@@ -66,7 +82,7 @@ def test_parametros_reales_en_todos_sus_formatos(parametros):
 
 def test_parametros_con_letalidad_por_edad_sin_fuente(parametros, monkeypatch):
     plano = {"letalidad_por_edad": {"0-19": 0.00002, "80+": 0.10}}
-    monkeypatch.setattr(queries, "get_enfermedad", lambda i: {**FICHA, "default_params": plano})
+    monkeypatch.setattr(parametros_datos, "parametros", lambda i: plano)
     PARAMETROS.validate(parametros.get("/api/v1/diseases/1/parameters").data.decode("utf-8"))
 
 
@@ -87,6 +103,17 @@ def test_errores_reales(enfermedades, ruta, metodo, estado):
     (ENFERMEDAD, "<enfermedad><id>1</id></enfermedad>"),
     (PARAMETROS, "<parametros><disease_id tipo='numero'>1</disease_id><parametros>"
                  "<r0><valor tipo='numero'>alto</valor></r0></parametros></parametros>"),
+    (POR_CARPETA["corridas"], "<corrida><id tipo='numero'>1</id><status>pausado</status></corrida>"),
+    (POR_CARPETA["corridas"], "<corrida><id tipo='numero'>1</id><status>encolado</status>"
+                              "<engine>gpu</engine></corrida>"),
+    (POR_CARPETA["intervenciones"], "<intervencion><id tipo='numero'>1</id>"
+                                    "<target_layer>poblacion</target_layer></intervencion>"),
+    (POR_CARPETA["aprobacion"], "<revision><scenario_id tipo='numero'>3</scenario_id>"
+                                "<version_id tipo='numero'>11</version_id>"
+                                "<version_number tipo='numero'>2</version_number>"
+                                "<status>aprobado</status><decision>aceptar</decision></revision>"),
+    (POR_CARPETA["comparacion"], "<comparacion><aviso>x</aviso><corridas /></comparacion>"),
+    (POR_CARPETA["pareto"], "<pareto><aviso>x</aviso><metrica>felicidad</metrica></pareto>"),
 ])
 def test_documento_invalido_se_rechaza(esquema, documento):
     assert not esquema.is_valid(documento)

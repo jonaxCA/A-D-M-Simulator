@@ -2,6 +2,7 @@ import json
 import uuid
 from xml.etree import ElementTree as ET
 
+import jwt
 import pytest
 
 from epidemia_comun import llaves
@@ -28,11 +29,43 @@ class CasosFalso:
     """Imita al servicio casos: crea una vez por local_uuid, rechaza los inválidos."""
     def __init__(self):
         self.llamadas = []
+        self.avisos = []
+        self.aviso_falla = None
         self.creados = {}
         self.caido = False
         self.respuesta_fija = None
+        self.peticiones = []
+        self.sin_lote = False
 
     def __call__(self, servicio, metodo, ruta, formato="json", cuerpo=None, token=None, **kw):
+        if servicio == "notificaciones":
+            self.avisos.append((metodo, ruta, cuerpo, token))
+            if self.aviso_falla:
+                raise self.aviso_falla
+            return Resp(201, {})
+        self.peticiones.append(ruta)
+        if ruta.endswith("/batch"):
+            # POST /cases/batch: cada caso se anota en `llamadas` como si llegara solo, para que
+            # las pruebas sigan viendo qué casos recibió casos; `peticiones` cuenta las llamadas.
+            if self.caido:
+                self.llamadas.append((servicio, metodo, ruta, formato, cuerpo["cases"][0], token))
+                raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio no respondió.")
+            # Un rechazo de un caso (400, 409, 413, 415, 422) va dentro de su resultado; lo demás
+            # (401, 403, 429, 5xx) es la respuesta de todo el lote, como en casos.
+            if self.respuesta_fija and self.respuesta_fija.status_code not in (400, 409, 413, 415, 422):
+                self.llamadas.append((servicio, metodo, ruta, formato, cuerpo["cases"][0], token))
+                return self.respuesta_fija
+            if self.sin_lote:
+                return Resp(404, {"codigo": "NO_ENCONTRADO", "detail": "No existe."})
+            filas = []
+            for indice, caso in enumerate(cuerpo["cases"]):
+                r = self._uno(servicio, metodo, "/api/v1/cases", formato, caso, token)
+                filas.append(dict({"indice": indice, "estado": r.status_code},
+                                  **({"caso": r._cuerpo} if r.status_code in (200, 201) else (r._cuerpo or {}))))
+            return Resp(200, {"total": len(filas), "resultados": filas})
+        return self._uno(servicio, metodo, ruta, formato, cuerpo, token)
+
+    def _uno(self, servicio, metodo, ruta, formato, cuerpo, token):
         self.llamadas.append((servicio, metodo, ruta, formato, cuerpo, token))
         if self.caido:
             raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio no respondió.")
@@ -95,10 +128,27 @@ def test_lote_nuevo_resultado_por_caso(cliente, captura, casos, bitacora):
     assert (d["batch_id"], d["total"], d["creados"], d["duplicados"], d["rechazados"]) == (LOTE, 2, 1, 0, 1)
     assert d["repetido"] is False and "user_id" not in d
     assert d["resultados"][0] == {"indice": 0, "local_uuid": U1, "resultado": "creado",
-                                  "case_id": 100, "errores": []}
+                                  "case_id": 100, "codigo": None, "errores": []}
     assert d["resultados"][1]["resultado"] == "rechazado"
+    assert d["resultados"][1]["codigo"] == "DATOS_INVALIDOS"
     assert "sexo" in d["resultados"][1]["errores"][0].lower()
     assert len(casos.llamadas) == 2
+
+
+def test_telefono_revocado_se_distingue_de_datos_malos(cliente, captura, casos):
+    casos.respuesta_fija = Resp(409, {"status": 409, "codigo": "CONFLICTO", "detail":
+                                      "El dispositivo está revocado: ya no puede capturar ni sincronizar casos."})
+    d = enviar(cliente, captura).get_json()
+    assert [(r["resultado"], r["codigo"]) for r in d["resultados"]] == [("rechazado", "CONFLICTO")] * 2
+    assert d["rechazados"] == 2
+
+
+@pytest.mark.parametrize("estado, esperado", [(409, "CONFLICTO"), (422, "DATOS_INVALIDOS"),
+                                               (400, "DATOS_INVALIDOS"), (413, "DATOS_INVALIDOS")])
+def test_sin_codigo_de_casos_sale_del_estado(cliente, captura, casos, estado, esperado):
+    casos.respuesta_fija = Resp(estado, None)
+    d = enviar(cliente, captura).get_json()
+    assert {r["codigo"] for r in d["resultados"]} == {esperado}
 
 
 def test_llama_a_casos_en_json_con_token_y_device(cliente, captura, casos):
@@ -127,6 +177,42 @@ def test_reenviar_el_lote_no_duplica(cliente, captura, casos, bitacora):
     assert len(bitacora) == 1                # un SYNC por lote procesado
 
 
+def test_lote_con_casos_nuevos_avisa_una_vez_a_los_epidemiologos(cliente, captura, casos):
+    enviar(cliente, captura)
+    assert len(casos.avisos) == 1
+    metodo, ruta, cuerpo, token = casos.avisos[0]
+    assert (metodo, ruta) == ("POST", "/api/v1/notifications")
+    assert cuerpo["role"] == "EPIDEMIOLOGO" and cuerpo["type"] == "NEW_CASES"
+    assert "user_id" not in cuerpo
+    assert cuerpo["payload"] == {"batch_id": LOTE, "creados": 1, "total": 2}
+    assert jwt.decode(token, options={"verify_signature": False})["aud"] == "epidemia-interno"
+
+
+def test_reintentar_el_lote_no_vuelve_a_avisar(cliente, captura, casos):
+    enviar(cliente, captura)
+    enviar(cliente, captura)
+    assert len(casos.avisos) == 1
+
+
+def test_lote_sin_casos_nuevos_no_avisa(cliente, captura, casos):
+    enviar(cliente, captura)
+    casos.avisos.clear()
+    otro = lote(batch_id="1c6f5a53-1d1f-4f52-8a0a-5d0a4a0e9c22")
+    otro["cases"] = [c for c in otro["cases"] if c["local_uuid"] == U1]
+    d = enviar(cliente, captura, otro).get_json()
+    assert d["creados"] == 0 and d["duplicados"] == 1
+    assert casos.avisos == []
+
+
+@pytest.mark.parametrize("falla", [ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "caído"),
+                                   RuntimeError("boom")])
+def test_aviso_fallido_no_tumba_el_lote(cliente, captura, casos, falla):
+    casos.aviso_falla = falla
+    r = enviar(cliente, captura)
+    assert r.status_code == 200 and r.get_json()["creados"] == 1
+    assert enviar(cliente, captura).get_json()["repetido"] is True
+
+
 def test_sync_deja_una_bitacora_con_conteos(cliente, captura, bitacora):
     enviar(cliente, captura)
     assert bitacora == [(7, "SYNC", "sync_batches", LOTE,
@@ -145,7 +231,7 @@ def test_caso_ya_existente_sale_duplicado(cliente, captura, casos):
     casos.creados[U1] = 55
     d = enviar(cliente, captura, lote(batch_id=str(uuid.uuid4()))).get_json()
     assert d["resultados"][0] == {"indice": 0, "local_uuid": U1, "resultado": "duplicado",
-                                  "case_id": 55, "errores": []}
+                                  "case_id": 55, "codigo": None, "errores": []}
     assert d["duplicados"] == 1
 
 
@@ -181,6 +267,21 @@ def test_casos_caido_503_y_no_se_guarda(cliente, captura, casos, redis_falso):
     assert redis_falso.exists(rutas.llave_candado(LOTE)) == 0
     casos.caido = False                       # el cliente reenvía y ahora sí pasa
     assert enviar(cliente, captura).get_json()["creados"] == 1
+
+
+def test_el_limite_de_casos_llega_como_429_con_su_espera(cliente, captura, casos, redis_falso):
+    """La prueba de carga (F4) encontró que un 429 de casos salía como 503 y la app reintentaba de
+    inmediato contra el mismo límite. Ahora llega el 429 con el Retry-After de casos, y el lote
+    no se guarda, para que el reenvío lo procese completo."""
+    limite = Resp(429, {"codigo": "LIMITE_EXCEDIDO",
+                        "detail": "Demasiadas peticiones; intenta de nuevo en 42 segundos."})
+    limite.headers = {"Retry-After": "42"}
+    casos.respuesta_fija = limite
+    r = enviar(cliente, captura)
+    assert r.status_code == 429 and r.headers["Retry-After"] == "42"
+    assert r.get_json()["codigo"] == "LIMITE_EXCEDIDO"
+    assert redis_falso.exists(llaves.lote(LOTE)) == 0
+    assert redis_falso.exists(rutas.llave_candado(LOTE)) == 0
 
 
 def test_casos_con_500_es_503(cliente, captura, casos):
@@ -239,6 +340,7 @@ def test_cuerpo_xml_y_respuesta_xml(cliente, captura, casos):
     assert raiz.tag == "resultado_lote" and raiz.findtext("creados") == "1"
     item = raiz.find("resultados").find("item")
     assert item.findtext("resultado") == "creado" and item.find("errores") is not None
+    assert item.find("codigo").get("nil") == "true"
     assert casos.llamadas[0][4]["local_uuid"] == U1
 
 
@@ -249,6 +351,15 @@ def test_sin_token_401_y_rol_403(cliente, token):
         h = token(roles=(rol,))
         assert enviar(cliente, h).status_code == 403
         assert cliente.get("/api/v1/sync/batches/" + LOTE, headers=h).status_code == 403
+
+
+def test_administrador_consulta_pero_no_envia(cliente, token, casos):
+    # Solo el CAPTURISTA captura (D1); el ADMINISTRADOR sigue viendo cualquier lote.
+    admin = token(roles=("ADMINISTRADOR",), sub="9")
+    r = enviar(cliente, admin)
+    assert r.status_code == 403 and r.get_json()["codigo"] == "PERMISO_INSUFICIENTE"
+    assert casos.llamadas == []
+    assert cliente.get("/api/v1/sync/batches/" + LOTE, headers=admin).status_code == 404
 
 
 def test_consultar_lote(cliente, captura):
@@ -286,3 +397,36 @@ def test_lote_ajeno_no_se_ve_ni_se_reenvia(cliente, token):
 def test_consultar_con_redis_caido_503(cliente, captura, apagar_redis):
     apagar_redis()
     assert cliente.get("/api/v1/sync/batches/" + LOTE, headers=captura).status_code == 503
+
+
+# --- Un lote, una llamada a casos (POST /api/v1/cases/batch, F4) ------------------------------
+
+def test_el_lote_va_en_una_sola_llamada_a_casos(cliente, captura, casos):
+    d = enviar(cliente, captura).get_json()
+    assert casos.peticiones == ["/api/v1/cases/batch"]
+    assert [r["resultado"] for r in d["resultados"]] == ["creado", "rechazado"]
+
+
+def test_si_casos_no_tiene_la_ruta_del_lote_va_caso_por_caso(cliente, captura, casos):
+    casos.sin_lote = True
+    d = enviar(cliente, captura).get_json()
+    assert casos.peticiones == ["/api/v1/cases/batch", "/api/v1/cases", "/api/v1/cases"]
+    assert [r["resultado"] for r in d["resultados"]] == ["creado", "rechazado"]
+
+
+def test_una_respuesta_de_lote_incompleta_es_503(cliente, captura, casos, redis_falso):
+    casos.respuesta_fija = Resp(200, {"total": 0, "resultados": []})
+    r = enviar(cliente, captura)
+    assert r.status_code == 503 and r.get_json()["codigo"] == "SERVICIO_NO_DISPONIBLE"
+    assert redis_falso.exists(llaves.lote(LOTE)) == 0
+
+
+def test_el_formulario_de_cada_caso_llega_a_casos_tal_cual(cliente, captura, casos):
+    """D48: sincronizacion no lo revisa; lo valida casos contra su versión."""
+    caso = {"local_uuid": U1, "disease_id": 1, "region_id": 10, "report_date": "2026-10-01",
+            "form_id": 4, "form_answers": {"fiebre_dias": 3, "signos_alarma": ["vomito"]}}
+    r = cliente.post("/api/v1/sync/cases?format=json", headers=captura,
+                     json={"batch_id": LOTE, "cases": [caso]})
+    assert r.status_code == 200
+    enviado = casos.llamadas[0][4]
+    assert (enviado["form_id"], enviado["form_answers"]) == (4, {"fiebre_dias": 3, "signos_alarma": ["vomito"]})

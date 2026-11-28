@@ -1,0 +1,10 @@
+{
+  "id": 9,
+  "username": "ana",
+  "email": "ana.lista@ejemplo.mx",
+  "full_name": "Ana Lista",
+  "is_active": true,
+  "sesiones_cerradas": 0,
+  "institution_id": 1,
+  "region_id": 19
+}

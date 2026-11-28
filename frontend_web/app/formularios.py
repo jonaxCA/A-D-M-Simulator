@@ -1,15 +1,9 @@
 """Lectura de la peticion web: campos que solo existen por como funciona la
-pagina (el control de concurrencia, la semilla en blanco, la lista de casillas).
+pagina (el control de concurrencia, la lista de casillas).
 
 La conversion de texto a numero o fecha que tambien necesitaria otra entrada
 (una API, la app de escritorio) vive en backend_web/conversion.py.
 """
-import random
-
-# Semilla aleatoria por defecto cuando el formulario de "Ejecutar simulacion"
-# la deja en blanco. simulation_runs.seed es BIGINT >= 0 (ck_simulation_runs_seed);
-# 2**31-1 alcanza de sobra y coincide con lo que numpy acepta sin rodeos.
-SEED_MAX = 2**31 - 1
 
 
 def esperado(form, nombre):
@@ -36,21 +30,6 @@ def esperado(form, nombre):
         return int(crudo), True
     except ValueError:
         return None, False
-
-
-def semilla(valor):
-    """Semilla opcional del formulario: vacio => aleatoria; con valor => debe
-    ser un entero >= 0 (ck_simulation_runs_seed). Devuelve (seed, error)."""
-    crudo = (valor or "").strip()
-    if not crudo:
-        return random.randint(0, SEED_MAX), None
-    try:
-        seed = int(crudo)
-    except ValueError:
-        return None, "La semilla debe ser un número entero."
-    if seed < 0:
-        return None, "La semilla debe ser un número entero mayor o igual a 0."
-    return seed, None
 
 
 def ids_de(valores):

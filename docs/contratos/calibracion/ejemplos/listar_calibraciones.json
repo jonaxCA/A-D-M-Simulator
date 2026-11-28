@@ -1,0 +1,33 @@
+{
+  "total": 2,
+  "calibraciones": [
+    {
+      "id": 4,
+      "dataset_id": 1,
+      "dataset_code": "COVID19_NL_2020_SINTOMAS",
+      "dataset_version": 1,
+      "region_id": 1,
+      "engine": "seir-ref",
+      "engine_version": "seir-ref-0.1",
+      "status": "ejecutando",
+      "progress": 35,
+      "requested_by_username": "ana",
+      "created_at": "2026-11-23T18:10:00+00:00",
+      "finished_at": null
+    },
+    {
+      "id": 3,
+      "dataset_id": 1,
+      "dataset_code": "COVID19_NL_2020_SINTOMAS",
+      "dataset_version": 1,
+      "region_id": 1,
+      "engine": "seir-ref",
+      "engine_version": "seir-ref-0.1",
+      "status": "completado",
+      "progress": 100,
+      "requested_by_username": "ana",
+      "created_at": "2026-11-23T18:00:00+00:00",
+      "finished_at": "2026-11-23T18:03:32+00:00"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "total": 1,
+  "versiones": [
+    {
+      "id": 11,
+      "scenario_id": 3,
+      "version_number": 2,
+      "status": "aprobado",
+      "population_size": 200000,
+      "horizon_days": 180,
+      "initial_infected": 100,
+      "created_at": "2026-10-18T16:00:00+00:00",
+      "reviewed_at": "2026-10-19T17:30:00+00:00",
+      "review_comment": "Parámetros con fuente.",
+      "scenario_name": "Brote de influenza en Monterrey",
+      "scenario_status": "borrador",
+      "disease_name": "Influenza",
+      "region_name": "Monterrey",
+      "creado_por": "Ana Analista",
+      "revisado_por": "Eva Epidemióloga"
+    }
+  ]
+}

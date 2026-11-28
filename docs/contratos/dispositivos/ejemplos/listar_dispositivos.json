@@ -1,0 +1,29 @@
+{
+  "total": 2,
+  "dispositivos": [
+    {
+      "id": 3,
+      "user_id": 7,
+      "device_uid": "3f2a9c1e-77b0-4d2e-a1f5-0c9b8e6d4a21",
+      "platform": "android",
+      "model": "Pixel 7",
+      "app_version": "0.1.0",
+      "is_revoked": false,
+      "last_seen_at": "2026-10-31T16:20:00+00:00",
+      "created_at": "2026-10-31T16:20:00+00:00",
+      "has_push_token": false
+    },
+    {
+      "id": 2,
+      "user_id": 7,
+      "device_uid": "9b1d7e40-2c6a-4f8e-b3d5-7a0e4c2f9d18",
+      "platform": "android",
+      "model": "Moto G54",
+      "app_version": "0.0.9",
+      "is_revoked": true,
+      "last_seen_at": "2026-10-20T13:05:00+00:00",
+      "created_at": "2026-10-12T09:40:00+00:00",
+      "has_push_token": false
+    }
+  ]
+}

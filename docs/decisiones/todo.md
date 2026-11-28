@@ -1,0 +1,218 @@
+## Decisiones en Pendiente
+
+Nadie ha decidido estas (ver `decisiones.md`):
+
+- [D28](D28-uso-de-mongodb.md): qué datos van a MongoDB. Depende de D21.
+- [D29](D29-volumen-de-datos.md): volumen de datos de alto volumen. Depende de D6, D8 y D28.
+
+## Decisiones por confirmar con el equipo (ya están registradas, ver `decisiones.md`):
+
+- D17, D18 y D20 quedaron aceptadas el 2026-11-08 (ver `decisiones.md`). D19 (Redis sin datos autoritativos) sigue por confirmar.
+- D25 quedó aceptada el 2026-11-08 (ver `decisiones.md`). Sus cambios están en «Cambios pendientes por D25».
+- D27 quedó aceptada el 2026-11-08 con los tres servicios implementados en `desarrollo-movil`, que ya está integrada en esta rama (ver «Cambios pendientes por D27»).
+- Las del antiguo punto 5 y 6 ya eran D9, D11 y D12.
+- El antiguo punto 7 (FLAME GPU con el motor de Python como respaldo) quedó en D23.
+
+## Cambios pendientes por D27
+
+D27 quedó aceptada el 2026-11-08 (ver [`D27-servicios-nuevos-para-la-movil.md`](D27-servicios-nuevos-para-la-movil.md)). Los tres servicios se implementaron en la rama `desarrollo-movil`, que se integró en esta el 2026-11-08 (ba66738). Lo de abajo ya está hecho.
+
+### Código
+
+- **Hecho. Integración de `desarrollo-movil`:** trajo `microservicios/dispositivos`, `evidencias` y `vacunas`, sus entradas en `infra/docker-compose.yml`, las migraciones 031 a 033 y sus pruebas.
+
+### Documentos
+
+- **Hecho. Contratos:** `docs/contratos/dispositivos`, `evidencias` y `vacunas` llegaron con la integración.
+- **Catálogo:** `docs/arquitectura/microservicios.md` ya lista los tres. No cambia.
+
+### Preguntas abiertas
+
+- ¿Se actualiza «hoy, el 031» en `propuesta_correcciones_primer_parcial.md` (línea 52)? Es la propuesta ya respondida; no la toqué.
+
+## Cambios pendientes por D1
+
+D1 quedó aceptada el 2026-11-07 (ver [`D01-permisos-y-auditoria.md`](D01-permisos-y-auditoria.md)). Estos cambios no están implementados; se hacen cuando el equipo lo pida.
+
+### Código
+
+- **Migración 034** (siguiente número libre; 031 a 033 son de D27 y no se edita la 010): crear `scenarios.approve`, darlo a EPIDEMIOLOGO y ADMINISTRADOR, quitar `audit.read` al EPIDEMIOLOGO, quitar `cases.create` al ADMINISTRADOR y crear `reports.upload` para ANALISTA y ADMINISTRADOR (D35).
+- **Quitar la captura de casos de la web:** la ruta `/reportes/nuevo`, sus enlaces y su plantilla. `cases.create` sigue para el CAPTURISTA, en la app móvil y en la API.
+- **Servicios de captura:** quitar al ADMINISTRADOR de `ROLES_ESCRITURA` en `casos`, de `ROLES` en `sincronizacion` y de `ROLES_SUBEN` en `evidencias`. `ROLES_BORRAN` se queda.
+- **Candados por permiso** (propuesta, pasos 4 a 7): leer los permisos al iniciar sesión y guardarlos en el JWT (`perms`) en `backend_web/auth.py`; crear `requiere_permiso(codigo)` en `frontend_web/app/permisos.py`, que responde 403 y registra `PERMISSION_DENIED` con `log_audit`; cambiar el candado de cada ruta según la tabla de la propuesta; exponer `puede()` a las plantillas.
+- **Cuenta de prueba de CAPTURISTA** (propuesta, paso 8) en `datos/postgres/semillas/demo_datos_nl.sql`. Sirve para la API y, en la web, solo para el tablero y el mapa (D1, 2026-11-16).
+- **Verificación:** `grep -n "roles_required\|admin_required" frontend_web/app/routes.py` no regresa nada.
+
+### Documentos
+
+- `requerimientos/matriz-permisos.md`: «Aprobar / rechazar escenario» pasa a Admin ✓ (hoy dice —). El encabezado «Estado: por confirmar» debe actualizarse con esta decisión.
+
+### Preguntas abiertas
+
+- ~~¿El ADMINISTRADOR también captura casos?~~ Resuelto el 2026-11-17: no. La 034 le quita `cases.create`.
+- ~~¿El login web rechaza al CAPTURISTA, o le deja entrar y le niega cada pantalla con 403?~~ Resuelto el 2026-11-16: entra, ve el tablero y el mapa, y lo demás responde 403.
+
+### Efectos en otras decisiones
+
+- D4 ya se tomó; ver «Cambios pendientes por D4».
+
+## Cambios pendientes por D4
+
+D4 quedó aceptada el 2026-11-07 (ver [`D04-web-contra-escritorio.md`](D04-web-contra-escritorio.md)). La parte del escritorio ya está hecha y la de la web se hizo el 2026-11-11, a petición del equipo.
+
+### Código
+
+- **Hecho. Web, creación de escenarios:** quitar `/escenarios/nuevo`, `/escenarios/<id>/versiones/nueva`, `/escenarios/<id>/duplicar`, las rutas de intervenciones (`/escenarios/<id>/intervenciones`, con agregar, quitar y mover) y `/escenarios/<id>/enviar`. La web conserva `/escenarios/<id>/revisar` y `/revisiones`.
+- **Hecho. Web, corridas:** quitar `/simulaciones/<id>/ejecutar` y `/simulaciones/corridas/<id>/reejecutar`. Lanzar una corrida pasa a escritorio. Con eso, `frontend_web/run.py` ya no cierra corridas al arrancar.
+- **Hecho. Web, consulta:** `/escenarios`, `/escenarios/<id>`, `/simulaciones` y `/simulaciones/corridas/<id>` se quedan en solo lectura. Sus plantillas ya no tienen botones de editar o lanzar; un escenario en borrador avisa que se edita en el escritorio.
+- **Hecho. Web, comparación:** la vista `/comparacion` se queda como consulta. No se le agrega exportación ni impresión, porque van en escritorio.
+- **Escritorio:** hecho en el MVP de `frontend_desktop/`. Crea escenarios y versiones, duplica, edita intervenciones y envía a revisión. También lanza lotes de corridas y compara los resultados, con exportación e impresión.
+
+### Documentos
+
+- **Arquitectura v3:** escribir el reparto. La fila C5 de `arquitectura/brechas_v3.md` ya se actualizó el 2026-11-09.
+
+### Preguntas abiertas
+
+- ~~¿`/comparacion/costos` es consulta o edición? La tabla no la menciona.~~ Es edición, pero del catálogo: fija el costo unitario de los tipos de intervención (EPIDEMIOLOGO y ADMINISTRADOR), que el escritorio no hace. Se queda en la web.
+
+## Cambios pendientes por D2
+
+D2 quedó aceptada el 2026-11-08 (ver [`D02-papel-del-seir.md`](D02-papel-del-seir.md)). El nombre del motor, la migración y el contrato se hicieron el 2026-11-12; falta el ABM.
+
+### Código
+
+- **Hecho. Nombre del motor:** cambiar `ENGINE_VERSION` de `python-ref-0.1` a `seir-ref-0.1` en `procesamiento/motor/modelo.py`.
+- **Hecho. Migración de motores:** la 035 (`035_nombres_de_motores.sql`); la 034 queda para D1. `corridas` sigue aceptando los nombres anteriores en lo que manda el cliente y los traduce, para no romper la v1. El CHECK de `simulation_batches.engine` (014) acepta `python-ref`, `numba` y `cuda`. Hay que cambiarlo a `seir-ref`, `abm-ref` y `abm-gpu`, y el orden dentro de la migración es: soltar el CHECK, convertir los valores, poner el CHECK nuevo y cambiar el DEFAULT.
+- **Hecho. ABM en Python** como paquete aparte en `procesamiento/`, con la misma entrada y salida que el SEIR: `procesamiento/abm/` (`abm-ref-0.1`), el 2026-11-14, y conectado el mismo día: lo corre el contenedor `simulador-abm` (`SIMULADOR_MOTOR=abm-ref`) y `corridas` lo acepta por omisión en el compose.
+
+### Documentos
+
+- **Hecho. Contrato del motor:** `docs/contratos/motor/README.md`, con su versión en código en `procesamiento/contrato.py` y la prueba `procesamiento/tests/test_contrato_motor.py`. Queda pendiente acordar con D28 si la serie lleva el desglose por grupo de edad.
+
+## Cambios pendientes por D23
+
+D23 quedó aceptada el 2026-11-08 (ver [`D23-tecnologia-del-abm.md`](D23-tecnologia-del-abm.md)). El motor se implementó el 2026-11-14.
+
+### Hecho
+
+- **Motor `abm-gpu`:** `procesamiento/abm_gpu/`, el modelo de `abm-ref` en FLAME GPU 2. Está en el registro de motores y pasa las pruebas de conformidad donde hay GPU; donde no, se saltan y `del_nombre` no lo entrega.
+- **Imagen de `simulador`:** `microservicios/simulador/gpu.Dockerfile`, con `pyflamegpu` y las piezas de CUDA de pip (`procesamiento/abm_gpu/requerimientos.txt`). En el compose es `simulador-gpu`, en el perfil `gpu`. Construida y probada el 2026-11-14 en Docker Desktop con WSL 2 (RTX 4050): una corrida de punta a punta con `python infra/pruebas_integracion.py --gpu`.
+
+### Código e infraestructura
+
+- **Máquina de Compute Engine con GPU:** elegir el tipo de máquina y su GPU, con NVIDIA Container Toolkit (bloque F del [checklist](../parciales/parcial-3/checklist.md)).
+- **Escritorio:** ofrecer `abm-gpu` en el selector de motor cuando `corridas` lo acepte (bloque A del [checklist](../parciales/parcial-3/checklist.md)).
+
+### Costos
+
+- Estimar el costo de la máquina con GPU (horas encendidas) y compararlo con los créditos: 100 USD por integrante, unos 600 USD en total si somos seis, como dice `AGENTS.md`. Registrar el resultado en D23.
+- **Cuota de GPU:** pedir desde ya el aumento de cuota de GPU del proyecto; suele empezar en cero. Confirmar qué cuenta de facturación paga la máquina: cada cupón está en la cuenta de su dueño y un proyecto se liga a una sola.
+
+## Cambios pendientes por D3
+
+D3 quedó aceptada el 2026-11-08 (ver [`D03-unidad-de-costo.md`](D03-unidad-de-costo.md)). Los cambios de código se hicieron el 2026-11-12; los de documentos y datos siguen pendientes.
+
+### Código
+
+1. **Hecho. Trazabilidad fuera del motor:** mover `_desempaca`, `_es_numero` y `_estado_traza` de `motor/parametros.py` a `procesamiento/trazabilidad.py`, sin guion bajo. Pareto los necesita desde fuera del motor.
+2. **Hecho. Pareto fuera del motor:** mover `pareto.py` a `procesamiento/analitica/`. Solo puede importar los nombres públicos del motor (`resolver`, `huella_escenario`, `INTERVENCIONES_CAPA`, `EscenarioInvalido`) y el módulo de trazabilidad. En lugar de `huella_escenario` usa `huella` de `procesamiento/contrato.py`, que es la misma para los tres motores; `resolver` e `INTERVENCIONES_CAPA` se exportan desde `procesamiento.motor`.
+3. **Hecho. Imports:** quitar `comparar`, `costo_escenario` y `frontera_pareto` de `motor/__init__.py`, y actualizar los imports de `backend_web/simulaciones.py` y de los servicios `pareto` y `comparacion`.
+4. **Hecho. Verificación:** ningún import de `procesamiento/analitica/` trae un nombre con guion bajo, y `python -m pytest procesamiento/tests` pasa.
+5. **Hecho (2026-11-17). Unidades de la frontera:** `costo_escenario` (`procesamiento/analitica/pareto.py`) da personas-día (capas y testeo: población × intensidad × días; vacunación: dosis × factor) y pesos aparte. El factor vive en `intervention_types.person_days_per_unit` (migración 040) y lo fija `intervenciones`. Falta que el escritorio y la web rotulen personas-día (bloques A y C del checklist).
+
+### Documentos y datos
+
+- **Arquitectura v3:** escribir la unidad de la frontera (personas-día) y la de los costos (pesos).
+- **`cost_unit`** de cada tipo de intervención: escribir la unidad en pesos. La columna existe desde la migración 014. Si los valores ya están cargados en una migración, el cambio va en una migración nueva, no editando la anterior.
+- **Fuentes de precios:** revisar en `intervention_types` qué costos tienen `cost_source` y cuáles son supuesto. No se muestran en pesos sin esa marca (regla 8 de `AGENTS.md`).
+
+### Preguntas abiertas
+
+- ~~¿Cómo entra la vacunación a la frontera?~~ Resuelto el 2026-11-17: como fracción de día-persona por dosis, marcada como supuesto (ver D3).
+
+## Cambios pendientes por D7
+
+D7 quedó aceptada el 2026-11-08 con la opción C, la tercera de la propuesta (ver [`D07-politica-de-migraciones.md`](D07-politica-de-migraciones.md)). Estos cambios no están implementados.
+
+### Reglas y herramientas
+
+- **README de migraciones:** escribir las dos reglas. Esquema: nunca se edita un archivo aplicado; siempre un número nuevo. Datos (valores de un `INSERT`): se corrigen en el archivo de migración y en el bloque del dump, juntos, con una migración correctiva idempotente.
+- **Regla 6 de `AGENTS.md`:** agregar la excepción para valores de datos. Hoy dice que nunca se edita una migración aplicada.
+- **`verifica_migraciones.py`:** confirmar que sigue detectando diferencias entre el dump y las migraciones. Es lo que sostiene la regla de datos.
+- **Migraciones correctivas:** cada una debe ser idempotente. Hay que probar que correrla dos veces no cambia nada.
+- **Base de pruebas** (`datos/scripts/prepara_base_pruebas.py`): revisar que se arme desde las migraciones y el dump.
+- **D16:** depende de D7. Revisar que su texto siga valiendo.
+
+## Cambios pendientes por D8
+
+D8 quedó aceptada (ver [`D08-replicas-de-una-comparacion.md`](D08-replicas-de-una-comparacion.md)): el analista configura las réplicas, 30 por omisión y confirmación por debajo; el resumen muestra media, mediana e intervalo entre percentiles 5 y 95, y la frontera de Pareto se calcula sobre medianas. El cálculo se queda en el cliente este parcial.
+
+### Código y base de datos
+
+- **Escritorio, réplicas:** hecho en el MVP de `frontend_desktop`, del lado del cliente. La app lanza N corridas por versión (semillas 1..N; 30 por omisión, máximo 100 por el tope de `GET /runs`) y pide confirmación con menos de 30. Los servicios no cambiaron: cada réplica queda como un lote de una corrida.
+- **Escritorio, resumen:** hecho también en el cliente (`frontend_desktop/app/resumen.py`): media, mediana y percentiles 5 y 95 por escenario, sobre las semillas comunes a las versiones comparadas. La frontera se calcula sobre medianas. Pasarlo a `corridas`, `comparacion` y `pareto` queda para la entrega final.
+- **Tope:** D8 lo fija en 100, el de `GET /runs`. La base tiene `max_replicas_por_lote` (200) y `replicas_por_defecto` (30) en `system_settings` (migración 010), y ningún código las lee. La migración 036 baja el tope a 100 (`system_settings` y el CHECK) y `corridas` rechaza `replicas` mayor que 100.
+- **Web:** no lanza corridas (D4). Solo muestra lo que se corrió.
+
+### Pendiente
+
+- **Escritorio, aviso de bandas encimadas:** cuando las bandas p5–p95 de dos escenarios se enciman, la pantalla de comparación lo avisa (bloque A del [checklist](../parciales/parcial-3/checklist.md)).
+
+## Cambios pendientes por D6
+
+D6 quedó aceptada con la opción C, el factor calculado (ver [`D06-poblacion-del-escenario.md`](D06-poblacion-del-escenario.md)), y se implementó el 2026-11-14.
+
+### Hecho
+
+- **Cálculo fuera del motor:** `procesamiento/analitica/escala.py`. El factor es `regions.population` / `population_size`; el motor solo ve agentes.
+- **Esquema:** no cambia. Con la opción C el factor sale del censo; la columna y el campo del escritorio eran de la opción D.
+- **Web:** el detalle del escenario dice cuántos habitantes representa cada agente, y el de la corrida pone junto a cada conteo su equivalente aproximado en habitantes.
+- **`resultados`:** el resultado de una corrida lleva `escala` (agentes, habitantes, factor, fuente, avisos y los conteos llevados a habitantes), en el contrato y en el XSD.
+
+### Pendiente
+
+- **App de escritorio:** mostrar la escala que ya trae `resultados` (bloque A del [checklist](../parciales/parcial-3/checklist.md)).
+
+## Cambios pendientes por D18 y D20
+
+D18 y D20 quedaron aceptadas el 2026-11-08 (ver [`D18-un-postgres-un-rol-por-servicio.md`](D18-un-postgres-un-rol-por-servicio.md) y [`D20-web-directa-a-postgres.md`](D20-web-directa-a-postgres.md)). D17 también quedó aceptada; no pide cambios. Estos cambios no están implementados.
+
+### Preguntas abiertas
+
+- ~~**Rol del monolito (D18)**~~ Resuelto el 2026-11-17: la web sigue con `epidemia_app` en este parcial. Hoy la web corre como `epidemia_app`, que se crea a mano (`docs/INSTALACION.md`) y tiene SELECT, INSERT, UPDATE y DELETE sobre todas las tablas. Las migraciones 026 a 030 dicen que no lo tocan. La regla «cada servicio escribe solo en las tablas de su dominio» no lo cubre, porque la web no es un servicio.
+- ~~**Roles `app_*` (D18)**~~ Resuelto el 2026-11-17: no se retiran. La migración 009 crea `app_web`, `app_surveillance`, `app_analytics` y `app_monitoring`, y ningún código los usa.
+- **Reglas de negocio en dos caminos (D20):** la web y los servicios `svc_*` escriben las mismas tablas. Por ejemplo, `backend_web/queries.py` (`crear_corrida`) y `svc_corridas` (migraciones 026 a 030) crean lotes. Con la opción A, cada regla que toque esas tablas tiene que valer en ambos caminos. Revisar cuáles ya están en los dos lados y cuáles solo en uno.
+
+## Cambios pendientes por D25
+
+D25 quedó aceptada el 2026-11-08 con la opción A: nginx es la entrada única, con TLS, y enruta cada servicio por su prefijo (ver [`D25-nginx-como-entrada.md`](D25-nginx-como-entrada.md)). Estos cambios no están implementados.
+
+### Código e infraestructura
+
+- **nginx en `infra/`:** `infra/docker-compose.yml` no tiene nginx hoy. Agregarlo, con 80 y 443 como únicos puertos abiertos.
+- **Prefijo por servicio:** cada servicio debe funcionar detrás de `/<servicio>`. Revisar `/docs` y `/openapi.json`, que hoy están en la raíz de cada servicio, y el CORS: `CONSOLE_ORIGIN` se lee en `microservicios/comun/epidemia_comun/ajustes.py` y `fabrica.py`.
+- **Directorio `estado-servicios`:** que devuelva `https://<dominio>/<servicio>` (ajuste de D13). Hoy `URL_PUBLICA` vale `http://localhost:{puerto}` por defecto.
+
+### Documentos
+
+- **D26 (certificado HTTPS)** depende de D25 y ya puede avanzar. Sigue Pendiente hasta que se decida de dónde sale el certificado.
+
+## Cambios pendientes por D26
+
+D26 quedó aceptada el 2026-11-08 con la opción A: certificado de Let's Encrypt para un dominio que apunta a la IP fija de la máquina (ver [`D26-certificado-https.md`](D26-certificado-https.md)). Estos cambios no están implementados.
+
+### Infraestructura
+
+- **Dominio:** conseguir uno, propio o un subdominio gratuito, y apuntar su registro A a la IP fija. Antes de depender de un subdominio gratuito, confirmar que su proveedor permite Let's Encrypt.
+- **IP fija:** reservar una IP externa estática en Compute Engine. Si la IP cambia, el dominio y el certificado dejan de servir.
+- **Certificado:** certbot obtiene el certificado y nginx (D25) lo usa. La validación pasa por el puerto 80, que D25 ya deja abierto. Montar el certificado en el contenedor de nginx y dejar programada la renovación.
+
+### Apps
+
+- **Android:** la app trae ISRG Root X1 porque Android 7.0 (`minSdk 24`) no la incluye de fábrica (ver D26). Hecho en `frontend_movil/`; falta probarla contra el dominio real, de preferencia también en un Android 7.0.
+- **Escritorio:** `requests` confía en Let's Encrypt con las raíces de `certifi`. Probar la conexión sin excepciones.
+
+### Preguntas abiertas
+
+- ~~¿Quién consigue el dominio y con qué proveedor?~~ Delegado el 2026-11-17 al bloque F, que elige el proveedor.

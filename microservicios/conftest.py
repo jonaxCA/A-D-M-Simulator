@@ -48,6 +48,41 @@ def apagar_redis(servidor_redis):
 
 
 @pytest.fixture
+def mongo_falso():
+    """Una base de mongomock para epidemia_comun.mongo; se descarta al terminar."""
+    import mongomock
+    from epidemia_comun import mongo
+    # tz_aware, como el cliente de epidemia_comun.mongo: las fechas regresan en UTC.
+    base = mongomock.MongoClient(tz_aware=True)["epidemia_pruebas"]
+    mongo.usar(base)
+    yield base
+    mongo.usar(None)
+
+
+class _MongoCaido:
+    def __getitem__(self, nombre):
+        from pymongo.errors import ServerSelectionTimeoutError
+        raise ServerSelectionTimeoutError("MongoDB apagado en la prueba")
+
+    def command(self, *args, **kwargs):
+        return self[""]
+
+
+@pytest.fixture
+def apagar_mongo(mongo_falso):
+    """apagar_mongo() hace que toda operación de MongoDB falle; encender() lo regresa."""
+    from epidemia_comun import mongo
+
+    def apagar():
+        mongo.usar(_MongoCaido())
+
+    def encender():
+        mongo.usar(mongo_falso)
+    apagar.encender = encender
+    return apagar
+
+
+@pytest.fixture
 def crear_cliente(redis_falso):
     """crear_cliente("series") regresa el cliente de prueba de ese servicio."""
     def crear(paquete):
@@ -60,6 +95,17 @@ def crear_cliente(redis_falso):
         app.extensions["epidemia_redis"] = redis_falso
         return app.test_client()
     return crear
+
+
+@pytest.fixture(autouse=True)
+def negados(monkeypatch):
+    """Los PERMISSION_DENIED que anota requiere_token; así un 403 nunca escribe en una base."""
+    from epidemia_comun import auditoria as audit
+    eventos = []
+    monkeypatch.setattr(audit, "log_audit",
+                        lambda ctx, accion, entidad, entity_id=None, data_after=None, **_:
+                        eventos.append((ctx.user_id, accion, entidad, entity_id, data_after)))
+    return eventos
 
 
 @pytest.fixture
@@ -80,3 +126,56 @@ def token(redis_falso):
         return {"Authorization": "Bearer " + jwt.encode(claims, SECRETO_PRUEBAS,
                                                         algorithm="HS256")}
     return firmar
+
+
+class _RespuestaAlcance:
+    def __init__(self, alcance):
+        self.status_code, self._alcance = 200, alcance
+
+    def json(self):
+        return self._alcance
+
+
+@pytest.fixture(autouse=True)
+def alcance_falso(monkeypatch):
+    """El alcance (D43) que `roles` regresa en GET /scopes/me: nacional, salvo que la prueba lo
+    cambie con alcance_falso["regiones"] = [ids]. Las llamadas a roles quedan en ["llamadas"]."""
+    from epidemia_comun import alcance
+    estado = {"regiones": None, "llamadas": []}
+
+    def llamar(servicio, metodo, ruta, **kw):
+        estado["llamadas"].append((servicio, metodo, ruta))
+        regiones = estado["regiones"]
+        return _RespuestaAlcance({"nacional": regiones is None, "region_ids": regiones or [],
+                                  "regiones_cubiertas": regiones or [], "institution_ids": []})
+
+    monkeypatch.setattr(alcance, "llamar", llamar)
+    return estado
+
+
+class _RespuestaServicio:
+    def __init__(self, respuesta):
+        self.status_code, self._respuesta = respuesta.status_code, respuesta
+
+    def json(self):
+        return self._respuesta.get_json()
+
+
+@pytest.fixture
+def llamar_a_sesiones(crear_cliente):
+    """Un `llamar` que atiende en proceso lo dirigido a `sesiones`, con su app real y el Redis falso."""
+    cliente = crear_cliente("sesiones")
+
+    def llamar(servicio, metodo, ruta, cuerpo=None, token=None, **_):
+        assert servicio == "sesiones"
+        return _RespuestaServicio(cliente.open(
+            ruta, method=metodo, json=cuerpo, headers={"Authorization": "Bearer " + token,
+                                                       "Accept": "application/json"}))
+    return llamar
+
+
+@pytest.fixture
+def sesiones_en_proceso(monkeypatch, llamar_a_sesiones):
+    """Para usuarios y roles: cerrar sesiones llega a la app de `sesiones` sin red."""
+    from epidemia_comun import sesiones
+    monkeypatch.setattr(sesiones, "llamar", llamar_a_sesiones)

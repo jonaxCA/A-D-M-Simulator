@@ -1,0 +1,228 @@
+import base64
+import binascii
+import json
+import math
+import threading
+import time
+import uuid
+
+import requests
+
+from . import bitacora, config, esquemas, xmlio
+
+FIN_DE_SESION = ("TOKEN_AUSENTE", "TOKEN_INVALIDO", "TOKEN_REVOCADO")
+MENSAJES = {403: "No tienes permiso para esta operación.",
+            503: "El servicio no está disponible. Intenta más tarde."}
+
+
+MARGEN_RENOVACION_SEGUNDOS = 120
+
+
+def _expiracion_jwt(token):
+    """Lee exp para anticipar la renovación; no verifica la firma."""
+    if not isinstance(token, str):
+        return None
+    partes = token.split(".")
+    if len(partes) != 3:
+        return None
+    try:
+        payload = partes[1]
+        relleno = "=" * (-len(payload) % 4)
+        datos = json.loads(base64.urlsafe_b64decode(payload + relleno))
+        if not isinstance(datos, dict):
+            return None
+        exp = datos.get("exp")
+        if isinstance(exp, bool) or not isinstance(exp, (int, float)):
+            return None
+        return float(exp) if math.isfinite(exp) else None
+    except (ValueError, TypeError, UnicodeError, binascii.Error, OverflowError):
+        return None
+
+
+class ErrorServicio(Exception):
+    def __init__(self, mensaje, status=None, codigo=None, errores=None):
+        self.status = status
+        self.codigo = codigo
+        self.errores = errores or []
+        super().__init__(mensaje)
+
+
+class SesionCerrada(ErrorServicio):
+    pass
+
+
+def _problema(servicio, respuesta):
+    try:
+        esquemas.validar_con(esquemas.PROBLEMA, respuesta.content)
+        datos = xmlio.leer(respuesta.content)
+    except Exception:
+        if respuesta.status_code in MENSAJES:
+            return ErrorServicio(MENSAJES[respuesta.status_code], respuesta.status_code)
+        return ErrorServicio("Respuesta inválida de %s (HTTP %s)." % (servicio, respuesta.status_code),
+                             respuesta.status_code)
+    detalle = datos.get("detail") or MENSAJES.get(respuesta.status_code) or datos.get("title")
+    if respuesta.status_code in MENSAJES:
+        detalle = MENSAJES[respuesta.status_code]
+    return ErrorServicio(detalle, respuesta.status_code, datos.get("codigo"), datos.get("errores") or [])
+
+
+class Cliente:
+    def __init__(self, directorio=config.DIRECTORIO, http=None):
+        self.directorio = directorio
+        self.http = http or requests.Session()
+        self.urls = {}
+        self.access = None
+        self.refresh = None
+        self.usuario = None
+        self._candado = threading.RLock()
+
+    def url(self, servicio):
+        with self._candado:
+            if servicio not in self.urls:
+                try:
+                    r = self.http.get(self.directorio + "/api/v1/services",
+                                      headers={"Accept": "application/xml"}, timeout=config.TIEMPO_ESPERA)
+                except requests.RequestException:
+                    raise ErrorServicio("No se pudo conectar con el directorio de servicios (%s)." % self.directorio)
+                if r.status_code != 200:
+                    raise ErrorServicio("El directorio de servicios respondió %s." % r.status_code, r.status_code)
+                self.urls = {s["nombre"]: s["url"].rstrip("/") for s in xmlio.leer(r.content)["servicios"]}
+            if servicio not in self.urls:
+                raise ErrorServicio("El directorio no conoce el servicio %s." % servicio)
+            return self.urls[servicio]
+
+    def _una_vez(self, servicio, metodo, ruta, cuerpo, params, publico, accept, etag, tipo="application/xml",
+                 cabeceras=None):
+        cid = str(uuid.uuid4())
+        headers = dict(cabeceras or {})
+        headers.update({"Accept": accept, "X-Correlation-ID": cid})
+        if etag:
+            headers["If-None-Match"] = etag
+        if cuerpo is not None:
+            headers["Content-Type"] = tipo
+        if not publico and self.access:
+            headers["Authorization"] = "Bearer " + self.access
+        inicio = time.monotonic()
+        try:
+            r = self.http.request(metodo, self.url(servicio) + ruta, data=cuerpo, params=params,
+                                  headers=headers, timeout=config.TIEMPO_ESPERA)
+        except requests.RequestException:
+            bitacora.error("sin conexión con %s %s %s cid=%s" % (servicio, metodo, ruta, cid))
+            raise ErrorServicio("No se pudo conectar con %s." % servicio)
+        bitacora.peticion(metodo, servicio, ruta, r.status_code, r.headers.get("X-Correlation-ID", cid),
+                          (time.monotonic() - inicio) * 1000)
+        return r
+
+    def enviar(self, servicio, metodo, ruta, cuerpo=None, params=None, publico=False, *,
+               accept="application/xml", etag=None, tipo="application/xml", cabeceras=None):
+        """tipo y cabeceras sirven para los cuerpos que no son XML: el PDF del reporte y el CSV de un conjunto."""
+        if not publico and self.access and ruta != "/api/v1/sessions/logout":
+            exp = _expiracion_jwt(self.access)
+            if exp is not None and exp <= time.time() + MARGEN_RENOVACION_SEGUNDOS:
+                self._renovar(self.access)
+        token = self.access
+        r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico, accept, etag, tipo, cabeceras)
+        if r.status_code == 401 and not publico:
+            error = _problema(servicio, r)
+            if error.codigo == "TOKEN_EXPIRADO":
+                self._renovar(token)
+                r = self._una_vez(servicio, metodo, ruta, cuerpo, params, publico, accept, etag, tipo, cabeceras)
+            elif error.codigo in FIN_DE_SESION:
+                self.olvidar()
+                raise SesionCerrada("La sesión terminó. Vuelve a iniciar sesión.", 401, error.codigo)
+        if r.status_code >= 400:
+            error = _problema(servicio, r)
+            bitacora.error("%s %s %s -> %s %s" % (servicio, metodo, ruta, r.status_code, error.codigo))
+            if r.status_code == 401 and not publico:
+                self.olvidar()
+                raise SesionCerrada("La sesión terminó. Vuelve a iniciar sesión.", 401, error.codigo)
+            raise error
+        return r
+
+    def pedir(self, servicio, metodo, ruta, datos=None, raiz="solicitud", params=None, publico=False):
+        cuerpo = None if datos is None else xmlio.escribir(datos, raiz)
+        r = self.enviar(servicio, metodo, ruta, cuerpo, params, publico)
+        return self.leer_respuesta(servicio, r)
+
+    def leer_respuesta(self, servicio, r):
+        """Valida la respuesta XML con su XSD, si lo tiene, y la convierte en diccionario."""
+        if not r.content:
+            return {}
+        try:
+            xsd = esquemas.xsd_de(servicio, xmlio.raiz(r.content))
+            if xsd:
+                esquemas.validar_con(xsd, r.content)
+                bitacora.validado(servicio, xsd.split("/")[-1])
+            return xmlio.leer(r.content)
+        except esquemas.XMLInvalido as exc:
+            bitacora.error("respuesta de %s no cumple %s" % (servicio, exc.xsd))
+            raise ErrorServicio("Respuesta inválida de %s: no cumple %s." % (servicio, exc.xsd),
+                                errores=exc.errores)
+        except Exception:
+            bitacora.error("respuesta de %s no es XML" % servicio)
+            raise ErrorServicio("Respuesta inválida de %s: no es XML." % servicio)
+
+    def _renovar(self, token_usado):
+        with self._candado:
+            if self.access != token_usado:
+                return
+            if not self.refresh:
+                self.olvidar()
+                raise SesionCerrada("La sesión terminó. Vuelve a iniciar sesión.", 401)
+            try:
+                datos = self.pedir("sesiones", "POST", "/api/v1/sessions/refresh",
+                                   {"refresh_token": self.refresh}, "refresh", publico=True)
+            except ErrorServicio as exc:
+                if exc.status == 401:
+                    self.olvidar()
+                    raise SesionCerrada("La sesión terminó. Vuelve a iniciar sesión.", 401, exc.codigo)
+                raise
+            self.access = datos["access_token"]
+            self.refresh = datos["refresh_token"]
+            bitacora.accion(self.nombre_usuario(), "renovó el token de acceso")
+
+    def iniciar_sesion(self, usuario, password, captcha_id, respuesta, dispositivo=None):
+        cuerpo = {"usuario": usuario, "password": password,
+                  "captcha_id": captcha_id, "captcha_respuesta": respuesta}
+        if dispositivo:
+            cuerpo.update(dispositivo_id=dispositivo, dispositivo_etiqueta="App de escritorio")
+        datos = self.pedir("auth", "POST", "/api/v1/auth/login", cuerpo, "login", publico=True)
+        if datos.get("mfa_requerido"):
+            # D40: un perfil crítico no recibe tokens hasta el segundo paso.
+            bitacora.accion(usuario, "pidió el segundo paso del inicio de sesión")
+            return datos
+        return self._guardar_sesion(datos, "inició sesión")
+
+    def segundo_paso(self, accion, mfa_token, **campos):
+        """accion: verify (código TOTP o de respaldo), enroll (secreto nuevo) o confirm (primer código)."""
+        datos = self.pedir("auth", "POST", "/api/v1/auth/mfa/%s" % accion, dict(campos, mfa_token=mfa_token),
+                           "mfa", publico=True)
+        if accion == "enroll":
+            return datos
+        return self._guardar_sesion(datos, "inició sesión con MFA")
+
+    def _guardar_sesion(self, datos, texto):
+        self.access = datos["access_token"]
+        self.refresh = datos["refresh_token"]
+        self.usuario = datos.get("usuario") or {}
+        bitacora.accion(self.nombre_usuario(), texto)
+        return datos
+
+    def cerrar_sesion(self):
+        if self.access:
+            try:
+                self.enviar("sesiones", "POST", "/api/v1/sessions/logout")
+            except ErrorServicio:
+                pass
+            bitacora.accion(self.nombre_usuario(), "cerró sesión")
+        self.olvidar()
+
+    def olvidar(self):
+        self.access = None
+        self.refresh = None
+
+    def nombre_usuario(self):
+        return (self.usuario or {}).get("username")
+
+    def roles(self):
+        return list((self.usuario or {}).get("roles") or [])

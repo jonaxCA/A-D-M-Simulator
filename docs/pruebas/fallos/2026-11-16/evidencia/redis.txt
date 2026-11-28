@@ -1,0 +1,29 @@
+# CON redis DETENIDO: GET /cases (estado, cuerpo)
+[
+  503,
+  {
+    "type": "about:blank",
+    "title": "Service Unavailable",
+    "status": 503,
+    "detail": "Redis no está disponible.",
+    "codigo": "SERVICIO_NO_DISPONIBLE",
+    "instance": "/api/v1/cases"
+  }
+]
+
+# regiones (publica)
+200
+
+# web: /dashboard con sesion abierta
+200
+
+# web: POST /login nuevo (estado) y mensaje
+503
+El servicio de sesiones no está disponible por ahora. Intenta entrar de nuevo en unos minutos.
+
+# DESPUES: GET /cases con la misma sesion
+200
+
+# web: /dashboard con la sesion abierta antes de la caida
+200
+

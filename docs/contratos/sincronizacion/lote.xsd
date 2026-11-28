@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Lote de sincronización (puerto 5222). Raíz lote: petición de POST /api/v1/sync/cases.
      Raíz resultado_lote: respuesta de POST /api/v1/sync/cases y de GET /api/v1/sync/batches/{id}.
-     El servicio también acepta lote_id como alias de batch_id; el XSD solo declara batch_id. -->
+     El servicio también acepta lote_id como alias de batch_id; el XSD solo declara batch_id.
+     Un lote trae casos nuevos (cases), correcciones hechas sin conexión (updates, D47) o las dos
+     cosas; el servicio rechaza uno sin ninguna. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
   <xs:attributeGroup name="Marcas">
     <xs:annotation><xs:documentation>Atributos que agrega la biblioteca común al generar XML: tipo (numero, booleano) y nil="true" para un valor nulo. Son opcionales: un cliente puede enviar el XML sin ellos.</xs:documentation></xs:annotation>
@@ -65,6 +67,38 @@
       <xs:element name="longitude" type="TLongitudNulo" minOccurs="0"/>
       <xs:element name="test_result" type="TResultadoNulo" minOccurs="0"/>
       <xs:element name="severity" type="TSeveridadNulo" minOccurs="0"/>
+      <xs:element name="form_id" type="TPositivoNulo" minOccurs="0"/>
+      <xs:element name="form_answers" type="Cualquiera" minOccurs="0">
+        <xs:annotation><xs:documentation>Respuestas al formulario de la enfermedad, con form_id (D48); las valida casos.</xs:documentation></xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+  <xs:complexType name="Cualquiera">
+    <xs:annotation><xs:documentation>Campos de un caso: en changes, los que se corrigen; en caso, el caso como está en el servidor (nil si no hay).</xs:documentation></xs:annotation>
+    <xs:sequence><xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
+    <xs:attributeGroup ref="Marcas"/>
+  </xs:complexType>
+  <xs:complexType name="CorreccionDeLote">
+    <xs:all>
+      <xs:element name="case_id" type="TPositivo"/>
+      <xs:element name="version" type="TPositivo"/>
+      <xs:element name="changes" type="Cualquiera"/>
+      <xs:element name="reason" type="TTexto" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+  <xs:simpleType name="ResultadoCorreccionValido"><xs:restriction base="xs:string"><xs:enumeration value="actualizado"/><xs:enumeration value="conflicto"/><xs:enumeration value="rechazado"/></xs:restriction></xs:simpleType>
+  <xs:complexType name="TResultadoCorreccion"><xs:simpleContent><xs:extension base="ResultadoCorreccionValido"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="ResultadoCorreccion">
+    <xs:all>
+      <xs:element name="indice" type="TEntero"/>
+      <xs:element name="case_id" type="TEntero"/>
+      <xs:element name="resultado" type="TResultadoCorreccion"/>
+      <xs:element name="version" type="TEnteroNulo"/>
+      <xs:element name="codigo" type="TTexto"/>
+      <xs:element name="errores">
+        <xs:complexType><xs:sequence><xs:element name="item" type="TTexto" minOccurs="0" maxOccurs="unbounded"/></xs:sequence></xs:complexType>
+      </xs:element>
+      <xs:element name="caso" type="Cualquiera"/>
     </xs:all>
   </xs:complexType>
   <xs:element name="lote">
@@ -72,8 +106,11 @@
       <xs:all>
         <xs:element name="batch_id" type="TUuid"/>
         <xs:element name="device_id" type="TPositivoNulo" minOccurs="0"/>
-        <xs:element name="cases">
+        <xs:element name="cases" minOccurs="0">
           <xs:complexType><xs:sequence><xs:element name="item" type="CasoDeLote" minOccurs="1" maxOccurs="100"/></xs:sequence></xs:complexType>
+        </xs:element>
+        <xs:element name="updates" minOccurs="0">
+          <xs:complexType><xs:sequence><xs:element name="item" type="CorreccionDeLote" minOccurs="1" maxOccurs="100"/></xs:sequence></xs:complexType>
         </xs:element>
       </xs:all>
     </xs:complexType>
@@ -84,6 +121,9 @@
       <xs:element name="local_uuid" type="TUuid"/>
       <xs:element name="resultado" type="TResultadoCaso"/>
       <xs:element name="case_id" type="TEnteroNulo"/>
+      <xs:element name="codigo" type="TTexto" minOccurs="0">
+        <xs:annotation><xs:documentation>Codigo de casos si el caso salió rechazado: CONFLICTO (dispositivo revocado) o DATOS_INVALIDOS. Nulo si se creó o era duplicado. Opcional: los lotes guardados antes de este campo no lo traen.</xs:documentation></xs:annotation>
+      </xs:element>
       <xs:element name="errores">
         <xs:complexType><xs:sequence><xs:element name="item" type="TTexto" minOccurs="0" maxOccurs="unbounded"/></xs:sequence></xs:complexType>
       </xs:element>
@@ -101,6 +141,13 @@
         <xs:element name="rechazados" type="TEntero"/>
         <xs:element name="resultados">
           <xs:complexType><xs:sequence><xs:element name="item" type="ResultadoCaso" minOccurs="0" maxOccurs="unbounded"/></xs:sequence></xs:complexType>
+        </xs:element>
+        <xs:element name="actualizados" type="TEntero" minOccurs="0"/>
+        <xs:element name="conflictos" type="TEntero" minOccurs="0"/>
+        <xs:element name="actualizaciones_rechazadas" type="TEntero" minOccurs="0"/>
+        <xs:element name="actualizaciones" minOccurs="0">
+          <xs:annotation><xs:documentation>Solo si el lote trajo correcciones (D47): una por corrección, en el orden de updates.</xs:documentation></xs:annotation>
+          <xs:complexType><xs:sequence><xs:element name="item" type="ResultadoCorreccion" minOccurs="0" maxOccurs="unbounded"/></xs:sequence></xs:complexType>
         </xs:element>
         <xs:element name="repetido" type="TBooleano"/>
       </xs:all>

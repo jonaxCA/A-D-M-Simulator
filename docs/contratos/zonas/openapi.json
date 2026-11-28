@@ -203,7 +203,223 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zones/diseases": {
+      "get": {
+        "summary": "Enfermedades con casos",
+        "operationId": "enfermedades_con_casos",
+        "description": "Las enfermedades que tienen al menos un caso en algún municipio de Nuevo León, por nombre: el filtro de enfermedad del mapa y del monitoreo. Cualquier rol con sesión, como las demás rutas de zonas. Caché de 60 s.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 2,
+                  "enfermedades": [
+                    {
+                      "id": 2,
+                      "name": "Dengue"
+                    },
+                    {
+                      "id": 1,
+                      "name": "Influenza"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "enfermedades_con_casos"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<enfermedades_con_casos><total tipo=\"numero\">2</total><enfermedades><enfermedad><id tipo=\"numero\">2</id><name>Dengue</name></enfermedad><enfermedad><id tipo=\"numero\">1</id><name>Influenza</name></enfermedad></enfermedades></enfermedades_con_casos>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE): solo cualquier rol con sesión. Queda en la bitácora como PERMISSION_DENIED."
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zones/export": {
+      "get": {
+        "summary": "Exportar las zonas",
+        "operationId": "exportar_zonas",
+        "description": "Todas las zonas del ámbito (mismos filtros disease_id, region_id, days, q y order que detalle_zonas, sin paginar), para exportarlas; el CSV lo arma el cliente. Registra EXPORT sobre reports (monitoreo_zonas) en la bitácora. Cualquier rol con sesión.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "zonas": [
+                    {
+                      "id": 6,
+                      "zona": "General Escobedo",
+                      "casos": 549,
+                      "incidencia": 114.1,
+                      "variacion": 0.0,
+                      "graves": 77,
+                      "estado": "estable"
+                    },
+                    {
+                      "id": 4,
+                      "zona": "Guadalupe",
+                      "casos": 683,
+                      "incidencia": 106.2,
+                      "variacion": 0.0,
+                      "graves": 76,
+                      "estado": "estable"
+                    },
+                    {
+                      "id": 5,
+                      "zona": "Apodaca",
+                      "casos": 618,
+                      "incidencia": 94.1,
+                      "variacion": 0.0,
+                      "graves": 79,
+                      "estado": "estable"
+                    }
+                  ],
+                  "total": 51,
+                  "pagina": 1,
+                  "paginas": 17,
+                  "desde": 1,
+                  "hasta": 3,
+                  "filtros": {
+                    "disease_id": null,
+                    "region_id": null,
+                    "days": 90,
+                    "order": "incidencia"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "zonas_detalle"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<zonas_detalle><zonas><zona><id tipo=\"numero\">6</id><zona>General Escobedo</zona><casos tipo=\"numero\">549</casos><incidencia tipo=\"numero\">114.1</incidencia><variacion tipo=\"numero\">0.0</variacion><graves tipo=\"numero\">77</graves><estado>estable</estado></zona><zona><id tipo=\"numero\">4</id><zona>Guadalupe</zona><casos tipo=\"numero\">683</casos><incidencia tipo=\"numero\">106.2</incidencia><variacion tipo=\"numero\">0.0</variacion><graves tipo=\"numero\">76</graves><estado>estable</estado></zona><zona><id tipo=\"numero\">5</id><zona>Apodaca</zona><casos tipo=\"numero\">618</casos><incidencia tipo=\"numero\">94.1</incidencia><variacion tipo=\"numero\">0.0</variacion><graves tipo=\"numero\">79</graves><estado>estable</estado></zona></zonas><total tipo=\"numero\">51</total><pagina tipo=\"numero\">1</pagina><paginas tipo=\"numero\">17</paginas><desde tipo=\"numero\">1</desde><hasta tipo=\"numero\">3</hasta><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">90</days><order>incidencia</order></filtros></zonas_detalle>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE): solo cualquier rol con sesión. Queda en la bitácora como PERMISSION_DENIED."
+          },
+          "422": {
+            "description": "Filtros inválidos (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }
@@ -406,7 +622,833 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zones/heatmap": {
+      "get": {
+        "summary": "Puntos para un mapa de calor",
+        "operationId": "mapa_calor",
+        "description": "Los casos con coordenadas, agregados en una cuadrícula de `cell` grados (0.01 son unos 1.1 km en Nuevo León), para Leaflet.heat o Highcharts. Por punto: `lat` y `lon` del centro de la celda, `casos` y `peso` (casos entre los de la celda con más, de 0 a 1), de mayor a menor. Por privacidad, una celda con menos de `minimo_por_celda` (3) casos no se publica: se cuenta en `casos_suprimidos` y `celdas_suprimidas`. `casos_sin_coordenadas` son los que no traen ubicación, y `total_casos` = `casos_en_puntos` + suprimidos + sin coordenadas. Casos `pendiente` o `validado`, por fecha de reporte, en los municipios de Nuevo León o en el de region_id.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por enfermedad"
+          },
+          {
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por municipio de Nuevo León"
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                7,
+                30,
+                60,
+                90
+              ]
+            },
+            "description": "Periodo en días (por omisión 30)"
+          },
+          {
+            "in": "query",
+            "name": "cell",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0.01",
+                "0.02",
+                "0.05"
+              ],
+              "default": "0.01"
+            },
+            "description": "Lado de la celda en grados; la más fina es de ~1 km"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "celda_grados": 0.01,
+                  "minimo_por_celda": 3,
+                  "total_casos": 114,
+                  "casos_en_puntos": 103,
+                  "casos_sin_coordenadas": 9,
+                  "casos_suprimidos": 2,
+                  "celdas_suprimidas": 1,
+                  "puntos": [
+                    {
+                      "lat": 25.675,
+                      "lon": -100.315,
+                      "casos": 41,
+                      "peso": 1.0
+                    },
+                    {
+                      "lat": 25.685,
+                      "lon": -100.305,
+                      "casos": 27,
+                      "peso": 0.6585
+                    },
+                    {
+                      "lat": 25.745,
+                      "lon": -100.215,
+                      "casos": 18,
+                      "peso": 0.439
+                    },
+                    {
+                      "lat": 25.665,
+                      "lon": -100.275,
+                      "casos": 11,
+                      "peso": 0.2683
+                    },
+                    {
+                      "lat": 25.805,
+                      "lon": -100.295,
+                      "casos": 6,
+                      "peso": 0.1463
+                    }
+                  ],
+                  "filtros": {
+                    "disease_id": null,
+                    "region_id": null,
+                    "days": 30,
+                    "cell": 0.01
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "mapa_calor"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<mapa_calor><celda_grados tipo=\"numero\">0.01</celda_grados><minimo_por_celda tipo=\"numero\">3</minimo_por_celda><total_casos tipo=\"numero\">114</total_casos><casos_en_puntos tipo=\"numero\">103</casos_en_puntos><casos_sin_coordenadas tipo=\"numero\">9</casos_sin_coordenadas><casos_suprimidos tipo=\"numero\">2</casos_suprimidos><celdas_suprimidas tipo=\"numero\">1</celdas_suprimidas><puntos><punto><lat tipo=\"numero\">25.675</lat><lon tipo=\"numero\">-100.315</lon><casos tipo=\"numero\">41</casos><peso tipo=\"numero\">1.0</peso></punto><punto><lat tipo=\"numero\">25.685</lat><lon tipo=\"numero\">-100.305</lon><casos tipo=\"numero\">27</casos><peso tipo=\"numero\">0.6585</peso></punto><punto><lat tipo=\"numero\">25.745</lat><lon tipo=\"numero\">-100.215</lon><casos tipo=\"numero\">18</casos><peso tipo=\"numero\">0.439</peso></punto><punto><lat tipo=\"numero\">25.665</lat><lon tipo=\"numero\">-100.275</lon><casos tipo=\"numero\">11</casos><peso tipo=\"numero\">0.2683</peso></punto><punto><lat tipo=\"numero\">25.805</lat><lon tipo=\"numero\">-100.295</lon><casos tipo=\"numero\">6</casos><peso tipo=\"numero\">0.1463</peso></punto></puntos><filtros><disease_id nil=\"true\" /><region_id nil=\"true\" /><days tipo=\"numero\">30</days><cell tipo=\"numero\">0.01</cell></filtros></mapa_calor>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zones/jurisdictions": {
+      "get": {
+        "summary": "Casos por jurisdicción sanitaria",
+        "operationId": "zonas_por_jurisdiccion",
+        "description": "Las cifras de /zones sumadas por jurisdicción sanitaria de Nuevo León: `poblacion`, `casos` y `graves` del periodo, `incidencia` por 100 000 habitantes, `variacion` de los últimos 7 días contra los 7 anteriores y `estado` (`estable`, `alerta` o `critico`, el mismo semáforo), con sus `municipios` y los `numeros` de jurisdicción. Los municipios de cada una salen del artículo 27 del Reglamento Interior de Servicios de Salud de Nuevo León (`fuente`; pendiente de confirmar que siga vigente). Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir, así que va primero como su propio grupo (`compartido-19039`) y la 2 y la 3 llevan solo sus otros municipios. Casos `pendiente` o `validado`, por fecha de reporte.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filtra por enfermedad"
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                7,
+                30,
+                90
+              ]
+            },
+            "description": "Periodo en días (por omisión 30)"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "filtros": {
+                    "disease_id": null,
+                    "days": 30
+                  },
+                  "fuente": {
+                    "documento": "Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27",
+                    "publicacion": "Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009",
+                    "url": "http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf",
+                    "nota": "Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos."
+                  },
+                  "jurisdicciones": [
+                    {
+                      "clave": "compartido-19039",
+                      "nombre": "Monterrey (jurisdicciones 1, 2 y 3)",
+                      "numeros": [
+                        1,
+                        2,
+                        3
+                      ],
+                      "municipios": [
+                        {
+                          "region_code": "19039",
+                          "nombre": "Monterrey"
+                        }
+                      ],
+                      "poblacion": 1142994,
+                      "casos": 48,
+                      "incidencia": 4.2,
+                      "graves": 4,
+                      "variacion": 57.1,
+                      "estado": "critico"
+                    },
+                    {
+                      "clave": "2",
+                      "nombre": "Jurisdicción Sanitaria No. 2",
+                      "numeros": [
+                        2
+                      ],
+                      "municipios": [
+                        {
+                          "region_code": "19001",
+                          "nombre": "Abasolo"
+                        },
+                        {
+                          "region_code": "19010",
+                          "nombre": "El Carmen"
+                        },
+                        {
+                          "region_code": "19012",
+                          "nombre": "Ciénega de Flores"
+                        },
+                        {
+                          "region_code": "19021",
+                          "nombre": "General Escobedo"
+                        },
+                        {
+                          "region_code": "19025",
+                          "nombre": "General Zuazua"
+                        },
+                        {
+                          "region_code": "19037",
+                          "nombre": "Mina"
+                        },
+                        {
+                          "region_code": "19045",
+                          "nombre": "Salinas Victoria"
+                        },
+                        {
+                          "region_code": "19046",
+                          "nombre": "San Nicolás de los Garza"
+                        },
+                        {
+                          "region_code": "19047",
+                          "nombre": "Hidalgo"
+                        }
+                      ],
+                      "poblacion": 1280660,
+                      "casos": 20,
+                      "incidencia": 1.6,
+                      "graves": 1,
+                      "variacion": 100.0,
+                      "estado": "critico"
+                    },
+                    {
+                      "clave": "3",
+                      "nombre": "Jurisdicción Sanitaria No. 3",
+                      "numeros": [
+                        3
+                      ],
+                      "municipios": [
+                        {
+                          "region_code": "19018",
+                          "nombre": "García"
+                        },
+                        {
+                          "region_code": "19019",
+                          "nombre": "San Pedro Garza García"
+                        },
+                        {
+                          "region_code": "19048",
+                          "nombre": "Santa Catarina"
+                        }
+                      ],
+                      "poblacion": 835696,
+                      "casos": 10,
+                      "incidencia": 1.2,
+                      "graves": 0,
+                      "variacion": 0.0,
+                      "estado": "estable"
+                    },
+                    {
+                      "clave": "4",
+                      "nombre": "Jurisdicción Sanitaria No. 4",
+                      "numeros": [
+                        4
+                      ],
+                      "municipios": [
+                        {
+                          "region_code": "19006",
+                          "nombre": "Apodaca"
+                        },
+                        {
+                          "region_code": "19026",
+                          "nombre": "Guadalupe"
+                        },
+                        {
+                          "region_code": "19031",
+                          "nombre": "Juárez"
+                        }
+                      ],
+                      "poblacion": 1771130,
+                      "casos": 36,
+                      "incidencia": 2.0,
+                      "graves": 4,
+                      "variacion": 38.5,
+                      "estado": "alerta"
+                    },
+                    {
+                      "clave": "5",
+                      "nombre": "Jurisdicción Sanitaria No. 5",
+                      "numeros": [
+                        5
+                      ],
+                      "municipios": [
+                        {
+                          "region_code": "19002",
+                          "nombre": "Agualeguas"
+                        },
+                        {
+                          "region_code": "19005",
+                          "nombre": "Anáhuac"
+                        },
+                        {
+                          "region_code": "19008",
+                          "nombre": "Bustamante"
+                        },
+                        {
+                          "region_code": "19023",
+                          "nombre": "General Treviño"
+                        },
+                        {
+                          "region_code": "19032",
+                          "nombre": "Lampazos de Naranjo"
+                        },
+                        {
+                          "region_code": "19040",
+                          "nombre": "Parás"
+                        },
+                        {
+                          "region_code": "19044",
+                          "nombre": "Sabinas Hidalgo"
+                        },
+                        {
+                          "region_code": "19050",
+                          "nombre": "Vallecillo"
+                        },
+                        {
+                          "region_code": "19051",
+                          "nombre": "Villaldama"
+                        }
+                      ],
+                      "poblacion": 72972,
+                      "casos": 1,
+                      "incidencia": 1.4,
+                      "graves": 0,
+                      "variacion": 100.0,
+                      "estado": "critico"
+                    },
+                    {
+                      "clave": "6",
+                      "nombre": "Jurisdicción Sanitaria No. 6",
+                      "numeros": [
+                        6
+                      ],
+                      "municipios": [
+                        {
+                          "region_code": "19003",
+                          "nombre": "Los Aldamas"
+                        },
+                        {
+                          "region_code": "19009",
+                          "nombre": "Cadereyta Jiménez"
+                        },
+                        {
+                          "region_code": "19011",
+                          "nombre": "Cerralvo"
+                        },
+                        {
+                          "region_code": "19013",
+                          "nombre": "China"
+                        },
+                        {
+                          "region_code": "19015",
+                          "nombre": "Doctor Coss"
+                        },
+                        {
+                          "region_code": "19016",
+                          "nombre": "Doctor González"
+                        },
+                        {
+                          "region_code": "19020",
+                          "nombre": "General Bravo"
+                        },
+                        {
+                          "region_code": "19027",
+                          "nombre": "Los Herreras"
+                        },
+                        {
+                          "region_code": "19028",
+                          "nombre": "Higueras"
+                        },
+                        {
+                          "region_code": "19034",
+                          "nombre": "Marín"
+                        },
+                        {
+                          "region_code": "19035",
+                          "nombre": "Melchor Ocampo"
+                        },
+                        {
+                          "region_code": "19041",
+                          "nombre": "Pesquería"
+                        },
+                        {
+                          "region_code": "19042",
+                          "nombre": "Los Ramones"
+                        }
+                      ],
+                      "poblacion": 314096,
+                      "casos": 3,
+                      "incidencia": 1.0,
+                      "graves": 0,
+                      "variacion": 100.0,
+                      "estado": "critico"
+                    },
+                    {
+                      "clave": "7",
+                      "nombre": "Jurisdicción Sanitaria No. 7",
+                      "numeros": [
+                        7
+                      ],
+                      "municipios": [
+                        {
+                          "region_code": "19004",
+                          "nombre": "Allende"
+                        },
+                        {
+                          "region_code": "19022",
+                          "nombre": "General Terán"
+                        },
+                        {
+                          "region_code": "19029",
+                          "nombre": "Hualahuises"
+                        },
+                        {
+                          "region_code": "19033",
+                          "nombre": "Linares"
+                        },
+                        {
+                          "region_code": "19038",
+                          "nombre": "Montemorelos"
+                        },
+                        {
+                          "region_code": "19043",
+                          "nombre": "Rayones"
+                        },
+                        {
+                          "region_code": "19049",
+                          "nombre": "Santiago"
+                        }
+                      ],
+                      "poblacion": 257679,
+                      "casos": 4,
+                      "incidencia": 1.6,
+                      "graves": 1,
+                      "variacion": 0.0,
+                      "estado": "estable"
+                    },
+                    {
+                      "clave": "8",
+                      "nombre": "Jurisdicción Sanitaria No. 8",
+                      "numeros": [
+                        8
+                      ],
+                      "municipios": [
+                        {
+                          "region_code": "19007",
+                          "nombre": "Aramberri"
+                        },
+                        {
+                          "region_code": "19014",
+                          "nombre": "Doctor Arroyo"
+                        },
+                        {
+                          "region_code": "19017",
+                          "nombre": "Galeana"
+                        },
+                        {
+                          "region_code": "19024",
+                          "nombre": "General Zaragoza"
+                        },
+                        {
+                          "region_code": "19036",
+                          "nombre": "Mier y Noriega"
+                        },
+                        {
+                          "region_code": "19030",
+                          "nombre": "Iturbide"
+                        }
+                      ],
+                      "poblacion": 109215,
+                      "casos": 0,
+                      "incidencia": 0.0,
+                      "graves": 0,
+                      "variacion": 0.0,
+                      "estado": "estable"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "zonas_por_jurisdiccion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<zonas_por_jurisdiccion><filtros><disease_id nil=\"true\" /><days tipo=\"numero\">30</days></filtros><fuente><documento>Reglamento Interior de \"Servicios de Salud de Nuevo León\" Organismo Público Descentralizado, artículo 27</documento><publicacion>Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009</publicacion><url>http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf</url><nota>Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.</nota></fuente><jurisdicciones><jurisdiccion><clave>compartido-19039</clave><nombre>Monterrey (jurisdicciones 1, 2 y 3)</nombre><numeros><numero tipo=\"numero\">1</numero><numero tipo=\"numero\">2</numero><numero tipo=\"numero\">3</numero></numeros><municipios><municipio><region_code>19039</region_code><nombre>Monterrey</nombre></municipio></municipios><poblacion tipo=\"numero\">1142994</poblacion><casos tipo=\"numero\">48</casos><incidencia tipo=\"numero\">4.2</incidencia><graves tipo=\"numero\">4</graves><variacion tipo=\"numero\">57.1</variacion><estado>critico</estado></jurisdiccion><jurisdiccion><clave>2</clave><nombre>Jurisdicción Sanitaria No. 2</nombre><numeros><numero tipo=\"numero\">2</numero></numeros><municipios><municipio><region_code>19001</region_code><nombre>Abasolo</nombre></municipio><municipio><region_code>19010</region_code><nombre>El Carmen</nombre></municipio><municipio><region_code>19012</region_code><nombre>Ciénega de Flores</nombre></municipio><municipio><region_code>19021</region_code><nombre>General Escobedo</nombre></municipio><municipio><region_code>19025</region_code><nombre>General Zuazua</nombre></municipio><municipio><region_code>19037</region_code><nombre>Mina</nombre></municipio><municipio><region_code>19045</region_code><nombre>Salinas Victoria</nombre></municipio><municipio><region_code>19046</region_code><nombre>San Nicolás de los Garza</nombre></municipio><municipio><region_code>19047</region_code><nombre>Hidalgo</nombre></municipio></municipios><poblacion tipo=\"numero\">1280660</poblacion><casos tipo=\"numero\">20</casos><incidencia tipo=\"numero\">1.6</incidencia><graves tipo=\"numero\">1</graves><variacion tipo=\"numero\">100.0</variacion><estado>critico</estado></jurisdiccion><jurisdiccion><clave>3</clave><nombre>Jurisdicción Sanitaria No. 3</nombre><numeros><numero tipo=\"numero\">3</numero></numeros><municipios><municipio><region_code>19018</region_code><nombre>García</nombre></municipio><municipio><region_code>19019</region_code><nombre>San Pedro Garza García</nombre></municipio><municipio><region_code>19048</region_code><nombre>Santa Catarina</nombre></municipio></municipios><poblacion tipo=\"numero\">835696</poblacion><casos tipo=\"numero\">10</casos><incidencia tipo=\"numero\">1.2</incidencia><graves tipo=\"numero\">0</graves><variacion tipo=\"numero\">0.0</variacion><estado>estable</estado></jurisdiccion><jurisdiccion><clave>4</clave><nombre>Jurisdicción Sanitaria No. 4</nombre><numeros><numero tipo=\"numero\">4</numero></numeros><municipios><municipio><region_code>19006</region_code><nombre>Apodaca</nombre></municipio><municipio><region_code>19026</region_code><nombre>Guadalupe</nombre></municipio><municipio><region_code>19031</region_code><nombre>Juárez</nombre></municipio></municipios><poblacion tipo=\"numero\">1771130</poblacion><casos tipo=\"numero\">36</casos><incidencia tipo=\"numero\">2.0</incidencia><graves tipo=\"numero\">4</graves><variacion tipo=\"numero\">38.5</variacion><estado>alerta</estado></jurisdiccion><jurisdiccion><clave>5</clave><nombre>Jurisdicción Sanitaria No. 5</nombre><numeros><numero tipo=\"numero\">5</numero></numeros><municipios><municipio><region_code>19002</region_code><nombre>Agualeguas</nombre></municipio><municipio><region_code>19005</region_code><nombre>Anáhuac</nombre></municipio><municipio><region_code>19008</region_code><nombre>Bustamante</nombre></municipio><municipio><region_code>19023</region_code><nombre>General Treviño</nombre></municipio><municipio><region_code>19032</region_code><nombre>Lampazos de Naranjo</nombre></municipio><municipio><region_code>19040</region_code><nombre>Parás</nombre></municipio><municipio><region_code>19044</region_code><nombre>Sabinas Hidalgo</nombre></municipio><municipio><region_code>19050</region_code><nombre>Vallecillo</nombre></municipio><municipio><region_code>19051</region_code><nombre>Villaldama</nombre></municipio></municipios><poblacion tipo=\"numero\">72972</poblacion><casos tipo=\"numero\">1</casos><incidencia tipo=\"numero\">1.4</incidencia><graves tipo=\"numero\">0</graves><variacion tipo=\"numero\">100.0</variacion><estado>critico</estado></jurisdiccion><jurisdiccion><clave>6</clave><nombre>Jurisdicción Sanitaria No. 6</nombre><numeros><numero tipo=\"numero\">6</numero></numeros><municipios><municipio><region_code>19003</region_code><nombre>Los Aldamas</nombre></municipio><municipio><region_code>19009</region_code><nombre>Cadereyta Jiménez</nombre></municipio><municipio><region_code>19011</region_code><nombre>Cerralvo</nombre></municipio><municipio><region_code>19013</region_code><nombre>China</nombre></municipio><municipio><region_code>19015</region_code><nombre>Doctor Coss</nombre></municipio><municipio><region_code>19016</region_code><nombre>Doctor González</nombre></municipio><municipio><region_code>19020</region_code><nombre>General Bravo</nombre></municipio><municipio><region_code>19027</region_code><nombre>Los Herreras</nombre></municipio><municipio><region_code>19028</region_code><nombre>Higueras</nombre></municipio><municipio><region_code>19034</region_code><nombre>Marín</nombre></municipio><municipio><region_code>19035</region_code><nombre>Melchor Ocampo</nombre></municipio><municipio><region_code>19041</region_code><nombre>Pesquería</nombre></municipio><municipio><region_code>19042</region_code><nombre>Los Ramones</nombre></municipio></municipios><poblacion tipo=\"numero\">314096</poblacion><casos tipo=\"numero\">3</casos><incidencia tipo=\"numero\">1.0</incidencia><graves tipo=\"numero\">0</graves><variacion tipo=\"numero\">100.0</variacion><estado>critico</estado></jurisdiccion><jurisdiccion><clave>7</clave><nombre>Jurisdicción Sanitaria No. 7</nombre><numeros><numero tipo=\"numero\">7</numero></numeros><municipios><municipio><region_code>19004</region_code><nombre>Allende</nombre></municipio><municipio><region_code>19022</region_code><nombre>General Terán</nombre></municipio><municipio><region_code>19029</region_code><nombre>Hualahuises</nombre></municipio><municipio><region_code>19033</region_code><nombre>Linares</nombre></municipio><municipio><region_code>19038</region_code><nombre>Montemorelos</nombre></municipio><municipio><region_code>19043</region_code><nombre>Rayones</nombre></municipio><municipio><region_code>19049</region_code><nombre>Santiago</nombre></municipio></municipios><poblacion tipo=\"numero\">257679</poblacion><casos tipo=\"numero\">4</casos><incidencia tipo=\"numero\">1.6</incidencia><graves tipo=\"numero\">1</graves><variacion tipo=\"numero\">0.0</variacion><estado>estable</estado></jurisdiccion><jurisdiccion><clave>8</clave><nombre>Jurisdicción Sanitaria No. 8</nombre><numeros><numero tipo=\"numero\">8</numero></numeros><municipios><municipio><region_code>19007</region_code><nombre>Aramberri</nombre></municipio><municipio><region_code>19014</region_code><nombre>Doctor Arroyo</nombre></municipio><municipio><region_code>19017</region_code><nombre>Galeana</nombre></municipio><municipio><region_code>19024</region_code><nombre>General Zaragoza</nombre></municipio><municipio><region_code>19036</region_code><nombre>Mier y Noriega</nombre></municipio><municipio><region_code>19030</region_code><nombre>Iturbide</nombre></municipio></municipios><poblacion tipo=\"numero\">109215</poblacion><casos tipo=\"numero\">0</casos><incidencia tipo=\"numero\">0.0</incidencia><graves tipo=\"numero\">0</graves><variacion tipo=\"numero\">0.0</variacion><estado>estable</estado></jurisdiccion></jurisdicciones></zonas_por_jurisdiccion>\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zones/geometry": {
+      "get": {
+        "summary": "Geometría oficial de los municipios",
+        "operationId": "geometria_municipios",
+        "x-binario": true,
+        "description": "Los 51 municipios de Nuevo León como GeoJSON (FeatureCollection; cada Feature con `region_code` y `name`), en lon/lat (EPSG:4326). Fuente: INEGI, Marco Geoestadístico 2024, capa municipal, simplificada a 0.0012 grados (unos 130 m); el miembro `fuente` la cita. Es la misma geometría del mapa de la web. Va tal cual, con ETag y Cache-Control: con If-None-Match igual al ETag responde 304 sin cuerpo. ?format no aplica.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "El ETag de una descarga anterior"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El GeoJSON",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/geo+json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "No cambió desde el ETag de If-None-Match"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zones/locate": {
+      "get": {
+        "summary": "En qué municipio y jurisdicción cae un punto",
+        "operationId": "ubicar_punto",
+        "description": "Consulta espacial sobre la geometría oficial (la de /zones/geometry), sin PostGIS: cada municipio guarda su recuadro, que descarta casi todos, y luego la prueba de punto en polígono (con huecos). `municipio` (con su `region_id`, para llenar un caso) y `jurisdiccion` (la de /zones/jurisdictions) son null fuera de Nuevo León. La geometría está simplificada (`precision_m`, unos 130 m): un punto en la rendija entre dos fronteras se asigna al municipio más cercano y sale con `aproximado` en true.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lat",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "example": 25.6866
+          },
+          {
+            "in": "query",
+            "name": "lon",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "example": -100.3161
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dónde cae el punto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "lat": 25.6866,
+                  "lon": -100.3161,
+                  "en_nuevo_leon": true,
+                  "aproximado": false,
+                  "precision_m": 130,
+                  "municipio": {
+                    "region_id": 3,
+                    "region_code": "19039",
+                    "nombre": "Monterrey"
+                  },
+                  "jurisdiccion": {
+                    "clave": "compartido-19039",
+                    "nombre": "Monterrey (jurisdicciones 1, 2 y 3)",
+                    "numeros": [
+                      1,
+                      2,
+                      3
+                    ]
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "ubicacion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<ubicacion><lat tipo=\"numero\">25.6866</lat><lon tipo=\"numero\">-100.3161</lon><en_nuevo_leon tipo=\"booleano\">true</en_nuevo_leon><aproximado tipo=\"booleano\">false</aproximado><precision_m tipo=\"numero\">130</precision_m><municipio><region_id tipo=\"numero\">3</region_id><region_code>19039</region_code><nombre>Monterrey</nombre></municipio><jurisdiccion><clave>compartido-19039</clave><nombre>Monterrey (jurisdicciones 1, 2 y 3)</nombre><numeros><numero tipo=\"numero\">1</numero><numero tipo=\"numero\">2</numero><numero tipo=\"numero\">3</numero></numeros></jurisdiccion></ubicacion>\n"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "lat o lon faltan, no son números o están fuera de rango (DATOS_INVALIDOS)"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }

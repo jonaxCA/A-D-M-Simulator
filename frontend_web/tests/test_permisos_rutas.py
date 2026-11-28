@@ -29,30 +29,29 @@ class PermisosRutasTests(AppTestCase):
         with self.app.test_client() as client:
             client.set_cookie(COOKIE_NAME, self._token_capturista())
             for ruta in rutas:
+                # C1: sin el permiso, 403 (RF-A05); el CAPTURISTA solo ve tablero y mapa (RF-G11).
                 resp = client.get(ruta, follow_redirects=False)
-                self.assertEqual(resp.status_code, 302, ruta)
-                self.assertIn("/dashboard", resp.headers["Location"], ruta)
+                self.assertEqual(resp.status_code, 403, ruta)
             menu = client.get("/dashboard")
             self.assertNotIn(b'href="/escenarios"', menu.data)
 
     def test_analista_si_entra_a_escenarios(self):
         with self.app.test_client() as client:
-            client.post("/login", data={"usuario": "alex.cavazos",
-                                        "password": "Epidemia2026!"})
+            self._login(client, "alex.cavazos", "Epidemia2026!")
             resp = client.get("/escenarios")
             self.assertEqual(resp.status_code, 200)
 
     def test_cada_candado_registra_el_modulo_de_su_pantalla(self):
         """El modulo del PERMISSION_DENIED es lo que permite rastrear intentos
-        en la bitacora. Incluye los dos valores por omision, que no son el
-        mismo: "users" en admin_required y "diseases" en roles_required."""
+        en la bitacora. Lo anota roles (POST /audit/denied) con el modulo que
+        cada ruta pasa a requiere_permiso."""
         enfermedad = query("SELECT min(id) AS v FROM diseases", one=True)["v"]
         municipio = query("SELECT min(id) AS v FROM regions WHERE level = 'municipio'",
                           one=True)["v"]
         casos = [
-            ("/usuarios", "users"),                          # admin_required
-            ("/auditoria", "users"),                         # admin_required
-            (f"/enfermedades/{enfermedad}/editar", "diseases"),  # roles_required
+            ("/usuarios", "users"),
+            ("/auditoria", "audit"),
+            (f"/enfermedades/{enfermedad}/editar", "diseases"),
             (f"/regiones/{municipio}/editar", "regions"),
             ("/escenarios", "scenarios"),
             ("/revisiones", "scenario_versions"),
@@ -65,8 +64,7 @@ class PermisosRutasTests(AppTestCase):
             for ruta, modulo in casos:
                 with self.subTest(ruta=ruta):
                     resp = client.get(ruta, follow_redirects=False)
-                    self.assertEqual(resp.status_code, 302)
-                    self.assertIn("/dashboard", resp.headers["Location"])
+                    self.assertEqual(resp.status_code, 403)
                     fila = query(
                         """SELECT entity_type FROM audit_log
                            WHERE action = 'PERMISSION_DENIED' AND entity_id = %s

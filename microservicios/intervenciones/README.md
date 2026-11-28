@@ -1,18 +1,24 @@
 # EPIDEMIA - Servicio intervenciones
 
 Puerto externo: 5232; puerto interno en Docker: 8000. Contrato:
-`docs/contratos/intervenciones/openapi.json` (ejemplos JSON y XML por ruta en `ejemplos/`).
+`docs/contratos/intervenciones/openapi.json` (ejemplos JSON y XML por ruta en `ejemplos/`). Las
+respuestas XML validan contra `docs/contratos/intervenciones/intervencion.xsd`.
 
 ## Qué hace
 
 Agrega, quita y reordena las intervenciones de una versión, y fija el costo de una
-intervención. Reutiliza `valida_intervencion`, `params_desde_schema` (con un adaptador del
-cuerpo JSON/XML a los campos `p_<CODE>_<clave>`), `agrega_intervencion`, `quita_intervencion`,
-`mueve_intervencion` y `valida_costo_intervencion` de `backend_web/queries.py`. Los parámetros se
-validan contra el `param_schema` del tipo; los que el tipo no declara se rechazan.
+intervención y, si es por dosis, sus personas-día por dosis (D3). Sus reglas viven aquí (E8, D37):
+`reglas.py` (`valida_intervencion`, `params_desde_schema` y `valida_costo_intervencion`, con un
+adaptador del cuerpo JSON/XML a los campos `p_<CODE>_<clave>`) y `datos.py` (agregar, quitar y
+mover, con su bitácora en la misma transacción, y la lectura de los tipos, copia de la de
+`tipos-intervencion` que vigila `test_copias_de_lectura.py`). Los parámetros se validan contra el
+`param_schema` del tipo; los que el tipo no declara se rechazan. `POST /interventions/validate`
+aplica las mismas reglas sin guardar: se la pide `validacion` para las intervenciones de un
+escenario que todavía no existe. Su imagen parte de `epidemia/base-vigilancia`.
 
-Escribe `scenario_interventions` y, solo en la ruta de costo, las columnas de costo de
-`intervention_types` (`unit_cost`, `cost_source`, `cost_is_assumption`). Lee `scenario_versions`,
+Escribe `scenario_interventions` y, solo en las rutas de costo y de personas-día, esas columnas de
+`intervention_types` (`unit_cost`, `cost_source`, `cost_is_assumption`; `person_days_per_unit`,
+`person_days_source`, `person_days_is_assumption`, migración 040). Lee `scenario_versions`,
 `scenarios` (dueño) e `intervention_types`.
 
 ## Rutas (`/api/v1`)
@@ -21,9 +27,12 @@ Escribe `scenario_interventions` y, solo en la ruta de costo, las columnas de co
 |---|---|---|
 | `GET /versions/{id}/interventions` | Lista en orden de aplicación | ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR |
 | `POST /versions/{id}/interventions` (201) | Agrega al final | los mismos |
+| `POST /interventions/validate` | Dictamen de una lista de intervenciones, en orden, sin guardar: `valido`, `errores` (con el número de cada una) e `intervenciones` normalizadas. Un cuerpo mal formado es 422 | los mismos |
 | `DELETE /versions/{id}/interventions/{iid}` | Quita y cierra el hueco | los mismos |
 | `POST /versions/{id}/interventions/{iid}/move` | `{"direction": "subir"\|"bajar"}` | los mismos |
 | `PUT /versions/{id}/interventions/{iid}/cost` | `unit_cost`, `cost_source`, `cost_is_assumption` | EPIDEMIOLOGO, ADMINISTRADOR |
+| `PUT /versions/{id}/interventions/{iid}/person-days` | `person_days_per_unit`, `person_days_source`, `person_days_is_assumption`; solo tipos por dosis (si no, 422) | EPIDEMIOLOGO, ADMINISTRADOR |
+| `PUT /intervention-types/{id}/cost` | El mismo costo, fijado desde el catálogo de tipos sin pasar por una versión (pantalla de costos de la web, D36); 404 si el tipo no existe o está inactivo | EPIDEMIOLOGO, ADMINISTRADOR |
 
 Reglas (las del monolito): agregar, quitar y mover solo si la versión es la vigente y está en
 borrador (si no, 409 `CONFLICTO`), y solo quien creó el escenario o un ADMINISTRADOR (403).
@@ -32,7 +41,8 @@ monolito); `up`/`down` se aceptan como alias. Mover en un extremo no es error (`
 
 El costo vive en el tipo, como en el monolito: cambiarlo afecta a todas las intervenciones de
 ese tipo. No exige que la versión sea borrador. Se audita en la misma transacción
-(`intervention_types`).
+(`intervention_types`). Las personas-día por dosis siguen las mismas reglas: son el factor con
+que la vacunación entra a la frontera de Pareto (D3), con fuente o marcado como supuesto.
 
 Cuerpos en JSON o XML; respuesta XML por defecto, JSON con `?format=json` o
 `Accept: application/json`. Errores RFC 7807: 401, 403, 404, 409, 422, 503.

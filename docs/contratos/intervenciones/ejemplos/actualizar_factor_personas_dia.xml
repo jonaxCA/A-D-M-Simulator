@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<factor_personas_dia><id tipo="numero">77</id><intervention_type_id tipo="numero">2</intervention_type_id><person_days_per_unit tipo="numero">0.5</person_days_per_unit><person_days_source>Supuesto del equipo, por validar</person_days_source><person_days_is_assumption tipo="booleano">true</person_days_is_assumption></factor_personas_dia>

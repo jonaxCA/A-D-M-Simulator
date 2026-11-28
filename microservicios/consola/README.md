@@ -1,7 +1,7 @@
 # EPIDEMIA - Consola de pruebas
 
-La página para comprobar que los 26 servicios funcionan, tipo Swagger y Postman. Hace las
-veces de las apps de escritorio y móvil mientras no existen. No es uno de los 26: no tiene
+La página para comprobar que los 31 servicios funcionan, tipo Swagger y Postman. Hace las
+veces de las apps de escritorio y móvil mientras no existen. No es uno de los 31: no tiene
 base, Redis ni contrato, y `estado-servicios` no la sondea.
 
 Puerto externo: 5260; puerto interno en Docker: 8000. Ábrela en `http://localhost:5260`,
@@ -18,10 +18,10 @@ El servidor (`app.py`) solo entrega la página. Todo lo demás pasa en el navega
 
 | Pestaña  | Qué hace |
 |----------|----------|
-| Salud    | Los 26 con su estado, causa, versión, latencia y la hora del sondeo, leídos de `GET /api/v1/services/health`. Se actualiza cada 10 s; un servicio caído sale en rojo |
+| Salud    | Los 30 con su estado, causa, versión, latencia, errores 5xx de las últimas 24 h y la hora del sondeo, leídos de `GET /api/v1/services/health`. Debajo, por motor, las corridas en cola (alta, normal y baja), los simuladores vivos y ocupados y qué corrida tiene cada uno (`GET /api/v1/services/capacity`). Se actualiza cada 10 s; un servicio caído, o un motor con corridas en cola y sin simulador vivo, sale en rojo |
 | Swagger  | El contrato del servicio elegido en Swagger UI. "Try it out" va a la URL del directorio y lleva el token de la sesión |
 | Probador | Servicio, operación, parámetros de ruta y de consulta, y cuerpo en JSON o XML (con el ejemplo del contrato). Muestra el código, el tiempo, las cabeceras (con el `X-Correlation-ID`) y el cuerpo con formato. **Copiar como curl** arma el comando de la petición |
-| Recorrido | Los 22 pasos del guion de aceptación, en orden, con lo que pide y responde cada uno y los ids que guarda para los siguientes. **Descargar resumen** baja un JSON para `evidencias/` |
+| Recorrido | Los 22 pasos del guion de aceptación, en orden, con lo que pide y responde cada uno y los ids que guarda para los siguientes. **Descargar resumen** baja un JSON para guardarlo como evidencia |
 
 **Sesión:** el captcha y el inicio de sesión los pide a `auth`, renovar a `sesiones`
 (`/refresh`) y cerrar también a `sesiones` (`/logout`). El *access* y el *refresh* viven
@@ -47,13 +47,13 @@ descarga de internet la primera vez que se abre su pestaña.
 |------------------|-------------------------|--------|
 | `URL_DIRECTORIO` | `http://localhost:5262` | `estado-servicios` visto desde el navegador; se puede cambiar en la página |
 
-En cada servicio, `CONSOLE_ORIGIN` es el origen de la consola. El compose lo pone en los 26.
+En cada servicio, `CONSOLE_ORIGIN` es el origen de la consola. El compose lo pone en los 31.
 
 ## Probarlo
 
 ```bash
 python -m pytest microservicios/consola
-docker compose -f infra/docker-compose.yml --profile '*' up -d --build --wait
+docker compose -f infra/docker-compose.yml --profile identidad --profile catalogos --profile vigilancia --profile escenarios --profile simulacion --profile analitica --profile plataforma up -d --build --wait
 ```
 
 Fuera de Docker: `python -m microservicios.consola.app` (en `127.0.0.1:5260`), y cada servicio

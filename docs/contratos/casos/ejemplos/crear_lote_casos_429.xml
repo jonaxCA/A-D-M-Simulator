@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<problem><type>about:blank</type><title>Too Many Requests</title><status tipo="numero">429</status><detail>Demasiadas peticiones; intenta de nuevo en 42 segundos.</detail><codigo>LIMITE_EXCEDIDO</codigo><instance>/api/v1/cases/batch</instance></problem>

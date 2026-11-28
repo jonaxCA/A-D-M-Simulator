@@ -1,0 +1,83 @@
+{% extends "base_app.html" %}
+{% block title %}Campañas{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Campañas de salud</h1>
+    <p class="subtitle">Campañas de vacunación y de salud por enfermedad y municipio (servicio vacunas, D49). Al registrar una, los capturistas reciben el aviso en la app móvil.</p>
+  </div>
+  <div class="page-actions">
+    {% for clave, texto in estados.items() %}
+    <a class="btn btn-mini {{ 'btn-primary' if estado == clave }}" href="{{ url_for('main.campanas', estado=clave) }}">{{ texto }}</a>
+    {% endfor %}
+    <a class="btn btn-mini" href="{{ url_for('main.campanas') }}">Todas</a>
+  </div>
+</div>
+
+{% include "_mensajes.html" %}
+{% for e in errores %}<div class="alert alert-error">{{ e }}</div>{% endfor %}
+
+<div class="card table-card">
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead><tr><th>Campaña</th><th>Enfermedad</th><th>Dónde</th><th>Periodo</th><th>Población objetivo</th><th>Estado</th>{% if puede('catalogs.update') %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+        {% for c in campanas %}
+        <tr>
+          <td><strong>{{ c.name }}</strong>{% if c.description %}<div class="detalle-texto">{{ c.description }}</div>{% endif %}</td>
+          <td>{{ c.enfermedad }}</td>
+          <td>{{ c.municipio or 'Todo Nuevo León' }}</td>
+          <td>{{ c.starts_on }} al {{ c.ends_on }}</td>
+          <td>{{ "{:,}".format(c.target_population) if c.target_population else '—' }} personas</td>
+          <td><span class="badge">{{ estados.get(c.status, c.status) }}</span>{% if c.cancel_reason %}<div class="detalle-texto">{{ c.cancel_reason }}</div>{% endif %}</td>
+          {% if puede('catalogs.update') %}
+          <td>
+            {% if c.status in ('programada', 'activa') %}
+            <form method="post" class="form-costo">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <input type="hidden" name="cancelar" value="{{ c.id }}">
+              <input type="text" name="motivo" required maxlength="500" placeholder="Motivo" aria-label="Motivo de la cancelación">
+              <button type="submit" class="btn btn-mini btn-peligro">Cancelar</button>
+            </form>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="tabla-vacia">No hay campañas{{ ' en ese estado' if estado }}.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if puede('catalogs.update') %}
+<div class="card form-card">
+  <div class="detalle-titulo">Nueva campaña</div>
+  <form method="post" action="{{ url_for('main.campanas') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <div class="field"><label for="name">Nombre <span class="req">*</span></label>
+      <input type="text" id="name" name="name" required maxlength="160" value="{{ valores.name }}"></div>
+    <div class="field"><label for="disease_id">Enfermedad <span class="req">*</span></label>
+      <select id="disease_id" name="disease_id" required>
+        <option value="">Selecciona...</option>
+        {% for e in enfermedades %}<option value="{{ e.id }}" {{ 'selected' if valores.disease_id == e.id|string }}>{{ e.nombre }}</option>{% endfor %}
+      </select></div>
+    <div class="field"><label for="region_id">Municipio</label>
+      <select id="region_id" name="region_id">
+        <option value="">Todo Nuevo León</option>
+        {% for m in municipios %}<option value="{{ m.id }}" {{ 'selected' if valores.region_id == m.id|string }}>{{ m.name }}</option>{% endfor %}
+      </select></div>
+    <div class="field"><label for="starts_on">Inicio <span class="req">*</span></label>
+      <input type="date" id="starts_on" name="starts_on" required value="{{ valores.starts_on }}"></div>
+    <div class="field"><label for="ends_on">Fin <span class="req">*</span></label>
+      <input type="date" id="ends_on" name="ends_on" required value="{{ valores.ends_on }}"></div>
+    <div class="field"><label for="target_population">Población objetivo (personas)</label>
+      <input type="number" id="target_population" name="target_population" min="1" value="{{ valores.target_population }}"></div>
+    <div class="field"><label for="description">Descripción</label>
+      <textarea id="description" name="description" maxlength="2000">{{ valores.description }}</textarea></div>
+    <div class="form-actions"><button type="submit" class="btn btn-primary">Registrar campaña</button></div>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

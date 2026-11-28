@@ -10,7 +10,9 @@ Ejecutar:
     DATABASE_URL=postgresql://postgres:postgres_pw@localhost:55432/simulador_epidemico \
         python -m unittest backend_web.tests.test_regiones -v
 """
+import json
 import unittest
+from pathlib import Path
 
 from backend_web.tests.base import contexto_de_prueba, usuario_con_rol
 from backend_web import queries
@@ -68,6 +70,20 @@ class RegionesCatalogoTests(unittest.TestCase):
         suma_60 = sum(m["poblacion_60"] for m in catalogo["municipios"])
         self.assertEqual(suma_pob, estado["poblacion"])
         self.assertEqual(suma_60, estado["poblacion_60"])
+
+    def test_los_51_municipios_llevan_el_nombre_del_catalogo_inegi(self):
+        """010 cargo cuatro nombres sin acento (Garcia, Juarez...) y la 056 los
+        corrige; la semilla trae los otros 41 del catalogo. Si alguno vuelve a
+        diferir, las APIs mezclan nombres con y sin acento."""
+        ruta = Path(__file__).resolve().parents[2] / "datos/geo/nl_catalogo_oficial.json"
+        oficial = {f"19{clave}": nombre
+                   for clave, nombre in json.loads(ruta.read_text(encoding="utf-8")).items()}
+        en_base = {f["code"]: f["name"] for f in query(
+            "SELECT code, name FROM regions WHERE level = 'municipio'")}
+        self.assertEqual(sorted(en_base), sorted(oficial))
+        difieren = {clave: (en_base[clave], nombre) for clave, nombre in oficial.items()
+                    if en_base[clave] != nombre}
+        self.assertEqual(difieren, {}, "clave: (en la base, oficial)")
 
     def test_busqueda_por_nombre(self):
         catalogo = queries.get_regiones_catalogo(busqueda="Monterrey")

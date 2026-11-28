@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "series_corridas (D28): un día de una corrida",
+  "description": "Lo escribe simulador y lo lee resultados. Colección series_corridas de MongoDB; índices {run_id, dia} único y {scenario_version_id, motor, dia}. Quien lee acepta solo las version_esquema que conoce.",
+  "type": "object",
+  "required": ["run_id", "batch_id", "scenario_id", "scenario_version_id", "motor", "engine_version",
+               "semilla", "version_esquema", "dia", "S", "E", "I", "R", "H", "D", "V",
+               "casos_activos", "nuevos_casos", "nuevas_hospitalizaciones", "nuevas_defunciones",
+               "dosis_aplicadas"],
+  "properties": {
+    "run_id": {"type": "integer"},
+    "batch_id": {"type": ["integer", "null"]},
+    "scenario_id": {"type": "integer"},
+    "scenario_version_id": {"type": "integer"},
+    "motor": {"enum": ["seir-ref", "abm-ref", "abm-gpu"]},
+    "engine_version": {"type": "string"},
+    "semilla": {"type": "integer"},
+    "version_esquema": {"const": 1},
+    "dia": {"type": "integer", "minimum": 0},
+    "S": {"type": "number"}, "E": {"type": "number"}, "I": {"type": "number"},
+    "R": {"type": "number"}, "H": {"type": "number"}, "D": {"type": "number"},
+    "V": {"type": "number"},
+    "casos_activos": {"type": "number"},
+    "nuevos_casos": {"type": "number"},
+    "nuevas_hospitalizaciones": {"type": "number"},
+    "nuevas_defunciones": {"type": "number"},
+    "dosis_aplicadas": {"type": "number"}
+  },
+  "additionalProperties": false
+}

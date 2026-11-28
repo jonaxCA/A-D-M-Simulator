@@ -8,9 +8,10 @@ equivocado rompen esta prueba.
 import pytest
 import requests
 
-from backend_web import notificaciones, queries
 from microservicios.aprobacion import rutas as rutas_aprobacion
-from microservicios.simulador import trabajador
+from microservicios.notificaciones import almacen as avisos
+from microservicios.sincronizacion import rutas as rutas_sincronizacion
+from microservicios.simulador import datos as datos_simulador, trabajador
 
 
 class Respuesta(requests.Response):
@@ -26,7 +27,7 @@ def guardadas(crear_cliente, monkeypatch):
     filas = []
 
     def crear_notificacion(datos, *, contexto):
-        errores = notificaciones.valida_notificacion(datos)
+        errores = avisos.valida_notificacion(datos)
         if errores:
             return None, " ".join(errores)
         filas.append((datos, contexto.user_agent))
@@ -37,7 +38,16 @@ def guardadas(crear_cliente, monkeypatch):
         return Respuesta(destino.open(ruta + "?format=json", method=metodo, json=cuerpo,
                                       headers={"Authorization": "Bearer %s" % token}))
 
-    monkeypatch.setattr(notificaciones, "crear_notificacion", crear_notificacion)
+    def crear_a_rol(datos, rol, *, contexto):
+        errores = avisos.valida_notificacion(datos, a_rol=True)
+        if errores:
+            return None, " ".join(errores)
+        filas.append((dict(datos, role=rol), contexto.user_agent))
+        return [1, 2], None
+
+    monkeypatch.setattr(avisos, "crear_notificacion", crear_notificacion)
+    monkeypatch.setattr(avisos, "crear_notificaciones_a_rol", crear_a_rol)
+    monkeypatch.setattr(rutas_sincronizacion, "llamar", llamar)
     monkeypatch.setattr(rutas_aprobacion, "llamar", llamar)
     monkeypatch.setattr(trabajador, "llamar", llamar)
     return filas
@@ -48,7 +58,7 @@ def test_aviso_de_aprobacion(crear_cliente, guardadas, caplog):
     with app.app_context():
         rutas_aprobacion._notificar_aprobacion({"id": 3, "name": "Brote"},
                                                {"id": 11, "version_number": 2, "created_by": 5})
-    assert not caplog.records
+    assert not [r for r in caplog.records if r.levelno >= 30]
     (datos, origen), = guardadas
     assert datos["type"] == "SCENARIO_APPROVED" and datos["user_id"] == 5
     assert origen == "servicio aprobacion"
@@ -56,12 +66,45 @@ def test_aviso_de_aprobacion(crear_cliente, guardadas, caplog):
 
 @pytest.mark.parametrize("final", ["completado", "fallido"])
 def test_aviso_del_simulador(crear_cliente, guardadas, monkeypatch, caplog, final):
-    monkeypatch.setattr(queries, "get_run", lambda run_id: {
+    monkeypatch.setattr(datos_simulador, "get_run", lambda run_id: {
         "id": run_id, "requested_by": 5, "scenario_id": 3, "scenario_version_id": 11,
         "scenario_name": "Brote", "version_number": 2, "error_message": "Error forzado."})
     ajustes = crear_cliente("simulador").application.config
     trabajador.avisar(42, final, ajustes)
-    assert not caplog.records
+    assert not [r for r in caplog.records if r.levelno >= 30]
     (datos, origen), = guardadas
     assert datos["type"] == trabajador.AVISOS[final][0] and datos["payload"]["run_id"] == 42
     assert origen == "servicio simulador"
+
+
+def test_aviso_de_rechazo(crear_cliente, guardadas, caplog):
+    app = crear_cliente("aprobacion").application
+    with app.app_context():
+        rutas_aprobacion._notificar_rechazo({"id": 3, "name": "Brote"},
+                                            {"id": 11, "version_number": 2, "created_by": 5}, "Faltan fuentes")
+    assert not [r for r in caplog.records if r.levelno >= 30]
+    (datos, origen), = guardadas
+    assert datos["type"] == "SCENARIO_REJECTED" and datos["user_id"] == 5
+    assert origen == "servicio aprobacion"
+
+
+def test_aviso_de_envio_a_revision(crear_cliente, guardadas, caplog):
+    app = crear_cliente("aprobacion").application
+    with app.app_context():
+        rutas_aprobacion._notificar_envio({"id": 3, "name": "Brote"},
+                                          {"id": 11, "version_number": 2, "created_by": 5})
+    assert not [r for r in caplog.records if r.levelno >= 30]
+    (datos, origen), = guardadas
+    assert datos["type"] == "SCENARIO_SUBMITTED" and datos["role"] == "EPIDEMIOLOGO"
+    assert origen == "servicio aprobacion"
+
+
+def test_aviso_de_casos_nuevos(crear_cliente, guardadas, caplog):
+    app = crear_cliente("sincronizacion").application
+    with app.app_context():
+        rutas_sincronizacion._avisar_casos_nuevos(
+            {"batch_id": "0b6f5a53-1d1f-4f52-8a0a-5d0a4a0e9c11", "creados": 3, "total": 4})
+    assert not [r for r in caplog.records if r.levelno >= 30]
+    (datos, origen), = guardadas
+    assert datos["type"] == "NEW_CASES" and datos["role"] == "EPIDEMIOLOGO"
+    assert origen == "servicio sincronizacion"

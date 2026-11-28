@@ -1,0 +1,17 @@
+{
+  "code": "CUBREBOCAS",
+  "total": 1,
+  "efectividad": [
+    {
+      "parametro": "eficacia",
+      "enfermedad": null,
+      "valor": 0.85,
+      "min": 0.66,
+      "max": 0.93,
+      "fuente": "DERIVADO POR EL EQUIPO de Chu et al. 2020, Lancet 395(10242):1973-1987: el uso de cubrebocas se asoció con menos infecciones (aOR 0.15, IC95% 0.07-0.34; certeza baja), sobre todo en entornos de atención médica y con respiradores N95. La eficacia se toma como 1 - aOR; con cubrebocas de tela o quirúrgicos en la comunidad el efecto esperado es menor. doi:10.1016/S0140-6736(20)31142-9",
+      "supuesto": true,
+      "updated_by": null,
+      "updated_at": "2026-11-23T10:00:00+00:00"
+    }
+  ]
+}

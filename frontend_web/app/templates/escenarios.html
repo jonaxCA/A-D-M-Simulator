@@ -6,14 +6,10 @@
     <h1>Escenarios</h1>
     <p class="subtitle">
       Cada escenario se guarda por versiones: modificarlo crea la siguiente y nunca
-      sobrescribe la anterior. Solo una versión aprobada se puede simular.
+      sobrescribe la anterior. Solo una versión aprobada se puede simular. Los escenarios
+      se crean y se editan en la app de escritorio; aquí se consultan y se aprueban.
     </p>
   </div>
-  {% if puede_crear_escenarios %}
-  <div class="page-actions">
-    <a class="btn btn-primary" href="{{ url_for('main.escenario_nuevo') }}">+ Nuevo escenario</a>
-  </div>
-  {% endif %}
 </div>
 
 {% include "_mensajes.html" %}
@@ -83,8 +79,7 @@
             {% if busqueda %}
             No hay escenarios que coincidan con «{{ busqueda }}».
             {% else %}
-            Todavía no hay escenarios. {% if puede_crear_escenarios %}Crea el primero con
-            «Nuevo escenario».{% endif %}
+            Todavía no hay escenarios. Se crean en la app de escritorio.
             {% endif %}
           </td>
         </tr>

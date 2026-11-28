@@ -4,6 +4,8 @@ import importlib.util
 import re
 from pathlib import Path
 
+from microservicios.estado_servicios.sondeo import SERVICIOS
+
 RAIZ = Path(__file__).resolve().parents[2]
 COMPOSE = (RAIZ / "infra/docker-compose.yml").read_text(encoding="utf-8")
 espec = importlib.util.spec_from_file_location("pruebas_integracion", RAIZ / "infra/pruebas_integracion.py")
@@ -13,7 +15,9 @@ espec.loader.exec_module(SCRIPT)
 
 def test_cada_servicio_toma_la_base_de_postgres_db():
     urls = re.findall(r"^      DATABASE_URL: (.*)$", COMPOSE, re.M)
-    assert len(urls) == 26
+    # Cada servicio; la web ya no se conecta a la base (D36, C6).
+    assert len(urls) == len(SERVICIOS)
+    assert not any("epidemia_app:" in u for u in urls)
     assert all(u.endswith("@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}") for u in urls)
     assert "      POSTGRES_DB: ${POSTGRES_DB:-simulador_epidemico}\n" in COMPOSE
 
@@ -26,12 +30,188 @@ def test_las_pruebas_van_en_otro_proyecto_y_otra_base():
 
 def test_el_script_revisa_todos_los_puertos_publicados():
     publicados = {int(p) for p in re.findall(r'^      - "(\d+):8000"$', COMPOSE, re.M)}
-    assert len(publicados) == 27
-    locales = {int(SCRIPT.FIJOS["REDIS_PUERTO_LOCAL"]), int(SCRIPT.FIJOS["POSTGRES_PUERTO_LOCAL"])}
-    assert set(SCRIPT.PUERTOS) == publicados | locales
+    # Cada servicio, la consola y la web.
+    assert len(publicados) == len(SERVICIOS) + 2
+    locales = {int(SCRIPT.FIJOS[v]) for v in ("REDIS_PUERTO_LOCAL", "POSTGRES_PUERTO_LOCAL",
+                                              "MONGO_PUERTO_LOCAL")}
+    # El emulador del bucket (D30), fijo en 127.0.0.1:4443 porque ahí apuntan las URLs firmadas.
+    bucket = {int(p) for p in re.findall(r'^      - "127\.0\.0\.1:(\d+):4443"$', COMPOSE, re.M)}
+    assert bucket == {4443}
+    assert set(SCRIPT.PUERTOS) == publicados | locales | bucket
 
 
 def test_el_segundo_simulador_no_publica_puerto():
     pruebas = (RAIZ / "infra/docker-compose.pruebas.yml").read_text(encoding="utf-8")
     assert "  simulador-2:\n    extends:\n      file: docker-compose.yml\n      service: simulador\n" in pruebas
     assert "    ports: !reset []\n" in pruebas
+
+
+def _servicios_con_puerto():
+    """Los servicios del compose principal que publican su puerto 8000."""
+    nombres, actual = set(), None
+    for linea in COMPOSE.splitlines():
+        encabezado = re.match(r"^  ([a-z][a-z0-9-]*):$", linea)
+        if encabezado:
+            actual = encabezado.group(1)
+        elif re.match(r'^      - "\d+:8000"$', linea):
+            nombres.add(actual)
+    return nombres
+
+
+def test_nginx_enruta_cada_servicio_del_directorio_y_la_consola():
+    plantilla = (RAIZ / "infra/nginx/templates/default.conf.template").read_text(encoding="utf-8")
+    ruta = re.search(r"\(\?<servicio>([a-z|-]+)\)", plantilla).group(1).split("|")
+    assert sorted(ruta) == sorted(SERVICIOS)
+    assert len(ruta) == len(set(ruta))
+    # A un servicio solo van sus rutas; /usuarios, /regiones/5/editar o /escenarios/3 son
+    # páginas de la web. La consola, que sí tiene páginas, tiene su propia ruta completa.
+    assert r"(?<resto>/(api/.*|health|docs(/.*)?|openapi\.json))$" in plantilla
+    assert "    location ~ ^/consola(?<resto>/.*)?$ {" in plantilla
+
+
+def test_detras_de_nginx_ningun_servicio_publica_su_puerto():
+    """docker-compose.nginx.yml le quita el puerto y prende DETRAS_DE_PROXY a todo servicio que
+    lo publique en el compose principal: si falta uno, quien llegue directo falsea su IP."""
+    nginx = (RAIZ / "infra/docker-compose.nginx.yml").read_text(encoding="utf-8")
+    sin_puerto = set(re.findall(r"^  ([a-z][a-z0-9-]*): \*detras-de-nginx$", nginx, re.M))
+    sin_puerto |= set(re.findall(r"^  ([a-z][a-z0-9-]*):\n    <<: \*detras-de-nginx$", nginx, re.M))
+    assert sin_puerto == _servicios_con_puerto()
+    assert "  ports: !reset []\n  environment:\n    DETRAS_DE_PROXY: \"1\"\n" in nginx
+
+
+def test_el_modo_nginx_revisa_sus_puertos_y_corre_su_prueba():
+    assert SCRIPT.PUERTOS_NGINX == [80, 443]
+    assert (SCRIPT.CONTENEDORES / "test_compose_nginx.py").exists()
+    assert SCRIPT.ARCHIVO_NGINX[-1].endswith("docker-compose.nginx.yml")
+
+
+def test_cada_variable_de_la_plantilla_de_nginx_tiene_valor():
+    """La imagen de nginx solo sustituye las variables definidas: una que falte quedaría como
+    ${...} en la configuración y nginx no arrancaría. Let's Encrypt cambia las del certificado."""
+    plantilla = (RAIZ / "infra/nginx/templates/default.conf.template").read_text(encoding="utf-8")
+    usadas = set(re.findall(r"\$\{([A-Z_]+)\}", plantilla))
+    nginx = (RAIZ / "infra/docker-compose.nginx.yml").read_text(encoding="utf-8")
+    definidas = set(re.findall(r"^      ([A-Z_]+): ", nginx, re.M))
+    assert usadas <= definidas, usadas - definidas
+    letsencrypt = (RAIZ / "infra/docker-compose.letsencrypt.yml").read_text(encoding="utf-8")
+    for variable in ("NGINX_DOMINIO", "NGINX_CERTIFICADO", "NGINX_LLAVE"):
+        assert "      %s: " % variable in letsencrypt
+    assert "${DOMINIO:?" in letsencrypt
+    assert "/etc/letsencrypt/live/${DOMINIO}/fullchain.pem" in letsencrypt
+
+
+def test_los_puertos_del_tunel_de_gpu_cuadran_en_todos_lados():
+    """infra/tunel_gpu.py, docker-compose.gpu-remoto.yml, su plantilla y el túnel simulado de
+    las pruebas usan los mismos puertos, y cada uno lleva al que la máquina publica en su
+    127.0.0.1 (el compose principal)."""
+    espec = importlib.util.spec_from_file_location("tunel_gpu", RAIZ / "infra/tunel_gpu.py")
+    tunel = importlib.util.module_from_spec(espec)
+    espec.loader.exec_module(tunel)
+    locales = {nombre: local for nombre, local, _ in tunel.PUERTOS}
+    remotos = {nombre: remoto for nombre, _, remoto in tunel.PUERTOS}
+
+    remoto_yml = (RAIZ / "infra/docker-compose.gpu-remoto.yml").read_text(encoding="utf-8")
+    plantilla = (RAIZ / "infra/gpu-remoto.env.example").read_text(encoding="utf-8")
+    for nombre, variable in (("Redis", "TUNEL_REDIS"), ("PostgreSQL", "TUNEL_POSTGRES"),
+                             ("MongoDB", "TUNEL_MONGO")):
+        assert "${%s:-%d}" % (variable, locales[nombre]) in remoto_yml
+        assert "%s=%d\n" % (variable, locales[nombre]) in plantilla
+    assert set(SCRIPT.TUNEL_SIMULADO) == set(locales.values())
+
+    for nombre, variable in (("Redis", "REDIS_PUERTO_LOCAL"), ("PostgreSQL", "POSTGRES_PUERTO_LOCAL"),
+                             ("MongoDB", "MONGO_PUERTO_LOCAL")):
+        assert "127.0.0.1:${%s:-%d}:" % (variable, remotos[nombre]) in COMPOSE
+
+
+def test_el_tunel_usa_iap_y_solo_reenvia_puertos():
+    espec = importlib.util.spec_from_file_location("tunel_gpu", RAIZ / "infra/tunel_gpu.py")
+    tunel = importlib.util.module_from_spec(espec)
+    espec.loader.exec_module(tunel)
+    cmd = tunel.comando("epidemia", "us-central1-a", "proyecto", windows=False)
+    assert "--tunnel-through-iap" in cmd and cmd[cmd.index("--") + 1] == "-N"
+    assert "15433:127.0.0.1:5433" in cmd and "16380:127.0.0.1:6380" in cmd
+    # En Windows gcloud usa plink, que no entiende las opciones -o de OpenSSH.
+    assert "-o" not in tunel.comando("epidemia", "us-central1-a", windows=True)
+
+
+def test_el_tunel_le_pasa_a_gcloud_el_python_del_sdk(tmp_path, monkeypatch):
+    espec = importlib.util.spec_from_file_location("tunel_gpu", RAIZ / "infra/tunel_gpu.py")
+    tunel = importlib.util.module_from_spec(espec)
+    espec.loader.exec_module(tunel)
+    # Un SDK falso: bin/gcloud y platform/bundledpython/python.exe.
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "gcloud").write_text("")
+    propio = tmp_path / "platform" / "bundledpython" / "python.exe"
+    propio.parent.mkdir(parents=True)
+    propio.write_text("")
+    monkeypatch.setattr(tunel.shutil, "which", lambda _: str(tmp_path / "bin" / "gcloud"))
+    entorno = tunel.entorno_gcloud({"PATH": "x"})
+    assert Path(entorno["CLOUDSDK_PYTHON"]) == propio.resolve() and entorno["PATH"] == "x"
+    # Si CLOUDSDK_PYTHON ya viene puesto, se respeta.
+    assert tunel.entorno_gcloud({"CLOUDSDK_PYTHON": "otro"})["CLOUDSDK_PYTHON"] == "otro"
+
+
+def test_la_web_va_en_su_perfil_y_llama_a_los_servicios_por_la_red_interna():
+    web = COMPOSE.split("\n  web:\n", 1)[1].split("\n\n", 1)[0]
+    assert "    profiles: [web]\n" in web and '      - "5000:8000"' in web
+    assert '      URL_SERVICIOS: "http://{servicio}:8000"' in web
+    # Su cookie no se firma con el secreto de los tokens, y genera_env.py lo llena.
+    assert "      SECRET_KEY: ${SECRET_KEY_WEB:-}" in web and "JWT_SECRET_KEY" not in web
+    assert "SECRET_KEY_WEB" in (RAIZ / "infra/genera_env.py").read_text(encoding="utf-8")
+    assert "\nSECRET_KEY_WEB=\n" in (RAIZ / "infra/.env.example").read_text(encoding="utf-8")
+    assert "frontend_web/Dockerfile" in web
+    # Sin credenciales de PostgreSQL, MongoDB ni Redis (C6).
+    for credencial in ("DATABASE_URL", "MONGO", "REDIS"):
+        assert credencial not in web
+    dockerfile = (RAIZ / "frontend_web/Dockerfile").read_text(encoding="utf-8")
+    assert "FROM epidemia/base" in dockerfile and "/health" in dockerfile
+    # Arranca con su propio waitress, sin epidemia_comun (C6).
+    assert '"frontend_web.servir"' in dockerfile and "epidemia_comun" not in dockerfile.split("CMD", 1)[1]
+
+
+def test_nginx_manda_la_raiz_al_contenedor_de_la_web_y_lo_resuelve_en_cada_peticion():
+    nginx = (RAIZ / "infra/docker-compose.nginx.yml").read_text(encoding="utf-8")
+    assert "      WEB_DESTINO: ${WEB_DESTINO:-web:8000}" in nginx
+    plantilla = (RAIZ / "infra/nginx/templates/default.conf.template").read_text(encoding="utf-8")
+    raiz = plantilla.split("    location / {\n")[-1]
+    # Con variable (y el resolver de Docker), nginx arranca sin la web y la sigue si cambia de IP.
+    assert raiz.startswith("        set $web ${WEB_DESTINO};\n        proxy_pass http://$web;\n")
+
+
+def test_cloud_logging_cubre_cada_contenedor_de_la_nube():
+    """docker-compose.cloud-logging.yml manda a Cloud Logging los registros de cada contenedor
+    (RF-K08): los del compose principal, nginx y certbot. Las imágenes base (base,
+    base-identidad, base-simulacion, base-vigilancia: replicas 0) solo se construyen y no corren."""
+    servicios = COMPOSE.split("\nservices:\n", 1)[1].split("\nvolumes:\n", 1)[0]
+    bloques = dict(re.findall(r"^  ([a-z][a-z0-9-]*):\n((?:(?:    .*)?\n)*)", servicios + "\n", re.M))
+    principales = {n for n, b in bloques.items() if "      replicas: 0" not in b}
+    assert {"base", "base-identidad", "base-simulacion", "base-vigilancia"}.isdisjoint(principales) and "web" in principales
+    registros = (RAIZ / "infra/docker-compose.cloud-logging.yml").read_text(encoding="utf-8")
+    cubiertos = set(re.findall(r"^  ([a-z][a-z0-9-]*): \*cloud-logging$", registros, re.M))
+    assert cubiertos == principales | {"nginx", "certbot"}, cubiertos ^ (principales | {"nginx", "certbot"})
+    assert "    driver: gcplogs\n" in registros
+
+
+def test_en_la_carpeta_de_inicio_de_postgres_solo_van_scripts_de_inicio():
+    """infra/postgres se monta como /docker-entrypoint-initdb.d: la imagen de PostgreSQL ejecuta
+    todo .sh y .sql que haya ahí al crear una base nueva. aplica_migraciones.sh estuvo ahí, corrió
+    sin argumentos y dejó la inicialización a medias (2026-11-21)."""
+    assert sorted(p.name for p in (RAIZ / "infra/postgres").iterdir()) == ["10-inicializa.sh"]
+
+
+def test_quien_pide_el_alcance_conoce_a_roles():
+    """D43: un servicio que pide el alcance de la cuenta (epidemia_comun.alcance) se lo pide a roles por
+    HTTP. Sin SERVICIO_ROLES_URL en su contenedor, cada lectura da 503 (pasó con casos y zonas en
+    D56). roles lo calcula en su propia base."""
+    servicios = COMPOSE.split("\nservices:\n", 1)[1].split("\nvolumes:\n", 1)[0]
+    bloques = dict(re.findall(r"^  ([a-z][a-z0-9-]*):\n((?:(?:    .*)?\n)*)", servicios + "\n", re.M))
+    piden = set()
+    for carpeta in (RAIZ / "microservicios").iterdir():
+        if carpeta.name == "roles" or not (carpeta / "Dockerfile").exists():
+            continue
+        texto = "".join(p.read_text(encoding="utf-8") for p in carpeta.glob("*.py"))
+        if re.search(r"\b(regiones_permitidas|exige_region|exige_region_de)\(", texto):
+            piden.add(carpeta.name.replace("_", "-"))
+    assert {"casos", "zonas", "corridas"} <= piden
+    sin_roles = sorted(s for s in piden if "SERVICIO_ROLES_URL: http://roles:8000" not in bloques[s])
+    assert not sin_roles, sin_roles

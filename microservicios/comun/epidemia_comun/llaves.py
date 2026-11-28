@@ -2,7 +2,28 @@
 # llave nueva se agrega aquí y en esa tabla; una prueba revisa que coincidan.
 import hashlib
 
-COLA_SIMULACIONES = "queue:simulaciones"
+
+# De menor a mayor prioridad (D44); no es una llave, la prueba del catálogo no la toma como tal.
+prioridades = ("baja", "normal", "alta")
+
+
+def cola_simulaciones(motor):
+    return f"queue:simulaciones:{motor}"
+
+
+def cola_con_prioridad(motor, prioridad):
+    if prioridad == "normal":
+        return cola_simulaciones(motor)
+    return f"queue:simulaciones:{motor}:{prioridad}"
+
+
+# Una sola cola: solo se calibra seir-ref (D50). Como las de corridas, sin TTL.
+def cola_calibraciones():
+    return "queue:calibraciones"
+
+
+def avance_calibracion(calibracion):
+    return f"calibration:{calibracion}:progress"
 
 
 def huella(valor):
@@ -33,8 +54,25 @@ def captcha(captcha_id):
     return f"captcha:{captcha_id}"
 
 
+def mfa(h):
+    return f"mfa:{h}"
+
+
+def mfa_fallos(usuario):
+    return f"mfa:fallos:{usuario}"
+
+
+def mfa_alta(usuario):
+    return f"mfa:alta:{usuario}"
+
+
 def candado_corrida(version):
     return f"lock:corrida:{version}"
+
+
+# Un simulador vivo y lo que está corriendo (F7); estado-servicios los cuenta por motor.
+def latido(motor, simulador):
+    return f"worker:{motor}:{simulador}"
 
 
 def progreso(corrida):
@@ -57,5 +95,14 @@ def salud(servicio):
     return f"health:{servicio}"
 
 
-def historial_salud(servicio):
-    return f"health:history:{servicio}"
+# Lo último que estado-servicios avisó de un servicio a los ADMINISTRADOR (F7).
+def alerta(servicio):
+    return f"alert:{servicio}"
+
+
+def limite(quien, ruta):
+    return f"ratelimit:{quien}:{ruta}"
+
+
+def errores(servicio):
+    return f"errors:{servicio}"

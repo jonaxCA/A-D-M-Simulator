@@ -4,22 +4,20 @@ real, de simulaciones. Mismo requisito de base que
 backend_web/tests/test_regiones_rutas.py: necesita el escenario de
 demostracion cargado (datos/postgres/semillas/demo_datos_nl.sql).
 
-Todas las corridas que crean estos tests usan demora_seg=0 via el parametro
-`?demora=0` -- NO, la ruta no expone ese parametro a proposito (no es del
-usuario decidir la demora de otra persona), asi que estas pruebas esperan
-la corrida real con su pequena pausa. Por eso hacen polling corto en vez de
-asumir que ya termino en la primera consulta.
+Desde D4 la web solo consulta las corridas: las lanza la app de escritorio por
+medio de `corridas` y las ejecuta el simulador. Estas pruebas las crean por ese
+mismo camino (RutasConCorridas._corre) y revisan lo que la web muestra.
 
 Ejecutar:
-    DATABASE_URL=postgresql://epidemia_app:epidemia_app_pw@localhost:5432/simulador_epidemico \
-    JWT_SECRET_KEY=test-secret \
-        python -m unittest frontend_web.tests.test_simulaciones_rutas -v
+    python -m unittest frontend_web.tests.test_simulaciones_rutas -v
 """
 import unittest
+from unittest.mock import patch
 
 from frontend_web.tests.base import CAPTURISTA_PRUEBA, capturista_de_prueba, RutasConCorridas
-from backend_web import queries, simulaciones
+from backend_web import simulaciones
 from backend_web.auth import create_token
+from backend_web.servicios import ErrorServicio, ServicioNoDisponible
 from backend_web.db import query
 from frontend_web.app.permisos import COOKIE_NAME
 
@@ -29,11 +27,7 @@ class SimulacionesRutasTests(RutasConCorridas):
         """CAPTURISTA no tiene 'simulations.read' (010): ni la lista, ni el
         detalle de una corrida, ni su estado. Cada intento queda en la bitacora."""
         user_id = capturista_de_prueba()
-        alex = query("SELECT id FROM users WHERE username = 'alex.cavazos'", one=True)["id"]
-        run_id, batch_id, error = queries.crear_corrida(
-            self.version_id, 1, alex, simulaciones.ENGINE_VERSION)
-        self.assertIsNone(error, error)
-        self._batches_creados.append(batch_id)
+        run_id = self._encola(1)
 
         token = create_token({"id": user_id, "username": CAPTURISTA_PRUEBA,
                               "full_name": "Capturista de prueba", "roles": ["CAPTURISTA"]})
@@ -46,8 +40,7 @@ class SimulacionesRutasTests(RutasConCorridas):
             for ruta in ("/simulaciones", f"/simulaciones/corridas/{run_id}",
                          f"/simulaciones/corridas/{run_id}/estado"):
                 resp = client.get(ruta, follow_redirects=False)
-                self.assertEqual(resp.status_code, 302, ruta)
-                self.assertIn("/dashboard", resp.headers["Location"], ruta)
+                self.assertEqual(resp.status_code, 403, ruta)  # C1: sin simulations.read
 
             menu = client.get("/dashboard")
             self.assertNotIn(b'href="/simulaciones"', menu.data)
@@ -58,47 +51,41 @@ class SimulacionesRutasTests(RutasConCorridas):
                         (user_id,), one=True)["n"]
         self.assertGreaterEqual(despues - antes, 3)
 
-    def test_lista_muestra_boton_ejecutar_solo_para_quien_puede(self):
+    def test_la_lista_es_de_consulta_para_todos(self):
+        """Nadie lanza corridas desde la web (D4), ni quien puede lanzarlas en
+        el escritorio."""
+        for usuario, clave in (("alex.cavazos", "Epidemia2026!"),    # ANALISTA
+                               ("diana.flores", "Epidemia2026!"),    # EPIDEMIOLOGO
+                               ("admin", "Admin2026!")):
+            with self.app.test_client() as client:
+                self._login(client, usuario, clave)
+                resp = client.get("/simulaciones")
+                self.assertEqual(resp.status_code, 200, usuario)
+                html = " ".join(resp.data.decode("utf-8").split())
+                self.assertIn(" ".join(simulaciones.AVISO_SIMULACION.split()), html, usuario)
+                self.assertIn("se lanzan desde la app de escritorio", html, usuario)
+                self.assertNotIn("Ejecutar simulación", html, usuario)
+                self.assertNotIn('name="seed"', html, usuario)
+
+    def test_lanzar_y_reejecutar_ya_no_existen(self):
+        run_id = self._corre(424241)
+        antes = query("SELECT count(*) AS n FROM simulation_runs", one=True)["n"]
         with self.app.test_client() as client:
-            self._login(client, "alex.cavazos", "Epidemia2026!")  # ANALISTA
-            resp = client.get("/simulaciones")
-            self.assertEqual(resp.status_code, 200)
-            self.assertIn("Ejecutar simulación".encode("utf-8"), resp.data)
-            self.assertIn(simulaciones.AVISO_SIMULACION.encode("utf-8"), resp.data)
+            self._login(client, "admin", "Admin2026!")
+            for ruta in (f"/simulaciones/{self.version_id}/ejecutar",
+                         f"/simulaciones/corridas/{run_id}/reejecutar"):
+                resp = client.post(ruta, data={"seed": "1"}, follow_redirects=False)
+                self.assertEqual(resp.status_code, 404, ruta)
+        despues = query("SELECT count(*) AS n FROM simulation_runs", one=True)["n"]
+        self.assertEqual(despues, antes, "la web no debe encolar nada")
 
-        with self.app.test_client() as client:
-            self._login(client, "diana.flores", "Epidemia2026!")  # EPIDEMIOLOGO
-            resp = client.get("/simulaciones")
-            self.assertEqual(resp.status_code, 200)
-            self.assertNotIn("Ejecutar simulación".encode("utf-8"), resp.data)
-
-    def test_epidemiologo_no_puede_ejecutar_ni_por_post_directo(self):
-        with self.app.test_client() as client:
-            self._login(client, "diana.flores", "Epidemia2026!")
-            resp = client.post(f"/simulaciones/{self.version_id}/ejecutar",
-                               data={"seed": "1"}, follow_redirects=False)
-            self.assertEqual(resp.status_code, 302)
-            self.assertIn("/dashboard", resp.headers["Location"])
-
-            evento = query(
-                """SELECT action FROM audit_log
-                   WHERE entity_type = 'simulations' AND action = 'PERMISSION_DENIED'
-                   ORDER BY occurred_at DESC LIMIT 1""",
-                one=True,
-            )
-            self.assertIsNotNone(evento, "el intento denegado debe quedar en audit_log")
-
-    def test_analista_ejecuta_y_llega_a_completado(self):
+    def test_detalle_de_una_corrida_completada(self):
+        run_id = self._corre(424242)
         with self.app.test_client() as client:
             self._login(client, "alex.cavazos", "Epidemia2026!")
-            resp = client.post(f"/simulaciones/{self.version_id}/ejecutar",
-                               data={"seed": "424242"}, follow_redirects=False)
-            self.assertEqual(resp.status_code, 302)
-            run_id = self._run_id_del_redirect(resp)
-            self._batches_creados.append(self._batch_del_run(run_id))
-
-            datos = self._espera_terminal(client, run_id)
-            self.assertEqual(datos["status"], "completado")
+            estado = client.get(f"/simulaciones/corridas/{run_id}/estado").get_json()
+            self.assertTrue(estado["terminal"])
+            self.assertEqual(estado["status"], "completado")
 
             detalle = client.get(f"/simulaciones/corridas/{run_id}")
             self.assertEqual(detalle.status_code, 200)
@@ -107,52 +94,86 @@ class SimulacionesRutasTests(RutasConCorridas):
             self.assertIn(simulaciones.AVISO_SIMULACION.encode("utf-8"), detalle.data)
             self.assertIn("Parámetros usados".encode("utf-8"), detalle.data)
             self.assertIn(b"COMPLETADO", detalle.data)
+            self.assertNotIn("Re-ejecutar".encode("utf-8"), detalle.data)
+            # D6: la demo simula 500 000 agentes para los 5 784 442 habitantes de Nuevo León.
+            html = " ".join(detalle.data.decode("utf-8").split())
+            self.assertIn("cada agente representa 11.57", html)
+            self.assertIn("habitantes</span>", html)
 
-    def test_forzar_error_solo_tiene_efecto_para_administrador(self):
-        with self.app.test_client() as client:
-            self._login(client, "admin", "Admin2026!")
-            resp = client.post(f"/simulaciones/{self.version_id}/ejecutar",
-                               data={"seed": "1", "forzar_error": "1"}, follow_redirects=False)
-            run_id = self._run_id_del_redirect(resp)
-            self._batches_creados.append(self._batch_del_run(run_id))
-            datos = self._espera_terminal(client, run_id)
-            self.assertEqual(datos["status"], "fallido")
-            self.assertIn("Error forzado de prueba", datos["error_message"])
+    def _resultado(self, serie):
+        resumen = {"casos_acumulados": 10, "casos_activos_final": 1, "pico_casos_activos": 5,
+                   "dia_pico": 3, "hospitalizaciones": 2, "fallecimientos": 1, "tasa_ataque": 0.1}
+        return {"resumen": resumen, "serie": serie, "trazabilidad": [], "escala": None,
+                "engine_version": simulaciones.ENGINE_VERSION,
+                "categoria": {"categoria": "exploratoria", "texto": "Sin calibrar."}}
 
-        with self.app.test_client() as client:
-            self._login(client, "alex.cavazos", "Epidemia2026!")
-            resp = client.post(f"/simulaciones/{self.version_id}/ejecutar",
-                               data={"seed": "2", "forzar_error": "1"}, follow_redirects=False)
-            run_id = self._run_id_del_redirect(resp)
-            self._batches_creados.append(self._batch_del_run(run_id))
-            datos = self._espera_terminal(client, run_id)
-            # ANALISTA no es ADMINISTRADOR: la casilla se ignora y la
-            # corrida completa con normalidad.
-            self.assertEqual(datos["status"], "completado")
-
-    def test_reejecutar_usa_la_misma_semilla_y_marca_reproducibilidad(self):
+    def test_curvas_vienen_de_resultados_con_el_token_de_la_sesion(self):
+        run_id = self._corre(424243)
+        serie = [{"dia": 0, "S": 1, "E": 0, "I": 0, "R": 0, "H": 0, "D": 0}]
         with self.app.test_client() as client:
             self._login(client, "alex.cavazos", "Epidemia2026!")
-            resp = client.post(f"/simulaciones/{self.version_id}/ejecutar",
-                               data={"seed": "909090"}, follow_redirects=False)
-            run_id_1 = self._run_id_del_redirect(resp)
-            self._batches_creados.append(self._batch_del_run(run_id_1))
-            self._espera_terminal(client, run_id_1)
+            token = client.get_cookie(COOKIE_NAME).value
+            with patch("backend_web.servicios.resultado", return_value=self._resultado(serie)) as llama:
+                detalle = client.get(f"/simulaciones/corridas/{run_id}")
+            self.assertEqual(llama.call_args[0][:2], (token, run_id))
+            self.assertIn(b'"S": 1', detalle.data)
+            self.assertIn(simulaciones.AVISO_SIMULACION.encode("utf-8"), detalle.data)
+            self.assertIn("Corrida exploratoria".encode("utf-8"), detalle.data)
 
-            resp = client.post(f"/simulaciones/corridas/{run_id_1}/reejecutar",
-                               follow_redirects=False)
-            self.assertEqual(resp.status_code, 302)
-            run_id_2 = self._run_id_del_redirect(resp)
-            self._batches_creados.append(self._batch_del_run(run_id_2))
-            self._espera_terminal(client, run_id_2)
+    def test_resultados_sin_curvas_muestra_el_resumen(self):
+        # Sin MongoDB, resultados da los indicadores sin la serie (RF-F21).
+        run_id = self._corre(424244)
+        with self.app.test_client() as client:
+            self._login(client, "alex.cavazos", "Epidemia2026!")
+            with patch("backend_web.servicios.resultado", return_value=self._resultado(None)):
+                detalle = client.get(f"/simulaciones/corridas/{run_id}")
+            self.assertEqual(detalle.status_code, 200)
+            self.assertIn(b"CASOS ACUMULADOS", detalle.data)
+            self.assertIn("Las curvas no están disponibles".encode("utf-8"), detalle.data)
+            self.assertNotIn(b'id="curvas-chart"', detalle.data)
 
-            self.assertNotEqual(run_id_1, run_id_2)
-            seeds = query(
-                "SELECT DISTINCT seed FROM simulation_runs WHERE id IN (%s, %s)",
-                (run_id_1, run_id_2),
-            )
-            self.assertEqual(len(seeds), 1, "las dos corridas deben tener la misma semilla")
+    def test_sin_el_servicio_resultados_la_corrida_se_sigue_viendo(self):
+        run_id = self._corre(424247)
+        with self.app.test_client() as client:
+            self._login(client, "alex.cavazos", "Epidemia2026!")
+            with patch("backend_web.servicios.resultado", side_effect=ServicioNoDisponible("resultados")):
+                detalle = client.get(f"/simulaciones/corridas/{run_id}")
+            self.assertEqual(detalle.status_code, 200)
+            self.assertIn(f"SIM-{run_id:05d}".encode(), detalle.data)
+            self.assertIn("servicio «resultados»".encode("utf-8"), detalle.data)
 
+    def test_resultados_niega_el_acceso(self):
+        run_id = self._corre(424245)
+        with self.app.test_client() as client:
+            self._login(client, "alex.cavazos", "Epidemia2026!")
+            with patch("backend_web.servicios.resultado",
+                       side_effect=ErrorServicio("resultados", 403, "PERMISO_INSUFICIENTE")):
+                detalle = client.get(f"/simulaciones/corridas/{run_id}")
+            self.assertEqual(detalle.status_code, 403)
+
+    def test_resultados_con_401_pide_iniciar_sesion_de_nuevo(self):
+        run_id = self._corre(424246)
+        with self.app.test_client() as client:
+            self._login(client, "alex.cavazos", "Epidemia2026!")
+            with patch("backend_web.servicios.resultado",
+                       side_effect=ErrorServicio("resultados", 401, "TOKEN_EXPIRADO")):
+                detalle = client.get(f"/simulaciones/corridas/{run_id}")
+            self.assertEqual(detalle.status_code, 302)
+            self.assertIn("/login", detalle.headers["Location"])
+
+    def test_estado_de_una_corrida_fallida(self):
+        run_id = self._corre(1, usuario="admin", forzar_error=True)
+        with self.app.test_client() as client:
+            self._login(client, "diana.flores", "Epidemia2026!")
+            estado = client.get(f"/simulaciones/corridas/{run_id}/estado").get_json()
+            self.assertEqual(estado["status"], "fallido")
+            self.assertIn("Error forzado de prueba", estado["error_message"])
+
+    def test_marca_la_reproducibilidad_de_la_misma_semilla(self):
+        run_id_1 = self._corre(909090)
+        run_id_2 = self._corre(909090)
+        with self.app.test_client() as client:
+            self._login(client, "diana.flores", "Epidemia2026!")
             detalle = client.get(f"/simulaciones/corridas/{run_id_2}")
             self.assertIn(f"Coincide con SIM-{run_id_1:05d}".encode("utf-8"), detalle.data)
 

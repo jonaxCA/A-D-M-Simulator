@@ -1,0 +1,80 @@
+{
+  "escenario": {
+    "poblacion": {
+      "0-19": 16070,
+      "20-39": 16192,
+      "40-59": 12067,
+      "60-79": 4897,
+      "80+": 774
+    },
+    "infectados_iniciales": 20,
+    "dias": 30,
+    "enfermedad": {
+      "r0": {
+        "valor": 1.6,
+        "supuesto": true,
+        "fuente": "Ejemplo del contrato del motor, no validado"
+      },
+      "incubacion_dias": {
+        "valor": 2.0,
+        "supuesto": true,
+        "fuente": "Ejemplo del contrato del motor, no validado"
+      },
+      "infeccioso_dias": {
+        "valor": 5.0,
+        "supuesto": true,
+        "fuente": "Ejemplo del contrato del motor, no validado"
+      },
+      "dias_hospitalizacion": {
+        "valor": 5.0,
+        "supuesto": true,
+        "fuente": "Ejemplo del contrato del motor, no validado"
+      },
+      "tasa_hospitalizacion": {
+        "valor": {
+          "0-19": 0.002,
+          "20-39": 0.003,
+          "40-59": 0.008,
+          "60-79": 0.03,
+          "80+": 0.08
+        },
+        "supuesto": true,
+        "fuente": "Ejemplo del contrato del motor, no validado"
+      },
+      "letalidad": {
+        "valor": {
+          "0-19": 1e-05,
+          "20-39": 5e-05,
+          "40-59": 0.0003,
+          "60-79": 0.002,
+          "80+": 0.008
+        },
+        "supuesto": true,
+        "fuente": "Ejemplo del contrato del motor, no validado"
+      }
+    },
+    "intervenciones": [
+      {
+        "tipo": "CIERRE_ESCUELAS",
+        "dia_inicio": 7,
+        "dia_fin": 21,
+        "cobertura": 1.0,
+        "cumplimiento": 0.9,
+        "params": {
+          "reduccion": 1.0
+        }
+      },
+      {
+        "tipo": "VACUNACION",
+        "dia_inicio": 5,
+        "cobertura": 0.5,
+        "params": {
+          "eficacia": 0.9,
+          "dosis_diarias": 300,
+          "prioridad": "edad_desc"
+        }
+      }
+    ]
+  },
+  "semilla": 20261112
+}

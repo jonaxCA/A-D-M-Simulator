@@ -103,7 +103,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 889,
     "casos_acumulados": 1698,
@@ -247,7 +247,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 2654,
     "casos_acumulados": 4732,
@@ -407,7 +407,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 2654,
     "casos_acumulados": 4733,
@@ -582,7 +582,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 1504,
     "casos_acumulados": 2746,
@@ -766,7 +766,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 20,
     "casos_acumulados": 100,
@@ -908,7 +908,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 669,
     "casos_acumulados": 1268,
@@ -1085,7 +1085,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 2654,
     "casos_acumulados": 4732,
@@ -1263,7 +1263,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 1504,
     "casos_acumulados": 2746,
@@ -1412,7 +1412,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 194,
     "casos_acumulados": 379,
@@ -1526,7 +1526,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 1504,
     "casos_acumulados": 2746,
@@ -1681,7 +1681,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 1405,
     "casos_acumulados": 2863,
@@ -1845,7 +1845,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 420,
     "casos_acumulados": 973,
@@ -1989,7 +1989,7 @@
    ]
   },
   "simulacion": {
-   "engine_version": "python-ref-0.1",
+   "engine_version": "seir-ref-0.1",
    "resumen": {
     "casos_activos_final": 1405,
     "casos_acumulados": 2863,

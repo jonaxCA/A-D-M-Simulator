@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Caso epidemiológico del servicio casos (puerto 5221). Sirve para la petición de
      POST /api/v1/cases (raíz caso: solo los campos de entrada) y para las respuestas
-     (raíz caso, con los campos que agrega el servicio) y la lista (raíz lista_casos).
+     (raíz caso, con los campos que agrega el servicio) y la lista (raíz lista_casos);
+     también para corregir un caso (raíz correccion_caso), cambiar su estado (raíz
+     cambio_estado_caso) y su historial (raíz historial_caso), D47; y los formularios por
+     enfermedad (raíces formulario y lista_formularios), D48.
      Los datos van sin namespace, igual que los genera epidemia_comun. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
   <xs:attributeGroup name="Marcas">
@@ -19,6 +22,11 @@
   <xs:simpleType name="ResultadoValido"><xs:restriction base="xs:string"><xs:enumeration value="positivo"/><xs:enumeration value="negativo"/><xs:enumeration value="pendiente"/><xs:enumeration value="sin_prueba"/></xs:restriction></xs:simpleType>
   <xs:simpleType name="SeveridadValida"><xs:restriction base="xs:string"><xs:enumeration value="asintomatico"/><xs:enumeration value="leve"/><xs:enumeration value="grave"/><xs:enumeration value="fallecido"/></xs:restriction></xs:simpleType>
   <xs:simpleType name="EstadoValido"><xs:restriction base="xs:string"><xs:enumeration value="pendiente"/><xs:enumeration value="validado"/><xs:enumeration value="duplicado"/><xs:enumeration value="descartado"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="AccionValida"><xs:restriction base="xs:string"><xs:enumeration value="correccion"/><xs:enumeration value="estado"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="EstadoNuloS"><xs:union memberTypes="EstadoValido Vacio"/></xs:simpleType>
+  <xs:simpleType name="TipoCampoValido"><xs:restriction base="xs:string"><xs:enumeration value="texto"/><xs:enumeration value="entero"/><xs:enumeration value="decimal"/><xs:enumeration value="fecha"/><xs:enumeration value="booleano"/><xs:enumeration value="opcion"/><xs:enumeration value="opciones"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="EstadoFormularioValido"><xs:restriction base="xs:string"><xs:enumeration value="borrador"/><xs:enumeration value="publicado"/><xs:enumeration value="retirado"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="MotivoS"><xs:restriction base="xs:string"><xs:maxLength value="500"/></xs:restriction></xs:simpleType>
   <xs:simpleType name="ResultadoCasoValido"><xs:restriction base="xs:string"><xs:enumeration value="creado"/><xs:enumeration value="duplicado"/><xs:enumeration value="rechazado"/></xs:restriction></xs:simpleType>
   <xs:complexType name="TUuid"><xs:simpleContent><xs:extension base="Uuid"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
   <xs:simpleType name="TUuidNuloS"><xs:union memberTypes="Uuid Vacio"/></xs:simpleType>
@@ -50,9 +58,20 @@
   <xs:simpleType name="TFechaHoraNuloS"><xs:union memberTypes="xs:dateTime Vacio"/></xs:simpleType>
   <xs:complexType name="TFechaHoraNulo"><xs:simpleContent><xs:extension base="TFechaHoraNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
   <xs:complexType name="TTexto"><xs:simpleContent><xs:extension base="xs:string"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TAccion"><xs:simpleContent><xs:extension base="AccionValida"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TEstadoNulo"><xs:simpleContent><xs:extension base="EstadoNuloS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TMotivo"><xs:simpleContent><xs:extension base="MotivoS"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TTipoCampo"><xs:simpleContent><xs:extension base="TipoCampoValido"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TEstadoFormulario"><xs:simpleContent><xs:extension base="EstadoFormularioValido"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="TDecimal"><xs:simpleContent><xs:extension base="xs:decimal"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:complexType name="Respuestas">
+    <xs:annotation><xs:documentation>Respuestas al formulario de la enfermedad (D48): un elemento por clave del formulario; las de tipo opciones traen item por valor. nil="true" si el caso no trae formulario.</xs:documentation></xs:annotation>
+    <xs:sequence><xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
+    <xs:attributeGroup ref="Marcas"/>
+  </xs:complexType>
   <xs:complexType name="TBooleano"><xs:simpleContent><xs:extension base="xs:boolean"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
   <xs:complexType name="Caso">
-    <xs:annotation><xs:documentation>Obligatorios: disease_id, region_id y report_date. local_uuid es opcional (el servicio genera uno). Los campos de la segunda parte (id, reported_by, enfermedad, municipio, status, created_at, synced_at, duplicado) los pone el servicio; en una petición se rechazan por el servicio aunque el XSD los admita.</xs:documentation></xs:annotation>
+    <xs:annotation><xs:documentation>Obligatorios: disease_id, region_id y report_date. local_uuid es opcional (el servicio genera uno). Los campos de la segunda parte (id, reported_by, enfermedad, municipio, status, created_at, synced_at, version, updated_at, updated_by, status_reason, duplicate_of, duplicado) los pone el servicio; en una petición se rechazan por el servicio aunque el XSD los admita.</xs:documentation></xs:annotation>
     <xs:all>
       <xs:element name="local_uuid" type="TUuidNulo" minOccurs="0"/>
       <xs:element name="device_id" type="TPositivoNulo" minOccurs="0"/>
@@ -73,10 +92,136 @@
       <xs:element name="status" type="TEstado" minOccurs="0"/>
       <xs:element name="created_at" type="TFechaHora" minOccurs="0"/>
       <xs:element name="synced_at" type="TFechaHoraNulo" minOccurs="0"/>
+      <xs:element name="version" type="TPositivo" minOccurs="0"/>
+      <xs:element name="updated_at" type="TFechaHoraNulo" minOccurs="0"/>
+      <xs:element name="updated_by" type="TPositivoNulo" minOccurs="0"/>
+      <xs:element name="status_reason" type="TMotivo" minOccurs="0"/>
+      <xs:element name="duplicate_of" type="TPositivoNulo" minOccurs="0"/>
+      <xs:element name="form_id" type="TPositivoNulo" minOccurs="0"/>
+      <xs:element name="form_answers" type="Respuestas" minOccurs="0"/>
       <xs:element name="duplicado" type="TBooleano" minOccurs="0"/>
     </xs:all>
   </xs:complexType>
   <xs:element name="caso" type="Caso"/>
+  <!-- PATCH /api/v1/cases/{case_id} (D47): solo los campos que se corrigen, más el motivo y el
+       dispositivo. La versión que se leyó va en la cabecera If-Match. -->
+  <xs:element name="correccion_caso">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="disease_id" type="TPositivo" minOccurs="0"/>
+        <xs:element name="region_id" type="TPositivo" minOccurs="0"/>
+        <xs:element name="report_date" type="TFecha" minOccurs="0"/>
+        <xs:element name="onset_date" type="TFechaNulo" minOccurs="0"/>
+        <xs:element name="age" type="TEdadNulo" minOccurs="0"/>
+        <xs:element name="sex" type="TSexoNulo" minOccurs="0"/>
+        <xs:element name="latitude" type="TLatitudNulo" minOccurs="0"/>
+        <xs:element name="longitude" type="TLongitudNulo" minOccurs="0"/>
+        <xs:element name="test_result" type="TResultadoNulo" minOccurs="0"/>
+        <xs:element name="severity" type="TSeveridadNulo" minOccurs="0"/>
+        <xs:element name="reason" type="TMotivo" minOccurs="0"/>
+        <xs:element name="device_id" type="TPositivoNulo" minOccurs="0"/>
+        <xs:element name="form_id" type="TPositivoNulo" minOccurs="0"/>
+        <xs:element name="form_answers" type="Respuestas" minOccurs="0"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+  <!-- Formularios por enfermedad (D48): POST y PUT /api/v1/forms (raíz formulario, con
+       disease_id, title, fields y required) y sus respuestas (raíz formulario, completa); la lista
+       (raíz lista_formularios). fields trae un campo por clave, en orden. -->
+  <xs:complexType name="Opcion">
+    <xs:all>
+      <xs:element name="valor" type="TTexto"/>
+      <xs:element name="etiqueta" type="TTexto"/>
+    </xs:all>
+  </xs:complexType>
+  <xs:complexType name="CampoFormulario">
+    <xs:all>
+      <xs:element name="clave" type="TTexto"/>
+      <xs:element name="etiqueta" type="TTexto"/>
+      <xs:element name="tipo" type="TTipoCampo"/>
+      <xs:element name="obligatorio" type="TBooleano" minOccurs="0"/>
+      <xs:element name="minimo" type="TDecimal" minOccurs="0"/>
+      <xs:element name="maximo" type="TDecimal" minOccurs="0"/>
+      <xs:element name="max_largo" type="TPositivo" minOccurs="0"/>
+      <xs:element name="opciones" minOccurs="0">
+        <xs:complexType><xs:sequence><xs:element name="opcion" type="Opcion" minOccurs="2" maxOccurs="50"/></xs:sequence></xs:complexType>
+      </xs:element>
+      <xs:element name="ayuda" type="TTexto" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+  <xs:complexType name="Formulario">
+    <xs:all>
+      <xs:element name="id" type="TPositivo" minOccurs="0"/>
+      <xs:element name="disease_id" type="TPositivo" minOccurs="0"/>
+      <xs:element name="version" type="TPositivo" minOccurs="0"/>
+      <xs:element name="status" type="TEstadoFormulario" minOccurs="0"/>
+      <xs:element name="title" type="TTexto"/>
+      <xs:element name="fields">
+        <xs:complexType><xs:sequence><xs:element name="campo" type="CampoFormulario" minOccurs="1" maxOccurs="60"/></xs:sequence></xs:complexType>
+      </xs:element>
+      <xs:element name="required" type="TBooleano" minOccurs="0"/>
+      <xs:element name="created_by" type="TPositivo" minOccurs="0"/>
+      <xs:element name="created_at" type="TFechaHora" minOccurs="0"/>
+      <xs:element name="updated_at" type="TFechaHoraNulo" minOccurs="0"/>
+      <xs:element name="published_by" type="TPositivoNulo" minOccurs="0"/>
+      <xs:element name="published_at" type="TFechaHoraNulo" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+  <xs:element name="formulario" type="Formulario"/>
+  <xs:element name="lista_formularios">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="total" type="TEntero"/>
+        <xs:element name="formularios">
+          <xs:complexType><xs:sequence><xs:element name="formulario" type="Formulario" minOccurs="0" maxOccurs="unbounded"/></xs:sequence></xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+  <!-- POST /api/v1/cases/{case_id}/status (D47). -->
+  <xs:element name="cambio_estado_caso">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="status" type="TEstado"/>
+        <xs:element name="reason" type="TMotivo" minOccurs="0"/>
+        <xs:element name="duplicate_of" type="TPositivoNulo" minOccurs="0"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+  <!-- GET /api/v1/cases/{case_id}/history (D47): un item por cambio, del más viejo al más nuevo.
+       changes trae un elemento por campo que cambió, con antes y despues. -->
+  <xs:complexType name="Cambios">
+    <xs:sequence><xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
+  </xs:complexType>
+  <xs:element name="historial_caso">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="case_id" type="TPositivo"/>
+        <xs:element name="version" type="TPositivo"/>
+        <xs:element name="cambios">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="item" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="version" type="TPositivo"/>
+                    <xs:element name="action" type="TAccion"/>
+                    <xs:element name="changed_by" type="TPositivo"/>
+                    <xs:element name="changed_at" type="TFechaHora"/>
+                    <xs:element name="status_before" type="TEstadoNulo"/>
+                    <xs:element name="status_after" type="TEstadoNulo"/>
+                    <xs:element name="changes" type="Cambios"/>
+                    <xs:element name="reason" type="TMotivo"/>
+                    <xs:element name="device_id" type="TPositivoNulo"/>
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
   <xs:element name="lista_casos">
     <xs:complexType>
       <xs:all>
@@ -87,6 +232,43 @@
         <xs:element name="pagina" type="TEntero"/>
         <xs:element name="por_pagina" type="TEntero"/>
         <xs:element name="paginas" type="TEntero"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+  <!-- POST /api/v1/cases/batch: la petición (raíz lote_casos) y la respuesta (raíz
+       resultado_lote_casos), con hasta 100 casos. -->
+  <xs:simpleType name="EstadoDeCaso"><xs:restriction base="xs:integer"><xs:enumeration value="200"/><xs:enumeration value="201"/><xs:enumeration value="409"/><xs:enumeration value="422"/></xs:restriction></xs:simpleType>
+  <xs:complexType name="TEstadoDeCaso"><xs:simpleContent><xs:extension base="EstadoDeCaso"><xs:attributeGroup ref="Marcas"/></xs:extension></xs:simpleContent></xs:complexType>
+  <xs:element name="lote_casos">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="cases">
+          <xs:complexType><xs:sequence><xs:element name="item" type="Caso" maxOccurs="100"/></xs:sequence></xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="resultado_lote_casos">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="total" type="TEntero"/>
+        <xs:element name="resultados">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="item" maxOccurs="100">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="indice" type="TEntero"/>
+                    <xs:element name="estado" type="TEstadoDeCaso"/>
+                    <xs:element name="caso" type="Caso" minOccurs="0"/>
+                    <xs:element name="codigo" type="TTexto" minOccurs="0"/>
+                    <xs:element name="detail" type="TTexto" minOccurs="0"/>
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
       </xs:all>
     </xs:complexType>
   </xs:element>

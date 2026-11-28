@@ -2,7 +2,9 @@ import copy
 
 import pytest
 
-from backend_web import queries
+from microservicios.intervenciones import datos as intervenciones_datos
+from microservicios.validacion import datos as bd
+from microservicios.validacion import huella, rutas
 from procesamiento.tests.corpus_resolver import ENFERMEDAD
 
 REGIONES = [
@@ -17,6 +19,8 @@ ENFERMEDADES = [
     {"id": 2, "code": "X", "name": "Incompleta", "simulable": False, "faltan": 2,
      "sin_fuente": 0, "supuestos": 0},
 ]
+HUELLA = "9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab"
+
 TIPOS = [{"id": 1, "code": "CIERRE_ESCUELAS", "name": "Cierre de escuelas",
           "param_schema": {"type": "object", "properties": {}}}]
 
@@ -24,17 +28,39 @@ VALIDO = {"name": "Brote", "disease_id": 1, "region_id": 1, "population_size": 1
           "initial_infected": 10, "horizon_days": 60}
 
 
+class _Respuesta:
+    def __init__(self, respuesta):
+        self.status_code, self._respuesta = respuesta.status_code, respuesta
+
+    def json(self):
+        return self._respuesta.get_json()
+
+
 @pytest.fixture
 def cliente(crear_cliente, monkeypatch):
-    monkeypatch.setattr(queries, "get_regiones_para_escenario", lambda: copy.deepcopy(REGIONES))
-    monkeypatch.setattr(queries, "get_enfermedades_para_escenario", lambda: copy.deepcopy(ENFERMEDADES))
-    monkeypatch.setattr(queries, "get_tipos_intervencion", lambda: copy.deepcopy(TIPOS))
-    monkeypatch.setattr(queries, "query",
-                        lambda sql, params=(), one=False: {"default_params": copy.deepcopy(ENFERMEDAD)})
-    # Nada de escribir: si la ruta intentara guardar, estas pruebas lo notarían.
-    for nombre in ("execute", "get_conn", "log_audit"):
-        monkeypatch.setattr(queries, nombre, _prohibido, raising=False)
-    return crear_cliente("validacion")
+    monkeypatch.setattr(bd, "regiones_para_escenario", lambda: copy.deepcopy(REGIONES))
+    monkeypatch.setattr(bd, "enfermedades_para_escenario", lambda: copy.deepcopy(ENFERMEDADES))
+    monkeypatch.setattr(bd, "parametros_de", lambda i: copy.deepcopy(ENFERMEDAD))
+    monkeypatch.setattr(bd, "query", _prohibido)
+    # Las intervenciones las revisa la app real de intervenciones, en el mismo proceso (D37).
+    monkeypatch.setattr(intervenciones_datos, "tipos", lambda: copy.deepcopy(TIPOS))
+    intervenciones = crear_cliente("intervenciones")
+    llamadas = []
+
+    def llamar(servicio, metodo, ruta, cuerpo=None, formato="json", **_):
+        llamadas.append((servicio, metodo, ruta, cuerpo))
+        assert servicio == "intervenciones" and formato == "json"
+        return _Respuesta(intervenciones.open(ruta, method=metodo, json=cuerpo,
+                                              headers={**request_headers(), "Accept": "application/json"}))
+    monkeypatch.setattr(rutas, "llamar", llamar)
+    c = crear_cliente("validacion")
+    c.llamadas = llamadas
+    return c
+
+
+def request_headers():
+    from flask import request
+    return {"Authorization": request.headers["Authorization"]}
 
 
 def _prohibido(*_a, **_k):
@@ -75,7 +101,7 @@ def test_enfermedad_no_simulable_y_region_inexistente(cliente, analista):
 
 
 def test_el_motor_rechaza(cliente, analista, monkeypatch):
-    monkeypatch.setattr(queries, "query", lambda *a, **k: {"default_params": {}})
+    monkeypatch.setattr(bd, "parametros_de", lambda i: {})
     datos = post(cliente, analista, VALIDO).get_json()
     assert datos["valido"] is False
     assert all(e.startswith("El motor rechaza el escenario:") for e in datos["errores"])
@@ -98,6 +124,8 @@ def test_intervenciones(cliente, analista):
     bien = {"code": "CIERRE_ESCUELAS", "start_day": 5, "end_day": 40}
     datos = post(cliente, analista, {**VALIDO, "interventions": [bien]}).get_json()
     assert datos["valido"] is True
+    assert cliente.llamadas == [("intervenciones", "POST", "/api/v1/interventions/validate",
+                                 {"horizon_days": 60, "interventions": [bien]})]
     mal = post(cliente, analista, {**VALIDO, "interventions": [bien, bien,
                {"code": "NO_EXISTE", "start_day": 1}]}).get_json()
     assert mal["valido"] is False
@@ -171,10 +199,10 @@ def version(monkeypatch):
     fila = {"id": 7, "scenario_id": 3, "version_number": 2, "status": "borrador"}
     detalle = {"version": {"id": 7}, "escenario": {"id": 3}}
     llamadas = []
-    monkeypatch.setattr(queries, "get_version_simulacion", lambda i: fila if i == 7 else None)
-    monkeypatch.setattr(queries, "get_escenario_detalle",
-                        lambda s, n=None: llamadas.append((s, n)) or detalle)
-    monkeypatch.setattr(queries, "revisa_version", lambda d: ([], ["aviso uno"]))
+    monkeypatch.setattr(bd, "version_simulacion", lambda i: fila if i == 7 else None)
+    monkeypatch.setattr(bd, "escenario_detalle", lambda s, n=None: llamadas.append((s, n)) or detalle)
+    monkeypatch.setattr(rutas, "revisa_version", lambda d: ([], ["aviso uno"]))
+    monkeypatch.setattr(huella, "de_version", lambda i: HUELLA if i == 7 else None)
     return llamadas
 
 
@@ -183,12 +211,12 @@ def test_validacion_de_version(cliente, analista, version):
     assert r.status_code == 200
     assert r.get_json() == {"version_id": 7, "scenario_id": 3, "version_number": 2,
                             "status": "borrador", "valido": True, "errores": [],
-                            "avisos": ["aviso uno"]}
+                            "avisos": ["aviso uno"], "huella": HUELLA}
     assert version == [(3, 2)]
 
 
 def test_version_con_errores_sigue_siendo_200(cliente, analista, version, monkeypatch):
-    monkeypatch.setattr(queries, "revisa_version", lambda d: (["malo"], []))
+    monkeypatch.setattr(rutas, "revisa_version", lambda d: (["malo"], []))
     datos = cliente.get("/api/v1/versions/7/validation?format=json", headers=analista).get_json()
     assert datos["valido"] is False and datos["errores"] == ["malo"]
 
@@ -205,7 +233,7 @@ def test_version_inexistente_404_e_id_invalido_422(cliente, analista, version):
 
 
 def test_validacion_no_audita_ni_escribe(cliente, analista, version):
-    # log_audit, execute y get_conn explotan si se llaman (ver fixture cliente).
+    # bd.query explota si se llama (ver fixture cliente): validacion no escribe.
     assert cliente.get("/api/v1/versions/7/validation?format=json", headers=analista).status_code == 200
     assert post(cliente, analista, VALIDO).status_code == 200
 
@@ -220,9 +248,10 @@ def test_openapi_servido_es_el_del_contrato(cliente):
     assert servido == (CONTRATOS / "openapi.json").read_bytes()
     spec = __import__("json").loads(servido)
     operaciones = {op["operationId"] for ruta in spec["paths"].values() for op in ruta.values()}
-    assert operaciones == {"validar_escenario", "validar_version"}
+    assert operaciones == {"validar_escenario", "validar_version", "validar_version_nueva"}
     rutas_flask = {r.rule for r in cliente.application.url_map.iter_rules() if r.rule.startswith("/api/")}
-    assert rutas_flask == {"/api/v1/validate", "/api/v1/versions/<version_id>/validation"}
+    assert rutas_flask == {"/api/v1/validate", "/api/v1/validate/version",
+                           "/api/v1/versions/<version_id>/validation"}
 
 
 @pytest.mark.parametrize("nombre,valido", [("validar_escenario", True), ("validar_escenario_invalido", False)])
@@ -239,3 +268,145 @@ def test_ejemplos_de_peticion_se_aceptan_y_dan_la_respuesta_del_ejemplo(cliente,
     from epidemia_comun.formatos import a_xml
     assert a_xml(esperado, "validacion").decode() == (
         ejemplos / (nombre + ".xml")).read_text(encoding="utf-8").rstrip("\n")
+
+
+# ---- huella de la versión (D55) ------------------------------------------------------
+
+FILA_VERSION = {"id": 7, "scenario_id": 3, "version_number": 2, "status": "en_revision",
+                "population_size": 100000, "horizon_days": 60, "initial_infected": 10,
+                "population_by_age": None, "population_age_unknown": 0, "age_unknown_policy": None,
+                "disease_params": None, "default_params": None}
+# Parámetros como los guarda diseases.default_params, todos marcados como supuesto (regla 8).
+PARAMETROS = {clave: {"valor": valor, "fuente": "Supuesto de la prueba", "supuesto": True}
+              for clave, valor in (("r0", 1.6), ("incubacion_dias", 2.0), ("infeccioso_dias", 5.0),
+                                   ("letalidad", 0.001), ("tasa_hospitalizacion", 0.01),
+                                   ("dias_hospitalizacion", 5.0))}
+FILAS_INTERVENCION = [{"start_day": 5, "end_day": 20, "coverage": __import__("decimal").Decimal("0.800"),
+                       "compliance": None, "params": {"reduccion": 0.5}, "code": "CIERRE_ESCUELAS"}]
+
+
+def _base_falsa(consultas):
+    def query(sql, params=(), one=False):
+        consultas.append(" ".join(sql.split()))
+        if "FROM scenario_versions" in sql:
+            return dict(FILA_VERSION, disease_params=copy.deepcopy(PARAMETROS))
+        return [dict(f) for f in FILAS_INTERVENCION]
+    return query
+
+
+def test_la_huella_es_la_misma_que_calcula_el_simulador(monkeypatch):
+    from microservicios.simulador import datos as simulador_datos
+    from microservicios.simulador import ejecucion
+    from procesamiento.contrato import huella as canonica
+    nuestras, suyas = [], []
+    monkeypatch.setattr(huella, "query", _base_falsa(nuestras))
+    monkeypatch.setattr(simulador_datos, "query", _base_falsa(suyas))
+    calculada = huella.de_version(7)
+    # El simulador solo corre aprobadas; la entrada es la misma con cualquier estado.
+    FILA_VERSION["status"] = "aprobado"
+    try:
+        escenario, _, errores = ejecucion.escenario_de_version(7)
+    finally:
+        FILA_VERSION["status"] = "en_revision"
+    assert errores == [] and calculada == canonica(escenario)
+    assert nuestras == suyas      # la copia de version_para_motor sigue igual
+
+
+def test_sin_version_no_hay_huella(monkeypatch):
+    monkeypatch.setattr(huella, "query", lambda sql, params=(), one=False: None if one else [])
+    assert huella.de_version(99) is None
+
+
+def test_con_la_base_la_huella_coincide_con_la_del_simulador():
+    from microservicios.pruebas_bd import tiene_base
+    if not tiene_base():
+        pytest.skip("Requiere la base de pruebas")
+    from epidemia_comun.bd import query
+    from microservicios.simulador import ejecucion
+    from procesamiento.contrato import huella as canonica
+    fila = query("SELECT id FROM scenario_versions WHERE status = 'aprobado' ORDER BY id LIMIT 1", one=True)
+    if fila is None:
+        pytest.skip("La semilla no trae una versión aprobada")
+    escenario, _, errores = ejecucion.escenario_de_version(fila["id"])
+    assert errores == [] and huella.de_version(fila["id"]) == canonica(escenario)
+
+
+def test_un_parametro_ajustado_en_la_version_es_un_aviso_para_quien_revisa(cliente, analista, version, monkeypatch):
+    # D59: el aviso dice el valor del catálogo, el de la versión y su respaldo.
+    detalle = {"version": {"id": 7, "param_overrides": {
+        "r0": {"valor": 3.2, "fuente": None, "supuesto": True},
+        "incubacion_dias": {"valor": 4.0, "fuente": "Estudio propio", "supuesto": False}}},
+        "escenario": {"id": 3, "default_params": {"r0": {"valor": 2.87}, "incubacion_dias": {"valor": 5.1}}}}
+    monkeypatch.setattr(bd, "escenario_detalle", lambda s, n=None: detalle)
+    avisos = cliente.get("/api/v1/versions/7/validation?format=json", headers=analista).get_json()["avisos"]
+    assert avisos == ["aviso uno",
+                      "El parámetro incubacion_dias se ajustó en esta versión: catálogo 5.1, versión 4.0 "
+                      "(fuente: Estudio propio).",
+                      "El parámetro r0 se ajustó en esta versión: catálogo 2.87, versión 3.2 (supuesto)."]
+
+
+def test_la_huella_de_un_borrador_cambia_con_un_ajuste(monkeypatch):
+    from procesamiento.contrato import huella as canonica
+    from procesamiento.entrada_motor import escenario_de_version, parametros_efectivos
+    base = dict(FILA_VERSION, disease_params=None, default_params=copy.deepcopy(PARAMETROS), param_overrides={})
+    ajustada = dict(base, param_overrides={"r0": {"valor": 3.2, "fuente": None, "supuesto": True}})
+    assert parametros_efectivos(base) == PARAMETROS
+    assert parametros_efectivos(ajustada)["r0"]["valor"] == 3.2
+    assert parametros_efectivos(ajustada)["letalidad"] == PARAMETROS["letalidad"]
+    # Una versión enviada usa su foto, no el catálogo ni los ajustes.
+    assert parametros_efectivos(dict(ajustada, disease_params={"r0": {"valor": 1.1}})) == {"r0": {"valor": 1.1}}
+
+    def huella_de(fila):
+        intervenciones = [dict(f) for f in FILAS_INTERVENCION]
+        return canonica(escenario_de_version({"version": fila, "intervenciones": intervenciones,
+                                              "parametros_enfermedad": parametros_efectivos(fila)}))
+    assert huella_de(base) != huella_de(ajustada)
+
+
+def test_sin_intervenciones_no_llama_a_intervenciones(cliente, analista):
+    datos = post(cliente, analista, VALIDO).get_json()
+    assert datos["valido"] is True and cliente.llamadas == []
+    assert datos["datos"] == {"name": "Brote", "description": None, "disease_id": 1, "region_id": 1,
+                              "population_size": 100000, "horizon_days": 60, "initial_infected": 10,
+                              "population_by_age": None, "population_age_unknown": 0,
+                              "age_unknown_policy": None, "notes": None}
+
+
+def test_intervenciones_caido_es_503(cliente, analista, monkeypatch):
+    from epidemia_comun.errores import ErrorAPI
+
+    def caido(*_a, **_k):
+        raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio intervenciones no está disponible.")
+    monkeypatch.setattr(rutas, "llamar", caido)
+    cuerpo = {**VALIDO, "interventions": [{"code": "CIERRE_ESCUELAS", "start_day": 5}]}
+    assert post(cliente, analista, cuerpo).status_code == 503
+    assert post(cliente, analista, VALIDO).status_code == 200
+
+
+# ---- POST /validate/version ----------------------------------------------------------
+
+DETALLE = {"escenario": {"id": 3, "region_id": 2, "default_params": ENFERMEDAD}, "version": {"id": 7}}
+
+
+def post_version(cliente, headers, cuerpo):
+    return cliente.post("/api/v1/validate/version?format=json", json=cuerpo, headers=headers)
+
+
+def test_version_nueva(cliente, analista, monkeypatch):
+    monkeypatch.setattr(bd, "escenario_detalle", lambda s, n=None: copy.deepcopy(DETALLE) if s == 3 else None)
+    r = post_version(cliente, analista, {"scenario_id": 3, "population_size": 50000, "horizon_days": 90,
+                                         "initial_infected": 5, "notes": "Más días"})
+    assert r.status_code == 200
+    dictamen = r.get_json()
+    assert dictamen["valido"] is True
+    assert dictamen["datos"]["horizon_days"] == 90 and dictamen["datos"]["notes"] == "Más días"
+    estratificada = post_version(cliente, analista, {"scenario_id": 3, "estratificar": "1", "horizon_days": 90,
+                                                     "initial_infected": 5, "notes": "Por edad"}).get_json()
+    assert estratificada["datos"]["population_by_age"] == REGIONES[1]["grupos"]
+    sin_notas = post_version(cliente, analista, {"scenario_id": 3, "population_size": 50000,
+                                                 "horizon_days": 90, "initial_infected": 5}).get_json()
+    assert sin_notas["errores"] == ["Explica en el comentario qué cambia esta versión."]
+    assert post_version(cliente, analista, {"scenario_id": 9, "notes": "x"}).status_code == 404
+    assert post_version(cliente, analista, {"notes": "x"}).status_code == 422
+    assert post_version(cliente, analista, {"scenario_id": 3, "notes": {"a": 1}}).status_code == 422
+    assert post_version(cliente, {}, {"scenario_id": 3}).status_code == 401

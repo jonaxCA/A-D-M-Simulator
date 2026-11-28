@@ -3,11 +3,16 @@
     python -m pytest procesamiento/tests -v
 """
 
+import ast
 import json
+import subprocess
+import sys
 import unittest
+from pathlib import Path
 
-from procesamiento.motor import (ComparacionInvalida, EscenarioInvalido, comparar, costo_escenario,
-                                 frontera_pareto, simular)
+from procesamiento.analitica import (ComparacionInvalida, comparar, costo_escenario,
+                                     frontera_pareto)
+from procesamiento.motor import EscenarioInvalido, simular
 
 from .test_motor import escenario
 
@@ -17,10 +22,11 @@ COSTOS = {
     "TESTEO_AISLAMIENTO": 2.0,
     "VACUNACION": {"valor": 300.0, "supuesto": True},
 }
+FACTORES = {"VACUNACION": {"valor": 0.5, "fuente": "prueba", "supuesto": True}}
 
 
-def pt(id_, costo, impacto):
-    return {"id": id_, "costo": costo, "impacto": impacto}
+def pt(id_, costo, impacto, **resto):
+    return {"id": id_, "costo": costo, "impacto": impacto, **resto}
 
 
 def ids_dominados(resultado):
@@ -76,11 +82,12 @@ class Frontera(unittest.TestCase):
 
 
 class Costo(unittest.TestCase):
-    def costo(self, esc, costos=COSTOS, semilla=1):
-        return costo_escenario(esc, simular(esc, semilla), costos)
+    def costo(self, esc, costos=COSTOS, semilla=1, factores=FACTORES):
+        return costo_escenario(esc, simular(esc, semilla), costos, factores)
 
     def test_sin_intervenciones_cuesta_cero_sin_pedir_costos(self):
-        self.assertEqual(self.costo(escenario(), costos={})["total"], 0)
+        c = self.costo(escenario(), costos={}, factores={})
+        self.assertEqual((c["personas_dia"], c["pesos"], c["faltan_pesos"]), (0, 0, []))
 
     def test_capa_unitario_por_poblacion_por_intensidad_por_dias(self):
         esc = escenario(intervenciones=[
@@ -88,11 +95,12 @@ class Costo(unittest.TestCase):
              "cobertura": 0.5, "cumplimiento": 0.8, "params": {"reduccion": 1.0}}])
         c = self.costo(esc)
         self.assertEqual(c["desglose"][0]["dias_activos"], 39)
-        self.assertAlmostEqual(c["total"], 10.0 * 200_000 * 0.4 * 39, places=2)
+        self.assertAlmostEqual(c["personas_dia"], 200_000 * 0.4 * 39, places=2)
+        self.assertAlmostEqual(c["pesos"], 10.0 * 200_000 * 0.4 * 39, places=2)
 
     def test_reduccion_por_defecto_del_catalogo(self):
         esc = escenario(intervenciones=[{"tipo": "CIERRE_ESCUELAS", "dia_inicio": 1, "dia_fin": 1}])
-        self.assertAlmostEqual(self.costo(esc)["total"], 10.0 * 200_000, places=2)
+        self.assertAlmostEqual(self.costo(esc)["personas_dia"], 200_000, places=2)
 
     def test_dias_recortados_al_horizonte(self):
         sin_fin = escenario(dias=60, intervenciones=[
@@ -106,23 +114,58 @@ class Costo(unittest.TestCase):
         esc = escenario(intervenciones=[
             {"tipo": "TESTEO_AISLAMIENTO", "dia_inicio": 1, "dia_fin": 10,
              "params": {"deteccion": 0.3, "retraso_dias": 1}}])
-        self.assertAlmostEqual(self.costo(esc)["total"], 2.0 * 200_000 * 0.3 * 10, places=2)
+        c = self.costo(esc)
+        self.assertAlmostEqual(c["personas_dia"], 200_000 * 0.3 * 10, places=2)
+        self.assertAlmostEqual(c["pesos"], 2.0 * 200_000 * 0.3 * 10, places=2)
 
-    def test_vacunacion_se_cobra_por_dosis_aplicadas(self):
-        esc = escenario(intervenciones=[
-            {"tipo": "VACUNACION", "dia_inicio": 5, "cobertura": 0.5,
-             "params": {"eficacia": 0.8, "dosis_diarias": 1000, "edad_minima": 60}}])
+    VACUNA = {"tipo": "VACUNACION", "dia_inicio": 5, "cobertura": 0.5,
+              "params": {"eficacia": 0.8, "dosis_diarias": 1000, "edad_minima": 60}}
+
+    def test_vacunacion_por_dosis_aplicadas(self):
+        esc = escenario(intervenciones=[self.VACUNA])
         resultado = simular(esc, 2)
-        c = costo_escenario(esc, resultado, COSTOS)
+        c = costo_escenario(esc, resultado, COSTOS, FACTORES)
         dosis = resultado["resumen"]["dosis_aplicadas"]
         self.assertEqual(dosis, 15_000)
-        self.assertAlmostEqual(c["total"], 300.0 * dosis, places=2)
+        self.assertAlmostEqual(c["personas_dia"], 0.5 * dosis, places=2)
+        self.assertAlmostEqual(c["pesos"], 300.0 * dosis, places=2)
+        self.assertIn(("VACUNACION", "personas_dia_por_dosis"),
+                      {(t["tipo"], t["unidad"]) for t in c["trazabilidad"]})
 
-    def test_sin_costos_por_defecto(self):
-        esc = escenario(intervenciones=[{"tipo": "CIERRE_ESCUELAS", "dia_inicio": 1}])
+    def test_vacunacion_sin_factor_se_niega(self):
+        esc = escenario(intervenciones=[self.VACUNA])
         with self.assertRaises(ComparacionInvalida) as ctx:
-            self.costo(esc, costos={})
-        self.assertIn("CIERRE_ESCUELAS", str(ctx.exception))
+            self.costo(esc, factores={})
+        self.assertIn("factor de personas-dia por dosis", str(ctx.exception))
+
+    def test_dos_campanias_de_vacunacion_dan_un_renglon(self):
+        # La segunda vacuna a otro grupo, para que sus dosis se sumen a las de la primera.
+        primera = {**self.VACUNA, "dia_fin": 30}
+        segunda = {**self.VACUNA, "dia_inicio": 60,
+                   "params": {"eficacia": 0.8, "dosis_diarias": 1000, "edad_minima": 20}}
+        esc = escenario(intervenciones=[primera, segunda])
+        resultado = simular(esc, 2)
+        c = costo_escenario(esc, resultado, COSTOS, FACTORES)
+        dosis = resultado["resumen"]["dosis_aplicadas"]
+        self.assertGreater(dosis, simular(escenario(intervenciones=[primera]), 2)["resumen"]["dosis_aplicadas"])
+        [renglon] = c["desglose"]
+        self.assertEqual((renglon["tipo"], renglon["dia_inicio"], renglon["cantidad"]),
+                         ("VACUNACION", 5, dosis))
+        self.assertAlmostEqual(c["personas_dia"], 0.5 * dosis, places=2)
+        self.assertAlmostEqual(c["pesos"], 300.0 * dosis, places=2)
+
+    def test_factor_negativo_invalido(self):
+        esc = escenario(intervenciones=[self.VACUNA])
+        with self.assertRaises(ComparacionInvalida):
+            self.costo(esc, factores={"VACUNACION": -1})
+
+    def test_sin_costo_en_pesos_las_personas_dia_salen_igual(self):
+        esc = escenario(intervenciones=[{"tipo": "CIERRE_ESCUELAS", "dia_inicio": 1, "dia_fin": 1}])
+        c = self.costo(esc, costos={})
+        self.assertAlmostEqual(c["personas_dia"], 200_000, places=2)
+        self.assertIsNone(c["pesos"])
+        self.assertIsNone(c["desglose"][0]["costo_pesos"])
+        self.assertEqual(c["faltan_pesos"], ["CIERRE_ESCUELAS"])
 
     def test_costo_negativo_invalido(self):
         esc = escenario(intervenciones=[{"tipo": "CIERRE_ESCUELAS", "dia_inicio": 1}])
@@ -154,22 +197,22 @@ class Comparacion(unittest.TestCase):
                                  "escenario": esc, "resultado": simular(esc, 982314)})
 
     def test_estructura_y_json(self):
-        r = comparar(self.entradas, COSTOS, base="A")
+        r = comparar(self.entradas, COSTOS, base="A", factores=FACTORES)
         json.dumps(r)
         self.assertEqual([f["id"] for f in r["filas"]], ["A", "B", "C", "D"])
         self.assertTrue(r["frontera"])
         self.assertEqual({t["tipo"] for t in r["trazabilidad_costos"]}, {"CIERRE_ESCUELAS", "VACUNACION"})
 
     def test_sin_intervencion_con_costo_cero_siempre_esta_en_la_frontera(self):
-        self.assertIn("A", comparar(self.entradas, COSTOS)["frontera"])
+        self.assertIn("A", comparar(self.entradas, COSTOS, factores=FACTORES)["frontera"])
 
     def test_frontera_coincide_con_frontera_pareto(self):
-        r = comparar(self.entradas, COSTOS, metrica="hospitalizaciones")
+        r = comparar(self.entradas, COSTOS, metrica="hospitalizaciones", factores=FACTORES)
         esperado = frontera_pareto([pt(f["id"], f["costo"], f["impacto"]) for f in r["filas"]])
         self.assertEqual(r["frontera"], esperado["frontera"])
 
     def test_impacto_evitado_contra_la_base(self):
-        r = comparar(self.entradas, COSTOS, base="A")
+        r = comparar(self.entradas, COSTOS, base="A", factores=FACTORES)
         filas = {f["id"]: f for f in r["filas"]}
         self.assertIsNone(filas["A"]["impacto_evitado"])
         for id_ in "BCD":
@@ -183,7 +226,7 @@ class Comparacion(unittest.TestCase):
     def test_sin_evitados_no_hay_costo_por_evitado(self):
         entradas = [dict(e) for e in self.entradas[:2]]
         entradas.append({**self.entradas[0], "id": "A2"})
-        r = comparar(entradas, COSTOS, base="A")
+        r = comparar(entradas, COSTOS, base="A", factores=FACTORES)
         a2 = next(f for f in r["filas"] if f["id"] == "A2")
         self.assertEqual(a2["impacto_evitado"], 0)
         self.assertIsNone(a2["costo_por_unidad_evitada"])
@@ -196,24 +239,132 @@ class Comparacion(unittest.TestCase):
         with self.assertRaises(ComparacionInvalida):
             comparar(self.entradas, COSTOS, base="Z")
         with self.assertRaises(ComparacionInvalida) as ctx:
-            comparar(self.entradas, {})
-        self.assertIn("Escenario B", str(ctx.exception))
+            comparar(self.entradas, COSTOS)
+        self.assertIn("Escenario C", str(ctx.exception))
+        self.assertNotIn("Escenario B", str(ctx.exception))
 
     def test_horizontes_distintos_no_son_comparables(self):
         corto = escenario(dias=60)
         entradas = self.entradas[:1] + [{"id": "X", "escenario": corto, "resultado": simular(corto, 1)}]
         with self.assertRaises(ComparacionInvalida):
-            comparar(entradas, COSTOS)
+            comparar(entradas, COSTOS, factores=FACTORES)
 
     def test_aviso_por_poblaciones_distintas(self):
         chica = escenario(poblacion={"0-19": 30_000, "20-59": 55_000, "60+": 15_000})
         entradas = self.entradas[:1] + [{"id": "X", "escenario": chica, "resultado": simular(chica, 1)}]
-        self.assertTrue(any("poblaciones" in a for a in comparar(entradas, COSTOS)["avisos"]))
+        self.assertTrue(any("poblaciones" in a for a in comparar(entradas, COSTOS, factores=FACTORES)["avisos"]))
+
+    def test_la_frontera_va_en_personas_dia_y_no_en_pesos(self):
+        # D3: cambiar los pesos no mueve la frontera ni el eje de costo.
+        caro = comparar(self.entradas, {**COSTOS, "CIERRE_ESCUELAS": 1e6}, factores=FACTORES)
+        barato = comparar(self.entradas, {**COSTOS, "CIERRE_ESCUELAS": 0.0}, factores=FACTORES)
+        self.assertEqual(caro["frontera"], barato["frontera"])
+        self.assertEqual([f["costo"] for f in caro["filas"]], [f["costo"] for f in barato["filas"]])
+        self.assertNotEqual([f["costo_pesos"] for f in caro["filas"]],
+                            [f["costo_pesos"] for f in barato["filas"]])
+
+    def test_sin_pesos_se_compara_con_aviso(self):
+        r = comparar(self.entradas, {}, factores=FACTORES)
+        pesos = {f["id"]: f["costo_pesos"] for f in r["filas"]}
+        self.assertEqual(pesos, {"A": 0, "B": None, "C": None, "D": None})
+        self.assertTrue(r["frontera"])
+        self.assertTrue(any("pesos" in a and "CIERRE_ESCUELAS" in a for a in r["avisos"]))
+
+    def test_aviso_por_factor_sin_fuente(self):
+        # Un numero solo, sin fuente ni marca de supuesto (regla 8).
+        r = comparar(self.entradas, COSTOS, factores={"VACUNACION": 0.5})
+        self.assertTrue(any("VACUNACION (personas-dia por dosis)" in a for a in r["avisos"]))
+        self.assertIn({"tipo": "VACUNACION", "valor": 0.5, "unidad": "personas_dia_por_dosis",
+                       "fuente": None, "estado": "sin_fuente"}, r["trazabilidad_costos"])
 
     def test_aviso_por_costo_sin_fuente(self):
-        r = comparar(self.entradas, {**COSTOS, "CIERRE_ESCUELAS": 10.0})
+        r = comparar(self.entradas, {**COSTOS, "CIERRE_ESCUELAS": 10.0}, factores=FACTORES)
         self.assertTrue(any("CIERRE_ESCUELAS" in a for a in r["avisos"]))
+
+
+class ProgramaDeEjemploTests(unittest.TestCase):
+    """`python -m procesamiento.motor` sigue corriendo con personas-dia y pesos (D3)."""
+
+    def _correr(self, *argumentos):
+        return subprocess.run([sys.executable, "-m", "procesamiento.motor", *argumentos],
+                              cwd=Path(__file__).resolve().parents[2], capture_output=True,
+                              text=True, check=True).stdout
+
+    def test_imprime_la_frontera_en_personas_dia(self):
+        salida = self._correr()
+        self.assertIn("Frontera de Pareto (por personas-dia)", salida)
+        self.assertIn("SUPUESTOS", salida)
+
+    def test_json_trae_personas_dia_y_pesos(self):
+        filas = json.loads(self._correr("--json"))["comparacion"]["filas"]
+        self.assertEqual(len(filas), 4)
+        self.assertTrue(all(isinstance(f["costo"], (int, float)) for f in filas))
+        self.assertTrue(all(isinstance(f["costo_pesos"], (int, float)) for f in filas))
+
+
+class CapasTests(unittest.TestCase):
+    """Pareto vive fuera del motor (D3): la analitica usa el motor, nunca al reves, y solo con
+    nombres publicos."""
+
+    PROCESAMIENTO = Path(__file__).resolve().parents[1]
+
+    def _importes(self, carpeta):
+        for archivo in sorted((self.PROCESAMIENTO / carpeta).rglob("*.py")):
+            for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+                if isinstance(nodo, ast.ImportFrom):
+                    yield archivo.name, nodo.module or "", [a.name for a in nodo.names]
+
+    def test_la_analitica_no_importa_nombres_privados(self):
+        privados = [(archivo, modulo, nombre)
+                    for archivo, modulo, nombres in self._importes("analitica")
+                    for nombre in nombres if nombre.startswith("_")]
+        self.assertEqual(privados, [])
+
+    def test_el_motor_no_importa_la_analitica(self):
+        # __main__ es el programa de ejemplo: usa las dos partes, pero nadie lo importa.
+        hacia_analitica = [(archivo, modulo) for archivo, modulo, _ in self._importes("motor")
+                           if "analitica" in modulo and archivo != "__main__.py"]
+        self.assertEqual(hacia_analitica, [])
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Explicacion(unittest.TestCase):
+    def test_dominada_dice_quien_y_en_que_criterio(self):
+        r = frontera_pareto([pt("A", 5, 50, nombre="Alfa"), pt("B", 5, 40, nombre="Beta"),
+                             pt("C", 2, 60, nombre="Gama")], "fallecimientos")
+        a = r["puntos"][0]["explicacion"]
+        self.assertTrue(a["dominado"])
+        self.assertEqual([d["id"] for d in a["dominada_por"]], ["B"])
+        self.assertEqual(a["dominada_por"][0]["criterios"], ["impacto"])
+        self.assertEqual(a["dominada_por"][0]["diferencia_impacto"], 10)
+        self.assertEqual(a["dominada_por"][0]["diferencia_costo"], 0)
+        self.assertEqual([c["id"] for c in a["compromisos"]], ["C"])
+        self.assertIn("Beta", a["texto"])
+        self.assertIn("fallecimientos", a["texto"])
+
+    def test_dominada_en_los_dos_criterios(self):
+        r = frontera_pareto([pt("A", 9, 90), pt("B", 1, 10)])
+        d = r["puntos"][0]["explicacion"]["dominada_por"][0]
+        self.assertEqual(d["criterios"], ["costo", "impacto"])
+        self.assertEqual((d["diferencia_costo"], d["diferencia_impacto"]), (8, 80))
+
+    def test_frontera_explica_los_compromisos(self):
+        r = frontera_pareto([pt("A", 0, 100), pt("B", 10, 80)])
+        a, b = (p["explicacion"] for p in r["puntos"])
+        self.assertFalse(a["dominado"] or b["dominado"])
+        self.assertEqual(a["compromisos"][0]["mejor_en"], "impacto")
+        self.assertEqual(b["compromisos"][0]["mejor_en"], "costo")
+        self.assertTrue(a["texto"].startswith("En la frontera"))
+
+    def test_identicas_empatan(self):
+        r = frontera_pareto([pt("A", 5, 40), pt("B", 5, 40)])
+        self.assertEqual(r["puntos"][0]["explicacion"]["empatada_con"], ["B"])
+        self.assertIn("Empata", r["puntos"][0]["explicacion"]["texto"])
+
+    def test_no_recomienda(self):
+        r = frontera_pareto([pt("A", 0, 100), pt("B", 10, 80), pt("C", 12, 90)])
+        for p in r["puntos"]:
+            self.assertNotRegex(p["explicacion"]["texto"].lower(), "recomend|conviene|mejor opcion")

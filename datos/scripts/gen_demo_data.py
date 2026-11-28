@@ -12,10 +12,11 @@ Uso (desde la raiz del proyecto):
   python3 datos/scripts/gen_demo_data.py > datos/postgres/semillas/demo_datos_nl.sql
   psql -d simulador_epidemico -v ON_ERROR_STOP=1 -f datos/postgres/semillas/demo_datos_nl.sql
 
-Ojo: cada corrida genera un hash bcrypt nuevo para cada una de las tres cuentas
-(sal aleatoria), asi que regenerar el archivo cambia esas tres lineas aunque los
+Ojo: cada corrida genera un hash bcrypt nuevo para cada una de las cuatro cuentas
+(sal aleatoria), asi que regenerar el archivo cambia esas cuatro lineas aunque los
 datos sean los mismos. Todo lo demas sale igual byte por byte.
 """
+import os
 import random
 import datetime
 import sys
@@ -55,6 +56,25 @@ DISEASES = [
 
 SEV_CHOICES = [("asintomatico", 0.30), ("leve", 0.55), ("grave", 0.13), ("fallecido", 0.02)]
 RESULT_CHOICES = [("positivo", 0.75), ("pendiente", 0.15), ("negativo", 0.10)]
+
+
+MIGRACION_042 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                             "postgres", "migraciones", "042_catalogos_con_fuente.sql")
+
+
+def datos_por_enfermedad():
+    """El bloque de datos por enfermedad de la 042 (clasificación, definiciones de caso, versiones e
+    intervalos de parámetros y supuestos de efectividad). En una instalación limpia el dump corre
+    antes que esta semilla, cuando DENGUE_DEMO, ZIKA_DEMO y MALARIA_DEMO todavía no existen: se
+    repite aquí, tal cual, para que también les llegue. Todo es idempotente."""
+    texto = open(MIGRACION_042, encoding="utf-8").read()
+    inicio = texto.index("-- <datos-por-enfermedad>")
+    fin = texto.index("-- </datos-por-enfermedad>") + len("-- </datos-por-enfermedad>")
+    return ("-- ---------------------------------------------------------------------------\n"
+            "-- Datos por enfermedad de la migracion 042 (D58), repetidos para las tres de arriba.\n"
+            "-- Los lee gen_demo_data.py de la migracion: no editar aqui.\n"
+            "-- ---------------------------------------------------------------------------\n"
+            + texto[inicio:fin] + "\n")
 
 
 def weighted_choice(pairs):
@@ -157,11 +177,13 @@ def main():
       }'::jsonb)
 ON CONFLICT (code) DO NOTHING;
 """)
+    out.append(datos_por_enfermedad())
 
     demo_password = "Epidemia2026!"
     admin_password = "Admin2026!"
     hash_epidemiologa = gen_password_hash(demo_password)
     hash_analista = gen_password_hash(demo_password)
+    hash_capturista = gen_password_hash(demo_password)
     hash_admin = gen_password_hash(admin_password)
     out.append("-- ---------------------------------------------------------------------------")
     out.append("-- Usuarios de demostracion para el recorrido. Passwords reales (bcrypt).")
@@ -169,7 +191,11 @@ ON CONFLICT (code) DO NOTHING;
     out.append("-- quien construye el escenario no sea quien lo autoriza (ver migracion 013).")
     out.append("--   analista:      alex.cavazos   (rol ANALISTA)")
     out.append("--   epidemiologa:  diana.flores   (rol EPIDEMIOLOGO)")
-    out.append(f"--   password de ambos:  {demo_password}   (documentada tambien en README.md)")
+    out.append("-- La capturista es la cuenta de la app movil: captura casos y sincroniza")
+    out.append("-- lotes (servicios casos y sincronizacion). En la web entra solo al tablero y")
+    out.append("-- al mapa; cualquier otra pantalla le responde 403 (D1, RF-G11).")
+    out.append("--   capturista:    karla.trevino  (rol CAPTURISTA)")
+    out.append(f"--   password de las tres:  {demo_password}   (documentada tambien en README.md)")
     out.append("-- Mas abajo se le pone contrasena tambien a 'admin', que 010 crea con un")
     out.append("-- marcador invalido a proposito.")
     out.append("-- SOLO para el entorno local -- no usar este patron en un ambiente real.")
@@ -178,7 +204,9 @@ ON CONFLICT (code) DO NOTHING;
 VALUES ('diana.flores', 'diana.flores@salud.nl.gob.mx', '{hash_epidemiologa}',
         'Diana Flores', TRUE),
        ('alex.cavazos', 'alex.cavazos@salud.nl.gob.mx', '{hash_analista}',
-        'Alex Cavazos', TRUE)
+        'Alex Cavazos', TRUE),
+       ('karla.trevino', 'karla.trevino@salud.nl.gob.mx', '{hash_capturista}',
+        'Karla Treviño', TRUE)
 ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash;
 
 INSERT INTO user_roles (user_id, role_id)
@@ -189,6 +217,11 @@ ON CONFLICT DO NOTHING;
 INSERT INTO user_roles (user_id, role_id)
 SELECT u.id, r.id FROM users u CROSS JOIN roles r
 WHERE u.username = 'alex.cavazos' AND r.code = 'ANALISTA'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id FROM users u CROSS JOIN roles r
+WHERE u.username = 'karla.trevino' AND r.code = 'CAPTURISTA'
 ON CONFLICT DO NOTHING;
 
 -- Cuenta de administracion. 010_datos_iniciales.sql la crea con el marcador

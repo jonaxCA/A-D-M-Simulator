@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<preferencias><preferencias><preferencia><type>CASE_REJECTED</type><nombre>Caso descartado</nombre><enabled tipo="booleano">true</enabled><fijo tipo="booleano">false</fijo></preferencia><preferencia><type>CAMPAIGN</type><nombre>Campañas</nombre><enabled tipo="booleano">false</enabled><fijo tipo="booleano">false</fijo></preferencia><preferencia><type>DATA_INCOMPLETE</type><nombre>Datos incompletos</nombre><enabled tipo="booleano">true</enabled><fijo tipo="booleano">false</fijo></preferencia></preferencias></preferencias>

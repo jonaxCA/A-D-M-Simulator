@@ -24,7 +24,7 @@
       "get": {
         "summary": "Indicadores del tablero",
         "operationId": "indicadores_tablero",
-        "description": "Casos activos, tasa de incidencia por 100k, zonas en riesgo y simulaciones activas, con su variación semanal.",
+        "description": "Casos activos, tasa de incidencia por 100k, zonas en riesgo y simulaciones activas, con su variación semanal (los campos de siempre). `indicadores` (F7) da cada uno con su cuenta: `valor`, `unidad`, `numerador` y `denominador` (cada uno con `valor` y `descripcion`), `factor`, `periodo` (`desde`, `hasta`, `dias`), `previo` (la semana anterior: `valor`, `numerador` y sus fechas) y `variacion_pct`. Con `factor`, valor = numerador / denominador × factor; sin él, valor = numerador y el denominador, si viene, es el total de referencia. Suma `tasa_mortalidad` (casos con gravedad `fallecido` por 100 000 habitantes), `letalidad` (% de los casos que fallecieron) y `casos_graves` (% con gravedad `grave`). D57 suma `prevalencia` (casos de los últimos 14 días por 100 000 habitantes), `hospitalizaciones` (casos graves de los últimos 14 días) y `capacidad_utilizada` (esas hospitalizaciones entre las camas censables del sector público de Nuevo León, %). La plataforma no registra hospitalizaciones: se estiman con dos supuestos, a la vista en cada numerador (un caso sigue activo 14 días; uno grave ocupa una cama censable ese tiempo). Cada indicador trae `fuente`: null si sale de los casos; en `capacidad_utilizada`, la de las camas (`documento`, `url`, `licencia`, `corte`, `alcance` y `sha256`: DGIS, Recursos en Salud Sectorial, cierre 2025). Los casos son los `pendiente` o `validado`, por fecha de reporte, en los municipios de Nuevo León; la semana es hoy y los 6 días previos. Un valor que dividiría entre cero es `null`.",
         "parameters": [
           {
             "in": "query",
@@ -48,12 +48,260 @@
                   "type": "object"
                 },
                 "example": {
-                  "casos_activos": 0,
-                  "casos_pct": 0.0,
-                  "tasa_incidencia": 0.0,
-                  "tasa_pct": 0.0,
-                  "zonas_en_riesgo": 0,
-                  "simulaciones_activas": 70
+                  "casos_activos": 120,
+                  "casos_pct": 15.4,
+                  "tasa_incidencia": 2.1,
+                  "tasa_pct": 16.7,
+                  "zonas_en_riesgo": 3,
+                  "simulaciones_activas": 1,
+                  "indicadores": [
+                    {
+                      "clave": "casos_activos",
+                      "nombre": "Casos de la semana",
+                      "valor": 120,
+                      "unidad": "casos",
+                      "numerador": {
+                        "valor": 120,
+                        "descripcion": "Casos reportados en el periodo (pendientes o validados) en los municipios de Nuevo León"
+                      },
+                      "denominador": null,
+                      "factor": null,
+                      "periodo": {
+                        "desde": "2026-11-15",
+                        "hasta": "2026-11-21",
+                        "dias": 7
+                      },
+                      "previo": {
+                        "desde": "2026-11-08",
+                        "hasta": "2026-11-14",
+                        "dias": 7,
+                        "valor": 104,
+                        "numerador": 104
+                      },
+                      "variacion_pct": 15.4,
+                      "fuente": null
+                    },
+                    {
+                      "clave": "tasa_incidencia",
+                      "nombre": "Tasa de incidencia",
+                      "valor": 2.1,
+                      "unidad": "casos por 100 000 habitantes",
+                      "numerador": {
+                        "valor": 120,
+                        "descripcion": "Casos reportados en el periodo (pendientes o validados) en los municipios de Nuevo León"
+                      },
+                      "denominador": {
+                        "valor": 5784442,
+                        "descripcion": "Habitantes de Nuevo León"
+                      },
+                      "factor": 100000,
+                      "periodo": {
+                        "desde": "2026-11-15",
+                        "hasta": "2026-11-21",
+                        "dias": 7
+                      },
+                      "previo": {
+                        "desde": "2026-11-08",
+                        "hasta": "2026-11-14",
+                        "dias": 7,
+                        "valor": 1.8,
+                        "numerador": 104
+                      },
+                      "variacion_pct": 16.7,
+                      "fuente": null
+                    },
+                    {
+                      "clave": "tasa_mortalidad",
+                      "nombre": "Tasa de mortalidad",
+                      "valor": 0.05,
+                      "unidad": "defunciones por 100 000 habitantes",
+                      "numerador": {
+                        "valor": 3,
+                        "descripcion": "Casos con gravedad «fallecido» reportados en el periodo"
+                      },
+                      "denominador": {
+                        "valor": 5784442,
+                        "descripcion": "Habitantes de Nuevo León"
+                      },
+                      "factor": 100000,
+                      "periodo": {
+                        "desde": "2026-11-15",
+                        "hasta": "2026-11-21",
+                        "dias": 7
+                      },
+                      "previo": {
+                        "desde": "2026-11-08",
+                        "hasta": "2026-11-14",
+                        "dias": 7,
+                        "valor": 0.02,
+                        "numerador": 1
+                      },
+                      "variacion_pct": 150.0,
+                      "fuente": null
+                    },
+                    {
+                      "clave": "letalidad",
+                      "nombre": "Letalidad",
+                      "valor": 2.5,
+                      "unidad": "% de los casos",
+                      "numerador": {
+                        "valor": 3,
+                        "descripcion": "Casos con gravedad «fallecido» reportados en el periodo"
+                      },
+                      "denominador": {
+                        "valor": 120,
+                        "descripcion": "Casos reportados en el periodo"
+                      },
+                      "factor": 100,
+                      "periodo": {
+                        "desde": "2026-11-15",
+                        "hasta": "2026-11-21",
+                        "dias": 7
+                      },
+                      "previo": null,
+                      "variacion_pct": null,
+                      "fuente": null
+                    },
+                    {
+                      "clave": "casos_graves",
+                      "nombre": "Casos graves",
+                      "valor": 10.0,
+                      "unidad": "% de los casos",
+                      "numerador": {
+                        "valor": 12,
+                        "descripcion": "Casos con gravedad «grave» reportados en el periodo"
+                      },
+                      "denominador": {
+                        "valor": 120,
+                        "descripcion": "Casos reportados en el periodo"
+                      },
+                      "factor": 100,
+                      "periodo": {
+                        "desde": "2026-11-15",
+                        "hasta": "2026-11-21",
+                        "dias": 7
+                      },
+                      "previo": null,
+                      "variacion_pct": null,
+                      "fuente": null
+                    },
+                    {
+                      "clave": "prevalencia",
+                      "nombre": "Prevalencia de casos activos",
+                      "valor": 3.9,
+                      "unidad": "casos por 100 000 habitantes",
+                      "numerador": {
+                        "valor": 224,
+                        "descripcion": "Casos reportados en los últimos 14 días: se suponen activos (D57)"
+                      },
+                      "denominador": {
+                        "valor": 5784442,
+                        "descripcion": "Habitantes de Nuevo León"
+                      },
+                      "factor": 100000,
+                      "periodo": {
+                        "desde": "2026-11-08",
+                        "hasta": "2026-11-21",
+                        "dias": 14
+                      },
+                      "previo": null,
+                      "variacion_pct": null,
+                      "fuente": null
+                    },
+                    {
+                      "clave": "hospitalizaciones",
+                      "nombre": "Hospitalizaciones estimadas",
+                      "valor": 21,
+                      "unidad": "casos",
+                      "numerador": {
+                        "valor": 21,
+                        "descripcion": "Casos con gravedad «grave» reportados en los últimos 14 días; cada uno se supone hospitalizado y en una cama censable durante 14 días (D57)"
+                      },
+                      "denominador": null,
+                      "factor": null,
+                      "periodo": {
+                        "desde": "2026-11-08",
+                        "hasta": "2026-11-21",
+                        "dias": 14
+                      },
+                      "previo": null,
+                      "variacion_pct": null,
+                      "fuente": null
+                    },
+                    {
+                      "clave": "capacidad_utilizada",
+                      "nombre": "Capacidad hospitalaria utilizada",
+                      "valor": 0.5,
+                      "unidad": "% de las camas censables",
+                      "numerador": {
+                        "valor": 21,
+                        "descripcion": "Hospitalizaciones estimadas: casos graves de los últimos 14 días"
+                      },
+                      "denominador": {
+                        "valor": 4339,
+                        "descripcion": "Camas censables del sector público de Nuevo León al 2025-12-31 (DGIS)"
+                      },
+                      "factor": 100,
+                      "periodo": {
+                        "desde": "2026-11-08",
+                        "hasta": "2026-11-21",
+                        "dias": 14
+                      },
+                      "previo": null,
+                      "variacion_pct": null,
+                      "fuente": {
+                        "documento": "Secretaría de Salud, Dirección General de Información en Salud (DGIS). Recursos en Salud Sectorial, cierre anual 2025",
+                        "url": "http://www.dgis.salud.gob.mx/descargas/datosabiertos/recursosSalud/Recursos_Salud_Sectorial_2025.zip",
+                        "licencia": "Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente",
+                        "corte": "2025-12-31",
+                        "alcance": "Sector público: Secretaría de Salud, IMSS, ISSSTE, Servicios de Salud IMSS-Bienestar, DIF, servicios estatales, municipales y universitarios, y los demás que reporta la DGIS. No incluye hospitales privados.",
+                        "sha256": "cea7529a75253d6212a6a79c5c0082048a6f104e361a9b5137345af29e3fe747"
+                      }
+                    },
+                    {
+                      "clave": "zonas_en_riesgo",
+                      "nombre": "Zonas en riesgo",
+                      "valor": 3,
+                      "unidad": "municipios",
+                      "numerador": {
+                        "valor": 3,
+                        "descripcion": "Municipios con más de 10 casos por 100 000 habitantes en el periodo"
+                      },
+                      "denominador": {
+                        "valor": 51,
+                        "descripcion": "Municipios de Nuevo León"
+                      },
+                      "factor": null,
+                      "periodo": {
+                        "desde": "2026-11-15",
+                        "hasta": "2026-11-21",
+                        "dias": 7
+                      },
+                      "previo": null,
+                      "variacion_pct": null,
+                      "fuente": null
+                    },
+                    {
+                      "clave": "simulaciones_activas",
+                      "nombre": "Simulaciones activas",
+                      "valor": 1,
+                      "unidad": "corridas",
+                      "numerador": {
+                        "valor": 1,
+                        "descripcion": "Corridas encoladas o ejecutándose en este momento"
+                      },
+                      "denominador": null,
+                      "factor": null,
+                      "periodo": {
+                        "desde": null,
+                        "hasta": null,
+                        "dias": null
+                      },
+                      "previo": null,
+                      "variacion_pct": null,
+                      "fuente": null
+                    }
+                  ]
                 }
               },
               "application/xml": {
@@ -66,7 +314,7 @@
                 "examples": {
                   "respuesta": {
                     "summary": "Respuesta real (listas recortadas)",
-                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<indicadores><casos_activos tipo=\"numero\">0</casos_activos><casos_pct tipo=\"numero\">0.0</casos_pct><tasa_incidencia tipo=\"numero\">0.0</tasa_incidencia><tasa_pct tipo=\"numero\">0.0</tasa_pct><zonas_en_riesgo tipo=\"numero\">0</zonas_en_riesgo><simulaciones_activas tipo=\"numero\">70</simulaciones_activas></indicadores>\n"
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<indicadores><casos_activos tipo=\"numero\">120</casos_activos><casos_pct tipo=\"numero\">15.4</casos_pct><tasa_incidencia tipo=\"numero\">2.1</tasa_incidencia><tasa_pct tipo=\"numero\">16.7</tasa_pct><zonas_en_riesgo tipo=\"numero\">3</zonas_en_riesgo><simulaciones_activas tipo=\"numero\">1</simulaciones_activas><indicadores><indicador><clave>casos_activos</clave><nombre>Casos de la semana</nombre><valor tipo=\"numero\">120</valor><unidad>casos</unidad><numerador><valor tipo=\"numero\">120</valor><descripcion>Casos reportados en el periodo (pendientes o validados) en los municipios de Nuevo León</descripcion></numerador><denominador nil=\"true\" /><factor nil=\"true\" /><periodo><desde>2026-11-15</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">7</dias></periodo><previo><desde>2026-11-08</desde><hasta>2026-11-14</hasta><dias tipo=\"numero\">7</dias><valor tipo=\"numero\">104</valor><numerador tipo=\"numero\">104</numerador></previo><variacion_pct tipo=\"numero\">15.4</variacion_pct><fuente nil=\"true\" /></indicador><indicador><clave>tasa_incidencia</clave><nombre>Tasa de incidencia</nombre><valor tipo=\"numero\">2.1</valor><unidad>casos por 100 000 habitantes</unidad><numerador><valor tipo=\"numero\">120</valor><descripcion>Casos reportados en el periodo (pendientes o validados) en los municipios de Nuevo León</descripcion></numerador><denominador><valor tipo=\"numero\">5784442</valor><descripcion>Habitantes de Nuevo León</descripcion></denominador><factor tipo=\"numero\">100000</factor><periodo><desde>2026-11-15</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">7</dias></periodo><previo><desde>2026-11-08</desde><hasta>2026-11-14</hasta><dias tipo=\"numero\">7</dias><valor tipo=\"numero\">1.8</valor><numerador tipo=\"numero\">104</numerador></previo><variacion_pct tipo=\"numero\">16.7</variacion_pct><fuente nil=\"true\" /></indicador><indicador><clave>tasa_mortalidad</clave><nombre>Tasa de mortalidad</nombre><valor tipo=\"numero\">0.05</valor><unidad>defunciones por 100 000 habitantes</unidad><numerador><valor tipo=\"numero\">3</valor><descripcion>Casos con gravedad «fallecido» reportados en el periodo</descripcion></numerador><denominador><valor tipo=\"numero\">5784442</valor><descripcion>Habitantes de Nuevo León</descripcion></denominador><factor tipo=\"numero\">100000</factor><periodo><desde>2026-11-15</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">7</dias></periodo><previo><desde>2026-11-08</desde><hasta>2026-11-14</hasta><dias tipo=\"numero\">7</dias><valor tipo=\"numero\">0.02</valor><numerador tipo=\"numero\">1</numerador></previo><variacion_pct tipo=\"numero\">150.0</variacion_pct><fuente nil=\"true\" /></indicador><indicador><clave>letalidad</clave><nombre>Letalidad</nombre><valor tipo=\"numero\">2.5</valor><unidad>% de los casos</unidad><numerador><valor tipo=\"numero\">3</valor><descripcion>Casos con gravedad «fallecido» reportados en el periodo</descripcion></numerador><denominador><valor tipo=\"numero\">120</valor><descripcion>Casos reportados en el periodo</descripcion></denominador><factor tipo=\"numero\">100</factor><periodo><desde>2026-11-15</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">7</dias></periodo><previo nil=\"true\" /><variacion_pct nil=\"true\" /><fuente nil=\"true\" /></indicador><indicador><clave>casos_graves</clave><nombre>Casos graves</nombre><valor tipo=\"numero\">10.0</valor><unidad>% de los casos</unidad><numerador><valor tipo=\"numero\">12</valor><descripcion>Casos con gravedad «grave» reportados en el periodo</descripcion></numerador><denominador><valor tipo=\"numero\">120</valor><descripcion>Casos reportados en el periodo</descripcion></denominador><factor tipo=\"numero\">100</factor><periodo><desde>2026-11-15</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">7</dias></periodo><previo nil=\"true\" /><variacion_pct nil=\"true\" /><fuente nil=\"true\" /></indicador><indicador><clave>prevalencia</clave><nombre>Prevalencia de casos activos</nombre><valor tipo=\"numero\">3.9</valor><unidad>casos por 100 000 habitantes</unidad><numerador><valor tipo=\"numero\">224</valor><descripcion>Casos reportados en los últimos 14 días: se suponen activos (D57)</descripcion></numerador><denominador><valor tipo=\"numero\">5784442</valor><descripcion>Habitantes de Nuevo León</descripcion></denominador><factor tipo=\"numero\">100000</factor><periodo><desde>2026-11-08</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">14</dias></periodo><previo nil=\"true\" /><variacion_pct nil=\"true\" /><fuente nil=\"true\" /></indicador><indicador><clave>hospitalizaciones</clave><nombre>Hospitalizaciones estimadas</nombre><valor tipo=\"numero\">21</valor><unidad>casos</unidad><numerador><valor tipo=\"numero\">21</valor><descripcion>Casos con gravedad «grave» reportados en los últimos 14 días; cada uno se supone hospitalizado y en una cama censable durante 14 días (D57)</descripcion></numerador><denominador nil=\"true\" /><factor nil=\"true\" /><periodo><desde>2026-11-08</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">14</dias></periodo><previo nil=\"true\" /><variacion_pct nil=\"true\" /><fuente nil=\"true\" /></indicador><indicador><clave>capacidad_utilizada</clave><nombre>Capacidad hospitalaria utilizada</nombre><valor tipo=\"numero\">0.5</valor><unidad>% de las camas censables</unidad><numerador><valor tipo=\"numero\">21</valor><descripcion>Hospitalizaciones estimadas: casos graves de los últimos 14 días</descripcion></numerador><denominador><valor tipo=\"numero\">4339</valor><descripcion>Camas censables del sector público de Nuevo León al 2025-12-31 (DGIS)</descripcion></denominador><factor tipo=\"numero\">100</factor><periodo><desde>2026-11-08</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">14</dias></periodo><previo nil=\"true\" /><variacion_pct nil=\"true\" /><fuente><documento>Secretaría de Salud, Dirección General de Información en Salud (DGIS). Recursos en Salud Sectorial, cierre anual 2025</documento><url>http://www.dgis.salud.gob.mx/descargas/datosabiertos/recursosSalud/Recursos_Salud_Sectorial_2025.zip</url><licencia>Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente</licencia><corte>2025-12-31</corte><alcance>Sector público: Secretaría de Salud, IMSS, ISSSTE, Servicios de Salud IMSS-Bienestar, DIF, servicios estatales, municipales y universitarios, y los demás que reporta la DGIS. No incluye hospitales privados.</alcance><sha256>cea7529a75253d6212a6a79c5c0082048a6f104e361a9b5137345af29e3fe747</sha256></fuente></indicador><indicador><clave>zonas_en_riesgo</clave><nombre>Zonas en riesgo</nombre><valor tipo=\"numero\">3</valor><unidad>municipios</unidad><numerador><valor tipo=\"numero\">3</valor><descripcion>Municipios con más de 10 casos por 100 000 habitantes en el periodo</descripcion></numerador><denominador><valor tipo=\"numero\">51</valor><descripcion>Municipios de Nuevo León</descripcion></denominador><factor nil=\"true\" /><periodo><desde>2026-11-15</desde><hasta>2026-11-21</hasta><dias tipo=\"numero\">7</dias></periodo><previo nil=\"true\" /><variacion_pct nil=\"true\" /><fuente nil=\"true\" /></indicador><indicador><clave>simulaciones_activas</clave><nombre>Simulaciones activas</nombre><valor tipo=\"numero\">1</valor><unidad>corridas</unidad><numerador><valor tipo=\"numero\">1</valor><descripcion>Corridas encoladas o ejecutándose en este momento</descripcion></numerador><denominador nil=\"true\" /><factor nil=\"true\" /><periodo><desde nil=\"true\" /><hasta nil=\"true\" /><dias nil=\"true\" /></periodo><previo nil=\"true\" /><variacion_pct nil=\"true\" /><fuente nil=\"true\" /></indicador></indicadores></indicadores>"
                   }
                 }
               }
@@ -91,7 +339,7 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         }
       }
@@ -172,7 +420,171 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/curve": {
+      "get": {
+        "summary": "Curva del tablero",
+        "operationId": "curva_tablero",
+        "description": "Casos por día de los últimos 30 días, de todas las enfermedades, en los municipios de Nuevo León: la gráfica del tablero público. Agregada, sin datos de personas; pública como las demás rutas del tablero. Caché de 60 s.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "dias": 30,
+                  "puntos": [
+                    {
+                      "fecha": "2026-11-17",
+                      "total": 42
+                    },
+                    {
+                      "fecha": "2026-11-18",
+                      "total": 37
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "curva"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<curva><dias tipo=\"numero\">30</dias><puntos><punto><fecha>2026-11-17</fecha><total tipo=\"numero\">42</total></punto><punto><fecha>2026-11-18</fecha><total tipo=\"numero\">37</total></punto></puntos></curva>"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/situation/export": {
+      "get": {
+        "summary": "Exportar el resumen de situación",
+        "operationId": "exportar_situacion",
+        "description": "El mismo resumen que resumen_situacion, para exportarlo (el CSV lo arma el cliente). Pide sesión para que la bitácora registre EXPORT sobre reports (resumen_situacion) con quién exportó. Cualquier rol con sesión.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "Cuántas enfermedades, de 1 a 20. Por omisión 5.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "enfermedades": []
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "situacion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<situacion><enfermedades /></situacion>"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Rol sin permiso (PERMISO_INSUFICIENTE): solo cualquier rol con sesión. Queda en la bitácora como PERMISSION_DENIED."
+          },
+          "422": {
+            "description": "limit no es un entero de 1 a 20 (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }

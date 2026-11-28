@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - sesiones",
     "version": "0.1.0",
-    "description": "Renueva, cierra y revoca las sesiones que abre auth. Solo usa Redis."
+    "description": "Renueva, cierra y revoca las sesiones que abre auth, y lleva los dispositivos desde los que cada cuenta puede iniciar sesión (D41). Las sesiones están en Redis; los dispositivos, en PostgreSQL."
   },
   "servers": [
     {
@@ -93,7 +93,7 @@
             "description": "Datos inválidos (DATOS_INVALIDOS)"
           },
           "503": {
-            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         },
         "requestBody": {
@@ -187,7 +187,19 @@
             "description": "Falta token, token inválido, vencido o revocado"
           },
           "503": {
-            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         },
         "security": [
@@ -257,7 +269,19 @@
             "description": "Falta token, token inválido, vencido o revocado"
           },
           "503": {
-            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         },
         "security": [
@@ -271,7 +295,7 @@
       "delete": {
         "summary": "Cerrar las sesiones de una cuenta",
         "operationId": "cerrar_sesiones_usuario",
-        "description": "Interna: solo acepta un token de servicio (audiencia epidemia-interno). La llaman usuarios y roles al desactivar una cuenta o quitarle un rol.",
+        "description": "Interna: solo acepta un token de servicio (audiencia epidemia-interno). La llaman usuarios y roles al desactivar una cuenta o quitarle un rol. Solo acepta el token de usuarios o de roles.",
         "parameters": [
           {
             "in": "path",
@@ -335,7 +359,597 @@
             "description": "Datos inválidos (DATOS_INVALIDOS)"
           },
           "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "403": {
+            "description": "El token es de otro servicio (PERMISO_INSUFICIENTE)"
+          }
+        },
+        "security": [
+          {
+            "servicioAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sessions/devices/check": {
+      "post": {
+        "summary": "Registrar y revisar un dispositivo",
+        "operationId": "revisar_dispositivo",
+        "description": "Interna: solo acepta un token de servicio (audiencia epidemia-interno); la llama auth al iniciar sesión. Registra el dispositivo (solo se guarda el SHA-256 de dispositivo_id). El primero de una cuenta nace autorizado; los siguientes, pendientes. Un autorizado anota su último uso. Regresa la ficha; auth decide con status. Solo acepta el token del servicio auth; el de cualquier otro servicio da 403. Cada cuenta admite hasta 10 dispositivos pendientes (429 DEMASIADOS_DISPOSITIVOS).",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "usuario",
+                  "dispositivo_id"
+                ],
+                "properties": {
+                  "usuario": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "dispositivo_id": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128
+                  },
+                  "etiqueta": {
+                    "type": "string",
+                    "maxLength": 80
+                  }
+                }
+              },
+              "example": {
+                "usuario": 7,
+                "dispositivo_id": "DISPOSITIVO_DE_EJEMPLO_0001",
+                "etiqueta": "Laptop de oficina"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><usuario tipo=\"numero\">7</usuario><dispositivo_id>DISPOSITIVO_DE_EJEMPLO_0001</dispositivo_id><etiqueta>Laptop de oficina</etiqueta></solicitud>\n"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "user_id": 7,
+                  "label": "Laptop de oficina",
+                  "status": "pendiente",
+                  "authorized_by": null,
+                  "authorized_at": null,
+                  "last_seen_at": null,
+                  "created_at": "2026-11-20T16:00:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "dispositivo"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<dispositivo><id tipo=\"numero\">3</id><user_id tipo=\"numero\">7</user_id><label>Laptop de oficina</label><status>pendiente</status><authorized_by nil=\"true\" /><authorized_at nil=\"true\" /><last_seen_at nil=\"true\" /><created_at>2026-11-20T16:00:00+00:00</created_at></dispositivo>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token de servicio, o es el de una persona"
+          },
+          "413": {
+            "description": "Cuerpo demasiado grande"
+          },
+          "415": {
+            "description": "Content-Type distinto de JSON o XML"
+          },
+          "422": {
+            "description": "Falta un campo o dispositivo_id no tiene de 8 a 128 caracteres (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "403": {
+            "description": "El token es de un servicio distinto de auth (PERMISO_INSUFICIENTE)"
+          },
+          "429": {
+            "description": "La cuenta ya tiene 10 dispositivos pendientes (DEMASIADOS_DISPOSITIVOS)"
+          }
+        },
+        "security": [
+          {
+            "servicioAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sessions/devices": {
+      "get": {
+        "summary": "Dispositivos de una cuenta",
+        "operationId": "listar_dispositivos",
+        "description": "Los de quien pregunta; con user_id, los de otra cuenta, solo para ADMINISTRADOR.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "description": "Solo ADMINISTRADOR",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 2,
+                  "dispositivos": [
+                    {
+                      "id": 1,
+                      "user_id": 7,
+                      "label": "Teléfono",
+                      "status": "autorizado",
+                      "authorized_by": 7,
+                      "authorized_at": "2026-11-20T16:05:00+00:00",
+                      "last_seen_at": null,
+                      "created_at": "2026-11-20T16:00:00+00:00"
+                    },
+                    {
+                      "id": 3,
+                      "user_id": 7,
+                      "label": "Laptop de oficina",
+                      "status": "pendiente",
+                      "authorized_by": null,
+                      "authorized_at": null,
+                      "last_seen_at": null,
+                      "created_at": "2026-11-20T16:00:00+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "listado"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<listado><total tipo=\"numero\">2</total><dispositivos><dispositivo><id tipo=\"numero\">1</id><user_id tipo=\"numero\">7</user_id><label>Teléfono</label><status>autorizado</status><authorized_by tipo=\"numero\">7</authorized_by><authorized_at>2026-11-20T16:05:00+00:00</authorized_at><last_seen_at nil=\"true\" /><created_at>2026-11-20T16:00:00+00:00</created_at></dispositivo><dispositivo><id tipo=\"numero\">3</id><user_id tipo=\"numero\">7</user_id><label>Laptop de oficina</label><status>pendiente</status><authorized_by nil=\"true\" /><authorized_at nil=\"true\" /><last_seen_at nil=\"true\" /><created_at>2026-11-20T16:00:00+00:00</created_at></dispositivo></dispositivos></listado>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token, token inválido, vencido o revocado"
+          },
+          "403": {
+            "description": "user_id de otra cuenta sin ser ADMINISTRADOR (PERMISO_INSUFICIENTE)"
+          },
+          "422": {
+            "description": "user_id inválido (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sessions/devices/{id}/authorize": {
+      "post": {
+        "summary": "Autorizar un dispositivo",
+        "operationId": "autorizar_dispositivo",
+        "description": "La persona autoriza los suyos desde una sesión abierta; ADMINISTRADOR, los de cualquiera. Solo ADMINISTRADOR vuelve a autorizar uno revocado. Audita UPDATE en session_devices. Quien no es ADMINISTRADOR necesita que su sesión se haya abierto desde un dispositivo autorizado de su cuenta; si no, 403 DISPOSITIVO_NO_AUTORIZADO.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "id de session_devices",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "user_id": 7,
+                  "label": "Laptop de oficina",
+                  "status": "autorizado",
+                  "authorized_by": 7,
+                  "authorized_at": "2026-11-20T16:05:00+00:00",
+                  "last_seen_at": null,
+                  "created_at": "2026-11-20T16:00:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "dispositivo"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<dispositivo><id tipo=\"numero\">3</id><user_id tipo=\"numero\">7</user_id><label>Laptop de oficina</label><status>autorizado</status><authorized_by tipo=\"numero\">7</authorized_by><authorized_at>2026-11-20T16:05:00+00:00</authorized_at><last_seen_at nil=\"true\" /><created_at>2026-11-20T16:00:00+00:00</created_at></dispositivo>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token, token inválido, vencido o revocado"
+          },
+          "403": {
+            "description": "Solo ADMINISTRADOR vuelve a autorizar un dispositivo revocado (PERMISO_INSUFICIENTE); o la sesión no viene de un dispositivo autorizado (DISPOSITIVO_NO_AUTORIZADO)"
+          },
+          "404": {
+            "description": "No existe el dispositivo, o es de otra cuenta y quien pregunta no es ADMINISTRADOR (NO_ENCONTRADO)"
+          },
+          "409": {
+            "description": "El dispositivo ya está en ese estado (CONFLICTO)"
+          },
+          "422": {
+            "description": "id inválido (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sessions/devices/{id}/revoke": {
+      "post": {
+        "summary": "Revocar un dispositivo",
+        "operationId": "revocar_dispositivo",
+        "description": "La persona revoca los suyos; ADMINISTRADOR, los de cualquiera. Cierra las sesiones abiertas desde ese dispositivo y el login desde él responde 403. Audita UPDATE en session_devices. Quien no es ADMINISTRADOR necesita que su sesión se haya abierto desde un dispositivo autorizado de su cuenta; si no, 403 DISPOSITIVO_NO_AUTORIZADO.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "id de session_devices",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "user_id": 7,
+                  "label": "Laptop de oficina",
+                  "status": "revocado",
+                  "authorized_by": 7,
+                  "authorized_at": "2026-11-20T16:05:00+00:00",
+                  "last_seen_at": null,
+                  "created_at": "2026-11-20T16:00:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "dispositivo"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<dispositivo><id tipo=\"numero\">3</id><user_id tipo=\"numero\">7</user_id><label>Laptop de oficina</label><status>revocado</status><authorized_by tipo=\"numero\">7</authorized_by><authorized_at>2026-11-20T16:05:00+00:00</authorized_at><last_seen_at nil=\"true\" /><created_at>2026-11-20T16:00:00+00:00</created_at></dispositivo>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token, token inválido, vencido o revocado"
+          },
+          "403": {
+            "description": "Solo ADMINISTRADOR vuelve a autorizar un dispositivo revocado (PERMISO_INSUFICIENTE); o la sesión no viene de un dispositivo autorizado (DISPOSITIVO_NO_AUTORIZADO)"
+          },
+          "404": {
+            "description": "No existe el dispositivo, o es de otra cuenta y quien pregunta no es ADMINISTRADOR (NO_ENCONTRADO)"
+          },
+          "409": {
+            "description": "El dispositivo ya está en ese estado (CONFLICTO)"
+          },
+          "422": {
+            "description": "id inválido (DATOS_INVALIDOS)"
+          },
+          "503": {
+            "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE). También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sessions/internal/open": {
+      "post": {
+        "summary": "Abrir una sesión",
+        "operationId": "abrir_sesion",
+        "description": "Interna: solo acepta un token de servicio (audiencia epidemia-interno); la llama auth cuando ya validó credenciales y, si hace falta, el segundo factor. Abre la sesión en Redis (8 h; renovar no la alarga), aplica el tope de sesiones concurrentes (D41, MAX_SESIONES_POR_USUARIO, 3 por omisión: cierra la más antigua) y regresa el sid y el refresh. auth firma el access con ese sid. No audita: lo hace auth con LOGIN. Solo acepta el token del servicio auth; el de cualquier otro servicio da 403.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "usuario",
+                  "roles"
+                ],
+                "properties": {
+                  "usuario": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "roles": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "dispositivo": {
+                    "type": "string",
+                    "description": "SHA-256 del dispositivo_id; la sesión lo guarda para cerrarla si se revoca"
+                  }
+                }
+              },
+              "example": {
+                "usuario": 7,
+                "roles": [
+                  "ANALISTA"
+                ],
+                "dispositivo": "3f2a9c0e1b7d4a55a1c6c0b4a7e2d9f8e4b1c3a5d7f9e0b2c4d6e8f0a1b3c5d7"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "summary": "Petición",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><usuario tipo=\"numero\">7</usuario><roles><item>ANALISTA</item></roles><dispositivo>3f2a9c0e1b7d4a55a1c6c0b4a7e2d9f8e4b1c3a5d7f9e0b2c4d6e8f0a1b3c5d7</dispositivo></solicitud>\n"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "sid": "SID_DE_EJEMPLO",
+                  "refresh": "SID_DE_EJEMPLO.REFRESH_DE_EJEMPLO",
+                  "expira": 1795200000,
+                  "cerradas": 0
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "sesion"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "summary": "Respuesta real (tokens sustituidos)",
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<sesion><sid>SID_DE_EJEMPLO</sid><refresh>SID_DE_EJEMPLO.REFRESH_DE_EJEMPLO</refresh><expira tipo=\"numero\">1795200000</expira><cerradas tipo=\"numero\">0</cerradas></sesion>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token de servicio, o es el de una persona"
+          },
+          "413": {
+            "description": "Cuerpo demasiado grande"
+          },
+          "415": {
+            "description": "Content-Type distinto de JSON o XML"
+          },
+          "422": {
+            "description": "Falta usuario o roles no es una lista de textos (DATOS_INVALIDOS)"
+          },
+          "503": {
             "description": "Redis no disponible (SERVICIO_NO_DISPONIBLE)"
+          },
+          "403": {
+            "description": "El token es de un servicio distinto de auth (PERMISO_INSUFICIENTE)"
           }
         },
         "security": [

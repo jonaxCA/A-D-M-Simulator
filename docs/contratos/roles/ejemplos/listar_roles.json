@@ -1,0 +1,20 @@
+{
+  "total": 3,
+  "roles": [
+    {
+      "id": 3,
+      "code": "ANALISTA",
+      "name": "Analista"
+    },
+    {
+      "id": 2,
+      "code": "EPIDEMIOLOGO",
+      "name": "Epidemiólogo"
+    },
+    {
+      "id": 1,
+      "code": "ADMINISTRADOR",
+      "name": "Administrador"
+    }
+  ]
+}

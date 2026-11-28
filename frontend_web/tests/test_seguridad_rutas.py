@@ -8,19 +8,16 @@ Seguridad, del lado de las rutas:
   - El alta de una enfermedad solo fija parametros si quien la da de alta
     puede editarlos (EPIDEMIOLOGO / ADMINISTRADOR).
   - Sin JWT_SECRET_KEY la app no arranca.
-  - Una intervencion invalida no borra el historial de versiones.
 
 Ejecutar:
     python -m unittest frontend_web.tests.test_seguridad_rutas -v
 """
 import os
-import re
 import secrets
 import unittest
 from unittest.mock import patch
 
 from frontend_web.tests.base import AppTestCase
-from backend_web import queries
 from backend_web.auth import create_token, decode_token, hash_password
 from backend_web.db import query
 from backend_web.tests.base import escribe, requiere_base, token_de
@@ -51,13 +48,15 @@ class LoginRedireccionTests(AppTestCase):
     """El POST de login con un `next` hostil termina en el dashboard."""
 
     def setUp(self):
-        # Sin credenciales reales ni filas de bitacora: lo que se prueba es a
-        # donde manda el redirect, no la autenticacion.
+        super().setUp()
+        # Sin auth ni captcha reales (D36): lo que se prueba es a donde manda el redirect, no
+        # la autenticacion.
         for objetivo, valor in (
-            ("frontend_web.app.routes.attempt_login",
-             ({"id": 5, "username": "prueba", "full_name": "Prueba",
-               "roles": ["ANALISTA"]}, None)),
-            ("frontend_web.app.routes.log_audit", None),
+            ("frontend_web.app.sesion_servicios.iniciar",
+             {"access_token": "a", "refresh_token": "r",
+              "usuario": {"id": 5, "username": "prueba", "full_name": "Prueba",
+                          "roles": ["ANALISTA"]}}),
+            ("frontend_web.app.sesion_servicios.captcha", None),
         ):
             simulado = patch(objetivo, return_value=valor)
             simulado.start()
@@ -121,22 +120,28 @@ USUARIO_REVOCACION = "prueba.revocacion"
 
 @requiere_base
 class RevocacionTests(AppTestCase):
-    """Cuenta de prueba propia: activa con EPIDEMIOLOGO durante la prueba e
-    inactiva al terminar. No se borra porque los intentos denegados la dejan
-    en audit_log, que es de solo insercion. Su contrasena es aleatoria y no se
-    guarda en ningun lado."""
+    """D36: la sesion la llevan auth y sesiones. La cuenta entra con su login real, y desactivarla
+    (usuarios) o cambiarle el rol (roles) cierra sus sesiones: la web deja de aceptarla.
+
+    Cuenta de prueba propia: activa con EPIDEMIOLOGO durante la prueba e inactiva al terminar.
+    No se borra porque los intentos denegados la dejan en audit_log, que es de solo insercion.
+    Su contrasena es aleatoria y no se guarda en ningun lado."""
+
+    sesion_real = True
 
     def setUp(self):
+        super().setUp()
+        self.password = secrets.token_urlsafe(24)
         escribe(
             """INSERT INTO users (username, email, password_hash, full_name, is_active)
                VALUES (%s, %s, %s, 'Revocacion de prueba', TRUE)
-               ON CONFLICT (username) DO UPDATE SET is_active = TRUE""",
-            (USUARIO_REVOCACION, f"{USUARIO_REVOCACION}@example.com",
-             hash_password(secrets.token_urlsafe(24))))
+               ON CONFLICT (username) DO UPDATE SET is_active = TRUE, password_hash = EXCLUDED.password_hash""",
+            (USUARIO_REVOCACION, f"{USUARIO_REVOCACION}@example.com", hash_password(self.password)))
         self.user_id = query("SELECT id FROM users WHERE username = %s",
                              (USUARIO_REVOCACION,), one=True)["id"]
         self._pon_rol("EPIDEMIOLOGO")
-        self.token = token_de(USUARIO_REVOCACION)
+        self.client = self.app.test_client()
+        self._login(self.client, USUARIO_REVOCACION, self.password)
 
     def tearDown(self):
         escribe("UPDATE users SET is_active = FALSE WHERE id = %s", (self.user_id,))
@@ -147,28 +152,34 @@ class RevocacionTests(AppTestCase):
         escribe("""INSERT INTO user_roles (user_id, role_id)
                     SELECT %s, id FROM roles WHERE code = %s""", (self.user_id, codigo))
 
+    def _como_admin(self, servicio, metodo, ruta, cuerpo=None):
+        admin = query("""SELECT u.username FROM users u JOIN user_roles ur ON ur.user_id = u.id
+                         JOIN roles r ON r.id = ur.role_id
+                         WHERE r.code = 'ADMINISTRADOR' AND u.is_active LIMIT 1""", one=True)
+        token = self.puente._con_sesion(token_de(admin["username"]), forzar=True)
+        return self.puente(servicio, metodo, ruta, token=token, cuerpo=cuerpo)
+
     def _get(self, ruta):
-        with self.app.test_client() as client:
-            client.set_cookie(COOKIE_NAME, self.token)
-            return client.get(ruta, follow_redirects=False)
+        return self.client.get(ruta, follow_redirects=False)
 
     def test_con_la_cuenta_vigente_entra(self):
         self.assertEqual(self._get("/revisiones").status_code, 200)
 
     def test_cuenta_desactivada_ya_no_entra_con_su_token(self):
-        escribe("UPDATE users SET is_active = FALSE WHERE id = %s", (self.user_id,))
+        self._como_admin("usuarios", "POST", "/api/v1/users/%d/deactivate" % self.user_id)
         resp = self._get("/revisiones")
         self.assertEqual(resp.status_code, 302)
         self.assertIn("/login", resp.headers["Location"])
 
-    def test_rol_retirado_deja_de_valer_aunque_el_token_lo_traiga(self):
-        self._pon_rol("ANALISTA")
-        self.assertIn("EPIDEMIOLOGO", decode_token(self.token)["roles"])
+    def test_cambiar_el_rol_cierra_la_sesion(self):
+        analista = query("SELECT id FROM roles WHERE code = 'ANALISTA'", one=True)["id"]
+        self._como_admin("roles", "PUT", "/api/v1/roles/assignments/%d" % self.user_id,
+                         {"role_id": analista})
         resp = self._get("/revisiones")
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("/dashboard", resp.headers["Location"])
+        self.assertIn("/login", resp.headers["Location"])
 
-    def test_token_de_una_cuenta_que_no_existe(self):
+    def test_token_sin_sesion_no_entra(self):
         fantasma = create_token({"id": 987654321, "username": "nadie",
                                  "full_name": "Nadie", "roles": ["ADMINISTRADOR"]})
         with self.app.test_client() as client:
@@ -181,9 +192,9 @@ class RevocacionTests(AppTestCase):
         """RFC 7519 pide `sub` como cadena (PyJWT >= 2.10 rechaza un entero);
         la app lo compara con ids de la base, asi que lo recibe como int."""
         from frontend_web.app.permisos import get_current_user
-        self.assertEqual(decode_token(self.token)["sub"], str(self.user_id))
-        with self.app.test_request_context(
-                headers={"Cookie": f"{COOKIE_NAME}={self.token}"}):
+        token = self.client.get_cookie(COOKIE_NAME).value
+        self.assertEqual(decode_token(token)["sub"], str(self.user_id))
+        with self.app.test_request_context(headers={"Cookie": f"{COOKIE_NAME}={token}"}):
             self.assertEqual(get_current_user()["sub"], self.user_id)
 
 
@@ -197,6 +208,7 @@ CODIGO_EPIDEMIOLOGO = "ZZZ_ALTA_EPIDEMIOLOGO"
 @requiere_base
 class AltaEnfermedadTests(AppTestCase):
     def setUp(self):
+        super().setUp()
         self._borra()
 
     def tearDown(self):
@@ -216,72 +228,28 @@ class AltaEnfermedadTests(AppTestCase):
         return query("SELECT default_params FROM diseases WHERE code = %s",
                      (codigo,), one=True)["default_params"]
 
-    def test_analista_da_de_alta_pero_sin_parametros(self):
-        params = self._alta("alex.cavazos", CODIGO_ANALISTA)
-        self.assertNotIn("r0", params or {})
+    def test_el_analista_no_da_de_alta(self):
+        # D1: catalogs.create es de EPIDEMIOLOGO y ADMINISTRADOR.
+        with self.app.test_client() as client:
+            client.set_cookie(COOKIE_NAME, token_de("alex.cavazos"))
+            resp = client.post("/enfermedades/nueva", data={
+                "code": CODIGO_ANALISTA, "name": f"Prueba {CODIGO_ANALISTA}"})
+        self.assertEqual(resp.status_code, 403)
+        self.assertIsNone(query("SELECT id FROM diseases WHERE code = %s", (CODIGO_ANALISTA,),
+                                one=True))
 
     def test_epidemiologo_si_fija_parametros_en_el_alta(self):
         params = self._alta("diana.flores", CODIGO_EPIDEMIOLOGO)
         self.assertEqual(params["r0"]["valor"], 2.5)
         self.assertEqual(params["r0"]["fuente"], "Fuente de prueba")
 
-    def test_el_formulario_solo_muestra_parametros_a_quien_los_fija(self):
+    def test_el_formulario_es_de_quien_da_de_alta_y_trae_los_parametros(self):
         with self.app.test_client() as client:
             client.set_cookie(COOKIE_NAME, token_de("alex.cavazos"))
-            analista = client.get("/enfermedades/nueva").data.decode("utf-8")
+            self.assertEqual(client.get("/enfermedades/nueva").status_code, 403)
             client.set_cookie(COOKIE_NAME, token_de("diana.flores"))
             epidemiologo = client.get("/enfermedades/nueva").data.decode("utf-8")
-        self.assertNotIn('name="p_r0_valor"', analista)
-        self.assertIn("epidemiólogo", analista)
         self.assertIn('name="p_r0_valor"', epidemiologo)
-
-
-# ---------------------------------------------------------------------------
-# 8. Historial tras una intervencion invalida
-# ---------------------------------------------------------------------------
-NOMBRE_HISTORIAL = "ZZZ historial tras error de captura"
-
-
-@requiere_base
-class HistorialTrasErrorTests(AppTestCase):
-    def setUp(self):
-        self._borra()
-        regiones = queries.get_regiones_para_escenario()
-        enfermedades = queries.get_enfermedades_para_escenario()
-        mty = next((r for r in regiones if r["code"] == "19039"), None)
-        enfermedad = next((e for e in enfermedades if e["simulable"]), None)
-        if not mty or not enfermedad:
-            self.skipTest("la base no tiene Monterrey o una enfermedad simulable")
-        self.token = token_de("alex.cavazos")
-        with self.app.test_client() as client:
-            client.set_cookie(COOKIE_NAME, self.token)
-            resp = client.post("/escenarios/nuevo", data={
-                "name": NOMBRE_HISTORIAL, "disease_id": str(enfermedad["id"]),
-                "region_id": str(mty["id"]), "population_size": "1000",
-                "initial_infected": "5", "horizon_days": "90", "notes": "v1"})
-        self.assertEqual(resp.status_code, 302, resp.data[:500])
-        self.sid = query("SELECT id FROM scenarios WHERE name = %s",
-                         (NOMBRE_HISTORIAL,), one=True)["id"]
-
-    def tearDown(self):
-        self._borra()
-
-    def _borra(self):
-        escribe("""DELETE FROM scenario_versions WHERE scenario_id IN
-                    (SELECT id FROM scenarios WHERE name = %s)""", (NOMBRE_HISTORIAL,))
-        escribe("DELETE FROM scenarios WHERE name = %s", (NOMBRE_HISTORIAL,))
-
-    def test_el_historial_sigue_ahi_cuando_la_intervencion_es_invalida(self):
-        with self.app.test_client() as client:
-            client.set_cookie(COOKIE_NAME, self.token)
-            antes = client.get(f"/escenarios/{self.sid}").data.decode("utf-8")
-            resp = client.post(f"/escenarios/{self.sid}/intervenciones",
-                               data={"tipo": "CUBREBOCAS", "start_day": "999"})
-        self.assertEqual(resp.status_code, 400)
-        despues = resp.data.decode("utf-8")
-        patron = r"Historial de versiones \((\d+)\)"
-        self.assertEqual(re.search(patron, antes).group(1), "1")
-        self.assertEqual(re.search(patron, despues).group(1), "1")
 
 
 if __name__ == "__main__":

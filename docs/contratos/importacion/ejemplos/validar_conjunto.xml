@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<validacion><valido tipo="booleano">true</valido><sha256>9f2b7c1d4e5a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e</sha256><fallas /><resumen><puntos tipo="numero">4</puntos><inicio>2020-03-01</inicio><fin>2020-03-22</fin><total tipo="numero">103</total><maximo tipo="numero">40</maximo><periodos_en_cero tipo="numero">0</periodos_en_cero></resumen></validacion>

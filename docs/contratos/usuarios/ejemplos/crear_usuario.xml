@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<usuario><id tipo="numero">10</id><username>beto</username><email>beto@ejemplo.mx</email><full_name>Beto Ejemplo</full_name><is_active tipo="booleano">true</is_active><institution_id tipo="numero">1</institution_id><region_id tipo="numero">19</region_id></usuario>

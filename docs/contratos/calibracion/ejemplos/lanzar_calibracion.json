@@ -1,0 +1,15 @@
+{
+  "id": 5,
+  "dataset_id": 1,
+  "engine": "seir-ref",
+  "engine_version": "seir-ref-0.1",
+  "method": "abc-rechazo",
+  "method_version": "calibracion-0.1",
+  "config": {
+    "muestras": 5000,
+    "semillas": 3,
+    "cuantil": 0.01,
+    "semilla_muestreo": 1
+  },
+  "status": "encolado"
+}

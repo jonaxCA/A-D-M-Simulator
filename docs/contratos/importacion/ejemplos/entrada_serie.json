@@ -1,0 +1,20 @@
+{
+  "puntos": [
+    {
+      "periodo_inicio": "2020-03-01",
+      "valor": 7
+    },
+    {
+      "periodo_inicio": "2020-03-08",
+      "valor": 38
+    },
+    {
+      "periodo_inicio": "2020-03-15",
+      "valor": 40
+    },
+    {
+      "periodo_inicio": "2020-03-22",
+      "valor": 18
+    }
+  ]
+}

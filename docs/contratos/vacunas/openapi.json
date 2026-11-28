@@ -1,0 +1,1167 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - vacunas",
+    "version": "0.1.0",
+    "description": "Lotes de vacuna (tabla vaccine_lots) que la app móvil lee por QR o código de barras, y las dosis que se les aplican. Nunca se aplican más dosis de las que trae un lote, aunque dos teléfonos apliquen a la vez, ni a un lote caducado (la fecha se cuenta en hora de Monterrey). Registran y aplican CAPTURISTA y ADMINISTRADOR; consultan los seis perfiles. XML por defecto y JSON con ?format=json o Accept: application/json; los cuerpos se aceptan en los dos formatos."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5225"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token del servicio auth, con sesión activa en Redis."
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/vaccine-lots": {
+      "post": {
+        "summary": "Registrar un lote escaneado",
+        "operationId": "registrar_lote",
+        "description": "201 si el lot_code es nuevo. Si ya estaba con los mismos datos (un reintento), 200 con el que había; con otros datos, 409: hay que consultarlo por su código. CAPTURISTA y ADMINISTRADOR.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "lot_code",
+                  "disease_id",
+                  "doses_total"
+                ],
+                "properties": {
+                  "lot_code": {
+                    "type": "string",
+                    "pattern": "^[\\x21-\\x7e]{1,60}$",
+                    "description": "El código leído del QR o del código de barras: de 1 a 60 caracteres visibles, sin espacios. Único."
+                  },
+                  "manufacturer": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "nullable": true
+                  },
+                  "disease_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Enfermedad que previene"
+                  },
+                  "region_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "nullable": true,
+                    "description": "Municipio donde está asignado el lote"
+                  },
+                  "doses_total": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000
+                  },
+                  "expires_on": {
+                    "type": "string",
+                    "format": "date",
+                    "nullable": true,
+                    "description": "Caducidad. Un lote caducado se registra, pero no se le aplican dosis."
+                  }
+                }
+              },
+              "example": {
+                "lot_code": "FL3239-2026",
+                "manufacturer": "Sanofi Pasteur",
+                "disease_id": 1,
+                "region_id": 39,
+                "doses_total": 500,
+                "expires_on": "2027-03-31"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "lot_code",
+                  "disease_id",
+                  "doses_total"
+                ],
+                "properties": {
+                  "lot_code": {
+                    "type": "string",
+                    "pattern": "^[\\x21-\\x7e]{1,60}$",
+                    "description": "El código leído del QR o del código de barras: de 1 a 60 caracteres visibles, sin espacios. Único."
+                  },
+                  "manufacturer": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "nullable": true
+                  },
+                  "disease_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Enfermedad que previene"
+                  },
+                  "region_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "nullable": true,
+                    "description": "Municipio donde está asignado el lote"
+                  },
+                  "doses_total": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000
+                  },
+                  "expires_on": {
+                    "type": "string",
+                    "format": "date",
+                    "nullable": true,
+                    "description": "Caducidad. Un lote caducado se registra, pero no se le aplican dosis."
+                  }
+                },
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><lot_code>FL3239-2026</lot_code><manufacturer>Sanofi Pasteur</manufacturer><disease_id tipo=\"numero\">1</disease_id><region_id tipo=\"numero\">39</region_id><doses_total tipo=\"numero\">500</doses_total><expires_on>2027-03-31</expires_on></solicitud>\n"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 5,
+                  "lot_code": "FL3239-2026",
+                  "manufacturer": "Sanofi Pasteur",
+                  "disease_id": 1,
+                  "disease_name": "Influenza A",
+                  "region_id": 39,
+                  "region_name": "Monterrey",
+                  "doses_total": 500,
+                  "doses_used": 0,
+                  "doses_remaining": 500,
+                  "expires_on": "2027-03-31",
+                  "vencido": false,
+                  "scanned_by": 4,
+                  "scanned_at": "2026-11-01T18:10:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "lote_vacuna"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<lote_vacuna><id tipo=\"numero\">5</id><lot_code>FL3239-2026</lot_code><manufacturer>Sanofi Pasteur</manufacturer><disease_id tipo=\"numero\">1</disease_id><disease_name>Influenza A</disease_name><region_id tipo=\"numero\">39</region_id><region_name>Monterrey</region_name><doses_total tipo=\"numero\">500</doses_total><doses_used tipo=\"numero\">0</doses_used><doses_remaining tipo=\"numero\">500</doses_remaining><expires_on>2027-03-31</expires_on><vencido tipo=\"booleano\">false</vencido><scanned_by tipo=\"numero\">4</scanned_by><scanned_at>2026-11-01T18:10:00+00:00</scanned_at></lote_vacuna>\n"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Ya estaba registrado con los mismos datos"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "400": {
+            "description": "JSON o XML ilegible"
+          },
+          "409": {
+            "description": "El código ya está con otros datos, se está registrando en otra petición, o la enfermedad o la región no existen"
+          },
+          "415": {
+            "description": "Content-Type no soportado"
+          },
+          "422": {
+            "description": "Algún campo inválido o desconocido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Buscar lotes",
+        "operationId": "listar_lotes",
+        "description": "Los más recientes primero. Después de escanear, la app busca con lot_code: si total es 0, el lote no está registrado. Los seis perfiles.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lot_code",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "El código leído del QR"
+          },
+          {
+            "in": "query",
+            "name": "disease_id",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "region_id",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 2,
+                  "lotes": [
+                    {
+                      "id": 5,
+                      "lot_code": "FL3239-2026",
+                      "manufacturer": "Sanofi Pasteur",
+                      "disease_id": 1,
+                      "disease_name": "Influenza A",
+                      "region_id": 39,
+                      "region_name": "Monterrey",
+                      "doses_total": 500,
+                      "doses_used": 12,
+                      "doses_remaining": 488,
+                      "expires_on": "2027-03-31",
+                      "vencido": false,
+                      "scanned_by": 4,
+                      "scanned_at": "2026-11-01T18:10:00+00:00"
+                    },
+                    {
+                      "id": 4,
+                      "lot_code": "EW0153",
+                      "manufacturer": "Pfizer",
+                      "disease_id": 1,
+                      "disease_name": "Influenza A",
+                      "region_id": 39,
+                      "region_name": "Monterrey",
+                      "doses_total": 200,
+                      "doses_used": 200,
+                      "doses_remaining": 0,
+                      "expires_on": "2026-10-15",
+                      "vencido": true,
+                      "scanned_by": 4,
+                      "scanned_at": "2026-09-20T15:30:00+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "listado"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<listado><total tipo=\"numero\">2</total><lotes><lote><id tipo=\"numero\">5</id><lot_code>FL3239-2026</lot_code><manufacturer>Sanofi Pasteur</manufacturer><disease_id tipo=\"numero\">1</disease_id><disease_name>Influenza A</disease_name><region_id tipo=\"numero\">39</region_id><region_name>Monterrey</region_name><doses_total tipo=\"numero\">500</doses_total><doses_used tipo=\"numero\">12</doses_used><doses_remaining tipo=\"numero\">488</doses_remaining><expires_on>2027-03-31</expires_on><vencido tipo=\"booleano\">false</vencido><scanned_by tipo=\"numero\">4</scanned_by><scanned_at>2026-11-01T18:10:00+00:00</scanned_at></lote><lote><id tipo=\"numero\">4</id><lot_code>EW0153</lot_code><manufacturer>Pfizer</manufacturer><disease_id tipo=\"numero\">1</disease_id><disease_name>Influenza A</disease_name><region_id tipo=\"numero\">39</region_id><region_name>Monterrey</region_name><doses_total tipo=\"numero\">200</doses_total><doses_used tipo=\"numero\">200</doses_used><doses_remaining tipo=\"numero\">0</doses_remaining><expires_on>2026-10-15</expires_on><vencido tipo=\"booleano\">true</vencido><scanned_by tipo=\"numero\">4</scanned_by><scanned_at>2026-09-20T15:30:00+00:00</scanned_at></lote></lotes></listado>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "422": {
+            "description": "disease_id, region_id o limit inválidos"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vaccine-lots/{lote_id}": {
+      "get": {
+        "summary": "Consultar un lote",
+        "operationId": "consultar_lote",
+        "description": "Con sus dosis restantes y si ya caducó. Los seis perfiles (D42, D56).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lote_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id del lote"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 5,
+                  "lot_code": "FL3239-2026",
+                  "manufacturer": "Sanofi Pasteur",
+                  "disease_id": 1,
+                  "disease_name": "Influenza A",
+                  "region_id": 39,
+                  "region_name": "Monterrey",
+                  "doses_total": 500,
+                  "doses_used": 12,
+                  "doses_remaining": 488,
+                  "expires_on": "2027-03-31",
+                  "vencido": false,
+                  "scanned_by": 4,
+                  "scanned_at": "2026-11-01T18:10:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "lote_vacuna"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<lote_vacuna><id tipo=\"numero\">5</id><lot_code>FL3239-2026</lot_code><manufacturer>Sanofi Pasteur</manufacturer><disease_id tipo=\"numero\">1</disease_id><disease_name>Influenza A</disease_name><region_id tipo=\"numero\">39</region_id><region_name>Monterrey</region_name><doses_total tipo=\"numero\">500</doses_total><doses_used tipo=\"numero\">12</doses_used><doses_remaining tipo=\"numero\">488</doses_remaining><expires_on>2027-03-31</expires_on><vencido tipo=\"booleano\">false</vencido><scanned_by tipo=\"numero\">4</scanned_by><scanned_at>2026-11-01T18:10:00+00:00</scanned_at></lote_vacuna>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "404": {
+            "description": "No existe el lote"
+          },
+          "422": {
+            "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vaccine-lots/{lote_id}/doses": {
+      "post": {
+        "summary": "Aplicar dosis",
+        "operationId": "aplicar_dosis",
+        "description": "Descuenta doses del lote en un solo UPDATE condicionado: si no le quedan suficientes o ya caducó, 409 y no descuenta nada. Queda en la bitácora. CAPTURISTA y ADMINISTRADOR.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lote_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id del lote"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "doses"
+                ],
+                "properties": {
+                  "doses": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000,
+                    "description": "Cuántas dosis se aplicaron"
+                  }
+                }
+              },
+              "example": {
+                "doses": 12
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "doses"
+                ],
+                "properties": {
+                  "doses": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000,
+                    "description": "Cuántas dosis se aplicaron"
+                  }
+                },
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "examples": {
+                "peticion": {
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><doses tipo=\"numero\">12</doses></solicitud>\n"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 5,
+                  "lot_code": "FL3239-2026",
+                  "manufacturer": "Sanofi Pasteur",
+                  "disease_id": 1,
+                  "disease_name": "Influenza A",
+                  "region_id": 39,
+                  "region_name": "Monterrey",
+                  "doses_total": 500,
+                  "doses_used": 12,
+                  "doses_remaining": 488,
+                  "expires_on": "2027-03-31",
+                  "vencido": false,
+                  "scanned_by": 4,
+                  "scanned_at": "2026-11-01T18:10:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "lote_vacuna"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<lote_vacuna><id tipo=\"numero\">5</id><lot_code>FL3239-2026</lot_code><manufacturer>Sanofi Pasteur</manufacturer><disease_id tipo=\"numero\">1</disease_id><disease_name>Influenza A</disease_name><region_id tipo=\"numero\">39</region_id><region_name>Monterrey</region_name><doses_total tipo=\"numero\">500</doses_total><doses_used tipo=\"numero\">12</doses_used><doses_remaining tipo=\"numero\">488</doses_remaining><expires_on>2027-03-31</expires_on><vencido tipo=\"booleano\">false</vencido><scanned_by tipo=\"numero\">4</scanned_by><scanned_at>2026-11-01T18:10:00+00:00</scanned_at></lote_vacuna>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "400": {
+            "description": "JSON o XML ilegible"
+          },
+          "404": {
+            "description": "No existe el lote"
+          },
+          "409": {
+            "description": "No le quedan suficientes dosis o ya caducó"
+          },
+          "415": {
+            "description": "Content-Type no soportado"
+          },
+          "422": {
+            "description": "doses o id inválidos"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/campaigns": {
+      "get": {
+        "summary": "Campañas",
+        "operationId": "listar_campanas",
+        "description": "Las campañas, de la más reciente a la más vieja (D49). Filtros: status, disease_id y region_id (las de ese municipio y las de todo el estado); limit de 1 a 200 (50). Los seis perfiles.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "programada",
+                "activa",
+                "terminada",
+                "cancelada"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "disease_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 1,
+                  "campanas": [
+                    {
+                      "id": 3,
+                      "name": "Vacunación contra influenza 2026",
+                      "disease_id": 1,
+                      "enfermedad": "Influenza estacional",
+                      "region_id": 39,
+                      "municipio": "Monterrey",
+                      "starts_on": "2026-12-01",
+                      "ends_on": "2026-12-15",
+                      "target_population": 120000,
+                      "description": "Adultos de 60 años o más y personas con enfermedades crónicas.",
+                      "status": "programada",
+                      "created_by": 9,
+                      "created_at": "2026-11-22T18:00:00+00:00",
+                      "updated_at": null,
+                      "cancelled_at": null,
+                      "cancelled_by": null,
+                      "cancel_reason": null
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "campanas"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<campanas><total tipo=\"numero\">1</total><campanas><campana><id tipo=\"numero\">3</id><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">39</region_id><municipio>Monterrey</municipio><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description><status>programada</status><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T18:00:00+00:00</created_at><updated_at nil=\"true\" /><cancelled_at nil=\"true\" /><cancelled_by nil=\"true\" /><cancel_reason nil=\"true\" /></campana></campanas></campanas>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Un filtro inválido (DATOS_INVALIDOS)"
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear una campaña",
+        "operationId": "crear_campana",
+        "description": "EPIDEMIOLOGO y ADMINISTRADOR (D49). name (hasta 160), disease_id, region_id (municipio de Nuevo León; null es todo el estado), starts_on y ends_on (AAAA-MM-DD; ends_on no antes de starts_on ni de hoy), target_population (opcional, de 1 a 20 000 000) y description (opcional, hasta 2000). status sale de las fechas: programada, activa, terminada o cancelada. Los CAPTURISTA reciben un aviso CAMPAIGN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "Vacunación contra influenza 2026",
+                "disease_id": 1,
+                "region_id": 39,
+                "starts_on": "2026-12-01",
+                "ends_on": "2026-12-15",
+                "target_population": 120000,
+                "description": "Adultos de 60 años o más y personas con enfermedades crónicas."
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><region_id tipo=\"numero\">39</region_id><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description></solicitud>"
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "name": "Vacunación contra influenza 2026",
+                  "disease_id": 1,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 39,
+                  "municipio": "Monterrey",
+                  "starts_on": "2026-12-01",
+                  "ends_on": "2026-12-15",
+                  "target_population": 120000,
+                  "description": "Adultos de 60 años o más y personas con enfermedades crónicas.",
+                  "status": "programada",
+                  "created_by": 9,
+                  "created_at": "2026-11-22T18:00:00+00:00",
+                  "updated_at": null,
+                  "cancelled_at": null,
+                  "cancelled_by": null,
+                  "cancel_reason": null
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "campana"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<campana><id tipo=\"numero\">3</id><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">39</region_id><municipio>Monterrey</municipio><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description><status>programada</status><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T18:00:00+00:00</created_at><updated_at nil=\"true\" /><cancelled_at nil=\"true\" /><cancelled_by nil=\"true\" /><cancel_reason nil=\"true\" /></campana>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existe la enfermedad o el municipio (NO_ENCONTRADO)"
+          },
+          "422": {
+            "description": "Datos que no pasan (DATOS_INVALIDOS)"
+          }
+        }
+      }
+    },
+    "/api/v1/campaigns/{campana_id}": {
+      "get": {
+        "summary": "Una campaña",
+        "operationId": "consultar_campana",
+        "description": "Los seis perfiles (D42, D56).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campana_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "name": "Vacunación contra influenza 2026",
+                  "disease_id": 1,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 39,
+                  "municipio": "Monterrey",
+                  "starts_on": "2026-12-01",
+                  "ends_on": "2026-12-15",
+                  "target_population": 120000,
+                  "description": "Adultos de 60 años o más y personas con enfermedades crónicas.",
+                  "status": "programada",
+                  "created_by": 9,
+                  "created_at": "2026-11-22T18:00:00+00:00",
+                  "updated_at": null,
+                  "cancelled_at": null,
+                  "cancelled_by": null,
+                  "cancel_reason": null
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "campana"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<campana><id tipo=\"numero\">3</id><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">39</region_id><municipio>Monterrey</municipio><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description><status>programada</status><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T18:00:00+00:00</created_at><updated_at nil=\"true\" /><cancelled_at nil=\"true\" /><cancelled_by nil=\"true\" /><cancel_reason nil=\"true\" /></campana>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existe (NO_ENCONTRADO)"
+          }
+        }
+      },
+      "put": {
+        "summary": "Editar una campaña",
+        "operationId": "editar_campana",
+        "description": "EPIDEMIOLOGO y ADMINISTRADOR. Se manda todo; name (hasta 160), disease_id, region_id (municipio de Nuevo León; null es todo el estado), starts_on y ends_on (AAAA-MM-DD; ends_on no antes de starts_on ni de hoy), target_population (opcional, de 1 a 20 000 000) y description (opcional, hasta 2000). status sale de las fechas: programada, activa, terminada o cancelada. Una cancelada o terminada no se edita (409).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campana_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "Vacunación contra influenza 2026",
+                "disease_id": 1,
+                "region_id": 39,
+                "starts_on": "2026-12-01",
+                "ends_on": "2026-12-15",
+                "target_population": 120000,
+                "description": "Adultos de 60 años o más y personas con enfermedades crónicas."
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><region_id tipo=\"numero\">39</region_id><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description></solicitud>"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "name": "Vacunación contra influenza 2026",
+                  "disease_id": 1,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 39,
+                  "municipio": "Monterrey",
+                  "starts_on": "2026-12-01",
+                  "ends_on": "2026-12-15",
+                  "target_population": 120000,
+                  "description": "Adultos de 60 años o más y personas con enfermedades crónicas.",
+                  "status": "programada",
+                  "created_by": 9,
+                  "created_at": "2026-11-22T18:00:00+00:00",
+                  "updated_at": null,
+                  "cancelled_at": null,
+                  "cancelled_by": null,
+                  "cancel_reason": null
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "campana"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<campana><id tipo=\"numero\">3</id><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">39</region_id><municipio>Monterrey</municipio><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description><status>programada</status><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T18:00:00+00:00</created_at><updated_at nil=\"true\" /><cancelled_at nil=\"true\" /><cancelled_by nil=\"true\" /><cancel_reason nil=\"true\" /></campana>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existe la campaña, la enfermedad o el municipio (NO_ENCONTRADO)"
+          },
+          "409": {
+            "description": "Ya está cancelada o terminada (CONFLICTO)"
+          },
+          "422": {
+            "description": "Datos que no pasan (DATOS_INVALIDOS)"
+          }
+        }
+      }
+    },
+    "/api/v1/campaigns/{campana_id}/cancel": {
+      "post": {
+        "summary": "Cancelar una campaña",
+        "operationId": "cancelar_campana",
+        "description": "EPIDEMIOLOGO y ADMINISTRADOR. reason es obligatorio (hasta 500). Los CAPTURISTA reciben un aviso CAMPAIGN. Una cancelada o terminada no se cancela (409).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campana_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "reason": "No llegaron las vacunas a tiempo"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "solicitud"
+                }
+              },
+              "example": "<?xml version='1.0' encoding='utf-8'?>\n<solicitud><reason>No llegaron las vacunas a tiempo</reason></solicitud>"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Correcto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "name": "Vacunación contra influenza 2026",
+                  "disease_id": 1,
+                  "enfermedad": "Influenza estacional",
+                  "region_id": 39,
+                  "municipio": "Monterrey",
+                  "starts_on": "2026-12-01",
+                  "ends_on": "2026-12-15",
+                  "target_population": 120000,
+                  "description": "Adultos de 60 años o más y personas con enfermedades crónicas.",
+                  "status": "cancelada",
+                  "created_by": 9,
+                  "created_at": "2026-11-22T18:00:00+00:00",
+                  "updated_at": "2026-11-23T09:00:00+00:00",
+                  "cancelled_at": "2026-11-23T09:00:00+00:00",
+                  "cancelled_by": 9,
+                  "cancel_reason": "No llegaron las vacunas a tiempo"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "campana"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<campana><id tipo=\"numero\">3</id><name>Vacunación contra influenza 2026</name><disease_id tipo=\"numero\">1</disease_id><enfermedad>Influenza estacional</enfermedad><region_id tipo=\"numero\">39</region_id><municipio>Monterrey</municipio><starts_on>2026-12-01</starts_on><ends_on>2026-12-15</ends_on><target_population tipo=\"numero\">120000</target_population><description>Adultos de 60 años o más y personas con enfermedades crónicas.</description><status>cancelada</status><created_by tipo=\"numero\">9</created_by><created_at>2026-11-22T18:00:00+00:00</created_at><updated_at>2026-11-23T09:00:00+00:00</updated_at><cancelled_at>2026-11-23T09:00:00+00:00</cancelled_at><cancelled_by tipo=\"numero\">9</cancelled_by><cancel_reason>No llegaron las vacunas a tiempo</cancel_reason></campana>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existe (NO_ENCONTRADO)"
+          },
+          "409": {
+            "description": "Ya está cancelada o terminada (CONFLICTO)"
+          },
+          "422": {
+            "description": "Falta reason (DATOS_INVALIDOS)"
+          }
+        }
+      }
+    }
+  }
+}

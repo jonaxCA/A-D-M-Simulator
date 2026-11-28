@@ -2,10 +2,11 @@ from http import HTTPStatus
 
 
 class ErrorAPI(Exception):
-    def __init__(self, estado, codigo, detalle):
+    def __init__(self, estado, codigo, detalle, cabeceras=None):
         self.estado = estado
         self.codigo = codigo
         self.detalle = detalle
+        self.cabeceras = cabeceras or {}
         super().__init__(detalle)
 
 
@@ -22,4 +23,5 @@ def respuesta_error(error):
     except ValueError:
         formato = "json"
     cuerpo, tipo = (a_json(datos), "application/problem+json") if formato == "json" else (a_xml(datos, "problem"), "application/problem+xml")
-    return Response(cuerpo, status=estado, content_type=tipo + "; charset=utf-8")
+    return Response(cuerpo, status=estado, content_type=tipo + "; charset=utf-8",
+                    headers=error.cabeceras)

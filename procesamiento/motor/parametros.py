@@ -34,8 +34,9 @@ Cada parametro de la enfermedad puede ir como numero o con trazabilidad:
 {"valor": 1.3, "fuente": "Biggerstaff et al., 2014", "supuesto": false}.
 """
 
-import math
 import re
+
+from procesamiento.trazabilidad import desempaca, es_numero, estado_traza
 
 # Que hacer con la gente que el censo cuenta pero sin edad declarada. No hay
 # valor por defecto a proposito: repartirla calladamente convertiria un dato
@@ -84,30 +85,6 @@ class EscenarioInvalido(ValueError):
     def __init__(self, errores):
         self.errores = list(errores)
         super().__init__("; ".join(self.errores))
-
-
-def _es_numero(x):
-    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
-
-
-def _desempaca(crudo):
-    """Separa valor, fuente y marca de supuesto.
-
-    Acepta el numero directo, el formato con trazabilidad y el formato de
-    distribucion de 010_datos_iniciales ({"dist": ..., "media": ...}), del que
-    este motor determinista en duraciones solo usa la media.
-    """
-    if isinstance(crudo, dict) and "valor" in crudo:
-        return crudo["valor"], crudo.get("fuente"), bool(crudo.get("supuesto", False))
-    if isinstance(crudo, dict) and "media" in crudo:
-        return crudo["media"], None, False
-    return crudo, None, False
-
-
-def _estado_traza(fuente, supuesto):
-    if supuesto:
-        return "supuesto"
-    return "con_fuente" if fuente else "sin_fuente"
 
 
 def _limite_inferior_edad(grupo):
@@ -184,14 +161,14 @@ def _resuelve_poblacion(crudo, errores):
     """(grupos, poblacion de cada grupo). Un entero es la poblacion total, en
     un solo grupo "total"; un diccionario la abre por grupo de edad, y los
     grupos salen ordenados por edad."""
-    if _es_numero(crudo) and float(crudo).is_integer():
+    if es_numero(crudo) and float(crudo).is_integer():
         return ["total"], [int(crudo)]
     if not (isinstance(crudo, dict) and crudo):
         errores.append("Falta 'poblacion' (entero o diccionario por grupo de edad).")
         return [], []
     grupos, pob = [], []
     for nombre, n in crudo.items():
-        if not (_es_numero(n) and float(n).is_integer() and n >= 0):
+        if not (es_numero(n) and float(n).is_integer() and n >= 0):
             errores.append(f"Poblacion del grupo '{nombre}' debe ser un entero >= 0.")
         elif _limite_inferior_edad(nombre) is None:
             errores.append(f"Grupo de edad '{nombre}' no tiene formato 'min-max' o 'min+'.")
@@ -211,7 +188,7 @@ def _resuelve_edad_desconocida(escenario, grupos, pob, por_edad, errores, avisos
     """
     sin_edad = escenario.get("poblacion_edad_desconocida", 0)
     politica = escenario.get("politica_edad_desconocida")
-    if not (_es_numero(sin_edad) and float(sin_edad).is_integer() and sin_edad >= 0):
+    if not (es_numero(sin_edad) and float(sin_edad).is_integer() and sin_edad >= 0):
         errores.append("'poblacion_edad_desconocida' debe ser un entero >= 0.")
         sin_edad = 0
     sin_edad = int(sin_edad)
@@ -259,14 +236,14 @@ def _resuelve_edad_desconocida(escenario, grupos, pob, por_edad, errores, avisos
 
 
 def _resuelve_dias(dias, errores):
-    if not (_es_numero(dias) and float(dias).is_integer() and DIAS_MIN <= dias <= DIAS_MAX):
+    if not (es_numero(dias) and float(dias).is_integer() and DIAS_MIN <= dias <= DIAS_MAX):
         errores.append(f"'dias' debe ser un entero entre {DIAS_MIN} y {DIAS_MAX}.")
         return None
     return int(dias)
 
 
 def _resuelve_iniciales(iniciales, pob, N, errores):
-    if not (_es_numero(iniciales) and float(iniciales).is_integer() and iniciales >= 1):
+    if not (es_numero(iniciales) and float(iniciales).is_integer() and iniciales >= 1):
         errores.append("'infectados_iniciales' debe ser un entero >= 1.")
         return None
     iniciales = int(iniciales)
@@ -302,12 +279,12 @@ def _escalar_positivo(enf, clave, errores, traza):
     if clave not in enf:
         errores.append(f"Falta el parametro de enfermedad '{clave}'.")
         return None
-    valor, fuente, supuesto = _desempaca(enf[clave])
-    if not (_es_numero(valor) and valor > 0):
+    valor, fuente, supuesto = desempaca(enf[clave])
+    if not (es_numero(valor) and valor > 0):
         errores.append(f"'{clave}' debe ser un numero > 0.")
         return None
     traza.append({"parametro": clave, "valor": valor, "fuente": fuente,
-                  "estado": _estado_traza(fuente, supuesto)})
+                  "estado": estado_traza(fuente, supuesto)})
     return float(valor)
 
 
@@ -321,17 +298,17 @@ def _tasa_por_grupo(enf, clave, grupos, por_edad, errores, traza, alias=()):
     se captura. Sin estratificar pasa al reves, porque una tabla
     por edad no se puede aplicar a una poblacion sin grupos.
     """
-    candidatos = [(k, _desempaca(enf[k])) for k in (clave, *alias) if k in enf]
+    candidatos = [(k, desempaca(enf[k])) for k in (clave, *alias) if k in enf]
     if not candidatos:
         errores.append(f"Falta el parametro de enfermedad '{clave}'.")
         return None
     if por_edad:
         prefiere = lambda v: isinstance(v, dict)
     else:
-        prefiere = _es_numero
+        prefiere = es_numero
     presente, (valor, fuente, supuesto) = next(
         (c for c in candidatos if prefiere(c[1][0])), candidatos[0])
-    if _es_numero(valor):
+    if es_numero(valor):
         if not 0 <= valor <= 1:
             errores.append(f"'{clave}' debe estar entre 0 y 1.")
             return None
@@ -344,7 +321,7 @@ def _tasa_por_grupo(enf, clave, grupos, por_edad, errores, traza, alias=()):
         errores.append(f"'{clave}' debe ser un numero o un diccionario por grupo.")
         return None
     traza.append({"parametro": presente, "valor": valor, "fuente": fuente,
-                  "estado": _estado_traza(fuente, supuesto)})
+                  "estado": estado_traza(fuente, supuesto)})
     return tasas
 
 
@@ -357,7 +334,7 @@ def _tasas_de_tabla(clave, tabla, grupos, por_edad, errores):
     if faltan:
         errores.append(f"'{clave}' no define los grupos: {', '.join(faltan)}.")
         return None
-    if not all(_es_numero(tabla[g]) and 0 <= tabla[g] <= 1 for g in grupos):
+    if not all(es_numero(tabla[g]) and 0 <= tabla[g] <= 1 for g in grupos):
         errores.append(f"Cada valor de '{clave}' debe estar entre 0 y 1.")
         return None
     return [float(tabla[g]) for g in grupos]
@@ -372,7 +349,7 @@ def _resuelve_capas(capas, errores, traza):
                       "estado": "supuesto"})
         return capas
     if not (isinstance(capas, dict) and capas
-            and all(_es_numero(v) and v >= 0 for v in capas.values())
+            and all(es_numero(v) and v >= 0 for v in capas.values())
             and abs(sum(capas.values()) - 1.0) < 1e-6):
         errores.append("'capas_contacto' debe asignar pesos >= 0 que sumen 1.")
         return {}
@@ -441,10 +418,10 @@ def _ventana(iv, pref, dias, errores, avisos):
     """(dia_inicio, dia_fin) como enteros, con dia_fin None si no termina; o
     None si alguno es invalido."""
     inicio, fin = iv.get("dia_inicio"), iv.get("dia_fin")
-    if not (_es_numero(inicio) and float(inicio).is_integer() and inicio >= 0):
+    if not (es_numero(inicio) and float(inicio).is_integer() and inicio >= 0):
         errores.append(f"{pref}: 'dia_inicio' debe ser un entero >= 0.")
         return None
-    if fin is not None and not (_es_numero(fin) and float(fin).is_integer() and fin >= inicio):
+    if fin is not None and not (es_numero(fin) and float(fin).is_integer() and fin >= inicio):
         errores.append(f"{pref}: 'dia_fin' debe ser un entero >= dia_inicio.")
         return None
     if dias is not None and inicio > dias:
@@ -460,7 +437,7 @@ def _factores(iv, pref, errores):
         v = iv.get(clave)
         if v is None:
             factores[clave] = 1.0
-        elif _es_numero(v) and 0 <= v <= 1:
+        elif es_numero(v) and 0 <= v <= 1:
             factores[clave] = float(v)
         else:
             errores.append(f"{pref}: '{clave}' debe estar entre 0 y 1.")
@@ -471,7 +448,7 @@ def _factores(iv, pref, errores):
 def _de_capa(tipo, params, factores, capas, pref, errores, avisos):
     capa, clave, defecto = INTERVENCIONES_CAPA[tipo]
     fuerza = params.get(clave, defecto)
-    if not (_es_numero(fuerza) and 0 <= fuerza <= 1):
+    if not (es_numero(fuerza) and 0 <= fuerza <= 1):
         errores.append(f"{pref}: '{clave}' es obligatorio y debe estar entre 0 y 1.")
         return None
     if capa != "todas" and capa not in capas:
@@ -487,13 +464,13 @@ def _de_capa(tipo, params, factores, capas, pref, errores, avisos):
 def _de_testeo(params, factores, capas, infeccioso, pref, errores):
     det, retraso = params.get("deteccion"), params.get("retraso_dias")
     aisl = params.get("dias_aislamiento", 10)
-    if not (_es_numero(det) and 0 <= det <= 1):
+    if not (es_numero(det) and 0 <= det <= 1):
         errores.append(f"{pref}: 'deteccion' es obligatoria y debe estar entre 0 y 1.")
         return None
-    if not (_es_numero(retraso) and retraso >= 0):
+    if not (es_numero(retraso) and retraso >= 0):
         errores.append(f"{pref}: 'retraso_dias' es obligatorio y debe ser >= 0.")
         return None
-    if not (_es_numero(aisl) and aisl >= 1):
+    if not (es_numero(aisl) and aisl >= 1):
         errores.append(f"{pref}: 'dias_aislamiento' debe ser >= 1.")
         return None
     if infeccioso is None:
@@ -511,10 +488,10 @@ def _de_testeo(params, factores, capas, infeccioso, pref, errores):
 def _de_vacunacion(params, factores, grupos, por_edad, pref, errores, avisos):
     eficacia, diarias = params.get("eficacia"), params.get("dosis_diarias")
     prioridad = params.get("prioridad", "aleatorio")
-    if not (_es_numero(eficacia) and 0 <= eficacia <= 1):
+    if not (es_numero(eficacia) and 0 <= eficacia <= 1):
         errores.append(f"{pref}: 'eficacia' es obligatoria y debe estar entre 0 y 1.")
         return None
-    if not (_es_numero(diarias) and float(diarias).is_integer() and diarias >= 1):
+    if not (es_numero(diarias) and float(diarias).is_integer() and diarias >= 1):
         errores.append(f"{pref}: 'dosis_diarias' es obligatorio y debe ser un entero >= 1.")
         return None
     if not isinstance(prioridad, str) or prioridad not in PRIORIDADES_SOPORTADAS:
@@ -538,7 +515,7 @@ def _grupos_objetivo(edad_min, grupos, por_edad, pref, errores, avisos):
     `edad_min` o despues. None si la edad minima no se puede aplicar."""
     if edad_min is None:
         return list(range(len(grupos)))
-    if not (_es_numero(edad_min) and 0 <= edad_min <= 120):
+    if not (es_numero(edad_min) and 0 <= edad_min <= 120):
         errores.append(f"{pref}: 'edad_minima' debe estar entre 0 y 120.")
         return None
     if not por_edad:

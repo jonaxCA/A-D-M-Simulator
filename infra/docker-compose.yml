@@ -7,6 +7,9 @@ name: epidemia
 # `python infra/genera_env.py`.
 x-servicio-base: &servicio-base
   restart: unless-stopped
+  # Límites de consumo (LIMITE_NORMAL, etc.); ver infra/limites.env. Todo va comentado por
+  # defecto y los servicios usan las cifras de epidemia_comun/limites.py.
+  env_file: limites.env
 
 # Todos los Dockerfile parten de epidemia/base (infra/docker/base.Dockerfile). Con
 # additional_contexts el compose construye primero el servicio base y nunca la busca en
@@ -15,6 +18,26 @@ x-construye: &construye
   context: ..
   additional_contexts:
     epidemia/base: service:base
+
+# Los servicios de identidad parten de epidemia/base-identidad, sin backend_web (E8).
+x-construye-identidad: &construye-identidad
+  context: ..
+  additional_contexts:
+    epidemia/base-identidad: service:base-identidad
+
+# Los de simulación, y los de D que usan el motor (enfermedades, parametros y validacion), parten
+# de epidemia/base-simulacion, sin backend_web (E8).
+x-construye-simulacion: &construye-simulacion
+  context: ..
+  additional_contexts:
+    epidemia/base-simulacion: service:base-simulacion
+
+# Los de F (vigilancia, analítica y plataforma) y los demás de D parten de epidemia/base-vigilancia,
+# sin backend_web (E8). epidemia/base, con backend_web, queda solo para la consola y la web.
+x-construye-vigilancia: &construye-vigilancia
+  context: ..
+  additional_contexts:
+    epidemia/base-vigilancia: service:base-vigilancia
 
 services:
   redis:
@@ -51,13 +74,22 @@ services:
   # rol svc_*. Solo en 127.0.0.1, para el monolito y psql; los servicios lo ven como postgres.
   postgres:
     image: postgres:16-alpine
+    # Cada proceso de servicio guarda hasta DB_CONEXIONES_LIBRES (4) conexiones abiertas
+    # (epidemia_comun/conexiones.py, F4); con unos 30 procesos, el tope de 100 de PostgreSQL
+    # quedaba justo. Cada conexión libre ocupa unos pocos MB.
+    command: ["postgres", "-c", "max_connections=200"]
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
       POSTGRES_DB: ${POSTGRES_DB:-simulador_epidemico}
       EPIDEMIA_APP_PASSWORD: ${EPIDEMIA_APP_PASSWORD:-}
       DB_PASSWORD_APROBACION: ${DB_PASSWORD_APROBACION:-}
       DB_PASSWORD_AUTH: ${DB_PASSWORD_AUTH:-}
+      DB_PASSWORD_CALIBRACION: ${DB_PASSWORD_CALIBRACION:-}
       DB_PASSWORD_CASOS: ${DB_PASSWORD_CASOS:-}
+      DB_PASSWORD_DISPOSITIVOS: ${DB_PASSWORD_DISPOSITIVOS:-}
+      DB_PASSWORD_EVIDENCIAS: ${DB_PASSWORD_EVIDENCIAS:-}
+      DB_PASSWORD_VACUNAS: ${DB_PASSWORD_VACUNAS:-}
+      DB_PASSWORD_IMPORTACION: ${DB_PASSWORD_IMPORTACION:-}
       DB_PASSWORD_COMPARACION: ${DB_PASSWORD_COMPARACION:-}
       DB_PASSWORD_CORRIDAS: ${DB_PASSWORD_CORRIDAS:-}
       DB_PASSWORD_ENFERMEDADES: ${DB_PASSWORD_ENFERMEDADES:-}
@@ -96,6 +128,50 @@ services:
       retries: 60
     restart: unless-stopped
 
+  # MongoDB (D28): la serie diaria de cada corrida (series_corridas) y el historial de
+  # estado-servicios (historial_servicios). La primera vez (volumen vacío) mongo/10-usuario.js
+  # crea el usuario epidemia, el único que usan los servicios. Solo en 127.0.0.1, para mongosh.
+  mongodb:
+    image: mongo:7.0
+    # Poca caché: la VM y las máquinas del equipo comparten la memoria con 29 servicios.
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-}
+      MONGO_INITDB_DATABASE: epidemia
+      MONGO_PASSWORD: ${MONGO_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${MONGO_PUERTO_LOCAL:-27018}:27017"
+    volumes:
+      - mongo-datos:/data/db
+      - ./mongo:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' | grep -q 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Emulador de Cloud Storage para trabajar en local (D30). Crea el bucket epidemia-archivos con
+  # la carpeta de infra/bucket/ y guarda los objetos en su volumen. Se publica solo en esta
+  # máquina: las URLs firmadas apuntan a localhost:4443 para que el navegador las abra. En GCP
+  # no se levanta: docker-compose.gcs.yml pone el bucket real.
+  bucket:
+    image: fsouza/fake-gcs-server:1.56.1
+    command: ["-scheme", "http", "-port", "4443", "-backend", "filesystem",
+              "-filesystem-root", "/storage", "-public-host", "${BUCKET_HOST_PUBLICO:-localhost:4443}"]
+    ports:
+      - "127.0.0.1:4443:4443"
+    volumes:
+      - bucket-datos:/storage
+      - ./bucket:/data:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:4443/storage/v1/b/epidemia-archivos"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
   base:
     image: epidemia/base
     build:
@@ -104,11 +180,35 @@ services:
     deploy:
       replicas: 0
 
+  base-simulacion:
+    image: epidemia/base-simulacion
+    build:
+      context: ..
+      dockerfile: infra/docker/base-simulacion.Dockerfile
+    deploy:
+      replicas: 0
+
+  base-identidad:
+    image: epidemia/base-identidad
+    build:
+      context: ..
+      dockerfile: infra/docker/base-identidad.Dockerfile
+    deploy:
+      replicas: 0
+
+  base-vigilancia:
+    image: epidemia/base-vigilancia
+    build:
+      context: ..
+      dockerfile: infra/docker/base-vigilancia.Dockerfile
+    deploy:
+      replicas: 0
+
   # --- Identidad (perfil identidad) ---------------------------------------------------------
   auth:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-identidad
       dockerfile: microservicios/auth/Dockerfile
     profiles: [identidad]
     ports:
@@ -118,6 +218,12 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_AUTH:-postgresql://svc_auth:${DB_PASSWORD_AUTH:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SERVICIO_SESIONES_URL: http://sesiones:8000
+      # Supuestos de D40 y D41. El MFA arranca apagado hasta que los clientes tengan los dos pasos;
+      # se activa con MFA_PERFILES=ADMINISTRADOR,EPIDEMIOLOGO,AUTORIDAD_SANITARIA.
+      MFA_PERFILES: ${MFA_PERFILES:-}
+      DISPOSITIVO_OBLIGATORIO: ${DISPOSITIVO_OBLIGATORIO:-0}
+      MFA_ENROLAMIENTO_LIBRE: ${MFA_ENROLAMIENTO_LIBRE:-0}
     depends_on:
       postgres:
         condition: service_healthy
@@ -126,7 +232,7 @@ services:
   sesiones:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-identidad
       dockerfile: microservicios/sesiones/Dockerfile
     profiles: [identidad]
     ports:
@@ -136,6 +242,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_SESIONES:-postgresql://svc_sesiones:${DB_PASSWORD_SESIONES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      MAX_SESIONES_POR_USUARIO: ${MAX_SESIONES_POR_USUARIO:-3}
     depends_on:
       postgres:
         condition: service_healthy
@@ -144,7 +251,7 @@ services:
   usuarios:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-identidad
       dockerfile: microservicios/usuarios/Dockerfile
     profiles: [identidad]
     ports:
@@ -154,6 +261,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_USUARIOS:-postgresql://svc_usuarios:${DB_PASSWORD_USUARIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SERVICIO_SESIONES_URL: http://sesiones:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -162,7 +270,7 @@ services:
   roles:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-identidad
       dockerfile: microservicios/roles/Dockerfile
     profiles: [identidad]
     ports:
@@ -172,6 +280,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_ROLES:-postgresql://svc_roles:${DB_PASSWORD_ROLES:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SERVICIO_SESIONES_URL: http://sesiones:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -182,7 +291,7 @@ services:
   enfermedades:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/enfermedades/Dockerfile
     profiles: [catalogos]
     ports:
@@ -200,7 +309,7 @@ services:
   parametros:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/parametros/Dockerfile
     profiles: [catalogos]
     ports:
@@ -209,6 +318,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      SERVICIO_ROLES_URL: http://roles:8000
       DATABASE_URL: ${DATABASE_URL_PARAMETROS:-postgresql://svc_parametros:${DB_PASSWORD_PARAMETROS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
@@ -218,7 +328,7 @@ services:
   regiones:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/regiones/Dockerfile
     profiles: [catalogos]
     ports:
@@ -236,7 +346,7 @@ services:
   poblacion:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/poblacion/Dockerfile
     profiles: [catalogos]
     ports:
@@ -254,7 +364,7 @@ services:
   tipos-intervencion:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/tipos_intervencion/Dockerfile
     profiles: [catalogos]
     ports:
@@ -274,7 +384,7 @@ services:
   casos:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/casos/Dockerfile
     profiles: [vigilancia]
     ports:
@@ -284,6 +394,10 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_CASOS:-postgresql://svc_casos:${DB_PASSWORD_CASOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # El alcance por región de cada cuenta (D43, D56) se le pide a roles en cada lectura.
+      SERVICIO_ROLES_URL: http://roles:8000
+      # El aviso CASE_REJECTED a quien capturó un caso descartado o duplicado (D47).
+      SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -292,7 +406,7 @@ services:
   sincronizacion:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/sincronizacion/Dockerfile
     profiles: [vigilancia]
     ports:
@@ -304,6 +418,7 @@ services:
       DATABASE_URL: ${DATABASE_URL_SINCRONIZACION:-postgresql://svc_sincronizacion:${DB_PASSWORD_SINCRONIZACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       SYNC_LOTE_TTL_SECONDS: ${SYNC_LOTE_TTL_SECONDS:-604800}
       SERVICIO_CASOS_URL: http://casos:8000
+      SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -311,12 +426,97 @@ services:
         condition: service_healthy
       casos:
         condition: service_healthy
+  dispositivos:
+    <<: *servicio-base
+    build:
+      <<: *construye-vigilancia
+      dockerfile: microservicios/dispositivos/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5223:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_DISPOSITIVOS:-postgresql://svc_dispositivos:${DB_PASSWORD_DISPOSITIVOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  # Los archivos de las evidencias y los reportes van al bucket (D30); la base solo guarda su
+  # ruta, su tipo, su tamaño y su huella. En local, el emulador; en GCP, docker-compose.gcs.yml.
+  evidencias:
+    <<: *servicio-base
+    build:
+      <<: *construye-vigilancia
+      dockerfile: microservicios/evidencias/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5224:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_EVIDENCIAS:-postgresql://svc_evidencias:${DB_PASSWORD_EVIDENCIAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      DEPENDENCIAS: bucket
+      ARCHIVOS: gcs
+      BUCKET_NOMBRE: ${BUCKET_NOMBRE:-epidemia-archivos}
+      STORAGE_EMULATOR_HOST: http://bucket:4443
+      BUCKET_URL_PUBLICA: ${BUCKET_URL_PUBLICA:-http://localhost:4443}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      bucket:
+        condition: service_healthy
+  vacunas:
+    <<: *servicio-base
+    build:
+      <<: *construye-vigilancia
+      dockerfile: microservicios/vacunas/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5225:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      DATABASE_URL: ${DATABASE_URL_VACUNAS:-postgresql://svc_vacunas:${DB_PASSWORD_VACUNAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # El aviso CAMPAIGN a los CAPTURISTA (D49).
+      SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  importacion:
+    <<: *servicio-base
+    build:
+      <<: *construye-vigilancia
+      dockerfile: microservicios/importacion/Dockerfile
+    profiles: [vigilancia]
+    ports:
+      - "5226:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      # El alcance por región de la cuenta (D43).
+      SERVICIO_ROLES_URL: http://roles:8000
+      DATABASE_URL: ${DATABASE_URL_IMPORTACION:-postgresql://svc_importacion:${DB_PASSWORD_IMPORTACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   # --- Escenarios (perfil escenarios) -------------------------------------------------------
   validacion:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/validacion/Dockerfile
     profiles: [escenarios]
     ports:
@@ -326,6 +526,8 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_VALIDACION:-postgresql://svc_validacion:${DB_PASSWORD_VALIDACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # Las reglas de cada intervención son de intervenciones (D37): se le piden al validar.
+      SERVICIO_INTERVENCIONES_URL: http://intervenciones:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -334,7 +536,7 @@ services:
   escenarios:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/escenarios/Dockerfile
     profiles: [escenarios]
     ports:
@@ -345,6 +547,8 @@ services:
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_ESCENARIOS:-postgresql://svc_escenarios:${DB_PASSWORD_ESCENARIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       SERVICIO_VALIDACION_URL: http://validacion:8000
+      # El alcance por región de la cuenta (D43, D54).
+      SERVICIO_ROLES_URL: http://roles:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -355,7 +559,7 @@ services:
   intervenciones:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/intervenciones/Dockerfile
     profiles: [escenarios]
     ports:
@@ -373,7 +577,7 @@ services:
   aprobacion:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/aprobacion/Dockerfile
     profiles: [escenarios]
     ports:
@@ -397,7 +601,7 @@ services:
   escenarios-xml:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/escenarios_xml/Dockerfile
     profiles: [escenarios]
     ports:
@@ -426,7 +630,7 @@ services:
   corridas:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/corridas/Dockerfile
     profiles: [simulacion]
     ports:
@@ -435,7 +639,10 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      SERVICIO_ROLES_URL: http://roles:8000
       DATABASE_URL: ${DATABASE_URL_CORRIDAS:-postgresql://svc_corridas:${DB_PASSWORD_CORRIDAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # abm-ref tiene su simulador en este compose (simulador-abm); abm-gpu no.
+      MOTORES_HABILITADOS: ${MOTORES_HABILITADOS:-abm-ref}
     depends_on:
       postgres:
         condition: service_healthy
@@ -444,7 +651,7 @@ services:
   simulador:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/simulador/Dockerfile
     profiles: [simulacion]
     ports:
@@ -454,6 +661,9 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_SIMULADOR:-postgresql://svc_simulador:${DB_PASSWORD_SIMULADOR:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # La serie diaria va a series_corridas. Si MongoDB no responde, la corrida termina igual
+      # con su resumen en PostgreSQL y la serie se reintenta.
+      MONGO_URL: mongodb://epidemia:${MONGO_PASSWORD:-}@mongodb:27017/epidemia?authSource=epidemia
       # Avisa al terminar o fallar una corrida. Best-effort: si notificaciones no está arriba
       # (perfil plataforma), la corrida termina igual y solo queda un aviso en el log.
       SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
@@ -462,10 +672,40 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy
+  # El simulador de abm-ref (D22): el mismo servicio, con otro motor y su propia cola, para que
+  # una corrida larga del ABM no detenga las del SEIR. No publica puerto: no es otro servicio del
+  # directorio, y su salud la revisa el healthcheck del compose.
+  simulador-abm:
+    extends:
+      service: simulador
+    ports: !reset []
+    environment:
+      SIMULADOR_MOTOR: abm-ref
+  # El simulador de abm-gpu (D23), con FLAME GPU 2. Necesita una GPU de NVIDIA y NVIDIA
+  # Container Toolkit (en Windows, Docker Desktop con WSL 2), así que va en su propio perfil:
+  #   docker compose --profile simulacion --profile gpu up -d
+  # y corridas lo acepta solo con MOTORES_HABILITADOS=abm-ref,abm-gpu.
+  simulador-gpu:
+    extends:
+      service: simulador
+    build:
+      <<: *construye-simulacion
+      dockerfile: microservicios/simulador/gpu.Dockerfile
+    profiles: !override [gpu]
+    ports: !reset []
+    gpus:
+      - driver: nvidia
+        count: 1
+    environment:
+      SIMULADOR_MOTOR: abm-gpu
+    volumes:
+      - flamegpu-cache:/var/cache/flamegpu
   resultados:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/resultados/Dockerfile
     profiles: [simulacion]
     ports:
@@ -474,16 +714,20 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      SERVICIO_ROLES_URL: http://roles:8000
       DATABASE_URL: ${DATABASE_URL_RESULTADOS:-postgresql://svc_resultados:${DB_PASSWORD_RESULTADOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      MONGO_URL: mongodb://epidemia:${MONGO_PASSWORD:-}@mongodb:27017/epidemia?authSource=epidemia
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy
   comparacion:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/comparacion/Dockerfile
     profiles: [simulacion]
     ports:
@@ -493,6 +737,8 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_COMPARACION:-postgresql://svc_comparacion:${DB_PASSWORD_COMPARACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      SERVICIO_RESULTADOS_URL: http://resultados:8000
+      SERVICIO_PARETO_URL: http://pareto:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -501,7 +747,7 @@ services:
   pareto:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-simulacion
       dockerfile: microservicios/pareto/Dockerfile
     profiles: [simulacion]
     ports:
@@ -510,18 +756,48 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      SERVICIO_ROLES_URL: http://roles:8000
       DATABASE_URL: ${DATABASE_URL_PARETO:-postgresql://svc_pareto:${DB_PASSWORD_PARETO:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+  # Calibración de seir-ref contra una serie observada (D50): la API encola en
+  # queue:calibraciones y calibracion-trabajador la corre.
+  calibracion:
+    <<: *servicio-base
+    build:
+      <<: *construye-simulacion
+      dockerfile: microservicios/calibracion/Dockerfile
+    profiles: [simulacion]
+    ports:
+      - "5246:8000"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
+      SERVICIO_ROLES_URL: http://roles:8000
+      DATABASE_URL: ${DATABASE_URL_CALIBRACION:-postgresql://svc_calibracion:${DB_PASSWORD_CALIBRACION:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  # La misma imagen con el trabajador encendido. No publica puerto, como simulador-abm: no es
+  # otro servicio del directorio, y su salud la revisa el healthcheck del compose.
+  calibracion-trabajador:
+    extends:
+      service: calibracion
+    ports: !reset []
+    environment:
+      CALIBRACION_TRABAJADOR: "1"
 
   # --- Analítica (perfil analitica) ---------------------------------------------------------
   indicadores:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/indicadores/Dockerfile
     profiles: [analitica]
     ports:
@@ -539,7 +815,7 @@ services:
   series:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/series/Dockerfile
     profiles: [analitica]
     ports:
@@ -557,7 +833,7 @@ services:
   zonas:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/zonas/Dockerfile
     profiles: [analitica]
     ports:
@@ -567,6 +843,8 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:5260}
       DATABASE_URL: ${DATABASE_URL_ZONAS:-postgresql://svc_zonas:${DB_PASSWORD_ZONAS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
+      # El alcance por región de cada cuenta (D43, D56) se le pide a roles en cada lectura.
+      SERVICIO_ROLES_URL: http://roles:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -577,7 +855,7 @@ services:
   notificaciones:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/notificaciones/Dockerfile
     profiles: [plataforma]
     ports:
@@ -593,12 +871,12 @@ services:
       redis:
         condition: service_healthy
   # Sondea el /health de los 26 por la red interna y no depende de ellos: el que no está
-  # arriba aparece caído. URL_PUBLICA es la que da su directorio a las apps y a la consola
-  # (ver infra/.env.example).
+  # arriba aparece caído. Su directorio da a cada cliente las URL con el host por el que
+  # llegó, salvo que URL_PUBLICA diga otra cosa (ver infra/.env.example).
   estado-servicios:
     <<: *servicio-base
     build:
-      <<: *construye
+      <<: *construye-vigilancia
       dockerfile: microservicios/estado_servicios/Dockerfile
     profiles: [plataforma]
     ports:
@@ -610,10 +888,17 @@ services:
       DATABASE_URL: ${DATABASE_URL_ESTADO_SERVICIOS:-postgresql://svc_estado_servicios:${DB_PASSWORD_ESTADO_SERVICIOS:-}@postgres:5432/${POSTGRES_DB:-simulador_epidemico}}
       URL_SONDEO: "http://{servicio}:8000"
       URL_PUBLICA: ${URL_PUBLICA:-}
+      # Alertas técnicas a los ADMINISTRADOR (F7); ALERTAS_TECNICAS=0 las apaga.
+      SERVICIO_NOTIFICACIONES_URL: ${SERVICIO_NOTIFICACIONES_URL:-http://notificaciones:8000}
+      ALERTAS_TECNICAS: ${ALERTAS_TECNICAS:-1}
+      # El historial de los sondeos va a historial_servicios (30 días); el último, a Redis.
+      MONGO_URL: mongodb://epidemia:${MONGO_PASSWORD:-}@mongodb:27017/epidemia?authSource=epidemia
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
   # La consola es una página: el navegador llama a cada servicio con la URL que da el
   # directorio de estado-servicios, y cada servicio solo abre CORS para CONSOLE_ORIGIN.
@@ -629,6 +914,33 @@ services:
     environment:
       URL_DIRECTORIO: ${URL_DIRECTORIO:-http://localhost:5262}
 
+  # --- La web (perfil web) -------------------------------------------------------------------
+  # El sitio (D36) en contenedor, para la nube (F1). En local también se puede correr fuera de
+  # Docker (python -m frontend_web.run, mismo puerto 5000), pero no los dos a la vez. Llama a
+  # cada servicio por la red interna (URL_SERVICIOS): no tiene credenciales de PostgreSQL,
+  # MongoDB ni Redis (D36, C6). Su cookie se firma con SECRET_KEY_WEB.
+  web:
+    <<: *servicio-base
+    build:
+      <<: *construye
+      dockerfile: frontend_web/Dockerfile
+    profiles: [web]
+    ports:
+      - "5000:8000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY_WEB:-}
+      URL_SERVICIOS: "http://{servicio}:8000"
+      DETRAS_DE_PROXY: ${DETRAS_DE_PROXY:-}
+      # Las mismas que auth: con el MFA prendido, la web manda el dispositivo del navegador (D40, D41).
+      MFA_PERFILES: ${MFA_PERFILES:-}
+      DISPOSITIVO_OBLIGATORIO: ${DISPOSITIVO_OBLIGATORIO:-0}
+      # El origen de las URLs firmadas de las fotos: entra al img-src del CSP de la web.
+      BUCKET_URL_PUBLICA: ${BUCKET_URL_PUBLICA:-http://localhost:4443}
+
 volumes:
+  # Lo que FLAME GPU compila para cada tamaño de población (simulador-gpu).
+  flamegpu-cache:
   redis-datos:
   postgres-datos:
+  mongo-datos:
+  bucket-datos:

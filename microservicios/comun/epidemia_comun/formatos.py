@@ -28,10 +28,25 @@ SINGULARES = {"regiones": "region", "enfermedades": "enfermedad",
               "tendencia": "punto", "serie": "punto",
               "filas": "fila", "frontera": "corrida", "dominado_por": "corrida",
               "desglose_costo": "intervencion", "trazabilidad_costos": "costo",
-              "avisos": "aviso", "notificaciones": "notificacion",
+              "avisos": "aviso", "notificaciones": "notificacion", "dispositivos": "dispositivo",
+              "evidencias": "evidencia", "lotes": "lote", "reportes": "reporte", "run_ids": "run_id",
               "desglose_por_grupo": "grupo_edad", "trazabilidad": "parametro",
               "simplificaciones": "simplificacion", "servicios": "servicio",
-              "causas": "causa", "sondeos": "sondeo"}
+              "motores": "motor", "simuladores": "simulador", "indicadores": "indicador",
+              "periodos": "periodo", "por_grupo": "grupo", "series": "serie", "data": "punto",
+              "jurisdicciones": "jurisdiccion", "numeros": "numero",
+              "formularios": "formulario", "fields": "campo", "opciones": "opcion",
+              "campanas": "campana", "preferencias": "preferencia",
+              "causas": "causa", "sondeos": "sondeo", "banda": "punto", "metricas": "metrica",
+              "sin_replicas": "corrida_id", "bandas_encimadas": "encimada",
+              "dominada_por": "alternativa", "compromisos": "compromiso", "empatada_con": "corrida",
+              "criterios": "criterio", "semillas": "semilla", "modelos": "modelo",
+              "calibrado": "enfermedad_region", "validado": "enfermedad_region",
+              "conjuntos": "conjunto", "fallas": "falla", "proyectos": "proyecto",
+              "definiciones": "definicion", "efectividad": "supuesto",
+              "jurisdicciones_sanitarias": "jurisdiccion", "hijos": "region", "censos": "censo",
+              "coincidencias": "coincidencia", "calibraciones": "calibracion",
+              "semanas": "semana", "estimados": "parametro", "motores_calibrables": "motor"}
 
 
 # Un nombre de etiqueta XML no puede iniciar con numero ni contener "+".

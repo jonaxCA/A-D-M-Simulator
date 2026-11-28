@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<jerarquia><region><id tipo="numero">1</id><code>19</code><nombre>Nuevo Leon</nombre><nivel>estado</nivel><poblacion tipo="numero">5784442</poblacion><padre_id nil="true" /></region><total tipo="numero">51</total><hijos><region><id tipo="numero">12</id><code>19001</code><nombre>Abasolo</nombre><nivel>municipio</nivel><poblacion tipo="numero">2974</poblacion></region><region><id tipo="numero">13</id><code>19002</code><nombre>Agualeguas</nombre><nivel>municipio</nivel><poblacion tipo="numero">3382</poblacion></region></hijos></jerarquia>

@@ -67,7 +67,7 @@
 
   <div class="tabla-footer">
     <span class="tabla-conteo">
-      {{ pendientes|length }} versión{{ 'es' if pendientes|length != 1 }} pendiente{{ 's' if pendientes|length != 1 }}
+      {{ pendientes|length }} {{ 'versiones' if pendientes|length != 1 else 'versión' }} pendiente{{ 's' if pendientes|length != 1 }}
     </span>
   </div>
 </div>

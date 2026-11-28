@@ -1,10 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Una enfermedad del servicio enfermedades (raíz <enfermedad>).
      GET /api/v1/diseases/{id} trae la ficha completa; el alta regresa solo id,
-     la edición id y actualizada, y activar o desactivar id e is_active. -->
+     la edición id y actualizada, y activar o desactivar id e is_active.
+     GET /api/v1/diseases/stats responde la raíz <estadisticas_enfermedades>.
+     La ficha trae su clasificación (transmission, icd10 y su fuente). Las definiciones de
+     caso (D58): GET .../case-definitions responde <definiciones_caso>, y la vigente, una
+     versión, el alta, la edición y la publicación responden <definicion_caso>. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
 
   <xs:include schemaLocation="../comun/tipos.xsd"/>
+
+  <xs:element name="estadisticas_enfermedades">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="registradas" type="Entero"/>
+        <xs:element name="activas" type="Entero"/>
+        <xs:element name="inactivas" type="Entero"/>
+        <xs:element name="altas_30d" type="Entero"/>
+        <xs:element name="detectadas_30d" type="Entero"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
 
   <xs:element name="enfermedad">
     <xs:complexType>
@@ -15,8 +31,101 @@
         <xs:element name="description" type="TextoONulo" minOccurs="0"/>
         <xs:element name="is_active" type="Booleano" minOccurs="0"/>
         <xs:element name="created_at" type="xs:dateTime" minOccurs="0"/>
+        <xs:element name="transmission" type="TransmisionONula" minOccurs="0"/>
+        <xs:element name="icd10" type="TextoONulo" minOccurs="0"/>
+        <xs:element name="classification_source" type="TextoONulo" minOccurs="0"/>
         <xs:element name="actualizada" type="Booleano" minOccurs="0"/>
       </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:simpleType name="transmision">
+    <xs:union>
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="respiratoria"/>
+          <xs:enumeration value="vectorial"/>
+        </xs:restriction>
+      </xs:simpleType>
+      <xs:simpleType>
+        <xs:restriction base="vacio"/>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
+
+  <xs:complexType name="TransmisionONula">
+    <xs:simpleContent>
+      <xs:extension base="transmision">
+        <xs:attribute name="nil" type="xs:string" fixed="true"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:simpleType name="estadoDefinicion">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="borrador"/>
+      <xs:enumeration value="vigente"/>
+      <xs:enumeration value="retirada"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="Criterios">
+    <xs:sequence>
+      <xs:element name="criterio" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:all>
+            <xs:element name="clasificacion" type="xs:string"/>
+            <xs:element name="texto" type="xs:string"/>
+          </xs:all>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:group name="Definicion">
+    <xs:sequence>
+      <xs:element name="version" type="Entero"/>
+      <xs:element name="status" type="estadoDefinicion"/>
+      <xs:element name="criterios" type="Criterios"/>
+      <xs:element name="fuente" type="xs:string"/>
+      <xs:element name="url" type="TextoONulo"/>
+      <xs:element name="created_by" type="EnteroONulo"/>
+      <xs:element name="created_at" type="xs:dateTime"/>
+      <xs:element name="published_by" type="EnteroONulo"/>
+      <xs:element name="published_at" type="FechaHoraONulo"/>
+      <xs:element name="retired_at" type="FechaHoraONulo"/>
+    </xs:sequence>
+  </xs:group>
+
+  <xs:element name="definicion_caso">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:group ref="Definicion"/>
+        <xs:element name="disease_id" type="Entero"/>
+        <xs:element name="retirada" type="EnteroONulo" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="definiciones_caso">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="disease_id" type="Entero"/>
+        <xs:element name="total" type="Entero"/>
+        <xs:element name="definiciones">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="definicion" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:group ref="Definicion"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
     </xs:complexType>
   </xs:element>
 

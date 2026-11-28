@@ -1,0 +1,1081 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - evidencias",
+    "version": "0.1.0",
+    "description": "Los archivos en el bucket de Cloud Storage (D30): fotos (JPEG, PNG o WebP) y PDF de los casos, hasta 20 MB cada uno (tabla case_attachments), y el reporte (PDF) de una comparación (tabla comparison_reports, D35). La base guarda su ruta, tipo, tamaño y huella SHA-256. Las evidencias las sube quien reportó el caso (D1: el ADMINISTRADOR no captura) y las ven los cuatro roles que leen casos; los reportes los suben ANALISTA y ADMINISTRADOR (reports.upload) y los ven los roles con reports.read. Solo ADMINISTRADOR borra. Todo es privado: se abre con una URL firmada que vence en 15 minutos (RNF-D17) o se descarga con token. Los datos van en XML por defecto o JSON con ?format=json o Accept: application/json; el archivo, tal cual."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5224"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token del servicio auth, con sesión activa en Redis."
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/cases/{case_id}/attachments": {
+      "post": {
+        "summary": "Subir una evidencia",
+        "operationId": "subir_evidencia",
+        "description": "El archivo va tal cual en el cuerpo, no como formulario multipart. Su tipo lo decide el contenido, no el Content-Type ni la extensión. Subir la misma foto otra vez al mismo caso no la duplica: responde 200 con la que ya estaba, así que la app puede reintentar sin miedo. Si trae X-Content-SHA256, la huella tiene que coincidir. El archivo va al bucket; si el bucket no responde, 503 y no queda nada: la app conserva la foto y reintenta (RNF-C19). Solo quien reportó el caso (D1: el ADMINISTRADOR no captura).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id del caso"
+          },
+          {
+            "in": "header",
+            "name": "X-Content-SHA256",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{64}$"
+            },
+            "description": "Huella SHA-256 del archivo que calcula el cliente (RNF-C09). Si viene y no coincide con la del cuerpo, 422: llegó incompleto o cambió."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "application/pdf": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Guardada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 12,
+                  "case_id": 418,
+                  "mime_type": "image/jpeg",
+                  "size_bytes": 1843200,
+                  "sha256": "9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5",
+                  "privacy": "privado",
+                  "uploaded_by": 4,
+                  "uploaded_at": "2026-11-01T17:42:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "evidencia"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<evidencia><id tipo=\"numero\">12</id><case_id tipo=\"numero\">418</case_id><mime_type>image/jpeg</mime_type><size_bytes tipo=\"numero\">1843200</size_bytes><sha256>9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">4</uploaded_by><uploaded_at>2026-11-01T17:42:00+00:00</uploaded_at></evidencia>\n"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Esa foto ya estaba en el caso: regresa la que había"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.») o si el bucket no responde (detail «El almacenamiento de archivos no está disponible.», con Retry-After)."
+          },
+          "403": {
+            "description": "El rol no sube evidencias, o el caso lo reportó otra persona"
+          },
+          "404": {
+            "description": "No existe el caso"
+          },
+          "413": {
+            "description": "El archivo pasa de 20 MB"
+          },
+          "422": {
+            "description": "Vacío, de un tipo no permitido, enviado como formulario o con una huella que no coincide"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Evidencias de un caso",
+        "operationId": "listar_evidencias",
+        "description": "De la más vieja a la más nueva. Los cuatro roles.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id del caso"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "case_id": 418,
+                  "total": 2,
+                  "evidencias": [
+                    {
+                      "id": 12,
+                      "case_id": 418,
+                      "mime_type": "image/jpeg",
+                      "size_bytes": 1843200,
+                      "sha256": "9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5",
+                      "privacy": "privado",
+                      "uploaded_by": 4,
+                      "uploaded_at": "2026-11-01T17:42:00+00:00"
+                    },
+                    {
+                      "id": 13,
+                      "case_id": 418,
+                      "mime_type": "application/pdf",
+                      "size_bytes": 254310,
+                      "sha256": "1b3d5f7a9c1e3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3a5c7e9b1d3f5a7c9e1b3d",
+                      "privacy": "privado",
+                      "uploaded_by": 4,
+                      "uploaded_at": "2026-11-01T17:45:00+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "evidencias_caso"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<evidencias_caso><case_id tipo=\"numero\">418</case_id><total tipo=\"numero\">2</total><evidencias><evidencia><id tipo=\"numero\">12</id><case_id tipo=\"numero\">418</case_id><mime_type>image/jpeg</mime_type><size_bytes tipo=\"numero\">1843200</size_bytes><sha256>9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">4</uploaded_by><uploaded_at>2026-11-01T17:42:00+00:00</uploaded_at></evidencia><evidencia><id tipo=\"numero\">13</id><case_id tipo=\"numero\">418</case_id><mime_type>application/pdf</mime_type><size_bytes tipo=\"numero\">254310</size_bytes><sha256>1b3d5f7a9c1e3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3a5c7e9b1d3f5a7c9e1b3d</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">4</uploaded_by><uploaded_at>2026-11-01T17:45:00+00:00</uploaded_at></evidencia></evidencias></evidencias_caso>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "404": {
+            "description": "No existe el caso"
+          },
+          "422": {
+            "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attachments/{evidencia_id}": {
+      "get": {
+        "summary": "Datos de una evidencia",
+        "operationId": "consultar_evidencia",
+        "description": "Tipo, tamaño, huella y quién la subió. Los cuatro roles.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "evidencia_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la evidencia"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 12,
+                  "case_id": 418,
+                  "mime_type": "image/jpeg",
+                  "size_bytes": 1843200,
+                  "sha256": "9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5",
+                  "privacy": "privado",
+                  "uploaded_by": 4,
+                  "uploaded_at": "2026-11-01T17:42:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "evidencia"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<evidencia><id tipo=\"numero\">12</id><case_id tipo=\"numero\">418</case_id><mime_type>image/jpeg</mime_type><size_bytes tipo=\"numero\">1843200</size_bytes><sha256>9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">4</uploaded_by><uploaded_at>2026-11-01T17:42:00+00:00</uploaded_at></evidencia>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "404": {
+            "description": "No existe la evidencia"
+          },
+          "422": {
+            "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Borrar una evidencia",
+        "operationId": "borrar_evidencia",
+        "description": "Solo ADMINISTRADOR, por ejemplo para una foto con datos personales subida por error. Borra el registro y luego el objeto del bucket; la bitácora conserva su huella.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "evidencia_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la evidencia"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Borrada: regresa lo que era",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 12,
+                  "case_id": 418,
+                  "mime_type": "image/jpeg",
+                  "size_bytes": 1843200,
+                  "sha256": "9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5",
+                  "privacy": "privado",
+                  "uploaded_by": 4,
+                  "uploaded_at": "2026-11-01T17:42:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "evidencia"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<evidencia><id tipo=\"numero\">12</id><case_id tipo=\"numero\">418</case_id><mime_type>image/jpeg</mime_type><size_bytes tipo=\"numero\">1843200</size_bytes><sha256>9f2c4e1a7b3d5f60c8e2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5a7c9b1d3f5</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">4</uploaded_by><uploaded_at>2026-11-01T17:42:00+00:00</uploaded_at></evidencia>\n"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "404": {
+            "description": "No existe la evidencia"
+          },
+          "422": {
+            "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attachments/{evidencia_id}/content": {
+      "get": {
+        "summary": "Descargar el archivo",
+        "operationId": "descargar_evidencia",
+        "x-binario": true,
+        "description": "El archivo tal cual, leído del bucket, con su tipo, Content-Disposition inline y Cache-Control: private, no-store. ?format no aplica. Los cuatro roles. Para abrirlo sin pasar por el servicio, /url da una URL firmada.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "evidencia_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la evidencia"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El archivo",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.») o si el bucket no responde (detail «El almacenamiento de archivos no está disponible.», con Retry-After)."
+          },
+          "404": {
+            "description": "No existe la evidencia o su archivo ya no está"
+          },
+          "422": {
+            "description": "Id inválido"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attachments/{evidencia_id}/url": {
+      "get": {
+        "summary": "URL firmada de una evidencia",
+        "operationId": "url_evidencia",
+        "description": "Una URL de lectura del objeto en el bucket que vence en 15 minutos (RNF-D17): el cliente la abre sin token. Ninguna es permanente; la respuesta lleva Cache-Control: private, no-store. Los cuatro roles que leen casos.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "evidencia_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id de la evidencia"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La URL y cuándo vence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 12,
+                  "url": "https://storage.googleapis.com/epidemia-archivos/evidencias/418/3f9a0c2e7d4b4f1a9e6c8b2d5a7f0e13.jpg?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=epidemia-vm%40proyecto.iam.gserviceaccount.com%2F20261101%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20261101T174500Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&response-content-disposition=inline%3B%20filename%3D%22evidencia-12.jpg%22&X-Goog-Signature=5d1c",
+                  "expires_at": "2026-11-01T18:00:00+00:00",
+                  "minutes": 15
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "url_firmada"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<url_firmada><id tipo=\"numero\">12</id><url>https://storage.googleapis.com/epidemia-archivos/evidencias/418/3f9a0c2e7d4b4f1a9e6c8b2d5a7f0e13.jpg?X-Goog-Algorithm=GOOG4-RSA-SHA256&amp;X-Goog-Credential=epidemia-vm%40proyecto.iam.gserviceaccount.com%2F20261101%2Fauto%2Fstorage%2Fgoog4_request&amp;X-Goog-Date=20261101T174500Z&amp;X-Goog-Expires=900&amp;X-Goog-SignedHeaders=host&amp;response-content-disposition=inline%3B%20filename%3D%22evidencia-12.jpg%22&amp;X-Goog-Signature=5d1c</url><expires_at>2026-11-01T18:00:00+00:00</expires_at><minutes tipo=\"numero\">15</minutes></url_firmada>\n"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "404": {
+            "description": "No existe la evidencia"
+          },
+          "422": {
+            "description": "Id inválido"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.») o si el bucket no responde (detail «El almacenamiento de archivos no está disponible.», con Retry-After)."
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports": {
+      "post": {
+        "summary": "Subir el reporte de una comparación",
+        "operationId": "subir_reporte",
+        "description": "El PDF va tal cual en el cuerpo (no como formulario) y se valida por su contenido, su tamaño (hasta 20 MB) y, si trae X-Content-SHA256, su huella (RNF-C09, RNF-D27). Va al bucket y su registro, con CREATE en la bitácora, a comparison_reports (RF-F17). Lo usan el escritorio y la web (D35). El mismo PDF con las mismas corridas responde 200 con el que ya estaba. ANALISTA y ADMINISTRADOR (reports.upload).",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "runs",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "12,15,20"
+            },
+            "description": "Ids de las corridas que compara el reporte, separados por comas (1 a 100)."
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Título del reporte."
+          },
+          {
+            "in": "header",
+            "name": "X-Content-SHA256",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{64}$"
+            },
+            "description": "Huella SHA-256 del archivo que calcula el cliente (RNF-C09). Si viene y no coincide con la del cuerpo, 422: llegó incompleto o cambió."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/pdf": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Guardado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "run_ids": [
+                    12,
+                    15,
+                    20
+                  ],
+                  "title": "Cierre de escuelas contra cuarentena",
+                  "mime_type": "application/pdf",
+                  "size_bytes": 482133,
+                  "sha256": "4b1e7d0c9a2f8e6d5c3b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d",
+                  "privacy": "privado",
+                  "uploaded_by": 5,
+                  "uploaded_at": "2026-11-01T17:45:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "reporte"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<reporte><id tipo=\"numero\">3</id><run_ids><run_id tipo=\"numero\">12</run_id><run_id tipo=\"numero\">15</run_id><run_id tipo=\"numero\">20</run_id></run_ids><title>Cierre de escuelas contra cuarentena</title><mime_type>application/pdf</mime_type><size_bytes tipo=\"numero\">482133</size_bytes><sha256>4b1e7d0c9a2f8e6d5c3b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">5</uploaded_by><uploaded_at>2026-11-01T17:45:00+00:00</uploaded_at></reporte>\n"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Ese PDF ya estaba con esas corridas: regresa el que había"
+          },
+          "403": {
+            "description": "El rol no sube reportes"
+          },
+          "413": {
+            "description": "El archivo pasa de 20 MB"
+          },
+          "422": {
+            "description": "Faltan las corridas, alguna no existe, el título es muy largo, no es un PDF o la huella no coincide"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.») o si el bucket no responde (detail «El almacenamiento de archivos no está disponible.», con Retry-After)."
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Reportes de comparaciones",
+        "operationId": "listar_reportes",
+        "description": "Los 100 más recientes primero, sin el archivo. Los roles con reports.read: EPIDEMIOLOGO, ANALISTA, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "runs",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "12,15,20"
+            },
+            "description": "Solo los reportes que comparan al menos esas corridas."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 1,
+                  "reportes": [
+                    {
+                      "id": 3,
+                      "run_ids": [
+                        12,
+                        15,
+                        20
+                      ],
+                      "title": "Cierre de escuelas contra cuarentena",
+                      "mime_type": "application/pdf",
+                      "size_bytes": 482133,
+                      "sha256": "4b1e7d0c9a2f8e6d5c3b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d",
+                      "privacy": "privado",
+                      "uploaded_by": 5,
+                      "uploaded_at": "2026-11-01T17:45:00+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "reportes"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<reportes><total tipo=\"numero\">1</total><reportes><reporte><id tipo=\"numero\">3</id><run_ids><run_id tipo=\"numero\">12</run_id><run_id tipo=\"numero\">15</run_id><run_id tipo=\"numero\">20</run_id></run_ids><title>Cierre de escuelas contra cuarentena</title><mime_type>application/pdf</mime_type><size_bytes tipo=\"numero\">482133</size_bytes><sha256>4b1e7d0c9a2f8e6d5c3b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">5</uploaded_by><uploaded_at>2026-11-01T17:45:00+00:00</uploaded_at></reporte></reportes></reportes>\n"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "422": {
+            "description": "runs inválido"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.») o si el bucket no responde (detail «El almacenamiento de archivos no está disponible.», con Retry-After)."
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/{reporte_id}": {
+      "get": {
+        "summary": "Datos de un reporte",
+        "operationId": "consultar_reporte",
+        "description": "Corridas, título, tamaño, huella, quién lo subió y cuándo. Los roles con reports.read.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reporte_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id del reporte"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "run_ids": [
+                    12,
+                    15,
+                    20
+                  ],
+                  "title": "Cierre de escuelas contra cuarentena",
+                  "mime_type": "application/pdf",
+                  "size_bytes": 482133,
+                  "sha256": "4b1e7d0c9a2f8e6d5c3b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d",
+                  "privacy": "privado",
+                  "uploaded_by": 5,
+                  "uploaded_at": "2026-11-01T17:45:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "reporte"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<reporte><id tipo=\"numero\">3</id><run_ids><run_id tipo=\"numero\">12</run_id><run_id tipo=\"numero\">15</run_id><run_id tipo=\"numero\">20</run_id></run_ids><title>Cierre de escuelas contra cuarentena</title><mime_type>application/pdf</mime_type><size_bytes tipo=\"numero\">482133</size_bytes><sha256>4b1e7d0c9a2f8e6d5c3b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">5</uploaded_by><uploaded_at>2026-11-01T17:45:00+00:00</uploaded_at></reporte>\n"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "404": {
+            "description": "No existe el reporte"
+          },
+          "422": {
+            "description": "Id inválido"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.») o si el bucket no responde (detail «El almacenamiento de archivos no está disponible.», con Retry-After)."
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Borrar un reporte",
+        "operationId": "borrar_reporte",
+        "description": "Solo ADMINISTRADOR. Borra el registro y luego el objeto del bucket; la bitácora conserva su huella.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reporte_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id del reporte"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Borrado: regresa lo que era",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "run_ids": [
+                    12,
+                    15,
+                    20
+                  ],
+                  "title": "Cierre de escuelas contra cuarentena",
+                  "mime_type": "application/pdf",
+                  "size_bytes": 482133,
+                  "sha256": "4b1e7d0c9a2f8e6d5c3b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d",
+                  "privacy": "privado",
+                  "uploaded_by": 5,
+                  "uploaded_at": "2026-11-01T17:45:00+00:00"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "reporte"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<reporte><id tipo=\"numero\">3</id><run_ids><run_id tipo=\"numero\">12</run_id><run_id tipo=\"numero\">15</run_id><run_id tipo=\"numero\">20</run_id></run_ids><title>Cierre de escuelas contra cuarentena</title><mime_type>application/pdf</mime_type><size_bytes tipo=\"numero\">482133</size_bytes><sha256>4b1e7d0c9a2f8e6d5c3b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d</sha256><privacy>privado</privacy><uploaded_by tipo=\"numero\">5</uploaded_by><uploaded_at>2026-11-01T17:45:00+00:00</uploaded_at></reporte>\n"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "404": {
+            "description": "No existe el reporte"
+          },
+          "422": {
+            "description": "Id inválido"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.») o si el bucket no responde (detail «El almacenamiento de archivos no está disponible.», con Retry-After)."
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/{reporte_id}/url": {
+      "get": {
+        "summary": "URL firmada de un reporte",
+        "operationId": "url_reporte",
+        "description": "Una URL de lectura del PDF en el bucket que vence en 15 minutos (RNF-D17, RF-F17): la web y el escritorio la abren sin token. Cache-Control: private, no-store. Los roles con reports.read.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reporte_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Id del reporte"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La URL y cuándo vence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 3,
+                  "url": "https://storage.googleapis.com/epidemia-archivos/reportes/12/8c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f.pdf?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=epidemia-vm%40proyecto.iam.gserviceaccount.com%2F20261101%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20261101T174500Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&response-content-disposition=inline%3B%20filename%3D%22reporte-3.pdf%22&X-Goog-Signature=5d1c",
+                  "expires_at": "2026-11-01T18:00:00+00:00",
+                  "minutes": 15
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "url_firmada"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<url_firmada><id tipo=\"numero\">3</id><url>https://storage.googleapis.com/epidemia-archivos/reportes/12/8c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f.pdf?X-Goog-Algorithm=GOOG4-RSA-SHA256&amp;X-Goog-Credential=epidemia-vm%40proyecto.iam.gserviceaccount.com%2F20261101%2Fauto%2Fstorage%2Fgoog4_request&amp;X-Goog-Date=20261101T174500Z&amp;X-Goog-Expires=900&amp;X-Goog-SignedHeaders=host&amp;response-content-disposition=inline%3B%20filename%3D%22reporte-3.pdf%22&amp;X-Goog-Signature=5d1c</url><expires_at>2026-11-01T18:00:00+00:00</expires_at><minutes tipo=\"numero\">15</minutes></url_firmada>\n"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no puede usar esta ruta"
+          },
+          "404": {
+            "description": "No existe el reporte"
+          },
+          "422": {
+            "description": "Id inválido"
+          },
+          "503": {
+            "description": "Redis no está disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.») o si el bucket no responde (detail «El almacenamiento de archivos no está disponible.», con Retry-After)."
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

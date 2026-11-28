@@ -1,0 +1,178 @@
+{
+ "conjunto": {
+  "code": "COVID19_NL_2020_SINTOMAS",
+  "version": 1
+ },
+ "configuracion": {
+  "muestras": 5000,
+  "semillas": 3,
+  "cuantil": 0.01,
+  "semilla_muestreo": 1
+ },
+ "observado": [
+  {
+   "inicio": "2020-03-01",
+   "valor": 7
+  },
+  {
+   "inicio": "2020-03-08",
+   "valor": 38
+  },
+  {
+   "inicio": "2020-03-15",
+   "valor": 40
+  },
+  {
+   "inicio": "2020-03-22",
+   "valor": 18
+  },
+  {
+   "inicio": "2020-03-29",
+   "valor": 39
+  },
+  {
+   "inicio": "2020-04-05",
+   "valor": 95
+  },
+  {
+   "inicio": "2020-04-12",
+   "valor": 61
+  },
+  {
+   "inicio": "2020-04-19",
+   "valor": 94
+  },
+  {
+   "inicio": "2020-04-26",
+   "valor": 167
+  },
+  {
+   "inicio": "2020-05-03",
+   "valor": 254
+  },
+  {
+   "inicio": "2020-05-10",
+   "valor": 319
+  },
+  {
+   "inicio": "2020-05-17",
+   "valor": 359
+  },
+  {
+   "inicio": "2020-05-24",
+   "valor": 472
+  },
+  {
+   "inicio": "2020-05-31",
+   "valor": 853
+  },
+  {
+   "inicio": "2020-06-07",
+   "valor": 1560
+  },
+  {
+   "inicio": "2020-06-14",
+   "valor": 1661
+  },
+  {
+   "inicio": "2020-06-21",
+   "valor": 2072
+  },
+  {
+   "inicio": "2020-06-28",
+   "valor": 2876
+  },
+  {
+   "inicio": "2020-07-05",
+   "valor": 3295
+  },
+  {
+   "inicio": "2020-07-12",
+   "valor": 3234
+  },
+  {
+   "inicio": "2020-07-19",
+   "valor": 2684
+  },
+  {
+   "inicio": "2020-07-26",
+   "valor": 2061
+  }
+ ],
+ "base": {
+  "enfermedad": {
+   "r0": {
+    "valor": 2.87,
+    "fuente": "Billah et al. 2020, PLoS ONE 15(11):e0242128. Meta-analisis global, R0 agrupado 2.87 (IC 2.39-3.44). doi:10.1371/journal.pone.0242128",
+    "supuesto": false,
+    "intervalo": {
+     "max": 3.44,
+     "min": 2.39,
+     "tipo": "IC95"
+    }
+   },
+   "letalidad": {
+    "valor": 0.005,
+    "fuente": "Salje et al. 2020, Science 369(6500):208-211. IFR 0.5% (IC 0.3-0.9), Francia, linaje ancestral. doi:10.1126/science.abc3517",
+    "supuesto": false,
+    "intervalo": {
+     "max": 0.009,
+     "min": 0.003,
+     "tipo": "IC95"
+    }
+   },
+   "incubacion_dias": {
+    "valor": 5.1,
+    "fuente": "Lauer et al. 2020, Ann Intern Med 172(9):577-582. Mediana 5.1 dias (IC 4.5-5.8), 181 casos confirmados. doi:10.7326/M20-0504",
+    "supuesto": false,
+    "intervalo": {
+     "max": 5.8,
+     "min": 4.5,
+     "tipo": "IC95"
+    }
+   },
+   "infeccioso_dias": {
+    "valor": 9.0,
+    "fuente": "SUPUESTO DEL EQUIPO sobre Cevik et al. 2021, Lancet Microbe 2(1):e13-e22: ningun estudio detecto virus viable despues del dia 9 de enfermedad. Eso es un maximo, no un promedio, asi que usarlo como duracion media sobreestima. doi:10.1016/S2666-5247(20)30172-5",
+    "supuesto": true
+   },
+   "prob_asintomatico": 0.35,
+   "letalidad_por_edad": {
+    "valor": {
+     "80+": 0.078,
+     "0-19": 4.3e-05,
+     "20-39": 0.00056,
+     "40-59": 0.00346,
+     "60-79": 0.0273
+    },
+    "fuente": "DERIVADO POR EL EQUIPO a partir de Verity et al. 2020, Lancet Infect Dis 20(6):669-677, tabla 1, columna Infection fatality ratio (doi:10.1016/S1473-3099(20)30243-7). El estudio publica el IFR por decenio de edad: 0.00161% en 0-9 hasta 7.80% en 80+, con IFR global 0.657% (IC 0.389-1.33). El motor usa grupos de veinte anios, asi que cada par de decenios se promedio ponderando por la estructura de edad de Nuevo Leon (Censo 2020, INEGI). Los limites de los decenios coinciden con los del censo, asi que el reagrupamiento no parte ningun grupo. Lo publicado es el IFR por decenio; el promedio ponderado lo hace el equipo. Se revisaron las dos fe de erratas del articulo y ninguna toca esta tabla. Estimacion de China, principios de 2020, linaje ancestral: no esta calibrada para Nuevo Leon.",
+    "supuesto": true
+   },
+   "dias_hospitalizacion": {
+    "valor": 8.0,
+    "fuente": "SUPUESTO DEL EQUIPO dentro del rango de Rees et al. 2020, BMC Med 18:270: las medianas de estancia van de 4 a 21 dias fuera de China entre 45 estudios. El valor puntual lo elige el equipo. doi:10.1186/s12916-020-01726-3",
+    "supuesto": true,
+    "intervalo": {
+     "max": 21,
+     "min": 4,
+     "tipo": "rango"
+    }
+   },
+   "tasa_hospitalizacion": {
+    "valor": 0.029,
+    "fuente": "Salje et al. 2020, Science 369(6500):208-211. 2.9% de los infectados son hospitalizados, Francia, linaje ancestral. doi:10.1126/science.abc3517",
+    "supuesto": false
+   },
+   "transmisibilidad_base": 0.045
+  },
+  "poblacion": {
+   "0-19": 1853344,
+   "20-39": 1867264,
+   "40-59": 1391652,
+   "60-79": 564795,
+   "80+": 89255
+  },
+  "poblacion_edad_desconocida": 18132,
+  "politica_edad_desconocida": "prorratear"
+ }
+}

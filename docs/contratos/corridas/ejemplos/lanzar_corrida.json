@@ -3,6 +3,8 @@
   "batch_id": 44,
   "scenario_version_id": 11,
   "seed": 982314,
+  "engine": "seir-ref",
   "forzar_error": false,
+  "priority": "normal",
   "status": "encolado"
 }

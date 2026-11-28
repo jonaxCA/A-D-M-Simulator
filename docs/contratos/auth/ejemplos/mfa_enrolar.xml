@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mfa><secreto>JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP</secreto><uri>otpauth://totp/EPIDEMIA:admin?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&amp;issuer=EPIDEMIA&amp;algorithm=SHA1&amp;digits=6&amp;period=30</uri><algoritmo>SHA1</algoritmo><digitos tipo="numero">6</digitos><periodo tipo="numero">30</periodo></mfa>

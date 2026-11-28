@@ -1,5 +1,11 @@
 {
   "servicio": "series",
+  "resumen": {
+    "horas": 24,
+    "sondeos": 8640,
+    "disponibilidad": 0.9988,
+    "latencia_promedio_ms": 4.6
+  },
   "sondeos": [
     {
       "nombre": "series",

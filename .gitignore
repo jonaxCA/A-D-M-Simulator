@@ -81,6 +81,7 @@ desktop.ini
 # --- Android -----------------------------------------------------------------
 # build/ acotado a frontend_movil/ para no ocultar carpetas de otros componentes.
 .gradle/
+.kotlin/
 frontend_movil/**/build/
 local.properties
 captures/
@@ -97,3 +98,9 @@ render.experimental.xml
 *.keystore
 google-services.json
 *.hprof
+
+# Certificados y llaves de nginx en local (infra/nginx/certificado_local.py).
+infra/nginx/certs/
+# Let's Encrypt en la nube (infra/nginx/letsencrypt.sh): la llave privada nunca se versiona.
+infra/letsencrypt/
+infra/certbot-www/

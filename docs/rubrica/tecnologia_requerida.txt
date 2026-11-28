@@ -1,0 +1,142 @@
+1.- Sistema web empresarial: El sistema web será el núcleo administrativo y operativo de la solución. Deberá funcionar de manera independiente, incluso cuando la aplicación móvil o la aplicación de escritorio no estén disponibles.
+ 
+Tecnologías mínimas:
+Python.
+Flask.
+Jinja2.
+HTML5.
+CSS3.
+JavaScript.
+Highcharts.
+PostgreSQL como base de datos relacional.
+MongoDB como base de datos no relacional.
+Redis para caché, sesiones, revocación de tokens y almacenamiento temporal.
+JWT para autenticación.
+Google Cloud Storage para imágenes, documentos y evidencias.
+Docker para contenerización.
+Google Compute Engine para el despliegue del backend.
+ 
+El sistema web deberá incluir:
+Sitio público.
+Portal privado.
+Inicio y cierre de sesión.
+Recuperación de contraseña.
+Administración de usuarios.
+Administración de roles y permisos.
+Perfiles diferenciados.
+Catálogos.
+Operaciones transaccionales.
+Paneles de control.
+Reportes.
+Gráficas con Highcharts.
+Bitácora de auditoría.
+Gestión de archivos.
+Notificaciones.
+Configuración del sistema.
+Registro de errores y eventos.
+Gestión de procesos propios del negocio.
+ 
+2.- Módulo de microservicios: El módulo de microservicios deberá estar completamente separado del sistema web. Aunque podrá compartir algunas bases de datos autorizadas, no deberá depender de las vistas, sesiones o plantillas del sistema web.
+Cada microservicio deberá ejecutarse en su propio contenedor y atender una responsabilidad específica. Los microservicios deberán:
+ 
+Desarrollarse con Flask.
+Implementar arquitectura REST.
+Producir respuestas en JSON y XML.
+Consumir y validar JWT.
+Consultar Redis para validar sesiones, tokens revocados y permisos.
+Tener versionamiento de API.
+Implementar validación de entradas.
+Manejar errores mediante códigos HTTP apropiados.
+Contar con límites de consumo.
+Registrar cada petición.
+Incluir identificadores de correlación.
+Tener endpoints de salud.
+Documentarse con Swagger u OpenAPI.
+Ser probados mediante Locust.
+Poder desplegarse y actualizarse individualmente.
+ 
+Ejemplos de endpoints de salud:
+/health/live
+/health/ready
+/health/database
+/health/redis
+/health/mongodb
+/health/storage
+ 
+El módulo deberá incluir un servicio de monitoreo que consulte periódicamente los endpoints de salud y muestre:
+Microservicios disponibles.
+Microservicios degradados.
+Microservicios caídos.
+Tiempo promedio de respuesta.
+Último error registrado.
+Dependencia que provocó la falla.
+Historial de disponibilidad.
+ 
+3.- Aplicación móvil Android: La aplicación móvil desarrollada en Java o Kotlin, deberá consumir exclusivamente servicios JSON proporcionados por el módulo de microservicios.
+No podrá:
+Acceder directamente a PostgreSQL.
+Acceder directamente a MongoDB.
+Acceder directamente a Redis.
+Compartir sesiones internas del sistema web.
+Replicar la lógica principal del backend.
+ 
+Deberá incorporar:
+Inicio de sesión mediante JWT.
+Renovación segura de tokens.
+Consulta de perfil.
+Operaciones específicas del negocio.
+Captura de información desde el dispositivo.
+Cámara.
+Geolocalización cuando el proyecto lo requiera.
+Lectura de códigos QR o códigos de barras.
+Notificaciones.
+Trabajo temporal sin conexión cuando resulte pertinente.
+Sincronización posterior.
+Manejo de errores de red.
+Validación de respuestas JSON.
+Registro seguro del dispositivo.
+ 
+4.- Aplicación de escritorio: La aplicación de escritorio deberá atender procesos internos que requieran mayor control operativo, captura intensiva, impresión, trabajo administrativo o integración con periféricos. Podrá desarrollarse con:
+Electron
+C# y .NET.
+Java y JavaFX.
+Python y PySide o PyQt.
+ 
+La aplicación deberá consumir exclusivamente respuestas XML producidas por los microservicios. Deberá incluir:
+Autenticación mediante JWT.
+Validación de sesión con Redis.
+Control de permisos.
+Conversión y validación de XML.
+Manejo de errores.
+Procesos específicos para perfiles internos.
+Reportes.
+Exportación de información.
+Impresión cuando corresponda.
+Registro de actividades.
+Operación desacoplada del sistema web.
+ 
+5.- Datos, nube y procesamiento: Cada proyecto deberá utilizar:
+PostgreSQL para información transaccional estructurada.
+MongoDB para documentos flexibles, eventos, telemetría, historiales o contenido semiestructurado.
+Redis para caché, sesiones distribuidas, listas de revocación, bloqueos y datos temporales.
+Google Cloud Storage para imágenes, archivos, documentos y evidencias.
+Google Compute Engine para los servicios principales.
+Docker para cada componente.
+Redes privadas y reglas de firewall.
+Variables de entorno y secretos protegidos.
+Un clúster de Google Cloud cuando el volumen o la naturaleza del proyecto lo justifique.
+ 
+Podrán emplearse, dependiendo del proyecto:
+Google Kubernetes Engine.
+Pub/Sub.
+Cloud Load Balancing.
+Cloud Monitoring.
+Cloud Logging.
+BigQuery.
+Cloud Scheduler.
+Cloud Tasks.
+Memorystore.
+Secret Manager.
+ 
+
+> Documento sacado de blackboard

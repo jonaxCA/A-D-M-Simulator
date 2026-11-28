@@ -1,0 +1,37 @@
+{
+  "total": 2,
+  "coincidencias": 57,
+  "limit": 100,
+  "offset": 0,
+  "eventos": [
+    {
+      "id": 912,
+      "fecha": "2026-11-18T17:42:10+00:00",
+      "usuario": "Ana Analista",
+      "usuario_id": 9,
+      "modulo": "roles",
+      "accion": "PERMISSION_DENIED",
+      "entidad_id": "/api/v1/roles",
+      "antes": null,
+      "datos": {
+        "metodo": "GET",
+        "roles_requeridos": [
+          "ADMINISTRADOR"
+        ]
+      },
+      "ip": "10.0.0.15"
+    },
+    {
+      "id": 911,
+      "fecha": "2026-11-18T17:40:02+00:00",
+      "usuario": "Ana Analista",
+      "usuario_id": 9,
+      "modulo": "users",
+      "accion": "LOGIN",
+      "entidad_id": "9",
+      "antes": null,
+      "datos": null,
+      "ip": "10.0.0.15"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<calibracion><id tipo="numero">5</id><dataset_id tipo="numero">1</dataset_id><engine>seir-ref</engine><engine_version>seir-ref-0.1</engine_version><method>abc-rechazo</method><method_version>calibracion-0.1</method_version><config><muestras tipo="numero">5000</muestras><semillas tipo="numero">3</semillas><cuantil tipo="numero">0.01</cuantil><semilla_muestreo tipo="numero">1</semilla_muestreo></config><status>encolado</status></calibracion>

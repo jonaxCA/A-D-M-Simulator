@@ -15,6 +15,7 @@ from backend_web.db import get_conn, query
 
 class RegionesRutasTests(AppTestCase):
     def setUp(self):
+        super().setUp()
         municipio = query(
             "SELECT id, population, population_60plus FROM regions WHERE code = '19003'",
             one=True,
@@ -58,8 +59,7 @@ class RegionesRutasTests(AppTestCase):
         with self.app.test_client() as client:
             self._login(client, "diana.flores", "Epidemia2026!")
             resp = client.get(f"/regiones/{self.region_id}/editar", follow_redirects=False)
-            self.assertEqual(resp.status_code, 302)
-            self.assertIn("/dashboard", resp.headers["Location"])
+            self.assertEqual(resp.status_code, 403)  # C1: sin el permiso, 403 (RF-A05)
 
             evento = query(
                 """SELECT action FROM audit_log
@@ -83,8 +83,7 @@ class RegionesRutasTests(AppTestCase):
                 },
                 follow_redirects=False,
             )
-            self.assertEqual(resp.status_code, 302)
-            self.assertIn("/dashboard", resp.headers["Location"])
+            self.assertEqual(resp.status_code, 403)  # C1: sin el permiso, 403 (RF-A05)
 
             fila = query("SELECT population FROM regions WHERE id = %s", (self.region_id,), one=True)
             self.assertEqual(fila["population"], self.pob_original, "un POST manual no debe cambiar la cifra")
@@ -100,8 +99,7 @@ class RegionesRutasTests(AppTestCase):
             self._login(client, "diana.flores", "Epidemia2026!")
             resp = client.get(
                 f"/regiones/{self.region_id}/edades", follow_redirects=False)
-            self.assertEqual(resp.status_code, 302)
-            self.assertIn("/dashboard", resp.headers["Location"])
+            self.assertEqual(resp.status_code, 403)  # C1: sin el permiso, 403 (RF-A05)
 
             evento = query(
                 """SELECT action FROM audit_log

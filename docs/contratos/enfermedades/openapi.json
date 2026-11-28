@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - enfermedades",
     "version": "0.1.0",
-    "description": "Servicio de enfermedades del sistema de respuesta a epidemias. Los ejemplos están en docs/contratos/enfermedades/ejemplos (listas recortadas)."
+    "description": "Servicio de enfermedades del sistema de respuesta a epidemias: el catálogo, su clasificación y las definiciones de caso versionadas (D58). Los ejemplos están en docs/contratos/enfermedades/ejemplos (listas recortadas)."
   },
   "servers": [
     {
@@ -155,7 +155,7 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         }
       },
@@ -218,7 +218,19 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -280,6 +292,61 @@
         ]
       }
     },
+    "/api/v1/diseases/stats": {
+      "get": {
+        "summary": "Estadísticas del catálogo",
+        "operationId": "estadisticas_enfermedades",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "registradas": 9,
+                  "activas": 7,
+                  "inactivas": 2,
+                  "altas_30d": 1,
+                  "detectadas_30d": 3
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "estadisticas_enfermedades"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<estadisticas_enfermedades><registradas tipo=\"numero\">9</registradas><activas tipo=\"numero\">7</activas><inactivas tipo=\"numero\">2</inactivas><altas_30d tipo=\"numero\">1</altas_30d><detectadas_30d tipo=\"numero\">3</detectadas_30d></estadisticas_enfermedades>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        },
+        "description": "Las tarjetas de la pantalla de enfermedades: registradas, activas, inactivas, altas en los últimos 30 días y detectadas_30d (enfermedades con al menos un caso pendiente o validado en un municipio de Nuevo León en los últimos 30 días). Pública, como el catálogo. El porcentaje de activas lo calcula el cliente."
+      }
+    },
     "/api/v1/diseases/{disease_id}": {
       "get": {
         "summary": "Consultar enfermedad",
@@ -316,12 +383,15 @@
                   "type": "object"
                 },
                 "example": {
-                  "id": 1,
-                  "code": "SARS_COV_2_ANCESTRAL",
-                  "name": "COVID-19 (variante ancestral)",
-                  "description": "SARS-CoV-2, linaje original de 2020.",
+                  "id": 2,
+                  "code": "INFLUENZA_ESTACIONAL",
+                  "name": "Influenza estacional A(H1N1)",
+                  "description": "Perfil de referencia para contrastar con un patogeno de menor letalidad.",
                   "is_active": true,
-                  "created_at": "2026-09-01T16:00:00+00:00"
+                  "created_at": "2026-11-23T10:00:00+00:00",
+                  "transmission": "respiratoria",
+                  "icd10": "J09-J11",
+                  "classification_source": "Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 31."
                 }
               },
               "application/xml": {
@@ -331,7 +401,7 @@
                     "name": "enfermedad"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<enfermedad><id tipo=\"numero\">1</id><code>SARS_COV_2_ANCESTRAL</code><name>COVID-19 (variante ancestral)</name><description>SARS-CoV-2, linaje original de 2020.</description><is_active tipo=\"booleano\">true</is_active><created_at>2026-09-01T16:00:00+00:00</created_at></enfermedad>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<enfermedad><id tipo=\"numero\">2</id><code>INFLUENZA_ESTACIONAL</code><name>Influenza estacional A(H1N1)</name><description>Perfil de referencia para contrastar con un patogeno de menor letalidad.</description><is_active tipo=\"booleano\">true</is_active><created_at>2026-11-23T10:00:00+00:00</created_at><transmission>respiratoria</transmission><icd10>J09-J11</icd10><classification_source>Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 31.</classification_source></enfermedad>\n"
               }
             }
           },
@@ -354,9 +424,10 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
-        }
+        },
+        "description": "La ficha de la enfermedad con su clasificación: vía de transmisión (respiratoria o vectorial), códigos CIE-10 y su fuente (D58)."
       },
       "put": {
         "summary": "Editar enfermedad",
@@ -427,7 +498,19 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -446,6 +529,25 @@
                   },
                   "description": {
                     "type": "string"
+                  },
+                  "transmission": {
+                    "type": "string",
+                    "enum": [
+                      "respiratoria",
+                      "vectorial"
+                    ],
+                    "nullable": true
+                  },
+                  "icd10": {
+                    "type": "string",
+                    "maxLength": 60,
+                    "nullable": true
+                  },
+                  "classification_source": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "nullable": true,
+                    "description": "Obligatoria si se da transmission o icd10 (regla 8)."
                   }
                 }
               },
@@ -467,6 +569,25 @@
                   },
                   "description": {
                     "type": "string"
+                  },
+                  "transmission": {
+                    "type": "string",
+                    "enum": [
+                      "respiratoria",
+                      "vectorial"
+                    ],
+                    "nullable": true
+                  },
+                  "icd10": {
+                    "type": "string",
+                    "maxLength": 60,
+                    "nullable": true
+                  },
+                  "classification_source": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "nullable": true,
+                    "description": "Obligatoria si se da transmission o icd10 (regla 8)."
                   }
                 }
               }
@@ -477,7 +598,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "description": "Cambia el nombre y la descripción y, si se envía, la clasificación completa (transmission, icd10 y classification_source). EPIDEMIOLOGO y ADMINISTRADOR."
       }
     },
     "/api/v1/diseases/{disease_id}/activate": {
@@ -550,7 +672,19 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         },
         "security": [
@@ -630,7 +764,19 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         },
         "security": [
@@ -638,6 +784,1041 @@
             "bearerAuth": []
           }
         ]
+      }
+    },
+    "/api/v1/diseases/export": {
+      "get": {
+        "summary": "Exportar el catálogo",
+        "operationId": "exportar_enfermedades",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "description": "Busca por nombre o código de la enfermedad: los que contienen el texto, sin distinguir mayúsculas. Vacío o ausente, regresa todas.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "activa",
+                "inactiva"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "enfermedades": [
+                    {
+                      "id": 1,
+                      "code": "SARS_COV_2_ANCESTRAL",
+                      "nombre": "COVID-19 (variante ancestral)",
+                      "descripcion": "SARS-CoV-2, linaje original de 2020.",
+                      "activa": true,
+                      "actividad": "historico",
+                      "alta": "2026-09-01T16:00:00+00:00",
+                      "casos_total": 4210,
+                      "casos_30d": 0,
+                      "ultimo_caso": "2026-09-03",
+                      "parametros": {
+                        "detalle": [
+                          {
+                            "clave": "r0",
+                            "etiqueta": "R₀ — número reproductivo básico",
+                            "unidad": "contagios por caso",
+                            "min": 0.01,
+                            "max": 20.0,
+                            "paso": "0.01",
+                            "ayuda": "Contagios que genera un caso en una población sin inmunidad.",
+                            "valor": 2.5,
+                            "valor_form": "2.5",
+                            "fuente": "Liu et al. 2020",
+                            "supuesto": false,
+                            "estado": "con_fuente"
+                          }
+                        ],
+                        "informativos": [],
+                        "faltan": [],
+                        "supuestos": [],
+                        "sin_fuente": [],
+                        "simulable": true
+                      }
+                    }
+                  ],
+                  "total": 3,
+                  "pagina": 1,
+                  "por_pagina": 10,
+                  "paginas": 1,
+                  "desde": 1,
+                  "hasta": 3
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "catalogo_enfermedades"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<catalogo_enfermedades><enfermedades><enfermedad><id tipo=\"numero\">1</id><code>SARS_COV_2_ANCESTRAL</code><nombre>COVID-19 (variante ancestral)</nombre><descripcion>SARS-CoV-2, linaje original de 2020.</descripcion><activa tipo=\"booleano\">true</activa><actividad>historico</actividad><alta>2026-09-01T16:00:00+00:00</alta><casos_total tipo=\"numero\">4210</casos_total><casos_30d tipo=\"numero\">0</casos_30d><ultimo_caso>2026-09-03</ultimo_caso><parametros><detalle><item><clave>r0</clave><etiqueta>R₀ — número reproductivo básico</etiqueta><unidad>contagios por caso</unidad><min tipo=\"numero\">0.01</min><max tipo=\"numero\">20.0</max><paso>0.01</paso><ayuda>Contagios que genera un caso en una población sin inmunidad.</ayuda><valor tipo=\"numero\">2.5</valor><valor_form>2.5</valor_form><fuente>Liu et al. 2020</fuente><supuesto tipo=\"booleano\">false</supuesto><estado>con_fuente</estado></item></detalle><informativos /><faltan /><supuestos /><sin_fuente /><simulable tipo=\"booleano\">true</simulable></parametros></enfermedad></enfermedades><total tipo=\"numero\">3</total><pagina tipo=\"numero\">1</pagina><por_pagina tipo=\"numero\">10</por_pagina><paginas tipo=\"numero\">1</paginas><desde tipo=\"numero\">1</desde><hasta tipo=\"numero\">3</hasta></catalogo_enfermedades>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "description": "La misma lista que GET /api/v1/diseases, para descargarla: pide sesión y deja un EXPORT (reports, catalogo_enfermedades) en la bitácora al pedir la primera página (F-3). size por omisión 100.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/diseases/{disease_id}/case-definitions": {
+      "get": {
+        "summary": "Definiciones de caso de una enfermedad",
+        "operationId": "listar_definiciones_caso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "disease_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "disease_id": 2,
+                  "total": 2,
+                  "definiciones": [
+                    {
+                      "version": 2,
+                      "status": "vigente",
+                      "criterios": [
+                        {
+                          "texto": "Persona de cualquier edad que en los últimos 5 días para casos de ETI (Ambulatorios) y en los últimos 7 días para casos IRAG (Hospitalizados) haya presentado al menos uno de los siguientes signos y síntomas: tos, fiebre o cefalea*. Acompañados de al menos uno de los siguientes signos o síntomas: Disnea; Mialgias; Artralgias; Odinofagia; Escalofríos; Dolor torácico; Rinorrea; Polipnea; Anosmia; Disgeusia; Conjuntivitis. *En menores de cinco años de edad, la irritabilidad puede sustituir a la cefalea.",
+                          "clasificacion": "Caso sospechoso de enfermedad respiratoria viral"
+                        },
+                        {
+                          "texto": "Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral y con presencia de alguno de los siguientes datos de gravedad: disnea y/o dolor torácico.",
+                          "clasificacion": "Caso de infección respiratoria aguda grave (IRAG)"
+                        },
+                        {
+                          "texto": "Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral en los últimos cinco días de inicio de los datos clínicos sin la presencia de datos de gravedad (disnea y/o dolor torácico).",
+                          "clasificacion": "Caso de enfermedad tipo influenza (ETI)"
+                        },
+                        {
+                          "texto": "Persona que cumpla con la definición operacional de caso sospechoso y que cuente con diagnóstico confirmado por laboratorio mediante la prueba RT-PCR. Son válidos para el sistema de vigilancia epidemiológica los resultados emitidos por los miembros del SINAVE (Red Nacional de Laboratorios de Salud Pública y Laboratorios de apoyo a la vigilancia epidemiológica-RNLSP/LAVE-) y aquellos laboratorios que hayan sido aprobados mediante la evaluación a la competencia técnica por el InDRE, registrando en el informe de prueba el estuche comercial utilizado para el procesamiento.",
+                          "clasificacion": "Caso confirmado por laboratorio"
+                        },
+                        {
+                          "texto": "Persona fallecida que cumpla con la definición operacional de caso sospechoso, que haya sido confirmado por laboratorio mediante la prueba RT-PCR.",
+                          "clasificacion": "Defunción con diagnóstico confirmado por laboratorio"
+                        }
+                      ],
+                      "fuente": "Secretaría de Salud, Dirección General de Epidemiología. Lineamiento estandarizado para la vigilancia epidemiológica y por laboratorio de la enfermedad respiratoria viral, septiembre de 2023, pp. 30-31. Las definiciones operacionales solo las actualiza el CONAVE.",
+                      "url": "https://www.gob.mx/cms/uploads/attachment/file/636504/Lineamiento_Estandarizado_Para_La_Vigilancia_Epidemiol_gica_Y_Por_Laboratorio_De_La_Enfermedad_Respiratoria_Viral_-_Septiembre_2023.pdf",
+                      "created_by": null,
+                      "created_at": "2026-11-23T10:00:00+00:00",
+                      "published_by": null,
+                      "published_at": "2026-11-23T10:00:00+00:00",
+                      "retired_at": null
+                    },
+                    {
+                      "version": 1,
+                      "status": "retirada",
+                      "criterios": [
+                        {
+                          "texto": "Se considera caso sospechoso de influenza a todo caso o defunción que cumpla con los criterios de Enfermedad Tipo Influenza (ETI) o Infección Respiratoria Aguda Grave (IRAG).",
+                          "clasificacion": "Caso sospechoso de influenza"
+                        },
+                        {
+                          "texto": "Persona de cualquier edad que presente o refiera haber tenido fiebre mayor o igual a 38° C, tos y cefalea, acompañadas de uno o más de los siguientes signos o síntomas: rinorrea, coriza, artralgias, mialgias, postración, odinofagia, dolor torácico, dolor abdominal, congestión nasal o diarrea. Importante: En menores de cinco años de edad, se considera un signo cardinal la irritabilidad, en sustitución de la cefalea; En mayores de 65 años o en pacientes inmunocomprometidos, no se requerirá la fiebre como signo cardinal.",
+                          "clasificacion": "Enfermedad tipo influenza (ETI)"
+                        },
+                        {
+                          "texto": "Persona de cualquier edad que presente dificultad al respirar, con antecedente de fiebre mayor o igual a 38° C y tos, con uno o más de los siguientes síntomas: ataque al estado general, dolor torácico o polipnea. En pacientes inmunocomprometidos o con manejo terapéutico con antipiréticos no se presentará el pico febril descrito en la definición operacional; Así mismo en pacientes con apoyo respiratorio automatizado no se requerirá la tos como signo indispensable para su ingreso como sospechoso a influenza.",
+                          "clasificacion": "Infección respiratoria aguda grave (IRAG)"
+                        }
+                      ],
+                      "fuente": "Secretaría de Salud, Dirección General de Epidemiología. Vigilancia epidemiológica convencional de casos nuevos de enfermedad: definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 31.",
+                      "url": "https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf",
+                      "created_by": null,
+                      "created_at": "2026-11-23T10:00:00+00:00",
+                      "published_by": null,
+                      "published_at": "2026-11-23T10:00:00+00:00",
+                      "retired_at": "2026-11-23T10:00:00+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "definiciones_caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<definiciones_caso><disease_id tipo=\"numero\">2</disease_id><total tipo=\"numero\">2</total><definiciones><definicion><version tipo=\"numero\">2</version><status>vigente</status><criterios><criterio><texto>Persona de cualquier edad que en los últimos 5 días para casos de ETI (Ambulatorios) y en los últimos 7 días para casos IRAG (Hospitalizados) haya presentado al menos uno de los siguientes signos y síntomas: tos, fiebre o cefalea*. Acompañados de al menos uno de los siguientes signos o síntomas: Disnea; Mialgias; Artralgias; Odinofagia; Escalofríos; Dolor torácico; Rinorrea; Polipnea; Anosmia; Disgeusia; Conjuntivitis. *En menores de cinco años de edad, la irritabilidad puede sustituir a la cefalea.</texto><clasificacion>Caso sospechoso de enfermedad respiratoria viral</clasificacion></criterio><criterio><texto>Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral y con presencia de alguno de los siguientes datos de gravedad: disnea y/o dolor torácico.</texto><clasificacion>Caso de infección respiratoria aguda grave (IRAG)</clasificacion></criterio><criterio><texto>Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral en los últimos cinco días de inicio de los datos clínicos sin la presencia de datos de gravedad (disnea y/o dolor torácico).</texto><clasificacion>Caso de enfermedad tipo influenza (ETI)</clasificacion></criterio><criterio><texto>Persona que cumpla con la definición operacional de caso sospechoso y que cuente con diagnóstico confirmado por laboratorio mediante la prueba RT-PCR. Son válidos para el sistema de vigilancia epidemiológica los resultados emitidos por los miembros del SINAVE (Red Nacional de Laboratorios de Salud Pública y Laboratorios de apoyo a la vigilancia epidemiológica-RNLSP/LAVE-) y aquellos laboratorios que hayan sido aprobados mediante la evaluación a la competencia técnica por el InDRE, registrando en el informe de prueba el estuche comercial utilizado para el procesamiento.</texto><clasificacion>Caso confirmado por laboratorio</clasificacion></criterio><criterio><texto>Persona fallecida que cumpla con la definición operacional de caso sospechoso, que haya sido confirmado por laboratorio mediante la prueba RT-PCR.</texto><clasificacion>Defunción con diagnóstico confirmado por laboratorio</clasificacion></criterio></criterios><fuente>Secretaría de Salud, Dirección General de Epidemiología. Lineamiento estandarizado para la vigilancia epidemiológica y por laboratorio de la enfermedad respiratoria viral, septiembre de 2023, pp. 30-31. Las definiciones operacionales solo las actualiza el CONAVE.</fuente><url>https://www.gob.mx/cms/uploads/attachment/file/636504/Lineamiento_Estandarizado_Para_La_Vigilancia_Epidemiol_gica_Y_Por_Laboratorio_De_La_Enfermedad_Respiratoria_Viral_-_Septiembre_2023.pdf</url><created_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at><published_by nil=\"true\" /><published_at>2026-11-23T10:00:00+00:00</published_at><retired_at nil=\"true\" /></definicion><definicion><version tipo=\"numero\">1</version><status>retirada</status><criterios><criterio><texto>Se considera caso sospechoso de influenza a todo caso o defunción que cumpla con los criterios de Enfermedad Tipo Influenza (ETI) o Infección Respiratoria Aguda Grave (IRAG).</texto><clasificacion>Caso sospechoso de influenza</clasificacion></criterio><criterio><texto>Persona de cualquier edad que presente o refiera haber tenido fiebre mayor o igual a 38° C, tos y cefalea, acompañadas de uno o más de los siguientes signos o síntomas: rinorrea, coriza, artralgias, mialgias, postración, odinofagia, dolor torácico, dolor abdominal, congestión nasal o diarrea. Importante: En menores de cinco años de edad, se considera un signo cardinal la irritabilidad, en sustitución de la cefalea; En mayores de 65 años o en pacientes inmunocomprometidos, no se requerirá la fiebre como signo cardinal.</texto><clasificacion>Enfermedad tipo influenza (ETI)</clasificacion></criterio><criterio><texto>Persona de cualquier edad que presente dificultad al respirar, con antecedente de fiebre mayor o igual a 38° C y tos, con uno o más de los siguientes síntomas: ataque al estado general, dolor torácico o polipnea. En pacientes inmunocomprometidos o con manejo terapéutico con antipiréticos no se presentará el pico febril descrito en la definición operacional; Así mismo en pacientes con apoyo respiratorio automatizado no se requerirá la tos como signo indispensable para su ingreso como sospechoso a influenza.</texto><clasificacion>Infección respiratoria aguda grave (IRAG)</clasificacion></criterio></criterios><fuente>Secretaría de Salud, Dirección General de Epidemiología. Vigilancia epidemiológica convencional de casos nuevos de enfermedad: definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 31.</fuente><url>https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf</url><created_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at><published_by nil=\"true\" /><published_at>2026-11-23T10:00:00+00:00</published_at><retired_at>2026-11-23T10:00:00+00:00</retired_at></definicion></definiciones></definiciones_caso>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        },
+        "description": "Todas las versiones de la definición operacional de caso, la más reciente primero: borrador, vigente o retirada (D58). Públicas, como el catálogo."
+      },
+      "post": {
+        "summary": "Crear un borrador de definición de caso",
+        "operationId": "crear_definicion_caso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "disease_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "version": 3,
+                  "status": "borrador",
+                  "criterios": [
+                    {
+                      "clasificacion": "Caso probable de dengue no grave",
+                      "texto": "Toda persona de cualquier edad que resida o proceda de una región con transmisión y presente fiebre y dos o más signos de la lista."
+                    }
+                  ],
+                  "fuente": "Secretaría de Salud, DGE. Definiciones operacionales, marzo de 2021, p. 60.",
+                  "url": "https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf",
+                  "created_by": 2,
+                  "created_at": "2026-11-23T10:00:00+00:00",
+                  "published_by": null,
+                  "published_at": null,
+                  "retired_at": null,
+                  "disease_id": 2
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "definicion_caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<definicion_caso><version tipo=\"numero\">3</version><status>borrador</status><criterios><criterio><clasificacion>Caso probable de dengue no grave</clasificacion><texto>Toda persona de cualquier edad que resida o proceda de una región con transmisión y presente fiebre y dos o más signos de la lista.</texto></criterio></criterios><fuente>Secretaría de Salud, DGE. Definiciones operacionales, marzo de 2021, p. 60.</fuente><url>https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf</url><created_by tipo=\"numero\">2</created_by><created_at>2026-11-23T10:00:00+00:00</created_at><published_by nil=\"true\" /><published_at nil=\"true\" /><retired_at nil=\"true\" /><disease_id tipo=\"numero\">2</disease_id></definicion_caso>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Crea la versión siguiente como borrador (409 si ya hay uno abierto). EPIDEMIOLOGO y ADMINISTRADOR; queda CREATE en la bitácora.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "criterios",
+                  "fuente"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "criterios": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "clasificacion",
+                        "texto"
+                      ],
+                      "properties": {
+                        "clasificacion": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "texto": {
+                          "type": "string",
+                          "maxLength": 4000
+                        }
+                      }
+                    },
+                    "description": "En XML: <criterios><criterio><clasificacion/><texto/></criterio>...</criterios>."
+                  },
+                  "fuente": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "Institución, documento, fecha y páginas."
+                  },
+                  "url": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  }
+                }
+              },
+              "example": {
+                "criterios": [
+                  {
+                    "clasificacion": "Caso probable de dengue no grave",
+                    "texto": "Toda persona de cualquier edad que resida o proceda de una región con transmisión y presente fiebre y dos o más signos de la lista."
+                  }
+                ],
+                "fuente": "Secretaría de Salud, DGE. Definiciones operacionales, marzo de 2021, p. 60.",
+                "url": "https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "criterios",
+                  "fuente"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "criterios": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "clasificacion",
+                        "texto"
+                      ],
+                      "properties": {
+                        "clasificacion": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "texto": {
+                          "type": "string",
+                          "maxLength": 4000
+                        }
+                      }
+                    },
+                    "description": "En XML: <criterios><criterio><clasificacion/><texto/></criterio>...</criterios>."
+                  },
+                  "fuente": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "Institución, documento, fecha y páginas."
+                  },
+                  "url": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/diseases/{disease_id}/case-definitions/current": {
+      "get": {
+        "summary": "Definición de caso vigente",
+        "operationId": "definicion_caso_vigente",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "disease_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "version": 2,
+                  "status": "vigente",
+                  "criterios": [
+                    {
+                      "texto": "Persona de cualquier edad que en los últimos 5 días para casos de ETI (Ambulatorios) y en los últimos 7 días para casos IRAG (Hospitalizados) haya presentado al menos uno de los siguientes signos y síntomas: tos, fiebre o cefalea*. Acompañados de al menos uno de los siguientes signos o síntomas: Disnea; Mialgias; Artralgias; Odinofagia; Escalofríos; Dolor torácico; Rinorrea; Polipnea; Anosmia; Disgeusia; Conjuntivitis. *En menores de cinco años de edad, la irritabilidad puede sustituir a la cefalea.",
+                      "clasificacion": "Caso sospechoso de enfermedad respiratoria viral"
+                    },
+                    {
+                      "texto": "Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral y con presencia de alguno de los siguientes datos de gravedad: disnea y/o dolor torácico.",
+                      "clasificacion": "Caso de infección respiratoria aguda grave (IRAG)"
+                    },
+                    {
+                      "texto": "Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral en los últimos cinco días de inicio de los datos clínicos sin la presencia de datos de gravedad (disnea y/o dolor torácico).",
+                      "clasificacion": "Caso de enfermedad tipo influenza (ETI)"
+                    },
+                    {
+                      "texto": "Persona que cumpla con la definición operacional de caso sospechoso y que cuente con diagnóstico confirmado por laboratorio mediante la prueba RT-PCR. Son válidos para el sistema de vigilancia epidemiológica los resultados emitidos por los miembros del SINAVE (Red Nacional de Laboratorios de Salud Pública y Laboratorios de apoyo a la vigilancia epidemiológica-RNLSP/LAVE-) y aquellos laboratorios que hayan sido aprobados mediante la evaluación a la competencia técnica por el InDRE, registrando en el informe de prueba el estuche comercial utilizado para el procesamiento.",
+                      "clasificacion": "Caso confirmado por laboratorio"
+                    },
+                    {
+                      "texto": "Persona fallecida que cumpla con la definición operacional de caso sospechoso, que haya sido confirmado por laboratorio mediante la prueba RT-PCR.",
+                      "clasificacion": "Defunción con diagnóstico confirmado por laboratorio"
+                    }
+                  ],
+                  "fuente": "Secretaría de Salud, Dirección General de Epidemiología. Lineamiento estandarizado para la vigilancia epidemiológica y por laboratorio de la enfermedad respiratoria viral, septiembre de 2023, pp. 30-31. Las definiciones operacionales solo las actualiza el CONAVE.",
+                  "url": "https://www.gob.mx/cms/uploads/attachment/file/636504/Lineamiento_Estandarizado_Para_La_Vigilancia_Epidemiol_gica_Y_Por_Laboratorio_De_La_Enfermedad_Respiratoria_Viral_-_Septiembre_2023.pdf",
+                  "created_by": null,
+                  "created_at": "2026-11-23T10:00:00+00:00",
+                  "published_by": null,
+                  "published_at": "2026-11-23T10:00:00+00:00",
+                  "retired_at": null,
+                  "disease_id": 2
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "definicion_caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<definicion_caso><version tipo=\"numero\">2</version><status>vigente</status><criterios><criterio><texto>Persona de cualquier edad que en los últimos 5 días para casos de ETI (Ambulatorios) y en los últimos 7 días para casos IRAG (Hospitalizados) haya presentado al menos uno de los siguientes signos y síntomas: tos, fiebre o cefalea*. Acompañados de al menos uno de los siguientes signos o síntomas: Disnea; Mialgias; Artralgias; Odinofagia; Escalofríos; Dolor torácico; Rinorrea; Polipnea; Anosmia; Disgeusia; Conjuntivitis. *En menores de cinco años de edad, la irritabilidad puede sustituir a la cefalea.</texto><clasificacion>Caso sospechoso de enfermedad respiratoria viral</clasificacion></criterio><criterio><texto>Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral y con presencia de alguno de los siguientes datos de gravedad: disnea y/o dolor torácico.</texto><clasificacion>Caso de infección respiratoria aguda grave (IRAG)</clasificacion></criterio><criterio><texto>Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral en los últimos cinco días de inicio de los datos clínicos sin la presencia de datos de gravedad (disnea y/o dolor torácico).</texto><clasificacion>Caso de enfermedad tipo influenza (ETI)</clasificacion></criterio><criterio><texto>Persona que cumpla con la definición operacional de caso sospechoso y que cuente con diagnóstico confirmado por laboratorio mediante la prueba RT-PCR. Son válidos para el sistema de vigilancia epidemiológica los resultados emitidos por los miembros del SINAVE (Red Nacional de Laboratorios de Salud Pública y Laboratorios de apoyo a la vigilancia epidemiológica-RNLSP/LAVE-) y aquellos laboratorios que hayan sido aprobados mediante la evaluación a la competencia técnica por el InDRE, registrando en el informe de prueba el estuche comercial utilizado para el procesamiento.</texto><clasificacion>Caso confirmado por laboratorio</clasificacion></criterio><criterio><texto>Persona fallecida que cumpla con la definición operacional de caso sospechoso, que haya sido confirmado por laboratorio mediante la prueba RT-PCR.</texto><clasificacion>Defunción con diagnóstico confirmado por laboratorio</clasificacion></criterio></criterios><fuente>Secretaría de Salud, Dirección General de Epidemiología. Lineamiento estandarizado para la vigilancia epidemiológica y por laboratorio de la enfermedad respiratoria viral, septiembre de 2023, pp. 30-31. Las definiciones operacionales solo las actualiza el CONAVE.</fuente><url>https://www.gob.mx/cms/uploads/attachment/file/636504/Lineamiento_Estandarizado_Para_La_Vigilancia_Epidemiol_gica_Y_Por_Laboratorio_De_La_Enfermedad_Respiratoria_Viral_-_Septiembre_2023.pdf</url><created_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at><published_by nil=\"true\" /><published_at>2026-11-23T10:00:00+00:00</published_at><retired_at nil=\"true\" /><disease_id tipo=\"numero\">2</disease_id></definicion_caso>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        },
+        "description": "La versión vigente. 404 si la enfermedad no tiene una (PATOGENO_X)."
+      }
+    },
+    "/api/v1/diseases/{disease_id}/case-definitions/{version}": {
+      "get": {
+        "summary": "Una versión de la definición de caso",
+        "operationId": "consultar_definicion_caso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "disease_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "version": 1,
+                  "status": "retirada",
+                  "criterios": [
+                    {
+                      "texto": "Se considera caso sospechoso de influenza a todo caso o defunción que cumpla con los criterios de Enfermedad Tipo Influenza (ETI) o Infección Respiratoria Aguda Grave (IRAG).",
+                      "clasificacion": "Caso sospechoso de influenza"
+                    },
+                    {
+                      "texto": "Persona de cualquier edad que presente o refiera haber tenido fiebre mayor o igual a 38° C, tos y cefalea, acompañadas de uno o más de los siguientes signos o síntomas: rinorrea, coriza, artralgias, mialgias, postración, odinofagia, dolor torácico, dolor abdominal, congestión nasal o diarrea. Importante: En menores de cinco años de edad, se considera un signo cardinal la irritabilidad, en sustitución de la cefalea; En mayores de 65 años o en pacientes inmunocomprometidos, no se requerirá la fiebre como signo cardinal.",
+                      "clasificacion": "Enfermedad tipo influenza (ETI)"
+                    },
+                    {
+                      "texto": "Persona de cualquier edad que presente dificultad al respirar, con antecedente de fiebre mayor o igual a 38° C y tos, con uno o más de los siguientes síntomas: ataque al estado general, dolor torácico o polipnea. En pacientes inmunocomprometidos o con manejo terapéutico con antipiréticos no se presentará el pico febril descrito en la definición operacional; Así mismo en pacientes con apoyo respiratorio automatizado no se requerirá la tos como signo indispensable para su ingreso como sospechoso a influenza.",
+                      "clasificacion": "Infección respiratoria aguda grave (IRAG)"
+                    }
+                  ],
+                  "fuente": "Secretaría de Salud, Dirección General de Epidemiología. Vigilancia epidemiológica convencional de casos nuevos de enfermedad: definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 31.",
+                  "url": "https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf",
+                  "created_by": null,
+                  "created_at": "2026-11-23T10:00:00+00:00",
+                  "published_by": null,
+                  "published_at": "2026-11-23T10:00:00+00:00",
+                  "retired_at": "2026-11-23T10:00:00+00:00",
+                  "disease_id": 2
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "definicion_caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<definicion_caso><version tipo=\"numero\">1</version><status>retirada</status><criterios><criterio><texto>Se considera caso sospechoso de influenza a todo caso o defunción que cumpla con los criterios de Enfermedad Tipo Influenza (ETI) o Infección Respiratoria Aguda Grave (IRAG).</texto><clasificacion>Caso sospechoso de influenza</clasificacion></criterio><criterio><texto>Persona de cualquier edad que presente o refiera haber tenido fiebre mayor o igual a 38° C, tos y cefalea, acompañadas de uno o más de los siguientes signos o síntomas: rinorrea, coriza, artralgias, mialgias, postración, odinofagia, dolor torácico, dolor abdominal, congestión nasal o diarrea. Importante: En menores de cinco años de edad, se considera un signo cardinal la irritabilidad, en sustitución de la cefalea; En mayores de 65 años o en pacientes inmunocomprometidos, no se requerirá la fiebre como signo cardinal.</texto><clasificacion>Enfermedad tipo influenza (ETI)</clasificacion></criterio><criterio><texto>Persona de cualquier edad que presente dificultad al respirar, con antecedente de fiebre mayor o igual a 38° C y tos, con uno o más de los siguientes síntomas: ataque al estado general, dolor torácico o polipnea. En pacientes inmunocomprometidos o con manejo terapéutico con antipiréticos no se presentará el pico febril descrito en la definición operacional; Así mismo en pacientes con apoyo respiratorio automatizado no se requerirá la tos como signo indispensable para su ingreso como sospechoso a influenza.</texto><clasificacion>Infección respiratoria aguda grave (IRAG)</clasificacion></criterio></criterios><fuente>Secretaría de Salud, Dirección General de Epidemiología. Vigilancia epidemiológica convencional de casos nuevos de enfermedad: definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 31.</fuente><url>https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf</url><created_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at><published_by nil=\"true\" /><published_at>2026-11-23T10:00:00+00:00</published_at><retired_at>2026-11-23T10:00:00+00:00</retired_at><disease_id tipo=\"numero\">2</disease_id></definicion_caso>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        },
+        "description": "Cualquier versión, también una retirada o un borrador."
+      },
+      "put": {
+        "summary": "Editar un borrador",
+        "operationId": "editar_definicion_caso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "disease_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "version": 3,
+                  "status": "borrador",
+                  "criterios": [
+                    {
+                      "clasificacion": "Caso probable de dengue no grave",
+                      "texto": "Toda persona de cualquier edad que resida o proceda de una región con transmisión y presente fiebre y dos o más signos de la lista."
+                    }
+                  ],
+                  "fuente": "Secretaría de Salud, DGE. Definiciones operacionales, marzo de 2021, p. 60.",
+                  "url": "https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf",
+                  "created_by": 2,
+                  "created_at": "2026-11-23T10:00:00+00:00",
+                  "published_by": null,
+                  "published_at": null,
+                  "retired_at": null,
+                  "disease_id": 2
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "definicion_caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<definicion_caso><version tipo=\"numero\">3</version><status>borrador</status><criterios><criterio><clasificacion>Caso probable de dengue no grave</clasificacion><texto>Toda persona de cualquier edad que resida o proceda de una región con transmisión y presente fiebre y dos o más signos de la lista.</texto></criterio></criterios><fuente>Secretaría de Salud, DGE. Definiciones operacionales, marzo de 2021, p. 60.</fuente><url>https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf</url><created_by tipo=\"numero\">2</created_by><created_at>2026-11-23T10:00:00+00:00</created_at><published_by nil=\"true\" /><published_at nil=\"true\" /><retired_at nil=\"true\" /><disease_id tipo=\"numero\">2</disease_id></definicion_caso>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Solo un borrador se edita: lo publicado no cambia (409).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "criterios",
+                  "fuente"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "criterios": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "clasificacion",
+                        "texto"
+                      ],
+                      "properties": {
+                        "clasificacion": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "texto": {
+                          "type": "string",
+                          "maxLength": 4000
+                        }
+                      }
+                    },
+                    "description": "En XML: <criterios><criterio><clasificacion/><texto/></criterio>...</criterios>."
+                  },
+                  "fuente": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "Institución, documento, fecha y páginas."
+                  },
+                  "url": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  }
+                }
+              },
+              "example": {
+                "criterios": [
+                  {
+                    "clasificacion": "Caso probable de dengue no grave",
+                    "texto": "Toda persona de cualquier edad que resida o proceda de una región con transmisión y presente fiebre y dos o más signos de la lista."
+                  }
+                ],
+                "fuente": "Secretaría de Salud, DGE. Definiciones operacionales, marzo de 2021, p. 60.",
+                "url": "https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "criterios",
+                  "fuente"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "criterios": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "clasificacion",
+                        "texto"
+                      ],
+                      "properties": {
+                        "clasificacion": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "texto": {
+                          "type": "string",
+                          "maxLength": 4000
+                        }
+                      }
+                    },
+                    "description": "En XML: <criterios><criterio><clasificacion/><texto/></criterio>...</criterios>."
+                  },
+                  "fuente": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "Institución, documento, fecha y páginas."
+                  },
+                  "url": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/diseases/{disease_id}/case-definitions/{version}/publish": {
+      "post": {
+        "summary": "Publicar un borrador",
+        "operationId": "publicar_definicion_caso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "disease_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "version": 3,
+                  "status": "vigente",
+                  "criterios": [
+                    {
+                      "clasificacion": "Caso probable de dengue no grave",
+                      "texto": "Toda persona de cualquier edad que resida o proceda de una región con transmisión y presente fiebre y dos o más signos de la lista."
+                    }
+                  ],
+                  "fuente": "Secretaría de Salud, DGE. Definiciones operacionales, marzo de 2021, p. 60.",
+                  "url": "https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf",
+                  "created_by": 2,
+                  "created_at": "2026-11-23T10:00:00+00:00",
+                  "published_by": 2,
+                  "published_at": "2026-11-23T10:00:00+00:00",
+                  "retired_at": null,
+                  "disease_id": 2,
+                  "retirada": 2
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "definicion_caso"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<definicion_caso><version tipo=\"numero\">3</version><status>vigente</status><criterios><criterio><clasificacion>Caso probable de dengue no grave</clasificacion><texto>Toda persona de cualquier edad que resida o proceda de una región con transmisión y presente fiebre y dos o más signos de la lista.</texto></criterio></criterios><fuente>Secretaría de Salud, DGE. Definiciones operacionales, marzo de 2021, p. 60.</fuente><url>https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf</url><created_by tipo=\"numero\">2</created_by><created_at>2026-11-23T10:00:00+00:00</created_at><published_by tipo=\"numero\">2</published_by><published_at>2026-11-23T10:00:00+00:00</published_at><retired_at nil=\"true\" /><disease_id tipo=\"numero\">2</disease_id><retirada tipo=\"numero\">2</retirada></definicion_caso>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "Falta token o token inválido"
+          },
+          "403": {
+            "description": "Permiso insuficiente"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "El borrador pasa a vigente y la vigente anterior a retirada, en una transacción; queda PUBLISH en la bitácora. retirada es la versión que se retiró, o null."
       }
     }
   }

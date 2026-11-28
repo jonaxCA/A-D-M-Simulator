@@ -1,0 +1,60 @@
+# CON postgres DETENIDO: /health de casos
+[
+  503,
+  {
+    "servicio": "casos",
+    "version": "0.1.0",
+    "estado": "degradado",
+    "postgresql": false,
+    "redis": true,
+    "mongodb": "no_usa",
+    "bucket": "no_usa",
+    "tiempos_ms": {
+      "postgresql": 2.2,
+      "redis": 0.2
+    },
+    "tiempo_ms": 2.4
+  }
+]
+
+# GET /cases (estado, cuerpo)
+[
+  503,
+  {
+    "type": "about:blank",
+    "title": "Service Unavailable",
+    "status": 503,
+    "detail": "La base de datos no está disponible.",
+    "codigo": "SERVICIO_NO_DISPONIBLE",
+    "instance": "/api/v1/cases"
+  }
+]
+
+# DESPUES: /health de casos
+[
+  200,
+  {
+    "servicio": "casos",
+    "version": "0.1.0",
+    "estado": "ok",
+    "postgresql": true,
+    "redis": true,
+    "mongodb": "no_usa",
+    "bucket": "no_usa",
+    "tiempos_ms": {
+      "postgresql": 4.2,
+      "redis": 0.2
+    },
+    "tiempo_ms": 4.4
+  }
+]
+
+# DESPUES: GET /cases (estado, cuerpo)
+[
+  200,
+  {
+    "codigo": null,
+    "total_en_respuesta": "ver 200"
+  }
+]
+

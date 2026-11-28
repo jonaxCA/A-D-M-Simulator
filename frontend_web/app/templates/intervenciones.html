@@ -1,0 +1,112 @@
+{% extends "base_app.html" %}
+{% block title %}Seguimiento de intervenciones{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Seguimiento de intervenciones</h1>
+    <p class="subtitle">
+      Por cada versión aprobada: lo que se programó, cuánto cuesta, qué corridas lo simularon y,
+      para la vacunación, las campañas de su enfermedad (D51). Los días son del horizonte
+      simulado, no fechas de calendario.
+    </p>
+  </div>
+</div>
+
+{% include "_mensajes.html" %}
+
+<form class="card filtros-card" method="get" action="{{ url_for('main.seguimiento_intervenciones') }}">
+  <div class="field">
+    <label for="q">Escenario</label>
+    <input type="search" id="q" name="q" value="{{ busqueda }}" placeholder="Buscar por nombre del escenario...">
+  </div>
+  <div class="filtro-acciones">
+    <a class="btn" href="{{ url_for('main.seguimiento_intervenciones') }}">Limpiar</a>
+    <button type="submit" class="btn btn-primary">Aplicar</button>
+  </div>
+</form>
+
+{% for f in filas %}
+{% set v = f.version %}
+<div class="card table-card seguimiento-version">
+  <div class="detalle-titulo">
+    <a href="{{ url_for('main.escenario_detalle', scenario_id=v.scenario_id, version=v.version_number) }}">
+      <code class="codigo-chip">{{ v.scenario_id | id_esc }}</code> {{ v.scenario_name }} · v{{ v.version_number }}</a>
+    <span class="field-hint">{{ v.disease_name }} · {{ v.region_name }}{% if v.revisado_por %} · aprobó {{ v.revisado_por }}{% endif %}</span>
+  </div>
+
+  {% if f.intervenciones is none %}
+  <div class="alert alert-warn">Las intervenciones de esta versión no están disponibles por ahora (servicio «intervenciones»).</div>
+  {% else %}
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead>
+        <tr><th>Intervención</th><th>Capa</th><th>Días</th><th>Cobertura</th><th>Cumplimiento</th>
+            <th>Costo unitario (pesos)</th><th>Personas-día por dosis</th></tr>
+      </thead>
+      <tbody>
+        {% for i in f.intervenciones %}
+        {% set t = tipos.get(i.code) or {} %}
+        <tr>
+          <td><strong>{{ i.name }}</strong><div class="detalle-texto">{{ i.code }}</div></td>
+          <td>{{ i.target_layer or '—' }}</td>
+          <td>{{ i.start_day }}{% if i.end_day is not none %}–{{ i.end_day }}{% else %} → fin{% endif %}</td>
+          <td>{% if i.coverage is not none %}{{ "{:.0%}".format(i.coverage) }}{% else %}100%{% endif %}</td>
+          <td>{% if i.compliance is not none %}{{ "{:.0%}".format(i.compliance) }}{% else %}100%{% endif %}</td>
+          <td>
+            {% if t.unit_cost is defined and t.unit_cost is not none %}
+              {{ "$ {:,.2f}".format(t.unit_cost|float) }} {{ (t.cost_unit or '') | replace('_', ' ') }}
+              <div class="detalle-texto">{{ 'Supuesto' if t.cost_is_assumption else (t.cost_source or '') }}</div>
+            {% else %}<span class="badge badge-alerta">Sin costo capturado</span>{% endif %}
+          </td>
+          <td>
+            {% if t.cost_unit == 'por_dosis' %}
+              {% if t.person_days_per_unit is not none %}{{ t.person_days_per_unit }}
+              <div class="detalle-texto">{{ 'Supuesto' if t.person_days_is_assumption else (t.person_days_source or '') }}</div>
+              {% else %}<span class="badge badge-alerta">Sin capturar</span>{% endif %}
+            {% else %}<span class="field-hint">Por definición</span>{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="tabla-vacia">Sin intervenciones: es el escenario de referencia.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="detalle-titulo">Corridas de esta versión ({{ f.corridas|length }})</div>
+  <div class="chips-corridas">
+    {% for c in f.corridas %}
+    <a class="badge {{ c.status | badge_sim }}" href="{{ url_for('main.simulacion_detalle', run_id=c.id) }}">{{ c.id | id_sim }} · {{ c.status | estado_sim }}</a>
+    {% else %}
+    <span class="field-hint">Todavía no se simula: las corridas se lanzan desde la app de escritorio.</span>
+    {% endfor %}
+    {% if f.completadas|length >= 2 %}
+    <a class="btn btn-mini" href="{{ url_for('main.comparacion', run_id=f.completadas) }}">Comparar las completadas</a>
+    {% endif %}
+  </div>
+
+  {% if f.campanas %}
+  <div class="detalle-titulo">Campañas de {{ v.disease_name }}</div>
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead><tr><th>Campaña</th><th>Dónde</th><th>Periodo</th><th>Población objetivo</th><th>Estado</th></tr></thead>
+      <tbody>
+        {% for c in f.campanas %}
+        <tr>
+          <td>{{ c.name }}</td>
+          <td>{{ c.municipio or 'Todo Nuevo León' }}</td>
+          <td>{{ c.starts_on }} al {{ c.ends_on }}</td>
+          <td>{{ "{:,}".format(c.target_population) if c.target_population else '—' }}</td>
+          <td>{{ c.status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="card"><p class="tabla-vacia">No hay versiones aprobadas{{ ' que coincidan' if busqueda }}. Solo una versión aprobada se simula y se sigue.</p></div>
+{% endfor %}
+{% endblock %}

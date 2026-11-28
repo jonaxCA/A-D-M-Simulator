@@ -61,6 +61,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 48px; }
   margin-bottom: 16px;
 }
 .tarjeta h2 { margin: 0 0 12px; font-size: 16px; }
+.tarjeta h2.subtitulo { margin-top: 24px; }
 
 input, select, textarea {
   font: inherit;

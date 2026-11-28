@@ -1,0 +1,151 @@
+"""Avisos (almacen.py) contra la base de pruebas."""
+import unittest
+
+from microservicios.pruebas_bd import escribe, id_de_usuario, tiene_base
+from epidemia_comun.auditoria import Contexto
+from epidemia_comun.bd import query
+from microservicios.notificaciones import almacen as notificaciones
+
+requiere_base = unittest.skipUnless(tiene_base(), "Requiere la base de pruebas")
+
+class ValidaNotificacionTests(unittest.TestCase):
+    def test_una_valida_no_tiene_errores(self):
+        self.assertEqual(notificaciones.valida_notificacion(
+            {"user_id": 3, "type": "RUN_FINISHED", "title": "Terminó", "payload": {"run_id": 1}}), [])
+
+    def test_errores_de_cada_campo(self):
+        errores = notificaciones.valida_notificacion(
+            {"user_id": True, "type": "OTRO", "title": " ", "body": 5, "payload": [1]})
+        self.assertEqual(len(errores), 5)
+
+    def test_a_un_rol_no_pide_user_id(self):
+        self.assertEqual(notificaciones.valida_notificacion(
+            {"type": "NEW_CASES", "title": "Lote"}, a_rol=True), [])
+
+    def test_titulo_demasiado_largo(self):
+        errores = notificaciones.valida_notificacion(
+            {"user_id": 3, "type": "SYSTEM", "title": "x" * (notificaciones.TITULO_MAX + 1)})
+        self.assertEqual(len(errores), 1)
+
+
+@requiere_base
+class NotificacionesTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.dueno = id_de_usuario("alex.cavazos")
+        cls.otro = query("SELECT id FROM users WHERE id <> %s ORDER BY id LIMIT 1",
+                         (cls.dueno,), one=True)["id"]
+        cls.servicio = Contexto(None, "127.0.0.1", "servicio pruebas")
+
+    def setUp(self):
+        self.creadas = []
+
+    def tearDown(self):
+        for notificacion_id in self.creadas:
+            escribe("DELETE FROM notifications WHERE id = %s", (notificacion_id,))
+
+    def _crea(self, **cambios):
+        datos = {"user_id": self.dueno, "type": "RUN_FINISHED", "title": "  Terminó  ",
+                 "body": "La corrida terminó.", "payload": {"run_id": 9}}
+        datos.update(cambios)
+        notificacion_id, error = notificaciones.crear_notificacion(datos, contexto=self.servicio)
+        self.assertIsNone(error, error)
+        self.creadas.append(notificacion_id)
+        return notificacion_id
+
+    def test_crear_guarda_y_audita(self):
+        notificacion_id = self._crea()
+        fila = query("SELECT title, payload, read_at FROM notifications WHERE id = %s",
+                     (notificacion_id,), one=True)
+        self.assertEqual(fila["title"], "Terminó")
+        self.assertEqual(fila["payload"], {"run_id": 9})
+        self.assertIsNone(fila["read_at"])
+        bitacora = query("""SELECT action FROM audit_log WHERE entity_type = 'notifications'
+                            AND entity_id = %s""", (str(notificacion_id),))
+        self.assertEqual([b["action"] for b in bitacora], ["CREATE"])
+
+    def test_acepta_scenario_approved(self):
+        self._crea(type="SCENARIO_APPROVED")
+
+    def test_acepta_los_tipos_de_la_037(self):
+        for tipo in ("SCENARIO_SUBMITTED", "SCENARIO_REJECTED", "NEW_CASES"):
+            self._crea(type=tipo)
+
+    def test_aviso_a_un_rol_llega_a_cada_epidemiologo_activo(self):
+        esperados = {f["id"] for f in query(
+            """SELECT u.id FROM users u JOIN user_roles ur ON ur.user_id = u.id
+               JOIN roles r ON r.id = ur.role_id WHERE r.code = 'EPIDEMIOLOGO' AND u.is_active""")}
+        ids, error = notificaciones.crear_notificaciones_a_rol(
+            {"type": "NEW_CASES", "title": "Lote con 2 casos nuevos", "payload": {"batch_id": "x"}},
+            "EPIDEMIOLOGO", contexto=self.servicio)
+        self.creadas.extend(ids)
+        self.assertIsNone(error)
+        destinatarios = {f["user_id"] for f in query(
+            "SELECT user_id FROM notifications WHERE id = ANY(%s)", (ids,))}
+        self.assertEqual(destinatarios, esperados)
+        self.assertEqual(len(ids), len(esperados))
+
+    def test_aviso_a_un_rol_salta_a_los_inactivos_y_audita_cada_uno(self):
+        escribe("""INSERT INTO users (username, email, password_hash, full_name, is_active)
+                   VALUES ('prueba.epi.inactivo', 'prueba.epi.inactivo@example.com', 'x',
+                           'Epidemiólogo inactivo de prueba', FALSE)
+                   ON CONFLICT (username) DO UPDATE SET is_active = FALSE""")
+        escribe("""INSERT INTO user_roles (user_id, role_id)
+                   SELECT u.id, r.id FROM users u, roles r
+                   WHERE u.username = 'prueba.epi.inactivo' AND r.code = 'EPIDEMIOLOGO'
+                   ON CONFLICT DO NOTHING""")
+        inactivos = {f["id"] for f in query(
+            """SELECT u.id FROM users u JOIN user_roles ur ON ur.user_id = u.id
+               JOIN roles r ON r.id = ur.role_id WHERE r.code = 'EPIDEMIOLOGO' AND NOT u.is_active""")}
+        self.assertTrue(inactivos, "La semilla de pruebas debe traer un epidemiólogo inactivo.")
+        ids, error = notificaciones.crear_notificaciones_a_rol(
+            {"type": "SCENARIO_SUBMITTED", "title": "Versión 2 por revisar"}, "EPIDEMIOLOGO",
+            contexto=self.servicio)
+        self.creadas.extend(ids)
+        self.assertIsNone(error)
+        self.assertTrue(ids)
+        destinatarios = {f["user_id"] for f in query(
+            "SELECT user_id FROM notifications WHERE id = ANY(%s)", (ids,))}
+        self.assertFalse(destinatarios & inactivos)
+        bitacora = query("""SELECT entity_id FROM audit_log WHERE entity_type = 'notifications'
+                            AND action = 'CREATE' AND entity_id = ANY(%s)""",
+                         ([str(i) for i in ids],))
+        self.assertEqual(sorted(int(b["entity_id"]) for b in bitacora), sorted(ids))
+
+    def test_destinatario_inexistente(self):
+        notificacion_id, error = notificaciones.crear_notificacion(
+            {"user_id": 99999999, "type": "SYSTEM", "title": "x"}, contexto=self.servicio)
+        self.assertIsNone(notificacion_id)
+        self.assertIn("No existe", error)
+
+    def test_listar_solo_las_propias_con_no_leidas(self):
+        mia = self._crea()
+        self._crea(user_id=self.otro)
+        filas, no_leidas = notificaciones.listar_notificaciones(self.dueno)
+        ids = [f["id"] for f in filas]
+        self.assertIn(mia, ids)
+        self.assertTrue(all(f["user_id"] == self.dueno for f in filas))
+        self.assertGreaterEqual(no_leidas, 1)
+
+    def test_marcar_leida_una_vez(self):
+        notificacion_id = self._crea()
+        contexto = Contexto(self.dueno, "127.0.0.1", "pytest")
+        fila, error = notificaciones.marcar_leida(notificacion_id, self.dueno, contexto=contexto)
+        self.assertIsNone(error)
+        self.assertIsNotNone(fila["read_at"])
+        otra_vez, error = notificaciones.marcar_leida(notificacion_id, self.dueno, contexto=contexto)
+        self.assertEqual(otra_vez["read_at"], fila["read_at"])
+        cambios = query("""SELECT count(*) AS n FROM audit_log WHERE entity_type = 'notifications'
+                           AND entity_id = %s AND action = 'UPDATE'""",
+                        (str(notificacion_id),), one=True)["n"]
+        self.assertEqual(cambios, 1)
+        filas, _ = notificaciones.listar_notificaciones(self.dueno, solo_no_leidas=True)
+        self.assertNotIn(notificacion_id, [f["id"] for f in filas])
+
+    def test_la_de_otra_persona_no_existe(self):
+        notificacion_id = self._crea(user_id=self.otro)
+        fila, error = notificaciones.marcar_leida(
+            notificacion_id, self.dueno, contexto=Contexto(self.dueno, "127.0.0.1", "pytest"))
+        self.assertIsNone(fila)
+        self.assertIn("No existe", error)

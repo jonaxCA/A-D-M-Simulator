@@ -1,0 +1,110 @@
+# nginx de EPIDEMIA: única entrada, TLS y una ruta por servicio (D25, D26).
+#
+# La imagen oficial de nginx convierte este archivo en /etc/nginx/conf.d/default.conf al
+# arrancar y sustituye solo las variables que le pasa el compose (NGINX_DOMINIO,
+# NGINX_CERTIFICADO, NGINX_LLAVE, NGINX_TIEMPO_MAXIMO, NGINX_PUERTO_HTTPS, WEB_DESTINO). Las de
+# nginx ($host, $uri...) quedan como están. En local el certificado es el de
+# infra/nginx/certs/ (docker-compose.nginx.yml); en la nube, el de Let's Encrypt
+# (docker-compose.letsencrypt.yml).
+#
+# La lista de servicios de la ruta de abajo tiene que ser la del directorio de
+# estado-servicios (sondeo.SERVICIOS) más la consola; test_compose_pruebas.py lo revisa.
+
+# Resuelve el nombre de cada servicio en cada petición, con el DNS de Docker. Así nginx arranca
+# aunque un servicio no esté arriba (perfiles del compose), y ese responde 502 hasta que suba.
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+proxy_http_version 1.1;
+proxy_connect_timeout 5s;
+# Tiempo máximo por petición (RNF-C10). Mayor que los 5 s de llamar(), para que entre
+# servicios se vea primero su 503; este corta lo que un servicio deja colgado.
+proxy_send_timeout ${NGINX_TIEMPO_MAXIMO};
+proxy_read_timeout ${NGINX_TIEMPO_MAXIMO};
+# evidencias acepta fotos de hasta 20 MB.
+client_max_body_size 21m;
+server_tokens off;
+
+server {
+    listen 80;
+    server_name ${NGINX_DOMINIO};
+
+    # Para el healthcheck del contenedor; no sale del puerto 80.
+    location = /nginx-salud {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # certbot valida el dominio aquí (Let's Encrypt, D26): deja un archivo en /var/www/certbot y
+    # Let's Encrypt lo pide por HTTP. Por eso este puerto no redirige esta ruta. En local no se usa.
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host:${NGINX_PUERTO_HTTPS}$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${NGINX_DOMINIO};
+
+    ssl_certificate     ${NGINX_CERTIFICADO};
+    ssl_certificate_key ${NGINX_LLAVE};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+
+    # https://<host>/<servicio>/api/v1/... llega a <servicio>:8000/api/v1/..., así que las
+    # rutas de D11 no cambian. El servicio sabe su prefijo por X-Forwarded-Prefix, con
+    # DETRAS_DE_PROXY=1 (ProxyFix en epidemia_comun/fabrica.py): /docs y /openapi.json
+    # funcionan bajo /<servicio>/.
+    #
+    # Solo las rutas propias de un servicio van a él: /api/..., /health, /docs y /openapi.json.
+    # Varias páginas de la web se llaman como un servicio (/usuarios, /regiones/5/editar,
+    # /escenarios/3, /enfermedades, /comparacion): esas siguen a la web, más abajo.
+    location ~ ^/(?<servicio>auth|sesiones|usuarios|roles|enfermedades|parametros|regiones|poblacion|tipos-intervencion|casos|sincronizacion|dispositivos|evidencias|vacunas|importacion|escenarios|intervenciones|aprobacion|validacion|escenarios-xml|corridas|simulador|resultados|comparacion|pareto|calibracion|indicadores|series|zonas|notificaciones|estado-servicios)(?<resto>/(api/.*|health|docs(/.*)?|openapi\.json))$ {
+        set $destino $servicio;
+        set $prefijo /$servicio;
+        rewrite ^/[^/]+(/.*)$ $1 break;
+        proxy_pass http://$destino:8000;
+
+        # Se sobrescriben, nunca se encadenan: un cliente no puede falsear su IP para evadir
+        # los límites por IP (D31) ni su protocolo.
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $http_host;
+        proxy_set_header X-Forwarded-Prefix $prefijo;
+    }
+
+    # La consola es una página con sus propias rutas (/, /config): todo /consola/ es suyo. La web
+    # no tiene nada bajo /consola.
+    location ~ ^/consola(?<resto>/.*)?$ {
+        if ($resto = "") {
+            return 301 /consola/$is_args$args;
+        }
+        set $destino consola;
+        rewrite ^/[^/]+(/.*)$ $1 break;
+        proxy_pass http://$destino:8000;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $http_host;
+        proxy_set_header X-Forwarded-Prefix /consola;
+    }
+
+    # Lo demás es la web (D36): el contenedor web, o la de la PC con WEB_DESTINO. Con variable,
+    # como los servicios, nginx resuelve el nombre en cada petición: arranca aunque la web no esté
+    # arriba, y la sigue si su contenedor se recrea con otra IP. Docker Desktop resuelve
+    # host.docker.internal; en Linux sin Docker Desktop, usa la IP (por ejemplo 172.17.0.1:5000).
+    location / {
+        set $web ${WEB_DESTINO};
+        proxy_pass http://$web;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $http_host;
+    }
+}

@@ -1,9 +1,9 @@
 # AGENTS.md — infra
 
 > **Estado: Vigente** · 2026-10-12 · Complementa `microservicios/AGENTS.md`. Las tareas son
-> el bloque J del checklist (`docs/CHECKLIST_SEGUNDO_PARCIAL.md`).
+> el bloque J del checklist (`docs/parciales/parcial-2/checklist.md`).
 
-Aquí viven la imagen base de Docker y el `docker-compose.yml` que levanta los 26
+Aquí viven la imagen base de Docker y el `docker-compose.yml` que levanta los 30
 microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservicio.**
 
 ## Reglas
@@ -14,14 +14,27 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
    - El compose la construye primero: es el servicio `base`, con cero réplicas, y cada
      servicio la pide con `additional_contexts` (`epidemia/base: service:base`). Así nunca
      se busca en Docker Hub. No la publiques ahí.
+   - Ningún servicio parte de `epidemia/base` (E8): esa imagen, con `backend_web`, queda para la
+     consola y la web. Los de simulación (`corridas`, `simulador`, `resultados`, `comparacion`,
+     `pareto` y `calibracion`, con su trabajador) y los de D que usan el motor (`enfermedades`,
+     `parametros` y `validacion`) parten de `epidemia/base-simulacion`
+     (`docker/base-simulacion.Dockerfile`): lo mismo, con `procesamiento/` y sin `backend_web`. Los
+     de identidad, de `epidemia/base-identidad`; los de F y los demás de D, de
+     `epidemia/base-vigilancia`, solo con `epidemia_comun`.
    - El `Dockerfile` de un servicio solo copia su carpeta y su contrato. Úsalo igual que los
      demás, o el que genera `nuevo_servicio.py`.
 2. Cada servicio escucha en 8000 dentro de su contenedor y publica el puerto del catálogo
    (`docs/arquitectura/microservicios.md`). No inventes puertos.
 3. Cada servicio tiene `HEALTHCHECK` a `/health`, y sus dependencias van con
    `depends_on: condition: service_healthy`.
-4. PostgreSQL y Redis quedan en la red interna; no publiques sus puertos fuera de la
-   máquina.
+4. PostgreSQL, Redis y MongoDB quedan en la red interna; no publiques sus puertos fuera de la
+   máquina. MongoDB (D28) se publica solo en `127.0.0.1:27018`; los servicios lo alcanzan como
+   `mongodb:27017` con el usuario `epidemia`, que crea `mongo/10-usuario.js` con el volumen
+   vacío. Un servicio que lo use lleva `MONGO_URL` y `depends_on: mongodb`.
+   - El emulador de Cloud Storage (`bucket`, `fake-gcs-server`, D30) se publica solo en
+     `127.0.0.1:4443`, porque las URLs firmadas apuntan ahí para que las abra el navegador. Crea el
+     bucket `epidemia-archivos` con `bucket/` y guarda los objetos en el volumen `bucket-datos`.
+     En GCP no se levanta: `docker-compose.gcs.yml` pone el bucket real (`crea_bucket.sh`).
 5. Los secretos van en el `.env` del compose, que no se versiona; solo `.env.example`.
    Nunca escribas un secreto en un `Dockerfile`, en el compose ni en una imagen.
 6. Redis ya está en el compose, con contraseña, `appendonly yes`, `maxmemory 256mb` y
@@ -44,6 +57,6 @@ microservicios, la consola, PostgreSQL y Redis. **Un contenedor por microservici
      `DATABASE_URL` termina en `/${POSTGRES_DB:-simulador_epidemico}` como los demás.
 9. Cada servicio tiene un perfil de dominio (`identidad`, `catalogos`, `vigilancia`,
    `escenarios`, `simulacion`, `analitica`, `plataforma`), para que nadie tenga que
-   levantar los 28 contenedores en una máquina con poca memoria.
-10. Si cambias el compose, `docker compose up` desde cero tiene que dejar los 26
+   levantar todos los contenedores en una máquina con poca memoria.
+10. Si cambias el compose, `docker compose up` desde cero tiene que dejar los 30
     *healthchecks* en verde. Si no, no está terminado.

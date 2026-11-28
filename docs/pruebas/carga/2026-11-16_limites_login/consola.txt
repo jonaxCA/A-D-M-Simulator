@@ -1,0 +1,21 @@
+[2026-11-16 16:51:16,873] Enriques-MacBook/INFO/locust.main: Starting Locust 2.47.0
+[2026-11-16 16:51:16,876] Enriques-MacBook/INFO/locust.main: Run time limit set to 75 seconds
+[2026-11-16 16:51:16,876] Enriques-MacBook/INFO/locust.runners: Ramping to 1 users at a rate of 1.00 per second
+[2026-11-16 16:51:16,876] Enriques-MacBook/INFO/locust.runners: All users spawned: {"LimiteLogin": 1} (1 total users)
+[2026-11-16 16:52:31,733] Enriques-MacBook/INFO/locust.main: --run-time limit reached, shutting down
+[2026-11-16 16:52:31,805] Enriques-MacBook/INFO/locust.main: Shutting down (exit code 0)
+Type     Name                                                                          # reqs      # fails |    Avg     Min     Max    Med |   req/s  failures/s
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+POST     POST /auth/login                                                                  20     0(0.00%) |      5       3       9      5 |    0.27        0.00
+POST     [429] POST /auth/login                                                           670     0(0.00%) |      4       1      21      5 |    8.96        0.00
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+         Aggregated                                                                       690     0(0.00%) |      4       1      21      5 |    9.23        0.00
+
+Response time percentiles (approximated)
+Type     Name                                                                                  50%    66%    75%    80%    90%    95%    98%    99%  99.9% 99.99%   100% # reqs
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+POST     POST /auth/login                                                                        5      6      6      6      6      9      9      9      9      9      9     20
+POST     [429] POST /auth/login                                                                  5      5      5      5      6      6      6      6     22     22     22    670
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+         Aggregated                                                                              5      5      5      5      6      6      6      7     22     22     22    690
+

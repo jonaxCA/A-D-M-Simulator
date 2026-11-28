@@ -1,25 +1,45 @@
-"""Servicio validacion: revisa un escenario contra el motor sin guardar nada.
-
-Reutiliza las reglas del monolito (backend_web.queries): valida_escenario para los
-campos, valida_intervencion para cada intervención y el motor
-(procesamiento.motor) para lo que solo él sabe. Un resultado "no válido" NO es un
-error HTTP: la petición se atendió bien y la respuesta es el dictamen
-({valido, errores, avisos}). Un 4xx/5xx solo significa que la petición misma está mal
-(cuerpo ilegible, tipos erróneos), que no hay permiso o que la versión no existe.
-"""
-from backend_web import queries
+# Servicio validacion: revisa un escenario contra el motor sin guardar nada. Sus reglas viven en
+# reglas.py (E8); las de cada intervención se las pide a intervenciones (D37), y el motor
+# (procesamiento.motor) dice lo que solo él sabe. Un resultado «no válido» no es un error HTTP: la
+# respuesta es el dictamen ({valido, errores, avisos, datos}). Un 4xx/5xx solo significa que la
+# petición misma está mal, que no hay permiso o que la versión no existe.
+#
+# POST /validate/version revisa una versión nueva de un escenario que ya existe; escenarios la pide
+# antes de guardarla. GET /versions/{id}/validation da además la huella de la entrada del motor
+# (huella.py, D55), con la que aprobacion firma la versión que aprueba.
 from epidemia_comun.errores import ErrorAPI
 from epidemia_comun.formatos import leer_cuerpo, responder
+from epidemia_comun.http import llamar
 from epidemia_comun.seguridad import requiere_token
 from epidemia_comun.validaciones import diccionario, entero_positivo
+from procesamiento.entrada_motor import escenario_para_motor, intervenciones_para_motor
+from procesamiento.motor.parametros import EscenarioInvalido, resolver
+
+from . import datos as bd
+from . import huella
+from .reglas import revisa_version, valida_escenario, valida_version
 
 ROLES = ("ANALISTA", "EPIDEMIOLOGO", "ADMINISTRADOR")
 
 # Los nombres son los campos del formulario del monolito (valida_escenario).
 CAMPOS_ESCALARES = ("name", "description", "disease_id", "region_id", "population_size",
                     "initial_infected", "horizon_days", "age_unknown_policy", "notes")
-CAMPOS_INTERVENCION = ("code", "start_day", "end_day", "coverage", "compliance")
+CAMPOS_VERSION = ("population_size", "initial_infected", "horizon_days", "age_unknown_policy", "notes")
 CONOCIDOS = set(CAMPOS_ESCALARES) | {"estratificar", "population_by_age", "interventions"}
+
+
+def avisos_de_ajustes(detalle):
+    # Un aviso por parámetro que la versión cambia del catálogo (044, D59): lo que ve quien revisa.
+    catalogo = (detalle.get("escenario") or {}).get("default_params") or {}
+    ajustes = ((detalle.get("version") or {}).get("param_overrides")) or {}
+    avisos = []
+    for clave, ajuste in sorted(ajustes.items()):
+        base = catalogo.get(clave)
+        base = base.get("valor") if isinstance(base, dict) else None
+        respaldo = "supuesto" if ajuste.get("supuesto") else "fuente: %s" % ajuste.get("fuente")
+        avisos.append("El parámetro %s se ajustó en esta versión: catálogo %s, versión %s (%s)."
+                      % (clave, "sin dato" if base is None else base, ajuste.get("valor"), respaldo))
+    return avisos
 
 
 def _es_verdadero(valor):
@@ -33,16 +53,6 @@ def _escalar(valor, campo):
         raise ErrorAPI(422, "DATOS_INVALIDOS", "El campo %s debe ser un valor simple." % campo)
     # Los validadores del monolito leen texto de formulario: .strip() sobre un int falla.
     return str(valor).lower() if isinstance(valor, bool) else str(valor)
-
-
-def _texto_param(valor):
-    if valor is None:
-        return ""
-    if isinstance(valor, bool):
-        return "true" if valor else "false"
-    if isinstance(valor, (list, tuple)):
-        return ",".join(_texto_param(v) for v in valor)
-    return str(valor)
 
 
 def _lista(valor, campo):
@@ -76,40 +86,32 @@ def _formulario(cuerpo):
     return form, reparto, avisos
 
 
-def _intervenciones(crudas, datos, tipos):
-    """Valida cada intervención con valida_intervencion. Devuelve (para_motor, errores)."""
-    existentes, errores = [], []
-    horizonte = {"horizon_days": datos["horizon_days"]}
-    for n, cruda in enumerate(crudas, 1):
-        if not isinstance(cruda, dict):
-            raise ErrorAPI(422, "DATOS_INVALIDOS", "Cada intervención debe ser un objeto.")
-        code = str(cruda.get("code") or "").strip()
-        form = {c: _escalar(cruda[c], c) for c in CAMPOS_INTERVENCION if cruda.get(c) is not None}
-        params = cruda.get("params") or {}
-        if params == "":
-            params = {}
-        if not isinstance(params, dict):
-            raise ErrorAPI(422, "DATOS_INVALIDOS", "params de la intervención %d debe ser un objeto." % n)
-        for clave, valor in params.items():
-            if isinstance(valor, dict):
-                raise ErrorAPI(422, "DATOS_INVALIDOS",
-                               "El parámetro %s debe ser un valor simple o una lista." % clave)
-            # Los validadores del monolito leen texto de formulario (.strip()).
-            form["p_%s_%s" % (code, clave)] = _texto_param(valor)
-        pedido, errs = queries.valida_intervencion(form, tipos, horizonte, existentes)
-        errores += ["Intervención %d: %s" % (n, e) for e in errs]
-        if not errs:
-            existentes.append(pedido)
-    return existentes, errores
+def _intervenciones(crudas, horizonte):
+    # Las reglas de una intervención son de intervenciones (D37): se le piden por HTTP, con el
+    # token de la persona. Solo si el escenario trae intervenciones.
+    respuesta = llamar("intervenciones", "POST", "/api/v1/interventions/validate", formato="json",
+                       cuerpo={"horizon_days": horizonte, "interventions": crudas})
+    if respuesta.status_code >= 500:
+        raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio intervenciones no pudo responder.")
+    try:
+        dictamen = respuesta.json()
+    except ValueError:
+        raise ErrorAPI(503, "SERVICIO_NO_DISPONIBLE", "El servicio intervenciones respondió algo ilegible.")
+    if respuesta.status_code in (401, 403):
+        raise ErrorAPI(respuesta.status_code,
+                       "TOKEN_INVALIDO" if respuesta.status_code == 401 else "PERMISO_INSUFICIENTE",
+                       "El servicio intervenciones rechazó la identidad.")
+    if respuesta.status_code >= 400:
+        raise ErrorAPI(422, "DATOS_INVALIDOS", str(dictamen.get("detail") or "Las intervenciones no se pueden leer."))
+    return dictamen["intervenciones"], dictamen["errores"]
 
 
 def valida_cuerpo(cuerpo):
     cuerpo = diccionario(cuerpo)
     form, reparto, avisos_entrada = _formulario(cuerpo)
     crudas = _lista(cuerpo.get("interventions"), "interventions")
-    regiones = queries.get_regiones_para_escenario()
-    enfermedades = queries.get_enfermedades_para_escenario()
-    datos, errores = queries.valida_escenario(form, regiones, enfermedades)
+    datos, errores = valida_escenario(form, bd.regiones_para_escenario(),
+                                      bd.enfermedades_para_escenario(), bd.parametros_de)
     avisos = list(avisos_entrada)
     if reparto is not None and datos.get("population_by_age"):
         try:
@@ -119,19 +121,32 @@ def valida_cuerpo(cuerpo):
         if enviado != {str(k): int(v) for k, v in datos["population_by_age"].items()}:
             errores.append("El reparto por edad enviado no coincide con el censo de la región.")
     if not errores:
-        params = queries.query("SELECT default_params FROM diseases WHERE id = %s",
-                               (datos["disease_id"],), one=True)["default_params"]
-        intervenciones, errs = _intervenciones(crudas, datos, queries.get_tipos_intervencion())
-        errores += errs
+        intervenciones = []
+        if crudas:
+            intervenciones, errs = _intervenciones(crudas, datos["horizon_days"])
+            errores += errs
         if not errores:
             try:
-                resultado = queries.resolver(
-                    queries.escenario_para_motor(
-                        datos, params, queries.intervenciones_para_motor(intervenciones)))
+                resultado = resolver(escenario_para_motor(
+                    datos, bd.parametros_de(datos["disease_id"]), intervenciones_para_motor(intervenciones)))
                 avisos += list(resultado["avisos"])
-            except queries.EscenarioInvalido as exc:
+            except EscenarioInvalido as exc:
                 errores += ["El motor rechaza el escenario: %s" % e for e in exc.errores]
-    return {"valido": not errores, "errores": errores, "avisos": avisos}
+    return {"valido": not errores, "errores": errores, "avisos": avisos, "datos": datos}
+
+
+def valida_cuerpo_version(cuerpo):
+    cuerpo = diccionario(cuerpo)
+    scenario_id = entero_positivo(cuerpo.get("scenario_id"), "scenario_id")
+    form = {c: _escalar(cuerpo[c], c) for c in CAMPOS_VERSION if cuerpo.get(c) is not None}
+    form["estratificar"] = _es_verdadero(cuerpo.get("estratificar"))
+    detalle = bd.escenario_detalle(scenario_id)
+    if detalle is None:
+        raise ErrorAPI(404, "NO_ENCONTRADO", "No existe el escenario.")
+    region = next((r for r in bd.regiones_para_escenario() if r["id"] == detalle["escenario"]["region_id"]),
+                  None)
+    datos, errores = valida_version(form, region, detalle["escenario"]["default_params"])
+    return {"valido": not errores, "errores": errores, "avisos": [], "datos": datos}
 
 
 def registrar(app):
@@ -140,19 +155,26 @@ def registrar(app):
     def validar():
         return responder(valida_cuerpo(leer_cuerpo()), "validacion")
 
+    @app.post("/api/v1/validate/version")
+    @requiere_token(roles=ROLES)
+    def validar_version_nueva():
+        return responder(valida_cuerpo_version(leer_cuerpo()), "validacion")
+
     @app.get("/api/v1/versions/<version_id>/validation")
     @requiere_token(roles=ROLES)
     def validar_version(version_id):
         numero = entero_positivo(version_id, "version_id")
-        fila = queries.get_version_simulacion(numero)
+        fila = bd.version_simulacion(numero)
         if fila is None:
             raise ErrorAPI(404, "NO_ENCONTRADO", "No existe la versión.")
-        detalle = queries.get_escenario_detalle(fila["scenario_id"], fila["version_number"])
+        detalle = bd.escenario_detalle(fila["scenario_id"], fila["version_number"])
         if detalle is None:
             raise ErrorAPI(404, "NO_ENCONTRADO", "No existe la versión.")
-        errores, avisos = queries.revisa_version(detalle)
+        errores, avisos = revisa_version(detalle)
         return responder({
             "version_id": fila["id"], "scenario_id": fila["scenario_id"],
             "version_number": fila["version_number"], "status": fila["status"],
-            "valido": not errores, "errores": list(errores), "avisos": list(avisos),
+            "valido": not errores, "errores": list(errores),
+            "avisos": list(avisos) + avisos_de_ajustes(detalle),
+            "huella": huella.de_version(fila["id"]),
         }, "validacion")

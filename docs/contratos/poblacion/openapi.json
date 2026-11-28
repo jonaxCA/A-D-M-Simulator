@@ -3,7 +3,7 @@
   "info": {
     "title": "EPIDEMIA - poblacion",
     "version": "0.1.0",
-    "description": "Servicio de poblacion del sistema de respuesta a epidemias. Los ejemplos están en docs/contratos/poblacion/ejemplos."
+    "description": "Servicio de poblacion del sistema de respuesta a epidemias: la población de cada municipio y sus bandas de edad, su corrección, sus versiones y sus periodos de referencia (D58). Sus reglas ya no viven en backend_web. Los ejemplos están en docs/contratos/poblacion/ejemplos."
   },
   "servers": [
     {
@@ -91,14 +91,14 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         }
       },
       "put": {
         "summary": "Corregir población municipal",
         "operationId": "corregir_poblaci_n_municipal",
-        "description": "Solo ADMINISTRADOR. expected_population es el valor que se leyó antes de editar; si otra persona lo cambió, responde 409.",
+        "description": "Solo ADMINISTRADOR. expected_population es el valor que se leyó antes de editar; si otra persona lo cambió, responde 409Cada corrección guarda la versión siguiente de la población de la región y, si cambió, la del estado (D58); la respuesta trae version.",
         "parameters": [
           {
             "in": "path",
@@ -136,7 +136,8 @@
                   "poblacion_despues": 645020,
                   "poblacion_60": 85216,
                   "estado_actualizado": true,
-                  "municipios_sin_poblacion": 0
+                  "municipios_sin_poblacion": 0,
+                  "version": 2
                 }
               },
               "application/xml": {
@@ -146,7 +147,7 @@
                     "name": "poblacion"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<poblacion><municipio>Guadalupe</municipio><poblacion_antes tipo=\"numero\">643143</poblacion_antes><poblacion_despues tipo=\"numero\">645020</poblacion_despues><poblacion_60 tipo=\"numero\">85216</poblacion_60><estado_actualizado tipo=\"booleano\">true</estado_actualizado><municipios_sin_poblacion tipo=\"numero\">0</municipios_sin_poblacion></poblacion>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<poblacion><municipio>Guadalupe</municipio><poblacion_antes tipo=\"numero\">643143</poblacion_antes><poblacion_despues tipo=\"numero\">645020</poblacion_despues><poblacion_60 tipo=\"numero\">85216</poblacion_60><estado_actualizado tipo=\"booleano\">true</estado_actualizado><municipios_sin_poblacion tipo=\"numero\">0</municipios_sin_poblacion><version tipo=\"numero\">2</version></poblacion>\n"
               }
             }
           },
@@ -169,7 +170,19 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -310,14 +323,14 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
           }
         }
       },
       "put": {
         "summary": "Corregir grupos de edad",
         "operationId": "corregir_grupos_de_edad",
-        "description": "Solo ADMINISTRADOR. groups trae las cinco bandas; su suma debe conservar la población con edad declarada. expected_groups trae las cinco bandas y edad_no_especificada tal como se leyeron; si otra persona las cambió, responde 409.",
+        "description": "Solo ADMINISTRADOR. groups trae las cinco bandas; su suma debe conservar la población con edad declarada. expected_groups trae las cinco bandas y edad_no_especificada tal como se leyeron; si otra persona las cambió, responde 409Cada corrección guarda la versión siguiente de la población de la región y, si cambió, la del estado (D58); la respuesta trae version.",
         "parameters": [
           {
             "in": "path",
@@ -352,7 +365,8 @@
                 "example": {
                   "municipio": "Guadalupe",
                   "population_60plus": 85216,
-                  "estado_actualizado": true
+                  "estado_actualizado": true,
+                  "version": 2
                 }
               },
               "application/xml": {
@@ -362,7 +376,7 @@
                     "name": "grupos_edad"
                   }
                 },
-                "example": "<?xml version='1.0' encoding='utf-8'?>\n<grupos_edad><municipio>Guadalupe</municipio><population_60plus tipo=\"numero\">85216</population_60plus><estado_actualizado tipo=\"booleano\">true</estado_actualizado></grupos_edad>\n"
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<grupos_edad><municipio>Guadalupe</municipio><population_60plus tipo=\"numero\">85216</population_60plus><estado_actualizado tipo=\"booleano\">true</estado_actualizado><version tipo=\"numero\">2</version></grupos_edad>\n"
               }
             }
           },
@@ -385,7 +399,19 @@
             "description": "Datos inválidos"
           },
           "503": {
-            "description": "Dependencia no disponible"
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -460,6 +486,223 @@
             "bearerAuth": []
           }
         ]
+      }
+    },
+    "/api/v1/regions/{region_id}/population/versions": {
+      "get": {
+        "summary": "Versiones de la población",
+        "operationId": "versiones_poblacion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "region_id": 2,
+                  "code": "19039",
+                  "total": 2,
+                  "versiones": [
+                    {
+                      "version": 2,
+                      "population": 1144494,
+                      "population_60plus": 193946,
+                      "age_groups": {
+                        "0-19": 307729,
+                        "20-39": 336615,
+                        "40-59": 296312,
+                        "60-79": 163060,
+                        "80+": 30886,
+                        "edad_no_especificada": 8392
+                      },
+                      "reference_year": 2020,
+                      "source": "Ajuste manual de la población total",
+                      "reason": "Conteo municipal 2026",
+                      "created_by": 1,
+                      "created_at": "2026-11-23T10:00:00+00:00"
+                    },
+                    {
+                      "version": 1,
+                      "population": 1142994,
+                      "population_60plus": 193946,
+                      "age_groups": {
+                        "0-19": 307729,
+                        "20-39": 336615,
+                        "40-59": 296312,
+                        "60-79": 163060,
+                        "80+": 30886,
+                        "edad_no_especificada": 8392
+                      },
+                      "reference_year": 2020,
+                      "source": "INEGI, Censo de Población y Vivienda 2020",
+                      "reason": null,
+                      "created_by": null,
+                      "created_at": "2026-11-23T10:00:00+00:00"
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "versiones_poblacion"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<versiones_poblacion><region_id tipo=\"numero\">2</region_id><code>19039</code><total tipo=\"numero\">2</total><versiones><item><version tipo=\"numero\">2</version><population tipo=\"numero\">1144494</population><population_60plus tipo=\"numero\">193946</population_60plus><age_groups><entrada clave=\"0-19\" tipo=\"numero\">307729</entrada><entrada clave=\"20-39\" tipo=\"numero\">336615</entrada><entrada clave=\"40-59\" tipo=\"numero\">296312</entrada><entrada clave=\"60-79\" tipo=\"numero\">163060</entrada><entrada clave=\"80+\" tipo=\"numero\">30886</entrada><edad_no_especificada tipo=\"numero\">8392</edad_no_especificada></age_groups><reference_year tipo=\"numero\">2020</reference_year><source>Ajuste manual de la población total</source><reason>Conteo municipal 2026</reason><created_by tipo=\"numero\">1</created_by><created_at>2026-11-23T10:00:00+00:00</created_at></item><item><version tipo=\"numero\">1</version><population tipo=\"numero\">1142994</population><population_60plus tipo=\"numero\">193946</population_60plus><age_groups><entrada clave=\"0-19\" tipo=\"numero\">307729</entrada><entrada clave=\"20-39\" tipo=\"numero\">336615</entrada><entrada clave=\"40-59\" tipo=\"numero\">296312</entrada><entrada clave=\"60-79\" tipo=\"numero\">163060</entrada><entrada clave=\"80+\" tipo=\"numero\">30886</entrada><edad_no_especificada tipo=\"numero\">8392</edad_no_especificada></age_groups><reference_year tipo=\"numero\">2020</reference_year><source>INEGI, Censo de Población y Vivienda 2020</source><reason nil=\"true\" /><created_by nil=\"true\" /><created_at>2026-11-23T10:00:00+00:00</created_at></item></versiones></versiones_poblacion>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        },
+        "description": "Las versiones de la población de la región (estado o municipio), la más reciente primero (D58): total, 60 y más, bandas de edad, periodo de referencia, fuente y motivo. Sin ajustes, la vigente es la versión 1 (Censo 2020)."
+      }
+    },
+    "/api/v1/regions/{region_id}/population/periods": {
+      "get": {
+        "summary": "Periodos de referencia",
+        "operationId": "periodos_poblacion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "description": "XML por defecto; JSON con ?format=json o Accept: application/json",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "xml",
+                "json"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "region_id": 2,
+                  "code": "19039",
+                  "total": 7,
+                  "censos": [
+                    {
+                      "anio": 1990,
+                      "poblacion": 1069238,
+                      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+                    },
+                    {
+                      "anio": 1995,
+                      "poblacion": 1088143,
+                      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+                    },
+                    {
+                      "anio": 2000,
+                      "poblacion": 1110997,
+                      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+                    },
+                    {
+                      "anio": 2005,
+                      "poblacion": 1133814,
+                      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+                    },
+                    {
+                      "anio": 2010,
+                      "poblacion": 1135550,
+                      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+                    },
+                    {
+                      "anio": 2015,
+                      "poblacion": 1109171,
+                      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+                    },
+                    {
+                      "anio": 2020,
+                      "poblacion": 1142994,
+                      "fuente": "INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad."
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "periodos_poblacion"
+                  }
+                },
+                "example": "<?xml version='1.0' encoding='utf-8'?>\n<periodos_poblacion><region_id tipo=\"numero\">2</region_id><code>19039</code><total tipo=\"numero\">7</total><censos><censo><anio tipo=\"numero\">1990</anio><poblacion tipo=\"numero\">1069238</poblacion><fuente>INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad.</fuente></censo><censo><anio tipo=\"numero\">1995</anio><poblacion tipo=\"numero\">1088143</poblacion><fuente>INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad.</fuente></censo><censo><anio tipo=\"numero\">2000</anio><poblacion tipo=\"numero\">1110997</poblacion><fuente>INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad.</fuente></censo><censo><anio tipo=\"numero\">2005</anio><poblacion tipo=\"numero\">1133814</poblacion><fuente>INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad.</fuente></censo><censo><anio tipo=\"numero\">2010</anio><poblacion tipo=\"numero\">1135550</poblacion><fuente>INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad.</fuente></censo><censo><anio tipo=\"numero\">2015</anio><poblacion tipo=\"numero\">1109171</poblacion><fuente>INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad.</fuente></censo><censo><anio tipo=\"numero\">2020</anio><poblacion tipo=\"numero\">1142994</poblacion><fuente>INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad.</fuente></censo></censos></periodos_poblacion>\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "404": {
+            "description": "Registro inexistente"
+          },
+          "409": {
+            "description": "Conflicto"
+          },
+          "422": {
+            "description": "Datos inválidos"
+          },
+          "503": {
+            "description": "Dependencia no disponible. También se devuelve si PostgreSQL no responde (detail «La base de datos no está disponible.»)."
+          }
+        },
+        "description": "La población de la región en cada censo o conteo de INEGI, de 1990 a 2020 (043)."
       }
     }
   }

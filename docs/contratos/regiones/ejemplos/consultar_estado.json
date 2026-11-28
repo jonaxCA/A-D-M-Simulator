@@ -1,0 +1,14 @@
+{
+  "id": 1,
+  "code": "19",
+  "nombre": "Nuevo Leon",
+  "poblacion": 5784442,
+  "poblacion_60": 654050,
+  "fuente_poblacion": {
+    "tipo": "agregado"
+  },
+  "fuente_poblacion_60": {
+    "tipo": "derivado",
+    "fuente": "Grupos 60-79 y 80+ del Censo 2020"
+  }
+}

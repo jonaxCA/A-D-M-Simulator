@@ -56,8 +56,17 @@
     <div class="tabla-desliza">
       <table class="salud">
         <thead><tr><th>Servicio</th><th>Dominio</th><th>Estado</th><th>Causa</th>
-          <th>Versión</th><th>Latencia</th><th>Revisado</th></tr></thead>
+          <th>Versión</th><th>Latencia</th><th>Errores (24 h)</th><th>Revisado</th></tr></thead>
         <tbody id="salud-filas"></tbody>
+      </table>
+    </div>
+    <h2 class="subtitulo">Simuladores por motor</h2>
+    <p id="capacidad-hora" class="nota" role="status"></p>
+    <div class="tabla-desliza">
+      <table class="salud">
+        <thead><tr><th>Motor</th><th>En cola</th><th>Alta · normal · baja</th><th>Vivos</th>
+          <th>Ocupados</th><th>Corriendo</th></tr></thead>
+        <tbody id="capacidad-filas"></tbody>
       </table>
     </div>
   </section>

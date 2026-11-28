@@ -22,6 +22,7 @@
 
 <div class="card form-card">
   <form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     {% if usuario and usuario.id %}
       <div class="field">
         <label>Usuario</label>
@@ -58,6 +59,27 @@
         <option value="{{ r.id }}" {{ 'selected' if usuario and usuario.role_id == r.id else '' }}>{{ r.name }}</option>
         {% endfor %}
       </select>
+    </div>
+
+    <div class="field">
+      <label for="institution_id">Institución</label>
+      <select id="institution_id" name="institution_id">
+        <option value="">Sin institución</option>
+        {% for i in instituciones if i.is_active or (usuario and usuario.institution_id == i.id) %}
+        <option value="{{ i.id }}" {{ 'selected' if usuario and usuario.institution_id == i.id else '' }}>{{ i.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="region_id">Región asignada</label>
+      <select id="region_id" name="region_id">
+        <option value="">Sin región (nacional)</option>
+        {% for m in municipios %}
+        <option value="{{ m.id }}" {{ 'selected' if usuario and usuario.region_id == m.id else '' }}>{{ m.name }}</option>
+        {% endfor %}
+      </select>
+      <p class="field-hint">Es el perfil de la cuenta (D42). Lo que puede ver lo limita su alcance (D43).</p>
     </div>
 
     <div class="field">

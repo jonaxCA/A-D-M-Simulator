@@ -8,7 +8,7 @@ tienen que pasar por cada `errores.append` de backend_web/conversion.py
 
 Las entradas son las que puede mandar un POST armado a mano: vacios, espacios,
 comas de miles, notacion cientifica, digitos no latinos, NaN. No hay fechas en
-formatos que solo acepta Python 3.11+, porque el codigo debe correr en 3.9.
+formatos que solo acepta Python 3.11+.
 """
 
 REGIONES = [

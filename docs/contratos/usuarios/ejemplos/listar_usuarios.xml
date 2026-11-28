@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<catalogo_usuarios><total tipo="numero">1</total><usuarios><item><id tipo="numero">9</id><nombre>Ana Lista</nombre><correo>ana@ejemplo.mx</correo><roles>Analista</roles><estado>activo</estado><ultimo_acceso>2026-10-12T09:30:00-06:00</ultimo_acceso><institucion nil="true" /><region nil="true" /></item></usuarios></catalogo_usuarios>

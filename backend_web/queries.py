@@ -29,7 +29,16 @@ from procesamiento.motor.parametros import (
     DIAS_MAX, DIAS_MIN, POBLACION_MAX, POBLACION_MIN, POLITICAS_EDAD_DESCONOCIDA, resolver,
 )
 
+from procesamiento.entrada_motor import (  # noqa: F401
+    PARAMETROS_INFORMATIVOS, PARAMETROS_SIMULACION, escenario_de_version, escenario_para_motor,
+    estado_parametros, intervenciones_para_motor, motivo_no_simulable,
+)
+
 from . import conversion
+# Normalizar y validar el codigo, y leer los parametros del formulario, viven en catalogo.py
+# (sin base) para que la web los use sin importar este modulo (D36).
+from .catalogo import (RE_CODIGO_ENFERMEDAD, normaliza_codigo,  # noqa: F401
+                       parametros_desde_form, valida_enfermedad)
 from .audit import log_audit
 from .db import a_jsonb, execute, get_conn, query
 
@@ -316,18 +325,6 @@ def get_enfermedades(busqueda=None, estado=None, pagina=1, por_pagina=10):
 # siembra sin especificar is_active (o sea TRUE) y a proposito sin un solo
 # caso, porque es el "escenario de preparacion".
 
-RE_CODIGO_ENFERMEDAD = re.compile(r"^[A-Z][A-Z0-9_]{2,29}$")
-
-
-def normaliza_codigo(valor):
-    """'Dengue grave (2026)' -> 'DENGUE_GRAVE_2026'. Perdona el formato que
-    escriba la gente pero deja el codigo con la convencion del catalogo."""
-    limpio = unicodedata.normalize("NFKD", (valor or "").strip())
-    limpio = limpio.encode("ascii", "ignore").decode("ascii")
-    limpio = re.sub(r"[^A-Za-z0-9]+", "_", limpio).strip("_").upper()
-    return limpio[:30]
-
-
 def _actividad(casos_total, casos_30d):
     """Situacion epidemiologica derivada de `cases`, acotada a Nuevo Leon
     igual que el resto de la pantalla. Ver la nota de arriba: esto NO es
@@ -337,22 +334,6 @@ def _actividad(casos_total, casos_30d):
     if casos_total:
         return "historico"
     return "sin_casos"
-
-
-def valida_enfermedad(code, name):
-    """Valida contra lo que el esquema realmente exige (004_catalogos.sql):
-    code VARCHAR(30) unico, name VARCHAR(120). Devuelve lista de errores."""
-    errores = []
-    if not code:
-        errores.append("El código es obligatorio.")
-    elif not RE_CODIGO_ENFERMEDAD.match(code):
-        errores.append("El código debe empezar con letra y llevar entre 3 y 30 "
-                       "caracteres (solo A-Z, 0-9 y guion bajo).")
-    if not name:
-        errores.append("El nombre es obligatorio.")
-    elif len(name) > 120:
-        errores.append("El nombre no puede pasar de 120 caracteres.")
-    return errores
 
 
 def crear_enfermedad(code, name, description=None, params=None):
@@ -400,191 +381,6 @@ def get_enfermedad(disease_id):
         (disease_id,),
         one=True,
     )
-
-
-# ---------------------------------------------------------------------------
-# Parametros de simulacion de una enfermedad
-# ---------------------------------------------------------------------------
-# Regla del proyecto: no se inventan parametros desde la interfaz. Cada valor
-# se guarda con su fuente o marcado explicitamente como supuesto del equipo.
-# El formato es el que consume el motor (ver motor/parametros.py):
-#
-#     "r0": {"valor": 1.3, "fuente": "Biggerstaff et al. 2014", "supuesto": false}
-#
-# El motor tambien acepta el numero pelon y el formato de distribucion que trae
-# 010_datos_iniciales.sql ({"dist": "lognormal", "media": 5.1, ...}). Aqui se
-# leen los tres para no romper lo ya cargado, pero lo que se ESCRIBE siempre
-# lleva fuente o marca de supuesto.
-#
-# Son los seis que el motor exige para poder correr. Si falta uno, la
-# enfermedad no se puede simular y la pantalla lo dice.
-
-PARAMETROS_SIMULACION = [
-    {"clave": "r0", "etiqueta": "R₀ — número reproductivo básico",
-     "unidad": "contagios por caso", "min": 0.01, "max": 20.0, "paso": "0.01",
-     "ayuda": "Contagios que genera un caso en una población sin inmunidad."},
-    {"clave": "incubacion_dias", "etiqueta": "Período de incubación",
-     "unidad": "días", "min": 0.1, "max": 60.0, "paso": "0.1",
-     "ayuda": "Del contagio al inicio de síntomas. El motor usa la media."},
-    {"clave": "infeccioso_dias", "etiqueta": "Período infeccioso",
-     "unidad": "días", "min": 0.1, "max": 60.0, "paso": "0.1",
-     "ayuda": "Cuánto tiempo puede contagiar una persona."},
-    {"clave": "dias_hospitalizacion", "etiqueta": "Estancia hospitalaria",
-     "unidad": "días", "min": 0.1, "max": 120.0, "paso": "0.1",
-     "ayuda": "Duración promedio de la hospitalización."},
-    {"clave": "tasa_hospitalizacion", "etiqueta": "Tasa de hospitalización",
-     "unidad": "%", "porcentaje": True, "min": 0.0, "max": 100.0, "paso": "0.001",
-     "ayuda": "De cada 100 infectados, cuántos terminan hospitalizados."},
-    {"clave": "letalidad", "etiqueta": "Letalidad (IFR)",
-     "unidad": "%", "porcentaje": True, "min": 0.0, "max": 100.0, "paso": "0.0001",
-     "ayuda": "De cada 100 infectados, cuántos fallecen."},
-]
-
-# Claves que el esquema ya trae y que este formulario no edita. Se muestran
-# como informativas y se conservan intactas al guardar: son del contrato con el
-# motor de agentes que viene despues, no de este formulario.
-PARAMETROS_INFORMATIVOS = {
-    "prob_asintomatico": "Proporción de asintomáticos",
-    "transmisibilidad_base": "Transmisibilidad base (modelo de agentes)",
-    "letalidad_por_edad": "Letalidad por grupo de edad",
-}
-
-
-def _desarma_param(bruto):
-    """(valor, fuente, supuesto) a partir de cualquiera de los tres formatos."""
-    if isinstance(bruto, dict):
-        if "valor" in bruto:
-            return bruto.get("valor"), bruto.get("fuente"), bool(bruto.get("supuesto", False))
-        if "media" in bruto:                      # formato de 010_datos_iniciales
-            return bruto.get("media"), None, False
-        return None, None, False
-    if isinstance(bruto, (int, float)) and not isinstance(bruto, bool):
-        return bruto, None, False
-    return None, None, False
-
-
-def estado_parametros(default_params):
-    """Todo lo que la pantalla necesita saber de los parametros de una
-    enfermedad: valor, procedencia y si alcanza para simular."""
-    params = default_params or {}
-    por_edad = params.get("letalidad_por_edad")
-    tiene_por_edad = isinstance(por_edad, dict) and bool(por_edad)
-
-    detalle, faltan, supuestos, sin_fuente = [], [], [], []
-    for spec in PARAMETROS_SIMULACION:
-        valor, fuente, supuesto = _desarma_param(params.get(spec["clave"]))
-        # El motor acepta letalidad_por_edad como alias de letalidad, asi que
-        # una enfermedad con la tabla por edad ya cumple ese requisito.
-        heredado = valor is None and spec["clave"] == "letalidad" and tiene_por_edad
-
-        if valor is None and not heredado:
-            estado = "falta"
-            faltan.append(spec["clave"])
-        elif heredado:
-            estado = "por_grupo"
-        elif supuesto:
-            estado = "supuesto"
-            supuestos.append(spec["clave"])
-        elif fuente:
-            estado = "con_fuente"
-        else:
-            estado = "sin_fuente"
-            sin_fuente.append(spec["clave"])
-
-        detalle.append({
-            **spec,
-            "valor": valor,
-            # El formulario trabaja en % para las tasas; la base guarda 0–1.
-            "valor_form": ("" if valor is None
-                           else f"{valor * 100:g}" if spec.get("porcentaje") else f"{valor:g}"),
-            "fuente": fuente or "",
-            "supuesto": supuesto,
-            "estado": estado,
-        })
-
-    # Un informativo puede venir pelado ({"0-19": 0.0001, ...}, como lo dejo
-    # 010) o con trazabilidad ({"valor": {...}, "fuente": ..., "supuesto": ...},
-    # como lo deja 020). Se desenvuelve aqui para que `valor` sea siempre el
-    # dato, sin la fuente; el texto lo arma frontend_web.
-    informativos = []
-    for clave, etiqueta in PARAMETROS_INFORMATIVOS.items():
-        bruto = params.get(clave)
-        if bruto in (None, {}, ""):
-            continue
-        valor, fuente, supuesto = _desarma_param(bruto)
-        if valor is None and isinstance(bruto, dict):
-            valor = bruto                      # formato pelado: el valor es el dict
-        if valor in (None, {}, ""):
-            continue
-        informativos.append({"etiqueta": etiqueta, "valor": valor,
-                             "fuente": fuente or "", "supuesto": supuesto})
-
-    return {
-        "detalle": detalle,
-        "informativos": informativos,
-        "faltan": faltan,
-        "supuestos": supuestos,
-        "sin_fuente": sin_fuente,
-        # Un valor sin fuente ni marca de supuesto tampoco alcanza: el sistema
-        # se niega a simular con una cifra de la que nadie responde.
-        "simulable": not faltan and not sin_fuente,
-    }
-
-
-def motivo_no_simulable(faltan, sin_fuente):
-    """Por que una enfermedad no se puede simular, dado cuantos parametros le
-    faltan y cuantos no tienen fuente ni marca de supuesto."""
-    partes = []
-    if faltan:
-        partes.append(f"le faltan {faltan} parámetro(s)")
-    if sin_fuente:
-        partes.append(f"{sin_fuente} parámetro(s) no tienen fuente ni marca de supuesto")
-    return " y ".join(partes)
-
-
-def parametros_desde_form(form, actuales=None):
-    """Arma el JSONB de parametros con lo que venga del formulario.
-
-    Devuelve (params, errores). Conserva las claves que este formulario no
-    edita (las informativas): guardar R0 no debe borrar la tabla de letalidad
-    por edad que ya traia la enfermedad.
-
-    La regla dura: un valor sin fuente y sin marca de supuesto NO se guarda.
-    """
-    params = dict(actuales or {})
-    errores = []
-
-    for spec in PARAMETROS_SIMULACION:
-        clave = spec["clave"]
-        crudo = (form.get(f"p_{clave}_valor") or "").strip()
-        fuente = (form.get(f"p_{clave}_fuente") or "").strip()
-        supuesto = form.get(f"p_{clave}_supuesto") == "on"
-
-        if not crudo:
-            params.pop(clave, None)      # vaciar el campo retira el parametro
-            continue
-
-        try:
-            valor = float(crudo.replace(",", "."))
-        except ValueError:
-            errores.append(f"{spec['etiqueta']}: «{crudo}» no es un número.")
-            continue
-        if not math.isfinite(valor) or not (spec["min"] <= valor <= spec["max"]):
-            errores.append(f"{spec['etiqueta']}: debe estar entre {spec['min']:g} "
-                           f"y {spec['max']:g} {spec['unidad']}.")
-            continue
-        if not fuente and not supuesto:
-            errores.append(f"{spec['etiqueta']}: falta la fuente. Escríbela o marca "
-                           "la casilla de supuesto.")
-            continue
-
-        params[clave] = {
-            "valor": round(valor / 100, 10) if spec.get("porcentaje") else valor,
-            "fuente": fuente or None,
-            "supuesto": supuesto,
-        }
-
-    return params, errores
 
 
 def actualiza_enfermedad(disease_id, name, description, params):
@@ -2507,48 +2303,6 @@ def valida_version(form, region, enfermedad_params):
     return datos, errores
 
 
-def escenario_para_motor(datos, enfermedad_params, intervenciones=None):
-    """Traduce una version de escenario al diccionario que consume el motor.
-
-    Los nombres del motor se eligieron a proposito iguales a las columnas
-    (`horizon_days` -> `dias`, `start_day` -> `dia_inicio`), asi que esto es un
-    mapeo y no una conversion: si algun dia dejan de coincidir, se rompe aqui y
-    no en medio de una corrida.
-    """
-    escenario = {
-        "poblacion": datos["population_by_age"] or datos["population_size"],
-        "infectados_iniciales": datos["initial_infected"],
-        "dias": datos["horizon_days"],
-        "enfermedad": enfermedad_params or {},
-        "intervenciones": intervenciones or [],
-    }
-    if datos.get("population_age_unknown"):
-        escenario["poblacion_edad_desconocida"] = datos["population_age_unknown"]
-        escenario["politica_edad_desconocida"] = datos["age_unknown_policy"]
-    return escenario
-
-
-def escenario_de_version(detalle):
-    """Entrada del motor para la version de `detalle` (get_escenario_detalle).
-
-    La usan la revision (revisa_version) y la corrida
-    (backend_web.simulaciones): lo que el epidemiologo aprueba y lo que se
-    simula salen de la misma traduccion, con la misma poblacion por edad y los
-    mismos parametros congelados.
-    """
-    version = detalle["version"]
-    datos = {
-        "population_by_age": version["population_by_age"],
-        "population_size": version["population_size"],
-        "population_age_unknown": version["population_age_unknown"],
-        "age_unknown_policy": version["age_unknown_policy"],
-        "initial_infected": version["initial_infected"],
-        "horizon_days": version["horizon_days"],
-    }
-    return escenario_para_motor(datos, detalle["parametros_enfermedad"],
-                                intervenciones_para_motor(detalle["intervenciones"]))
-
-
 def crea_escenario(datos, *, contexto):
     """Da de alta el escenario y su version 1 en una sola transaccion.
 
@@ -2614,17 +2368,22 @@ def get_tipos_intervencion():
     """Tipos activos, con el esquema que describe sus parametros."""
     return [dict(r) for r in query(
         """SELECT id, code, name, description, target_layer, primitive, param_schema,
-                  unit_cost, cost_unit, cost_source, cost_is_assumption
+                  unit_cost, cost_unit, cost_source, cost_is_assumption,
+                  person_days_per_unit, person_days_source, person_days_is_assumption
            FROM intervention_types WHERE is_active ORDER BY name""")]
 
 
-def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption):
-    """Valida el importe antes de guardar el costo de una intervencion."""
+def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption, nombre="El importe"):
+    """Valida el importe antes de guardar el costo de una intervencion.
+
+    Tambien valida el factor de personas-dia por dosis (D3), con otro `nombre`:
+    las reglas son las mismas y las llaves del resultado tambien.
+    """
     errores = []
     texto = (unit_cost_raw or "").strip()
 
     if not texto:
-        errores.append("El importe es obligatorio.")
+        errores.append(f"{nombre} es obligatorio.")
         return None, errores
 
     try:
@@ -2633,16 +2392,17 @@ def valida_costo_intervencion(unit_cost_raw, cost_source, cost_is_assumption):
         costo = None
     # "nan" e "inf" convierten sin error y la columna numeric los guardaria.
     if costo is None or not math.isfinite(costo):
-        errores.append("El importe debe ser numerico.")
+        errores.append(f"{nombre} debe ser numerico.")
         return None, errores
 
     if costo < 0:
-        errores.append("El importe no puede ser negativo.")
+        errores.append(f"{nombre} no puede ser negativo.")
 
     es_supuesto = bool(cost_is_assumption)
 
     if not es_supuesto and not (cost_source or "").strip():
-        errores.append("Un costo que no es supuesto debe incluir una fuente.")
+        que = "Un costo" if nombre == "El importe" else nombre
+        errores.append(f"{que} que no es supuesto debe incluir una fuente.")
 
     return {
         "unit_cost": costo,
@@ -2685,7 +2445,8 @@ def get_escenario_detalle(scenario_id, version_number=None):
     escenario = query(
         """SELECT s.id, s.name, s.description, s.status, s.owner_id, s.created_at,
                   d.id AS disease_id, d.name AS enfermedad, d.default_params,
-                  g.id AS region_id, g.name AS region, u.full_name AS autor
+                  g.id AS region_id, g.name AS region, g.population AS region_poblacion,
+                  u.full_name AS autor
            FROM scenarios s
            JOIN diseases d ON d.id = s.disease_id
            JOIN regions  g ON g.id = s.region_id
@@ -2703,7 +2464,7 @@ def get_escenario_detalle(scenario_id, version_number=None):
                    v.horizon_days, v.initial_infected, v.notes, v.created_at,
                    v.population_by_age, v.population_age_unknown, v.age_unknown_policy,
                    v.created_by, v.submitted_at, v.reviewed_at, v.review_comment,
-                   {congelados},
+                   v.param_overrides, {congelados},
                    u.full_name AS autor, r.full_name AS revisor
             FROM scenario_versions v
             JOIN users u ON u.id = v.created_by
@@ -2732,7 +2493,9 @@ def get_escenario_detalle(scenario_id, version_number=None):
         "escenario": dict(escenario),
         "version": dict(version) if version else None,
         "intervenciones": intervenciones,
-        "parametros_enfermedad": congelada or escenario["default_params"],
+        # Un borrador: el catálogo vivo con los ajustes de la versión encima (044, D59).
+        "parametros_enfermedad": congelada or {**(escenario["default_params"] or {}),
+                                               **((version or {}).get("param_overrides") or {})},
         "parametros_congelados": congelada is not None,
         "parametros_sin_congelar": bool(
             version and version["status"] != "borrador" and congelada is None),
@@ -2761,18 +2524,6 @@ def get_versiones(scenario_id):
            JOIN users u ON u.id = v.created_by
            WHERE v.scenario_id = %s
            ORDER BY v.version_number DESC""", (scenario_id,))]
-
-
-def intervenciones_para_motor(filas):
-    """Filas de scenario_interventions -> lista que consume el motor."""
-    return [{
-        "tipo": f["code"],
-        "dia_inicio": f["start_day"],
-        "dia_fin": f["end_day"],
-        "cobertura": float(f["coverage"]) if f["coverage"] is not None else None,
-        "cumplimiento": float(f["compliance"]) if f["compliance"] is not None else None,
-        "params": f["params"] or {},
-    } for f in filas]
 
 
 def revisa_version(detalle):
@@ -3067,15 +2818,17 @@ def crea_version(scenario_id, datos, *, contexto):
                     """INSERT INTO scenario_versions
                            (scenario_id, version_number, is_current, population_size,
                             horizon_days, initial_infected, notes, created_by, status,
-                            population_by_age, population_age_unknown, age_unknown_policy)
+                            population_by_age, population_age_unknown, age_unknown_policy,
+                            param_overrides)
                        VALUES (%s, %s, true, %s, %s, %s, %s, %s, 'borrador',
-                               %s::jsonb, %s, %s)
+                               %s::jsonb, %s, %s,
+                               (SELECT param_overrides FROM scenario_versions WHERE id = %s))
                        RETURNING id""",
                     (scenario_id, siguiente, datos["population_size"],
                      datos["horizon_days"], datos["initial_infected"], datos["notes"],
                      user_id,
                      a_jsonb(datos["population_by_age"]) if datos["population_by_age"] else None,
-                     datos["population_age_unknown"], datos["age_unknown_policy"]))
+                     datos["population_age_unknown"], datos["age_unknown_policy"], origen_id))
                 nueva_id = cur.fetchone()[0]
                 cur.execute(_SQL_COPIA_INTERVENCIONES, (nueva_id, origen_id))
                 copiadas = cur.rowcount
@@ -3141,14 +2894,16 @@ def duplica_escenario(scenario_id, version_number, nombre, *, contexto):
                     """INSERT INTO scenario_versions
                            (scenario_id, version_number, is_current, population_size,
                             horizon_days, initial_infected, notes, created_by, status,
-                            population_by_age, population_age_unknown, age_unknown_policy)
+                            population_by_age, population_age_unknown, age_unknown_policy,
+                            param_overrides)
                        VALUES (%s, 1, true, %s, %s, %s, %s, %s, 'borrador',
-                               %s::jsonb, %s, %s)
+                               %s::jsonb, %s, %s,
+                               (SELECT param_overrides FROM scenario_versions WHERE id = %s))
                        RETURNING id""",
                     (nuevo_id, poblacion, dias, iniciales,
                      f"Duplicado de la versión {version_number} del escenario "
                      f"#{scenario_id}.", user_id,
-                     a_jsonb(por_edad) if por_edad else None, sin_edad, politica))
+                     a_jsonb(por_edad) if por_edad else None, sin_edad, politica, origen_id))
                 nueva_version_id = cur.fetchone()[0]
                 cur.execute(_SQL_COPIA_INTERVENCIONES, (nueva_version_id, origen_id))
                 copiadas = cur.rowcount
@@ -3234,7 +2989,7 @@ def envia_a_revision(scenario_id, *, contexto):
                     cur.execute(
                         """UPDATE scenario_versions v
                            SET status = 'en_revision', submitted_at = now(),
-                               disease_params = d.default_params
+                               disease_params = d.default_params || v.param_overrides
                            FROM scenarios s
                            JOIN diseases d ON d.id = s.disease_id
                            WHERE v.id = %s AND v.status = 'borrador' AND s.id = v.scenario_id
@@ -3327,15 +3082,11 @@ def resuelve_revision(scenario_id, decision, comentario, *, contexto):
 
 
 # ---------------------------------------------------------------------------
-# Simulaciones -- ejecucion, estados y resultados
+# Simulaciones -- solo lectura para las pantallas
 # ---------------------------------------------------------------------------
-# Todo lo de aqui es de SOLO LECTURA sobre scenarios/scenario_versions (los
-# escriben las secciones de escenarios, mas arriba). Lo unico que se escribe
-# en esta seccion son simulation_batches, simulation_runs y
-# simulation_results -- la corrida, no el escenario.
-#
-# La entrada del motor sale de escenario_de_version(), la misma traduccion que
-# usa la revision; backend_web.simulaciones solo la invoca.
+# Las pantallas solo leen corridas. Crearlas, cancelarlas, reintentarlas y sus
+# transiciones de estado son de los servicios corridas y simulador (E8, D37), que
+# tienen su propio SQL. La entrada del motor sale de procesamiento/entrada_motor.py.
 
 def get_version_simulacion(version_id):
     """Una version de escenario con el escenario, la enfermedad y la region a
@@ -3389,68 +3140,6 @@ def listar_versiones_escenario():
     )
 
 
-def crear_corrida(version_id, seed, user_id, engine_version, *, contexto=None,
-                  forzar_error=False):
-    """Encola una corrida: un lote de una sola replica (motor python-ref, una
-    corrida a la vez -- ver 014_simulacion_resultados.sql) y su run.
-
-    Valida que la version este aprobada ANTES del INSERT, para poder devolver
-    un mensaje claro. El trigger fn_version_aprobada (014) es la ULTIMA linea
-    de defensa: si por cualquier otra via (un script, psql a mano) se
-    intentara encolar sobre una version no aprobada, la base lo rechaza igual.
-
-    Con `contexto` (el microservicio corridas) el RUN 'encolado' se audita en
-    la misma transaccion; sin el (el monolito) lo audita quien llama.
-
-    Devuelve (run_id, batch_id, error).
-    """
-    version = query(
-        "SELECT status FROM scenario_versions WHERE id = %s", (version_id,), one=True
-    )
-    if not version:
-        return None, None, "La versión de escenario no existe."
-    if version["status"] != "aprobado":
-        return None, None, (
-            f"Esta versión no está aprobada (estado: {version['status']}); "
-            "solo se pueden ejecutar simulaciones sobre versiones aprobadas."
-        )
-
-    try:
-        with get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO simulation_batches
-                        (scenario_version_id, requested_by, replicas, engine, status)
-                    VALUES (%s, %s, 1, 'python-ref', 'encolado')
-                    RETURNING id
-                    """,
-                    (version_id, user_id),
-                )
-                batch_id = cur.fetchone()[0]
-                cur.execute(
-                    """
-                    INSERT INTO simulation_runs
-                        (batch_id, scenario_version_id, seed, replica_index, status,
-                         engine_version, requested_by)
-                    VALUES (%s, %s, %s, 0, 'encolado', %s, %s)
-                    RETURNING id
-                    """,
-                    (batch_id, version_id, seed, engine_version, user_id),
-                )
-                run_id = cur.fetchone()[0]
-                if contexto is not None:
-                    log_audit(contexto, "RUN", "simulation_run", entity_id=str(run_id),
-                              data_after={"estado": "encolado", "seed": seed,
-                                          "scenario_version_id": version_id,
-                                          "forzar_error": forzar_error},
-                              cur=cur)
-            conn.commit()
-        return run_id, batch_id, None
-    except psycopg2.Error as exc:
-        return None, None, f"No se pudo encolar la corrida: {exc}"
-
-
 def get_run(run_id):
     """Detalle completo de una corrida: version, escenario, enfermedad, region
     y quien la pidio. Lo usan tanto la pantalla de detalle como el runner en
@@ -3464,7 +3153,7 @@ def get_run(run_id):
                sv.population_size, sv.horizon_days, sv.initial_infected,
                s.name AS scenario_name, s.disease_id, s.region_id,
                d.name AS disease_name,
-               reg.name AS region_name,
+               reg.name AS region_name, reg.population AS region_population,
                u.username AS requested_by_username, u.full_name AS requested_by_nombre
         FROM simulation_runs r
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
@@ -3479,22 +3168,47 @@ def get_run(run_id):
     )
 
 
-def get_runs_recientes(limit=20):
+# Los filtros de fecha de las corridas son dias de Nuevo Leon, no de UTC.
+ZONA_HORARIA = "America/Monterrey"
+
+
+def get_runs_recientes(limit=20, *, scenario_id=None, scenario_version_id=None, status=None,
+                       engine=None, desde=None, hasta=None):
     """Ultimas corridas de cualquier escenario, para la lista de la pantalla
-    de simulaciones."""
+    de simulaciones. Los filtros los usa el microservicio corridas: `desde` y
+    `hasta` son fechas (date) del encolado en ZONA_HORARIA, las dos incluidas.
+    Una corrida sin lote no tiene motor y no sale al filtrar por `engine`."""
+    condiciones, params = [], []
+    for columna, valor in (("sv.scenario_id", scenario_id),
+                           ("r.scenario_version_id", scenario_version_id),
+                           ("r.status", status), ("b.engine", engine)):
+        if valor is not None:
+            condiciones.append(f"{columna} = %s")
+            params.append(valor)
+    if desde is not None:
+        condiciones.append("r.queued_at >= %s::timestamp AT TIME ZONE %s")
+        params += [desde, ZONA_HORARIA]
+    if hasta is not None:
+        condiciones.append("r.queued_at < (%s::date + 1)::timestamp AT TIME ZONE %s")
+        params += [hasta, ZONA_HORARIA]
+
+    where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
+    params.append(limit)
     return query(
-        """
-        SELECT r.id, r.status, r.seed, r.queued_at, r.started_at, r.finished_at,
-               r.error_message, sv.scenario_id, sv.version_number,
+        f"""
+        SELECT r.id, r.status, r.seed, b.engine, r.queued_at, r.started_at, r.finished_at,
+               r.error_message, r.scenario_version_id, sv.scenario_id, sv.version_number,
                s.name AS scenario_name, u.username AS requested_by_username
         FROM simulation_runs r
+        LEFT JOIN simulation_batches b ON b.id = r.batch_id
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
         JOIN scenarios s ON s.id = sv.scenario_id
         JOIN users u     ON u.id = r.requested_by
+        {where}
         ORDER BY r.queued_at DESC
         LIMIT %s
         """,
-        (limit,),
+        tuple(params),
     )
 
 
@@ -3507,19 +3221,18 @@ def get_runs_completados_para_comparar(limit=50):
                s.name AS scenario_name,
                d.name AS disease_name,
                reg.name AS region_name,
-               res.casos_acumulados,
-               res.hospitalizaciones,
-               res.fallecimientos,
-               res.pico_casos_activos,
-               res.dia_pico,
-               res.tasa_ataque
+               r.casos_acumulados,
+               r.hospitalizaciones,
+               r.fallecimientos,
+               r.pico_casos_activos,
+               r.dia_pico,
+               r.tasa_ataque
         FROM simulation_runs r
-        JOIN simulation_results res ON res.run_id = r.id
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
         JOIN scenarios s ON s.id = sv.scenario_id
         JOIN diseases d ON d.id = s.disease_id
         JOIN regions reg ON reg.id = s.region_id
-        WHERE r.status = 'completado'
+        WHERE r.status = 'completado' AND r.resumen IS NOT NULL
         ORDER BY r.finished_at DESC
         LIMIT %s
         """,
@@ -3528,8 +3241,9 @@ def get_runs_completados_para_comparar(limit=50):
 
 
 def get_corridas_para_comparar(run_ids):
-    """Devuelve corridas completadas seleccionadas con su serie diaria, en el
-    orden de `run_ids`: una lista de enteros sin repetir."""
+    """Devuelve corridas completadas seleccionadas con sus indicadores, en el
+    orden de `run_ids`: una lista de enteros sin repetir. Sin la serie diaria:
+    esa la da el servicio resultados (D28)."""
     if len(run_ids) < 2:
         return []
 
@@ -3539,16 +3253,14 @@ def get_corridas_para_comparar(run_ids):
                sv.scenario_id,
                sv.version_number,
                s.name AS scenario_name,
-               res.serie,
-               res.fallecimientos,
-               res.pico_casos_activos,
-               res.dia_pico,
-               res.tasa_ataque
+               r.fallecimientos,
+               r.pico_casos_activos,
+               r.dia_pico,
+               r.tasa_ataque
         FROM simulation_runs r
-        JOIN simulation_results res ON res.run_id = r.id
         JOIN scenario_versions sv ON sv.id = r.scenario_version_id
         JOIN scenarios s ON s.id = sv.scenario_id
-        WHERE r.status = 'completado'
+        WHERE r.status = 'completado' AND r.resumen IS NOT NULL
           AND r.id = ANY(%s)
         """,
         (run_ids,),
@@ -3559,234 +3271,20 @@ def get_corridas_para_comparar(run_ids):
 
 
 def get_resultado_run(run_id):
-    """Resultado guardado por motor.simular(): indicadores resumen, serie
-    diaria y trazabilidad de parametros. None si la corrida no ha terminado
-    (o termino en error, que no guarda resultado)."""
+    """Resultado guardado por motor.simular(): indicadores resumen, huella y
+    trazabilidad de parametros. None si la corrida no ha terminado (o termino
+    en error, que no guarda resultado). La serie diaria no esta aqui: vive en
+    MongoDB y la da el servicio resultados (D28)."""
     return query(
         """
-        SELECT run_id, engine_version, scenario_checksum, resumen, serie,
-               trazabilidad, created_at
-        FROM simulation_results
-        WHERE run_id = %s
+        SELECT id AS run_id, engine_version, scenario_checksum, resumen,
+               trazabilidad, finished_at
+        FROM simulation_runs
+        WHERE id = %s AND resumen IS NOT NULL
         """,
         (run_id,),
         one=True,
     )
-
-
-def _sincroniza_lote(cur, run_ids):
-    """Lleva el lote al estado de su corrida, dentro de la transaccion del
-    llamador. Hoy cada lote tiene una sola replica (crear_corrida), asi que el
-    lote refleja tal cual a su corrida; finished_at solo en estados terminales
-    (ck_simulation_batches_terminal). Las corridas sueltas (batch_id NULL) no
-    tocan nada."""
-    if not run_ids:
-        return
-    cur.execute(
-        """
-        UPDATE simulation_batches b
-        SET status = r.status,
-            finished_at = CASE WHEN r.status IN ('completado', 'fallido', 'cancelado')
-                               THEN r.finished_at END
-        FROM simulation_runs r
-        WHERE r.id = ANY(%s) AND b.id = r.batch_id
-        """,
-        (list(run_ids),),
-    )
-
-
-def _transiciona_run(sql, params):
-    """UPDATE de simulation_runs + sincronizacion del lote en UNA transaccion.
-    El sql debe terminar en RETURNING id. Devuelve los ids que cambiaron."""
-    with get_conn() as conn:
-        try:
-            with conn.cursor() as cur:
-                cur.execute(sql, params)
-                ids = [fila[0] for fila in cur.fetchall()]
-                _sincroniza_lote(cur, ids)
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-    return ids
-
-
-def marcar_run_ejecutando(run_id):
-    """encolado -> ejecutando. El WHERE status = 'encolado' evita pisar una
-    corrida que ya haya terminado (o que otro hilo ya haya arrancado).
-
-    Devuelve True solo si esta llamada de verdad hizo la transicion (rowcount
-    == 1); False si no habia ninguna fila 'encolado' con ese id (ya se habia
-    marcado por otro hilo, o el id no existe). El llamador (ejecutar_run) NO
-    debe auditar 'ejecutando' ni seguir con la corrida cuando esto da False.
-    """
-    return len(_transiciona_run(
-        """
-        UPDATE simulation_runs SET status = 'ejecutando', started_at = now()
-        WHERE id = %s AND status = 'encolado'
-        RETURNING id
-        """,
-        (run_id,),
-    )) == 1
-
-
-def guardar_resultado_run(run_id, resultado):
-    """Guarda la salida de motor.simular() y cierra la corrida como
-    completada, en una sola transaccion: si el INSERT de simulation_results
-    fallara (por ejemplo por el CHECK de scenario_checksum), la corrida NO
-    debe quedar marcada 'completado' sin su resultado.
-
-    El json.dumps() se hace ANTES de abrir la conexion: si `resultado` trae
-    algo no serializable, falla ahi (sin conexion ni transaccion abierta) en
-    vez de a mitad de una transaccion. Y si el INSERT/UPDATE fallan, se hace
-    rollback explicito antes de relanzar la excepcion -- dejar la conexion
-    cerrarse sola con una transaccion a medias no es lo mismo que garantizar
-    que no quedo nada escrito.
-    """
-    resumen_json = json.dumps(resultado["resumen"], ensure_ascii=False, default=str)
-    serie_json = json.dumps(resultado["serie"], ensure_ascii=False, default=str)
-    trazabilidad_json = json.dumps(
-        resultado.get("trazabilidad_parametros", []), ensure_ascii=False, default=str
-    )
-
-    with get_conn() as conn:
-        try:
-            with conn.cursor() as cur:
-                # Primero se cierra la corrida, y solo si seguia 'ejecutando':
-                # si otro proceso ya la cerro, no se revive ni se guarda nada.
-                cur.execute(
-                    """
-                    UPDATE simulation_runs
-                    SET status = 'completado', progress = 100, finished_at = now()
-                    WHERE id = %s AND status = 'ejecutando'
-                    """,
-                    (run_id,),
-                )
-                if cur.rowcount != 1:
-                    conn.rollback()
-                    return False
-                cur.execute(
-                    """
-                    INSERT INTO simulation_results
-                        (run_id, engine_version, scenario_checksum, resumen, serie, trazabilidad)
-                    VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb)
-                    """,
-                    (
-                        run_id,
-                        resultado["engine_version"],
-                        resultado["huella_escenario"],
-                        resumen_json,
-                        serie_json,
-                        trazabilidad_json,
-                    ),
-                )
-                _sincroniza_lote(cur, [run_id])
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-    return True
-
-
-def marcar_run_fallido(run_id, mensaje):
-    """encolado/ejecutando -> fallido, con el mensaje que explica por que.
-
-    El WHERE status NOT IN (...) restringe la transicion a estados NO
-    terminales: una corrida que ya quedo 'completado', 'fallido' o
-    'cancelado' no debe reescribirse (por ejemplo si dos hilos del mismo run
-    corrieran por error, o si el hilo llega tarde despues de que algo mas ya
-    cerro la corrida). Devuelve True solo si de verdad hizo la transicion
-    (rowcount == 1); el llamador no debe auditar 'fallido' si esto da False.
-
-    Desde 'encolado' hay que poner tambien started_at: ck_simulation_runs_inicio
-    (007) exige que solo 'encolado' lo tenga en NULL. Sin el COALESCE, cerrar
-    una corrida que nunca arranco violaria esa restriccion y la dejaria encolada
-    para siempre. Se usa la misma hora del cierre: duro cero.
-    """
-    return len(_transiciona_run(
-        """
-        UPDATE simulation_runs
-        SET status = 'fallido', error_message = %s, finished_at = now(),
-            started_at = COALESCE(started_at, now())
-        WHERE id = %s AND status NOT IN ('completado', 'fallido', 'cancelado')
-        RETURNING id
-        """,
-        (mensaje, run_id),
-    )) == 1
-
-
-def cancelar_run(run_id, *, contexto):
-    """encolado -> cancelado, auditado con CANCEL en la misma transaccion.
-
-    Solo se cancela lo que nadie ha empezado: el WHERE status = 'encolado' es
-    la misma transicion condicionada que usa el trabajador al tomarla, asi que
-    los dos no se pisan. started_at recibe la hora del cierre, igual que en
-    marcar_run_fallido (ck_simulation_runs_inicio). Devuelve True si hubo
-    transicion.
-    """
-    with get_conn() as conn:
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    UPDATE simulation_runs
-                    SET status = 'cancelado', finished_at = now(),
-                        started_at = COALESCE(started_at, now())
-                    WHERE id = %s AND status = 'encolado'
-                    RETURNING id
-                    """,
-                    (run_id,),
-                )
-                if not cur.fetchone():
-                    conn.rollback()
-                    return False
-                _sincroniza_lote(cur, [run_id])
-                log_audit(contexto, "CANCEL", "simulation_run", entity_id=str(run_id),
-                          data_before={"estado": "encolado"},
-                          data_after={"estado": "cancelado"}, cur=cur)
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-    return True
-
-
-def marca_corridas_interrumpidas(mensaje, run_ids=None, estados=("encolado", "ejecutando")):
-    """encolado/ejecutando -> fallido para las corridas cuyo hilo ya no existe.
-
-    Solo tiene sentido al arrancar el servidor (backend_web.simulaciones.
-    recupera_corridas_interrumpidas): las corridas viven en hilos del proceso,
-    asi que cualquier corrida no terminada que encuentre un proceso recien
-    iniciado era de uno que ya murio. `run_ids` acota el barrido; lo usan las
-    pruebas para no tocar corridas ajenas a ellas. `estados` lo acota el
-    microservicio simulador a 'ejecutando': sus corridas encoladas siguen
-    esperando en la cola de Redis.
-
-    Devuelve las filas cerradas (id, requested_by, seed) para auditarlas.
-    Las que seguian encoladas reciben started_at = finished_at, por la misma
-    razon que en marcar_run_fallido.
-    """
-    filtro, params = "", [mensaje, list(estados)]
-    if run_ids is not None:
-        filtro = "AND id = ANY(%s)"
-        params.append(list(run_ids))
-    with get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                f"""
-                UPDATE simulation_runs
-                SET status = 'fallido', error_message = %s, finished_at = now(),
-                    started_at = COALESCE(started_at, now())
-                WHERE status IN ('encolado', 'ejecutando') AND status = ANY(%s) {filtro}
-                RETURNING id, requested_by, seed
-                """,
-                tuple(params),
-            )
-            filas = [{"id": i, "requested_by": u, "seed": s}
-                     for i, u, s in cur.fetchall()]
-            _sincroniza_lote(cur, [f["id"] for f in filas])
-        conn.commit()
-    return filas
 
 
 def buscar_run_equivalente(run_id, scenario_version_id, seed, checksum):
@@ -3802,11 +3300,10 @@ def buscar_run_equivalente(run_id, scenario_version_id, seed, checksum):
         return None
     return query(
         """
-        SELECT r.id, res.resumen
+        SELECT r.id, r.resumen
         FROM simulation_runs r
-        JOIN simulation_results res ON res.run_id = r.id
         WHERE r.scenario_version_id = %s AND r.seed = %s AND r.id <> %s
-          AND res.scenario_checksum = %s AND r.status = 'completado'
+          AND r.scenario_checksum = %s AND r.status = 'completado'
         ORDER BY r.finished_at ASC
         LIMIT 1
         """,

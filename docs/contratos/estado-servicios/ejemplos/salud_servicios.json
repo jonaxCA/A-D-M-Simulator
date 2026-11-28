@@ -12,7 +12,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 3.1,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "sesiones",
@@ -21,7 +22,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 5.9,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "usuarios",
@@ -30,7 +32,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 4.3,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "roles",
@@ -39,7 +42,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 7.1,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "enfermedades",
@@ -48,7 +52,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 5.5,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "parametros",
@@ -57,7 +62,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 3.9,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "regiones",
@@ -66,7 +72,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 6.7,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "poblacion",
@@ -75,7 +82,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 5.1,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "tipos-intervencion",
@@ -84,7 +92,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 3.5,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "casos",
@@ -93,7 +102,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 6.3,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "sincronizacion",
@@ -102,7 +112,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 4.7,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "escenarios",
@@ -111,7 +122,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 3.1,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "intervenciones",
@@ -120,7 +132,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 5.9,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "aprobacion",
@@ -129,7 +142,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 4.3,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "validacion",
@@ -138,7 +152,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 7.1,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "escenarios-xml",
@@ -147,7 +162,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 5.5,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "corridas",
@@ -156,7 +172,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 3.9,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "simulador",
@@ -167,7 +184,8 @@
       "detalle": "sin_conexion",
       "version": null,
       "latencia_ms": null,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "resultados",
@@ -176,7 +194,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 5.1,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "comparacion",
@@ -185,7 +204,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 3.5,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "pareto",
@@ -194,7 +214,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 6.3,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "indicadores",
@@ -203,7 +224,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 4.7,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "series",
@@ -214,7 +236,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 3.1,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "zonas",
@@ -223,7 +246,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 5.9,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "notificaciones",
@@ -232,7 +256,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 4.3,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 0
     },
     {
       "nombre": "estado-servicios",
@@ -241,7 +266,8 @@
       "detalle": null,
       "version": "0.1.0",
       "latencia_ms": 7.1,
-      "revisado": "2026-10-20T18:30:05+00:00"
+      "revisado": "2026-10-20T18:30:05+00:00",
+      "errores": 3
     }
   ]
 }

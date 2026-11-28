@@ -15,7 +15,10 @@ import argparse
 import json
 import sys
 
-from . import AVISO_SIMULACION, ENGINE_VERSION, METRICAS_IMPACTO, comparar, simular
+# La comparacion vive fuera del motor; este programa de ejemplo usa las dos partes.
+from procesamiento.analitica import METRICAS_IMPACTO, comparar
+
+from . import AVISO_SIMULACION, ENGINE_VERSION, simular
 
 SUP = "Ejemplo del motor, no validado"
 
@@ -34,6 +37,11 @@ INFLUENZA_EJEMPLO = {
 COSTOS_EJEMPLO = {
     "CIERRE_ESCUELAS": {"valor": 15.0, "supuesto": True, "fuente": SUP},
     "VACUNACION": {"valor": 400.0, "supuesto": True, "fuente": SUP},
+}
+
+# Personas-dia que cuenta cada dosis en la frontera (D3).
+FACTORES_EJEMPLO = {
+    "VACUNACION": {"valor": 0.5, "supuesto": True, "fuente": SUP},
 }
 
 # Estructura por edad de Nuevo Leon, Censo 2020 de INEGI: los 21 grupos
@@ -93,7 +101,8 @@ def main(argv=None):
         esc = {**BASE, "intervenciones": ivs}
         entradas.append({"id": nombre[0], "nombre": nombre, "escenario": esc,
                          "resultado": simular(esc, args.semilla)})
-    comparacion = comparar(entradas, COSTOS_EJEMPLO, metrica=args.metrica, base="A")
+    comparacion = comparar(entradas, COSTOS_EJEMPLO, metrica=args.metrica, base="A",
+                           factores=FACTORES_EJEMPLO)
 
     if args.json:
         json.dump({"corridas": {e["nombre"]: e["resultado"] for e in entradas},
@@ -114,18 +123,19 @@ def main(argv=None):
               f"{s['dia_pico']:>10}{s['hospitalizaciones']:>13,}{s['fallecimientos']:>11,}"
               f"{s['tasa_ataque']:>9.1%}")
 
-    print(f"\nTrade-off: costo de intervencion vs {args.metrica} (base: A)\n")
-    enc = f"{'Escenario':<22}{'Costo (MXN)':>16}{'Impacto':>10}{'Evitado':>10}" \
-          f"{'Costo x evitado':>18}  Frontera"
+    print(f"\nTrade-off: personas-dia de intervencion vs {args.metrica} (base: A)\n")
+    enc = f"{'Escenario':<22}{'Personas-dia':>14}{'Pesos (MXN)':>16}{'Impacto':>10}{'Evitado':>10}" \
+          f"{'P-dia x evitado':>17}  Frontera"
     print(enc)
     print("-" * len(enc))
     for f in comparacion["filas"]:
         evitado = "" if f["impacto_evitado"] is None else f"{f['impacto_evitado']:,}"
         unidad = "" if f["costo_por_unidad_evitada"] is None else f"{f['costo_por_unidad_evitada']:,.0f}"
         marca = f"dominado por {', '.join(f['dominado_por'])}" if f["dominado"] else "SI"
-        print(f"{f['nombre']:<22}{f['costo']:>16,.0f}{f['impacto']:>10,}{evitado:>10}"
-              f"{unidad:>18}  {marca}")
-    print(f"\nFrontera de Pareto (por costo): {' -> '.join(comparacion['frontera'])}")
+        pesos = "sin dato" if f["costo_pesos"] is None else f"{f['costo_pesos']:,.0f}"
+        print(f"{f['nombre']:<22}{f['costo']:>14,.0f}{pesos:>16}{f['impacto']:>10,}{evitado:>10}"
+              f"{unidad:>17}  {marca}")
+    print(f"\nFrontera de Pareto (por personas-dia): {' -> '.join(comparacion['frontera'])}")
     for aviso in comparacion["avisos"]:
         print(f"Aviso: {aviso}")
     print(f"\nTodos los parametros y costos de este ejemplo son SUPUESTOS.\n{AVISO_SIMULACION}")

@@ -153,7 +153,7 @@
   }
 
   const ESTADOS = {ok: "OK", degradado: "Degradado", caido: "Caído"};
-  const CAUSAS = {postgresql: "PostgreSQL", redis: "Redis", proceso: "Proceso"};
+  const CAUSAS = {postgresql: "PostgreSQL", redis: "Redis", mongodb: "MongoDB", bucket: "Bucket", proceso: "Proceso"};
   const DETALLES = {sin_conexion: "sin conexión", tiempo_agotado: "tiempo agotado",
                     respuesta_invalida: "respuesta inválida"};
 
@@ -172,7 +172,26 @@
         el("td", {text: causa || "—"}),
         el("td", {text: s.version || "—"}),
         el("td", {class: "numero", text: s.latencia_ms === null ? "—" : `${s.latencia_ms} ms`}),
+        el("td", {class: "numero", text: s.errores === null || s.errores === undefined ? "—" : String(s.errores)}),
         el("td", {text: hora(new Date(s.revisado))}));
+    }));
+  }
+
+  // Corridas en cola sin un simulador vivo no avanzan: ese motor sale en rojo.
+  function pintaCapacidad(datos) {
+    $("capacidad-filas").replaceChildren(...datos.motores.map((m) => {
+      const p = m.en_cola_por_prioridad;
+      const atorado = m.en_cola > 0 && m.vivos === 0;
+      const corriendo = m.simuladores.filter((s) => s.corrida_actual !== null)
+        .map((s) => `#${s.corrida_actual} (${s.nombre})`).join(", ");
+      return el("tr", {class: atorado ? "caido" : ""},
+        el("td", {text: m.nombre}),
+        el("td", {class: "numero", text: String(m.en_cola)}),
+        el("td", {class: "numero", text: `${p.alta} · ${p.normal} · ${p.baja}`}),
+        el("td", {}, el("span", {class: "insignia " + (m.vivos ? "ok" : atorado ? "caido" : "pendiente"),
+                                 text: String(m.vivos)})),
+        el("td", {class: "numero", text: String(m.ocupados)}),
+        el("td", {text: corriendo || "—"}));
     }));
   }
 
@@ -183,6 +202,13 @@
       avisa("salud-hora", `Actualizado a las ${hora(new Date())}; se actualiza cada ${CADA_SALUD / 1000} s.`);
     } catch (error) {
       avisa("salud-hora", "estado-servicios " + mensajeDe(error), true);
+    }
+    try {
+      const capacidad = await pideJSON(estado.directorio + "/api/v1/services/capacity?format=json");
+      pintaCapacidad(capacidad);
+      avisa("capacidad-hora", `Un simulador cuenta como vivo si dio señales en los últimos ${capacidad.latido_segundos} s.`);
+    } catch (error) {
+      avisa("capacidad-hora", "estado-servicios " + mensajeDe(error), true);
     }
     estado.relojSalud = setTimeout(actualizaSalud, CADA_SALUD);
   }

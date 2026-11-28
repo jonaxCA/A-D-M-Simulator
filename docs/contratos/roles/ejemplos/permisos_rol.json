@@ -1,0 +1,19 @@
+{
+  "id": 3,
+  "code": "ANALISTA",
+  "name": "Analista",
+  "permisos": [
+    {
+      "code": "cases.read",
+      "resource": "cases",
+      "action": "read",
+      "description": "Consultar casos"
+    },
+    {
+      "code": "dashboard.read",
+      "resource": "dashboard",
+      "action": "read",
+      "description": "Ver el tablero"
+    }
+  ]
+}

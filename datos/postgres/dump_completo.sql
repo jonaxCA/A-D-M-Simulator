@@ -24,6 +24,37 @@ SET client_encoding = 'UTF8';
 --                                                       028_roles_comparacion_pareto.sql
 --                                                       029_roles_simulacion_notificaciones.sql
 --                                                       030_rol_estado_servicios.sql
+--                                                       031_rol_dispositivos.sql
+--                                                       032_rol_evidencias.sql
+--                                                       033_rol_vacunas.sql
+--                                                       035_nombres_de_motores.sql
+--                                                       036_tope_de_replicas_100.sql
+--                                                       037_avisos_de_casos_y_revision.sql
+--                                                       040_personas_dia_por_dosis.sql
+--                                                       038_resumen_en_simulation_runs.sql
+--                                                       041_retira_simulation_results.sql
+--                                                       046_bitacora_de_servicios.sql
+--                                                       045_intentos_de_corridas.sql
+--                                                       050_dispositivos_de_sesion.sql
+--                                                       051_mfa.sql
+--                                                       052_instituciones_y_perfiles.sql
+--                                                       053_alcances_de_usuario.sql
+--                                                       054_prioridad_de_corridas.sql
+--                                                       055_historial_con_alcance.sql
+--                                                       056_nombres_oficiales_municipios.sql
+--                                                       057_seguimiento_de_casos.sql
+--                                                       058_centroide_de_marin.sql
+--                                                       059_formularios_por_enfermedad.sql
+--                                                       060_campanas_y_preferencias.sql
+--                                                       039_reportes_de_comparacion.sql
+--                                                       061_serie_observada.sql
+--                                                       063_casos_sinteticos.sql
+--                                                       064_proyectos_archivado_y_firma.sql
+--                                                       042_catalogos_con_fuente.sql
+--                                                       043_jurisdicciones_y_censos.sql
+--                                                       044_ajustes_de_parametros_por_version.sql
+--                                                       062_calibraciones.sql
+--                                                       065_sincroniza_lote.sql
 --
 -- Cada bloque original conserva su propio BEGIN/COMMIT y su propio INSERT en
 -- schema_migrations, asi que este archivo se comporta exactamente igual que
@@ -3902,6 +3933,2918 @@ COMMENT ON ROLE svc_estado_servicios IS 'Microservicio estado-servicios (5262): 
 
 INSERT INTO schema_migrations (version, description)
 VALUES ('030', 'Seguridad: rol de PostgreSQL de estado-servicios')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 031_rol_dispositivos.sql
+-- Un rol de PostgreSQL para el microservicio dispositivos (5223), dueño de devices, y la
+-- lectura de devices que necesita casos para no aceptar un caso de un dispositivo ajeno o
+-- revocado. Sigue el patrón de la 026 a la 030.
+--
+-- - El rol nace con LOGIN y sin contraseña. En el compose la fija
+--   infra/postgres/10-inicializa.sh; fuera de él: ALTER ROLE svc_dispositivos PASSWORD '...';
+--   y el servicio la recibe en su DATABASE_URL (ver infra/.env.example).
+-- - dispositivos registra, actualiza y revoca, pero nunca borra un dispositivo ni le cambia
+--   el dueño, el identificador o la plataforma: no tiene DELETE ni UPDATE sobre esas columnas.
+-- - casos solo lee id, user_id e is_revoked, lo que necesita para decidir si acepta un
+--   device_id. La 027 le revoca todo a svc_casos: si se vuelve a correr sola, hay que correr
+--   esta después (el dump las corre en orden).
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida revoca y vuelve a otorgar exactamente lo de abajo.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_dispositivos') THEN
+        CREATE ROLE svc_dispositivos LOGIN;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM svc_dispositivos;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM svc_dispositivos;
+GRANT USAGE ON SCHEMA public TO svc_dispositivos;
+
+-- dispositivos: dueño de devices.
+GRANT SELECT, INSERT ON devices TO svc_dispositivos;
+GRANT UPDATE (model, app_version, push_token, is_revoked, last_seen_at) ON devices TO svc_dispositivos;
+GRANT INSERT ON audit_log TO svc_dispositivos;
+
+DO $$
+DECLARE
+    tabla TEXT;
+    secuencia TEXT;
+BEGIN
+    FOREACH tabla IN ARRAY ARRAY['devices', 'audit_log']
+    LOOP
+        secuencia := pg_get_serial_sequence('public.' || tabla, 'id');
+        IF secuencia IS NOT NULL THEN
+            EXECUTE format('GRANT USAGE ON SEQUENCE %s TO svc_dispositivos', secuencia);
+        END IF;
+    END LOOP;
+END;
+$$;
+
+-- casos: de quién es un dispositivo y si está revocado.
+REVOKE ALL ON devices FROM svc_casos;
+GRANT SELECT (id, user_id, is_revoked) ON devices TO svc_casos;
+
+COMMENT ON ROLE svc_dispositivos IS 'Microservicio dispositivos (5223): duenio de devices.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('031', 'Seguridad: rol de dispositivos y lectura de devices para casos')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 032_rol_evidencias.sql
+-- Un rol de PostgreSQL para el microservicio evidencias (5224), dueño de
+-- case_attachments. Sigue el patrón de la 026 a la 031.
+--
+-- - El rol nace con LOGIN y sin contraseña. En el compose la fija
+--   infra/postgres/10-inicializa.sh; fuera de él: ALTER ROLE svc_evidencias PASSWORD '...';
+--   y el servicio la recibe en su DATABASE_URL (ver infra/.env.example).
+-- - El archivo vive en el volumen del servicio, no en la base: case_attachments guarda su
+--   ruta, tipo, tamaño y huella. Una evidencia no se edita: se sube o, solo ADMINISTRADOR,
+--   se borra. Por eso no recibe UPDATE.
+-- - De cases solo lee id y reported_by: si el caso existe y quién lo reportó, que es quien
+--   puede adjuntarle fotos (además de ADMINISTRADOR).
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida revoca y vuelve a otorgar exactamente lo de abajo.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_evidencias') THEN
+        CREATE ROLE svc_evidencias LOGIN;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM svc_evidencias;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM svc_evidencias;
+GRANT USAGE ON SCHEMA public TO svc_evidencias;
+
+GRANT SELECT, INSERT, DELETE ON case_attachments TO svc_evidencias;
+GRANT SELECT (id, reported_by) ON cases TO svc_evidencias;
+GRANT INSERT ON audit_log TO svc_evidencias;
+
+DO $$
+DECLARE
+    tabla TEXT;
+    secuencia TEXT;
+BEGIN
+    FOREACH tabla IN ARRAY ARRAY['case_attachments', 'audit_log']
+    LOOP
+        secuencia := pg_get_serial_sequence('public.' || tabla, 'id');
+        IF secuencia IS NOT NULL THEN
+            EXECUTE format('GRANT USAGE ON SEQUENCE %s TO svc_evidencias', secuencia);
+        END IF;
+    END LOOP;
+END;
+$$;
+
+COMMENT ON ROLE svc_evidencias IS 'Microservicio evidencias (5224): duenio de case_attachments.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('032', 'Seguridad: rol de PostgreSQL de evidencias')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 033_rol_vacunas.sql
+-- Un rol de PostgreSQL para el microservicio vacunas (5225), dueño de vaccine_lots: los
+-- lotes que la app móvil lee por QR o código de barras y las dosis que se les aplican.
+-- Sigue el patrón de la 026 a la 032.
+--
+-- - El rol nace con LOGIN y sin contraseña. En el compose la fija
+--   infra/postgres/10-inicializa.sh; fuera de él: ALTER ROLE svc_vacunas PASSWORD '...';
+--   y el servicio la recibe en su DATABASE_URL (ver infra/.env.example).
+-- - De un lote ya registrado solo cambia doses_used, al aplicar dosis; nunca lo borra. El
+--   tope lo garantiza ck_vaccine_lots_usadas (005), además del UPDATE condicionado.
+-- - Lee el nombre de la enfermedad y de la región para responder con ellos.
+-- - No liga dosis a casos: cases.vaccine_lot_id es de casos.
+-- - No toca a epidemia_app ni a los roles app_* de la 009: el monolito sigue igual.
+-- - Idempotente: cada corrida revoca y vuelve a otorgar exactamente lo de abajo.
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_vacunas') THEN
+        CREATE ROLE svc_vacunas LOGIN;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM svc_vacunas;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM svc_vacunas;
+GRANT USAGE ON SCHEMA public TO svc_vacunas;
+
+GRANT SELECT, INSERT ON vaccine_lots TO svc_vacunas;
+GRANT UPDATE (doses_used) ON vaccine_lots TO svc_vacunas;
+GRANT SELECT (id, name) ON diseases, regions TO svc_vacunas;
+GRANT INSERT ON audit_log TO svc_vacunas;
+
+DO $$
+DECLARE
+    tabla TEXT;
+    secuencia TEXT;
+BEGIN
+    FOREACH tabla IN ARRAY ARRAY['vaccine_lots', 'audit_log']
+    LOOP
+        secuencia := pg_get_serial_sequence('public.' || tabla, 'id');
+        IF secuencia IS NOT NULL THEN
+            EXECUTE format('GRANT USAGE ON SEQUENCE %s TO svc_vacunas', secuencia);
+        END IF;
+    END LOOP;
+END;
+$$;
+
+COMMENT ON ROLE svc_vacunas IS 'Microservicio vacunas (5225): duenio de vaccine_lots.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('033', 'Seguridad: rol de PostgreSQL de vacunas')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 035_nombres_de_motores.sql
+-- Los motores cambian de nombre (D2): el SEIR queda como control experimental
+-- y los dos ABM se nombran por lo que son.
+--
+--   python-ref -> seir-ref    SEIR estocástico por edad (procesamiento/motor)
+--   numba      -> abm-ref     ABM en Python, en CPU
+--   cuda       -> abm-gpu     ABM en FLAME GPU 2
+--
+-- - La 034 queda reservada para D1 (permisos y auditoría).
+-- - El CHECK de la 014 tiene los nombres fijos. El orden es el de D2: soltar el
+--   CHECK, convertir los valores, poner el CHECK nuevo y cambiar el DEFAULT.
+-- - engine_version de las corridas que ya existen (python-ref-0.1) no se toca:
+--   registra qué versión del motor produjo cada resultado. seir-ref-0.1 es el
+--   mismo código con otro nombre.
+-- - motor_por_defecto (010) se traduce igual. Ningún código lo lee hoy.
+-- - La cola de Redis también cambia de llave (queue:simulaciones:<motor>): una
+--   corrida que esté esperando en la llave vieja al desplegar no la toma nadie.
+--   Se despliega con la cola vacía.
+-- - Idempotente (D7): correrla dos veces no cambia nada.
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE simulation_batches DROP CONSTRAINT IF EXISTS ck_simulation_batches_engine;
+
+UPDATE simulation_batches
+   SET engine = CASE engine
+                    WHEN 'python-ref' THEN 'seir-ref'
+                    WHEN 'numba'      THEN 'abm-ref'
+                    WHEN 'cuda'       THEN 'abm-gpu'
+                END
+ WHERE engine IN ('python-ref', 'numba', 'cuda');
+
+ALTER TABLE simulation_batches
+    ADD CONSTRAINT ck_simulation_batches_engine
+        CHECK (engine IN ('seir-ref', 'abm-ref', 'abm-gpu'));
+
+ALTER TABLE simulation_batches ALTER COLUMN engine SET DEFAULT 'seir-ref';
+
+COMMENT ON COLUMN simulation_batches.engine IS
+    'Motor que corre el lote (D2): seir-ref, abm-ref o abm-gpu.';
+
+UPDATE system_settings
+   SET value = CASE value #>> '{}'
+                   WHEN 'python-ref' THEN '"seir-ref"'::jsonb
+                   WHEN 'numba'      THEN '"abm-ref"'::jsonb
+                   WHEN 'cuda'       THEN '"abm-gpu"'::jsonb
+               END
+ WHERE key = 'motor_por_defecto'
+   AND value #>> '{}' IN ('python-ref', 'numba', 'cuda');
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('035', 'Simulacion: nombres de motores seir-ref, abm-ref y abm-gpu (D2)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 036_tope_de_replicas_100.sql
+-- El tope de réplicas de un lote baja de 200 a 100 (D8, RF-E03).
+--
+-- - D8: el escritorio ya topa en 100 y la base aceptaba 200; se documenta 100.
+-- - Cambia el CHECK de simulation_batches.replicas (esquema, 014) y el valor de
+--   max_replicas_por_lote en system_settings (dato, 010).
+-- - Los lotes que existen tienen 1 réplica, así que el CHECK nuevo los acepta.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE simulation_batches
+    DROP CONSTRAINT IF EXISTS ck_simulation_batches_replicas,
+    ADD  CONSTRAINT ck_simulation_batches_replicas
+        CHECK (replicas BETWEEN 1 AND 100);
+
+UPDATE system_settings
+   SET value = '100'::jsonb
+ WHERE key = 'max_replicas_por_lote'
+   AND value <> '100'::jsonb;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('036', 'Simulacion: el tope de replicas por lote baja de 200 a 100 (D8)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 037_avisos_de_casos_y_revision.sql
+-- Tres tipos de aviso nuevos y el permiso para avisar a un rol (bloque E1).
+--
+--   NEW_CASES          sincronizacion: un lote trajo casos nuevos (D32, RF-C19)
+--   SCENARIO_SUBMITTED aprobacion: una versión espera revisión (RF-D15)
+--   SCENARIO_REJECTED  aprobacion: se rechazó la versión de su autor (RF-D16)
+--
+-- - notificaciones crea un aviso por cada persona activa con un rol (los
+--   EPIDEMIOLOGO), así que su rol lee users, user_roles y roles, solo las
+--   columnas que necesita.
+-- - La 036 está reservada para otro cambio.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS ck_notifications_type;
+ALTER TABLE notifications ADD CONSTRAINT ck_notifications_type CHECK (type IN
+    ('RUN_FINISHED', 'RUN_FAILED', 'THRESHOLD_EXCEEDED', 'ASSIGNMENT',
+     'SCENARIO_PUBLISHED', 'SCENARIO_APPROVED', 'SCENARIO_SUBMITTED',
+     'SCENARIO_REJECTED', 'NEW_CASES', 'SYSTEM'));
+
+COMMENT ON COLUMN notifications.type IS
+    'Tipo: RUN_FINISHED, RUN_FAILED, THRESHOLD_EXCEEDED, ASSIGNMENT, SCENARIO_PUBLISHED, SCENARIO_APPROVED, SCENARIO_SUBMITTED, SCENARIO_REJECTED, NEW_CASES o SYSTEM.';
+
+GRANT SELECT (id, is_active) ON users TO svc_notificaciones;
+GRANT SELECT (user_id, role_id) ON user_roles TO svc_notificaciones;
+GRANT SELECT (id, code) ON roles TO svc_notificaciones;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('037', 'Avisos: NEW_CASES, SCENARIO_SUBMITTED y SCENARIO_REJECTED; notificaciones lee los roles')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 040_personas_dia_por_dosis.sql
+-- Lugar para el factor de personas-día por dosis de la frontera de Pareto (D3).
+--
+-- - D3: la frontera usa personas-día y los pesos van aparte. Las capas y el
+--   testeo cuentan sus personas-día por definición (habitante-día); la
+--   vacunación necesita un factor por dosis, que es un supuesto.
+-- - Mismas reglas que unit_cost (014): sin valor por omisión (regla 8) y, si se
+--   captura, con fuente o marcado como supuesto. Ninguna fila trae valor.
+-- - Lo fija el servicio intervenciones (PUT .../person-days), así que su rol
+--   puede actualizar estas tres columnas.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE intervention_types
+    ADD COLUMN IF NOT EXISTS person_days_per_unit      NUMERIC(12,4),
+    ADD COLUMN IF NOT EXISTS person_days_source        TEXT,
+    ADD COLUMN IF NOT EXISTS person_days_is_assumption BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE intervention_types
+    DROP CONSTRAINT IF EXISTS ck_intervention_types_person_days,
+    ADD  CONSTRAINT ck_intervention_types_person_days CHECK (
+        person_days_per_unit IS NULL
+        OR (person_days_per_unit >= 0
+            AND (person_days_is_assumption OR person_days_source IS NOT NULL))
+    );
+
+COMMENT ON COLUMN intervention_types.person_days_per_unit IS
+    'Personas-dia que cuenta cada unidad en la frontera de Pareto (D3). Solo la usan los tipos por_dosis (vacunacion). NULL = sin capturar: una comparacion con ese tipo no se calcula.';
+COMMENT ON COLUMN intervention_types.person_days_source IS
+    'De donde salio el factor. Obligatoria si no esta marcado como supuesto.';
+COMMENT ON COLUMN intervention_types.person_days_is_assumption IS
+    'TRUE si el factor es un supuesto del equipo y no un dato con respaldo.';
+
+GRANT UPDATE (person_days_per_unit, person_days_source, person_days_is_assumption)
+    ON intervention_types TO svc_intervenciones;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('040', 'Pareto: personas-dia por dosis en intervention_types (D3)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 038_resumen_en_simulation_runs.sql
+-- El resumen de cada corrida pasa a simulation_runs (D28).
+--
+-- - D28: la serie diaria va a MongoDB (series_corridas) y el resumen, la huella
+--   del escenario y la trazabilidad, a simulation_runs. simulation_results deja
+--   de usarse; la retira la 041.
+-- - Las columnas generadas son las mismas que tenia simulation_results (014):
+--   la comparacion las ordena y grafica sin abrir el JSON. Leen los nombres de
+--   la salida del motor (procesamiento/contrato.py).
+-- - Las llena el simulador al cerrar la corrida como completada; en las demas
+--   quedan en NULL.
+-- - Copia lo que hubiera en simulation_results, si la tabla sigue ahi.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE simulation_runs
+    ADD COLUMN IF NOT EXISTS scenario_checksum CHAR(64),
+    ADD COLUMN IF NOT EXISTS resumen           JSONB,
+    ADD COLUMN IF NOT EXISTS trazabilidad      JSONB;
+
+ALTER TABLE simulation_runs
+    ADD COLUMN IF NOT EXISTS casos_acumulados   INTEGER      GENERATED ALWAYS AS ((resumen->>'casos_acumulados')::integer)   STORED,
+    ADD COLUMN IF NOT EXISTS hospitalizaciones  INTEGER      GENERATED ALWAYS AS ((resumen->>'hospitalizaciones')::integer)  STORED,
+    ADD COLUMN IF NOT EXISTS fallecimientos     INTEGER      GENERATED ALWAYS AS ((resumen->>'fallecimientos')::integer)     STORED,
+    ADD COLUMN IF NOT EXISTS pico_casos_activos INTEGER      GENERATED ALWAYS AS ((resumen->>'pico_casos_activos')::integer) STORED,
+    ADD COLUMN IF NOT EXISTS dia_pico           SMALLINT     GENERATED ALWAYS AS ((resumen->>'dia_pico')::smallint)          STORED,
+    ADD COLUMN IF NOT EXISTS tasa_ataque        NUMERIC(8,6) GENERATED ALWAYS AS ((resumen->>'tasa_ataque')::numeric)        STORED;
+
+ALTER TABLE simulation_runs
+    DROP CONSTRAINT IF EXISTS ck_simulation_runs_resumen,
+    ADD  CONSTRAINT ck_simulation_runs_resumen
+        CHECK (resumen IS NULL OR jsonb_typeof(resumen) = 'object'),
+    DROP CONSTRAINT IF EXISTS ck_simulation_runs_traza,
+    ADD  CONSTRAINT ck_simulation_runs_traza
+        CHECK (trazabilidad IS NULL OR jsonb_typeof(trazabilidad) = 'array'),
+    DROP CONSTRAINT IF EXISTS ck_simulation_runs_checksum,
+    ADD  CONSTRAINT ck_simulation_runs_checksum
+        CHECK (scenario_checksum IS NULL OR scenario_checksum ~ '^[0-9a-f]{64}$');
+
+DO $$
+BEGIN
+    IF to_regclass('public.simulation_results') IS NOT NULL THEN
+        UPDATE simulation_runs r
+        SET    resumen = res.resumen,
+               scenario_checksum = res.scenario_checksum,
+               trazabilidad = res.trazabilidad
+        FROM   simulation_results res
+        WHERE  res.run_id = r.id AND r.resumen IS NULL;
+    END IF;
+END;
+$$;
+
+COMMENT ON COLUMN simulation_runs.resumen IS
+    'Indicadores de la corrida completada, tal como los da motor.simular(): casos_acumulados, pico, dia_pico, hospitalizaciones, fallecimientos, tasa_ataque y desglose por grupo de edad. La serie diaria esta en MongoDB (series_corridas, D28).';
+COMMENT ON COLUMN simulation_runs.trazabilidad IS
+    'Parametros usados, con su fuente o su marca de supuesto, tal como los reporto el motor.';
+COMMENT ON COLUMN simulation_runs.scenario_checksum IS
+    'SHA-256 de la entrada canonica del motor. Misma huella + misma semilla + mismo engine_version => mismo resultado.';
+
+-- El simulador cierra la corrida y, en el mismo UPDATE, guarda su resumen y la
+-- version del motor que la corrio (la que reporta motor.simular()).
+GRANT UPDATE (engine_version, resumen, scenario_checksum, trazabilidad)
+    ON simulation_runs TO svc_simulador;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('038', 'Simulacion: resumen, huella y trazabilidad de la corrida en simulation_runs (D28)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 041_retira_simulation_results.sql
+-- Retira simulation_results (D28).
+--
+-- - D28: la serie diaria de cada corrida esta en MongoDB (series_corridas) y su
+--   resumen, huella y trazabilidad, en simulation_runs (038). Nadie la escribe
+--   ni la lee: ni el simulador, ni resultados, ni pareto, ni la web.
+-- - La 038 ya copio a simulation_runs el resumen de las corridas que hubiera.
+--   La serie de esas corridas se pierde con la tabla; se recupera volviendo a
+--   correrlas con la misma semilla.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+DROP TABLE IF EXISTS simulation_results;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('041', 'Simulacion: retira simulation_results; la serie esta en MongoDB y el resumen en simulation_runs (D28)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 046_bitacora_de_servicios.sql
+-- La bitácora deja de pasar por la web (D36).
+--
+-- - Un servicio que responde 403 anota PERMISSION_DENIED (RF-A05; antes lo hacía
+--   la web). Los diez roles que no escribían en audit_log reciben INSERT, igual
+--   que los demás: audit_log es de todos, pero solo para insertar.
+-- - La consulta de la bitácora es del servicio roles (D37, E7): su rol lee
+--   audit_log (svc_usuarios ya la leía, desde la 026, para las dependencias de
+--   una cuenta).
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+GRANT INSERT ON audit_log TO svc_comparacion, svc_estado_servicios, svc_indicadores,
+    svc_pareto, svc_regiones, svc_resultados, svc_series, svc_tipos_intervencion,
+    svc_validacion, svc_zonas;
+GRANT USAGE ON SEQUENCE audit_log_id_seq TO svc_comparacion, svc_estado_servicios,
+    svc_indicadores, svc_pareto, svc_regiones, svc_resultados, svc_series,
+    svc_tipos_intervencion, svc_validacion, svc_zonas;
+
+GRANT SELECT ON audit_log TO svc_roles;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('046', 'Bitacora: INSERT en audit_log para los diez roles que no lo tenian y lectura para svc_roles (D36, D37)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 045_intentos_de_corridas.sql
+-- Una corrida interrumpida se reencola en lugar de cerrarse como fallida (D38).
+--
+-- - attempts cuenta las veces que la corrida pasó a 'ejecutando'. Al arrancar,
+--   el simulador regresa a 'encolado' las que se quedaron en 'ejecutando' con
+--   menos de 3 intentos y la misma versión de motor; las demás se cierran como
+--   'fallido'. Así una corrida que tumba al trabajador cada vez no se repite
+--   para siempre.
+-- - svc_simulador suma el intento al marcarla 'ejecutando'.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE simulation_runs
+    ADD COLUMN IF NOT EXISTS attempts SMALLINT NOT NULL DEFAULT 0;
+
+ALTER TABLE simulation_runs
+    DROP CONSTRAINT IF EXISTS ck_simulation_runs_attempts,
+    ADD  CONSTRAINT ck_simulation_runs_attempts CHECK (attempts BETWEEN 0 AND 3);
+
+COMMENT ON COLUMN simulation_runs.attempts IS
+    'Veces que la corrida paso a ejecutando. Una interrumpida se reencola mientras sea menor que 3 (D38).';
+
+GRANT UPDATE (attempts) ON simulation_runs TO svc_simulador;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('045', 'Simulacion: intentos de una corrida interrumpida que se reencola (D38)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+-- =============================================================================
+-- 050_dispositivos_de_sesion.sql
+-- Dispositivos desde los que una cuenta puede iniciar sesión (D41, RF-A08).
+--
+-- - session_devices guarda, por cuenta, el SHA-256 del identificador que envía el
+--   cliente en cada login y su estado: pendiente, autorizado o revocado. No es la
+--   tabla devices (teléfonos que sincronizan, RF-A09).
+-- - Dueño: sesiones (svc_sesiones). Registra, autoriza, revoca y anota el último uso;
+--   nunca borra ni cambia el dueño o el identificador.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS session_devices (
+    id            BIGSERIAL    PRIMARY KEY,
+    user_id       BIGINT       NOT NULL,
+    device_hash   CHAR(64)     NOT NULL,
+    label         VARCHAR(80),
+    status        VARCHAR(12)  NOT NULL DEFAULT 'pendiente',
+    authorized_by BIGINT,
+    authorized_at TIMESTAMPTZ,
+    last_seen_at  TIMESTAMPTZ,
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_session_devices      UNIQUE (user_id, device_hash),
+    CONSTRAINT fk_session_devices_user
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_session_devices_auth
+        FOREIGN KEY (authorized_by) REFERENCES users (id) ON DELETE SET NULL,
+    CONSTRAINT ck_session_devices_estado
+        CHECK (status IN ('pendiente', 'autorizado', 'revocado')),
+    CONSTRAINT ck_session_devices_hash
+        CHECK (device_hash ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_session_devices_autorizado
+        CHECK (status <> 'autorizado' OR authorized_at IS NOT NULL)
+);
+
+COMMENT ON TABLE session_devices IS 'Dispositivos desde los que una cuenta inicia sesion (D41). Uno nuevo queda pendiente hasta que la persona o un ADMINISTRADOR lo autoriza. [sesiones]';
+COMMENT ON COLUMN session_devices.id IS 'Identificador interno. [llave primaria]';
+COMMENT ON COLUMN session_devices.user_id IS 'Cuenta duenia. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN session_devices.device_hash IS 'SHA-256 en hexadecimal del identificador que envia el cliente; el identificador no se guarda.';
+COMMENT ON COLUMN session_devices.label IS 'Nombre que el cliente da al dispositivo, para reconocerlo en la lista.';
+COMMENT ON COLUMN session_devices.status IS 'pendiente, autorizado o revocado. Solo un autorizado puede abrir sesion.';
+COMMENT ON COLUMN session_devices.authorized_by IS 'Quien lo autorizo (la propia cuenta o un ADMINISTRADOR). Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN session_devices.authorized_at IS 'Cuando se autorizo.';
+COMMENT ON COLUMN session_devices.last_seen_at IS 'Ultimo inicio de sesion aceptado desde el dispositivo.';
+COMMENT ON COLUMN session_devices.created_at IS 'Primera vez que se vio el dispositivo.';
+
+CREATE INDEX IF NOT EXISTS ix_session_devices_user ON session_devices (user_id);
+
+REVOKE ALL ON session_devices FROM svc_sesiones;
+GRANT SELECT, INSERT ON session_devices TO svc_sesiones;
+GRANT UPDATE (label, status, authorized_by, authorized_at, last_seen_at)
+    ON session_devices TO svc_sesiones;
+GRANT USAGE ON SEQUENCE session_devices_id_seq TO svc_sesiones;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('050', 'Sesiones: dispositivos autorizados por cuenta (D41, RF-A08)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+-- =============================================================================
+-- 051_mfa.sql
+-- Segundo factor (TOTP, RFC 6238) para los perfiles críticos (D40).
+--
+-- - user_mfa: el secreto de cada cuenta. enabled pasa a TRUE cuando la persona confirma
+--   su primer código; last_counter impide reutilizar un código ya aceptado.
+-- - mfa_backup_codes: códigos de respaldo de un solo uso; solo se guarda su SHA-256.
+-- - Dueño: auth (svc_auth). Restablecer el MFA de una cuenta borra sus dos filas.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS user_mfa (
+    user_id      BIGINT       PRIMARY KEY,
+    secret       VARCHAR(64)  NOT NULL,
+    enabled      BOOLEAN      NOT NULL DEFAULT FALSE,
+    last_counter BIGINT,
+    enrolled_at  TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_user_mfa_user
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT ck_user_mfa_habilitado
+        CHECK (NOT enabled OR enrolled_at IS NOT NULL)
+);
+
+DROP TRIGGER IF EXISTS tg_user_mfa_updated_at ON user_mfa;
+CREATE TRIGGER tg_user_mfa_updated_at
+    BEFORE UPDATE ON user_mfa
+    FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+CREATE TABLE IF NOT EXISTS mfa_backup_codes (
+    id         BIGSERIAL    PRIMARY KEY,
+    user_id    BIGINT       NOT NULL,
+    code_hash  CHAR(64)     NOT NULL,
+    used_at    TIMESTAMPTZ,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_mfa_backup_codes UNIQUE (user_id, code_hash),
+    CONSTRAINT fk_mfa_backup_codes_user
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE user_mfa IS 'Secreto TOTP de cada cuenta con segundo factor (D40). [auth]';
+COMMENT ON COLUMN user_mfa.user_id IS 'Cuenta. Referencia a users.id. [llave primaria] [llave foranea]';
+COMMENT ON COLUMN user_mfa.secret IS 'Secreto compartido en base32. Solo lo lee svc_auth; nunca sale en una respuesta salvo al enrolarse.';
+COMMENT ON COLUMN user_mfa.enabled IS 'TRUE cuando la persona confirmo su primer codigo. Pendiente de confirmar, FALSE.';
+COMMENT ON COLUMN user_mfa.last_counter IS 'Paso de 30 s del ultimo codigo aceptado; un codigo del mismo paso o anterior se rechaza.';
+COMMENT ON COLUMN user_mfa.enrolled_at IS 'Cuando se confirmo el enrolamiento.';
+COMMENT ON COLUMN user_mfa.created_at IS 'Cuando se genero el secreto.';
+COMMENT ON COLUMN user_mfa.updated_at IS 'Ultima modificacion. La mantiene un trigger.';
+
+COMMENT ON TABLE mfa_backup_codes IS 'Codigos de respaldo de un solo uso del segundo factor (D40). [auth]';
+COMMENT ON COLUMN mfa_backup_codes.id IS 'Identificador interno. [llave primaria]';
+COMMENT ON COLUMN mfa_backup_codes.user_id IS 'Cuenta. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN mfa_backup_codes.code_hash IS 'SHA-256 en hexadecimal del codigo; el codigo solo se muestra al generarlo.';
+COMMENT ON COLUMN mfa_backup_codes.used_at IS 'Cuando se uso; un codigo usado no sirve otra vez.';
+COMMENT ON COLUMN mfa_backup_codes.created_at IS 'Cuando se genero.';
+
+REVOKE ALL ON user_mfa, mfa_backup_codes FROM svc_auth;
+GRANT SELECT, INSERT, DELETE ON user_mfa, mfa_backup_codes TO svc_auth;
+GRANT UPDATE (secret, enabled, last_counter, enrolled_at) ON user_mfa TO svc_auth;
+GRANT UPDATE (used_at) ON mfa_backup_codes TO svc_auth;
+GRANT USAGE ON SEQUENCE mfa_backup_codes_id_seq TO svc_auth;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('051', 'Auth: segundo factor TOTP y codigos de respaldo para los perfiles criticos (D40)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 052_instituciones_y_perfiles.sql
+-- Institución y región de cada cuenta, y los perfiles nuevos (D42).
+--
+-- - institutions: catálogo de instituciones. Empieza vacío: no se inventan
+--   instituciones; el ADMINISTRADOR las da de alta (servicio usuarios).
+-- - users.institution_id y users.region_id: opcionales. Dicen a qué institución
+--   y a qué región pertenece la cuenta (perfil). No restringen por sí solos lo
+--   que ve: eso es el alcance de la 053 (D43).
+-- - Roles INVESTIGADOR y AUTORIDAD_SANITARIA (RF de usuarios, retroalimentación).
+--   Sus permisos son un supuesto de solo lectura, a validar con el líder.
+-- - svc_usuarios es dueño de institutions.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS institutions (
+    id         SERIAL       PRIMARY KEY,
+    code       VARCHAR(30)  NOT NULL,
+    name       VARCHAR(160) NOT NULL,
+    is_active  BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_institutions_code UNIQUE (code),
+    CONSTRAINT uq_institutions_name UNIQUE (name),
+    CONSTRAINT ck_institutions_code CHECK (code = upper(code))
+);
+
+COMMENT ON TABLE institutions IS 'Catalogo de instituciones a las que pertenece una cuenta (D42).';
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS institution_id INTEGER,
+    ADD COLUMN IF NOT EXISTS region_id      INTEGER;
+
+ALTER TABLE users
+    DROP CONSTRAINT IF EXISTS fk_users_institution,
+    ADD  CONSTRAINT fk_users_institution
+        FOREIGN KEY (institution_id) REFERENCES institutions (id) ON DELETE SET NULL,
+    DROP CONSTRAINT IF EXISTS fk_users_region,
+    ADD  CONSTRAINT fk_users_region
+        FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS ix_users_institution ON users (institution_id);
+CREATE INDEX IF NOT EXISTS ix_users_region      ON users (region_id);
+
+COMMENT ON COLUMN users.institution_id IS 'Institucion de la cuenta; opcional (D42).';
+COMMENT ON COLUMN users.region_id IS 'Region asignada a la cuenta; opcional (D42). El alcance que limita datos esta en user_scopes (D43).';
+
+INSERT INTO roles (code, name, description, is_system) VALUES
+    ('INVESTIGADOR', 'Investigador',
+     'Consulta escenarios, corridas, casos y reportes, y exporta escenarios. Solo lectura (supuesto D42).', TRUE),
+    ('AUTORIDAD_SANITARIA', 'Autoridad sanitaria',
+     'Consulta escenarios, corridas, casos y reportes. Solo lectura (supuesto D42).', TRUE)
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r JOIN permissions p ON p.code IN
+    ('catalogs.read', 'scenarios.read', 'simulations.read', 'cases.read',
+     'reports.read', 'reports.export')
+WHERE r.code IN ('INVESTIGADOR', 'AUTORIDAD_SANITARIA')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r JOIN permissions p ON p.code = 'scenarios.export'
+WHERE r.code = 'INVESTIGADOR'
+ON CONFLICT DO NOTHING;
+
+GRANT SELECT, INSERT, UPDATE ON institutions TO svc_usuarios;
+GRANT USAGE ON SEQUENCE institutions_id_seq TO svc_usuarios;
+GRANT SELECT ON institutions TO svc_roles;
+GRANT SELECT ON regions TO svc_usuarios;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('052', 'Identidad: institutions, users.institution_id y users.region_id, roles INVESTIGADOR y AUTORIDAD_SANITARIA (D42)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 053_alcances_de_usuario.sql
+-- Permisos con alcance por región o institución (D43).
+--
+-- - user_scopes: una fila por región o por institución a las que se limita una
+--   cuenta. Sin filas, la cuenta es nacional (sin límite). El permiso por
+--   recurso y operación sigue en role_permissions; esto solo recorta los datos.
+-- - La región cubre también a sus hijas (regions.parent_region_id); lo expande
+--   el servicio roles al responder.
+-- - svc_roles es dueño de user_scopes y lee regions e institutions.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS user_scopes (
+    id             BIGSERIAL   PRIMARY KEY,
+    user_id        BIGINT      NOT NULL,
+    region_id      INTEGER,
+    institution_id INTEGER,
+    assigned_by    BIGINT,
+    assigned_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_user_scopes_user
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_scopes_region
+        FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_scopes_institution
+        FOREIGN KEY (institution_id) REFERENCES institutions (id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_scopes_assigned_by
+        FOREIGN KEY (assigned_by) REFERENCES users (id) ON DELETE SET NULL,
+    CONSTRAINT ck_user_scopes_uno CHECK ((region_id IS NULL) <> (institution_id IS NULL))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_scopes_region
+    ON user_scopes (user_id, region_id) WHERE region_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_scopes_institution
+    ON user_scopes (user_id, institution_id) WHERE institution_id IS NOT NULL;
+
+COMMENT ON TABLE user_scopes IS 'Region o institucion a la que se limita una cuenta; sin filas la cuenta es nacional (D43).';
+
+GRANT SELECT, INSERT, DELETE ON user_scopes TO svc_roles;
+GRANT USAGE ON SEQUENCE user_scopes_id_seq TO svc_roles;
+GRANT SELECT ON regions TO svc_roles;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('053', 'Identidad: user_scopes, alcance por region o institucion de una cuenta (D43)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 054_prioridad_de_corridas.sql
+-- Prioridad en la cola de corridas y reintento manual de una fallida (RF-E07,
+-- RF-E08, D44).
+--
+-- - priority: 'baja', 'normal' (por omisión) o 'alta'. El simulador toma antes las
+--   altas y luego las normales; dentro de cada una, en orden de llegada.
+-- - Reintentar una fallida la regresa a 'encolado' con la misma semilla, así que
+--   svc_corridas necesita limpiar error_message, progress y attempts.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE simulation_runs
+    ADD COLUMN IF NOT EXISTS priority VARCHAR(10) NOT NULL DEFAULT 'normal';
+
+ALTER TABLE simulation_runs
+    DROP CONSTRAINT IF EXISTS ck_simulation_runs_priority,
+    ADD  CONSTRAINT ck_simulation_runs_priority CHECK (priority IN ('baja', 'normal', 'alta'));
+
+COMMENT ON COLUMN simulation_runs.priority IS
+    'Prioridad en la cola de su motor: baja, normal o alta. Solo el ADMINISTRADOR pide alta (D44).';
+
+GRANT UPDATE (error_message, progress, attempts) ON simulation_runs TO svc_corridas;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('054', 'Simulacion: prioridad de la corrida en la cola y permisos para reintentar una fallida (D44)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 055_historial_con_alcance.sql
+-- El historial de un escenario aplica el alcance por región (D43).
+--
+-- - svc_roles lee scenarios, scenario_versions y scenario_interventions solo para
+--   saber la región de la entidad cuyo historial se consulta.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+GRANT SELECT ON scenarios, scenario_versions, scenario_interventions TO svc_roles;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('055', 'Identidad: svc_roles lee escenarios para aplicar el alcance regional al historial (D43)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 056_nombres_oficiales_municipios.sql
+-- Dominio: catalogos.
+--
+-- 010_datos_iniciales.sql cargo sin acento el nombre de cuatro de los diez
+-- municipios del area metropolitana. Esta migracion les pone el nombre del
+-- catalogo de INEGI (datos/geo/nl_catalogo_oficial.json):
+--     19018  Garcia                    ->  García
+--     19019  San Pedro Garza Garcia    ->  San Pedro Garza García
+--     19031  Juarez                    ->  Juárez
+--     19046  San Nicolas de los Garza  ->  San Nicolás de los Garza
+--
+-- Los otros seis de 010 ya coinciden con el catalogo, y los 41 restantes los
+-- carga datos/postgres/semillas/nl_municipios_completos.sql con el nombre
+-- oficial. Con esta migracion, los 51 municipios de regions quedan como los
+-- publica INEGI, y las APIs que los muestran (zonas, regiones, series por
+-- municipio) dejan de mezclar nombres con y sin acento.
+--
+-- POR QUE NO SE CORRIGE 010: ya esta aplicada en todas las bases. Editarla
+-- dejaria las instalaciones nuevas con un nombre y las existentes con otro.
+--
+-- Es idempotente: cada fila se actualiza solo si todavia tiene el nombre sin
+-- acento, asi que correrla dos veces no cambia nada y no pisa un nombre que
+-- alguien haya corregido por otro medio. Buscar por clave y nombre a la vez
+-- tambien la hace segura en una base que no haya corrido 012 (claves 19046 y
+-- 19048 intercambiadas): ahi 19046 es Santa Catarina y no se toca. Las tablas
+-- que apuntan a regions usan el id, no el nombre, asi que nada mas cambia.
+-- =============================================================================
+
+BEGIN;
+
+UPDATE regions r
+SET    name = v.oficial
+FROM (VALUES
+    ('19018', 'Garcia',                   'García'),
+    ('19019', 'San Pedro Garza Garcia',   'San Pedro Garza García'),
+    ('19031', 'Juarez',                   'Juárez'),
+    ('19046', 'San Nicolas de los Garza', 'San Nicolás de los Garza')
+) AS v(code, anterior, oficial)
+WHERE  r.code  = v.code
+  AND  r.level = 'municipio'
+  AND  r.name  = v.anterior;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('056', 'Catalogos: nombre oficial de INEGI, con acento, de cuatro municipios de 010')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 057_seguimiento_de_casos.sql
+-- Dominio: vigilancia. Corregir un caso y cambiar su estado, con control de
+-- versión e historial (D47, F7; RF-C11 y RF-C15).
+--
+-- - cases.version: cada cambio la sube en 1. Quien corrige o cambia el estado
+--   manda la versión que leyó (If-Match); si alguien lo cambió antes, el cambio
+--   se rechaza en vez de sobrescribir en silencio lo que hizo otra persona.
+-- - updated_at y updated_by: el último cambio. status_reason: el motivo del
+--   estado (obligatorio al descartar, marcar duplicado o reabrir).
+--   duplicate_of: el caso original de uno marcado como duplicado.
+-- - case_history: una fila por cambio, con la versión que dejó, quién y cuándo,
+--   el estado antes y después, los campos que cambiaron ({campo: {antes,
+--   despues}}), el motivo y el dispositivo, si vino de la app móvil.
+-- - CASE_REJECTED: el aviso al capturista cuando su caso se descarta o se
+--   marca como duplicado.
+-- - svc_casos actualiza solo las columnas que se corrigen y las del
+--   seguimiento; nunca local_uuid, reported_by ni device_id.
+-- - Los casos que ya existen quedan en la versión 1, sin historial. Uno que ya
+--   estaba 'duplicado' se queda sin duplicate_of: el CHECK solo exige que un
+--   duplicate_of venga con el estado 'duplicado', no al revés.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE cases
+    ADD COLUMN IF NOT EXISTS version       INTEGER      NOT NULL DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS updated_at    TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS updated_by    BIGINT,
+    ADD COLUMN IF NOT EXISTS status_reason VARCHAR(500),
+    ADD COLUMN IF NOT EXISTS duplicate_of  BIGINT;
+
+ALTER TABLE cases
+    DROP CONSTRAINT IF EXISTS fk_cases_updated_by,
+    ADD  CONSTRAINT fk_cases_updated_by
+        FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE RESTRICT,
+    DROP CONSTRAINT IF EXISTS fk_cases_duplicate_of,
+    ADD  CONSTRAINT fk_cases_duplicate_of
+        FOREIGN KEY (duplicate_of) REFERENCES cases (id) ON DELETE RESTRICT,
+    DROP CONSTRAINT IF EXISTS ck_cases_version,
+    ADD  CONSTRAINT ck_cases_version CHECK (version >= 1),
+    DROP CONSTRAINT IF EXISTS ck_cases_duplicate_of,
+    ADD  CONSTRAINT ck_cases_duplicate_of CHECK (
+        duplicate_of IS NULL OR (status = 'duplicado' AND duplicate_of <> id));
+
+COMMENT ON COLUMN cases.version IS
+    'Versión del caso: empieza en 1 y cada corrección o cambio de estado la sube en 1. Quien cambia el caso manda la que leyó (If-Match, D47).';
+COMMENT ON COLUMN cases.updated_at IS 'Momento del último cambio; nulo si nunca se cambió.';
+COMMENT ON COLUMN cases.updated_by IS 'Quién hizo el último cambio. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN cases.status_reason IS
+    'Motivo del estado actual: obligatorio al descartar, marcar duplicado o reabrir (D47).';
+COMMENT ON COLUMN cases.duplicate_of IS
+    'Caso original de uno marcado como duplicado. Referencia a cases.id. [llave foranea]';
+
+CREATE TABLE IF NOT EXISTS case_history (
+    id            BIGSERIAL     PRIMARY KEY,
+    case_id       BIGINT        NOT NULL,
+    version       INTEGER       NOT NULL,
+    action        VARCHAR(20)   NOT NULL,
+    changed_by    BIGINT        NOT NULL,
+    changed_at    TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    status_before VARCHAR(20),
+    status_after  VARCHAR(20),
+    changes       JSONB         NOT NULL DEFAULT '{}'::jsonb,
+    reason        VARCHAR(500),
+    device_id     BIGINT,
+
+    CONSTRAINT uq_case_history_version UNIQUE (case_id, version),
+    CONSTRAINT fk_case_history_case
+        FOREIGN KEY (case_id)    REFERENCES cases (id)   ON DELETE RESTRICT,
+    CONSTRAINT fk_case_history_user
+        FOREIGN KEY (changed_by) REFERENCES users (id)   ON DELETE RESTRICT,
+    CONSTRAINT fk_case_history_device
+        FOREIGN KEY (device_id)  REFERENCES devices (id) ON DELETE SET NULL,
+    CONSTRAINT ck_case_history_action CHECK (action IN ('correccion', 'estado')),
+    CONSTRAINT ck_case_history_version CHECK (version >= 2)
+);
+
+COMMENT ON TABLE case_history IS
+    'Historial de un caso: una fila por corrección o cambio de estado (D47). Solo la escribe svc_casos.';
+COMMENT ON COLUMN case_history.id IS 'Identificador del cambio. [llave primaria]';
+COMMENT ON COLUMN case_history.case_id IS 'Caso que cambió. Referencia a cases.id. [llave foranea]';
+COMMENT ON COLUMN case_history.version IS 'Versión del caso que dejó este cambio (la primera es la 2).';
+COMMENT ON COLUMN case_history.action IS 'correccion (datos del caso) o estado (validar, descartar, duplicado, reabrir).';
+COMMENT ON COLUMN case_history.changed_by IS 'Quién hizo el cambio. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN case_history.changed_at IS 'Momento del cambio.';
+COMMENT ON COLUMN case_history.status_before IS 'Estado del caso antes del cambio.';
+COMMENT ON COLUMN case_history.status_after IS 'Estado del caso después del cambio.';
+COMMENT ON COLUMN case_history.changes IS 'Campos que cambiaron: {campo: {antes, despues}}.';
+COMMENT ON COLUMN case_history.reason IS 'Motivo que dio quien hizo el cambio.';
+COMMENT ON COLUMN case_history.device_id IS 'Dispositivo desde el que llegó, si vino de la app móvil. Referencia a devices.id. [llave foranea]';
+
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS ck_notifications_type;
+ALTER TABLE notifications ADD CONSTRAINT ck_notifications_type CHECK (type IN
+    ('RUN_FINISHED', 'RUN_FAILED', 'THRESHOLD_EXCEEDED', 'ASSIGNMENT',
+     'SCENARIO_PUBLISHED', 'SCENARIO_APPROVED', 'SCENARIO_SUBMITTED',
+     'SCENARIO_REJECTED', 'NEW_CASES', 'SYSTEM', 'CASE_REJECTED'));
+
+COMMENT ON COLUMN notifications.type IS
+    'Tipo: RUN_FINISHED, RUN_FAILED, THRESHOLD_EXCEEDED, ASSIGNMENT, SCENARIO_PUBLISHED, SCENARIO_APPROVED, SCENARIO_SUBMITTED, SCENARIO_REJECTED, NEW_CASES, SYSTEM o CASE_REJECTED.';
+
+GRANT UPDATE (disease_id, region_id, age, sex, onset_date, report_date, latitude, longitude,
+              test_result, severity, status, version, updated_at, updated_by, status_reason,
+              duplicate_of) ON cases TO svc_casos;
+GRANT SELECT, INSERT ON case_history TO svc_casos;
+GRANT USAGE ON SEQUENCE case_history_id_seq TO svc_casos;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('057', 'Vigilancia: version, motivo e historial de cada caso, y el aviso CASE_REJECTED (D47)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 058_centroide_de_marin.sql
+-- Dominio: catalogos.
+--
+-- El marcador de un municipio (centroid_lat y centroid_lon) sale de
+-- datos/geo/nl_centroides.json, que calcula datos/scripts/build_municipios_inegi.py
+-- sobre la geometria oficial de INEGI. Marin (19034) es concavo y su centroide
+-- caia fuera de el, dentro de Doctor Gonzalez, a 1.3 km de su frontera: los
+-- mapas de marcadores lo dibujaban en el municipio equivocado. El script ahora
+-- usa un punto interior cuando el centroide queda fuera (solo pasa con Marin):
+--     19034  Marin  (25.874423, -99.964649)  ->  (25.886678, -100.022912)
+--
+-- Las instalaciones nuevas lo cargan ya corregido desde la semilla
+-- nl_municipios_completos.sql (Marin no esta en 010), que corre despues del
+-- dump: aqui la fila todavia no existe y no se toca nada. Esta migracion es para
+-- las bases que ya existen. Idempotente: solo cambia la fila si todavia tiene el
+-- punto viejo, asi que no pisa uno corregido por otro medio.
+-- =============================================================================
+
+BEGIN;
+
+UPDATE regions
+SET    centroid_lat = 25.886678,
+       centroid_lon = -100.022912
+WHERE  code = '19034'
+  AND  level = 'municipio'
+  AND  centroid_lat = 25.874423
+  AND  centroid_lon = -99.964649;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('058', 'Catalogos: el marcador de Marin dentro de su municipio (su centroide caia en Doctor Gonzalez)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 059_formularios_por_enfermedad.sql
+-- Dominio: vigilancia. Formularios por enfermedad, con versiones (D48, F7).
+--
+-- - Los campos fijos de un caso (enfermedad, municipio, fechas, edad, sexo,
+--   ubicación, resultado y gravedad) se quedan como están. Cada enfermedad
+--   puede sumar los suyos en un formulario: case_forms guarda cada versión,
+--   con sus campos en orden (fields, una lista de objetos: clave, etiqueta,
+--   tipo, obligatorio, mínimo, máximo, opciones...).
+-- - Una versión nace 'borrador', se edita y se publica; publicada ya no
+--   cambia. Al publicar otra, la anterior pasa a 'retirado', pero sigue
+--   valiendo para los casos que se capturaron con ella sin conexión.
+-- - A lo más un borrador y una versión publicada por enfermedad (índices
+--   únicos parciales).
+-- - required: con la versión vigente marcada, un caso de esa enfermedad tiene
+--   que traer sus respuestas. Nace en false: la app todavía no manda
+--   formularios (B4).
+-- - cases.form_id y cases.form_answers: la versión con que se capturó el caso y
+--   sus respuestas, ya validadas por casos. Van juntas o ninguna.
+-- - svc_casos administra case_forms; en cases corrige form_id y form_answers.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS case_forms (
+    id            BIGSERIAL     PRIMARY KEY,
+    disease_id    SMALLINT      NOT NULL,
+    version       INTEGER       NOT NULL,
+    status        VARCHAR(20)   NOT NULL DEFAULT 'borrador',
+    title         VARCHAR(160)  NOT NULL,
+    fields        JSONB         NOT NULL DEFAULT '[]'::jsonb,
+    required      BOOLEAN       NOT NULL DEFAULT false,
+    created_by    BIGINT        NOT NULL,
+    created_at    TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ,
+    published_by  BIGINT,
+    published_at  TIMESTAMPTZ,
+
+    CONSTRAINT uq_case_forms_version UNIQUE (disease_id, version),
+    CONSTRAINT fk_case_forms_disease
+        FOREIGN KEY (disease_id)   REFERENCES diseases (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_case_forms_creador
+        FOREIGN KEY (created_by)   REFERENCES users (id)    ON DELETE RESTRICT,
+    CONSTRAINT fk_case_forms_publicador
+        FOREIGN KEY (published_by) REFERENCES users (id)    ON DELETE RESTRICT,
+    CONSTRAINT ck_case_forms_status CHECK (status IN ('borrador', 'publicado', 'retirado')),
+    CONSTRAINT ck_case_forms_version CHECK (version >= 1),
+    CONSTRAINT ck_case_forms_fields CHECK (jsonb_typeof(fields) = 'array'),
+    CONSTRAINT ck_case_forms_publicacion CHECK (
+        (status = 'borrador') = (published_at IS NULL)
+        AND (published_at IS NULL) = (published_by IS NULL))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_case_forms_vigente
+    ON case_forms (disease_id) WHERE status = 'publicado';
+CREATE UNIQUE INDEX IF NOT EXISTS ux_case_forms_borrador
+    ON case_forms (disease_id) WHERE status = 'borrador';
+
+COMMENT ON TABLE case_forms IS
+    'Formulario de captura de una enfermedad, por versión (D48): los campos que suma a los fijos del caso.';
+COMMENT ON COLUMN case_forms.id IS 'Identificador de la versión del formulario. [llave primaria]';
+COMMENT ON COLUMN case_forms.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
+COMMENT ON COLUMN case_forms.version IS 'Número de versión dentro de la enfermedad, desde 1.';
+COMMENT ON COLUMN case_forms.status IS
+    'borrador (se edita), publicado (la vigente; ya no cambia) o retirado (la reemplazó otra; sigue valiendo para los casos capturados con ella).';
+COMMENT ON COLUMN case_forms.title IS 'Título que muestra la app.';
+COMMENT ON COLUMN case_forms.fields IS
+    'Campos en orden: [{clave, etiqueta, tipo (texto, entero, decimal, fecha, booleano, opcion, opciones), obligatorio, minimo, maximo, max_largo, opciones [{valor, etiqueta}], ayuda}]. Los valida casos.';
+COMMENT ON COLUMN case_forms.required IS
+    'Si es la vigente y está en true, un caso de la enfermedad tiene que traer sus respuestas.';
+COMMENT ON COLUMN case_forms.created_by IS 'Quién creó el borrador. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN case_forms.created_at IS 'Momento en que se creó el borrador.';
+COMMENT ON COLUMN case_forms.updated_at IS 'Último cambio del borrador.';
+COMMENT ON COLUMN case_forms.published_by IS 'Quién lo publicó. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN case_forms.published_at IS 'Momento de la publicación; nulo en un borrador.';
+
+ALTER TABLE cases
+    ADD COLUMN IF NOT EXISTS form_id      BIGINT,
+    ADD COLUMN IF NOT EXISTS form_answers JSONB;
+
+ALTER TABLE cases
+    DROP CONSTRAINT IF EXISTS fk_cases_form,
+    ADD  CONSTRAINT fk_cases_form
+        FOREIGN KEY (form_id) REFERENCES case_forms (id) ON DELETE RESTRICT,
+    DROP CONSTRAINT IF EXISTS ck_cases_formulario,
+    ADD  CONSTRAINT ck_cases_formulario CHECK (
+        (form_id IS NULL) = (form_answers IS NULL)
+        AND (form_answers IS NULL OR jsonb_typeof(form_answers) = 'object'));
+
+COMMENT ON COLUMN cases.form_id IS
+    'Versión del formulario de la enfermedad con que se capturó el caso; nulo si no trajo formulario. Referencia a case_forms.id. [llave foranea]';
+COMMENT ON COLUMN cases.form_answers IS
+    'Respuestas al formulario, {clave: valor}, ya validadas contra su versión. Va junto con form_id.';
+
+GRANT SELECT, INSERT, UPDATE ON case_forms TO svc_casos;
+GRANT USAGE ON SEQUENCE case_forms_id_seq TO svc_casos;
+GRANT UPDATE (form_id, form_answers) ON cases TO svc_casos;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('059', 'Vigilancia: formularios por enfermedad con versiones y las respuestas de cada caso (D48)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 060_campanas_y_preferencias.sql
+-- Dominio: vigilancia y plataforma. Campañas, avisos de datos incompletos y
+-- preferencias de avisos por persona (D49, F7).
+--
+-- - campaigns: una campaña de salud de una enfermedad, en un municipio o en
+--   todo Nuevo León (region_id nulo), con sus fechas, la población objetivo y
+--   la descripción. La administra vacunas; su estado (programada, activa,
+--   terminada o cancelada) sale de las fechas y de cancelled_at. Sin coberturas:
+--   eso es el servicio opcional de vacunación.
+-- - notification_preferences: los tipos de aviso que una persona apagó (o
+--   volvió a prender). Sin fila, el tipo está prendido. SYSTEM no se apaga.
+-- - CAMPAIGN (a los CAPTURISTA, al crear una campaña) y DATA_INCOMPLETE (a quien
+--   capturó casos a los que les faltan datos) entran al CHECK de notifications.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS campaigns (
+    id                BIGSERIAL     PRIMARY KEY,
+    name              VARCHAR(160)  NOT NULL,
+    disease_id        SMALLINT      NOT NULL,
+    region_id         INTEGER,
+    starts_on         DATE          NOT NULL,
+    ends_on           DATE          NOT NULL,
+    target_population INTEGER,
+    description       TEXT,
+    created_by        BIGINT        NOT NULL,
+    created_at        TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ,
+    cancelled_at      TIMESTAMPTZ,
+    cancelled_by      BIGINT,
+    cancel_reason     VARCHAR(500),
+
+    CONSTRAINT fk_campaigns_disease
+        FOREIGN KEY (disease_id)   REFERENCES diseases (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_campaigns_region
+        FOREIGN KEY (region_id)    REFERENCES regions (id)  ON DELETE RESTRICT,
+    CONSTRAINT fk_campaigns_creador
+        FOREIGN KEY (created_by)   REFERENCES users (id)    ON DELETE RESTRICT,
+    CONSTRAINT fk_campaigns_cancelo
+        FOREIGN KEY (cancelled_by) REFERENCES users (id)    ON DELETE RESTRICT,
+    CONSTRAINT ck_campaigns_fechas CHECK (ends_on >= starts_on),
+    CONSTRAINT ck_campaigns_poblacion CHECK (target_population IS NULL OR target_population > 0),
+    CONSTRAINT ck_campaigns_descripcion CHECK (description IS NULL OR length(description) <= 2000),
+    CONSTRAINT ck_campaigns_cancelacion CHECK (
+        (cancelled_at IS NULL) = (cancelled_by IS NULL)
+        AND (cancelled_at IS NULL) = (cancel_reason IS NULL))
+);
+
+CREATE INDEX IF NOT EXISTS ix_campaigns_fechas ON campaigns (starts_on, ends_on);
+
+COMMENT ON TABLE campaigns IS
+    'Campaña de salud de una enfermedad, en un municipio o en todo Nuevo León (D49). La escribe svc_vacunas.';
+COMMENT ON COLUMN campaigns.id IS 'Identificador de la campaña. [llave primaria]';
+COMMENT ON COLUMN campaigns.name IS 'Nombre de la campaña.';
+COMMENT ON COLUMN campaigns.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
+COMMENT ON COLUMN campaigns.region_id IS 'Municipio de Nuevo León; nulo si es todo el estado. Referencia a regions.id. [llave foranea]';
+COMMENT ON COLUMN campaigns.starts_on IS 'Primer día de la campaña.';
+COMMENT ON COLUMN campaigns.ends_on IS 'Último día de la campaña.';
+COMMENT ON COLUMN campaigns.target_population IS 'Población objetivo (personas), si se conoce.';
+COMMENT ON COLUMN campaigns.description IS 'A quién va dirigida y qué se hace (hasta 2000 caracteres).';
+COMMENT ON COLUMN campaigns.created_by IS 'Quién la creó. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN campaigns.created_at IS 'Momento de alta.';
+COMMENT ON COLUMN campaigns.updated_at IS 'Último cambio.';
+COMMENT ON COLUMN campaigns.cancelled_at IS 'Momento de la cancelación; nulo si no se canceló.';
+COMMENT ON COLUMN campaigns.cancelled_by IS 'Quién la canceló. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN campaigns.cancel_reason IS 'Motivo de la cancelación.';
+
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    user_id    BIGINT       NOT NULL,
+    type       VARCHAR(40)  NOT NULL,
+    enabled    BOOLEAN      NOT NULL,
+    updated_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT pk_notification_preferences PRIMARY KEY (user_id, type),
+    CONSTRAINT fk_notification_preferences_user
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT ck_notification_preferences_system CHECK (type <> 'SYSTEM')
+);
+
+COMMENT ON TABLE notification_preferences IS
+    'Los tipos de aviso que una persona apagó o volvió a prender (D49). Sin fila, el tipo está prendido.';
+COMMENT ON COLUMN notification_preferences.user_id IS 'Persona. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN notification_preferences.type IS 'Tipo de aviso (como notifications.type); SYSTEM no se apaga.';
+COMMENT ON COLUMN notification_preferences.enabled IS 'false: notificaciones no le crea avisos de ese tipo.';
+COMMENT ON COLUMN notification_preferences.updated_at IS 'Último cambio.';
+
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS ck_notifications_type;
+ALTER TABLE notifications ADD CONSTRAINT ck_notifications_type CHECK (type IN
+    ('RUN_FINISHED', 'RUN_FAILED', 'THRESHOLD_EXCEEDED', 'ASSIGNMENT',
+     'SCENARIO_PUBLISHED', 'SCENARIO_APPROVED', 'SCENARIO_SUBMITTED',
+     'SCENARIO_REJECTED', 'NEW_CASES', 'SYSTEM', 'CASE_REJECTED', 'CAMPAIGN',
+     'DATA_INCOMPLETE'));
+
+COMMENT ON COLUMN notifications.type IS
+    'Tipo: RUN_FINISHED, RUN_FAILED, THRESHOLD_EXCEEDED, ASSIGNMENT, SCENARIO_PUBLISHED, SCENARIO_APPROVED, SCENARIO_SUBMITTED, SCENARIO_REJECTED, NEW_CASES, SYSTEM, CASE_REJECTED, CAMPAIGN o DATA_INCOMPLETE.';
+
+GRANT SELECT, INSERT, UPDATE ON campaigns TO svc_vacunas;
+GRANT USAGE ON SEQUENCE campaigns_id_seq TO svc_vacunas;
+GRANT SELECT (level, parent_region_id, code) ON regions TO svc_vacunas;
+GRANT SELECT, INSERT, UPDATE ON notification_preferences TO svc_notificaciones;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('060', 'Campañas, preferencias de avisos y los tipos CAMPAIGN y DATA_INCOMPLETE (D49)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 034_permisos_d1_y_reportes.sql
+-- Permisos de D1 y D35 sobre la matriz de la 010 (que no se edita).
+--
+-- - scenarios.approve (nuevo): aprobar o rechazar una version. EPIDEMIOLOGO y
+--   ADMINISTRADOR; ninguno revisa la suya (ck_scenario_versions_no_autoaprobacion).
+-- - reports.upload (nuevo): subir el reporte de una comparacion. ANALISTA y
+--   ADMINISTRADOR (D35).
+-- - audit.read sale del EPIDEMIOLOGO: la bitacora es solo del ADMINISTRADOR (RF-L05).
+-- - cases.create sale del ADMINISTRADOR: solo el CAPTURISTA captura (D1, 2026-11-17).
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+-- La 002 no tenia la accion 'upload'.
+ALTER TABLE permissions DROP CONSTRAINT IF EXISTS ck_permissions_accion;
+ALTER TABLE permissions ADD CONSTRAINT ck_permissions_accion CHECK (action IN
+    ('read', 'create', 'update', 'delete', 'publish', 'run', 'export', 'approve', 'upload'));
+
+INSERT INTO permissions (code, resource, action, description) VALUES
+    ('scenarios.approve', 'scenarios', 'approve', 'Aprobar o rechazar una version de escenario.'),
+    ('reports.upload',    'reports',   'upload',  'Subir el reporte de una comparacion.')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r JOIN permissions p ON p.code = 'scenarios.approve'
+WHERE r.code IN ('EPIDEMIOLOGO', 'ADMINISTRADOR')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r JOIN permissions p ON p.code = 'reports.upload'
+WHERE r.code IN ('ANALISTA', 'ADMINISTRADOR')
+ON CONFLICT DO NOTHING;
+
+DELETE FROM role_permissions rp
+USING roles r, permissions p
+WHERE rp.role_id = r.id AND rp.permission_id = p.id
+  AND ((r.code = 'EPIDEMIOLOGO' AND p.code = 'audit.read')
+    OR (r.code = 'ADMINISTRADOR' AND p.code = 'cases.create'));
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('034', 'Permisos de D1 y D35: scenarios.approve y reports.upload; audit.read solo ADMINISTRADOR; cases.create sin ADMINISTRADOR')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 039_reportes_de_comparacion.sql
+-- Dominio: resultados y archivos. Los reportes de una comparacion en el bucket
+-- (D30, D35, RF-F17, RF-G16).
+--
+-- - comparison_reports: los metadatos del reporte (PDF) que sube el ANALISTA o el
+--   ADMINISTRADOR desde el escritorio o la web. El archivo vive en Cloud Storage,
+--   nunca en la base. La comparacion no se guarda en ningun lado: se identifica
+--   por las corridas que compara (run_ids).
+-- - La escribe el servicio evidencias, que pasa a ser el de los archivos: recibe
+--   SELECT, INSERT y DELETE (un reporte se sube o se borra, no se edita) y lee el
+--   id de simulation_runs para revisar que las corridas existan.
+-- - case_attachments.storage_path cambia su comentario: las evidencias nuevas van
+--   al prefijo evidencias/ del bucket (RNF-K18). La 008 no se edita (D7).
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS comparison_reports (
+    id           BIGSERIAL     PRIMARY KEY,
+    run_ids      BIGINT[]      NOT NULL,
+    title        VARCHAR(200),
+    storage_path VARCHAR(255)  NOT NULL,
+    mime_type    VARCHAR(80)   NOT NULL DEFAULT 'application/pdf',
+    size_bytes   BIGINT        NOT NULL,
+    sha256       CHAR(64)      NOT NULL,
+    privacy      VARCHAR(20)   NOT NULL DEFAULT 'privado',
+    uploaded_by  BIGINT        NOT NULL,
+    uploaded_at  TIMESTAMPTZ   NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_comparison_reports_path UNIQUE (storage_path),
+    CONSTRAINT fk_comparison_reports_uploader
+        FOREIGN KEY (uploaded_by) REFERENCES users (id) ON DELETE RESTRICT,
+    CONSTRAINT ck_comparison_reports_runs CHECK (cardinality(run_ids) BETWEEN 1 AND 100),
+    CONSTRAINT ck_comparison_reports_size CHECK (size_bytes > 0 AND size_bytes <= 20971520),
+    CONSTRAINT ck_comparison_reports_mime CHECK (mime_type = 'application/pdf'),
+    CONSTRAINT ck_comparison_reports_hash CHECK (sha256 ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_comparison_reports_privacy CHECK (privacy = 'privado')
+);
+
+CREATE INDEX IF NOT EXISTS ix_comparison_reports_runs ON comparison_reports USING GIN (run_ids);
+CREATE INDEX IF NOT EXISTS ix_comparison_reports_hash ON comparison_reports (sha256);
+
+COMMENT ON TABLE comparison_reports IS
+    'Reportes de una comparacion (PDF) subidos desde el escritorio o la web (D35, RF-F17). El archivo vive en Cloud Storage; aqui solo sus metadatos. Los escribe el servicio evidencias.';
+COMMENT ON COLUMN comparison_reports.id IS 'Identificador del reporte. [llave primaria]';
+COMMENT ON COLUMN comparison_reports.run_ids IS 'Corridas que compara el reporte (simulation_runs.id), en el orden en que se compararon.';
+COMMENT ON COLUMN comparison_reports.title IS 'Titulo que le da quien lo sube. Opcional.';
+COMMENT ON COLUMN comparison_reports.storage_path IS 'Ruta del objeto en el bucket: reportes/{id de la primera corrida}/{uuid}.pdf.';
+COMMENT ON COLUMN comparison_reports.mime_type IS 'Tipo validado por el contenido en el servidor: solo application/pdf.';
+COMMENT ON COLUMN comparison_reports.size_bytes IS 'Tamanio del archivo; hasta 20 MB.';
+COMMENT ON COLUMN comparison_reports.sha256 IS 'Huella SHA-256 del contenido, revisada al subirlo (RNF-C09).';
+COMMENT ON COLUMN comparison_reports.privacy IS 'Siempre privado: se abre solo con una URL firmada que vence (RNF-D17).';
+COMMENT ON COLUMN comparison_reports.uploaded_by IS 'Quien lo subio. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN comparison_reports.uploaded_at IS 'Cuando se subio.';
+COMMENT ON COLUMN case_attachments.storage_path IS
+    'Ruta del objeto en el bucket: evidencias/{case_id}/{uuid}.{ext} (D30); las subidas antes de D2 conservan evidence/{case_id}/...';
+
+GRANT SELECT, INSERT, DELETE ON comparison_reports TO svc_evidencias;
+GRANT USAGE ON SEQUENCE comparison_reports_id_seq TO svc_evidencias;
+GRANT SELECT (id) ON simulation_runs TO svc_evidencias;
+
+COMMENT ON ROLE svc_evidencias IS 'Microservicio evidencias (5224): duenio de case_attachments y comparison_reports.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('039', 'Reportes de una comparacion en el bucket: comparison_reports y su rol (D30, D35)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 061_serie_observada.sql
+-- Generado por datos/scripts/build_serie_observada.py: no editar a mano.
+--
+-- Series observadas para calibrar y validar los modelos (D50) y el servicio que
+-- las importa (D53).
+--
+-- - observed_datasets: un conjunto de datos por version, con su enfermedad, su
+--   region, su metrica, su periodo, su fuente, su licencia, su corte y su huella.
+--   Importar otra vez el mismo codigo crea la version siguiente; nada se edita
+--   ni se borra (D52).
+-- - observed_points: el valor de cada periodo. Solo series agregadas: ningun
+--   registro por persona llega a la base (RNF-I05).
+-- - Permiso datasets.upload (EPIDEMIOLOGO, ANALISTA y ADMINISTRADOR) y el rol
+--   svc_importacion, duenio de las dos tablas. Nace con LOGIN y sin contrasenia,
+--   como en la 032.
+-- - La serie de D50: COVID19_NL_2020_SINTOMAS version 1, los casos confirmados de
+--   Nuevo Leon por semana de inicio de sintomas, de 2020-03-01 a 2020-07-26
+--   (22 semanas, 22259 casos). Sale de
+--   datos/observados/covid19_nl_2020_semanal.csv, que documenta la fuente, el
+--   corte, la huella y la regla de la ventana.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS observed_datasets (
+    id           BIGSERIAL     PRIMARY KEY,
+    code         VARCHAR(60)   NOT NULL,
+    version      INTEGER       NOT NULL,
+    name         VARCHAR(200)  NOT NULL,
+    disease_id   BIGINT        NOT NULL,
+    region_id    BIGINT        NOT NULL,
+    metric       VARCHAR(30)   NOT NULL,
+    period       VARCHAR(10)   NOT NULL,
+    source       VARCHAR(500)  NOT NULL,
+    license      VARCHAR(200)  NOT NULL,
+    source_url   VARCHAR(500),
+    cutoff_date  DATE          NOT NULL,
+    sha256       CHAR(64)      NOT NULL,
+    imported_by  BIGINT,
+    created_at   TIMESTAMPTZ   NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_observed_datasets_version UNIQUE (code, version),
+    CONSTRAINT ck_observed_datasets_codigo CHECK (code ~ '^[A-Z0-9_]{3,60}$'),
+    CONSTRAINT ck_observed_datasets_version CHECK (version >= 1),
+    CONSTRAINT ck_observed_datasets_metrica CHECK (metric IN
+        ('casos_confirmados', 'hospitalizaciones', 'defunciones')),
+    CONSTRAINT ck_observed_datasets_periodo CHECK (period IN ('semana', 'dia')),
+    CONSTRAINT ck_observed_datasets_huella CHECK (sha256 ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT fk_observed_datasets_disease
+        FOREIGN KEY (disease_id) REFERENCES diseases (id),
+    CONSTRAINT fk_observed_datasets_region
+        FOREIGN KEY (region_id) REFERENCES regions (id),
+    CONSTRAINT fk_observed_datasets_user
+        FOREIGN KEY (imported_by) REFERENCES users (id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_observed_datasets_serie ON observed_datasets (disease_id, region_id);
+
+CREATE TABLE IF NOT EXISTS observed_points (
+    dataset_id    BIGINT   NOT NULL,
+    period_start  DATE     NOT NULL,
+    value         INTEGER  NOT NULL,
+
+    PRIMARY KEY (dataset_id, period_start),
+    CONSTRAINT ck_observed_points_valor CHECK (value >= 0),
+    CONSTRAINT fk_observed_points_dataset
+        FOREIGN KEY (dataset_id) REFERENCES observed_datasets (id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE observed_datasets IS 'Conjunto de datos observados, agregado por periodo y region, para calibrar y validar (D50, D53). Uno por version; no se edita ni se borra. [importacion]';
+COMMENT ON COLUMN observed_datasets.id IS 'Identificador interno. [llave primaria]';
+COMMENT ON COLUMN observed_datasets.code IS 'Clave de la serie (mayusculas, digitos y guion bajo). Sus versiones comparten la clave.';
+COMMENT ON COLUMN observed_datasets.version IS 'Version de la serie, desde 1. La asigna importacion: la siguiente de su clave.';
+COMMENT ON COLUMN observed_datasets.name IS 'Nombre para mostrar.';
+COMMENT ON COLUMN observed_datasets.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
+COMMENT ON COLUMN observed_datasets.region_id IS 'Region a la que corresponde la serie. Referencia a regions.id. [llave foranea]';
+COMMENT ON COLUMN observed_datasets.metric IS 'Que se cuenta: casos_confirmados, hospitalizaciones o defunciones.';
+COMMENT ON COLUMN observed_datasets.period IS 'Periodo de cada punto: semana (de domingo a sabado, como el SINAVE) o dia.';
+COMMENT ON COLUMN observed_datasets.source IS 'Quien publica los datos y que archivo es.';
+COMMENT ON COLUMN observed_datasets.license IS 'Licencia con que se publican. Solo se admiten datos de libre uso (D50).';
+COMMENT ON COLUMN observed_datasets.source_url IS 'Donde se descarga la fuente. Opcional.';
+COMMENT ON COLUMN observed_datasets.cutoff_date IS 'Fecha del corte de la fuente: la de su ultima actualizacion.';
+COMMENT ON COLUMN observed_datasets.sha256 IS 'SHA-256 en hexadecimal del archivo del que salen los puntos: el que se importo o, si lo cargo una migracion, el de la fuente.';
+COMMENT ON COLUMN observed_datasets.imported_by IS 'Quien lo importo. Nulo si lo cargo una migracion o si la cuenta se borro. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN observed_datasets.created_at IS 'Cuando se importo.';
+
+COMMENT ON TABLE observed_points IS 'Valor observado de cada periodo de un conjunto (D50, D53). [importacion]';
+COMMENT ON COLUMN observed_points.dataset_id IS 'Conjunto. Referencia a observed_datasets.id. [llave primaria] [llave foranea]';
+COMMENT ON COLUMN observed_points.period_start IS 'Primer dia del periodo. [llave primaria]';
+COMMENT ON COLUMN observed_points.value IS 'Conteo del periodo, entero no negativo.';
+
+-- Con la accion 'upload' de la 034. Una accion nueva haria fallar la 034 al volver a
+-- correr el dump, porque rehace el CHECK de las acciones, y la 034 no se edita (D7).
+INSERT INTO permissions (code, resource, action, description) VALUES
+    ('datasets.upload', 'datasets', 'upload', 'Importar un conjunto de datos observados (D53).')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r JOIN permissions p ON p.code = 'datasets.upload'
+WHERE r.code IN ('EPIDEMIOLOGO', 'ANALISTA', 'ADMINISTRADOR')
+ON CONFLICT DO NOTHING;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_importacion') THEN
+        CREATE ROLE svc_importacion LOGIN;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM svc_importacion;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM svc_importacion;
+GRANT USAGE ON SCHEMA public TO svc_importacion;
+
+GRANT SELECT, INSERT ON observed_datasets, observed_points TO svc_importacion;
+GRANT SELECT (id, code) ON diseases TO svc_importacion;
+GRANT SELECT (id, code, parent_region_id) ON regions TO svc_importacion;
+GRANT INSERT ON audit_log TO svc_importacion;
+GRANT USAGE ON SEQUENCE observed_datasets_id_seq TO svc_importacion;
+
+DO $$
+DECLARE
+    secuencia TEXT := pg_get_serial_sequence('public.audit_log', 'id');
+BEGIN
+    IF secuencia IS NOT NULL THEN
+        EXECUTE format('GRANT USAGE ON SEQUENCE %s TO svc_importacion', secuencia);
+    END IF;
+END;
+$$;
+
+COMMENT ON ROLE svc_importacion IS 'Microservicio importacion (5226): duenio de observed_datasets y observed_points.';
+
+INSERT INTO observed_datasets (code, version, name, disease_id, region_id, metric, period, source,
+                               license, source_url, cutoff_date, sha256)
+SELECT 'COVID19_NL_2020_SINTOMAS', 1,
+       'Casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, primera ola de 2020',
+       d.id, r.id, 'casos_confirmados', 'semana',
+       'Secretaría de Salud, Dirección General de Epidemiología. Datos Abiertos de COVID-19, cierre anual 2020 (COVID19MEXICO2020.zip)',
+       'Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente',
+       'https://datosabiertos.salud.gob.mx/gobmx/salud/datos_abiertos/historicos/2020/COVID19MEXICO2020.zip',
+       DATE '2021-10-31', '64c90685b68a1164bfa093eeef8c8d33d35d93d9d8b8f3d2d6315359a18dab90'
+FROM diseases d, regions r
+WHERE d.code = 'SARS_COV_2_ANCESTRAL' AND r.code = '19'
+ON CONFLICT (code, version) DO NOTHING;
+
+INSERT INTO observed_points (dataset_id, period_start, value)
+SELECT o.id, v.inicio::date, v.valor
+FROM observed_datasets o
+CROSS JOIN (VALUES
+    ('2020-03-01', 7),
+    ('2020-03-08', 38),
+    ('2020-03-15', 40),
+    ('2020-03-22', 18),
+    ('2020-03-29', 39),
+    ('2020-04-05', 95),
+    ('2020-04-12', 61),
+    ('2020-04-19', 94),
+    ('2020-04-26', 167),
+    ('2020-05-03', 254),
+    ('2020-05-10', 319),
+    ('2020-05-17', 359),
+    ('2020-05-24', 472),
+    ('2020-05-31', 853),
+    ('2020-06-07', 1560),
+    ('2020-06-14', 1661),
+    ('2020-06-21', 2072),
+    ('2020-06-28', 2876),
+    ('2020-07-05', 3295),
+    ('2020-07-12', 3234),
+    ('2020-07-19', 2684),
+    ('2020-07-26', 2061)
+) AS v (inicio, valor)
+WHERE o.code = 'COVID19_NL_2020_SINTOMAS' AND o.version = 1
+ON CONFLICT DO NOTHING;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('061', 'Series observadas: observed_datasets, observed_points, datasets.upload, svc_importacion y la serie de D50')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+-- =============================================================================
+-- 063_casos_sinteticos.sql
+-- Dominio: vigilancia.
+--
+-- El comentario de cases de la 008 dice que los casos alimentan la
+-- recalibracion del modelo. En la demostracion son sinteticos (RNF-I15) y no se
+-- usan para calibrar: se calibra con una serie publica agregada, la de la 061
+-- (D50). La 008 no se edita (D7).
+-- =============================================================================
+
+BEGIN;
+
+COMMENT ON TABLE cases IS 'Casos capturados en campo desde la app movil. En la demostracion son sinteticos (RNF-I15) y no se usan para calibrar (D50).';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('063', 'Vigilancia: cases es sintetica y no calibra (D50)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 064_proyectos_archivado_y_firma.sql
+-- Dominio: escenarios. Proyectos de investigación, archivado de escenarios,
+-- devolución y firma de versiones (D54, D55, D7 del checklist).
+--
+-- - research_projects: un proyecto de investigación del escritorio agrupa
+--   escenarios de una enfermedad y una región, con su objetivo, su periodo de
+--   estudio y los motores que contempla. Lo escribe escenarios; no se borra, se
+--   archiva.
+-- - scenarios.project_id: el proyecto de un escenario, opcional. El trigger
+--   fn_escenario_en_proyecto exige la misma enfermedad y región que el proyecto.
+-- - scenarios.status = 'archivado' ya existía en el CHECK de la 006; aquí
+--   svc_escenarios recibe el UPDATE para escribirlo (y para quitar is_public, que
+--   ck_scenarios_publico solo admite en uno publicado), y fn_version_aprobada
+--   (014) rechaza también las corridas de un escenario archivado.
+-- - scenario_versions.approval_sha256: la firma de una versión aprobada, la
+--   SHA-256 de la entrada canónica del motor (la misma huella_escenario que cada
+--   corrida guarda en simulation_runs.scenario_checksum). Las aprobadas antes de
+--   esta migración quedan sin firma.
+-- - SCENARIO_RETURNED entra al CHECK de notifications: una versión devuelta para
+--   cambios vuelve a borrador con el comentario del revisor.
+-- - Es la 064 y no la 042 de D porque rehace ck_notifications_type: en una
+--   instalación limpia por número, la 057 y la 060 la volverían a dejar sin el
+--   tipo nuevo.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS research_projects (
+    id           BIGSERIAL     PRIMARY KEY,
+    name         VARCHAR(160)  NOT NULL,
+    objective    TEXT,
+    disease_id   SMALLINT      NOT NULL,
+    region_id    INTEGER       NOT NULL,
+    period_start DATE          NOT NULL,
+    period_end   DATE          NOT NULL,
+    engines      TEXT[]        NOT NULL,
+    owner_id     BIGINT        NOT NULL,
+    status       VARCHAR(20)   NOT NULL DEFAULT 'activo',
+    created_at   TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ   NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_research_projects_disease
+        FOREIGN KEY (disease_id) REFERENCES diseases (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_research_projects_region
+        FOREIGN KEY (region_id)  REFERENCES regions (id)  ON DELETE RESTRICT,
+    CONSTRAINT fk_research_projects_owner
+        FOREIGN KEY (owner_id)   REFERENCES users (id)    ON DELETE RESTRICT,
+    CONSTRAINT uq_research_projects_owner_name UNIQUE (owner_id, name),
+    CONSTRAINT ck_research_projects_name CHECK (char_length(btrim(name)) BETWEEN 3 AND 160),
+    CONSTRAINT ck_research_projects_periodo CHECK (period_end >= period_start),
+    CONSTRAINT ck_research_projects_motores CHECK (
+        cardinality(engines) >= 1
+        AND engines <@ ARRAY['seir-ref', 'abm-ref', 'abm-gpu']::TEXT[]),
+    CONSTRAINT ck_research_projects_status CHECK (status IN ('activo', 'archivado'))
+);
+
+CREATE INDEX IF NOT EXISTS ix_research_projects_region ON research_projects (region_id);
+
+COMMENT ON TABLE research_projects IS
+    'Proyectos de investigación del escritorio (D54): agrupan escenarios de una enfermedad y una región. Los escribe escenarios; no se borran, se archivan.';
+COMMENT ON COLUMN research_projects.id IS 'Identificador del proyecto.';
+COMMENT ON COLUMN research_projects.name IS 'Nombre del proyecto, único para cada dueño.';
+COMMENT ON COLUMN research_projects.objective IS 'Pregunta u objetivo de la investigación.';
+COMMENT ON COLUMN research_projects.disease_id IS 'Enfermedad que estudia. Referencia a diseases.id. [llave foranea]';
+COMMENT ON COLUMN research_projects.region_id IS 'Región que estudia; da el alcance de D43. Referencia a regions.id. [llave foranea]';
+COMMENT ON COLUMN research_projects.period_start IS 'Inicio del periodo de estudio.';
+COMMENT ON COLUMN research_projects.period_end IS 'Fin del periodo de estudio (no antes del inicio).';
+COMMENT ON COLUMN research_projects.engines IS 'Motores que contempla el proyecto: seir-ref, abm-ref o abm-gpu (al menos uno).';
+COMMENT ON COLUMN research_projects.owner_id IS 'Quien creó el proyecto. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN research_projects.status IS 'activo o archivado. Un proyecto archivado no recibe escenarios nuevos.';
+COMMENT ON COLUMN research_projects.created_at IS 'Alta del proyecto.';
+COMMENT ON COLUMN research_projects.updated_at IS 'Último cambio.';
+
+ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS project_id BIGINT;
+ALTER TABLE scenarios
+    DROP CONSTRAINT IF EXISTS fk_scenarios_project,
+    ADD  CONSTRAINT fk_scenarios_project
+        FOREIGN KEY (project_id) REFERENCES research_projects (id) ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS ix_scenarios_project ON scenarios (project_id) WHERE project_id IS NOT NULL;
+
+COMMENT ON COLUMN scenarios.project_id IS
+    'Proyecto de investigación al que pertenece, opcional (D54). Misma enfermedad y región que el proyecto (fn_escenario_en_proyecto). Referencia a research_projects.id. [llave foranea]';
+COMMENT ON COLUMN scenarios.status IS
+    'borrador, publicado (visible en el sitio público con is_public) o archivado. Un escenario archivado es de solo lectura: no recibe versiones, cambios de intervenciones, envíos a revisión ni corridas, y deja de ser público; al restaurarlo vuelve a borrador (D54).';
+
+CREATE OR REPLACE FUNCTION fn_escenario_en_proyecto()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_disease SMALLINT;
+    v_region  INTEGER;
+BEGIN
+    IF NEW.project_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+    SELECT disease_id, region_id INTO v_disease, v_region
+    FROM research_projects
+    WHERE id = NEW.project_id;
+    IF v_disease IS DISTINCT FROM NEW.disease_id OR v_region IS DISTINCT FROM NEW.region_id THEN
+        RAISE EXCEPTION
+            'El escenario % no es de la enfermedad y la región del proyecto %.',
+            NEW.id, NEW.project_id
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+COMMENT ON FUNCTION fn_escenario_en_proyecto() IS
+    'Trigger BEFORE INSERT OR UPDATE en scenarios: un escenario solo entra a un proyecto de su misma enfermedad y región (D54).';
+
+DROP TRIGGER IF EXISTS tg_scenarios_en_proyecto ON scenarios;
+CREATE TRIGGER tg_scenarios_en_proyecto
+    BEFORE INSERT OR UPDATE OF project_id, disease_id, region_id ON scenarios
+    FOR EACH ROW EXECUTE FUNCTION fn_escenario_en_proyecto();
+
+-- Lo mismo de la 014, más el escenario archivado.
+CREATE OR REPLACE FUNCTION fn_version_aprobada()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_status    VARCHAR(20);
+    v_escenario VARCHAR(20);
+BEGIN
+    SELECT v.status, s.status INTO v_status, v_escenario
+    FROM scenario_versions v
+    JOIN scenarios s ON s.id = v.scenario_id
+    WHERE v.id = NEW.scenario_version_id;
+
+    IF v_status IS DISTINCT FROM 'aprobado' THEN
+        RAISE EXCEPTION
+            'La version de escenario % no esta aprobada (estado: %); no se puede simular.',
+            NEW.scenario_version_id, COALESCE(v_status, 'inexistente')
+            USING ERRCODE = 'restrict_violation';
+    END IF;
+
+    IF v_escenario = 'archivado' THEN
+        RAISE EXCEPTION
+            'El escenario de la version % esta archivado; no se puede simular.',
+            NEW.scenario_version_id
+            USING ERRCODE = 'restrict_violation';
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+COMMENT ON FUNCTION fn_version_aprobada() IS
+    'Trigger BEFORE INSERT: rechaza corridas y lotes sobre versiones de escenario que no esten aprobadas o cuyo escenario este archivado (014, 064).';
+
+ALTER TABLE scenario_versions ADD COLUMN IF NOT EXISTS approval_sha256 CHAR(64);
+ALTER TABLE scenario_versions
+    DROP CONSTRAINT IF EXISTS ck_scenario_versions_firma,
+    ADD  CONSTRAINT ck_scenario_versions_firma CHECK (
+        approval_sha256 IS NULL
+        OR (approval_sha256 ~ '^[0-9a-f]{64}$' AND status = 'aprobado'));
+
+COMMENT ON COLUMN scenario_versions.approval_sha256 IS
+    'Firma de la versión aprobada (D55): SHA-256 de la entrada canónica del motor al aprobarla, la misma huella_escenario que guarda cada corrida en simulation_runs.scenario_checksum. NULL si se aprobó antes de la 064.';
+COMMENT ON COLUMN scenario_versions.review_comment IS
+    'Comentario del revisor. En un rechazo es el motivo (obligatorio); en un borrador, el motivo por el que se devolvió para cambios (D55).';
+
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS ck_notifications_type;
+ALTER TABLE notifications ADD CONSTRAINT ck_notifications_type CHECK (type IN
+    ('RUN_FINISHED', 'RUN_FAILED', 'THRESHOLD_EXCEEDED', 'ASSIGNMENT',
+     'SCENARIO_PUBLISHED', 'SCENARIO_APPROVED', 'SCENARIO_SUBMITTED',
+     'SCENARIO_REJECTED', 'NEW_CASES', 'SYSTEM', 'CASE_REJECTED', 'CAMPAIGN',
+     'DATA_INCOMPLETE', 'SCENARIO_RETURNED'));
+
+COMMENT ON COLUMN notifications.type IS
+    'Tipo: RUN_FINISHED, RUN_FAILED, THRESHOLD_EXCEEDED, ASSIGNMENT, SCENARIO_PUBLISHED, SCENARIO_APPROVED, SCENARIO_SUBMITTED, SCENARIO_REJECTED, NEW_CASES, SYSTEM, CASE_REJECTED, CAMPAIGN, DATA_INCOMPLETE o SCENARIO_RETURNED.';
+
+GRANT SELECT, INSERT, UPDATE ON research_projects TO svc_escenarios;
+GRANT USAGE ON SEQUENCE research_projects_id_seq TO svc_escenarios;
+GRANT UPDATE (status, project_id, is_public) ON scenarios TO svc_escenarios;
+GRANT UPDATE (approval_sha256) ON scenario_versions TO svc_aprobacion;
+GRANT SELECT (scenario_version_id, scenario_checksum, status) ON simulation_runs TO svc_aprobacion;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('064', 'Proyectos de investigación, archivado de escenarios y devolución y firma de versiones (D54, D55)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 042_catalogos_con_fuente.sql
+-- Dominio: catálogos. Definiciones de caso versionadas, clasificación de las
+-- enfermedades, versiones e intervalos de los parámetros y supuestos de
+-- efectividad de cada tipo de intervención (D58, D7 del checklist).
+--
+-- - diseases: vía de transmisión y códigos CIE-10, con su fuente.
+-- - case_definitions: la definición operacional de caso de cada enfermedad, con
+--   versiones (borrador, vigente o retirada; una vigente por enfermedad). Trae
+--   las de la DGE: enfermedad respiratoria viral (septiembre de 2023) para
+--   COVID-19 e influenza, la de influenza de marzo de 2021 ya retirada, y las de
+--   dengue, paludismo y zika de marzo de 2021. El texto es literal; solo se unen
+--   los renglones y las viñetas van separadas por punto y coma. PATOGENO_X es
+--   hipotético y no tiene definición.
+-- - disease_parameter_versions: cada cambio de diseases.default_params es una
+--   versión. La 1 son los parámetros al crear el historial; la 2 de COVID-19 e
+--   influenza agrega los intervalos que ya traían las fuentes citadas
+--   (intervalo: min, max y tipo IC95, RIC o rango).
+-- - intervention_effectiveness: el supuesto de efectividad de cada tipo de
+--   intervención (eficacia, reducción o detección), general o por enfermedad,
+--   con valor de referencia, rango, fuente y marca de supuesto. No cambia lo
+--   que se simula: cada intervención sigue llevando su propio valor.
+-- - Los datos por enfermedad van juntos al final, marcados: la semilla de la
+--   demostración los repite (gen_demo_data.py los lee de aquí), porque en una
+--   instalación limpia DENGUE_DEMO, ZIKA_DEMO y MALARIA_DEMO llegan con ella,
+--   después del dump.
+-- - Es la 042, reservada para D: no rehace ningún CHECK de otra migración.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+-- -----------------------------------------------------------------------------
+-- Clasificación de las enfermedades
+-- -----------------------------------------------------------------------------
+ALTER TABLE diseases
+    ADD COLUMN IF NOT EXISTS transmission          VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS icd10                 VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS classification_source TEXT;
+
+ALTER TABLE diseases
+    DROP CONSTRAINT IF EXISTS ck_diseases_transmission,
+    ADD  CONSTRAINT ck_diseases_transmission
+        CHECK (transmission IS NULL OR transmission IN ('respiratoria', 'vectorial'));
+
+COMMENT ON COLUMN diseases.transmission IS 'Vía de transmisión: respiratoria (de persona a persona) o vectorial. NULL si no está clasificada (PATOGENO_X es hipotético).';
+COMMENT ON COLUMN diseases.icd10 IS 'Códigos CIE-10 de la enfermedad, como los cita su fuente.';
+COMMENT ON COLUMN diseases.classification_source IS 'Fuente de la vía de transmisión y de los códigos CIE-10.';
+
+-- -----------------------------------------------------------------------------
+-- case_definitions
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS case_definitions (
+    id           BIGSERIAL     PRIMARY KEY,
+    disease_id   SMALLINT      NOT NULL,
+    version      INTEGER       NOT NULL,
+    status       VARCHAR(20)   NOT NULL DEFAULT 'borrador',
+    criteria     JSONB         NOT NULL,
+    source       TEXT          NOT NULL,
+    source_url   TEXT,
+    created_by   BIGINT,
+    created_at   TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    published_by BIGINT,
+    published_at TIMESTAMPTZ,
+    retired_at   TIMESTAMPTZ,
+
+    CONSTRAINT fk_case_definitions_disease
+        FOREIGN KEY (disease_id)   REFERENCES diseases (id) ON DELETE CASCADE,
+    CONSTRAINT fk_case_definitions_created_by
+        FOREIGN KEY (created_by)   REFERENCES users (id)    ON DELETE SET NULL,
+    CONSTRAINT fk_case_definitions_published_by
+        FOREIGN KEY (published_by) REFERENCES users (id)    ON DELETE SET NULL,
+    CONSTRAINT uq_case_definitions_version UNIQUE (disease_id, version),
+    CONSTRAINT ck_case_definitions_version CHECK (version >= 1),
+    CONSTRAINT ck_case_definitions_status CHECK (status IN ('borrador', 'vigente', 'retirada')),
+    CONSTRAINT ck_case_definitions_criteria CHECK (
+        jsonb_typeof(criteria) = 'array' AND jsonb_array_length(criteria) >= 1),
+    CONSTRAINT ck_case_definitions_source CHECK (char_length(btrim(source)) >= 3),
+    -- Publicada (vigente o retirada) sabe cuándo; solo una retirada tiene fecha de retiro.
+    CONSTRAINT ck_case_definitions_publicada CHECK (status = 'borrador' OR published_at IS NOT NULL),
+    CONSTRAINT ck_case_definitions_retiro CHECK ((status = 'retirada') = (retired_at IS NOT NULL))
+);
+
+-- Una sola definición vigente por enfermedad.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_case_definitions_vigente
+    ON case_definitions (disease_id) WHERE status = 'vigente';
+
+COMMENT ON TABLE case_definitions IS
+    'Definiciones operacionales de caso de cada enfermedad, versionadas (D58). Las escribe enfermedades: un borrador se edita; al publicarlo pasa a vigente y la vigente anterior a retirada. Lo publicado no cambia; solo se va en cascada si se borra la enfermedad, que el sistema da de baja lógica.';
+COMMENT ON COLUMN case_definitions.id IS 'Identificador de la versión.';
+COMMENT ON COLUMN case_definitions.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
+COMMENT ON COLUMN case_definitions.version IS 'Número de versión dentro de la enfermedad, desde 1.';
+COMMENT ON COLUMN case_definitions.status IS 'borrador (se edita), vigente (una por enfermedad) o retirada.';
+COMMENT ON COLUMN case_definitions.criteria IS 'Lista de criterios: [{clasificacion, texto}], por ejemplo caso sospechoso, caso confirmado o dengue con signos de alarma.';
+COMMENT ON COLUMN case_definitions.source IS 'Documento de donde sale el texto: institución, título, fecha y páginas.';
+COMMENT ON COLUMN case_definitions.source_url IS 'Dirección del documento, si la hay.';
+COMMENT ON COLUMN case_definitions.created_by IS 'Quien la capturó; NULL si la cargó una migración. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN case_definitions.created_at IS 'Alta del borrador.';
+COMMENT ON COLUMN case_definitions.published_by IS 'Quien la publicó; NULL si la cargó una migración. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN case_definitions.published_at IS 'Cuándo pasó a vigente.';
+COMMENT ON COLUMN case_definitions.retired_at IS 'Cuándo la reemplazó otra versión.';
+
+-- -----------------------------------------------------------------------------
+-- disease_parameter_versions
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS disease_parameter_versions (
+    id          BIGSERIAL    PRIMARY KEY,
+    disease_id  SMALLINT     NOT NULL,
+    version     INTEGER      NOT NULL,
+    params      JSONB        NOT NULL,
+    reason      TEXT,
+    changed_by  BIGINT,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_disease_parameter_versions_disease
+        FOREIGN KEY (disease_id) REFERENCES diseases (id) ON DELETE CASCADE,
+    CONSTRAINT fk_disease_parameter_versions_user
+        FOREIGN KEY (changed_by) REFERENCES users (id)    ON DELETE SET NULL,
+    CONSTRAINT uq_disease_parameter_versions UNIQUE (disease_id, version),
+    CONSTRAINT ck_disease_parameter_versions_version CHECK (version >= 1),
+    CONSTRAINT ck_disease_parameter_versions_params CHECK (jsonb_typeof(params) = 'object')
+);
+
+COMMENT ON TABLE disease_parameter_versions IS
+    'Cada versión de los parámetros de una enfermedad (diseases.default_params), completa (D58). La escribe parametros en la misma transacción que el cambio; no se edita ni se borra (D52), salvo en cascada si se borra la enfermedad, que el sistema da de baja lógica.';
+COMMENT ON COLUMN disease_parameter_versions.id IS 'Identificador.';
+COMMENT ON COLUMN disease_parameter_versions.disease_id IS 'Enfermedad. Referencia a diseases.id. [llave foranea]';
+COMMENT ON COLUMN disease_parameter_versions.version IS 'Número de versión dentro de la enfermedad, desde 1.';
+COMMENT ON COLUMN disease_parameter_versions.params IS 'Los parámetros completos de esa versión, como quedaron en default_params.';
+COMMENT ON COLUMN disease_parameter_versions.reason IS 'Motivo del cambio, si se dio.';
+COMMENT ON COLUMN disease_parameter_versions.changed_by IS 'Quien hizo el cambio; NULL si lo hizo una migración. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN disease_parameter_versions.created_at IS 'Cuándo se guardó la versión.';
+
+-- -----------------------------------------------------------------------------
+-- intervention_effectiveness
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS intervention_effectiveness (
+    id                   BIGSERIAL     PRIMARY KEY,
+    intervention_type_id SMALLINT      NOT NULL,
+    parameter            VARCHAR(20)   NOT NULL,
+    disease_id           SMALLINT,
+    reference_value      NUMERIC(6,4),
+    range_min            NUMERIC(6,4),
+    range_max            NUMERIC(6,4),
+    source               TEXT          NOT NULL,
+    is_assumption        BOOLEAN       NOT NULL,
+    updated_by           BIGINT,
+    updated_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_intervention_effectiveness_type
+        FOREIGN KEY (intervention_type_id) REFERENCES intervention_types (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_intervention_effectiveness_disease
+        FOREIGN KEY (disease_id) REFERENCES diseases (id) ON DELETE CASCADE,
+    CONSTRAINT fk_intervention_effectiveness_user
+        FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL,
+    CONSTRAINT uq_intervention_effectiveness
+        UNIQUE NULLS NOT DISTINCT (intervention_type_id, parameter, disease_id),
+    CONSTRAINT ck_intervention_effectiveness_parameter
+        CHECK (parameter IN ('eficacia', 'reduccion', 'deteccion')),
+    CONSTRAINT ck_intervention_effectiveness_rango CHECK (
+        (reference_value IS NULL OR reference_value BETWEEN 0 AND 1)
+        AND (range_min IS NULL OR range_min BETWEEN 0 AND 1)
+        AND (range_max IS NULL OR range_max BETWEEN 0 AND 1)
+        AND (range_min IS NULL OR range_max IS NULL OR range_min <= range_max)
+        AND (reference_value IS NULL OR range_min IS NULL OR range_min <= reference_value)
+        AND (reference_value IS NULL OR range_max IS NULL OR reference_value <= range_max)),
+    CONSTRAINT ck_intervention_effectiveness_source CHECK (char_length(btrim(source)) >= 3)
+);
+
+COMMENT ON TABLE intervention_effectiveness IS
+    'Supuestos de efectividad de cada tipo de intervención (D58): el valor de referencia y el rango de su parámetro de efecto, general (disease_id NULL) o para una enfermedad, con su fuente o la marca de supuesto. Lo escribe tipos-intervencion. No cambia lo que se simula: cada intervención lleva su propio valor.';
+COMMENT ON COLUMN intervention_effectiveness.id IS 'Identificador.';
+COMMENT ON COLUMN intervention_effectiveness.intervention_type_id IS 'Tipo de intervención. Referencia a intervention_types.id. [llave foranea]';
+COMMENT ON COLUMN intervention_effectiveness.parameter IS 'Parámetro de efecto del tipo, como en su param_schema: eficacia, reduccion o deteccion.';
+COMMENT ON COLUMN intervention_effectiveness.disease_id IS 'Enfermedad a la que aplica; NULL si es general. Referencia a diseases.id. [llave foranea]';
+COMMENT ON COLUMN intervention_effectiveness.reference_value IS 'Valor de referencia, de 0 a 1.';
+COMMENT ON COLUMN intervention_effectiveness.range_min IS 'Límite inferior del rango plausible, de 0 a 1.';
+COMMENT ON COLUMN intervention_effectiveness.range_max IS 'Límite superior del rango plausible, de 0 a 1.';
+COMMENT ON COLUMN intervention_effectiveness.source IS 'Fuente con su cita, o el razonamiento del supuesto.';
+COMMENT ON COLUMN intervention_effectiveness.is_assumption IS 'true si el valor es un supuesto o una derivación del equipo, no una medición directa de la fuente.';
+COMMENT ON COLUMN intervention_effectiveness.updated_by IS 'Último que lo cambió; NULL si lo cargó una migración. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN intervention_effectiveness.updated_at IS 'Último cambio.';
+
+-- -----------------------------------------------------------------------------
+-- Datos por enfermedad
+-- -----------------------------------------------------------------------------
+-- <datos-por-enfermedad>
+-- Este bloque lo repite datos/postgres/semillas/demo_datos_nl.sql (gen_demo_data.py lo
+-- lee de aquí): en una instalación limpia, DENGUE_DEMO, ZIKA_DEMO y MALARIA_DEMO
+-- llegan con esa semilla, después del dump. Todo es idempotente.
+UPDATE diseases SET transmission = 'respiratoria', icd10 = 'U07.1, U07.2',
+       classification_source = 'OMS, códigos CIE-10 de uso de emergencia para COVID-19 (U07.1 virus identificado, U07.2 virus no identificado). https://www.who.int/standards/classifications/frequently-asked-questions/covid-19-emergency-icd-codes'
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND classification_source IS NULL;
+UPDATE diseases SET transmission = 'respiratoria', icd10 = 'J09-J11',
+       classification_source = 'Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 31.'
+ WHERE code = 'INFLUENZA_ESTACIONAL' AND classification_source IS NULL;
+UPDATE diseases SET transmission = 'vectorial', icd10 = 'A97.0, A97.1, A97.2, A97.9',
+       classification_source = 'Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, pp. 60-61 (transmitido por Aedes aegypti y Ae. albopictus).'
+ WHERE code = 'DENGUE_DEMO' AND classification_source IS NULL;
+UPDATE diseases SET transmission = 'vectorial', icd10 = 'U06.9',
+       classification_source = 'Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, pp. 66-67.'
+ WHERE code = 'ZIKA_DEMO' AND classification_source IS NULL;
+UPDATE diseases SET transmission = 'vectorial', icd10 = 'B50, B51',
+       classification_source = 'Secretaría de Salud, DGE. Definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, p. 62.'
+ WHERE code = 'MALARIA_DEMO' AND classification_source IS NULL;
+
+-- Enfermedad respiratoria viral (COVID-19 e influenza): DGE, septiembre de 2023.
+WITH erv AS (
+    SELECT jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Caso sospechoso de enfermedad respiratoria viral', 'texto',
+            'Persona de cualquier edad que en los últimos 5 días para casos de ETI (Ambulatorios) y en los últimos 7 días para casos IRAG (Hospitalizados) haya presentado al menos uno de los siguientes signos y síntomas: tos, fiebre o cefalea*. Acompañados de al menos uno de los siguientes signos o síntomas: Disnea; Mialgias; Artralgias; Odinofagia; Escalofríos; Dolor torácico; Rinorrea; Polipnea; Anosmia; Disgeusia; Conjuntivitis. *En menores de cinco años de edad, la irritabilidad puede sustituir a la cefalea.'),
+        jsonb_build_object('clasificacion', 'Caso de infección respiratoria aguda grave (IRAG)', 'texto',
+            'Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral y con presencia de alguno de los siguientes datos de gravedad: disnea y/o dolor torácico.'),
+        jsonb_build_object('clasificacion', 'Caso de enfermedad tipo influenza (ETI)', 'texto',
+            'Toda persona que cumpla con la definición de caso sospechoso de Enfermedad Respiratoria Viral en los últimos cinco días de inicio de los datos clínicos sin la presencia de datos de gravedad (disnea y/o dolor torácico).'),
+        jsonb_build_object('clasificacion', 'Caso confirmado por laboratorio', 'texto',
+            'Persona que cumpla con la definición operacional de caso sospechoso y que cuente con diagnóstico confirmado por laboratorio mediante la prueba RT-PCR. Son válidos para el sistema de vigilancia epidemiológica los resultados emitidos por los miembros del SINAVE (Red Nacional de Laboratorios de Salud Pública y Laboratorios de apoyo a la vigilancia epidemiológica-RNLSP/LAVE-) y aquellos laboratorios que hayan sido aprobados mediante la evaluación a la competencia técnica por el InDRE, registrando en el informe de prueba el estuche comercial utilizado para el procesamiento.'),
+        jsonb_build_object('clasificacion', 'Defunción con diagnóstico confirmado por laboratorio', 'texto',
+            'Persona fallecida que cumpla con la definición operacional de caso sospechoso, que haya sido confirmado por laboratorio mediante la prueba RT-PCR.')
+    ) AS criterios
+)
+INSERT INTO case_definitions (disease_id, version, status, criteria, source, source_url, published_at)
+SELECT d.id, v.version, 'vigente', erv.criterios,
+       'Secretaría de Salud, Dirección General de Epidemiología. Lineamiento estandarizado para la vigilancia epidemiológica y por laboratorio de la enfermedad respiratoria viral, septiembre de 2023, pp. 30-31. Las definiciones operacionales solo las actualiza el CONAVE.',
+       'https://www.gob.mx/cms/uploads/attachment/file/636504/Lineamiento_Estandarizado_Para_La_Vigilancia_Epidemiol_gica_Y_Por_Laboratorio_De_La_Enfermedad_Respiratoria_Viral_-_Septiembre_2023.pdf',
+       now()
+FROM erv, (VALUES ('SARS_COV_2_ANCESTRAL', 1), ('INFLUENZA_ESTACIONAL', 2)) AS v(code, version)
+JOIN diseases d ON d.code = v.code
+ON CONFLICT (disease_id, version) DO NOTHING;
+
+-- Lo que sigue sale de un mismo documento de la DGE, de marzo de 2021.
+INSERT INTO case_definitions (disease_id, version, status, criteria, source, source_url, published_at, retired_at)
+SELECT d.id, 1, v.status, v.criterios,
+       'Secretaría de Salud, Dirección General de Epidemiología. Vigilancia epidemiológica convencional de casos nuevos de enfermedad: definiciones operacionales de enfermedades sujetas a vigilancia convencional, marzo de 2021, ' || v.paginas || '.',
+       'https://epidemiologia.salud.gob.mx/gobmx/salud/documentos/manuales/DefinicionesOperacionales_Padecimientos_Sujetos_a_VE.pdf',
+       now(), CASE WHEN v.status = 'retirada' THEN now() END
+FROM (VALUES
+    -- Influenza de 2021: la reemplaza la de enfermedad respiratoria viral de 2023 (versión 2).
+    ('INFLUENZA_ESTACIONAL', 'retirada', 'p. 31', jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Caso sospechoso de influenza', 'texto',
+            'Se considera caso sospechoso de influenza a todo caso o defunción que cumpla con los criterios de Enfermedad Tipo Influenza (ETI) o Infección Respiratoria Aguda Grave (IRAG).'),
+        jsonb_build_object('clasificacion', 'Enfermedad tipo influenza (ETI)', 'texto',
+            'Persona de cualquier edad que presente o refiera haber tenido fiebre mayor o igual a 38° C, tos y cefalea, acompañadas de uno o más de los siguientes signos o síntomas: rinorrea, coriza, artralgias, mialgias, postración, odinofagia, dolor torácico, dolor abdominal, congestión nasal o diarrea. Importante: En menores de cinco años de edad, se considera un signo cardinal la irritabilidad, en sustitución de la cefalea; En mayores de 65 años o en pacientes inmunocomprometidos, no se requerirá la fiebre como signo cardinal.'),
+        jsonb_build_object('clasificacion', 'Infección respiratoria aguda grave (IRAG)', 'texto',
+            'Persona de cualquier edad que presente dificultad al respirar, con antecedente de fiebre mayor o igual a 38° C y tos, con uno o más de los siguientes síntomas: ataque al estado general, dolor torácico o polipnea. En pacientes inmunocomprometidos o con manejo terapéutico con antipiréticos no se presentará el pico febril descrito en la definición operacional; Así mismo en pacientes con apoyo respiratorio automatizado no se requerirá la tos como signo indispensable para su ingreso como sospechoso a influenza.'))),
+    ('DENGUE_DEMO', 'vigente', 'pp. 60-61', jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Dengue no grave (A97.0 y A97.9)', 'texto',
+            'Toda persona de cualquier edad que resida o que proceda, en los 14 días previos al inicio de signos y síntomas, de una región donde exista transmisión de la enfermedad y que presente fiebre y dos o más de los siguientes signos y síntomas: Náusea, vómitos, exantema; Mialgias, artralgia; Cefalea, dolor retro-ocular; Petequias o prueba del torniquete positiva; Leucopenia. En menores de 5 años, el único signo a considerar puede ser la fiebre.'),
+        jsonb_build_object('clasificacion', 'Dengue con signos de alarma (A97.1)', 'texto',
+            'Todo caso probable que además de cumplir con cuadro de Dengue No Grave, presente uno o más de los siguientes signos de alarma: Dolor abdominal intenso y continuo, o dolor a la palpación del abdomen; Vómito persistente o incoercible; Acumulación de líquidos (ascitis, derrame pleural, pericárdico); Sangrado de mucosas; Letargo o irritabilidad; Hipotensión postural (lipotimia); Hepatomegalia mayor de 2 cm; Aumento progresivo del hematocrito; Disminución progresiva de plaquetas; Disminución progresiva de la hemoglobina.'),
+        jsonb_build_object('clasificacion', 'Dengue grave (A97.2)', 'texto',
+            'Todo caso probable de Dengue que presenta uno o más de los siguientes hallazgos: Choque debido a extravasación grave de plasma evidenciado por: taquicardia, extremidades frías y llenado capilar igual o mayor a tres segundos, pulso débil o indetectable, presión diferencial convergente ≤ 20 mm hipotensión arterial en fase tardía, acumulación de líquidos que conlleve a insuficiencia respiratoria; Sangrado grave, según la evaluación del médico tratante (ejemplos: hematemesis, melena, metrorragia voluminosa, sangrado del sistema nervioso central); Compromiso grave de órganos tales como: daño hepático importante (AST o ALT>1000), afección renal, sistema nervioso central (alteración de la conciencia), corazón (miocarditis) u otros órganos.'))),
+    ('MALARIA_DEMO', 'vigente', 'p. 62', jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Paludismo por Plasmodium falciparum (B50)', 'texto',
+            'Toda persona que resida o provenga de área con antecedente de transmisión de paludismo (en los últimos tres años) y que en el último mes presente o haya presentado fiebre más los siguientes signos y síntomas: cefalea, diaforesis y escalofríos.'),
+        jsonb_build_object('clasificacion', 'Paludismo por Plasmodium vivax (B51)', 'texto',
+            'La enfermedad puede comenzar con malestar indefinido y fiebre, que aumenta poco a poco en un lapso de varios días, seguido por escalofríos fuertes y aumento rápido de la temperatura, que por lo regular se acompaña de cefalalgia y náusea y culmina en sudores profusos. Después de un lapso sin fiebre se repite el ciclo de escalofríos, fiebre y sudores todos los días, en días alternos o cada tercer día.'))),
+    ('ZIKA_DEMO', 'vigente', 'pp. 66-67', jsonb_build_array(
+        jsonb_build_object('clasificacion', 'Infección por virus Zika (U06.9)', 'texto',
+            'Paciente que presente exantema y al menos dos o más de los siguientes signos o síntomas: Fiebre; Cefalea; Conjuntivitis (no purulenta/hiperemia); Artralgias; Mialgias; Edema periarticular; Prurito; Dolor retroocular. Y que se identifique alguna asociación epidemiológica: Presencia del vector Aedes aegypti o Aedes albopictus, o; Antecedente de visita o residencia en áreas de transmisión en las dos semanas previas al inicio del cuadro clínico, o; Existencia de casos confirmados en la localidad; Tenga antecedente de contacto sexual sin protección en las 2 semanas previas a la aparición de los síntomas, con una persona que en las 8 semanas previas al contacto sexual tenga antecedente de residencia o viaje a un área con transmisión local del VZIK o con presencia de vectores.')))
+) AS v(code, status, paginas, criterios)
+JOIN diseases d ON d.code = v.code
+ON CONFLICT (disease_id, version) DO NOTHING;
+
+-- Versión 1: los parámetros de hoy.
+INSERT INTO disease_parameter_versions (disease_id, version, params, reason)
+SELECT id, 1, default_params, 'Parámetros vigentes al crear el historial de versiones (042).'
+FROM diseases
+ON CONFLICT (disease_id, version) DO NOTHING;
+
+-- Los intervalos que ya traían las fuentes citadas en cada parámetro. Solo si el
+-- valor sigue siendo el de esa fuente y el parámetro aún no tiene intervalo. Un
+-- UPDATE por parámetro: con UPDATE ... FROM, una enfermedad con varias filas solo
+-- recibiría una.
+UPDATE diseases SET default_params = jsonb_set(default_params, '{r0,intervalo}', '{"min": 2.39, "max": 3.44, "tipo": "IC95"}')
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND jsonb_typeof(default_params -> 'r0') = 'object'
+   AND (default_params -> 'r0' ->> 'valor')::numeric = 2.87 AND NOT (default_params -> 'r0' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{letalidad,intervalo}', '{"min": 0.003, "max": 0.009, "tipo": "IC95"}')
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND jsonb_typeof(default_params -> 'letalidad') = 'object'
+   AND (default_params -> 'letalidad' ->> 'valor')::numeric = 0.005 AND NOT (default_params -> 'letalidad' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{incubacion_dias,intervalo}', '{"min": 4.5, "max": 5.8, "tipo": "IC95"}')
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND jsonb_typeof(default_params -> 'incubacion_dias') = 'object'
+   AND (default_params -> 'incubacion_dias' ->> 'valor')::numeric = 5.1 AND NOT (default_params -> 'incubacion_dias' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{dias_hospitalizacion,intervalo}', '{"min": 4, "max": 21, "tipo": "rango"}')
+ WHERE code = 'SARS_COV_2_ANCESTRAL' AND jsonb_typeof(default_params -> 'dias_hospitalizacion') = 'object'
+   AND (default_params -> 'dias_hospitalizacion' ->> 'valor')::numeric = 8.0 AND NOT (default_params -> 'dias_hospitalizacion' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{r0,intervalo}', '{"min": 1.19, "max": 1.37, "tipo": "RIC"}')
+ WHERE code = 'INFLUENZA_ESTACIONAL' AND jsonb_typeof(default_params -> 'r0') = 'object'
+   AND (default_params -> 'r0' ->> 'valor')::numeric = 1.28 AND NOT (default_params -> 'r0' ? 'intervalo');
+UPDATE diseases SET default_params = jsonb_set(default_params, '{infeccioso_dias,intervalo}', '{"min": 4.31, "max": 5.29, "tipo": "IC95"}')
+ WHERE code = 'INFLUENZA_ESTACIONAL' AND jsonb_typeof(default_params -> 'infeccioso_dias') = 'object'
+   AND (default_params -> 'infeccioso_dias' ->> 'valor')::numeric = 4.8 AND NOT (default_params -> 'infeccioso_dias' ? 'intervalo');
+
+-- Versión 2 donde los intervalos cambiaron algo.
+INSERT INTO disease_parameter_versions (disease_id, version, params, reason)
+SELECT d.id, 2, d.default_params,
+       'Intervalos de incertidumbre tomados de las fuentes que ya citaba cada parámetro (D58).'
+FROM diseases d
+JOIN disease_parameter_versions v ON v.disease_id = d.id AND v.version = 1
+WHERE d.default_params IS DISTINCT FROM v.params
+ON CONFLICT (disease_id, version) DO NOTHING;
+
+INSERT INTO intervention_effectiveness
+    (intervention_type_id, parameter, disease_id, reference_value, range_min, range_max, source, is_assumption)
+SELECT t.id, v.parametro, d.id, v.valor, v.minimo, v.maximo, v.fuente, v.supuesto
+FROM (VALUES
+    ('CUBREBOCAS', 'eficacia', NULL, 0.85, 0.66, 0.93, true,
+     'DERIVADO POR EL EQUIPO de Chu et al. 2020, Lancet 395(10242):1973-1987: el uso de cubrebocas se asoció con menos infecciones (aOR 0.15, IC95% 0.07-0.34; certeza baja), sobre todo en entornos de atención médica y con respiradores N95. La eficacia se toma como 1 - aOR; con cubrebocas de tela o quirúrgicos en la comunidad el efecto esperado es menor. doi:10.1016/S0140-6736(20)31142-9'),
+    ('VACUNACION', 'eficacia', 'SARS_COV_2_ANCESTRAL', 0.95, 0.903, 0.976, false,
+     'Polack et al. 2020, N Engl J Med 383(27):2603-2615: la vacuna BNT162b2 tuvo 95% de eficacia contra COVID-19 desde 7 días después de la segunda dosis (intervalo creíble 95%: 90.3-97.6). El motor la aplica como protección completa de una fracción de los vacunados. doi:10.1056/NEJMoa2034577'),
+    ('VACUNACION', 'eficacia', 'INFLUENZA_ESTACIONAL', 0.59, 0.51, 0.67, false,
+     'Osterholm et al. 2012, Lancet Infect Dis 12(1):36-44: eficacia agrupada de la vacuna trivalente inactivada en adultos, 59% (IC95% 51-67), contra influenza confirmada por RT-PCR o cultivo. El motor la aplica como protección completa de una fracción de los vacunados. doi:10.1016/S1473-3099(11)70295-X'),
+    ('TESTEO_AISLAMIENTO', 'deteccion', 'SARS_COV_2_ANCESTRAL', 0.14, 0.10, 0.18, true,
+     'DERIVADO POR EL EQUIPO de Li et al. 2020, Science 368(6490):489-493: entre el 10 y el 23 de enero de 2020 se reportó solo el 14% (IC95% 10-18%) de las infecciones en China. Se toma como la fracción de infecciosos que detecta un sistema de pruebas al inicio de una epidemia; con más pruebas es mayor. doi:10.1126/science.abb3221'),
+    ('CIERRE_TRABAJO', 'reduccion', NULL, 0.51, 0.30, 0.72, true,
+     'DERIVADO POR EL EQUIPO de los Informes de Movilidad Comunitaria COVID-19 de Google (archivo 2020_MX_Region_Mobility_Report.csv, Nuevo León, consultado el 2026-11-23): en los días hábiles de abril de 2020 las visitas a lugares de trabajo bajaron en promedio 50.6% respecto a la línea base de enero y febrero (de 41% a 72% según el día); de junio a diciembre, entre 30% y 38%. Se supone que los contactos en el trabajo bajan en la misma proporción que las visitas. https://www.google.com/covid19/mobility/'),
+    ('REDUCCION_AFORO', 'reduccion', NULL, 0.30, 0.18, 0.54, true,
+     'DERIVADO POR EL EQUIPO de los Informes de Movilidad Comunitaria COVID-19 de Google (archivo 2020_MX_Region_Mobility_Report.csv, Nuevo León, consultado el 2026-11-23): de agosto a octubre de 2020 las visitas a comercios y lugares de recreación bajaron entre 30% y 31% (promedio de días hábiles) respecto a la línea base de enero y febrero; en abril, 54%, y en diciembre, 18%. Se supone que los contactos en la comunidad bajan en la misma proporción que las visitas. https://www.google.com/covid19/mobility/'),
+    ('CIERRE_ESCUELAS', 'reduccion', NULL, 1.0, NULL, NULL, true,
+     'SUPUESTO DEL EQUIPO: un cierre total quita todos los contactos de la capa escuela, así que la reducción vale 1 por definición (es el valor por omisión de su param_schema). Un cierre parcial, con turnos alternados o aforo reducido, se captura con un valor menor. Ningún estudio lo mide de forma directa.')
+) AS v(tipo, parametro, enfermedad, valor, minimo, maximo, supuesto, fuente)
+JOIN intervention_types t ON t.code = v.tipo
+LEFT JOIN diseases d ON d.code = v.enfermedad
+WHERE v.enfermedad IS NULL OR d.id IS NOT NULL
+ON CONFLICT (intervention_type_id, parameter, disease_id) DO NOTHING;
+-- </datos-por-enfermedad>
+
+-- -----------------------------------------------------------------------------
+-- Permisos
+-- -----------------------------------------------------------------------------
+GRANT SELECT, INSERT ON case_definitions TO svc_enfermedades;
+GRANT UPDATE (status, criteria, source, source_url, published_by, published_at, retired_at)
+    ON case_definitions TO svc_enfermedades;
+GRANT USAGE ON SEQUENCE case_definitions_id_seq TO svc_enfermedades;
+GRANT UPDATE (transmission, icd10, classification_source) ON diseases TO svc_enfermedades;
+
+GRANT SELECT, INSERT ON disease_parameter_versions TO svc_parametros;
+GRANT USAGE ON SEQUENCE disease_parameter_versions_id_seq TO svc_parametros;
+
+GRANT SELECT, INSERT, UPDATE ON intervention_effectiveness TO svc_tipos_intervencion;
+GRANT USAGE ON SEQUENCE intervention_effectiveness_id_seq TO svc_tipos_intervencion;
+GRANT SELECT (id, code, name) ON diseases TO svc_tipos_intervencion;
+GRANT INSERT ON audit_log TO svc_tipos_intervencion;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('042', 'Definiciones de caso, clasificación, versiones e intervalos de parámetros y supuestos de efectividad (D58)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 043_jurisdicciones_y_censos.sql
+-- Generado por datos/scripts/build_censos_y_jurisdicciones.py: no editar a mano.
+--
+-- Dominio: catálogos. Jurisdicciones sanitarias, periodos de referencia y
+-- versiones de la población (D58, D7 del checklist).
+--
+-- - health_areas y health_area_municipalities: las 8 jurisdicciones sanitarias de
+--   Nuevo León y sus municipios (Reglamento Interior de Servicios de Salud de NL,
+--   art. 27; datos/geo/nl_jurisdicciones_sanitarias.json). Monterrey se reparte
+--   entre la 1, la 2 y la 3: va en las tres, marcado como parcial.
+-- - census_population: la población total de Nuevo León y de cada municipio en
+--   los censos y conteos de INEGI de 1990 a 2020 (7 años, 364 filas).
+-- - population_versions: cada ajuste de la población de una región (total, 60 y
+--   más y bandas de edad) es una versión, con su periodo de referencia, su fuente
+--   y su motivo. Las escribe poblacion en la misma transacción que el ajuste.
+-- - Los municipios se ligan por su clave INEGI (regions.code) y no por
+--   regions.id: en una instalación limpia el dump corre antes que la semilla de
+--   los 41 municipios que no trae la 010. Una prueba revisa que cada clave exista.
+-- - Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS health_areas (
+    id          SMALLSERIAL   PRIMARY KEY,
+    state_code  VARCHAR(2)    NOT NULL,
+    number      SMALLINT      NOT NULL,
+    name        VARCHAR(160)  NOT NULL,
+    description TEXT          NOT NULL,
+    source      TEXT          NOT NULL,
+    source_url  TEXT,
+
+    CONSTRAINT uq_health_areas_numero UNIQUE (state_code, number),
+    CONSTRAINT ck_health_areas_numero CHECK (number >= 1)
+);
+
+COMMENT ON TABLE health_areas IS
+    'Jurisdicciones sanitarias (áreas sanitarias) de cada estado, con su fuente (D58). Solo lectura: las carga esta migración.';
+COMMENT ON COLUMN health_areas.id IS 'Identificador.';
+COMMENT ON COLUMN health_areas.state_code IS 'Clave INEGI del estado (19, Nuevo León).';
+COMMENT ON COLUMN health_areas.number IS 'Número de la jurisdicción dentro del estado.';
+COMMENT ON COLUMN health_areas.name IS 'Nombre oficial.';
+COMMENT ON COLUMN health_areas.description IS 'Circunscripción tal como la escribe la fuente.';
+COMMENT ON COLUMN health_areas.source IS 'Documento de donde sale la división.';
+COMMENT ON COLUMN health_areas.source_url IS 'Dirección del documento.';
+
+CREATE TABLE IF NOT EXISTS health_area_municipalities (
+    health_area_id SMALLINT     NOT NULL,
+    region_code    VARCHAR(20)  NOT NULL,
+    partial        BOOLEAN      NOT NULL DEFAULT false,
+
+    CONSTRAINT pk_health_area_municipalities PRIMARY KEY (health_area_id, region_code),
+    CONSTRAINT fk_health_area_municipalities_area
+        FOREIGN KEY (health_area_id) REFERENCES health_areas (id) ON DELETE CASCADE,
+    CONSTRAINT ck_health_area_municipalities_clave CHECK (region_code ~ '^[0-9]{5}$')
+);
+
+CREATE INDEX IF NOT EXISTS ix_health_area_municipalities_region
+    ON health_area_municipalities (region_code);
+
+COMMENT ON TABLE health_area_municipalities IS
+    'Municipios de cada jurisdicción sanitaria (D58). Un municipio repartido entre varias, como Monterrey, aparece en cada una con partial = true.';
+COMMENT ON COLUMN health_area_municipalities.health_area_id IS 'Jurisdicción. Referencia a health_areas.id. [llave foranea]';
+COMMENT ON COLUMN health_area_municipalities.region_code IS 'Clave INEGI del municipio (regions.code). Sin llave foránea: ver el encabezado de la 043.';
+COMMENT ON COLUMN health_area_municipalities.partial IS 'true si solo una parte del municipio pertenece a la jurisdicción.';
+
+CREATE TABLE IF NOT EXISTS census_population (
+    region_code VARCHAR(20) NOT NULL,
+    year        SMALLINT    NOT NULL,
+    population  INTEGER     NOT NULL,
+    source      TEXT        NOT NULL,
+
+    CONSTRAINT pk_census_population PRIMARY KEY (region_code, year),
+    CONSTRAINT ck_census_population_clave CHECK (region_code ~ '^[0-9]{2}([0-9]{3})?$'),
+    CONSTRAINT ck_census_population_anio CHECK (year BETWEEN 1900 AND 2100),
+    CONSTRAINT ck_census_population_poblacion CHECK (population > 0)
+);
+
+COMMENT ON TABLE census_population IS
+    'Periodos de referencia de la población: el total de cada región en los censos y conteos de INEGI (D58). Solo lectura: lo carga esta migración.';
+COMMENT ON COLUMN census_population.region_code IS 'Clave INEGI del estado o del municipio (regions.code). Sin llave foránea: ver el encabezado de la 043.';
+COMMENT ON COLUMN census_population.year IS 'Año del censo o conteo.';
+COMMENT ON COLUMN census_population.population IS 'Población total.';
+COMMENT ON COLUMN census_population.source IS 'Tabulado de INEGI de donde sale.';
+
+CREATE TABLE IF NOT EXISTS population_versions (
+    id                BIGSERIAL    PRIMARY KEY,
+    region_id         INTEGER      NOT NULL,
+    version           INTEGER      NOT NULL,
+    population        INTEGER      NOT NULL,
+    population_60plus INTEGER,
+    age_groups        JSONB,
+    reference_year    SMALLINT     NOT NULL,
+    source            TEXT         NOT NULL,
+    reason            TEXT,
+    created_by        BIGINT,
+    created_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_population_versions_region
+        FOREIGN KEY (region_id)  REFERENCES regions (id) ON DELETE CASCADE,
+    CONSTRAINT fk_population_versions_user
+        FOREIGN KEY (created_by) REFERENCES users (id)   ON DELETE SET NULL,
+    CONSTRAINT uq_population_versions UNIQUE (region_id, version),
+    CONSTRAINT ck_population_versions_version CHECK (version >= 1),
+    CONSTRAINT ck_population_versions_poblacion CHECK (
+        population > 0 AND (population_60plus IS NULL OR population_60plus BETWEEN 0 AND population)),
+    CONSTRAINT ck_population_versions_grupos CHECK (age_groups IS NULL OR jsonb_typeof(age_groups) = 'object')
+);
+
+COMMENT ON TABLE population_versions IS
+    'Versiones de la población de cada región (D58). La 1 es la que había antes del primer ajuste (el Censo 2020); cada ajuste agrega la siguiente con el resultado. Las escribe poblacion; no se editan ni se borran (D52).';
+COMMENT ON COLUMN population_versions.id IS 'Identificador.';
+COMMENT ON COLUMN population_versions.region_id IS 'Región. Referencia a regions.id. [llave foranea]';
+COMMENT ON COLUMN population_versions.version IS 'Número de versión dentro de la región, desde 1.';
+COMMENT ON COLUMN population_versions.population IS 'Población total en esa versión.';
+COMMENT ON COLUMN population_versions.population_60plus IS 'Población de 60 y más en esa versión.';
+COMMENT ON COLUMN population_versions.age_groups IS 'Bandas de edad en esa versión: {grupo: personas}, con edad_no_especificada.';
+COMMENT ON COLUMN population_versions.reference_year IS 'Año al que se refieren las cifras (periodo de referencia).';
+COMMENT ON COLUMN population_versions.source IS 'De dónde salen: el censo, o el ajuste que las cambió.';
+COMMENT ON COLUMN population_versions.reason IS 'Motivo del ajuste; NULL en la versión 1.';
+COMMENT ON COLUMN population_versions.created_by IS 'Quien hizo el ajuste. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN population_versions.created_at IS 'Cuándo se guardó la versión.';
+
+INSERT INTO health_areas (state_code, number, name, description, source, source_url) VALUES
+    ('19', 1, 'Jurisdicción Sanitaria No. 1', 'Poniente del municipio de Monterrey', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 2, 'Jurisdicción Sanitaria No. 2', 'Norte y oriente del municipio de Monterrey y los municipios de Abasolo, el Carmen, Ciénega de Flores, General Mariano Escobedo, General Zuazua, Mina, Salinas Victoria, San Nicolás de los Garza e Hidalgo', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 3, 'Jurisdicción Sanitaria No. 3', 'Sur de Monterrey y los municipios de Villa de García, San Pedro Garza García y Santa Catarina', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 4, 'Jurisdicción Sanitaria No. 4', 'Municipios de Apodaca, Guadalupe y Benito Juárez', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 5, 'Jurisdicción Sanitaria No. 5', 'Municipios de Agualeguas, Anáhuac, Bustamante, General Treviño, Lampazos, Parás, Sabinas Hidalgo, Vallecillo y Villaldama', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 6, 'Jurisdicción Sanitaria No. 6', 'Municipios de Los Aldama, Cadereyta Jiménez, Cerralvo, China, Dr. Coss, Dr. González, General Bravo, Los Herrera, Higueras, Marín, Melchor Ocampo, Pesquería y Los Ramones', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 7, 'Jurisdicción Sanitaria No. 7', 'Municipios de Allende, General Terán, Hualahuises, Linares, Montemorelos, Los Rayones y Santiago', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf'),
+    ('19', 8, 'Jurisdicción Sanitaria No. 8', 'Municipios de Aramberri, Dr. Arroyo, Galeana, General Zaragoza, Mier y Noriega e Iturbide', 'Reglamento Interior de "Servicios de Salud de Nuevo León" Organismo Público Descentralizado, artículo 27. Periódico Oficial del Estado núm. 130, 12 de octubre de 2004; última reforma P.O. 4 de marzo de 2009. Pendiente de confirmar con la Secretaría de Salud de Nuevo León que siga vigente. Monterrey se reparte entre las jurisdicciones 1, 2 y 3; con casos por municipio no se puede partir y va en compartidos.', 'http://www.ordenjuridico.gob.mx/Documentos/Estatal/Nuevo%20Leon/wo119338.pdf')
+ON CONFLICT (state_code, number) DO NOTHING;
+
+INSERT INTO health_area_municipalities (health_area_id, region_code, partial)
+SELECT a.id, v.clave, v.parcial
+FROM (VALUES
+    (1, '19039', true),
+    (2, '19001', false),
+    (2, '19010', false),
+    (2, '19012', false),
+    (2, '19021', false),
+    (2, '19025', false),
+    (2, '19037', false),
+    (2, '19039', true),
+    (2, '19045', false),
+    (2, '19046', false),
+    (2, '19047', false),
+    (3, '19018', false),
+    (3, '19019', false),
+    (3, '19039', true),
+    (3, '19048', false),
+    (4, '19006', false),
+    (4, '19026', false),
+    (4, '19031', false),
+    (5, '19002', false),
+    (5, '19005', false),
+    (5, '19008', false),
+    (5, '19023', false),
+    (5, '19032', false),
+    (5, '19040', false),
+    (5, '19044', false),
+    (5, '19050', false),
+    (5, '19051', false),
+    (6, '19003', false),
+    (6, '19009', false),
+    (6, '19011', false),
+    (6, '19013', false),
+    (6, '19015', false),
+    (6, '19016', false),
+    (6, '19020', false),
+    (6, '19027', false),
+    (6, '19028', false),
+    (6, '19034', false),
+    (6, '19035', false),
+    (6, '19041', false),
+    (6, '19042', false),
+    (7, '19004', false),
+    (7, '19022', false),
+    (7, '19029', false),
+    (7, '19033', false),
+    (7, '19038', false),
+    (7, '19043', false),
+    (7, '19049', false),
+    (8, '19007', false),
+    (8, '19014', false),
+    (8, '19017', false),
+    (8, '19024', false),
+    (8, '19030', false),
+    (8, '19036', false)
+) AS v(numero, clave, parcial)
+JOIN health_areas a ON a.state_code = '19' AND a.number = v.numero
+ON CONFLICT (health_area_id, region_code) DO NOTHING;
+
+INSERT INTO census_population (region_code, year, population, source)
+SELECT v.clave, v.anio, v.poblacion, 'INEGI. Censos y Conteos de Población y Vivienda, 1990-2020: tabulado «Población total por municipio, serie de años censales de 1990 a 2020» (consultado el 24/09/2026). El dato 2020 de Santiago, Vallecillo y Villaldama sale de los Principales resultados por localidad.'
+FROM (VALUES
+    ('19', 1990, 3098736),
+    ('19001', 1990, 1373),
+    ('19002', 1990, 5095),
+    ('19003', 1990, 4140),
+    ('19004', 1990, 22211),
+    ('19005', 1990, 17316),
+    ('19006', 1990, 115913),
+    ('19007', 1990, 15295),
+    ('19008', 1990, 2976),
+    ('19009', 1990, 53582),
+    ('19010', 1990, 4906),
+    ('19011', 1990, 7653),
+    ('19012', 1990, 6708),
+    ('19013', 1990, 12404),
+    ('19014', 1990, 36946),
+    ('19015', 1990, 2961),
+    ('19016', 1990, 3011),
+    ('19017', 1990, 40972),
+    ('19018', 1990, 13164),
+    ('19019', 1990, 113040),
+    ('19020', 1990, 6759),
+    ('19021', 1990, 98147),
+    ('19022', 1990, 16656),
+    ('19023', 1990, 2182),
+    ('19024', 1990, 5532),
+    ('19025', 1990, 4647),
+    ('19026', 1990, 535560),
+    ('19027', 1990, 3363),
+    ('19028', 1990, 1060),
+    ('19029', 1990, 6222),
+    ('19030', 1990, 3638),
+    ('19031', 1990, 28014),
+    ('19032', 1990, 5288),
+    ('19033', 1990, 61569),
+    ('19034', 1990, 3292),
+    ('19035', 1990, 1641),
+    ('19036', 1990, 7240),
+    ('19037', 1990, 4564),
+    ('19038', 1990, 49302),
+    ('19039', 1990, 1069238),
+    ('19040', 1990, 1021),
+    ('19041', 1990, 8188),
+    ('19042', 1990, 6538),
+    ('19043', 1990, 3164),
+    ('19044', 1990, 27550),
+    ('19045', 1990, 9518),
+    ('19046', 1990, 436603),
+    ('19047', 1990, 11668),
+    ('19048', 1990, 163848),
+    ('19049', 1990, 30182),
+    ('19050', 1990, 2723),
+    ('19051', 1990, 4153),
+    ('19', 1995, 3550114),
+    ('19001', 1995, 1945),
+    ('19002', 1995, 4492),
+    ('19003', 1995, 2445),
+    ('19004', 1995, 23053),
+    ('19005', 1995, 18278),
+    ('19006', 1995, 219153),
+    ('19007', 1995, 15691),
+    ('19008', 1995, 3308),
+    ('19009', 1995, 62440),
+    ('19010', 1995, 6168),
+    ('19011', 1995, 8287),
+    ('19012', 1995, 8586),
+    ('19013', 1995, 12064),
+    ('19014', 1995, 37363),
+    ('19015', 1995, 2286),
+    ('19016', 1995, 2912),
+    ('19017', 1995, 42145),
+    ('19018', 1995, 23981),
+    ('19019', 1995, 120913),
+    ('19020', 1995, 6030),
+    ('19021', 1995, 176869),
+    ('19022', 1995, 16609),
+    ('19023', 1995, 1695),
+    ('19024', 1995, 5874),
+    ('19025', 1995, 5276),
+    ('19026', 1995, 618933),
+    ('19027', 1995, 2860),
+    ('19028', 1995, 1218),
+    ('19029', 1995, 6535),
+    ('19030', 1995, 3522),
+    ('19031', 1995, 50009),
+    ('19032', 1995, 5294),
+    ('19033', 1995, 66104),
+    ('19034', 1995, 4014),
+    ('19035', 1995, 1121),
+    ('19036', 1995, 7721),
+    ('19037', 1995, 4783),
+    ('19038', 1995, 51714),
+    ('19039', 1995, 1088143),
+    ('19040', 1995, 1087),
+    ('19041', 1995, 9359),
+    ('19042', 1995, 5236),
+    ('19043', 1995, 2791),
+    ('19044', 1995, 31521),
+    ('19045', 1995, 15925),
+    ('19046', 1995, 487924),
+    ('19047', 1995, 13552),
+    ('19048', 1995, 202156),
+    ('19049', 1995, 34187),
+    ('19050', 1995, 2188),
+    ('19051', 1995, 4354),
+    ('19', 2000, 3834141),
+    ('19001', 2000, 2514),
+    ('19002', 2000, 4390),
+    ('19003', 2000, 2464),
+    ('19004', 2000, 27773),
+    ('19005', 2000, 18524),
+    ('19006', 2000, 283497),
+    ('19007', 2000, 14840),
+    ('19008', 2000, 3499),
+    ('19009', 2000, 75059),
+    ('19010', 2000, 6644),
+    ('19011', 2000, 9343),
+    ('19012', 2000, 11204),
+    ('19013', 2000, 11540),
+    ('19014', 2000, 33721),
+    ('19015', 2000, 2246),
+    ('19016', 2000, 3185),
+    ('19017', 2000, 39519),
+    ('19018', 2000, 28974),
+    ('19019', 2000, 125978),
+    ('19020', 2000, 5799),
+    ('19021', 2000, 233457),
+    ('19022', 2000, 15475),
+    ('19023', 2000, 1699),
+    ('19024', 2000, 5576),
+    ('19025', 2000, 6033),
+    ('19026', 2000, 670162),
+    ('19027', 2000, 2795),
+    ('19028', 2000, 1371),
+    ('19029', 2000, 6413),
+    ('19030', 2000, 3484),
+    ('19031', 2000, 66497),
+    ('19032', 2000, 5305),
+    ('19033', 2000, 69205),
+    ('19034', 2000, 4719),
+    ('19035', 2000, 1215),
+    ('19036', 2000, 7078),
+    ('19037', 2000, 5049),
+    ('19038', 2000, 52741),
+    ('19039', 2000, 1110997),
+    ('19040', 2000, 1226),
+    ('19041', 2000, 11321),
+    ('19042', 2000, 6237),
+    ('19043', 2000, 2613),
+    ('19044', 2000, 32329),
+    ('19045', 2000, 19024),
+    ('19046', 2000, 496878),
+    ('19047', 2000, 14275),
+    ('19048', 2000, 227026),
+    ('19049', 2000, 36812),
+    ('19050', 2000, 2169),
+    ('19051', 2000, 4247),
+    ('19', 2005, 4199292),
+    ('19001', 2005, 2746),
+    ('19002', 2005, 3537),
+    ('19003', 2005, 1675),
+    ('19004', 2005, 29568),
+    ('19005', 2005, 17983),
+    ('19006', 2005, 418784),
+    ('19007', 2005, 14692),
+    ('19008', 2005, 3326),
+    ('19009', 2005, 73746),
+    ('19010', 2005, 6996),
+    ('19011', 2005, 8009),
+    ('19012', 2005, 14268),
+    ('19013', 2005, 10697),
+    ('19014', 2005, 33269),
+    ('19015', 2005, 1639),
+    ('19016', 2005, 3092),
+    ('19017', 2005, 38930),
+    ('19018', 2005, 51658),
+    ('19019', 2005, 122009),
+    ('19020', 2005, 5385),
+    ('19021', 2005, 299364),
+    ('19022', 2005, 14022),
+    ('19023', 2005, 1476),
+    ('19024', 2005, 5733),
+    ('19025', 2005, 6985),
+    ('19026', 2005, 691931),
+    ('19027', 2005, 1877),
+    ('19028', 2005, 1427),
+    ('19029', 2005, 6631),
+    ('19030', 2005, 3533),
+    ('19031', 2005, 144380),
+    ('19032', 2005, 4428),
+    ('19033', 2005, 71061),
+    ('19034', 2005, 5398),
+    ('19035', 2005, 1052),
+    ('19036', 2005, 7047),
+    ('19037', 2005, 5384),
+    ('19038', 2005, 53854),
+    ('19039', 2005, 1133814),
+    ('19040', 2005, 950),
+    ('19041', 2005, 12258),
+    ('19042', 2005, 6227),
+    ('19043', 2005, 2576),
+    ('19044', 2005, 32040),
+    ('19045', 2005, 27848),
+    ('19046', 2005, 476761),
+    ('19047', 2005, 15480),
+    ('19048', 2005, 259896),
+    ('19049', 2005, 37886),
+    ('19050', 2005, 1859),
+    ('19051', 2005, 4105),
+    ('19', 2010, 4653458),
+    ('19001', 2010, 2791),
+    ('19002', 2010, 3443),
+    ('19003', 2010, 1374),
+    ('19004', 2010, 32593),
+    ('19005', 2010, 18480),
+    ('19006', 2010, 523370),
+    ('19007', 2010, 15470),
+    ('19008', 2010, 3773),
+    ('19009', 2010, 86445),
+    ('19010', 2010, 16092),
+    ('19011', 2010, 7855),
+    ('19012', 2010, 24526),
+    ('19013', 2010, 10864),
+    ('19014', 2010, 35445),
+    ('19015', 2010, 1716),
+    ('19016', 2010, 3345),
+    ('19017', 2010, 39991),
+    ('19018', 2010, 143668),
+    ('19019', 2010, 122659),
+    ('19020', 2010, 5527),
+    ('19021', 2010, 357937),
+    ('19022', 2010, 14437),
+    ('19023', 2010, 1277),
+    ('19024', 2010, 5942),
+    ('19025', 2010, 55213),
+    ('19026', 2010, 678006),
+    ('19027', 2010, 2030),
+    ('19028', 2010, 1594),
+    ('19029', 2010, 6914),
+    ('19030', 2010, 3558),
+    ('19031', 2010, 256970),
+    ('19032', 2010, 5349),
+    ('19033', 2010, 78669),
+    ('19034', 2010, 5488),
+    ('19035', 2010, 862),
+    ('19036', 2010, 7095),
+    ('19037', 2010, 5447),
+    ('19038', 2010, 59113),
+    ('19039', 2010, 1135550),
+    ('19040', 2010, 1034),
+    ('19041', 2010, 20843),
+    ('19042', 2010, 5359),
+    ('19043', 2010, 2628),
+    ('19044', 2010, 34671),
+    ('19045', 2010, 32660),
+    ('19046', 2010, 443273),
+    ('19047', 2010, 16604),
+    ('19048', 2010, 268955),
+    ('19049', 2010, 40469),
+    ('19050', 2010, 1971),
+    ('19051', 2010, 4113),
+    ('19', 2015, 5119504),
+    ('19001', 2015, 2639),
+    ('19002', 2015, 2439),
+    ('19003', 2015, 1292),
+    ('19004', 2015, 34353),
+    ('19005', 2015, 18194),
+    ('19006', 2015, 597207),
+    ('19007', 2015, 16152),
+    ('19008', 2015, 3977),
+    ('19009', 2015, 95534),
+    ('19010', 2015, 38306),
+    ('19011', 2015, 7757),
+    ('19012', 2015, 42715),
+    ('19013', 2015, 10835),
+    ('19014', 2015, 34110),
+    ('19015', 2015, 1632),
+    ('19016', 2015, 2861),
+    ('19017', 2015, 41130),
+    ('19018', 2015, 247370),
+    ('19019', 2015, 123156),
+    ('19020', 2015, 5479),
+    ('19021', 2015, 425148),
+    ('19022', 2015, 14795),
+    ('19023', 2015, 1044),
+    ('19024', 2015, 6011),
+    ('19025', 2015, 67294),
+    ('19026', 2015, 682880),
+    ('19027', 2015, 1764),
+    ('19028', 2015, 1511),
+    ('19029', 2015, 6921),
+    ('19030', 2015, 3571),
+    ('19031', 2015, 333481),
+    ('19032', 2015, 5238),
+    ('19033', 2015, 79853),
+    ('19034', 2015, 5630),
+    ('19035', 2015, 955),
+    ('19036', 2015, 6996),
+    ('19037', 2015, 5326),
+    ('19038', 2015, 60829),
+    ('19039', 2015, 1109171),
+    ('19040', 2015, 971),
+    ('19041', 2015, 87168),
+    ('19042', 2015, 4469),
+    ('19043', 2015, 2640),
+    ('19044', 2015, 35456),
+    ('19045', 2015, 54192),
+    ('19046', 2015, 430143),
+    ('19047', 2015, 13836),
+    ('19048', 2015, 296954),
+    ('19049', 2015, 42407),
+    ('19050', 2015, 1632),
+    ('19051', 2015, 4080),
+    ('19', 2020, 5784442),
+    ('19001', 2020, 2974),
+    ('19002', 2020, 3382),
+    ('19003', 2020, 1407),
+    ('19004', 2020, 35289),
+    ('19005', 2020, 18030),
+    ('19006', 2020, 656464),
+    ('19007', 2020, 14992),
+    ('19008', 2020, 3661),
+    ('19009', 2020, 122337),
+    ('19010', 2020, 104478),
+    ('19011', 2020, 7340),
+    ('19012', 2020, 68747),
+    ('19013', 2020, 9930),
+    ('19014', 2020, 36088),
+    ('19015', 2020, 1360),
+    ('19016', 2020, 3256),
+    ('19017', 2020, 40903),
+    ('19018', 2020, 397205),
+    ('19019', 2020, 132169),
+    ('19020', 2020, 5506),
+    ('19021', 2020, 481213),
+    ('19022', 2020, 14109),
+    ('19023', 2020, 1808),
+    ('19024', 2020, 6282),
+    ('19025', 2020, 102149),
+    ('19026', 2020, 643143),
+    ('19027', 2020, 1959),
+    ('19028', 2020, 1386),
+    ('19029', 2020, 7026),
+    ('19030', 2020, 3298),
+    ('19031', 2020, 471523),
+    ('19032', 2020, 5351),
+    ('19033', 2020, 84666),
+    ('19034', 2020, 5119),
+    ('19035', 2020, 1483),
+    ('19036', 2020, 7652),
+    ('19037', 2020, 6048),
+    ('19038', 2020, 67428),
+    ('19039', 2020, 1142994),
+    ('19040', 2020, 906),
+    ('19041', 2020, 147624),
+    ('19042', 2020, 5389),
+    ('19043', 2020, 2377),
+    ('19044', 2020, 34709),
+    ('19045', 2020, 86766),
+    ('19046', 2020, 412199),
+    ('19047', 2020, 16086),
+    ('19048', 2020, 306322),
+    ('19049', 2020, 46784),
+    ('19050', 2020, 1552),
+    ('19051', 2020, 3573)
+) AS v(clave, anio, poblacion)
+ON CONFLICT (region_code, year) DO NOTHING;
+
+GRANT SELECT ON health_areas, health_area_municipalities TO svc_regiones;
+GRANT SELECT ON census_population TO svc_poblacion;
+GRANT SELECT, INSERT ON population_versions TO svc_poblacion;
+GRANT USAGE ON SEQUENCE population_versions_id_seq TO svc_poblacion;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('043', 'Jurisdicciones sanitarias, censos y conteos 1990-2020 y versiones de la población (D58)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 044_ajustes_de_parametros_por_version.sql
+-- Dominio: escenarios y parámetros. Ajustes de los parámetros de la enfermedad
+-- en una versión de escenario (D59, A4 «Configuración del modelo»).
+--
+-- - scenario_versions.param_overrides: los parámetros que esa versión cambia
+--   respecto del catálogo, cada uno con su fuente o la marca de supuesto. Solo
+--   se edita en borrador (lo exige el servicio parametros). Al enviar la versión
+--   a revisión, disease_params (024) congela el catálogo con estos ajustes
+--   encima: los parámetros efectivos de una versión son
+--   coalesce(disease_params, default_params || param_overrides).
+-- - svc_parametros recibe lo mínimo para leer la versión y su escenario y para
+--   escribir los ajustes; las demás lecturas de scenario_versions ya son de
+--   tabla completa (027, 028, 029) y ven la columna nueva.
+-- - Es la 044, de la reserva de D. Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+ALTER TABLE scenario_versions
+    ADD COLUMN IF NOT EXISTS param_overrides JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE scenario_versions
+    DROP CONSTRAINT IF EXISTS ck_scenario_versions_ajustes,
+    ADD  CONSTRAINT ck_scenario_versions_ajustes CHECK (jsonb_typeof(param_overrides) = 'object');
+
+COMMENT ON COLUMN scenario_versions.param_overrides IS
+    'Parámetros de la enfermedad que esta versión ajusta respecto del catálogo (D59): {clave: {valor, fuente, supuesto, intervalo?}}. Solo se editan en borrador; al enviarla, disease_params congela el catálogo con estos ajustes encima. Vacío si la versión usa el catálogo tal cual.';
+
+GRANT SELECT (id, scenario_id, version_number, status, is_current, disease_params, param_overrides)
+    ON scenario_versions TO svc_parametros;
+GRANT SELECT (id, owner_id, disease_id, region_id, status) ON scenarios TO svc_parametros;
+GRANT UPDATE (param_overrides) ON scenario_versions TO svc_parametros;
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('044', 'Ajustes de los parámetros de la enfermedad por versión de escenario (D59)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 062_calibraciones.sql
+-- Dominio: simulacion. Calibracion de seir-ref contra una serie observada (D50).
+--
+-- - calibrations: una calibracion por peticion, con su conjunto observado (061),
+--   su motor y su version, el metodo y su version, la configuracion con que
+--   corre (rangos, muestras, semillas, cuantil y ventanas), el estado de la
+--   regla 7, los intentos (D38), el avance y, al completarse, el resultado entero
+--   en JSONB: parametros con su intervalo, aceptadas, banda semanal y metricas.
+--   Con la misma configuracion el resultado es el mismo, asi que reencolarla no
+--   duplica nada.
+-- - Permiso calibrations.run (EPIDEMIOLOGO, ANALISTA y ADMINISTRADOR): lanzar y
+--   cancelar. Consultar usa simulations.read. Con la accion 'run', que ya admite
+--   el CHECK de la 034.
+-- - El rol svc_calibracion, duenio de calibrations. Nace con LOGIN y sin
+--   contrasenia, como en la 032. audit_log.entity_type no tiene CHECK: la
+--   entidad 'calibration' no pide migracion.
+-- - Es la 062, de la reserva de E. Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS calibrations (
+    id              BIGSERIAL     PRIMARY KEY,
+    dataset_id      BIGINT        NOT NULL,
+    engine          VARCHAR(20)   NOT NULL,
+    engine_version  VARCHAR(40)   NOT NULL,
+    method          VARCHAR(30)   NOT NULL,
+    method_version  VARCHAR(30)   NOT NULL,
+    config          JSONB         NOT NULL,
+    status          VARCHAR(20)   NOT NULL DEFAULT 'encolado',
+    attempts        SMALLINT      NOT NULL DEFAULT 0,
+    progress        SMALLINT      NOT NULL DEFAULT 0,
+    result          JSONB,
+    error           TEXT,
+    requested_by    BIGINT,
+    created_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    started_at      TIMESTAMPTZ,
+    finished_at     TIMESTAMPTZ,
+
+    CONSTRAINT ck_calibrations_motor CHECK (engine IN ('seir-ref')),
+    CONSTRAINT ck_calibrations_config CHECK (jsonb_typeof(config) = 'object'),
+    CONSTRAINT ck_calibrations_estado CHECK (status IN
+        ('encolado', 'ejecutando', 'completado', 'fallido', 'cancelado')),
+    CONSTRAINT ck_calibrations_intentos CHECK (attempts BETWEEN 0 AND 3),
+    CONSTRAINT ck_calibrations_avance CHECK (progress BETWEEN 0 AND 100),
+    CONSTRAINT ck_calibrations_resultado CHECK (
+        (status = 'completado') = (result IS NOT NULL)),
+    CONSTRAINT ck_calibrations_fin CHECK (
+        (status IN ('completado', 'fallido', 'cancelado')) = (finished_at IS NOT NULL)),
+    CONSTRAINT fk_calibrations_dataset
+        FOREIGN KEY (dataset_id) REFERENCES observed_datasets (id),
+    CONSTRAINT fk_calibrations_user
+        FOREIGN KEY (requested_by) REFERENCES users (id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_calibrations_pendientes
+    ON calibrations (status) WHERE status IN ('encolado', 'ejecutando');
+CREATE INDEX IF NOT EXISTS ix_calibrations_dataset ON calibrations (dataset_id);
+
+COMMENT ON TABLE calibrations IS 'Calibracion de un motor contra un conjunto observado: ABC por rechazo (D50). La lanza calibracion y la corre calibracion-trabajador. [calibracion]';
+COMMENT ON COLUMN calibrations.id IS 'Identificador interno. [llave primaria]';
+COMMENT ON COLUMN calibrations.dataset_id IS 'Serie observada contra la que se calibra. Referencia a observed_datasets.id. [llave foranea]';
+COMMENT ON COLUMN calibrations.engine IS 'Motor que se calibra. Solo seir-ref por ahora (D50).';
+COMMENT ON COLUMN calibrations.engine_version IS 'Version del motor: la calibracion solo vale para ella (D50).';
+COMMENT ON COLUMN calibrations.method IS 'Metodo de calibracion: abc-rechazo.';
+COMMENT ON COLUMN calibrations.method_version IS 'Version del algoritmo de procesamiento/calibracion (calibracion-0.1).';
+COMMENT ON COLUMN calibrations.config IS 'Lo pedido: muestras, semillas, cuantil y semilla del muestreo. Con esto y el conjunto la calibracion se repite bit a bit.';
+COMMENT ON COLUMN calibrations.status IS 'encolado, ejecutando, completado, fallido o cancelado.';
+COMMENT ON COLUMN calibrations.attempts IS 'Veces que el trabajador la empezo. Al arrancar reencola las interrumpidas hasta 3 intentos (D38).';
+COMMENT ON COLUMN calibrations.progress IS 'Avance de 0 a 100. El vivo esta en Redis; aqui, el del ultimo cambio de estado.';
+COMMENT ON COLUMN calibrations.result IS 'El resultado completo: parametros con mediana y p5-p95, aceptadas, banda semanal, metricas por ventana y versiones. Solo si esta completada.';
+COMMENT ON COLUMN calibrations.error IS 'Por que fallo, en espanol. Nulo si no fallo.';
+COMMENT ON COLUMN calibrations.requested_by IS 'Quien la pidio. Referencia a users.id. [llave foranea]';
+COMMENT ON COLUMN calibrations.created_at IS 'Cuando se pidio.';
+COMMENT ON COLUMN calibrations.started_at IS 'Cuando la empezo el trabajador por ultima vez.';
+COMMENT ON COLUMN calibrations.finished_at IS 'Cuando termino, fallo o se cancelo.';
+
+INSERT INTO permissions (code, resource, action, description) VALUES
+    ('calibrations.run', 'calibrations', 'run', 'Lanzar y cancelar una calibracion (D50).')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r JOIN permissions p ON p.code = 'calibrations.run'
+WHERE r.code IN ('EPIDEMIOLOGO', 'ANALISTA', 'ADMINISTRADOR')
+ON CONFLICT DO NOTHING;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_calibracion') THEN
+        CREATE ROLE svc_calibracion LOGIN;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM svc_calibracion;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM svc_calibracion;
+GRANT USAGE ON SCHEMA public TO svc_calibracion;
+
+GRANT SELECT, INSERT, UPDATE ON calibrations TO svc_calibracion;
+GRANT USAGE ON SEQUENCE calibrations_id_seq TO svc_calibracion;
+GRANT SELECT ON observed_datasets, observed_points, region_age_groups TO svc_calibracion;
+GRANT SELECT (id, code, name, default_params, is_active) ON diseases TO svc_calibracion;
+GRANT SELECT (id, code, name, level, parent_region_id) ON regions TO svc_calibracion;
+GRANT SELECT (id, username, full_name) ON users TO svc_calibracion;
+GRANT INSERT ON audit_log TO svc_calibracion;
+
+DO $$
+DECLARE
+    secuencia TEXT := pg_get_serial_sequence('public.audit_log', 'id');
+BEGIN
+    IF secuencia IS NOT NULL THEN
+        EXECUTE format('GRANT USAGE ON SEQUENCE %s TO svc_calibracion', secuencia);
+    END IF;
+END;
+$$;
+
+COMMENT ON ROLE svc_calibracion IS 'Microservicio calibracion (5246) y su trabajador: duenio de calibrations.';
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('062', 'Simulacion: calibrations, el permiso calibrations.run y el rol svc_calibracion (D50)')
+ON CONFLICT (version) DO NOTHING;
+
+COMMIT;
+
+SET client_encoding = 'UTF8';
+-- =============================================================================
+-- 065_sincroniza_lote.sql
+-- Dominio: simulacion. El estado de un lote sigue al de su corrida (E8, D37).
+--
+-- - corridas (cancelar y reintentar) y simulador (ejecutar, completar, fallar y
+--   reencolar) llevaban cada uno su copia de _sincroniza_lote: el mismo UPDATE
+--   de simulation_batches en la misma transaccion que el cambio de la corrida.
+--   La regla queda una sola vez, en la base: un trigger AFTER UPDATE OF status
+--   sobre simulation_runs pone al lote el estado de su corrida y, si es
+--   terminal, su finished_at. Corre en la misma transaccion, como antes.
+-- - SECURITY INVOKER: corre con los permisos de quien cambia la corrida.
+--   svc_corridas y svc_simulador ya tienen UPDATE (status, finished_at) sobre
+--   simulation_batches (029); ningun otro rol cambia el estado de una corrida.
+-- - Es la 065, asignada por el lider a E (2026-11-23). Idempotente (D7).
+-- =============================================================================
+
+BEGIN;
+
+CREATE OR REPLACE FUNCTION fn_sincroniza_lote()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE simulation_batches
+    SET status = NEW.status,
+        finished_at = CASE WHEN NEW.status IN ('completado', 'fallido', 'cancelado')
+                           THEN NEW.finished_at END
+    WHERE id = NEW.batch_id;
+    RETURN NULL;
+END;
+$$;
+
+COMMENT ON FUNCTION fn_sincroniza_lote() IS
+    'El lote toma el estado de su corrida y, si es terminal, su finished_at (E8, D37). Antes era _sincroniza_lote, copiado en corridas y simulador.';
+
+DROP TRIGGER IF EXISTS tg_simulation_runs_sincroniza_lote ON simulation_runs;
+CREATE TRIGGER tg_simulation_runs_sincroniza_lote
+    AFTER UPDATE OF status ON simulation_runs
+    FOR EACH ROW
+    WHEN (OLD.status IS DISTINCT FROM NEW.status)
+    EXECUTE FUNCTION fn_sincroniza_lote();
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('065', 'Simulacion: el estado del lote sigue al de su corrida con un trigger (E8, D37)')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;

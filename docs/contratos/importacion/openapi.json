@@ -1,0 +1,935 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EPIDEMIA - importacion",
+    "version": "0.1.0",
+    "description": "Importa series observadas agregadas (RF-B08, D53): CSV, JSON o XML, con solo el inicio del periodo y el valor de cada punto, nunca registros por persona (RNF-I05). Revisa la serie y registra su enfermedad, su región, su métrica, su fuente, su licencia, su corte, su huella SHA-256 y su versión (observed_datasets y observed_points, migración 061). Un conjunto no se edita ni se borra (D52). Con estas series calibra y valida el servicio calibracion (D50); la 061 trae la de COVID-19 en Nuevo León de 2020. Los datos van en XML por defecto o JSON con ?format=json o Accept: application/json; el archivo, tal cual."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5226"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token del servicio auth, con sesión activa en Redis."
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/datasets": {
+      "post": {
+        "summary": "Importar una serie observada",
+        "operationId": "importar",
+        "description": "Revisa los metadatos y el archivo y, si todo está bien, guarda el conjunto con la versión siguiente de su clave, con CREATE en la bitácora. El mismo archivo con la misma clave responde 200 con el que ya estaba. EPIDEMIOLOGO, ANALISTA y ADMINISTRADOR (datasets.upload).",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z0-9_]{3,60}$",
+              "example": "COVID19_NL_2020_SINTOMAS"
+            },
+            "description": "Clave de la serie. Importar otra vez la misma clave crea la versión siguiente."
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Nombre para mostrar."
+          },
+          {
+            "in": "query",
+            "name": "disease",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "SARS_COV_2_ANCESTRAL"
+            },
+            "description": "Código de la enfermedad (diseases.code)."
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "19"
+            },
+            "description": "Código de la región (regions.code). Tiene que estar en el alcance de la cuenta (D43)."
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "casos_confirmados",
+                "hospitalizaciones",
+                "defunciones"
+              ]
+            },
+            "description": "Qué se cuenta."
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "semana",
+                "dia"
+              ]
+            },
+            "description": "Periodo de cada punto. Una semana va de domingo a sábado, como el SINAVE, aunque basta con que todas empiecen el mismo día."
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "description": "Quién publica los datos y qué archivo es."
+          },
+          {
+            "in": "query",
+            "name": "license",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Licencia de la fuente. Solo se admiten datos de libre uso (D50)."
+          },
+          {
+            "in": "query",
+            "name": "url",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "pattern": "^https?://"
+            },
+            "description": "Dónde se descarga la fuente."
+          },
+          {
+            "in": "query",
+            "name": "cutoff",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Fecha del corte de la fuente: no futura ni anterior al último periodo."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "El archivo tal cual, hasta 2 MB, en UTF-8. Cada punto lleva solo periodo_inicio y valor (entero no negativo); una columna o clave de más se rechaza (RNF-I05). Los periodos van seguidos, sin repetirse y sin huecos (un periodo sin casos se escribe con 0), y son de 4 a 5000.",
+          "content": {
+            "text/csv": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "# Serie de la DGE agregada en el escritorio.\nperiodo_inicio,valor\n2020-03-01,7\n2020-03-08,38\n2020-03-15,40\n2020-03-22,18\n"
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "puntos"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "puntos": {
+                    "type": "array",
+                    "minItems": 4,
+                    "maxItems": 5000,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "periodo_inicio",
+                        "valor"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "periodo_inicio": {
+                          "type": "string",
+                          "format": "date"
+                        },
+                        "valor": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "example": {
+                "puntos": [
+                  {
+                    "periodo_inicio": "2020-03-01",
+                    "valor": 7
+                  },
+                  {
+                    "periodo_inicio": "2020-03-08",
+                    "valor": 38
+                  },
+                  {
+                    "periodo_inicio": "2020-03-15",
+                    "valor": 40
+                  },
+                  {
+                    "periodo_inicio": "2020-03-22",
+                    "valor": 18
+                  }
+                ]
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "serie_observada"
+                }
+              },
+              "examples": {
+                "serie": {
+                  "summary": "Valida contra serie_observada.xsd",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<serie_observada><puntos><punto><periodo_inicio>2020-03-01</periodo_inicio><valor tipo=\"numero\">7</valor></punto><punto><periodo_inicio>2020-03-08</periodo_inicio><valor tipo=\"numero\">38</valor></punto><punto><periodo_inicio>2020-03-15</periodo_inicio><valor tipo=\"numero\">40</valor></punto><punto><periodo_inicio>2020-03-22</periodo_inicio><valor tipo=\"numero\">18</valor></punto></puntos></serie_observada>\n"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Importado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 2,
+                  "code": "COVID19_NL_2020_SINTOMAS",
+                  "version": 2,
+                  "name": "Casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, primera ola de 2020",
+                  "disease": "SARS_COV_2_ANCESTRAL",
+                  "region": "19",
+                  "region_id": 1,
+                  "metric": "casos_confirmados",
+                  "period": "semana",
+                  "source": "Serie de la DGE agregada en el escritorio, misma ventana",
+                  "license": "Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente",
+                  "source_url": null,
+                  "cutoff_date": "2021-10-31",
+                  "sha256": "9f2b7c1d4e5a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e",
+                  "imported_by": 5,
+                  "created_at": "2026-11-23T16:20:00+00:00",
+                  "resumen": {
+                    "puntos": 4,
+                    "inicio": "2020-03-01",
+                    "fin": "2020-03-22",
+                    "total": 103,
+                    "maximo": 40,
+                    "periodos_en_cero": 0
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "conjunto"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<conjunto><id tipo=\"numero\">2</id><code>COVID19_NL_2020_SINTOMAS</code><version tipo=\"numero\">2</version><name>Casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, primera ola de 2020</name><disease>SARS_COV_2_ANCESTRAL</disease><region>19</region><region_id tipo=\"numero\">1</region_id><metric>casos_confirmados</metric><period>semana</period><source>Serie de la DGE agregada en el escritorio, misma ventana</source><license>Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente</license><source_url nil=\"true\" /><cutoff_date>2021-10-31</cutoff_date><sha256>9f2b7c1d4e5a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e</sha256><imported_by tipo=\"numero\">5</imported_by><created_at>2026-11-23T16:20:00+00:00</created_at><resumen><puntos tipo=\"numero\">4</puntos><inicio>2020-03-01</inicio><fin>2020-03-22</fin><total tipo=\"numero\">103</total><maximo tipo=\"numero\">40</maximo><periodos_en_cero tipo=\"numero\">0</periodos_en_cero></resumen></conjunto>"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Ese archivo ya estaba con esa clave: regresa el conjunto que había"
+          },
+          "403": {
+            "description": "El rol no importa o la región está fuera de su alcance"
+          },
+          "413": {
+            "description": "El archivo pasa de 2 MB"
+          },
+          "400": {
+            "description": "El archivo no se puede leer: no viene en UTF-8, o el JSON o el XML están mal formados"
+          },
+          "415": {
+            "description": "El Content-Type no es text/csv, application/json ni application/xml"
+          },
+          "422": {
+            "description": "Faltan metadatos, la enfermedad o la región no existen, o la serie no pasa la revisión. detail trae las primeras fallas; /validate da todas"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        }
+      },
+      "get": {
+        "summary": "Listar los conjuntos",
+        "operationId": "listar",
+        "description": "Todas las versiones, de la más nueva a la más vieja (hasta 200), con su resumen. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (simulations.read), con el alcance por región de la cuenta (D43).",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disease",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Solo los de esa enfermedad (código)."
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Solo los de esa región (código)."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "total": 2,
+                  "conjuntos": [
+                    {
+                      "id": 2,
+                      "code": "COVID19_NL_2020_SINTOMAS",
+                      "version": 2,
+                      "name": "Casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, primera ola de 2020",
+                      "disease": "SARS_COV_2_ANCESTRAL",
+                      "region": "19",
+                      "region_id": 1,
+                      "metric": "casos_confirmados",
+                      "period": "semana",
+                      "source": "Serie de la DGE agregada en el escritorio, misma ventana",
+                      "license": "Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente",
+                      "source_url": null,
+                      "cutoff_date": "2021-10-31",
+                      "sha256": "9f2b7c1d4e5a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e",
+                      "imported_by": 5,
+                      "created_at": "2026-11-23T16:20:00+00:00",
+                      "resumen": {
+                        "puntos": 4,
+                        "inicio": "2020-03-01",
+                        "fin": "2020-03-22",
+                        "total": 103,
+                        "maximo": 40,
+                        "periodos_en_cero": 0
+                      }
+                    },
+                    {
+                      "id": 1,
+                      "code": "COVID19_NL_2020_SINTOMAS",
+                      "version": 1,
+                      "name": "Casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, primera ola de 2020",
+                      "disease": "SARS_COV_2_ANCESTRAL",
+                      "region": "19",
+                      "region_id": 1,
+                      "metric": "casos_confirmados",
+                      "period": "semana",
+                      "source": "Secretaría de Salud, Dirección General de Epidemiología. Datos Abiertos de COVID-19, cierre anual 2020 (COVID19MEXICO2020.zip)",
+                      "license": "Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente",
+                      "source_url": "https://datosabiertos.salud.gob.mx/gobmx/salud/datos_abiertos/historicos/2020/COVID19MEXICO2020.zip",
+                      "cutoff_date": "2021-10-31",
+                      "sha256": "64c90685b68a1164bfa093eeef8c8d33d35d93d9d8b8f3d2d6315359a18dab90",
+                      "imported_by": null,
+                      "created_at": "2026-11-22T18:00:00+00:00",
+                      "resumen": {
+                        "puntos": 22,
+                        "inicio": "2020-03-01",
+                        "fin": "2020-07-26",
+                        "total": 22259,
+                        "maximo": 3295,
+                        "periodos_en_cero": 0
+                      }
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "conjuntos"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<conjuntos><total tipo=\"numero\">2</total><conjuntos><conjunto><id tipo=\"numero\">2</id><code>COVID19_NL_2020_SINTOMAS</code><version tipo=\"numero\">2</version><name>Casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, primera ola de 2020</name><disease>SARS_COV_2_ANCESTRAL</disease><region>19</region><region_id tipo=\"numero\">1</region_id><metric>casos_confirmados</metric><period>semana</period><source>Serie de la DGE agregada en el escritorio, misma ventana</source><license>Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente</license><source_url nil=\"true\" /><cutoff_date>2021-10-31</cutoff_date><sha256>9f2b7c1d4e5a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e</sha256><imported_by tipo=\"numero\">5</imported_by><created_at>2026-11-23T16:20:00+00:00</created_at><resumen><puntos tipo=\"numero\">4</puntos><inicio>2020-03-01</inicio><fin>2020-03-22</fin><total tipo=\"numero\">103</total><maximo tipo=\"numero\">40</maximo><periodos_en_cero tipo=\"numero\">0</periodos_en_cero></resumen></conjunto><conjunto><id tipo=\"numero\">1</id><code>COVID19_NL_2020_SINTOMAS</code><version tipo=\"numero\">1</version><name>Casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, primera ola de 2020</name><disease>SARS_COV_2_ANCESTRAL</disease><region>19</region><region_id tipo=\"numero\">1</region_id><metric>casos_confirmados</metric><period>semana</period><source>Secretaría de Salud, Dirección General de Epidemiología. Datos Abiertos de COVID-19, cierre anual 2020 (COVID19MEXICO2020.zip)</source><license>Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente</license><source_url>https://datosabiertos.salud.gob.mx/gobmx/salud/datos_abiertos/historicos/2020/COVID19MEXICO2020.zip</source_url><cutoff_date>2021-10-31</cutoff_date><sha256>64c90685b68a1164bfa093eeef8c8d33d35d93d9d8b8f3d2d6315359a18dab90</sha256><imported_by nil=\"true\" /><created_at>2026-11-22T18:00:00+00:00</created_at><resumen><puntos tipo=\"numero\">22</puntos><inicio>2020-03-01</inicio><fin>2020-07-26</fin><total tipo=\"numero\">22259</total><maximo tipo=\"numero\">3295</maximo><periodos_en_cero tipo=\"numero\">0</periodos_en_cero></resumen></conjunto></conjuntos></conjuntos>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no consulta conjuntos"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/validate": {
+      "post": {
+        "summary": "Revisar una serie sin importarla",
+        "operationId": "validar",
+        "description": "La misma revisión que la importación, sin escribir nada: responde 200 con valido, la huella del archivo, todas las fallas (hasta 50) y, si es válida, su resumen. Es «verificar la calidad» del escritorio antes de importar. EPIDEMIOLOGO, ANALISTA y ADMINISTRADOR (datasets.upload).",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z0-9_]{3,60}$",
+              "example": "COVID19_NL_2020_SINTOMAS"
+            },
+            "description": "Clave de la serie. Importar otra vez la misma clave crea la versión siguiente."
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Nombre para mostrar."
+          },
+          {
+            "in": "query",
+            "name": "disease",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "SARS_COV_2_ANCESTRAL"
+            },
+            "description": "Código de la enfermedad (diseases.code)."
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "19"
+            },
+            "description": "Código de la región (regions.code). Tiene que estar en el alcance de la cuenta (D43)."
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "casos_confirmados",
+                "hospitalizaciones",
+                "defunciones"
+              ]
+            },
+            "description": "Qué se cuenta."
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "semana",
+                "dia"
+              ]
+            },
+            "description": "Periodo de cada punto. Una semana va de domingo a sábado, como el SINAVE, aunque basta con que todas empiecen el mismo día."
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "description": "Quién publica los datos y qué archivo es."
+          },
+          {
+            "in": "query",
+            "name": "license",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Licencia de la fuente. Solo se admiten datos de libre uso (D50)."
+          },
+          {
+            "in": "query",
+            "name": "url",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "pattern": "^https?://"
+            },
+            "description": "Dónde se descarga la fuente."
+          },
+          {
+            "in": "query",
+            "name": "cutoff",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Fecha del corte de la fuente: no futura ni anterior al último periodo."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "El archivo tal cual, hasta 2 MB, en UTF-8. Cada punto lleva solo periodo_inicio y valor (entero no negativo); una columna o clave de más se rechaza (RNF-I05). Los periodos van seguidos, sin repetirse y sin huecos (un periodo sin casos se escribe con 0), y son de 4 a 5000.",
+          "content": {
+            "text/csv": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "# Serie de la DGE agregada en el escritorio.\nperiodo_inicio,valor\n2020-03-01,7\n2020-03-08,38\n2020-03-15,40\n2020-03-22,18\n"
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "puntos"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "puntos": {
+                    "type": "array",
+                    "minItems": 4,
+                    "maxItems": 5000,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "periodo_inicio",
+                        "valor"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "periodo_inicio": {
+                          "type": "string",
+                          "format": "date"
+                        },
+                        "valor": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "example": {
+                "puntos": [
+                  {
+                    "periodo_inicio": "2020-03-01",
+                    "valor": 7
+                  },
+                  {
+                    "periodo_inicio": "2020-03-08",
+                    "valor": 38
+                  },
+                  {
+                    "periodo_inicio": "2020-03-15",
+                    "valor": 40
+                  },
+                  {
+                    "periodo_inicio": "2020-03-22",
+                    "valor": 18
+                  }
+                ]
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": {
+                  "name": "serie_observada"
+                }
+              },
+              "examples": {
+                "serie": {
+                  "summary": "Valida contra serie_observada.xsd",
+                  "value": "<?xml version='1.0' encoding='utf-8'?>\n<serie_observada><puntos><punto><periodo_inicio>2020-03-01</periodo_inicio><valor tipo=\"numero\">7</valor></punto><punto><periodo_inicio>2020-03-08</periodo_inicio><valor tipo=\"numero\">38</valor></punto><punto><periodo_inicio>2020-03-15</periodo_inicio><valor tipo=\"numero\">40</valor></punto><punto><periodo_inicio>2020-03-22</periodo_inicio><valor tipo=\"numero\">18</valor></punto></puntos></serie_observada>\n"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Revisada (válida o no)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "examples": {
+                  "valida": {
+                    "value": {
+                      "valido": true,
+                      "sha256": "9f2b7c1d4e5a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e",
+                      "fallas": [],
+                      "resumen": {
+                        "puntos": 4,
+                        "inicio": "2020-03-01",
+                        "fin": "2020-03-22",
+                        "total": 103,
+                        "maximo": 40,
+                        "periodos_en_cero": 0
+                      }
+                    }
+                  },
+                  "invalida": {
+                    "value": {
+                      "valido": false,
+                      "sha256": "0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e",
+                      "fallas": [
+                        "Línea 5: valor debe ser un entero no negativo.",
+                        "Faltan 1 periodos entre 2020-03-08 y 2020-03-22: un periodo sin casos se escribe con 0."
+                      ],
+                      "resumen": null
+                    }
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "validacion"
+                  }
+                },
+                "examples": {
+                  "valida": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<validacion><valido tipo=\"booleano\">true</valido><sha256>9f2b7c1d4e5a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e</sha256><fallas /><resumen><puntos tipo=\"numero\">4</puntos><inicio>2020-03-01</inicio><fin>2020-03-22</fin><total tipo=\"numero\">103</total><maximo tipo=\"numero\">40</maximo><periodos_en_cero tipo=\"numero\">0</periodos_en_cero></resumen></validacion>"
+                  },
+                  "invalida": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<validacion><valido tipo=\"booleano\">false</valido><sha256>0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e</sha256><fallas><falla>Línea 5: valor debe ser un entero no negativo.</falla><falla>Faltan 1 periodos entre 2020-03-08 y 2020-03-22: un periodo sin casos se escribe con 0.</falla></fallas><resumen nil=\"true\" /></validacion>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El archivo no se puede leer: no viene en UTF-8, o el JSON o el XML están mal formados"
+          },
+          "403": {
+            "description": "El rol no importa"
+          },
+          "413": {
+            "description": "El archivo pasa de 2 MB"
+          },
+          "415": {
+            "description": "El Content-Type no es text/csv, application/json ni application/xml"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{id}": {
+      "get": {
+        "summary": "Consultar un conjunto",
+        "operationId": "consultar",
+        "description": "Sus metadatos y su resumen: puntos, primer y último periodo, total, máximo y periodos en cero. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (simulations.read), con el alcance por región de la cuenta (D43).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": 1,
+                  "code": "COVID19_NL_2020_SINTOMAS",
+                  "version": 1,
+                  "name": "Casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, primera ola de 2020",
+                  "disease": "SARS_COV_2_ANCESTRAL",
+                  "region": "19",
+                  "region_id": 1,
+                  "metric": "casos_confirmados",
+                  "period": "semana",
+                  "source": "Secretaría de Salud, Dirección General de Epidemiología. Datos Abiertos de COVID-19, cierre anual 2020 (COVID19MEXICO2020.zip)",
+                  "license": "Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente",
+                  "source_url": "https://datosabiertos.salud.gob.mx/gobmx/salud/datos_abiertos/historicos/2020/COVID19MEXICO2020.zip",
+                  "cutoff_date": "2021-10-31",
+                  "sha256": "64c90685b68a1164bfa093eeef8c8d33d35d93d9d8b8f3d2d6315359a18dab90",
+                  "imported_by": null,
+                  "created_at": "2026-11-22T18:00:00+00:00",
+                  "resumen": {
+                    "puntos": 22,
+                    "inicio": "2020-03-01",
+                    "fin": "2020-07-26",
+                    "total": 22259,
+                    "maximo": 3295,
+                    "periodos_en_cero": 0
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "conjunto"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<conjunto><id tipo=\"numero\">1</id><code>COVID19_NL_2020_SINTOMAS</code><version tipo=\"numero\">1</version><name>Casos confirmados de COVID-19 en Nuevo León por semana de inicio de síntomas, primera ola de 2020</name><disease>SARS_COV_2_ANCESTRAL</disease><region>19</region><region_id tipo=\"numero\">1</region_id><metric>casos_confirmados</metric><period>semana</period><source>Secretaría de Salud, Dirección General de Epidemiología. Datos Abiertos de COVID-19, cierre anual 2020 (COVID19MEXICO2020.zip)</source><license>Datos abiertos, Decreto DOF del 20-02-2015, art. 5, fr. III: libre uso, citando la fuente</license><source_url>https://datosabiertos.salud.gob.mx/gobmx/salud/datos_abiertos/historicos/2020/COVID19MEXICO2020.zip</source_url><cutoff_date>2021-10-31</cutoff_date><sha256>64c90685b68a1164bfa093eeef8c8d33d35d93d9d8b8f3d2d6315359a18dab90</sha256><imported_by nil=\"true\" /><created_at>2026-11-22T18:00:00+00:00</created_at><resumen><puntos tipo=\"numero\">22</puntos><inicio>2020-03-01</inicio><fin>2020-07-26</fin><total tipo=\"numero\">22259</total><maximo tipo=\"numero\">3295</maximo><periodos_en_cero tipo=\"numero\">0</periodos_en_cero></resumen></conjunto>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no consulta conjuntos o la región está fuera de su alcance"
+          },
+          "404": {
+            "description": "No existe el conjunto"
+          },
+          "422": {
+            "description": "El id no es un entero positivo"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{id}/points": {
+      "get": {
+        "summary": "La serie de un conjunto",
+        "operationId": "puntos",
+        "description": "Los puntos en orden. En XML valida contra serie_observada.xsd, el mismo documento que se importa. ANALISTA, EPIDEMIOLOGO, ADMINISTRADOR, INVESTIGADOR y AUTORIDAD_SANITARIA (simulations.read), con el alcance por región de la cuenta (D43).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación correcta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "dataset_id": 1,
+                  "period": "semana",
+                  "puntos": [
+                    {
+                      "periodo_inicio": "2020-03-01",
+                      "valor": 7
+                    },
+                    {
+                      "periodo_inicio": "2020-03-08",
+                      "valor": 38
+                    },
+                    {
+                      "periodo_inicio": "2020-03-15",
+                      "valor": 40
+                    },
+                    {
+                      "periodo_inicio": "2020-03-22",
+                      "valor": 18
+                    }
+                  ]
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "xml": {
+                    "name": "serie_observada"
+                  }
+                },
+                "examples": {
+                  "respuesta": {
+                    "value": "<?xml version='1.0' encoding='utf-8'?>\n<serie_observada><dataset_id tipo=\"numero\">1</dataset_id><period>semana</period><puntos><punto><periodo_inicio>2020-03-01</periodo_inicio><valor tipo=\"numero\">7</valor></punto><punto><periodo_inicio>2020-03-08</periodo_inicio><valor tipo=\"numero\">38</valor></punto><punto><periodo_inicio>2020-03-15</periodo_inicio><valor tipo=\"numero\">40</valor></punto><punto><periodo_inicio>2020-03-22</periodo_inicio><valor tipo=\"numero\">18</valor></punto></puntos></serie_observada>"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no consulta conjuntos o la región está fuera de su alcance"
+          },
+          "404": {
+            "description": "No existe el conjunto"
+          },
+          "422": {
+            "description": "El id no es un entero positivo"
+          },
+          "401": {
+            "description": "Falta token, es inválido, venció o la sesión se cerró"
+          },
+          "429": {
+            "description": "Demasiadas peticiones (LIMITE_EXCEDIDO). La cabecera Retry-After trae los segundos de espera.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar antes de reintentar",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis no está disponible, PostgreSQL no responde (detail «La base de datos no está disponible.», con Retry-After) o no se pudo consultar el alcance de la cuenta en roles."
+          }
+        }
+      }
+    }
+  }
+}

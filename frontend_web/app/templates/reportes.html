@@ -1,0 +1,60 @@
+{% extends "base_app.html" %}
+{% block title %}Reportes{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Reportes</h1>
+    <p class="subtitle">Las descargas de la web en un solo lugar. Cada descarga queda en la bitácora con quien la pidió.</p>
+  </div>
+</div>
+
+{% include "_mensajes.html" %}
+
+<div class="card table-card">
+  <div class="tabla-scroll">
+    <table class="situacion-table catalogo-table">
+      <thead><tr><th>Reporte</th><th>Contenido</th><th>Fuente</th><th>Periodo</th><th>Formato</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Resumen de situación</strong></td>
+          <td>Casos por enfermedad y su tendencia</td>
+          <td>Servicio indicadores (casos de campo)</td>
+          <td>Últimos 7 días contra los 7 previos</td>
+          <td>CSV</td>
+          <td>{% if puede('reports.export') %}<a class="btn btn-mini" href="{{ url_for('main.export_resumen_csv') }}">Descargar</a>{% endif %}</td>
+        </tr>
+        <tr>
+          <td><strong>Monitoreo por zona</strong></td>
+          <td>Casos, incidencia por 100 mil, variación y graves por municipio</td>
+          <td>Servicio zonas (casos de campo y Censo 2020)</td>
+          <td>7, 30 o 90 días (se elige en Monitoreo)</td>
+          <td>CSV</td>
+          <td>{% if puede('reports.export') %}<a class="btn btn-mini" href="{{ url_for('main.monitoreo') }}">Ir a Monitoreo</a>{% endif %}</td>
+        </tr>
+        <tr>
+          <td><strong>Catálogo de enfermedades</strong></td>
+          <td>Estado, actividad, casos y parámetros faltantes o supuestos</td>
+          <td>Servicio enfermedades</td>
+          <td>Total y últimos 30 días</td>
+          <td>CSV</td>
+          <td>{% if puede('reports.export') %}<a class="btn btn-mini" href="{{ url_for('main.export_enfermedades_csv') }}">Descargar</a>{% endif %}</td>
+        </tr>
+        <tr>
+          <td><strong>Reporte de una comparación</strong></td>
+          <td>El reporte que arma la app de escritorio, con su frontera de Pareto</td>
+          <td>Bucket de archivos (D30, D35)</td>
+          <td>Las corridas que compara</td>
+          <td>PDF</td>
+          <td>{% if puede('simulations.read') %}<a class="btn btn-mini" href="{{ url_for('main.comparacion') }}">Ir a Comparación</a>{% endif %}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card table-card">
+  <div class="detalle-titulo">Reportes de comparaciones guardados</div>
+  {% set vacio = 'Todavía no se ha subido ningún reporte de comparación.' %}
+  {% include "_reportes_tabla.html" %}
+</div>
+{% endblock %}

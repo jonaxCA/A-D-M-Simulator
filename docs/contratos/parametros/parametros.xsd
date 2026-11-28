@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Parámetros epidemiológicos de una enfermedad (raíz <parametros>), los de
-     GET y PUT /api/v1/diseases/{id}/parameters.
+     GET y PUT /api/v1/diseases/{id}/parameters. El PUT agrega <version>, la versión que
+     quedó guardada (D58). GET .../parameters/versions responde <versiones_parametros> y
+     GET .../parameters/versions/{n}, <version_parametros> con los parámetros en <params>.
 
      Los seis parámetros que usa el motor y letalidad_por_edad se validan:
-     cada uno lleva valor, fuente (o nil) y supuesto. Los parámetros
+     cada uno lleva valor, fuente (o nil), supuesto y, opcional, su intervalo de
+     incertidumbre (min, max y tipo: IC95, RIC o rango). Los parámetros
      informativos con otro formato (prob_asintomatico, transmisibilidad_base)
-     se aceptan sin validar su contenido. -->
+     se aceptan sin validar su contenido.
+
+     GET y PUT /api/v1/versions/{id}/parameters responden <ajustes_version>: el catálogo, los ajustes
+     de esa versión de escenario y los parámetros efectivos (D59). -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="unqualified">
 
   <xs:include schemaLocation="../comun/tipos.xsd"/>
@@ -20,6 +26,23 @@
       <xs:element name="dist" type="xs:string" minOccurs="0"/>
       <xs:element name="media" type="Numero" minOccurs="0"/>
       <xs:element name="desv" type="Numero" minOccurs="0"/>
+      <xs:element name="intervalo" type="Intervalo" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:simpleType name="tipoIntervalo">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="IC95"/>
+      <xs:enumeration value="RIC"/>
+      <xs:enumeration value="rango"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="Intervalo">
+    <xs:all>
+      <xs:element name="min" type="Numero"/>
+      <xs:element name="max" type="Numero"/>
+      <xs:element name="tipo" type="tipoIntervalo"/>
     </xs:all>
   </xs:complexType>
 
@@ -62,7 +85,73 @@
       <xs:sequence>
         <xs:element name="disease_id" type="Entero"/>
         <xs:element name="parametros" type="ListaParametros"/>
+        <xs:element name="version" type="Entero" minOccurs="0"/>
       </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="Libre">
+    <xs:sequence>
+      <xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:anyAttribute processContents="skip"/>
+  </xs:complexType>
+
+  <!-- Los ajustes de una versión de escenario sobre el catálogo (D59). ajustes y efectivos traen
+       los parámetros con el mismo formato que <parametros>; estado es el de GET .../parameters/status
+       calculado sobre los efectivos. -->
+  <xs:element name="ajustes_version">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="version_id" type="Entero"/>
+        <xs:element name="scenario_id" type="Entero"/>
+        <xs:element name="version_number" type="Entero"/>
+        <xs:element name="status" type="xs:string"/>
+        <xs:element name="editable" type="Booleano"/>
+        <xs:element name="disease_id" type="Entero"/>
+        <xs:element name="catalogo" type="ListaParametros"/>
+        <xs:element name="ajustes" type="ListaParametros"/>
+        <xs:element name="efectivos" type="ListaParametros"/>
+        <xs:element name="estado" type="Libre"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="versiones_parametros">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="disease_id" type="Entero"/>
+        <xs:element name="total" type="Entero"/>
+        <xs:element name="versiones">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="item" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="version" type="Entero"/>
+                    <xs:element name="reason" type="TextoONulo"/>
+                    <xs:element name="changed_by" type="EnteroONulo"/>
+                    <xs:element name="created_at" type="xs:dateTime"/>
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="version_parametros">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="disease_id" type="Entero"/>
+        <xs:element name="version" type="Entero"/>
+        <xs:element name="params" type="ListaParametros"/>
+        <xs:element name="reason" type="TextoONulo"/>
+        <xs:element name="changed_by" type="EnteroONulo"/>
+        <xs:element name="created_at" type="xs:dateTime"/>
+      </xs:all>
     </xs:complexType>
   </xs:element>
 
